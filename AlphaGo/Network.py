@@ -50,7 +50,7 @@ p = policy_heads(h, is_training)
 loss = tf.reduce_mean(tf.square(z-v)) - tf.reduce_mean(tf.multiply(pi, tf.log(tf.nn.softmax(p, 1))))
 reg = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
 total_loss = loss + reg
-train_op = tf.train.RMSPropOptimizer(1e-2).minimize(total_loss)
+train_op = tf.train.RMSPropOptimizer(1e-4).minimize(total_loss)
 
 var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
 saver = tf.train.Saver(max_to_keep=10, var_list=var_list)
@@ -105,3 +105,6 @@ def forward(board):
 		else:
 			raise ValueError("No model loaded")
 		return sess.run([p,v], feed_dict={x:board})
+
+if __name__='main':
+	train()
