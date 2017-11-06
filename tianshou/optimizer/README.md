@@ -1,11 +1,20 @@
 # Optimizer for policy gradient methods
 TODO:
+
 vanilla
-introduce a baseline
+
+baseline
+
 REINFORCE
+
 TRPO
+
 PPO
+
 GAE
+
 NAF
+
 DPG
-ACKTR 
+
+ACKTR
