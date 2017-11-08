@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import time
+import os
 import multi_gpu
 import tensorflow.contrib.layers as layers
 
@@ -55,16 +56,11 @@ train_op = tf.train.RMSPropOptimizer(1e-4).minimize(total_loss)
 var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
 saver = tf.train.Saver(max_to_keep=10, var_list=var_list)
 def train():
-	data = np.load("data.npz")
-	boards = data["boards"]
-	wins = data["wins"]
-	ps = data["ps"]
-	print (boards.shape)
-	print (wins.shape)
-	print (ps.shape)
+	data_path = "/home/tongzheng/data/"
+	data_name = os.listdir("/home/tongzheng/data/")
 	epochs = 100
 	batch_size = 32
-	batch_num = boards.shape[0] // batch_size
+
 	result_path = "./results/"
 	with multi_gpu.create_session() as sess:
 		sess.run(tf.global_variables_initializer())
@@ -73,26 +69,36 @@ def train():
 			print('Restoring model from {}...'.format(ckpt_file))
 			saver.restore(sess, ckpt_file)
 		for epoch in range(epochs):
-			time_train = -time.time()
-			index = np.arange(boards.shape[0])
-			np.random.shuffle(index)
-			losses = []
-			regs = []
-			for iter in range(batch_num):
-				_, l, r, value, prob = sess.run([train_op, loss, reg, v, p], feed_dict={x:boards[index[iter*batch_size:(iter+1)*batch_size]],
-																					z:wins[index[iter*batch_size:(iter+1)*batch_size]],
-																					pi:ps[index[iter*batch_size:(iter+1)*batch_size]],
-																					is_training:True})
-				losses.append(l)
-				regs.append(r)
-				if iter % 1 == 0:
-					print("Epoch: {}, Iteration: {}, Time: {}, Loss: {}, Reg: {}".format(epoch, iter, time.time()+time_train, np.mean(np.array(losses)), np.mean(np.array(regs))))
-					time_train=-time.time()
-					losses = []
-					regs = []
-				if iter % 20 == 0:
-					save_path = "Epoch{}.Iteration{}.ckpt".format(epoch, iter)
-					saver.save(sess, result_path + save_path)
+			for name in data_name:
+				data = np.load(data_path + name)
+				boards = data["boards"]
+				wins = data["wins"]
+				ps = data["ps"]
+				print (boards.shape)
+				print (wins.shape)
+				print (ps.shape)
+				batch_num = boards.shape[0] // batch_size
+				index = np.arange(boards.shape[0])
+				np.random.shuffle(index)
+				losses = []
+				regs = []
+				time_train = -time.time()
+				for iter in range(batch_num):
+					_, l, r, value, prob = sess.run([train_op, loss, reg, v, p], feed_dict={x:boards[index[iter*batch_size:(iter+1)*batch_size]],
+																						z:wins[index[iter*batch_size:(iter+1)*batch_size]],
+																						pi:ps[index[iter*batch_size:(iter+1)*batch_size]],
+																						is_training:True})
+					losses.append(l)
+					regs.append(r)
+					if iter % 1 == 0:
+						print("Epoch: {}, Part {}, Iteration: {}, Time: {}, Loss: {}, Reg: {}".format(epoch, name, iter, time.time()+time_train, np.mean(np.array(losses)), np.mean(np.array(regs))))
+						time_train=-time.time()
+						losses = []
+						regs = []
+					if iter % 20 == 0:
+						save_path = "Epoch{}.Part{}.Iteration{}.ckpt".format(epoch, name, iter)
+						saver.save(sess, result_path + save_path)
+				del data, boards, wins, ps
 
 def forward(board):
 	result_path = "./results/"
@@ -106,5 +112,5 @@ def forward(board):
 			raise ValueError("No model loaded")
 		return sess.run([p,v], feed_dict={x:board})
 
-if __name__='main':
+if __name__=="__main__":
 	train()
