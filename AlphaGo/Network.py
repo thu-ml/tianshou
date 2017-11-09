@@ -60,7 +60,7 @@ v = value_heads(h, is_training)
 p = policy_heads(h, is_training)
 # loss = tf.reduce_mean(tf.square(z-v)) - tf.multiply(pi, tf.log(tf.clip_by_value(tf.nn.softmax(p), 1e-8, tf.reduce_max(tf.nn.softmax(p)))))
 value_loss = tf.reduce_mean(tf.square(z - v))
-policy_loss = - tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=pi, logits=p))
+policy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=pi, logits=p))
 
 reg = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
 total_loss = value_loss + policy_loss + reg
