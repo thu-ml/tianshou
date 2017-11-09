@@ -43,9 +43,9 @@ for t in text:
             new_board = hex2board(line)
             board = np.concatenate([board, new_board], axis=3)
         if num % 19 == 16:
-            if line == '0':
+            if int(line) == 0:
                 new_board = np.ones([1, 19 ,19 ,1], dtype='int8')
-            if line == '1':
+            if int(line) == 1:
                 new_board = np.zeros([1, 19, 19, 1], dtype='int8')
             board = np.concatenate([board, new_board], axis=3)
             boards = np.concatenate([boards, board], axis=0)
