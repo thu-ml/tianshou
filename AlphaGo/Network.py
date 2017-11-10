@@ -12,7 +12,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 def residual_block(input, is_training):
 	normalizer_params = {'is_training': is_training,
-						 'updates_collections': None}
+						 'updates_collections': tf.GraphKeys.UPDATE_OPS}
 	h = layers.conv2d(input, 256, kernel_size=3, stride=1, activation_fn=tf.nn.relu,
 					  normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params,
 					  weights_regularizer=layers.l2_regularizer(1e-4))
@@ -25,7 +25,7 @@ def residual_block(input, is_training):
 
 def policy_heads(input, is_training):
 	normalizer_params = {'is_training': is_training,
-						 'updates_collections': None}
+						 'updates_collections': tf.GraphKeys.UPDATE_OPS}
 	h = layers.conv2d(input, 2, kernel_size=1, stride=1, activation_fn=tf.nn.relu,
 					  normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params,
 					  weights_regularizer=layers.l2_regularizer(1e-4))
@@ -36,7 +36,7 @@ def policy_heads(input, is_training):
 
 def value_heads(input, is_training):
 	normalizer_params = {'is_training': is_training,
-						 'updates_collections': None}
+						 'updates_collections': tf.GraphKeys.UPDATE_OPS}
 	h = layers.conv2d(input, 2, kernel_size=1, stride=1, activation_fn=tf.nn.relu,
 					  normalizer_fn=layers.batch_norm, normalizer_params=normalizer_params,
 					  weights_regularizer=layers.l2_regularizer(1e-4))
@@ -52,7 +52,7 @@ z = tf.placeholder(tf.float32, shape=[None, 1])
 pi = tf.placeholder(tf.float32, shape=[None, 362])
 
 h = layers.conv2d(x, 256, kernel_size=3, stride=1, activation_fn=tf.nn.relu, normalizer_fn=layers.batch_norm,
-				  normalizer_params={'is_training': is_training, 'updates_collections': None},
+				  normalizer_params={'is_training': is_training, 'updates_collections': tf.GraphKeys.UPDATE_OPS},
 				  weights_regularizer=layers.l2_regularizer(1e-4))
 for i in range(19):
 	h = residual_block(h, is_training)
