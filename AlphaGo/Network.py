@@ -131,8 +131,8 @@ def train():
 
 def forward(call_number):
     #checkpoint_path = "/home/yama/rl/tianshou/AlphaGo/checkpoints"
-    checkpoint_path = "/home/yama/rl/tianshou/AlphaGo/checkpoints"
-    board_file = np.genfromtxt("/home/yama/rl/tianshou/leela-zero/src/mcts_nn_files/board_" + call_number, dtype='str');
+    checkpoint_path = "/home/jialian/stuGo/tianshou/stuGo/checkpoints/"
+    board_file = np.genfromtxt("/home/jialian/stuGo/tianshou/leela-zero/src/mcts_nn_files/board_" + call_number, dtype='str');
     human_board = np.zeros((17, 19, 19))
 
     #TODO : is it ok to ignore the last channel?
@@ -171,7 +171,7 @@ def forward(call_number):
             #print(np.argmax(res[0]))
             np.savetxt(sys.stdout, res[0][0], fmt="%.6f", newline=" ")
             np.savetxt(sys.stdout, res[1][0], fmt="%.6f", newline=" ")
-            pv_file = "/home/yama/rl/tianshou/leela-zero/src/mcts_nn_files/policy_value"
+            pv_file = "/home/jialian/stuGotianshou/leela-zero/src/mcts_nn_files/policy_value"
             np.savetxt(pv_file, np.concatenate((res[0][0], res[1][0])), fmt="%.6f", newline=" ")
             #np.savetxt(pv_file, res[1][0], fmt="%.6f", newline=" ")
     return res
