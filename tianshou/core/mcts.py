@@ -1,12 +1,11 @@
 import numpy as np
 import math
-import json
+import time
 
-js = json.load("state_mask.json")
-action_num = 2
 c_puct = 5.
 
-class MCTSNode:
+
+class MCTSNode(object):
     def __init__(self, parent, action, state, action_num, prior):
         self.parent = parent
         self.action = action
@@ -15,17 +14,17 @@ class MCTSNode:
         self.action_num = action_num
         self.prior = prior
 
-    def select_leaf(self):
-        raise NotImplementedError("Need to implement function select_leaf")
+    def selection(self):
+        raise NotImplementedError("Need to implement function selection")
 
-    def backup_value(self, action, value):
-        raise NotImplementedError("Need to implement function backup_value")
+    def backpropagation(self, action, value):
+        raise NotImplementedError("Need to implement function backpropagation")
 
-    def expand(self, action):
-        raise NotImplementedError("Need to implement function expand")
+    def expansion(self, simulator, action):
+        raise NotImplementedError("Need to implement function expansion")
 
-    def iteration(self):
-        raise NotImplementedError("Need to implement function iteration")
+    def simulation(self, state, evaluator):
+        raise NotImplementedError("Need to implement function simulation")
 
 
 class UCTNode(MCTSNode):
@@ -36,24 +35,30 @@ class UCTNode(MCTSNode):
         self.N = np.zeros([action_num])
         self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
 
-    def select_leaf(self):
+    def selection(self):
         action = np.argmax(self.ucb)
         if action in self.children.keys():
-            self.children[action].select_leaf()
+            self.children[action].selection()
         else:
-            # TODO: apply the action and evalate next state
-            # state, value = self.env.step_forward(self.state, action)
-            # self.children[action] = MCTSNode(self.env, self, action, state, prior)
-            # self.backup_value(action, value)
-            state, value = self.expand(action)
-            self.children[action] = UCTNode(self.env, self, action, state, prior)
+            return self, action
 
-    def backup_value(self, action, value):
+    def backpropagation(self, action, value):
         self.N[action] += 1
         self.W[action] += 1
         self.Q = self.W / self.N
         self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
         self.parent.backup_value(self.parent.action, value)
+
+    def expansion(self, simulator, action):
+        next_state = simulator.step_forward(self.state, action)
+        # TODO: Let users/evaluator give the prior
+        prior = np.ones([self.action_num]) / self.action_num
+        self.children[action] = UCTNode(self, action, next_state, self.action_num, prior)
+
+    def simulation(self, evaluator, state):
+        value = evaluator(state)
+        return value
+
 
 class TSNode(MCTSNode):
     def __init__(self, parent, action, state, action_num, prior, method="Gaussian"):
@@ -65,9 +70,41 @@ class TSNode(MCTSNode):
             self.mu = np.zeros([action_num])
             self.sigma = np.zeros([action_num])
 
+
 class ActionNode:
     def __init__(self, parent, action):
         self.parent = parent
         self.action = action
         self.children = {}
+        self.value = {}
 
+
+class MCTS:
+    def __init__(self, simulator, evaluator, root, action_num, prior, method="UCT", max_step=None, max_time=None):
+        self.simulator = simulator
+        self.evaluator = evaluator
+        if method == "UCT":
+            self.root = UCTNode(None, None, root, action_num, prior)
+        if method == "TS":
+            self.root = TSNode(None, None, root, action_num, prior)
+        if max_step is not None:
+            self.step = 0
+            self.max_step = max_step
+        if max_time is not None:
+            self.start_time = time.time()
+            self.max_time = max_time
+        if max_step is None and max_time is None:
+            raise ValueError("Need a stop criteria!")
+        while (max_step is not None and self.step < self.max_step or max_step is None) \
+                and (max_time is not None and time.time() - self.start_time < self.max_time or max_time is None):
+            self.expand()
+
+    def expand(self):
+        node, new_action = self.root.selection()
+        node.expansion(self.simulator, new_action)
+        value = node.simulation(self.evaluator, node.children[new_action].state)
+        node.backpropagation(new_action, value)
+
+
+if __name__=="__main__":
+    pass
