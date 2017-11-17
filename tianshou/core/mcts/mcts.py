@@ -2,7 +2,7 @@ import numpy as np
 import math
 import time
 
-c_puct = 5.
+c_puct = 1
 
 
 class MCTSNode(object):
@@ -17,7 +17,7 @@ class MCTSNode(object):
     def selection(self):
         raise NotImplementedError("Need to implement function selection")
 
-    def backpropagation(self, action, value, is_terminated):
+    def backpropagation(self, action, value):
         raise NotImplementedError("Need to implement function backpropagation")
 
     def expansion(self, simulator, action):
@@ -37,35 +37,41 @@ class UCTNode(MCTSNode):
         self.is_terminated = False
 
     def selection(self):
-        if self.is_terminated:
-            action = None
-        else:
+        if not self.is_terminated:
             action = np.argmax(self.ucb)
-        if action in self.children.keys():
-            self.children[action].selection()
+            if action in self.children.keys():
+                node, action = self.children[action].selection()
+            else:
+                node = self
         else:
-            return self, action
+            action = None
+            node = self
+        return node, action
 
-    def backpropagation(self, action, value, is_terminated):
-        self.is_terminated = is_terminated
-        self.N[action] += 1
-        self.W[action] += value
-        for i in range(self.action_num):
-            if self.N[i] != 0:
-                self.Q[i] = (self.W[i] + 0.)/self.N[i]
-        self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
-        if self.parent is not None:
-            self.parent.backpropagation(self.parent.action, value)
+    def backpropagation(self, action, value):
+        if action is None:
+            if self.parent is not None:
+                self.parent.backpropagation(self.action, value)
+        else:
+            self.N[action] += 1
+            self.W[action] += value
+            for i in range(self.action_num):
+                if self.N[i] != 0:
+                    self.Q[i] = (self.W[i] + 0.)/self.N[i]
+            self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1.)
+            if self.parent is not None:
+                self.parent.backpropagation(self.action, value)
 
     def expansion(self, simulator, action):
-        next_state = simulator.step_forward(self.state, action)
+        next_state, is_terminated = simulator.step_forward(self.state, action)
         # TODO: Let users/evaluator give the prior
         prior = np.ones([self.action_num]) / self.action_num
         self.children[action] = UCTNode(self, action, next_state, self.action_num, prior)
+        self.children[action].is_terminated = is_terminated
 
     def simulation(self, evaluator, state):
-        value, is_ternimated = evaluator(state)
-        return value, is_ternimated
+        value = evaluator(state)
+        return value
 
 
 class TSNode(MCTSNode):
@@ -105,24 +111,20 @@ class MCTS:
             raise ValueError("Need a stop criteria!")
         while (max_step is not None and self.step < self.max_step or max_step is None) \
                 and (max_time is not None and time.time() - self.start_time < self.max_time or max_time is None):
+            print(self.root.Q)
             self.expand()
             if max_step is not None:
                 self.step += 1
 
     def expand(self):
-        print(self.root.Q)
-        print(self.root.N)
-        print(self.root.W)
         node, new_action = self.root.selection()
-        print(node.state, new_action)
         if new_action is None:
-            value, is_terminated = node.simulation(self.evaluator, node.state)
-            node.backpropagation(node.action, value, is_terminated)
-            print(value)
+            value = node.simulation(self.evaluator, node.state)
+            node.backpropagation(new_action, value)
         else:
             node.expansion(self.simulator, new_action)
-            value, is_terminated = node.simulation(self.evaluator, node.children[new_action].state)
-            node.backpropagation(new_action, value, is_terminated)
+            value = node.simulation(self.evaluator, node.children[new_action].state)
+            node.backpropagation(new_action, value)
 
 
 if __name__=="__main__":
