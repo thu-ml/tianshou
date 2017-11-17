@@ -1,5 +1,6 @@
 import numpy as np
 from mcts import MCTS
+import matplotlib.pyplot as plt
 
 class TestEnv:
     def __init__(self, max_step=5):
@@ -13,16 +14,21 @@ class TestEnv:
             raise ValueError("Action must be 0 or 1!")
         if state[0] >= 2**state[1] or state[1] >= self.max_step:
             raise ValueError("Invalid State!")
-        print("Operate action {} at state {}, timestep {}".format(action, state[0], state[1]))
+        # print("Operate action {} at state {}, timestep {}".format(action, state[0], state[1]))
         state[0] = state[0] + 2**state[1]*action
         state[1] = state[1] + 1
+        return state
+
+    def evaluator(self, state):
         if state[1] == self.max_step:
             reward = int(np.random.uniform() > self.reward[state[0]])
-            print("Get reward {}".format(reward))
+            is_terminated = True
         else:
             reward = 0
-        return [state, reward]
+            is_terminated = False
+        return reward, is_terminated
 
 if __name__=="__main__":
     env = TestEnv(1)
-    env.step_forward([0,0],1)
+    evaluator = lambda state: env.evaluator(state)
+    mcts = MCTS(env, evaluator, [0,0], 2, np.ones([2])/2, max_step=1e4)

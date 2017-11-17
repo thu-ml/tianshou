@@ -17,7 +17,7 @@ class MCTSNode(object):
     def selection(self):
         raise NotImplementedError("Need to implement function selection")
 
-    def backpropagation(self, action, value):
+    def backpropagation(self, action, value, is_terminated):
         raise NotImplementedError("Need to implement function backpropagation")
 
     def expansion(self, simulator, action):
@@ -34,20 +34,28 @@ class UCTNode(MCTSNode):
         self.W = np.zeros([action_num])
         self.N = np.zeros([action_num])
         self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
+        self.is_terminated = False
 
     def selection(self):
-        action = np.argmax(self.ucb)
+        if self.is_terminated:
+            action = None
+        else:
+            action = np.argmax(self.ucb)
         if action in self.children.keys():
             self.children[action].selection()
         else:
             return self, action
 
-    def backpropagation(self, action, value):
+    def backpropagation(self, action, value, is_terminated):
+        self.is_terminated = is_terminated
         self.N[action] += 1
-        self.W[action] += 1
-        self.Q = self.W / self.N
+        self.W[action] += value
+        for i in range(self.action_num):
+            if self.N[i] != 0:
+                self.Q[i] = (self.W[i] + 0.)/self.N[i]
         self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
-        self.parent.backup_value(self.parent.action, value)
+        if self.parent is not None:
+            self.parent.backpropagation(self.parent.action, value)
 
     def expansion(self, simulator, action):
         next_state = simulator.step_forward(self.state, action)
@@ -56,8 +64,8 @@ class UCTNode(MCTSNode):
         self.children[action] = UCTNode(self, action, next_state, self.action_num, prior)
 
     def simulation(self, evaluator, state):
-        value = evaluator(state)
-        return value
+        value, is_ternimated = evaluator(state)
+        return value, is_ternimated
 
 
 class TSNode(MCTSNode):
@@ -98,12 +106,23 @@ class MCTS:
         while (max_step is not None and self.step < self.max_step or max_step is None) \
                 and (max_time is not None and time.time() - self.start_time < self.max_time or max_time is None):
             self.expand()
+            if max_step is not None:
+                self.step += 1
 
     def expand(self):
+        print(self.root.Q)
+        print(self.root.N)
+        print(self.root.W)
         node, new_action = self.root.selection()
-        node.expansion(self.simulator, new_action)
-        value = node.simulation(self.evaluator, node.children[new_action].state)
-        node.backpropagation(new_action, value)
+        print(node.state, new_action)
+        if new_action is None:
+            value, is_terminated = node.simulation(self.evaluator, node.state)
+            node.backpropagation(node.action, value, is_terminated)
+            print(value)
+        else:
+            node.expansion(self.simulator, new_action)
+            value, is_terminated = node.simulation(self.evaluator, node.children[new_action].state)
+            node.backpropagation(new_action, value, is_terminated)
 
 
 if __name__=="__main__":
