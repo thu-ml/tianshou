@@ -1,16 +1,15 @@
 import os
 import time
-import sys
+import gc
 
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
 
 import multi_gpu
-import time
 
-#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 
 def residual_block(input, is_training):
 	normalizer_params = {'is_training': is_training,
@@ -96,6 +95,7 @@ def train():
 				print (boards.shape)
 				print (wins.shape)
 				print (ps.shape)
+				# batch_num = 1
 				batch_num = boards.shape[0] // batch_size
 				index = np.arange(boards.shape[0])
 				np.random.shuffle(index)
@@ -104,7 +104,7 @@ def train():
 				regs = []
 				time_train = -time.time()
 				for iter in range(batch_num):
-					lv, lp, r, value, prob, _ = sess.run([value_loss, policy_loss, reg, v, tf.nn.softmax(p), train_op],
+					lv, lp, r, _ = sess.run([value_loss, policy_loss, reg, train_op],
 														 feed_dict={x: boards[
 															 index[iter * batch_size:(iter + 1) * batch_size]],
 																	z: wins[index[
@@ -115,11 +115,13 @@ def train():
 					value_losses.append(lv)
 					policy_losses.append(lp)
 					regs.append(r)
+					del lv, lp, r
 					if iter % 1 == 0:
 						print(
 						"Epoch: {}, Part {}, Iteration: {}, Time: {}, Value Loss: {}, Policy Loss: {}, Reg: {}".format(
 							epoch, name, iter, time.time() + time_train, np.mean(np.array(value_losses)),
 							np.mean(np.array(policy_losses)), np.mean(np.array(regs))))
+						del value_losses, policy_losses, regs, time_train
 						time_train = -time.time()
 						value_losses = []
 						policy_losses = []
@@ -127,56 +129,45 @@ def train():
 					if iter % 20 == 0:
 						save_path = "Epoch{}.Part{}.Iteration{}.ckpt".format(epoch, name, iter)
 						saver.save(sess, result_path + save_path)
-				del data, boards, wins, ps
+						del save_path
+				del data, boards, wins, ps, batch_num, index
+				gc.collect()
+def forward(board):
+	result_path = "./checkpoints"
+	itflag = False
+	res = None
+	if board is None:
+		# data = np.load("/home/tongzheng/meta-data/80b7bf21bce14862806d48c3cd760a1b.npz")
+		data = np.load("./data/7f83928932f64a79bc1efdea268698ae.npz")
+                board = data["boards"][50].reshape(-1, 19, 19, 17)
+                human_board = board[0].transpose(2, 0, 1)
+                print("============================")
+                print("human board sum : " + str(np.sum(human_board)))
+                print("============================")
+                print(board[:,:,:,-1])
+		itflag = False
+	with multi_gpu.create_session() as sess:
+		sess.run(tf.global_variables_initializer())
+		ckpt_file = tf.train.latest_checkpoint(result_path)
+		if ckpt_file is not None:
+			print('Restoring model from {}...'.format(ckpt_file))
+			saver.restore(sess, ckpt_file)
+		else:
+			raise ValueError("No model loaded")
+		res = sess.run([tf.nn.softmax(p), v], feed_dict={x: board, is_training: itflag})
+		# res = sess.run([tf.nn.softmax(p),v], feed_dict={x:fix_board["boards"][300].reshape(-1, 19, 19, 17), is_training:False})
+		# res = sess.run([tf.nn.softmax(p),v], feed_dict={x:fix_board["boards"][50].reshape(-1, 19, 19, 17), is_training:True})
+		# print(np.argmax(res[0]))
+                print(res)
+                print(data["p"][0])
+		print(np.argmax(res[0]))
+		print(np.argmax(data["p"][0]))
+	# print(res[0].tolist()[0])
+	# print(np.argmax(res[0]))
+	return res
 
-def forward(call_number):
-    #checkpoint_path = "/home/yama/rl/tianshou/AlphaGo/checkpoints"
-    checkpoint_path = "/home/jialian/stuGo/tianshou/stuGo/checkpoints/"
-    board_file = np.genfromtxt("/home/jialian/stuGo/tianshou/leela-zero/src/mcts_nn_files/board_" + call_number, dtype='str');
-    human_board = np.zeros((17, 19, 19))
 
-    #TODO : is it ok to ignore the last channel?
-    for i in range(17):
-        human_board[i] = np.array(list(board_file[i])).reshape(19, 19)
-    #print("============================")
-    #print("human board sum : " + str(np.sum(human_board[-1])))
-    #print("============================")
-    #print(human_board)
-    #print("============================")
-    #rint(human_board)
-    feed_board = human_board.transpose(1, 2, 0).reshape(1, 19, 19, 17)
-    #print(feed_board[:,:,:,-1])
-    #print(feed_board.shape)
-
-    #npz_board = np.load("/home/yama/rl/tianshou/AlphaGo/data/7f83928932f64a79bc1efdea268698ae.npz")
-    #print(npz_board["boards"].shape)
-    #feed_board = npz_board["boards"][10].reshape(-1, 19, 19, 17)
-    ##print(feed_board)
-    #show_board = feed_board[0].transpose(2, 0, 1)
-    #print("board shape : ", show_board.shape)
-    #print(show_board)
-
-    itflag = False
-    with multi_gpu.create_session() as sess:
-            sess.run(tf.global_variables_initializer())
-            ckpt_file = tf.train.latest_checkpoint(checkpoint_path)
-            if ckpt_file is not None:
-            	#print('Restoring model from {}...'.format(ckpt_file))
-            	saver.restore(sess, ckpt_file)
-            else:
-            	raise ValueError("No model loaded")
-            res = sess.run([tf.nn.softmax(p),v], feed_dict={x:feed_board, is_training:itflag})
-            #res = sess.run([tf.nn.softmax(p),v], feed_dict={x:fix_board["boards"][300].reshape(-1, 19, 19, 17), is_training:False})
-            #res = sess.run([tf.nn.softmax(p),v], feed_dict={x:fix_board["boards"][50].reshape(-1, 19, 19, 17), is_training:True})
-            #print(np.argmax(res[0]))
-            np.savetxt(sys.stdout, res[0][0], fmt="%.6f", newline=" ")
-            np.savetxt(sys.stdout, res[1][0], fmt="%.6f", newline=" ")
-            pv_file = "/home/jialian/stuGotianshou/leela-zero/src/mcts_nn_files/policy_value"
-            np.savetxt(pv_file, np.concatenate((res[0][0], res[1][0])), fmt="%.6f", newline=" ")
-            #np.savetxt(pv_file, res[1][0], fmt="%.6f", newline=" ")
-    return res
-
-if __name__=='__main__':
-        np.set_printoptions(threshold='nan')
-        #time.sleep(2)
-        forward(sys.argv[1])
+if __name__ == '__main__':
+	# train()
+	# if sys.argv[1] == "test":
+	forward(None)
