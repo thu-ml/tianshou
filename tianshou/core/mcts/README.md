@@ -14,18 +14,19 @@ Elements for a node:
 
 + state: the state for current node
 + parent node: the parent node of this node on the tree
++ parent action: the action that leads to this node
 + children: the next states the agent can reach by choosing an action from this node
 + prior: some external information for this node (default to be uniform)
-> If an action is chosen, the next state and reward are gotten. I assume that the action and correspond reward are maintained in element children.
 
 Optional elements (for UCT or Thompson Sampling):
 
-+ W: the sum of all sampled values collected by this node (for UCT)
-+ N: the number of times the node is sampled (for UCT)
-+ Q: the estimation for the value of this node, i.e. W/N (for UCT)
-+ U: upper bound value for this node (for UCT)
-+ alpha, beta: parameters for the posterior distribution of the value of this node (for Thompson Sampling, beta distribution)
-+ mu, sigma: parameters for the posterior distribution of the value of this node (for Thompson Sampling, Gaussian distribution)
++ W: the list of all the sums of all sampled values collected for all children nodes (for UCT)
++ N: the list of numbers of times each of children node has been sampled (for UCT)
++ Q: the estimation for the value of all chidren nodes, i.e. W/N (for UCT)
++ U: upper bound value for all children nodes (for UCT)
++ R: the list of the one-step reward of all children nodes
++ alpha, beta: parameters for the posterior distribution of the value of all children nodes (for Thompson Sampling, beta distribution)
++ mu, sigma: parameters for the posterior distribution of the value of all children nodes (for Thompson Sampling, Gaussian distribution)
 
 ### Selection
 In the selection part, an action is chosen for the current node. 
@@ -36,7 +37,7 @@ If not, stop selection and start expansion.
 
 ### Expansion
 
-Send the state-action pair to the simulator and then the next state and a reward are returned by the simulator. Then initialize a new node with the next state. Add the action, reward and next state link to children. The prior information may be given for initialization.
+Send the state-action pair to the simulator and then the next state and a reward are returned by the simulator. Then initialize a new node with the next state. The prior information may be given for initialization.
 
 Then go to rollout.
 
@@ -52,7 +53,7 @@ Then turn to backpropagation to send this value backup.
 
 From the leaf node to the root node, update all nodes that have been passed in this iteration.
 
-For each node, a value is returned by its child node. Then add this value (might be multiplied by a discouting factor gamma) with the stored reward for this child to get a new value. The new value is used to update this node.
+For each node, a value is returned by its child node. Then add this value (might be multiplied by a discouting factor gamma) with the stored reward for this child to get a new value. The new value is used to update this Q value of the corresponding children.
 
 For UCT methods, the new value is add to W. Then add 1 to N. Q and U can be calculated out.
 
@@ -81,8 +82,13 @@ Elements for a state node:
 
 Optional elements (for UCT or Thompson Sampling):
 
-+ V: the estimation for the value of this node (for UCT)
-+ N: the number of times the node is sampled (for UCT)
++ W: the list of all the sums of all sampled values collected for all children action nodes (for UCT)
++ N: the list of numbers of times each of children action node has been sampled (for UCT)
++ Q: the estimation for the value of all chidren action nodes, i.e. W/N (for UCT)
++ U: upper bound value for all children action nodes (for UCT)
++ R: the list of the expected one-step reward of all children action nodes
++ alpha, beta: parameters for the posterior distribution of the value of all children nodes (for Thompson Sampling, beta distribution)
++ mu, sigma: parameters for the posterior distribution of the value of all children nodes (for Thompson Sampling, Gaussian distribution)
 
 #### Action nodes
 
@@ -90,17 +96,12 @@ Elements for a state node:
 
 + action: the action for current node
 + parent node: the parent state node of this node on the tree
-+ expected_reward: the expected one-step reward when this action is chosen from the parent node
 + children: the states node sampled by this action
 
 Optional elements (for UCT or Thompson Sampling):
 
-+ W: the sum of all sampled values collected by this node (for UCT)
-+ N: the number of times the node is sampled (for UCT)
-+ Q: the estimation for the value of this node, i.e. W/N (for UCT)
-+ U: upper bound value for this node (for UCT)
-+ alpha, beta: parameters for the posterior distribution of the value of this node (for Thompson Sampling, beta distribution)
-+ mu, sigma: parameters for the posterior distribution of the value of this node (for Thompson Sampling, Gaussian distribution)
++ V: the estimation for the value of children state nodes (for UCT)
++ N: the number of times each of the children state node has been sampled (for UCT)
 
 ### Selection
 In the selection part, an action is chosen for the current state node. Then the state-action pair to the simulator and then the next state and a reward are returned by the simulator.
@@ -119,9 +120,7 @@ Then go to rollout.
 
 ### Rollout
 
-At the new state node, choose one action as a leaf node. Then use a quick policy to play the game to some terminal state and return the collected reward along the trajectory to the leaf node. Use this collected reward to initialize the Q value of this action node.
-
-> TODO: if external estimated values are used here, is it proper to estimate Q or V?
+At the new state node, choose one action as a leaf node. Then use a quick policy to play the game to some terminal state and return the collected reward along the trajectory to the leaf node.
 
 Then turn to backpropagation to send this value backup.
 
@@ -129,9 +128,9 @@ Then turn to backpropagation to send this value backup.
 
 From the leaf node to the root node, update all nodes that have been passed in this iteration.
 
-#### For action nodes
+#### For state nodes
 
-For each action node, a V value is returned by its child state node. Then add this value (might be multiplied by a discouting factor gamma) with the expected_reward for this action node to get a new value. The new value is used to update this node.
+For each state node, a V value is returned by its child action node. Then add this value (might be multiplied by a discouting factor gamma) with the stored expected one step reward for this action node to get a new value. The new value is used to update the parameters for the child action node.
 
 For UCT methods, the new value is add to W. Then add 1 to N. Q and U can be calculated out.
 
@@ -139,9 +138,9 @@ For Thompson Sampling, the new value is treated as a sample to update the poster
 
 Then return the new value to its parent state node. 
 
-#### For state nodes
+#### For action nodes
 
-For a state node, a Q value is returned by its child action node.
+For an action node, a Q value is returned by its child state node.
 
 For UCT, calculate the new averaged V with Q and N. Then N pluses 1.
 
@@ -170,8 +169,13 @@ Elements for an observation node:
 Optional elements (for UCT or Thompson Sampling):
 
 + h: history information for this node
-+ V: the estimation for the value of this node (for UCT)
-+ N: the number of times the node is sampled (for UCT)
++ W: the list of all the sums of all sampled values collected for all children action nodes (for UCT)
++ N: the list of numbers of times each of children action node has been sampled (for UCT)
++ Q: the estimation for the value of all chidren action nodes, i.e. W/N (for UCT)
++ U: upper bound value for all children action nodes (for UCT)
++ R: the list of the expected one-step reward of all children action nodes
++ alpha, beta: parameters for the posterior distribution of the value of all children nodes (for Thompson Sampling, beta distribution)
++ mu, sigma: parameters for the posterior distribution of the value of all children nodes (for Thompson Sampling, Gaussian distribution)
 
 #### Action nodes
 
@@ -179,17 +183,12 @@ Elements for a state node:
 
 + action: the action for current node
 + parent node: the parent observation node of this node on the tree
-+ expected_reward: the expected one-step reward when this action is chosen from the parent node
 + children: the observations node sampled by this action
 
 Optional elements (for UCT or Thompson Sampling):
 
-+ W: the sum of all sampled values collected by this node (for UCT)
-+ N: the number of times the node is sampled (for UCT)
-+ Q: the estimation for the value of this node, i.e. W/N (for UCT)
-+ U: upper bound value for this node (for UCT)
-+ alpha, beta: parameters for the posterior distribution of the value of this node (for Thompson Sampling, beta distribution)
-+ mu, sigma: parameters for the posterior distribution of the value of this node (for Thompson Sampling, Gaussian distribution)
++ V: the estimation for the value of children observation nodes (for UCT)
++ N: the number of times each of the children observation node has been sampled (for UCT)
 
 ### Selection
 In the selection part, we first need to sample a state from the root node's prior distribution.
@@ -210,9 +209,7 @@ Then go to rollout.
 
 ### Rollout
 
-At the new observation node, choose one action as a leaf node. Then use a quick policy to play the game to some terminal state and return the collected reward along the trajectory to the leaf node. Use this collected reward to initialize the Q value of this action node.
-
-> TODO: if external estimated values are used here, is it proper to estimate Q or V?
+At the new observation node, choose one action as a leaf node. Then use a quick policy to play the game to some terminal state and return the collected reward along the trajectory to the leaf node.
 
 Then turn to backpropagation to send this value backup.
 
@@ -220,23 +217,23 @@ Then turn to backpropagation to send this value backup.
 
 From the leaf node to the root node, update all nodes that have been passed in this iteration.
 
-#### For action nodes
+#### For observation nodes
 
-For each action node, a V value is returned by its child observation node. Then add this value (might be multiplied by a discouting factor gamma) with the expected_reward for this action node to get a new value. The new value is used to update this node.
+For each observation node, a Q value is returned by its child observation node. Then add this value (might be multiplied by a discouting factor gamma) with the stored expected one step reward for this action node to get a new value. The new value is used to update the parameters for the child action node.
 
 For UCT methods, the new value is add to W. Then add 1 to N. Q and U can be calculated out.
 
 For Thompson Sampling, the new value is treated as a sample to update the posterior distribution.
 
-Then return the new value to its parent observation node. 
+Then return the new value to its parent state node. 
 
-#### For observation nodes
+#### For action nodes
 
-For an observation node, a Q value is returned by its child action node.
+For an action node, a Q value is returned by its child state node.
 
 For UCT, calculate the new averaged V with Q and N. Then N pluses 1.
 
 For Thompson sampling, just return the Q value to its parent action value as a sample.
 
 
-Stop backpropagation until root node is reached. Then start selection again.
+Stop backpropagation until root node is reached. Then start selection again. 
