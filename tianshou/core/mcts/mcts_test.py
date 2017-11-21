@@ -7,10 +7,10 @@ class TestEnv:
     def __init__(self, max_step=5):
         self.max_step = max_step
         self.reward = {i: np.random.uniform() for i in range(2 ** max_step)}
-        # self.reward = {0:0.8, 1:0.2, 2:0.4, 3:0.6}
+        # self.reward = {0:1, 1:0}
         self.best = max(self.reward.items(), key=lambda x: x[1])
-        # print("The best arm is {} with expected reward {}".format(self.best[0],self.best[1]))
         print(self.reward)
+        # print("The best arm is {} with expected reward {}".format(self.best[0],self.best[1]))
 
     def step_forward(self, state, action):
         if action != 0 and action != 1:
@@ -26,14 +26,14 @@ class TestEnv:
             step = state[1] + 1
             new_state = (num, step)
             if step == self.max_step:
-                reward = int(np.random.uniform() < self.reward[state[0]])
+                reward = int(np.random.uniform() < self.reward[num])
             else:
                 reward = 0
         return new_state, reward
 
 
 if __name__ == "__main__":
-    env = TestEnv(1)
+    env = TestEnv(2)
     rollout = rollout_policy(env, 2)
     evaluator = lambda state: rollout(state)
     mcts = MCTS(env, evaluator, [0, 0], 2, np.array([0.5, 0.5]), max_step=1e4)

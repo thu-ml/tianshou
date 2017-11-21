@@ -41,6 +41,7 @@ class UCTNode(MCTSNode):
             return self.children[action].selection(simulator)
 
     def backpropagation(self, action):
+        action = int(action)
         self.N[action] += 1
         self.W[action] += self.children[action].reward
         for i in range(self.action_num):
@@ -88,7 +89,7 @@ class ActionNode:
         # TODO: Let users/evaluator give the prior
         if self.next_state is not None:
             prior = np.ones([action_num]) / action_num
-            self.children[self.next_state] = UCTNode(self.parent, self.action, self.next_state, action_num, prior)
+            self.children[self.next_state] = UCTNode(self, self.action, self.next_state, action_num, prior)
             return True
         else:
             return False
@@ -133,8 +134,7 @@ class MCTS:
             value = node.simulation(self.evaluator, node.children[new_action].next_state)
             node.children[new_action].backpropagation(value + 0.)
         else:
-            value = node.simulation(self.evaluator, node.state)
-            node.parent.children[node.action].backpropagation(value + 0.)
+            node.children[new_action].backpropagation(0.)
 
 
 if __name__ == "__main__":

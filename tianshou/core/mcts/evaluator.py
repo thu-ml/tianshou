@@ -17,11 +17,12 @@ class rollout_policy(evaluator):
 
     def __call__(self, state):
         # TODO: prior for rollout policy
-        total_reward = 0
+        total_reward = 0.
         action = np.random.randint(0, self.action_num)
         state, reward = self.env.step_forward(state, action)
+        total_reward += reward
         while state is not None:
             action = np.random.randint(0, self.action_num)
             state, reward = self.env.step_forward(state, action)
             total_reward += reward
-        return reward
+        return total_reward
