@@ -6,7 +6,8 @@
 #
 
 from game import Game
-import utils 
+import utils
+
 
 class GTPEngine():
     def __init__(self, **kwargs):
@@ -27,7 +28,6 @@ class GTPEngine():
         except:
             self._version = 2
 
-
         self.disconnect = False
 
         self.known_commands = [
@@ -41,9 +41,6 @@ class GTPEngine():
         else:
             x, y = vertex
             return "{}{}".format("ABCDEFGHJKLMNOPQRSTYVWYZ"[x - 1], y)
-
-
-
 
     def _vertex_string2point(self, s):
         if s is None:
@@ -62,7 +59,6 @@ class GTPEngine():
             return False
         return (x, y)
 
-
     def _parse_color(self, color):
         if color.lower() in ["b", "black"]:
             color = utils.BLACK
@@ -72,21 +68,18 @@ class GTPEngine():
             color = None
         return color
 
-
     def _parse_move(self, move_string):
-        color, move = move_string.split(" ",1)
+        color, move = move_string.split(" ", 1)
         color = self._parse_color(color)
 
         point = self._vertex_string2point(move)
 
         if point and color:
-            return color,point
+            return color, point
         else:
             return False
-        
-        
 
-    def _parse_res(self, res, id_ = None, success = True):
+    def _parse_res(self, res, id_=None, success=True):
         if success:
             if id_:
                 return '={} {}\n\n'.format(id_, res)
@@ -97,7 +90,6 @@ class GTPEngine():
                 return '?{} {}\n\n'.format(id_, res)
             else:
                 return '? {}\n\n'.format(res)
-
 
     def _parse_cmd(self, message):
         try:
@@ -119,18 +111,16 @@ class GTPEngine():
             return self._parse_res("invaild message", id_, False)
 
         if cmd in self.known_commands:
-            #dispatch
-            #try:
+            # dispatch
+            # try:
             if True:
                 res, flag = getattr(self, "cmd_" + cmd)(args)
                 return self._parse_res(res, id_, flag)
-            #except Exception as e:
-            #    print(e)
-            #    return self._parse_res("command excution failed", id_, False)
+                # except Exception as e:
+                #    print(e)
+                #    return self._parse_res("command excution failed", id_, False)
         else:
             return self._parse_res("unknown command", id_, False)
-
-
 
     def cmd_protocol_version(self, args, **kwargs):
         return 2, True
@@ -148,30 +138,29 @@ class GTPEngine():
         return self.known_commands, True
 
     def cmd_quit(self, args, **kwargs):
-        return None,True
+        return None, True
 
     def cmd_boardsize(self, args, **kwargs):
         if args.isdigit():
             size = int(args)
             self.size = size
             self._game.set_size(size)
-            return None,True
+            return None, True
         else:
-            return 'non digit size',False
+            return 'non digit size', False
 
     def cmd_clear_board(self, args, **kwargs):
         self._game.clear()
-        return None,True
+        return None, True
 
     def cmd_komi(self, args, **kwargs):
         try:
             komi = float(args)
             self.komi = komi
             self._game.set_komi(komi)
-            return None,True
+            return None, True
         except ValueError:
             raise ValueError("syntax error")
-
 
     def cmd_play(self, args, **kwargs):
         move = self._parse_move(args)
@@ -179,19 +168,15 @@ class GTPEngine():
             color, vertex = move
             res = self._game.do_move(color, vertex)
             if res:
-                return None,True 
+                return None, True
             else:
-                return None,False
-        return None,True
+                return None, False
+        return None, True
 
     def cmd_genmove(self, args, **kwargs):
         color = self._parse_color(args)
         if color:
             move = self._game.gen_move(color)
-            return self._vertex_point2string(move),True
+            return self._vertex_point2string(move), True
         else:
-            return 'unknown player',False
-    
-    
-
-
+            return 'unknown player', False

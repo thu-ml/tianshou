@@ -24,7 +24,7 @@ class TestEnv:
         else:
             num = state[0] + 2 ** state[1] * action
             step = state[1] + 1
-            new_state = (num, step)
+            new_state = [num, step]
             if step == self.max_step:
                 reward = int(np.random.uniform() < self.reward[num])
             else:

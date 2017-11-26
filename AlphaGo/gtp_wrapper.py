@@ -3,7 +3,6 @@ import go
 import utils
 
 
-
 def translate_gtp_colors(gtp_color):
     if gtp_color == gtp.BLACK:
         return go.BLACK
@@ -11,6 +10,7 @@ def translate_gtp_colors(gtp_color):
         return go.WHITE
     else:
         return go.EMPTY
+
 
 class GtpInterface(object):
     def __init__(self):
@@ -68,19 +68,3 @@ class GtpInterface(object):
 
     def suggest_move(self, position):
         raise NotImplementedError
-
-def make_gtp_instance(strategy_name, read_file):
-    n = PolicyNetwork(use_cpu=True)
-    n.initialize_variables(read_file)
-    if strategy_name == 'random':
-        instance = RandomPlayer()
-    elif strategy_name == 'policy':
-        instance = GreedyPolicyPlayer(n)
-    elif strategy_name == 'randompolicy':
-        instance = RandomPolicyPlayer(n)
-    elif strategy_name == 'mcts':
-        instance = MCTSPlayer(n)
-    else:
-        return None
-    gtp_engine = gtp.Engine(instance)
-    return gtp_engine

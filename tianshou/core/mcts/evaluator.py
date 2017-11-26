@@ -25,4 +25,4 @@ class rollout_policy(evaluator):
             action = np.random.randint(0, self.action_num)
             state, reward = self.env.step_forward(state, action)
             total_reward += reward
-        return total_reward
+        return np.ones([self.action_num])/self.action_num, total_reward

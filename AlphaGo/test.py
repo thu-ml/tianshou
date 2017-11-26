@@ -8,10 +8,8 @@
 from game import Game
 from engine import GTPEngine
 
-
-
 g = Game()
-e = GTPEngine(game_obj = g)
+e = GTPEngine(game_obj=g)
 res = e.run_cmd('1 protocol_version')
 print(e.known_commands)
 print(res)
@@ -37,4 +35,5 @@ print(res)
 res = e.run_cmd('8 genmove BLACK')
 print(res)
 
-
+res = e.run_cmd('9 genmove WHITE')
+print(res)
