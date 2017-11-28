@@ -1,5 +1,8 @@
 import numpy as np
 import utils
+import time
+import Network
+import tensorflow as tf
 from collections import deque
 from tianshou.core.mcts.mcts import MCTS
 
@@ -47,9 +50,12 @@ class GoEnv:
 
 
 class strategy(object):
-    def __init__(self, evaluator):
+    def __init__(self):
         self.simulator = GoEnv()
-        self.evaluator = evaluator
+        self.net = Network.Network()
+        self.sess = self.net.forward()
+        self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
+                                                     feed_dict={self.net.x: state, self.net.is_training: False})
 
     def data_process(self, history, color):
         state = np.zeros([1, 19, 19, 17])
@@ -67,7 +73,7 @@ class strategy(object):
         self.simulator.board = history[-1]
         state = self.data_process(history, color)
         prior = self.evaluator(state)[0]
-        mcts = MCTS(self.simulator, self.evaluator, state, 362, prior, inverse=True, max_step=20)
+        mcts = MCTS(self.simulator, self.evaluator, state, 362, prior, inverse=True, max_step=100)
         temp = 1
         p = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
         choice = np.random.choice(362, 1, p=p).tolist()[0]

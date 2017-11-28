@@ -17,6 +17,3 @@ RESIGN = "resign"
 
 def another_color(color):
     return color * -1
-
-
-

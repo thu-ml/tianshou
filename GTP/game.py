@@ -4,7 +4,7 @@
 # $Date: Tue Nov 28 14:4726 2017 +0800
 # $Author: renyong15 © <mails.tsinghua.edu.cn>
 #
-
+from __future__ import print_function
 import utils
 import copy
 
@@ -173,15 +173,20 @@ class Game:
     def show_board(self):
         row = [i for i in range(1, 20)]
         col = ' abcdefghijklmnopqrstuvwxyz'
-
-        for i in range(self.size):
-            print(row[i])
-            if row[i] < 10:
-                print(' ')
-            for j in range(self.size):
-                print(self.status2symbol(self.board[self._flatten((j + 1, i + 1))]))
-            print('\n')
-        print(' ')
+        print(' ', end='')
         for j in range(self.size + 1):
-            print(col[j])
+            print(col[j], end='    ')
+
         print('\n')
+        for i in range(self.size):
+            print(row[i], end='    ')
+            if row[i] < 10:
+                print(' ', end='')
+            for j in range(self.size):
+                print(self.status2symbol(self.board[self._flatten((j + 1, i + 1))]), end='    ')
+            print('\n')
+
+
+if __name__=="__main__":
+    g = Game()
+    g.show_board()
