@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 # $File: engine.py
-# $Date: Fri Nov 17 13:5624 2017 +0800
+# $Date: Tue Nov 28 00:0616 2017 +0800
 # $Author: renyong15 © <mails.tsinghua.edu.cn>
 #
 
@@ -40,7 +40,7 @@ class GTPEngine():
             return "resign"
         else:
             x, y = vertex
-            return "{}{}".format("ABCDEFGHJKLMNOPQRSTYVWYZ"[x - 1], y)
+            return "{}{}".format("ABCDEFGHIJKLMNOPQRSTYVWYZ"[x - 1], y)
 
     def _vertex_string2point(self, s):
         if s is None:
@@ -48,7 +48,7 @@ class GTPEngine():
         elif s.lower() == "pass":
             return utils.PASS
         elif len(s) > 1:
-            x = "abcdefghjklmnopqrstuvwxyz".find(s[0].lower()) + 1
+            x = "abcdefghijklmnopqrstuvwxyz".find(s[0].lower()) + 1
             if x == 0:
                 return False
             if s[1:].isdigit():
@@ -93,13 +93,13 @@ class GTPEngine():
 
     def _parse_cmd(self, message):
         try:
-            m = message.strip().split(" ", 1)
+            m = (message.strip().split(" ", 1) + [None])[:2]
             if m[0].isdigit():
                 id_ = int(m[0])
                 cmd, args = (m[1].split(" ", 1) + [None])[:2]
             else:
                 id_ = None
-                cmd, args = (m[0].split(" ", 1) + [None])[:2]
+                cmd, args = (m[0], m[1])
         except:
             return "invaild command"
         return id_, cmd, args
