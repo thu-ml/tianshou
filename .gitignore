@@ -2,3 +2,4 @@
 leela-zero
 *.pyc
 parameters
+*.swp
