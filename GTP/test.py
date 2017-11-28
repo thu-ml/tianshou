@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 # $File: test.py
-# $Date: Tue Nov 28 01:0627 2017 +0800
+# $Date: Tue Nov 28 14:4717 2017 +0800
 # $Author: renyong15 © <mails.tsinghua.edu.cn>
 #
 
@@ -44,11 +44,11 @@ print(res)
 res = e.run_cmd('8 genmove BLACK')
 print(res)
 
-g.show_board()
+#g.show_board()
 print(g.check_valid((10, 9)))
 print(g.executor._neighbor((1,1)))
 print(g.do_move(utils.WHITE, (4, 6)))
-g.show_board()
+#g.show_board()
 
 
 res = e.run_cmd('play BLACK L10')
@@ -88,7 +88,7 @@ print(res)
 
 res = e.run_cmd('play BLACK N12')
 print(res)
-g.show_board()
+#g.show_board()
 
 res = e.run_cmd('play BLACK P16')
 res = e.run_cmd('play BLACK P17')
@@ -97,7 +97,6 @@ res = e.run_cmd('play BLACK P19')
 res = e.run_cmd('play BLACK Q16')
 res = e.run_cmd('play BLACK R16')
 res = e.run_cmd('play BLACK S16')
-res = e.run_cmd('play BLACK S19')
 
 res = e.run_cmd('play WHITE S18')
 res = e.run_cmd('play WHITE S17')
@@ -106,12 +105,37 @@ res = e.run_cmd('play WHITE Q18')
 res = e.run_cmd('play WHITE Q17')
 res = e.run_cmd('play WHITE R18')
 res = e.run_cmd('play WHITE R17')
+res = e.run_cmd('play BLACK S19')
 print(res)
-g.show_board()
+#g.show_board()
 
 res = e.run_cmd('play WHITE R19')
 g.show_board()
 
 res = e.run_cmd('play BLACK S19')
+print(res)
 g.show_board()
 
+res = e.run_cmd('play BLACK S19')
+print(res)
+
+
+res = e.run_cmd('play BLACK E17')
+res = e.run_cmd('play BLACK F16')
+res = e.run_cmd('play BLACK F18')
+res = e.run_cmd('play BLACK G17')
+res = e.run_cmd('play WHITE G16')
+res = e.run_cmd('play WHITE G18')
+res = e.run_cmd('play WHITE H17')
+g.show_board()
+
+res = e.run_cmd('play WHITE F17')
+g.show_board()
+
+res = e.run_cmd('play BLACK G17')
+print(res)
+g.show_board()
+
+res = e.run_cmd('play BLACK G19')
+res = e.run_cmd('play BLACK G17')
+g.show_board()

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 # $File: game.py
-# $Date: Tue Nov 28 01:1540 2017 +0800
+# $Date: Tue Nov 28 14:4726 2017 +0800
 # $Author: renyong15 © <mails.tsinghua.edu.cn>
 #
 
@@ -43,8 +43,43 @@ class Executor:
         return True,block
 
 
-    def _check_qi(self, vertex):
-        pass
+    def _is_qi(self, color, vertex):
+        nei = self._neighbor(vertex)
+        for n in nei:
+            if self.game.board[self.game._flatten(n)] == utils.EMPTY:
+                return True
+         
+        self.game.board[self.game._flatten(vertex)] = color
+        for n in nei:
+            if self.game.board[self.game._flatten(n)] == utils.another_color(color):
+                can_kill,block = self._find_block(n)
+                if can_kill: 
+                    self.game.board[self.game._flatten(vertex)] = utils.EMPTY
+                    return True
+
+        ### can not suicide
+        can_kill,block = self._find_block(vertex)
+        if can_kill: 
+            self.game.board[self.game._flatten(vertex)] = utils.EMPTY
+            return False
+
+        self.game.board[self.game._flatten(vertex)] = utils.EMPTY
+        return True
+
+
+    def _check_global_isomorphous(self, color, vertex):
+        ##backup
+        _board = copy.copy(self.game.board)
+        self.game.board[self.game._flatten(vertex)] = color
+        self._process_board(color, vertex)
+        if self.game.board in self.game.history:
+            res = True
+        else:
+            res = False
+
+        self.game.board = _board
+        return res
+
 
     def _in_board(self, vertex):
         x, y =  vertex
@@ -74,16 +109,30 @@ class Executor:
                         
 
     def is_valid(self, color, vertex):
+        ### in board
         if not self._in_board(vertex):
             return False
+
+        ### already have stone
+        if not self.game.board[self.game._flatten(vertex)] == utils.EMPTY:
+            return False
+
+        ### check if it is qi
+        if not self._is_qi(color, vertex):
+            return False
+
+
+        if self._check_global_isomorphous(color, vertex):
+            return False
+
         return True
 
     def do_move(self, color, vertex):
         if not self.is_valid(color, vertex):
             return False
-        self.game.history.append(copy.copy(self.game.board))
         self.game.board[self.game._flatten(vertex)] = color
         self._process_board(color,vertex)
+        self.game.history.append(copy.copy(self.game.board))
         return True
 
 
