@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 # $File: game.py
-# $Date: Tue Nov 28 14:4726 2017 +0800
+# $Date: Fri Dec 01 01:3738 2017 +0800
 # $Author: renyong15 © <mails.tsinghua.edu.cn>
 #
 from __future__ import print_function
@@ -45,6 +45,17 @@ class Executor:
                 if self.game.board[self.game._flatten(n)] == utils.EMPTY:
                     return False, block
         return True, block
+
+    def _find_boarder(self, vertex):
+        block = []
+        status = [False] * (self.game.size * self.game.size)
+        self._bfs(vertex, utils.EMPTY, block, status, False)
+        border = []
+        for b in block:
+            for n in self._neighbor(b):
+                if not (n in block):
+                    border.append(n)
+        return border
 
     def _is_qi(self, color, vertex):
         nei = self._neighbor(vertex)
@@ -134,14 +145,50 @@ class Executor:
         self.game.past.append(copy.copy(self.game.board))
         return True
 
+    def _find_empty(self):
+        idx = [i for i,x in enumerate(self.game.board) if x == utils.EMPTY ][0]
+        return self.game._deflatten(idx)
+                
+
+
+    
+    def get_score(self):
+        ''' 
+            return score from BLACK perspective.
+        '''
+        _board = copy.copy(self.game.board)
+        while utils.EMPTY in self.game.board:
+            vertex = self._find_empty()
+            boarder = self._find_boarder(vertex)
+            boarder_color = set(map(lambda v: self.game.board[self.game._flatten(v)], boarder))
+            if boarder_color == {utils.BLACK}:
+                self.game.board[self.game._flatten(vertex)] = utils.BLACK
+            elif boarder_color == {utils.WHITE}:
+                self.game.board[self.game._flatten(vertex)] = utils.WHITE
+            else:
+                self.game.board[self.game._flatten(vertex)] = utils.UNKNOWN
+
+        score = 0
+        for i in self.game.board:
+            if i == utils.BLACK:
+                score += 1
+            elif i == utils.WHITE:
+                score -= 1
+        score -= self.game.komi
+
+        self.game.board = _board
+        return score
+
+
 
 class Game:
     def __init__(self, size=19, komi=6.5):
         self.size = size
         self.komi = 6.5
         self.board = [utils.EMPTY] * (self.size * self.size)
-        self.strategy = strategy()
-        self.executor = Executor(game=self)
+        #self.strategy = strategy()
+        self.strategy = None
+        self.executor = Executor(game = self)
         self.history = []
         self.past = deque(maxlen=8)
         for i in range(8):
@@ -150,6 +197,12 @@ class Game:
     def _flatten(self, vertex):
         x, y = vertex
         return (y - 1) * self.size + (x - 1)
+
+    def _deflatten(self, idx):
+        x = idx % self.size + 1
+        y = idx // self.size  + 1
+        return (x,y)
+
 
     def clear(self):
         self.board = [utils.EMPTY] * (self.size * self.size)

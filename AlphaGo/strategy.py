@@ -1,3 +1,5 @@
+import os,sys
+sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 import numpy as np
 import utils
 import time

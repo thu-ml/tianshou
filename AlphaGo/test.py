@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 # $File: test.py
-# $Date: Tue Nov 28 14:4717 2017 +0800
+# $Date: Fri Dec 01 01:3722 2017 +0800
 # $Author: renyong15 © <mails.tsinghua.edu.cn>
 #
 
@@ -15,23 +15,24 @@ res = e.run_cmd('1 protocol_version')
 print(e.known_commands)
 print(res)
 
-res = e.run_cmd('2 name')
-print(res)
 
-res = e.run_cmd('3 known_command quit')
-print(res)
+#res = e.run_cmd('2 name')
+#print(res)
 
-res = e.run_cmd('4 unknown_command quitagain')
-print(res)
+#res = e.run_cmd('3 known_command quit')
+#print(res)
 
-res = e.run_cmd('5 list_commands')
-print(res)
+#res = e.run_cmd('4 unknown_command quitagain')
+#print(res)
 
-res = e.run_cmd('6 komi 6')
-print(res)
+#res = e.run_cmd('5 list_commands')
+#print(res)
 
-res = e.run_cmd('7 play BLACK C3')
-print(res)
+#res = e.run_cmd('6 komi 6')
+#print(res)
+
+#res = e.run_cmd('7 play BLACK C3')
+#print(res)
 
 # res = e.run_cmd('play BLACK C4')
 # res = e.run_cmd('play BLACK C5')
@@ -40,9 +41,9 @@ print(res)
 # print(res)
 
 
-res = e.run_cmd('8 genmove WHITE')
-print(res)
-g.show_board()
+#res = e.run_cmd('8 genmove WHITE')
+#print(res)
+#g.show_board()
 
 # res = e.run_cmd('8 genmove BLACK')
 # print(res)
@@ -105,33 +106,33 @@ g.show_board()
 # print(res)
 # #g.show_board()
 #
-# res = e.run_cmd('play BLACK P16')
-# res = e.run_cmd('play BLACK P17')
-# res = e.run_cmd('play BLACK P18')
-# res = e.run_cmd('play BLACK P19')
-# res = e.run_cmd('play BLACK Q16')
-# res = e.run_cmd('play BLACK R16')
-# res = e.run_cmd('play BLACK S16')
-#
-# res = e.run_cmd('play WHITE S18')
-# res = e.run_cmd('play WHITE S17')
-# res = e.run_cmd('play WHITE Q19')
-# res = e.run_cmd('play WHITE Q18')
-# res = e.run_cmd('play WHITE Q17')
-# res = e.run_cmd('play WHITE R18')
-# res = e.run_cmd('play WHITE R17')
-# res = e.run_cmd('play BLACK S19')
+res = e.run_cmd('play BLACK P16')
+res = e.run_cmd('play BLACK P17')
+res = e.run_cmd('play BLACK P18')
+res = e.run_cmd('play BLACK P19')
+res = e.run_cmd('play BLACK Q16')
+res = e.run_cmd('play BLACK R16')
+res = e.run_cmd('play BLACK S16')
+
+res = e.run_cmd('play WHITE S18')
+res = e.run_cmd('play WHITE S17')
+res = e.run_cmd('play WHITE Q19')
+res = e.run_cmd('play WHITE Q18')
+res = e.run_cmd('play WHITE Q17')
+res = e.run_cmd('play WHITE R18')
+res = e.run_cmd('play WHITE R17')
+res = e.run_cmd('play BLACK S19')
 # print(res)
 # #g.show_board()
 #
-# res = e.run_cmd('play WHITE R19')
+res = e.run_cmd('play WHITE R19')
 # g.show_board()
 #
-# res = e.run_cmd('play BLACK S19')
+res = e.run_cmd('play BLACK S19')
 # print(res)
 # g.show_board()
 #
-# res = e.run_cmd('play BLACK S19')
+res = e.run_cmd('play BLACK S19')
 # print(res)
 #
 #
@@ -153,7 +154,10 @@ g.show_board()
 #
 # res = e.run_cmd('play BLACK G19')
 # res = e.run_cmd('play BLACK G17')
-# g.show_board()
+g.show_board()
 
+res = e.run_cmd('play WHITE S18')
+g.show_board()
 
-
+res = g.executor.get_score()
+print(res)
