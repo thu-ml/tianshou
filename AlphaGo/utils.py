@@ -15,8 +15,6 @@ UNKNOWN = +4
 PASS = (0,0)
 RESIGN = "resign"
 
+
 def another_color(color):
     return color * -1
-
-
-

@@ -39,7 +39,7 @@ class block(object):
         self.wins = np.concatenate(self.wins, axis=0)
         self.ps = np.concatenate(self.ps, axis=0)
         print ("Block {}, Boards shape {}, Wins Shape {}, Ps Shape {}".format(self.block_id, self.boards.shape[0],
-                                                                             self.wins.shape[0], self.ps.shape[0]))
+                                                                              self.wins.shape[0], self.ps.shape[0]))
         np.savez(save_path + "block" + str(self.block_id), boards=self.boards, wins=self.wins, ps=self.ps)
         self.boards = []
         self.wins = []
@@ -111,7 +111,7 @@ for n in name:
              p_ori[:, -1].reshape(-1, 1)],
             axis=1)
         concat(block_list, board_aug, p_aug, win_ori)
-    print ("Finished {} with time {}".format(n, time.time()+start))
+    print ("Finished {} with time {}".format(n, time.time() + start))
     data_num = 0
     for i in range(slots_num):
         print("Block {} ".format(block_list[i].block_id) + "Size {}".format(block_list[i].store_num()))
