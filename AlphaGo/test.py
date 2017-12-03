@@ -30,7 +30,7 @@ print(res)
 res = e.run_cmd('6 komi 6')
 print(res)
 
-res = e.run_cmd('7 play BLACK C3')
+res = e.run_cmd('7 play BLACK D4')
 print(res)
 
 # res = e.run_cmd('play BLACK C4')

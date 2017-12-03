@@ -114,7 +114,6 @@ class ActionNode:
             return self.parent, self.action
 
     def expansion(self, evaluator, action_num):
-        # TODO: Let users/evaluator give the prior
         if self.next_state is not None:
             prior, value = evaluator(self.next_state)
             self.children[self.next_state] = UCTNode(self, self.action, self.origin_state, action_num, prior,
@@ -134,6 +133,8 @@ class MCTS:
         self.simulator = simulator
         self.evaluator = evaluator
         self.action_num = action_num
+        if method == "":
+            self.root = root
         if method == "UCT":
             self.root = UCTNode(None, None, root, action_num, prior, inverse)
         if method == "TS":
@@ -142,6 +143,9 @@ class MCTS:
         if max_step is not None:
             self.step = 0
             self.max_step = max_step
+        # TODO: Optimize the stop criteria
+        # else:
+        #     self.max_step = 0
         if max_time is not None:
             self.start_time = time.time()
             self.max_time = max_time
