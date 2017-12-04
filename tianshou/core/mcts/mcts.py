@@ -160,7 +160,6 @@ class MCTS:
     def expand(self):
         node, new_action = self.root.selection(self.simulator)
         value = node.children[new_action].expansion(self.evaluator, self.action_num)
-        print("Value:{}".format(value))
         node.children[new_action].backpropagation(value + 0.)
 
 

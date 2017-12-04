@@ -3,14 +3,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 import numpy as np
 import utils
 import time
-import Network
+import network_small
 import tensorflow as tf
 from collections import deque
 from tianshou.core.mcts.mcts import MCTS
 
 
 class GoEnv:
-    def __init__(self, size=19, komi=6.5):
+    def __init__(self, size=9, komi=6.5):
         self.size = size
         self.komi = 6.5
         self.board = [utils.EMPTY] * (self.size * self.size)
@@ -138,15 +138,15 @@ class GoEnv:
             color = 1
         else:
             color = -1
-        if action == 361:
+        if action == 81:
             vertex = (0, 0)
         else:
-            vertex = (action / 19 + 1, action % 19)
+            vertex = (action / 9 + 1, action % 9)
         self.do_move(color, vertex)
         new_state = np.concatenate(
-            [state[:, :, :, 1:8], (np.array(self.board) == 1).reshape(1, 19, 19, 1),
-             state[:, :, :, 9:16], (np.array(self.board) == -1).reshape(1, 19, 19, 1),
-             np.array(1 - state[:, :, :, -1]).reshape(1, 19, 19, 1)],
+            [state[:, :, :, 1:8], (np.array(self.board) == 1).reshape(1, 9, 9, 1),
+             state[:, :, :, 9:16], (np.array(self.board) == -1).reshape(1, 9, 9, 1),
+             np.array(1 - state[:, :, :, -1]).reshape(1, 9, 9, 1)],
             axis=3)
         return new_state, 0
 
@@ -154,20 +154,20 @@ class GoEnv:
 class strategy(object):
     def __init__(self):
         self.simulator = GoEnv()
-        self.net = Network.Network()
+        self.net = network_small.Network()
         self.sess = self.net.forward()
         self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
                                                      feed_dict={self.net.x: state, self.net.is_training: False})
 
     def data_process(self, history, color):
-        state = np.zeros([1, 19, 19, 17])
+        state = np.zeros([1, 9, 9, 17])
         for i in range(8):
             state[0, :, :, i] = history[i] == 1
             state[0, :, :, i + 8] = history[i] == -1
         if color == 1:
-            state[0, :, :, 16] = np.ones([19, 19])
+            state[0, :, :, 16] = np.ones([9, 9])
         if color == -1:
-            state[0, :, :, 16] = np.zeros([19, 19])
+            state[0, :, :, 16] = np.zeros([9, 9])
         return state
 
     def gen_move(self, history, color):
@@ -175,12 +175,12 @@ class strategy(object):
         self.simulator.board = history[-1]
         state = self.data_process(history, color)
         prior = self.evaluator(state)[0]
-        mcts = MCTS(self.simulator, self.evaluator, state, 362, prior, inverse=True, max_step=100)
+        mcts = MCTS(self.simulator, self.evaluator, state, 82, prior, inverse=True, max_step=100)
         temp = 1
         p = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
-        choice = np.random.choice(362, 1, p=p).tolist()[0]
-        if choice == 361:
+        choice = np.random.choice(82, 1, p=p).tolist()[0]
+        if choice == 81:
             move = (0, 0)
         else:
-            move = (choice / 19 + 1, choice % 19 + 1)
+            move = (choice / 9 + 1, choice % 9 + 1)
         return move

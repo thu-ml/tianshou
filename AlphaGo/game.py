@@ -148,10 +148,7 @@ class Executor:
     def _find_empty(self):
         idx = [i for i,x in enumerate(self.game.board) if x == utils.EMPTY ][0]
         return self.game._deflatten(idx)
-                
 
-
-    
     def get_score(self):
         ''' 
             return score from BLACK perspective.
@@ -182,12 +179,12 @@ class Executor:
 
 
 class Game:
-    def __init__(self, size=19, komi=6.5):
+    def __init__(self, size=9, komi=6.5):
         self.size = size
-        self.komi = 6.5
+        self.komi = komi
         self.board = [utils.EMPTY] * (self.size * self.size)
-        #self.strategy = strategy()
-        self.strategy = None
+        self.strategy = strategy()
+        # self.strategy = None
         self.executor = Executor(game = self)
         self.history = []
         self.past = deque(maxlen=8)
@@ -227,11 +224,12 @@ class Game:
         # move = self.strategy.gen_move(color)
         # return move
         move = self.strategy.gen_move(self.past, color)
+        print(move)
         self.do_move(color, move)
         return move
 
     def status2symbol(self, s):
-        pool = {utils.WHITE: '#', utils.EMPTY: '.', utils.BLACK: '*', utils.FILL: 'F', utils.UNKNOWN: '?'}
+        pool = {utils.WHITE: 'O', utils.EMPTY: '.', utils.BLACK: 'X', utils.FILL: 'F', utils.UNKNOWN: '?'}
         return pool[s]
 
     def show_board(self):

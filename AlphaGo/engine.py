@@ -11,7 +11,7 @@ import utils
 
 class GTPEngine():
     def __init__(self, **kwargs):
-        self.size = 19
+        self.size = 9
         self.komi = 6.5
         try:
             self._game = kwargs['game_obj']
