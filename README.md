@@ -1,7 +1,7 @@
 # tianshou
-Tianshou(天授) is a reinforcement learning platform.
+Tianshou(天授) is a reinforcement learning platform. The following image illustrate its architecture.
 
-![alt text](https://github.com/sproblvem/tianshou/blob/master/docs/figures/tianshou_architecture.png "Architecture of tianshou")
+<img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/tianshou_architecture.png" height="200"/>
 
 ## agent
 &nbsp;&nbsp;&nbsp;&nbsp;Examples
@@ -38,6 +38,8 @@ Tianshou(天授) is a reinforcement learning platform.
 
 ## simulator
 &nbsp;&nbsp;&nbsp;&nbsp;Go, Othello/Reversi, Warzone
+
+<img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/go.png" height="150"/> <img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/reversi.jpg" height="150"/> <img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/warzone.jpg" height="150"/>
 
 ## TODO
 Search based method parallel.
