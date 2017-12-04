@@ -5,6 +5,7 @@ Tianshou(天授) is a reinforcement learning platform.
 
 ## agent
 &nbsp;&nbsp;&nbsp;&nbsp;Examples
+
 &nbsp;&nbsp;&nbsp;&nbsp;Self-play Framework
 
 ## core
