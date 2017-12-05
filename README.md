@@ -1,61 +1,45 @@
 # tianshou
-Tianshou(天授) is a reinforcement learning platform.
+Tianshou(天授) is a reinforcement learning platform. The following image illustrate its architecture.
 
-![alt text](https://github.com/sproblvem/tianshou/blob/master/docs/figures/tianshou_architecture.png "Architecture of tianshou")
+<img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/tianshou_architecture.png" height="200"/>
 
-## data
-TODO:
+## agent
+&nbsp;&nbsp;&nbsp;&nbsp;Examples
 
-Replay Memory
-
-Multiple wirter/reader
-
-Importance sampling
-
-## simulator
-go(for AlphaGo)
-
-## environment
-gym
+&nbsp;&nbsp;&nbsp;&nbsp;Self-play Framework
 
 ## core
-TODO:
 
-Optimizer
+### Model
+&nbsp;&nbsp;&nbsp;&nbsp;DQN, Policy-Value Network of AlphaGo Zero, PPO-specific, TROP-specific
 
-MCTS
+### Algorithm
 
-## agent (optional)
+#### Loss design
+&nbsp;&nbsp;&nbsp;&nbsp;Actor-Critic (Variations), DQN (Variations), DDPG, TRPO, PPO
 
-DQNAgent etc.
+#### Optimization method
+&nbsp;&nbsp;&nbsp;&nbsp;SGD, ADAM, TRPO, natural gradient, etc.
 
-## Pontential Bugs:
+### Planning
+&nbsp;&nbsp;&nbsp;&nbsp;MCTS
 
-0. Wrong calculation of eval value
+## data
+&nbsp;&nbsp;&nbsp;&nbsp;Training style - Monte Carlo or Temporal Difference
 
-UCTNode.cpp
-```
-106     if (to_move == FastBoard::WHITE) {
-107         net_eval = 1.0f - net_eval;
-108     }
+&nbsp;&nbsp;&nbsp;&nbsp;Reward Reshaping/ Advantage Estimation Function
 
-309         if (tomove == FastBoard::WHITE) {
-310             score = 1.0f - score;
-311         }
-```
+&nbsp;&nbsp;&nbsp;&nbsp;Importance weight
 
-1. create children only on leaf node
+&nbsp;&nbsp;&nbsp;&nbsp;Multithread Read/Write
 
-UCTSearch.cpp
-```
- 60     if (!node->has_children() && m_nodes < MAX_TREE_SIZE) {
- 61         float eval;
- 62         auto success = node->create_children(m_nodes, currstate, eval);
- 63         if (success) {
- 64             result = SearchResult(eval);
- 65         }
- 66     }
-```
+## environment
+&nbsp;&nbsp;&nbsp;&nbsp;DQN repeat frames etc.
 
+## simulator
+&nbsp;&nbsp;&nbsp;&nbsp;Go, Othello/Reversi, Warzone
 
+<img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/go.png" height="150"/> <img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/reversi.jpg" height="150"/> <img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/warzone.jpg" height="150"/>
 
+## TODO
+Search based method parallel.
