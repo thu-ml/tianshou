@@ -26,7 +26,7 @@ class MCTSNode(object):
         self.children = {}
         self.state = state
         self.action_num = action_num
-        self.prior = prior
+        self.prior = np.array(prior).reshape(-1)
         self.inverse = inverse
 
     def selection(self, simulator):
@@ -35,6 +35,8 @@ class MCTSNode(object):
     def backpropagation(self, action):
         raise NotImplementedError("Need to implement function backpropagation")
 
+    def valid_mask(self, simulator):
+        pass
 
 class UCTNode(MCTSNode):
     def __init__(self, parent, action, state, action_num, prior, inverse=False):
@@ -45,6 +47,7 @@ class UCTNode(MCTSNode):
         self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
 
     def selection(self, simulator):
+        self.valid_mask(simulator)
         action = np.argmax(self.ucb)
         if action in self.children.keys():
             return self.children[action].selection(simulator)
@@ -66,6 +69,11 @@ class UCTNode(MCTSNode):
             else:
                 self.parent.backpropagation(self.children[action].reward)
 
+    def valid_mask(self, simulator):
+        for act in range(self.action_num - 1):
+            if not simulator.is_valid(self.state, act):
+                self.ucb[act] = -float("Inf")
+
 
 class TSNode(MCTSNode):
     def __init__(self, parent, action, state, action_num, prior, method="Gaussian", inverse=False):
@@ -78,7 +86,7 @@ class TSNode(MCTSNode):
             self.sigma = np.zeros([action_num])
 
 
-class ActionNode:
+class ActionNode(object):
     def __init__(self, parent, action):
         self.parent = parent
         self.action = action
@@ -120,18 +128,19 @@ class ActionNode:
                                                      self.parent.inverse)
             return value
         else:
-            return 0
+            return 0.
 
     def backpropagation(self, value):
         self.reward += value
         self.parent.backpropagation(self.action)
 
 
-class MCTS:
-    def __init__(self, simulator, evaluator, root, action_num, prior, method="UCT", inverse=False, max_step=None,
+class MCTS(object):
+    def __init__(self, simulator, evaluator, root, action_num, method="UCT", inverse=False, max_step=None,
                  max_time=None):
         self.simulator = simulator
         self.evaluator = evaluator
+        prior, _ = self.evaluator(root)
         self.action_num = action_num
         if method == "":
             self.root = root

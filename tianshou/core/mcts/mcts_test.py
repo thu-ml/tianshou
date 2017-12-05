@@ -28,7 +28,7 @@ class TestEnv:
             if step == self.max_step:
                 reward = int(np.random.uniform() < self.reward[num])
             else:
-                reward = 0
+                reward = 0.
         return new_state, reward
 
 
@@ -36,4 +36,4 @@ if __name__ == "__main__":
     env = TestEnv(2)
     rollout = rollout_policy(env, 2)
     evaluator = lambda state: rollout(state)
-    mcts = MCTS(env, evaluator, [0, 0], 2, np.array([0.5, 0.5]), max_step=1e4)
+    mcts = MCTS(env, evaluator, [0, 0], 2, max_step=1e4)

@@ -8,6 +8,7 @@ from __future__ import print_function
 import utils
 import copy
 import tensorflow as tf
+import numpy as np
 from collections import deque
 
 import Network
@@ -185,7 +186,7 @@ class Game:
         self.board = [utils.EMPTY] * (self.size * self.size)
         self.strategy = strategy()
         # self.strategy = None
-        self.executor = Executor(game = self)
+        self.executor = Executor(game=self)
         self.history = []
         self.past = deque(maxlen=8)
         for i in range(8):
@@ -211,8 +212,8 @@ class Game:
     def set_komi(self, k):
         self.komi = k
 
-    def check_valid(self, vertex):
-        return True
+    def check_valid(self, color, vertex):
+        return self.executor.is_valid(color, vertex)
 
     def do_move(self, color, vertex):
         if vertex == utils.PASS:
@@ -224,7 +225,6 @@ class Game:
         # move = self.strategy.gen_move(color)
         # return move
         move = self.strategy.gen_move(self.past, color)
-        print(move)
         self.do_move(color, move)
         return move
 

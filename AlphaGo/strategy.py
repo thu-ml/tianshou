@@ -1,25 +1,29 @@
-import os,sys
+import os, sys
+
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 import numpy as np
 import utils
 import time
+import copy
 import network_small
 import tensorflow as tf
 from collections import deque
 from tianshou.core.mcts.mcts import MCTS
 
+DELTA = [[1, 0], [-1, 0], [0, -1], [0, 1]]
+
 
 class GoEnv:
     def __init__(self, size=9, komi=6.5):
         self.size = size
-        self.komi = 6.5
+        self.komi = komi
         self.board = [utils.EMPTY] * (self.size * self.size)
         self.history = deque(maxlen=8)
 
     def _flatten(self, vertex):
         x, y = vertex
         return (x - 1) * self.size + (y - 1)
-    
+
     def _bfs(self, vertex, color, block, status, alive_break):
         block.append(vertex)
         status[self._flatten(vertex)] = True
@@ -102,13 +106,28 @@ class GoEnv:
                     for b in block:
                         self.board[self._flatten(b)] = utils.EMPTY
 
-    def is_valid(self, color, vertex):
+    # def is_valid(self, color, vertex):
+    def is_valid(self, state, action):
+        if action == 81:
+            vertex = (0, 0)
+        else:
+            vertex = (action / 9 + 1, action % 9 + 1)
+        if state[0, 0, 0, -1] == 1:
+            color = 1
+        else:
+            color = -1
+        self.history.clear()
+        for i in range(8):
+            self.history.append((state[:, :, :, i] - state[:, :, :, i + 8]).reshape(-1).tolist())
+        self.board = copy.copy(self.history[-1])
         ### in board
         if not self._in_board(vertex):
             return False
 
         ### already have stone
         if not self.board[self._flatten(vertex)] == utils.EMPTY:
+            # print(np.array(self.board).reshape(9, 9))
+            # print(vertex)
             return False
 
         ### check if it is qi
@@ -127,13 +146,12 @@ class GoEnv:
         id_ = self._flatten(vertex)
         if self.board[id_] == utils.EMPTY:
             self.board[id_] = color
-            self.history.append(self.board)
+            self.history.append(copy.copy(self.board))
             return True
         else:
             return False
 
     def step_forward(self, state, action):
-        # print(state)
         if state[0, 0, 0, -1] == 1:
             color = 1
         else:
@@ -141,7 +159,10 @@ class GoEnv:
         if action == 81:
             vertex = (0, 0)
         else:
-            vertex = (action / 9 + 1, action % 9)
+            vertex = (action % 9 + 1, action / 9 + 1)
+        # print(vertex)
+        # print(self.board)
+        self.board = (state[:, :, :, 7] - state[:, :, :, 15]).reshape(-1).tolist()
         self.do_move(color, vertex)
         new_state = np.concatenate(
             [state[:, :, :, 1:8], (np.array(self.board) == 1).reshape(1, 9, 9, 1),
@@ -162,8 +183,8 @@ class strategy(object):
     def data_process(self, history, color):
         state = np.zeros([1, 9, 9, 17])
         for i in range(8):
-            state[0, :, :, i] = history[i] == 1
-            state[0, :, :, i + 8] = history[i] == -1
+            state[0, :, :, i] = np.array(np.array(history[i]) == np.ones(81)).reshape(9, 9)
+            state[0, :, :, i + 8] = np.array(np.array(history[i]) == -np.ones(81)).reshape(9, 9)
         if color == 1:
             state[0, :, :, 16] = np.ones([9, 9])
         if color == -1:
@@ -171,16 +192,15 @@ class strategy(object):
         return state
 
     def gen_move(self, history, color):
-        self.simulator.history = history
-        self.simulator.board = history[-1]
-        state = self.data_process(history, color)
-        prior = self.evaluator(state)[0]
-        mcts = MCTS(self.simulator, self.evaluator, state, 82, prior, inverse=True, max_step=100)
+        self.simulator.history = copy.copy(history)
+        self.simulator.board = copy.copy(history[-1])
+        state = self.data_process(self.simulator.history, color)
+        mcts = MCTS(self.simulator, self.evaluator, state, 82, inverse=True, max_step=10)
         temp = 1
         p = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
         choice = np.random.choice(82, 1, p=p).tolist()[0]
         if choice == 81:
             move = (0, 0)
         else:
-            move = (choice / 9 + 1, choice % 9 + 1)
+            move = (choice % 9 + 1, choice / 9 + 1)
         return move
