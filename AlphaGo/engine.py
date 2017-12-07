@@ -138,6 +138,7 @@ class GTPEngine():
         return self.known_commands, True
 
     def cmd_quit(self, args, **kwargs):
+        self.disconnect = True
         return None, True
 
     def cmd_boardsize(self, args, **kwargs):
@@ -180,3 +181,8 @@ class GTPEngine():
             return self._vertex_point2string(move), True
         else:
             return 'unknown player', False
+
+
+if __name__ == "main":
+    game = Game()
+    engine = GTPEngine(game_obj=Game)

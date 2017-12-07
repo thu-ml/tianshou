@@ -1,11 +1,14 @@
+import sys
 from game import Game
 from engine import GTPEngine
 import utils
 
+game = Game()
+engine = GTPEngine(game_obj=game, name='tianshou')
+cmd = raw_input
 
-
-g = Game()
-e = GTPEngine(game_obj = g)
-
-res = e.run_cmd('8 genmove BLACK')
-print(res)
+while not engine.disconnect:
+    command = cmd()
+    result = engine.run_cmd(command)
+    sys.stdout.write(result)
+    sys.stdout.flush()
