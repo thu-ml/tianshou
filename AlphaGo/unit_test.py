@@ -1,7 +1,7 @@
-import os, sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 import numpy as np
+import sys
+from game import Game
+from engine import GTPEngine
 import utils
 import time
 import copy
@@ -264,5 +264,3 @@ for i in range(6):
 ge._set_board(opponent_test)
 for i in range(7):
     print (ge._is_eye(utils.BLACK, ot_qry[i]))
-
-
