@@ -11,6 +11,7 @@ from collections import deque
 from tianshou.core.mcts.mcts import MCTS
 
 DELTA = [[1, 0], [-1, 0], [0, -1], [0, 1]]
+CORNER_OFFSET = [[-1, -1], [-1, 1], [1, 1], [1, -1]]
 
 
 class GoEnv:
@@ -59,7 +60,7 @@ class GoEnv:
                     self.board[self._flatten(vertex)] = utils.EMPTY
                     return True
 
-        ### can not suicide
+        ### avoid suicide
         can_kill, block = self._find_block(vertex)
         if can_kill:
             self.board[self._flatten(vertex)] = utils.EMPTY
@@ -97,6 +98,16 @@ class GoEnv:
                 nei.append((_x, _y))
         return nei
 
+    def _corner(self, vertex):
+        x, y = vertex
+        corner = []
+        for d in CORNER_OFFSET:
+            _x = x + d[0]
+            _y = y + d[1]
+            if self._in_board((_x, _y)):
+                corner.append((_x, _y))
+        return corner
+
     def _process_board(self, color, vertex):
         nei = self._neighbor(vertex)
         for n in nei:
@@ -106,16 +117,52 @@ class GoEnv:
                     for b in block:
                         self.board[self._flatten(b)] = utils.EMPTY
 
+    def _find_group(self, start):
+        color = self.board[self._flatten(start)]
+        # print ("color : ", color)
+        chain = set()
+        frontier = [start]
+        while frontier:
+            current = frontier.pop()
+            # print ("current : ", current)
+            chain.add(current)
+            for n in self._neighbor(current):
+                # print n, self._flatten(n), self.board[self._flatten(n)],
+                if self.board[self._flatten(n)] == color and not n in chain:
+                    frontier.append(n)
+        return chain
+
+    def _is_eye(self, color, vertex):
+        nei = self._neighbor(vertex)
+        cor = self._corner(vertex)
+        ncolor = {color == self.board[self._flatten(n)] for n in nei}
+        if False in ncolor:
+            # print "not all neighbors are in same color with us"
+            return False
+        if set(nei) < self._find_group(nei[0]):
+            # print "all neighbors are in same group and same color with us"
+            return True
+        else:
+            opponent_number = [self.board[self._flatten(c)] for c in cor].count(-color)
+            opponent_propotion = float(opponent_number) / float(len(cor))
+            if opponent_propotion < 0.5:
+                # print "few opponents, real eye"
+                return True
+            else:
+                # print "many opponents, fake eye"
+                return False
+
     # def is_valid(self, color, vertex):
     def is_valid(self, state, action):
-        if action == 81:
+        # state is the play board, the shape is [1, 9, 9, 17]
+        if action == self.size * self.size:
             vertex = (0, 0)
         else:
-            vertex = (action / 9 + 1, action % 9 + 1)
-        if state[0, 0, 0, -1] == 1:
-            color = 1
+            vertex = (action / self.size + 1, action % self.size + 1)
+        if state[0, 0, 0, -1] == utils.BLACK:
+            color = utils.BLACK
         else:
-            color = -1
+            color = utils.WHITE
         self.history.clear()
         for i in range(8):
             self.history.append((state[:, :, :, i] - state[:, :, :, i + 8]).reshape(-1).tolist())
@@ -132,6 +179,11 @@ class GoEnv:
 
         ### check if it is qi
         if not self._is_qi(color, vertex):
+            return False
+
+        ### check if it is an eye of yourself
+        ### assumptions : notice that this judgement requires that the state is an endgame
+        if self._is_eye(color, vertex):
             return False
 
         if self._check_global_isomorphous(color, vertex):

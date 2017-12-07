@@ -9,6 +9,7 @@ import utils
 import copy
 import tensorflow as tf
 import numpy as np
+import sys
 from collections import deque
 
 import Network
@@ -246,6 +247,7 @@ class Game:
             for j in range(self.size):
                 print(self.status2symbol(self.board[self._flatten((j + 1, i + 1))]), end='  ')
             print('')
+        sys.stdout.flush()
 
 
 if __name__ == "__main__":
