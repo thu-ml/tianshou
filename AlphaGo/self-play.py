@@ -2,6 +2,7 @@ from game import Game
 from engine import GTPEngine
 import re
 import numpy as np
+import os
 from collections import deque
 import utils
 import argparse
@@ -9,6 +10,9 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--result_path', type=str, default='./part1')
 args = parser.parse_args()
+
+if not os.path.exists(args.result_path):
+    os.makedirs(args.result_path)
 
 game = Game()
 engine = GTPEngine(game_obj=game)
@@ -83,7 +87,7 @@ while True:
     winner = np.ones([num, 1]) * winner
     assert state.shape[0] == prob.shape[0]
     assert state.shape[0] == winner.shape[0]
-    np.savez(args.result_path + "/game" + game_num, state=state, prob=prob, winner=winner)
+    np.savez(args.result_path + "/game" + str(game_num), state=state, prob=prob, winner=winner)
     state = []
     prob = []
     winner = []
