@@ -203,10 +203,11 @@ class Network(object):
 
 
 if __name__ == '__main__':
-    state = np.random.randint(0, 1, [1, 9, 9, 17])
+    state = np.random.randint(0, 1, [256, 9, 9, 17])
     net = Network()
     sess = net.forward()
-    start = time.time()
+    start_time = time.time()
     for i in range(100):
         sess.run([tf.nn.softmax(net.p), net.v], feed_dict={net.x: state, net.is_training: False})
-        print("Step {}, Cumulative time {}".format(i, time.time() - start))
+        print("Step {}, use time {}".format(i, time.time() - start_time))
+        start_time = time.time()

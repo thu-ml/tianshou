@@ -2,15 +2,16 @@ import os
 import numpy as np
 import time
 
-path = "/home/tongzheng/meta-data/"
-save_path = "/home/tongzheng/data/"
+size = 9
+path = "/raid/tongzheng/tianshou/AlphaGo/data/part1/"
+save_path = "/raid/tongzheng/tianshou/AlphaGo/data/"
 name = os.listdir(path)
 print(len(name))
 batch_size = 128
 batch_num = 512
 
 block_size = batch_size * batch_num
-slots_num = 32
+slots_num = 16
 
 
 class block(object):
@@ -22,9 +23,9 @@ class block(object):
         self.block_id = block_id
 
     def concat(self, board, p, win):
-        board = board.reshape(-1, 19, 19, 17)
+        board = board.reshape(-1, size, size, 17)
         win = win.reshape(-1, 1)
-        p = p.reshape(-1, 362)
+        p = p.reshape(-1, size ** 2 + 1)
         self.boards.append(board)
         self.wins.append(win)
         self.ps.append(p)
@@ -74,40 +75,40 @@ for n in name:
     print("Shape {}".format(board.shape[0]))
     start = -time.time()
     for i in range(board.shape[0]):
-        board_ori = board[i].reshape(-1, 19, 19, 17)
+        board_ori = board[i].reshape(-1, size, size, 17)
         win_ori = win[i].reshape(-1, 1)
-        p_ori = p[i].reshape(-1, 362)
+        p_ori = p[i].reshape(-1, size ** 2 + 1)
         concat(block_list, board_ori, p_ori, win_ori)
 
         for t in range(1, 4):
             board_aug = np.rot90(board_ori, t, (1, 2))
             p_aug = np.concatenate(
-                [np.rot90(p_ori[:, :-1].reshape(-1, 19, 19), t, (1, 2)).reshape(-1, 361), p_ori[:, -1].reshape(-1, 1)],
+                [np.rot90(p_ori[:, :-1].reshape(-1, size, size), t, (1, 2)).reshape(-1, size ** 2), p_ori[:, -1].reshape(-1, 1)],
                 axis=1)
             concat(block_list, board_aug, p_aug, win_ori)
 
         board_aug = board_ori[:, ::-1]
         p_aug = np.concatenate(
-            [p_ori[:, :-1].reshape(-1, 19, 19)[:, ::-1].reshape(-1, 361), p_ori[:, -1].reshape(-1, 1)],
+            [p_ori[:, :-1].reshape(-1, size, size)[:, ::-1].reshape(-1, size ** 2), p_ori[:, -1].reshape(-1, 1)],
             axis=1)
         concat(block_list, board_aug, p_aug, win_ori)
 
         board_aug = board_ori[:, :, ::-1]
         p_aug = np.concatenate(
-            [p_ori[:, :-1].reshape(-1, 19, 19)[:, :, ::-1].reshape(-1, 361), p_ori[:, -1].reshape(-1, 1)],
+            [p_ori[:, :-1].reshape(-1, size, size)[:, :, ::-1].reshape(-1, size ** 2), p_ori[:, -1].reshape(-1, 1)],
             axis=1)
         concat(block_list, board_aug, p_aug, win_ori)
 
         board_aug = np.rot90(board_ori[:, ::-1], 1, (1, 2))
         p_aug = np.concatenate(
-            [np.rot90(p_ori[:, :-1].reshape(-1, 19, 19)[:, ::-1], 1, (1, 2)).reshape(-1, 361),
+            [np.rot90(p_ori[:, :-1].reshape(-1, size, size)[:, ::-1], 1, (1, 2)).reshape(-1, size ** 2),
              p_ori[:, -1].reshape(-1, 1)],
             axis=1)
         concat(block_list, board_aug, p_aug, win_ori)
 
         board_aug = np.rot90(board_ori[:, :, ::-1], 1, (1, 2))
         p_aug = np.concatenate(
-            [np.rot90(p_ori[:, :-1].reshape(-1, 19, 19)[:, :, ::-1], 1, (1, 2)).reshape(-1, 361),
+            [np.rot90(p_ori[:, :-1].reshape(-1, size, size)[:, :, ::-1], 1, (1, 2)).reshape(-1, size ** 2),
              p_ori[:, -1].reshape(-1, 1)],
             axis=1)
         concat(block_list, board_aug, p_aug, win_ori)

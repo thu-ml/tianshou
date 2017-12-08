@@ -45,6 +45,7 @@ class UCTNode(MCTSNode):
         self.W = np.zeros([action_num])
         self.N = np.zeros([action_num])
         self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
+        self.mask = None
 
     def selection(self, simulator):
         self.valid_mask(simulator)
@@ -70,9 +71,15 @@ class UCTNode(MCTSNode):
                 self.parent.backpropagation(self.children[action].reward)
 
     def valid_mask(self, simulator):
-        for act in range(self.action_num - 1):
-            if not simulator.is_valid(self.state, act):
-                self.ucb[act] = -float("Inf")
+        if self.mask is None:
+            start_time = time.time()
+            self.mask = []
+            for act in range(self.action_num - 1):
+                if not simulator.is_valid(self.state, act):
+                    self.mask.append(act)
+                    self.ucb[act] = -float("Inf")
+        else:
+            self.ucb[self.mask] = -float("Inf")
 
 
 class TSNode(MCTSNode):
@@ -160,6 +167,10 @@ class MCTS(object):
             self.max_time = max_time
         if max_step is None and max_time is None:
             raise ValueError("Need a stop criteria!")
+
+        self.select_time = []
+        self.evaluate_time = []
+        self.bp_time = []
         while (max_step is not None and self.step < self.max_step or max_step is None) \
                 and (max_time is not None and time.time() - self.start_time < self.max_time or max_time is None):
             self.expand()
@@ -170,7 +181,6 @@ class MCTS(object):
         node, new_action = self.root.selection(self.simulator)
         value = node.children[new_action].expansion(self.evaluator, self.action_num)
         node.children[new_action].backpropagation(value + 0.)
-
 
 if __name__ == "__main__":
     pass
