@@ -10,31 +10,31 @@ Tianshou(天授) is a reinforcement learning platform. The following image illus
 
 ## core
 
-### Model
-&nbsp;&nbsp;&nbsp;&nbsp;DQN, Policy-Value Network of AlphaGo Zero, PPO-specific, TROP-specific
+### Policy Wrapper
+&nbsp;&nbsp;&nbsp;&nbsp;Stochastic policies (OnehotCategorical, Gaussian), deterministic policies (policy as in DQN, DDPG)
+
+&nbsp;&nbsp;&nbsp;&nbsp;Specific network architectures in original paper of DQN, TRPO, A3C, etc. Policy-Value Network of AlphaGo Zero
 
 ### Algorithm
 
-#### Loss design
-&nbsp;&nbsp;&nbsp;&nbsp;Actor-Critic (Variations), DQN (Variations), DDPG, TRPO, PPO
+#### losses
+&nbsp;&nbsp;&nbsp;&nbsp;policy gradient (and its variants), DQN (and its variants), DDPG, TRPO, PPO
 
-#### Optimization method
-&nbsp;&nbsp;&nbsp;&nbsp;SGD, ADAM, TRPO, natural gradient, etc.
+#### optimizer
+&nbsp;&nbsp;&nbsp;&nbsp;TRPO, natural gradient (and TensorFlow optimizers (sgd, adam))
 
 ### Planning
 &nbsp;&nbsp;&nbsp;&nbsp;MCTS
 
 ## data
-&nbsp;&nbsp;&nbsp;&nbsp;Training style - Monte Carlo or Temporal Difference
+&nbsp;&nbsp;&nbsp;&nbsp;Training style - Batch, Replay (and its variants)
 
-&nbsp;&nbsp;&nbsp;&nbsp;Reward Reshaping/ Advantage Estimation Function
-
-&nbsp;&nbsp;&nbsp;&nbsp;Importance weight
+&nbsp;&nbsp;&nbsp;&nbsp;Advantage Estimation Function
 
 &nbsp;&nbsp;&nbsp;&nbsp;Multithread Read/Write
 
 ## environment
-&nbsp;&nbsp;&nbsp;&nbsp;DQN repeat frames etc.
+&nbsp;&nbsp;&nbsp;&nbsp;DQN repeat frames, Reward Reshaping, image preprocessing (not sure where)
 
 ## simulator
 &nbsp;&nbsp;&nbsp;&nbsp;Go, Othello/Reversi, Warzone
@@ -43,3 +43,15 @@ Tianshou(天授) is a reinforcement learning platform. The following image illus
 
 ## TODO
 Search based method parallel.
+
+YongRen: Policy Wrapper, in order of Gaussian, DQN and DDPG
+
+TongzhengRen: losses, in order of ppo, pg, DQN, DDPG with management of placeholders
+
+YouQiaoben: data/Batch, implement num_timesteps, fix memory growth in num_episodes; adv_estimate.gae_lambda (need to write a value network in tf)
+
+ShihongSong: data/Replay; then adv_estimate.dqn after YongRen's DQN
+
+Note: install openai/gym first to run the Atari environment; note that interfaces between modules may not be finalized; the management of placeholders and `feed_dict` may have to be done manually for the time being;
+
+Without preprocessing and other tricks, this example will not train to any meaningful results. Codes should past two tests: individual module test and run through this example code.
