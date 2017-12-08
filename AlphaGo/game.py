@@ -190,7 +190,7 @@ class Game:
         self.executor = Executor(game=self)
         self.history = []
         self.past = deque(maxlen=8)
-        for i in range(8):
+        for _ in range(8):
             self.past.append(self.board)
 
     def _flatten(self, vertex):
@@ -205,6 +205,9 @@ class Game:
 
     def clear(self):
         self.board = [utils.EMPTY] * (self.size * self.size)
+        self.history = []
+        for _ in range(8):
+            self.past.append(self.board)
 
     def set_size(self, n):
         self.size = n
@@ -225,7 +228,7 @@ class Game:
     def gen_move(self, color):
         # move = self.strategy.gen_move(color)
         # return move
-        move = self.strategy.gen_move(self.past, color)
+        move, self.prob = self.strategy.gen_move(self.past, color)
         self.do_move(color, move)
         return move
 

@@ -198,28 +198,27 @@ class GoEnv:
         id_ = self._flatten(vertex)
         if self.board[id_] == utils.EMPTY:
             self.board[id_] = color
-            self.history.append(copy.copy(self.board))
             return True
         else:
             return False
 
     def step_forward(self, state, action):
         if state[0, 0, 0, -1] == 1:
-            color = 1
+            color = utils.BLACK
         else:
-            color = -1
-        if action == 81:
-            vertex = (0, 0)
+            color = utils.WHITE
+        if action == self.size ** 2:
+            vertex = utils.PASS
         else:
-            vertex = (action % 9 + 1, action / 9 + 1)
+            vertex = (action % self.size + 1, action / self.size + 1)
         # print(vertex)
         # print(self.board)
         self.board = (state[:, :, :, 7] - state[:, :, :, 15]).reshape(-1).tolist()
         self.do_move(color, vertex)
         new_state = np.concatenate(
-            [state[:, :, :, 1:8], (np.array(self.board) == 1).reshape(1, 9, 9, 1),
-             state[:, :, :, 9:16], (np.array(self.board) == -1).reshape(1, 9, 9, 1),
-             np.array(1 - state[:, :, :, -1]).reshape(1, 9, 9, 1)],
+            [state[:, :, :, 1:8], (np.array(self.board) == utils.BLACK).reshape(1, self.size, self.size, 1),
+             state[:, :, :, 9:16], (np.array(self.board) == utils.WHITE).reshape(1, self.size, self.size, 1),
+             np.array(1 - state[:, :, :, -1]).reshape(1, self.size, self.size, 1)],
             axis=3)
         return new_state, 0
 
@@ -233,26 +232,26 @@ class strategy(object):
                                                      feed_dict={self.net.x: state, self.net.is_training: False})
 
     def data_process(self, history, color):
-        state = np.zeros([1, 9, 9, 17])
+        state = np.zeros([1, self.simulator.size, self.simulator.size, 17])
         for i in range(8):
-            state[0, :, :, i] = np.array(np.array(history[i]) == np.ones(81)).reshape(9, 9)
-            state[0, :, :, i + 8] = np.array(np.array(history[i]) == -np.ones(81)).reshape(9, 9)
-        if color == 1:
-            state[0, :, :, 16] = np.ones([9, 9])
-        if color == -1:
-            state[0, :, :, 16] = np.zeros([9, 9])
+            state[0, :, :, i] = np.array(np.array(history[i]) == np.ones(self.simulator.size ** 2)).reshape(self.simulator.size, self.simulator.size)
+            state[0, :, :, i + 8] = np.array(np.array(history[i]) == -np.ones(self.simulator.size ** 2)).reshape(self.simulator.size, self.simulator.size)
+        if color == utils.BLACK:
+            state[0, :, :, 16] = np.ones([self.simulator.size, self.simulator.size])
+        if color == utils.WHITE:
+            state[0, :, :, 16] = np.zeros([self.simulator.size, self.simulator.size])
         return state
 
     def gen_move(self, history, color):
         self.simulator.history = copy.copy(history)
         self.simulator.board = copy.copy(history[-1])
         state = self.data_process(self.simulator.history, color)
-        mcts = MCTS(self.simulator, self.evaluator, state, 82, inverse=True, max_step=10)
+        mcts = MCTS(self.simulator, self.evaluator, state, self.simulator.size ** 2 + 1, inverse=True, max_step=100)
         temp = 1
-        p = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
-        choice = np.random.choice(82, 1, p=p).tolist()[0]
-        if choice == 81:
-            move = (0, 0)
+        prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
+        choice = np.random.choice(self.simulator.size ** 2 + 1, 1, p=prob).tolist()[0]
+        if choice == self.simulator.size ** 2:
+            move = utils.PASS
         else:
-            move = (choice % 9 + 1, choice / 9 + 1)
-        return move
+            move = (choice % self.simulator.size + 1, choice / self.simulator.size + 1)
+        return move, prob

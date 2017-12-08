@@ -59,11 +59,12 @@ class Network(object):
         self.build_network()
 
     def build_network(self):
-        h = layers.conv2d(self.x, 256, kernel_size=3, stride=1, activation_fn=tf.nn.relu, normalizer_fn=layers.batch_norm,
+        h = layers.conv2d(self.x, 256, kernel_size=3, stride=1, activation_fn=tf.nn.relu,
+                          normalizer_fn=layers.batch_norm,
                           normalizer_params={'is_training': self.is_training,
                                              'updates_collections': tf.GraphKeys.UPDATE_OPS},
                           weights_regularizer=layers.l2_regularizer(1e-4))
-        for i in range(19):
+        for i in range(4):
             h = residual_block(h, self.is_training)
         self.v = value_heads(h, self.is_training)
         self.p = policy_heads(h, self.is_training)
@@ -115,9 +116,9 @@ class Network(object):
                             feed_dict={self.x: boards[
                                 index[iter * batch_size:(iter + 1) * batch_size]],
                                        self.z: wins[index[
-                                               iter * batch_size:(iter + 1) * batch_size]],
+                                                    iter * batch_size:(iter + 1) * batch_size]],
                                        self.pi: ps[index[
-                                              iter * batch_size:(iter + 1) * batch_size]],
+                                                   iter * batch_size:(iter + 1) * batch_size]],
                                        self.is_training: True})
                         value_losses.append(lv)
                         policy_losses.append(lp)
@@ -137,53 +138,53 @@ class Network(object):
                     del data, boards, wins, ps
 
 
-                # def forward(call_number):
-                #     # checkpoint_path = "/home/yama/rl/tianshou/AlphaGo/checkpoints"
-                #     checkpoint_path = "/home/jialian/stuGo/tianshou/stuGo/checkpoints/"
-                #     board_file = np.genfromtxt("/home/jialian/stuGo/tianshou/leela-zero/src/mcts_nn_files/board_" + call_number,
-                #                                dtype='str');
-                #     human_board = np.zeros((17, 19, 19))
-                #
-                #     # TODO : is it ok to ignore the last channel?
-                #     for i in range(17):
-                #         human_board[i] = np.array(list(board_file[i])).reshape(19, 19)
-                #     # print("============================")
-                #     # print("human board sum : " + str(np.sum(human_board[-1])))
-                #     # print("============================")
-                #     # print(human_board)
-                #     # print("============================")
-                #     # rint(human_board)
-                #     feed_board = human_board.transpose(1, 2, 0).reshape(1, 19, 19, 17)
-                #     # print(feed_board[:,:,:,-1])
-                #     # print(feed_board.shape)
-                #
-                #     # npz_board = np.load("/home/yama/rl/tianshou/AlphaGo/data/7f83928932f64a79bc1efdea268698ae.npz")
-                #     # print(npz_board["boards"].shape)
-                #     # feed_board = npz_board["boards"][10].reshape(-1, 19, 19, 17)
-                #     ##print(feed_board)
-                #     # show_board = feed_board[0].transpose(2, 0, 1)
-                #     # print("board shape : ", show_board.shape)
-                #     # print(show_board)
-                #
-                #     itflag = False
-                #     with multi_gpu.create_session() as sess:
-                #         sess.run(tf.global_variables_initializer())
-                #         ckpt_file = tf.train.latest_checkpoint(checkpoint_path)
-                #         if ckpt_file is not None:
-                #             # print('Restoring model from {}...'.format(ckpt_file))
-                #             saver.restore(sess, ckpt_file)
-                #         else:
-                #             raise ValueError("No model loaded")
-                #         res = sess.run([tf.nn.softmax(p), v], feed_dict={x: feed_board, is_training: itflag})
-                #         # res = sess.run([tf.nn.softmax(p),v], feed_dict={x:fix_board["boards"][300].reshape(-1, 19, 19, 17), is_training:False})
-                #         # res = sess.run([tf.nn.softmax(p),v], feed_dict={x:fix_board["boards"][50].reshape(-1, 19, 19, 17), is_training:True})
-                #         # print(np.argmax(res[0]))
-                #         np.savetxt(sys.stdout, res[0][0], fmt="%.6f", newline=" ")
-                #         np.savetxt(sys.stdout, res[1][0], fmt="%.6f", newline=" ")
-                #         pv_file = "/home/jialian/stuGotianshou/leela-zero/src/mcts_nn_files/policy_value"
-                #         np.savetxt(pv_file, np.concatenate((res[0][0], res[1][0])), fmt="%.6f", newline=" ")
-                #     # np.savetxt(pv_file, res[1][0], fmt="%.6f", newline=" ")
-                #     return res
+                    # def forward(call_number):
+                    #     # checkpoint_path = "/home/yama/rl/tianshou/AlphaGo/checkpoints"
+                    #     checkpoint_path = "/home/jialian/stuGo/tianshou/stuGo/checkpoints/"
+                    #     board_file = np.genfromtxt("/home/jialian/stuGo/tianshou/leela-zero/src/mcts_nn_files/board_" + call_number,
+                    #                                dtype='str');
+                    #     human_board = np.zeros((17, 19, 19))
+                    #
+                    #     # TODO : is it ok to ignore the last channel?
+                    #     for i in range(17):
+                    #         human_board[i] = np.array(list(board_file[i])).reshape(19, 19)
+                    #     # print("============================")
+                    #     # print("human board sum : " + str(np.sum(human_board[-1])))
+                    #     # print("============================")
+                    #     # print(human_board)
+                    #     # print("============================")
+                    #     # rint(human_board)
+                    #     feed_board = human_board.transpose(1, 2, 0).reshape(1, 19, 19, 17)
+                    #     # print(feed_board[:,:,:,-1])
+                    #     # print(feed_board.shape)
+                    #
+                    #     # npz_board = np.load("/home/yama/rl/tianshou/AlphaGo/data/7f83928932f64a79bc1efdea268698ae.npz")
+                    #     # print(npz_board["boards"].shape)
+                    #     # feed_board = npz_board["boards"][10].reshape(-1, 19, 19, 17)
+                    #     ##print(feed_board)
+                    #     # show_board = feed_board[0].transpose(2, 0, 1)
+                    #     # print("board shape : ", show_board.shape)
+                    #     # print(show_board)
+                    #
+                    #     itflag = False
+                    #     with multi_gpu.create_session() as sess:
+                    #         sess.run(tf.global_variables_initializer())
+                    #         ckpt_file = tf.train.latest_checkpoint(checkpoint_path)
+                    #         if ckpt_file is not None:
+                    #             # print('Restoring model from {}...'.format(ckpt_file))
+                    #             saver.restore(sess, ckpt_file)
+                    #         else:
+                    #             raise ValueError("No model loaded")
+                    #         res = sess.run([tf.nn.softmax(p), v], feed_dict={x: feed_board, is_training: itflag})
+                    #         # res = sess.run([tf.nn.softmax(p),v], feed_dict={x:fix_board["boards"][300].reshape(-1, 19, 19, 17), is_training:False})
+                    #         # res = sess.run([tf.nn.softmax(p),v], feed_dict={x:fix_board["boards"][50].reshape(-1, 19, 19, 17), is_training:True})
+                    #         # print(np.argmax(res[0]))
+                    #         np.savetxt(sys.stdout, res[0][0], fmt="%.6f", newline=" ")
+                    #         np.savetxt(sys.stdout, res[1][0], fmt="%.6f", newline=" ")
+                    #         pv_file = "/home/jialian/stuGotianshou/leela-zero/src/mcts_nn_files/policy_value"
+                    #         np.savetxt(pv_file, np.concatenate((res[0][0], res[1][0])), fmt="%.6f", newline=" ")
+                    #     # np.savetxt(pv_file, res[1][0], fmt="%.6f", newline=" ")
+                    #     return res
 
     def forward(self):
         # checkpoint_path = "/home/tongzheng/tianshou/AlphaGo/checkpoints/"
