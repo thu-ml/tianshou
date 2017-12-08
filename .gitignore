@@ -3,3 +3,4 @@ leela-zero
 *.pyc
 parameters
 *.swp
+*.sublime*
