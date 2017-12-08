@@ -43,6 +43,7 @@ game_num = 0
 black_pass = False
 white_pass = False
 while True:
+    print("Start game {}".format(game_num))
     while not (black_pass and white_pass) and num < game.size ** 2 * 2:
         if num % 2 == 0:
             color = utils.BLACK
@@ -77,6 +78,7 @@ while True:
         game.show_board()
         prob.append(np.array(game.prob).reshape(-1, game.size ** 2 + 1))
     print("Finished")
+    print("\n")
     score = game.executor.get_score()
     if score > 0:
         winner = utils.BLACK
@@ -98,5 +100,4 @@ while True:
     history.clear()
     for _ in range(8):
         history.append(game.board)
-    game.show_board()
     game_num += 1
