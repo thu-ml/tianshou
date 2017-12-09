@@ -9,6 +9,7 @@ import tensorflow.contrib.layers as layers
 
 import multi_gpu
 import time
+import copy
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -80,14 +81,15 @@ class Network(object):
             self.train_op = tf.train.RMSPropOptimizer(1e-4).minimize(self.total_loss)
         self.var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
         self.saver = tf.train.Saver(max_to_keep=10, var_list=self.var_list)
+        self.sess = multi_gpu.create_session()
 
     def train(self):
-        data_path = "/home/tongzheng/data/"
-        data_name = os.listdir("/home/tongzheng/data/")
+        data_path = "./training_data/"
+        data_name = os.listdir(data_path)
         epochs = 100
         batch_size = 128
 
-        result_path = "./checkpoints/"
+        result_path = "./checkpoints_origin/"
         with multi_gpu.create_session() as sess:
             sess.run(tf.global_variables_initializer())
             ckpt_file = tf.train.latest_checkpoint(result_path)
@@ -112,7 +114,7 @@ class Network(object):
                     time_train = -time.time()
                     for iter in range(batch_num):
                         lv, lp, r, value, prob, _ = sess.run(
-                            [self.value_loss, self.policy_loss, self.reg, self.v, tf.nn.softmax(p), self.train_op],
+                            [self.value_loss, self.policy_loss, self.reg, self.v, tf.nn.softmax(self.p), self.train_op],
                             feed_dict={self.x: boards[
                                 index[iter * batch_size:(iter + 1) * batch_size]],
                                        self.z: wins[index[
@@ -186,28 +188,35 @@ class Network(object):
                     #     # np.savetxt(pv_file, res[1][0], fmt="%.6f", newline=" ")
                     #     return res
 
-    def forward(self):
+    def forward(self, checkpoint_path):
         # checkpoint_path = "/home/tongzheng/tianshou/AlphaGo/checkpoints/"
-        sess = multi_gpu.create_session()
-        sess.run(tf.global_variables_initializer())
-        # ckpt_file = tf.train.latest_checkpoint(checkpoint_path)
-        # if ckpt_file is not None:
-        #     print('Restoring model from {}...'.format(ckpt_file))
-        #     self.saver.restore(sess, ckpt_file)
-        #     print('Successfully loaded')
-        # else:
-        #     raise ValueError("No model loaded")
+        # sess = multi_gpu.create_session()
+        # sess.run(tf.global_variables_initializer())
+        ckpt_file = tf.train.latest_checkpoint(checkpoint_path)
+        if ckpt_file is not None:
+            # print('Restoring model from {}...'.format(ckpt_file))
+            self.saver.restore(self.sess, ckpt_file)
+            # print('Successfully loaded')
+        else:
+            raise ValueError("No model loaded")
         # prior, value = sess.run([tf.nn.softmax(p), v], feed_dict={x: state, is_training: False})
         # return prior, value
-        return sess
+        return self.sess
 
 
 if __name__ == '__main__':
-    state = np.random.randint(0, 1, [256, 9, 9, 17])
-    net = Network()
-    sess = net.forward()
-    start_time = time.time()
-    for i in range(100):
-        sess.run([tf.nn.softmax(net.p), net.v], feed_dict={net.x: state, net.is_training: False})
-        print("Step {}, use time {}".format(i, time.time() - start_time))
-        start_time = time.time()
+    # state = np.random.randint(0, 1, [256, 9, 9, 17])
+    # net = Network()
+    # net.train()
+    # sess = net.forward()
+    # start_time = time.time()
+    # for i in range(100):
+    #     sess.run([tf.nn.softmax(net.p), net.v], feed_dict={net.x: state, net.is_training: False})
+    #     print("Step {}, use time {}".format(i, time.time() - start_time))
+    #     start_time = time.time()
+    net0 = Network()
+    sess0 = net0.forward("./checkpoints/")
+    print("Loaded")
+    while True:
+        pass
+

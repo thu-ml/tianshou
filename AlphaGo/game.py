@@ -181,11 +181,11 @@ class Executor:
 
 
 class Game:
-    def __init__(self, size=9, komi=6.5):
+    def __init__(self, size=9, komi=6.5, checkpoint_path=None):
         self.size = size
         self.komi = komi
         self.board = [utils.EMPTY] * (self.size * self.size)
-        self.strategy = strategy()
+        self.strategy = strategy(checkpoint_path)
         # self.strategy = None
         self.executor = Executor(game=self)
         self.history = []

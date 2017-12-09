@@ -224,10 +224,10 @@ class GoEnv:
 
 
 class strategy(object):
-    def __init__(self):
+    def __init__(self, checkpoint_path):
         self.simulator = GoEnv()
         self.net = network_small.Network()
-        self.sess = self.net.forward()
+        self.sess = self.net.forward(checkpoint_path)
         self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
                                                      feed_dict={self.net.x: state, self.net.is_training: False})
 
