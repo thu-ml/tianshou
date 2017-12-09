@@ -4,3 +4,5 @@ leela-zero
 parameters
 *.swp
 *.sublime*
+checkpoints
+checkpoints_origin
