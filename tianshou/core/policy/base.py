@@ -83,14 +83,14 @@ class StochasticPolicy(object):
                  act_dtype,
                  param_dtype,
                  is_continuous,
-                 obs_placeholder,
+                 observation_placeholder,
                  group_ndims=0, # maybe useful for repeat_action
                  **kwargs):
 
         self._act_dtype = act_dtype
         self._param_dtype = param_dtype
         self._is_continuous = is_continuous
-        self._obs_placeholder = obs_placeholder
+        self._observation_placeholder = observation_placeholder
         if isinstance(group_ndims, int):
             if group_ndims < 0:
                 raise ValueError("group_ndims must be non-negative.")
