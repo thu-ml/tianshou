@@ -23,3 +23,7 @@ def KL_diff(pi, pi_old):
     kloldnew = pi_old.pd.kl(pi.pd)
     meankl = U.mean(kloldnew)
     return meankl
+
+
+def vanilla_policy_gradient():
+    pass
