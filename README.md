@@ -48,7 +48,7 @@ Search based method parallel.
 
 `Please do not use abbreviations unless others can know it well. (e.g. adv can short for advantage/adversarial, please use the full name instead)`
 
-`Please name the module formally. (e.g. use more lower case "_", I think a module called "Batch" seems terrible)`
+`Please name the module formally. (e.g. use more lower case and "_", I think a module called "Batch" is terrible)`
 
 YongRen: Policy Wrapper, in order of Gaussian, DQN and DDPG
 
