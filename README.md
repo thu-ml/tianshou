@@ -44,9 +44,11 @@ Tianshou(天授) is a reinforcement learning platform. The following image illus
 ## TODO
 Search based method parallel.
 
-<font color=red> Write comments. Please do not use abbreviations unless others can know it well. (e.g. adv can short for advantage/adversarial, please use the full name instead) </font>
+`Please Write comments.`
 
-<font color=red> Please name the module formally. (e.g. use more lower case "_", I think a module called "Batch" seems terrible)</font>
+`Please do not use abbreviations unless others can know it well. (e.g. adv can short for advantage/adversarial, please use the full name instead)`
+
+`Please name the module formally. (e.g. use more lower case "_", I think a module called "Batch" seems terrible)`
 
 YongRen: Policy Wrapper, in order of Gaussian, DQN and DDPG
 
