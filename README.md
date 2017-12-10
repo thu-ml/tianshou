@@ -44,7 +44,7 @@ Tianshou(天授) is a reinforcement learning platform. The following image illus
 
 ## About coding style
 
-You can follow (google python coding style)[https://google.github.io/styleguide/pyguide.html]
+You can follow [google python coding style](https://google.github.io/styleguide/pyguide.html)
 
 The file should all be named with lower case letters and underline.
 
