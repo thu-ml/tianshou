@@ -2,6 +2,7 @@ import numpy as np
 import gc
 
 
+# TODO: Refactor with tf.train.slice_input_producer, tf.train.Coordinator, tf.train.QueueRunner
 class Batch(object):
     """
     class for batch datasets. Collect multiple states (actions, rewards, etc.) on-policy.
