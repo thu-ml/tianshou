@@ -1,89 +1,70 @@
 import subprocess
 import sys
 import re
+import Pyro4
 import time
+
+#start a name server to find the remote object
+kill_old_server = subprocess.Popen(['killall', 'pyro4-ns'])
+print "kill old server, the return code is : " + str(kill_old_server.wait())
+time.sleep(1)
+start_new_server = subprocess.Popen(['pyro4-ns', '&'])
+print "Start Name Sever : " + str(start_new_server.pid)# + str(start_new_server.wait())
+time.sleep(1)
+agent_v0 = subprocess.Popen(['python', '-u', 'player.py', '--role=black'],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+time.sleep(3)
+print "Start Player 0 at : " + str(agent_v0.pid)
+agent_v1 = subprocess.Popen(['python', '-u', 'player.py', '--role=white', '--checkpoint_path=./checkpoints_origin/'],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+time.sleep(3)
+print "Start Player 1 at : " + str(agent_v1.pid)
+
+player = [None] * 2
+player[0] = Pyro4.Proxy("PYRONAME:black")
+player[1] = Pyro4.Proxy("PYRONAME:white")
+
+role = ["BLACK", "WHITE"]
+color = ['b', 'w']
+
 pattern = "[A-Z]{1}[0-9]{1}"
 size = 9
-agent_v1 = subprocess.Popen(['python', '-u', 'test.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-agent_v0 = subprocess.Popen(['python', '-u', 'test.py', '--checkpoint_path=./checkpoints_origin/'], stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+show = ['.', 'X', 'O']
 
-
-num = 0
 game_num = 0
-black_pass = False
-white_pass = False
-
-
-while game_num < 10:
+while game_num < 1:
+    num = 0
+    pass_flag = [False, False]
     print("Start game {}".format(game_num))
-    while not (black_pass and white_pass) and num < size ** 2 * 2:
-        print(num)
-        if num % 2 == 0:
-            print('BLACK TURN')
-            agent_v1.stdin.write(str(num) + ' genmove b\n')
-            agent_v1.stdin.flush()
-            result = agent_v1.stdout.readline()
-            sys.stdout.write(result)
-            sys.stdout.flush()
-            num += 1
-            match = re.search(pattern, result)
-            print("COPY BLACK")
-            if match is not None:
-                agent_v0.stdin.write(str(num) + ' play b ' + match.group() + '\n')
-                agent_v0.stdin.flush()
-                result = agent_v0.stdout.readline()
-                sys.stdout.flush()
-            else:
-                agent_v0.stdin.write(str(num) + ' play b PASS\n')
-                agent_v0.stdin.flush()
-                result = agent_v0.stdout.readline()
-                sys.stdout.flush()
-            if re.search("pass", result) is not None:
-                black_pass = True
-            else:
-                black_pass = False
+    # end the game if both palyer chose to pass, or play too much turns
+    while not (pass_flag[0] and pass_flag[1]) and num < size ** 2 * 2:
+        turn = num % 2
+        move = player[turn].run_cmd(str(num) + ' genmove ' + color[turn] + '\n')
+        print role[turn] + " : " + str(move),
+        num += 1
+        match = re.search(pattern, move)
+        if match is not None:
+            #print "match : " + str(match.group())
+            play_or_pass = match.group()
+            pass_flag[turn] = False
         else:
-            print('WHITE TURN')
-            agent_v0.stdin.write(str(num) + ' genmove w\n')
-            agent_v0.stdin.flush()
-            result = agent_v0.stdout.readline()
-            sys.stdout.write(result)
-            sys.stdout.flush()
-            num += 1
-            match = re.search(pattern, result)
-            print("COPY WHITE")
-            if match is not None:
-                agent_v1.stdin.write(str(num) + ' play w ' + match.group() + '\n')
-                agent_v1.stdin.flush()
-                result = agent_v1.stdout.readline()
-                sys.stdout.flush()
-            else:
-                agent_v1.stdin.write(str(num) + ' play w PASS\n')
-                agent_v1.stdin.flush()
-                result = agent_v1.stdout.readline()
-                sys.stdout.flush()
-            if re.search("pass", result) is not None:
-                black_pass = True
-            else:
-                black_pass = False
+            #print "no match"
+            play_or_pass = ' PASS'
+            pass_flag[turn] = True
+        result = player[1 - turn].run_cmd(str(num) + ' play ' + color[turn] + ' ' + play_or_pass + '\n')
+        board = player[turn].run_cmd(str(num) + ' show_board')
+        board = eval(board[board.index('['):board.index(']') + 1])
+        for i in range(size):
+            for j in range(size):
+                print show[board[i * size + j]] + " ",
+            print "\n",
 
-    print("Finished")
-    print("\n")
-
-    agent_v1.stdin.write('clear_board\n')
-    agent_v1.stdin.flush()
-    result = agent_v1.stdout.readline()
-    sys.stdout.flush()
-
-    agent_v0.stdin.write('clear_board\n')
-    agent_v0.stdin.flush()
-    result = agent_v0.stdout.readline()
-    sys.stdout.flush()
-
-    agent_v1.stdin.write('get_score\n')
-    agent_v1.stdin.flush()
-    result = agent_v1.stdout.readline()
-    sys.stdout.write(result)
-    sys.stdout.flush()
+    score = player[turn].run_cmd(str(num) + ' get_score')
+    print "Finished : ", score.split(" ")[1]
+    player[0].run_cmd(str(num) + ' clear_board')
+    player[1].run_cmd(str(num) + ' clear_board')
     game_num += 1
+
+subprocess.call(["kill", "-9", str(agent_v0.pid)])
+subprocess.call(["kill", "-9", str(agent_v1.pid)])
+print "Kill all player, finish all game."
