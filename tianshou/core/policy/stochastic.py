@@ -39,7 +39,7 @@ class OnehotCategorical(StochasticPolicy):
     `[i, j, ..., k, :]` is a one-hot vector of the selected category.
     """
 
-    def __init__(self, logits, obs_placeholder, dtype=None, group_ndims=0, **kwargs):
+    def __init__(self, logits, observation_placeholder, dtype=None, group_ndims=0, **kwargs):
         self._logits = tf.convert_to_tensor(logits)
 
         if dtype is None:
@@ -53,7 +53,7 @@ class OnehotCategorical(StochasticPolicy):
             act_dtype=dtype,
             param_dtype=self._logits.dtype,
             is_continuous=False,
-            obs_placeholder=obs_placeholder,
+            observation_placeholder=observation_placeholder,
             group_ndims=group_ndims,
             **kwargs)
 
@@ -69,7 +69,7 @@ class OnehotCategorical(StochasticPolicy):
 
     def _act(self, observation):
         sess = tf.get_default_session() # TODO: this may be ugly. also maybe huge problem when parallel
-        sampled_action = sess.run(tf.multinomial(self.logits, num_samples=1), feed_dict={self._obs_placeholder: observation[None]})
+        sampled_action = sess.run(tf.multinomial(self.logits, num_samples=1), feed_dict={self._observation_placeholder: observation[None]})
 
         sampled_action = sampled_action[0, 0]
 
