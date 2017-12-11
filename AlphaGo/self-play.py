@@ -14,7 +14,7 @@ args = parser.parse_args()
 if not os.path.exists(args.result_path):
     os.makedirs(args.result_path)
 
-game = Game()
+game = Game(checkpoint_path="./checkpoints/")
 engine = GTPEngine(game_obj=game)
 history = deque(maxlen=8)
 for i in range(8):

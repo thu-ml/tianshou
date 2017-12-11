@@ -192,13 +192,16 @@ class Network(object):
         # checkpoint_path = "/home/tongzheng/tianshou/AlphaGo/checkpoints/"
         # sess = multi_gpu.create_session()
         # sess.run(tf.global_variables_initializer())
-        ckpt_file = tf.train.latest_checkpoint(checkpoint_path)
-        if ckpt_file is not None:
-            # print('Restoring model from {}...'.format(ckpt_file))
-            self.saver.restore(self.sess, ckpt_file)
-            # print('Successfully loaded')
+        if checkpoint_path is None:
+            self.sess.run(tf.global_variables_initializer())
         else:
-            raise ValueError("No model loaded")
+            ckpt_file = tf.train.latest_checkpoint(checkpoint_path)
+            if ckpt_file is not None:
+            # print('Restoring model from {}...'.format(ckpt_file))
+                self.saver.restore(self.sess, ckpt_file)
+            # print('Successfully loaded')
+            else:
+                raise ValueError("No model loaded")
         # prior, value = sess.run([tf.nn.softmax(p), v], feed_dict={x: state, is_training: False})
         # return prior, value
         return self.sess
