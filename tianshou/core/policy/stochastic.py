@@ -76,7 +76,6 @@ class OnehotCategorical(StochasticPolicy):
         return sampled_action
 
     def _log_prob(self, sampled_action):
-        sampled_action_onehot = tf.one_hot(sampled_action, self.n_categories, dtype=self.act_dtype)
         return -tf.nn.sparse_softmax_cross_entropy_with_logits(labels=sampled_action, logits=self.logits)
 
         # given = tf.cast(given, self.param_dtype)
