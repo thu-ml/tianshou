@@ -148,19 +148,19 @@ class StochasticPolicy(object):
         """
         return self._act(observation)
 
-        if n_samples is None:
-            samples = self._sample(n_samples=1)
-            return tf.squeeze(samples, axis=0)
-        elif isinstance(n_samples, int):
-            return self._sample(n_samples)
-        else:
-            n_samples = tf.convert_to_tensor(n_samples, dtype=tf.int32)
-            _assert_rank_op = tf.assert_rank(
-                n_samples, 0,
-                message="n_samples should be a scalar (0-D Tensor).")
-            with tf.control_dependencies([_assert_rank_op]):
-                samples = self._sample(n_samples)
-            return samples
+        # if n_samples is None:
+        #     samples = self._sample(n_samples=1)
+        #     return tf.squeeze(samples, axis=0)
+        # elif isinstance(n_samples, int):
+        #     return self._sample(n_samples)
+        # else:
+        #     n_samples = tf.convert_to_tensor(n_samples, dtype=tf.int32)
+        #     _assert_rank_op = tf.assert_rank(
+        #         n_samples, 0,
+        #         message="n_samples should be a scalar (0-D Tensor).")
+        #     with tf.control_dependencies([_assert_rank_op]):
+        #         samples = self._sample(n_samples)
+        #     return samples
 
     def _act(self, observation):
         """
