@@ -186,8 +186,7 @@ class GTPEngine():
         return self._game.executor.get_score(), None
 
     def cmd_show_board(self, args, **kwargs):
-        self._game.show_board()
-        return None, None
+        return self._game.board, True
 
 
 if __name__ == "main":

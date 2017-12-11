@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import tensorflow as tf, numpy as np
+import tensorflow as tf
+import numpy as np
 import time
 import gym
 
