@@ -151,8 +151,9 @@ class Executor:
         idx = [i for i,x in enumerate(self.game.board) if x == utils.EMPTY ][0]
         return self.game._deflatten(idx)
 
-    def get_score(self):
-        ''' 
+    def get_score(self, is_unknown_estimation = False):
+        '''
+            is_unknown_estimation: whether use nearby stone to predict the unknown
             return score from BLACK perspective.
         '''
         _board = copy.copy(self.game.board)
@@ -164,9 +165,10 @@ class Executor:
                 self.game.board[self.game._flatten(vertex)] = utils.BLACK
             elif boarder_color == {utils.WHITE}:
                 self.game.board[self.game._flatten(vertex)] = utils.WHITE
+            elif is_unknown_estimation:
+                self.game.board[self.game._flatten(vertex)] = self._predict_from_nearby(vertex)
             else:
-                self.game.board[self.game._flatten(vertex)] = utils.UNKNOWN
-
+                self.game.board[self.game._flatten(vertex)] =utils.UNKNOWN
         score = 0
         for i in self.game.board:
             if i == utils.BLACK:
@@ -177,6 +179,29 @@ class Executor:
 
         self.game.board = _board
         return score
+
+    def _predict_from_nearby(self, vertex, neighbor_step = 3):
+        '''
+        step: the nearby 3 steps is considered
+        :vertex: position to be estimated
+        :neighbor_step: how many steps nearby
+        :return: the nearby positions of the input position
+            currently the nearby 3*3 grid is returned, altogether 4*8 points involved
+        '''
+        for step in range(1, neighbor_step + 1): # check the stones within the steps in range
+            neighbor_vertex_set = []
+            self._add_nearby_stones(neighbor_vertex_set, vertex[0] - step, vertex[1], 1, 1, neighbor_step)
+            self._add_nearby_stones(neighbor_vertex_set, vertex[0], vertex[1] + step, 1, -1, neighbor_step)
+            self._add_nearby_stones(neighbor_vertex_set, vertex[0] + step, vertex[1], -1, -1, neighbor_step)
+            self._add_nearby_stones(neighbor_vertex_set, vertex[0], vertex[1] -  step, -1, 1, neighbor_step)
+            color_estimate = 0
+            for neighbor_vertex in neighbor_vertex_set:
+                color_estimate += self.game.board[self.game._flatten(neighbor_vertex)]
+            if color_estimate > 0:
+                return utils.BLACK
+            elif color_estimate < 0:
+                return utils.WHITE
+
 
 
 
