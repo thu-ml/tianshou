@@ -202,7 +202,7 @@ class Executor:
             elif color_estimate < 0:
                 return utils.WHITE
 
-   def _add_nearby_stones(self, neighbor_vertex_set, start_vertex_x, start_vertex_y, x_diff, y_diff, num_step):
+    def _add_nearby_stones(self, neighbor_vertex_set, start_vertex_x, start_vertex_y, x_diff, y_diff, num_step):
         '''
         add the nearby stones around the input vertex
         :param neighbor_vertex_set: input list
