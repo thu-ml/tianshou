@@ -246,7 +246,7 @@ class strategy(object):
         self.simulator.history = copy.copy(history)
         self.simulator.board = copy.copy(history[-1])
         state = self.data_process(self.simulator.history, color)
-        mcts = MCTS(self.simulator, self.evaluator, state, self.simulator.size ** 2 + 1, inverse=True, max_step=100)
+        mcts = MCTS(self.simulator, self.evaluator, state, self.simulator.size ** 2 + 1, inverse=True, max_step=10)
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
         choice = np.random.choice(self.simulator.size ** 2 + 1, 1, p=prob).tolist()[0]
