@@ -70,6 +70,7 @@ class OnehotCategorical(StochasticPolicy):
     def _act(self, observation):
         sess = tf.get_default_session() # TODO: this may be ugly. also maybe huge problem when parallel
         sampled_action = sess.run(tf.multinomial(self.logits, num_samples=1), feed_dict={self._observation_placeholder: observation[None]})
+        # observation[None] adds one dimension at the beginning
 
         sampled_action = sampled_action[0, 0]
 
