@@ -14,6 +14,33 @@ __all__ = [
     'StochasticPolicy',
 ]
 
+class QValuePolicy(object):
+    """
+    The policy as in DQN
+    """
+    def __init__(self, value_tensor):
+        pass
+
+    def act(self, observation, exploration=None): # first implement no exploration
+        """
+        return the action (int) to be executed.
+        no exploration when exploration=None.
+        """
+        pass
+
+    def values(self, observation):
+        """
+        returns the Q(s, a) values (float) for all actions a at observation s
+        """
+        pass
+
+    def values_tensor(self, observation):
+        """
+        returns the tensor of the values for all actions a at observation s
+        """
+        pass
+
+
 
 class StochasticPolicy(object):
     """
@@ -195,3 +222,7 @@ class StochasticPolicy(object):
         Private method for subclasses to rewrite the :meth:`prob` method.
         """
         raise NotImplementedError()
+
+
+class QValuePolicy(object):
+    pass
