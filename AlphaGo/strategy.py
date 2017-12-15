@@ -13,7 +13,6 @@ from tianshou.core.mcts.mcts import MCTS
 DELTA = [[1, 0], [-1, 0], [0, -1], [0, 1]]
 CORNER_OFFSET = [[-1, -1], [-1, 1], [1, 1], [1, -1]]
 
-
 class GoEnv:
     def __init__(self, size=9, komi=6.5):
         self.size = size
@@ -221,37 +220,3 @@ class GoEnv:
              np.array(1 - state[:, :, :, -1]).reshape(1, self.size, self.size, 1)],
             axis=3)
         return new_state, 0
-
-
-class strategy(object):
-    def __init__(self, checkpoint_path):
-        self.simulator = GoEnv()
-        self.net = network_small.Network()
-        self.sess = self.net.forward(checkpoint_path)
-        self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
-                                                     feed_dict={self.net.x: state, self.net.is_training: False})
-
-    def data_process(self, history, color):
-        state = np.zeros([1, self.simulator.size, self.simulator.size, 17])
-        for i in range(8):
-            state[0, :, :, i] = np.array(np.array(history[i]) == np.ones(self.simulator.size ** 2)).reshape(self.simulator.size, self.simulator.size)
-            state[0, :, :, i + 8] = np.array(np.array(history[i]) == -np.ones(self.simulator.size ** 2)).reshape(self.simulator.size, self.simulator.size)
-        if color == utils.BLACK:
-            state[0, :, :, 16] = np.ones([self.simulator.size, self.simulator.size])
-        if color == utils.WHITE:
-            state[0, :, :, 16] = np.zeros([self.simulator.size, self.simulator.size])
-        return state
-
-    def gen_move(self, history, color):
-        self.simulator.history = copy.copy(history)
-        self.simulator.board = copy.copy(history[-1])
-        state = self.data_process(self.simulator.history, color)
-        mcts = MCTS(self.simulator, self.evaluator, state, self.simulator.size ** 2 + 1, inverse=True, max_step=10)
-        temp = 1
-        prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
-        choice = np.random.choice(self.simulator.size ** 2 + 1, 1, p=prob).tolist()[0]
-        if choice == self.simulator.size ** 2:
-            move = utils.PASS
-        else:
-            move = (choice % self.simulator.size + 1, choice / self.simulator.size + 1)
-        return move, prob

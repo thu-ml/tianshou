@@ -13,12 +13,11 @@ print "Start Name Sever : " + str(start_new_server.pid)# + str(start_new_server.
 time.sleep(1)
 agent_v0 = subprocess.Popen(['python', '-u', 'player.py', '--role=black'],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-time.sleep(3)
 print "Start Player 0 at : " + str(agent_v0.pid)
 agent_v1 = subprocess.Popen(['python', '-u', 'player.py', '--role=white', '--checkpoint_path=./checkpoints_origin/'],
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-time.sleep(3)
 print "Start Player 1 at : " + str(agent_v1.pid)
+time.sleep(5)
 
 player = [None] * 2
 player[0] = Pyro4.Proxy("PYRONAME:black")

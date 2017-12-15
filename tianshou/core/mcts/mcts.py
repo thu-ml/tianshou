@@ -168,6 +168,7 @@ class MCTS(object):
         if max_step is None and max_time is None:
             raise ValueError("Need a stop criteria!")
 
+        # TODO: running mcts should be implemented in another function, e.g. def search(self, max_step, max_time)
         self.select_time = []
         self.evaluate_time = []
         self.bp_time = []

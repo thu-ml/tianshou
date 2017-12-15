@@ -188,7 +188,6 @@ class GTPEngine():
     def cmd_show_board(self, args, **kwargs):
         return self._game.board, True
 
-
 if __name__ == "main":
     game = Game()
     engine = GTPEngine(game_obj=Game)
