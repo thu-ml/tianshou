@@ -52,6 +52,11 @@ Try to use full names. Don't use abbrevations for class/function/variable names 
 
 The """xxx""" comment should be written right after class/function. Also comment the part that's not intuitive during the code. We must comment, but for now we don't need to polish them.
 
+# High Priority TODO
+
+For Haosheng and Tongzheng: separate actor and critic, rewrite the interfaces for policy
+
+Others can still focus on the task below.
 
 ## TODO
 Search based method parallel.
