@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     # 3. define data collection
     training_data = Replay(env, q_net, advantage_estimation.qlearning_target(target_net)) #
-                                                             # ShihongSong: Replay(env, pi, advantage_estimation.qlearning_target(target_network)), use your ReplayMemory, interact as follows. Simplify your advantage_estimation.dqn to run before YongRen's DQN
+                                                             # ShihongSong: Replay(env, q_net, advantage_estimation.qlearning_target(target_network)), use your ReplayMemory, interact as follows. Simplify your advantage_estimation.dqn to run before YongRen's DQN
     # maybe a dict to manage the elements to be collected
 
     # 4. start training
