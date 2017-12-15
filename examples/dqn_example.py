@@ -53,7 +53,7 @@ if __name__ == '__main__':
     action = tf.placeholder(dtype=tf.int32, shape=[None]) # batch of integer actions
     target = tf.placeholder(dtype=tf.float32, shape=[None]) # target value for DQN
 
-    dqn_loss = losses.dqn_loss(action, target, pi) # TongzhengRen
+    dqn_loss = losses.dqn_loss(action, target, q_net) # TongzhengRen
 
     total_loss = dqn_loss
     optimizer = tf.train.AdamOptimizer(1e-3)

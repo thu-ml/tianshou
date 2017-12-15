@@ -1,3 +1,7 @@
+# TODO:
+
+Notice that we will separate actor and critic, and batch will collect data for optimizing policy while replay will collect data for optimizing critic.
+
 # Batch
 
 YouQiaoben

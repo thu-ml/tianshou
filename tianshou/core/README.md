@@ -1,3 +1,7 @@
+#TODO: 
+
+Separate actor and critic. (Important, we need to focus on that recently)
+
 # policy
 
 YongRen

@@ -14,12 +14,14 @@ __all__ = [
     'StochasticPolicy',
 ]
 
+#TODO: separate actor and critic, we should focus on it once we finish the basic module.
+
 class QValuePolicy(object):
     """
     The policy as in DQN
     """
-    def __init__(self, value_tensor):
-        pass
+    def __init__(self, observation_placeholder):
+        self.observation_placeholder = observation_placeholder
 
     def act(self, observation, exploration=None): # first implement no exploration
         """
@@ -222,7 +224,3 @@ class StochasticPolicy(object):
         Private method for subclasses to rewrite the :meth:`prob` method.
         """
         raise NotImplementedError()
-
-
-class QValuePolicy(object):
-    pass
