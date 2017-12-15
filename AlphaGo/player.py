@@ -8,6 +8,10 @@ from engine import GTPEngine
 
 @Pyro4.expose
 class Player(object):
+    """
+    This is the class which defines the object called by Pyro4 (Python remote object).
+    It passes the command to our engine, and return the result.
+    """
     def __init__(self, **kwargs):
         self.role = kwargs['role']
         self.engine = kwargs['engine']

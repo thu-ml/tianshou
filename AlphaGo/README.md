@@ -10,3 +10,7 @@ Connecting our own policy-value neural network with leela-zero.
 ## checkpoints:
 
 Weights of the policy-value neural network
+
+
+## File Specification
+
