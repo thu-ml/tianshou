@@ -26,7 +26,7 @@ def vanilla_policy_gradient(sampled_action, reward, pi, baseline="None"):
 
     :param sampled_action: placeholder of sampled actions during interaction with the environment
     :param reward: placeholder of reward the 'sampled_action' get
-    :param pi: current 'policy' to be optimized
+    :param pi: current `policy` to be optimized
     :param baseline: the baseline method used to reduce the variance, default is 'None'
     :return:
     """
@@ -35,8 +35,25 @@ def vanilla_policy_gradient(sampled_action, reward, pi, baseline="None"):
     # TODO： Different baseline methods like REINFORCE, etc.
     return vanilla_policy_gradient_loss
 
-def temporal_difference_loss():
-    pass
+def dqn_loss(sampled_action, sampled_target, q_net):
+    """
+    deep q-network
 
-def deterministic_policy_gradient():
-    pass
+    :param sampled_action: placeholder of sampled actions during the interaction with the environment
+    :param sampled_target: estimated Q(s,a)
+    :param q_net: current `policy` to be optimized
+    :return:
+    """
+    action_num = q_net.get_values().shape()[1]
+    sampled_q = tf.reduce_sum(q_net.get_values() * tf.one_hot(sampled_action, action_num), axis=1)
+    return tf.reduce_mean(tf.square(sampled_target - sampled_q))
+
+def deterministic_policy_gradient(sampled_state, critic):
+    """
+    deterministic policy gradient:
+
+    :param sampled_action: placeholder of sampled actions during the interaction with the environment
+    :param critic: current `value` function
+    :return:
+    """
+    return tf.reduce_mean(critic.get_value(sampled_state))
