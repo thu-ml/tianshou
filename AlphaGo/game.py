@@ -31,14 +31,14 @@ class Game:
         self.komi = komi
         self.board = [utils.EMPTY] * (self.size * self.size)
         self.history = []
-        self.past = deque(maxlen=8)
+        self.latest_boards = deque(maxlen=8)
         for _ in range(8):
-            self.past.append(self.board)
+            self.latest_boards.append(self.board)
 
         self.executor = go.Go(game=self)
         #self.strategy = strategy(checkpoint_path)
 
-        self.simulator = strategy.GoEnv()
+        self.simulator = strategy.GoEnv(game=self)
         self.net = network_small.Network()
         self.sess = self.net.forward(checkpoint_path)
         self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
@@ -57,7 +57,7 @@ class Game:
         self.board = [utils.EMPTY] * (self.size * self.size)
         self.history = []
         for _ in range(8):
-            self.past.append(self.board)
+            self.latest_boards.append(self.board)
 
     def set_size(self, n):
         self.size = n
@@ -66,29 +66,29 @@ class Game:
     def set_komi(self, k):
         self.komi = k
 
-    def data_process(self, history, color):
-        state = np.zeros([1, self.simulator.size, self.simulator.size, 17])
+    def generate_nn_input(self, history, color):
+        state = np.zeros([1, self.size, self.size, 17])
         for i in range(8):
-            state[0, :, :, i] = np.array(np.array(history[i]) == np.ones(self.simulator.size ** 2)).reshape(self.simulator.size, self.simulator.size)
-            state[0, :, :, i + 8] = np.array(np.array(history[i]) == -np.ones(self.simulator.size ** 2)).reshape(self.simulator.size, self.simulator.size)
+            state[0, :, :, i] = np.array(np.array(history[i]) == np.ones(self.size ** 2)).reshape(self.size, self.size)
+            state[0, :, :, i + 8] = np.array(np.array(history[i]) == -np.ones(self.size ** 2)).reshape(self.size, self.size)
         if color == utils.BLACK:
-            state[0, :, :, 16] = np.ones([self.simulator.size, self.simulator.size])
+            state[0, :, :, 16] = np.ones([self.size, self.size])
         if color == utils.WHITE:
-            state[0, :, :, 16] = np.zeros([self.simulator.size, self.simulator.size])
+            state[0, :, :, 16] = np.zeros([self.size, self.size])
         return state
 
-    def strategy_gen_move(self, history, color):
-        self.simulator.history = copy.copy(history)
-        self.simulator.board = copy.copy(history[-1])
-        state = self.data_process(self.simulator.history, color)
-        mcts = MCTS(self.simulator, self.evaluator, state, self.simulator.size ** 2 + 1, inverse=True, max_step=10)
+    def strategy_gen_move(self, latest_boards, color):
+        self.simulator.latest_boards = copy.copy(latest_boards)
+        self.simulator.board = copy.copy(latest_boards[-1])
+        nn_input = self.generate_nn_input(self.simulator.latest_boards, color)
+        mcts = MCTS(self.simulator, self.evaluator, nn_input, self.size ** 2 + 1, inverse=True, max_step=1)
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
-        choice = np.random.choice(self.simulator.size ** 2 + 1, 1, p=prob).tolist()[0]
-        if choice == self.simulator.size ** 2:
+        choice = np.random.choice(self.size ** 2 + 1, 1, p=prob).tolist()[0]
+        if choice == self.size ** 2:
             move = utils.PASS
         else:
-            move = (choice % self.simulator.size + 1, choice / self.simulator.size + 1)
+            move = (choice % self.size + 1, choice / self.size + 1)
         return move, prob
 
     def do_move(self, color, vertex):
@@ -100,7 +100,7 @@ class Game:
     def gen_move(self, color):
         # move = self.strategy.gen_move(color)
         # return move
-        move, self.prob = self.strategy_gen_move(self.past, color)
+        move, self.prob = self.strategy_gen_move(self.latest_boards, color)
         self.do_move(color, move)
         return move
 
@@ -127,3 +127,6 @@ class Game:
 if __name__ == "__main__":
     g = Game()
     g.show_board()
+    #file = open("debug.txt", "a")
+    #file.write("mcts check\n")
+    #file.close()

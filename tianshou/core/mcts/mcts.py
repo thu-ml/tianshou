@@ -75,7 +75,7 @@ class UCTNode(MCTSNode):
             start_time = time.time()
             self.mask = []
             for act in range(self.action_num - 1):
-                if not simulator.is_valid(self.state, act):
+                if not simulator.simulate_is_valid(self.state, act):
                     self.mask.append(act)
                     self.ucb[act] = -float("Inf")
         else:

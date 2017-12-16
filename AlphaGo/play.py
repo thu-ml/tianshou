@@ -87,8 +87,8 @@ if __name__ == '__main__':
         score = player[turn].run_cmd(str(num) + ' get_score')
         print "Finished : ", score.split(" ")[1]
         player[0].run_cmd(str(num) + ' clear_board')
-    player[1].run_cmd(str(num) + ' clear_board')
-    game_num += 1
+        player[1].run_cmd(str(num) + ' clear_board')
+        game_num += 1
 
     subprocess.call(["kill", "-9", str(agent_v0.pid)])
     subprocess.call(["kill", "-9", str(agent_v1.pid)])
