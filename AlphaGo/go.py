@@ -135,7 +135,7 @@ class Go:
         self.game.board[self.game._flatten(vertex)] = color
         self._process_board(color, vertex)
         self.game.history.append(copy.copy(self.game.board))
-        self.game.past.append(copy.copy(self.game.board))
+        self.game.latest_boards.append(copy.copy(self.game.board))
         return True
 
     def _find_empty(self):

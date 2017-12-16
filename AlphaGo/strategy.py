@@ -14,15 +14,14 @@ DELTA = [[1, 0], [-1, 0], [0, -1], [0, 1]]
 CORNER_OFFSET = [[-1, -1], [-1, 1], [1, 1], [1, -1]]
 
 class GoEnv:
-    def __init__(self, size=9, komi=6.5):
-        self.size = size
-        self.komi = komi
-        self.board = [utils.EMPTY] * (self.size * self.size)
-        self.history = deque(maxlen=8)
+    def __init__(self, **kwargs):
+        self.game = kwargs['game']
+        self.board = [utils.EMPTY] * (self.game.size * self.game.size)
+        self.latest_boards = deque(maxlen=8)
 
     def _flatten(self, vertex):
         x, y = vertex
-        return (x - 1) * self.size + (y - 1)
+        return (x - 1) * self.game.size + (y - 1)
 
     def _bfs(self, vertex, color, block, status, alive_break):
         block.append(vertex)
@@ -35,7 +34,7 @@ class GoEnv:
 
     def _find_block(self, vertex, alive_break=False):
         block = []
-        status = [False] * (self.size * self.size)
+        status = [False] * (self.game.size * self.game.size)
         color = self.board[self._flatten(vertex)]
         self._bfs(vertex, color, block, status, alive_break)
 
@@ -73,7 +72,7 @@ class GoEnv:
         _board = copy.copy(self.board)
         self.board[self._flatten(vertex)] = color
         self._process_board(color, vertex)
-        if self.board in self.history:
+        if self.board in self.latest_boards:
             res = True
         else:
             res = False
@@ -83,8 +82,8 @@ class GoEnv:
 
     def _in_board(self, vertex):
         x, y = vertex
-        if x < 1 or x > self.size: return False
-        if y < 1 or y > self.size: return False
+        if x < 1 or x > self.game.size: return False
+        if y < 1 or y > self.game.size: return False
         return True
 
     def _neighbor(self, vertex):
@@ -151,21 +150,28 @@ class GoEnv:
                 # print "many opponents, fake eye"
                 return False
 
-    # def is_valid(self, color, vertex):
-    def is_valid(self, state, action):
+    def knowledge_prunning(self, color, vertex):
+        ### check if it is an eye of yourself
+        ### assumptions : notice that this judgement requires that the state is an endgame
+        if self._is_eye(color, vertex):
+            return False
+        return True
+
+    def simulate_is_valid(self, state, action):
         # state is the play board, the shape is [1, 9, 9, 17]
-        if action == self.size * self.size:
+        if action == self.game.size * self.game.size:
             vertex = (0, 0)
         else:
-            vertex = (action / self.size + 1, action % self.size + 1)
+            vertex = (action / self.game.size + 1, action % self.game.size + 1)
         if state[0, 0, 0, -1] == utils.BLACK:
             color = utils.BLACK
         else:
             color = utils.WHITE
-        self.history.clear()
+        self.latest_boards.clear()
         for i in range(8):
-            self.history.append((state[:, :, :, i] - state[:, :, :, i + 8]).reshape(-1).tolist())
-        self.board = copy.copy(self.history[-1])
+            self.latest_boards.append((state[:, :, :, i] - state[:, :, :, i + 8]).reshape(-1).tolist())
+        self.board = copy.copy(self.latest_boards[-1])
+
         ### in board
         if not self._in_board(vertex):
             return False
@@ -180,12 +186,11 @@ class GoEnv:
         if not self._is_qi(color, vertex):
             return False
 
-        ### check if it is an eye of yourself
-        ### assumptions : notice that this judgement requires that the state is an endgame
-        if self._is_eye(color, vertex):
+        ### forbid global isomorphous
+        if self._check_global_isomorphous(color, vertex):
             return False
 
-        if self._check_global_isomorphous(color, vertex):
+        if not self.knowledge_prunning(color, vertex):
             return False
 
         return True
@@ -206,17 +211,17 @@ class GoEnv:
             color = utils.BLACK
         else:
             color = utils.WHITE
-        if action == self.size ** 2:
+        if action == self.game.size ** 2:
             vertex = utils.PASS
         else:
-            vertex = (action % self.size + 1, action / self.size + 1)
+            vertex = (action % self.game.size + 1, action / self.game.size + 1)
         # print(vertex)
         # print(self.board)
         self.board = (state[:, :, :, 7] - state[:, :, :, 15]).reshape(-1).tolist()
         self.do_move(color, vertex)
         new_state = np.concatenate(
-            [state[:, :, :, 1:8], (np.array(self.board) == utils.BLACK).reshape(1, self.size, self.size, 1),
-             state[:, :, :, 9:16], (np.array(self.board) == utils.WHITE).reshape(1, self.size, self.size, 1),
-             np.array(1 - state[:, :, :, -1]).reshape(1, self.size, self.size, 1)],
+            [state[:, :, :, 1:8], (np.array(self.board) == utils.BLACK).reshape(1, self.game.size, self.game.size, 1),
+             state[:, :, :, 9:16], (np.array(self.board) == utils.WHITE).reshape(1, self.game.size, self.game.size, 1),
+             np.array(1 - state[:, :, :, -1]).reshape(1, self.game.size, self.game.size, 1)],
             axis=3)
         return new_state, 0
