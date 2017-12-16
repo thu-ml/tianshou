@@ -3,15 +3,34 @@ import sys
 import re
 import Pyro4
 import time
+import os
 
 if __name__ == '__main__':
-    # start a name server to find the remote object
+    """
+    Starting two different players which load network weights to evaluate the winning ratio.
+    Note that, this function requires the installation of the Pyro4 library.
+    """
+    # TODO : we should set the network path in a more configurable way.
+    black_weight_path = "./checkpoints"
+    white_weight_path = "./checkpoints_origin"
+    if (not os.path.exists(black_weight_path)):
+        print "Can't not find the network weights for black player."
+        sys.exit()
+    if (not os.path.exists(white_weight_path)):
+        print "Can't not find the network weights for white player."
+        sys.exit()
+
+    # kill the old server
     kill_old_server = subprocess.Popen(['killall', 'pyro4-ns'])
-    print "kill old server, the return code is : " + str(kill_old_server.wait())
+    print "kill the old pyro4 name server, the return code is : " + str(kill_old_server.wait())
     time.sleep(1)
+
+    # start a name server to find the remote object
     start_new_server = subprocess.Popen(['pyro4-ns', '&'])
     print "Start Name Sever : " + str(start_new_server.pid)  # + str(start_new_server.wait())
     time.sleep(1)
+
+    # start two different player with different network weights.
     agent_v0 = subprocess.Popen(['python', '-u', 'player.py', '--role=black'],
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     agent_v1 = subprocess.Popen(['python', '-u', 'player.py', '--role=white', '--checkpoint_path=./checkpoints_origin/'],
@@ -36,8 +55,9 @@ if __name__ == '__main__':
     size = 9
     show = ['.', 'X', 'O']
 
+    evaluate_rounds = 1
     game_num = 0
-    while game_num < 1:
+    while game_num < evaluate_rounds:
         num = 0
         pass_flag = [False, False]
         print("Start game {}".format(game_num))
@@ -70,6 +90,6 @@ if __name__ == '__main__':
     player[1].run_cmd(str(num) + ' clear_board')
     game_num += 1
 
-subprocess.call(["kill", "-9", str(agent_v0.pid)])
-subprocess.call(["kill", "-9", str(agent_v1.pid)])
-print "Kill all player, finish all game."
+    subprocess.call(["kill", "-9", str(agent_v0.pid)])
+    subprocess.call(["kill", "-9", str(agent_v1.pid)])
+    print "Kill all player, finish all game."
