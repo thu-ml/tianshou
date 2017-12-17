@@ -8,13 +8,15 @@ import sys
 import math
 import random
 import numpy as np
+import tensorflow as tf
 
-from binary_heap import BinaryHeap
-from buffer import ReplayBuffer
+from tianshou.data.replay_buffer.binary_heap import BinaryHeap
+from tianshou.data.replay_buffer.buffer import ReplayBuffer
+
 
 class RankBasedExperience(ReplayBuffer):
 
-    def __init__(self, conf):
+    def __init__(self, env, policy, qnet, target_qnet, conf):
         self.size = conf['size']
         self.replace_flag = conf['replace_old'] if 'replace_old' in conf else True
         self.priority_size = conf['priority_size'] if 'priority_size' in conf else self.size
@@ -25,11 +27,17 @@ class RankBasedExperience(ReplayBuffer):
         self.learn_start = conf['learn_start'] if 'learn_start' in conf else 1000
         self.total_steps = conf['steps'] if 'steps' in conf else 100000
         # partition number N, split total size to N part
-        self.partition_num = conf['partition_num'] if 'partition_num' in conf else 100
+        self.partition_num = conf['partition_num'] if 'partition_num' in conf else 10
 
         self.index = 0
         self.record_size = 0
         self.isFull = False
+
+        self._env = env
+        self._policy = policy
+        self._qnet = qnet
+        self._target_qnet = target_qnet
+        self._begin_act()
 
         self._experience = {}
         self.priority_queue = BinaryHeap(self.priority_size)
@@ -98,7 +106,64 @@ class RankBasedExperience(ReplayBuffer):
             self.index += 1
             return self.index
 
-    def add(self, data, priority = 0):
+    def _begin_act(self):
+        self.observation = self._env.reset()
+        self.action = self._env.action_space.sample()
+        done = False
+        while not done:
+            if done:
+                self.observation = self._env.reset()
+                self.action = self._env.action_space.sample()
+            self.observation, _, done, _ = self._env.step(self.action)
+
+    def collect(self):
+        sess = tf.get_default_session()
+        current_data = dict()
+        current_data['previous_action'] = self.action
+        current_data['previous_observation'] = self.observation
+        self.action = np.argmax(sess.run(self._policy, feed_dict={"dqn_observation:0": self.observation.reshape((1,) + self.observation.shape)}))
+        self.observation, reward, done, _ = self._env.step(self.action)
+        current_data['action'] = self.action
+        current_data['observation'] = self.observation
+        current_data['reward'] = reward
+        self.add(current_data)
+        if done:
+            self._begin_act()
+
+    def next_batch(self, batch_size):
+        data = dict()
+        observations = list()
+        actions = list()
+        rewards = list()
+        wi = list()
+        target = list()
+
+        sess = tf.get_default_session()
+        current_datas, current_wis, current_indexs = self.sample({'global_step': sess.run(tf.train.get_global_step())})
+
+        for i in range(0, batch_size):
+            current_data = current_datas[i]
+            current_wi = current_wis[i]
+            current_index = current_indexs[i]
+            observations.append(current_data['observation'])
+            actions.append(current_data['action'])
+            next_max_qvalue = np.max(self._target_qnet.values(current_data['observation']))
+            current_qvalue = self._qnet.values(current_data['previous_observation'])[0, current_data['previous_action']]
+            reward = current_data['reward'] + next_max_qvalue - current_qvalue
+            rewards.append(reward)
+            target.append(current_data['reward'] + next_max_qvalue)
+            self.update_priority([current_index], [math.fabs(reward)])
+            wi.append(current_wi)
+
+        data['observations'] = np.array(observations)
+        data['actions'] = np.array(actions)
+        data['rewards'] = np.array(rewards)
+        data['wi'] = np.array(wi)
+        data['target'] = np.array(target)
+
+        return data
+
+    def add(self, data, priority = 1):
         """
         store experience, suggest that experience is a tuple of (s1, a, r, s2, t)
         so each experience is valid
@@ -156,16 +221,16 @@ class RankBasedExperience(ReplayBuffer):
             sys.stderr.write('Record size less than learn start! Sample failed\n')
             return False, False, False
 
-        dist_index = math.floor(self.record_size / self.size * self.partition_num)
+        dist_index = math.floor(self.record_size * 1. / self.size * self.partition_num)
         # issue 1 by @camigord
-        partition_size = math.floor(self.size / self.partition_num)
+        partition_size = math.floor(self.size * 1. / self.partition_num)
         partition_max = dist_index * partition_size
         distribution = self.distributions[dist_index]
         rank_list = []
         # sample from k segments
         for n in range(1, self.batch_size + 1):
-            index = random.randint(distribution['strata_ends'][n] + 1,
-                                   distribution['strata_ends'][n + 1])
+            index = random.randint(distribution['strata_ends'][n],
+                                       distribution['strata_ends'][n + 1])
             rank_list.append(index)
 
         # beta, increase by global_step, max 1

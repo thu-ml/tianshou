@@ -1,5 +1,7 @@
-from utils import *
 from functions import *
+
+from tianshou.data.replay_buffer.utils import get_replay_buffer
+
 
 def test_rank_based():
     conf = {'size': 50,
@@ -7,7 +9,7 @@ def test_rank_based():
             'partition_num': 5,
             'total_step': 100,
             'batch_size': 4}
-    experience = getReplayBuffer('rank_based', conf)
+    experience = get_replay_buffer('rank_based', conf)
 
     # insert to experience
     print 'test insert experience'
@@ -52,7 +54,7 @@ def test_proportional():
     conf = {'size': 50,
             'alpha': 0.7,
             'batch_size': 4}
-    experience = getReplayBuffer('proportional', conf)
+    experience = get_replay_buffer('proportional', conf)
 
     # insert to experience
     print 'test insert experience'
@@ -90,7 +92,7 @@ def test_proportional():
 
 def test_naive():
     conf = {'size': 50}
-    experience = getReplayBuffer('naive', conf)
+    experience = get_replay_buffer('naive', conf)
 
     # insert to experience
     print 'test insert experience'

@@ -12,23 +12,28 @@ import tensorflow as tf
 
 __all__ = [
     'StochasticPolicy',
+    'QValuePolicy',
 ]
 
-#TODO: separate actor and critic, we should focus on it once we finish the basic module.
+# TODO: separate actor and critic, we should focus on it once we finish the basic module.
+
 
 class QValuePolicy(object):
     """
     The policy as in DQN
     """
     def __init__(self, observation_placeholder):
-        self.observation_placeholder = observation_placeholder
+        self._observation_placeholder = observation_placeholder
 
     def act(self, observation, exploration=None): # first implement no exploration
         """
         return the action (int) to be executed.
         no exploration when exploration=None.
         """
-        pass
+        self._act(observation, exploration)
+
+    def _act(self, observation, exploration = None):
+        raise NotImplementedError()
 
     def values(self, observation):
         """
@@ -36,7 +41,7 @@ class QValuePolicy(object):
         """
         pass
 
-    def values_tensor(self, observation):
+    def values_tensor(self):
         """
         returns the tensor of the values for all actions a at observation s
         """
