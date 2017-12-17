@@ -37,6 +37,9 @@ if __name__ == '__main__':
     action_dim = env.action_space.n
 
     # 1. build network with pure tf
+    # TODO:
+    # pass the observation variable to the replay buffer or find a more reasonable way to help replay buffer
+    # access this observation variable.
     observation = tf.placeholder(tf.float32, shape=(None,) + observation_dim, name="dqn_observation") # network input
 
     with tf.variable_scope('q_net'):
@@ -59,6 +62,7 @@ if __name__ == '__main__':
     optimizer = tf.train.AdamOptimizer(1e-3)
     train_op = optimizer.minimize(total_loss, var_list=train_var_list, global_step=tf.train.get_global_step())
     # 3. define data collection
+    # configuration should be given as parameters, different replay buffer has different parameters.
     replay_memory = get_replay_buffer('rank_based', env, q_values, q_net, target_net,
                                       {'size': 1000, 'batch_size': 64, 'learn_start': 20})
                                                              # ShihongSong: Replay(env, q_net, advantage_estimation.qlearning_target(target_network)), use your ReplayMemory, interact as follows. Simplify your advantage_estimation.dqn to run before YongRen's DQN
@@ -70,6 +74,7 @@ if __name__ == '__main__':
 
         minibatch_count = 0
         collection_count = 0
+        # need to first collect some then sample, collect_freq must be larger than batch_size
         collect_freq = 100
         while True: # until some stopping criterion met...
             # collect data

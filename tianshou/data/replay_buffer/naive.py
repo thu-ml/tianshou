@@ -23,6 +23,10 @@ class NaiveExperience(ReplayBuffer):
             self.n_entries += 1
 
     def _begin_act(self):
+        """
+        if the previous interaction is ended or the interaction hasn't started
+        then begin act from the state of env.reset()
+        """
         self.observation = self._env.reset()
         self.action = self._env.action_space.sample()
         done = False
@@ -33,6 +37,10 @@ class NaiveExperience(ReplayBuffer):
             self.observation, _, done, _ = self._env.step(self.action)
 
     def collect(self):
+        """
+        collect data for replay memory and update the priority according to the given data.
+        store the previous action, previous observation, reward, action, observation in the replay memory.
+        """
         sess = tf.get_default_session()
         current_data = dict()
         current_data['previous_action'] = self.action
@@ -59,6 +67,13 @@ class NaiveExperience(ReplayBuffer):
         return [self.memory[idx] for idx in idxs], [1] * len(idxs), idxs
 
     def next_batch(self, batch_size):
+        """
+        collect a batch of data from replay buffer, update the priority and calculate the necessary statistics for
+        updating q value network.
+        :param batch_size: int batch size.
+        :return: a batch of data, with target storing the target q value and wi, rewards storing the coefficient
+        for gradient of q value network.
+        """
         data = dict()
         observations = list()
         actions = list()
