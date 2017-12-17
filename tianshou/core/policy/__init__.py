@@ -3,3 +3,4 @@
 
 from .base import *
 from .stochastic import *
+from .dqn import *

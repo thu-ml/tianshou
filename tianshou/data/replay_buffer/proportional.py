@@ -1,7 +1,10 @@
-import numpy
+import numpy as np
 import random
-import sum_tree
-from buffer import ReplayBuffer
+import tensorflow as tf
+import math
+
+from tianshou.data.replay_buffer import sum_tree
+from tianshou.data.replay_buffer.buffer import ReplayBuffer
 
 
 class PropotionalExperience(ReplayBuffer):
@@ -15,7 +18,7 @@ class PropotionalExperience(ReplayBuffer):
 
     """
     
-    def __init__(self, conf):
+    def __init__(self, env, policy, qnet, target_qnet, conf):
         """ Prioritized experience replay buffer initialization.
         
         Parameters
@@ -30,11 +33,26 @@ class PropotionalExperience(ReplayBuffer):
         """
         memory_size = conf['size']
         batch_size = conf['batch_size']
-        alpha = conf['alpha']
+        alpha = conf['alpha'] if 'alpha' in conf else 0.6
         self.tree = sum_tree.SumTree(memory_size)
         self.memory_size = memory_size
         self.batch_size = batch_size
         self.alpha = alpha
+        self._env = env
+        self._policy = policy
+        self._qnet = qnet
+        self._target_qnet = target_qnet
+        self._begin_act()
+
+    def _begin_act(self):
+        self.observation = self._env.reset()
+        self.action = self._env.action_space.sample()
+        done = False
+        while not done:
+            if done:
+                self.observation = self._env.reset()
+                self.action = self._env.action_space.sample()
+            self.observation, _, done, _ = self._env.step(self.action)
 
     def add(self, data, priority):
         """ Add new sample.
@@ -47,6 +65,12 @@ class PropotionalExperience(ReplayBuffer):
             sample's priority
         """
         self.tree.add(data, priority**self.alpha)
+
+    def collect(self):
+        pass
+
+    def next_batch(self, batch_size):
+        pass
 
     def sample(self, conf):
         """ The method return samples randomly.
@@ -64,8 +88,9 @@ class PropotionalExperience(ReplayBuffer):
         indices:
             list of sample indices
             The indices indicate sample positions in a sum tree.
+            :param conf: giving beta
         """
-        beta = conf['beta']
+        beta = conf['beta'] if 'beta' in conf else 0.4
         if self.tree.filled_size() < self.batch_size:
             return None, None, None
 
@@ -90,6 +115,54 @@ class PropotionalExperience(ReplayBuffer):
         weights[:] = [x / max_weights for x in weights] # Normalize for stability
         
         return out, weights, indices
+
+    def collect(self):
+        sess = tf.get_default_session()
+        current_data = dict()
+        current_data['previous_action'] = self.action
+        current_data['previous_observation'] = self.observation
+        # TODO: change the name of the feed_dict
+        self.action = np.argmax(sess.run(self._policy, feed_dict={"dqn_observation:0": self.observation.reshape((1,) + self.observation.shape)}))
+        self.observation, reward, done, _ = self._env.step(self.action)
+        current_data['action'] = self.action
+        current_data['observation'] = self.observation
+        current_data['reward'] = reward
+        priorities = np.array([self.tree.get_val(i) ** -self.alpha for i in range(self.tree.filled_size())])
+        priority = np.max(priorities) if len(priorities) > 0 else 1
+        self.add(current_data, priority)
+        if done:
+            self._begin_act()
+
+    def next_batch(self, batch_size):
+        data = dict()
+        observations = list()
+        actions = list()
+        rewards = list()
+        wi = list()
+        target = list()
+
+        for i in range(0, batch_size):
+            current_datas, current_wis, current_indexs = self.sample({'batch_size': 1})
+            current_data = current_datas[0]
+            current_wi = current_wis[0]
+            current_index = current_indexs[0]
+            observations.append(current_data['observation'])
+            actions.append(current_data['action'])
+            next_max_qvalue = np.max(self._target_qnet.values(current_data['observation']))
+            current_qvalue = self._qnet.values(current_data['previous_observation'])[0, current_data['previous_action']]
+            reward = current_data['reward'] + next_max_qvalue - current_qvalue
+            rewards.append(reward)
+            target.append(current_data['reward'] + next_max_qvalue)
+            self.update_priority([current_index], [math.fabs(reward)])
+            wi.append(current_wi)
+
+        data['observations'] = np.array(observations)
+        data['actions'] = np.array(actions)
+        data['rewards'] = np.array(rewards)
+        data['wi'] = np.array(wi)
+        data['target'] = np.array(target)
+
+        return data
 
     def update_priority(self, indices, priorities):
         """ The methods update samples's priority.

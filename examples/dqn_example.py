@@ -9,8 +9,7 @@ import gym
 import sys
 sys.path.append('..')
 import tianshou.core.losses as losses
-from tianshou.data.replay import Replay
-import tianshou.data.advantage_estimation as advantage_estimation
+from tianshou.data.replay_buffer.utils import get_replay_buffer
 import tianshou.core.policy as policy
 
 
@@ -38,11 +37,10 @@ if __name__ == '__main__':
     action_dim = env.action_space.n
 
     # 1. build network with pure tf
-    observation = tf.placeholder(tf.float32, shape=(None,) + observation_dim) # network input
+    observation = tf.placeholder(tf.float32, shape=(None,) + observation_dim, name="dqn_observation") # network input
 
     with tf.variable_scope('q_net'):
         q_values = policy_net(observation, action_dim)
-        train_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) # TODO: better management of TRAINABLE_VARIABLES
     with tf.variable_scope('target_net'):
         q_values_target = policy_net(observation, action_dim)
 
@@ -54,13 +52,15 @@ if __name__ == '__main__':
     target = tf.placeholder(dtype=tf.float32, shape=[None]) # target value for DQN
 
     dqn_loss = losses.dqn_loss(action, target, q_net) # TongzhengRen
-
+    global_step = tf.Variable(0, name='global_step', trainable=False)
+    train_var_list = tf.get_collection(
+        tf.GraphKeys.TRAINABLE_VARIABLES)  # TODO: better management of TRAINABLE_VARIABLES
     total_loss = dqn_loss
     optimizer = tf.train.AdamOptimizer(1e-3)
-    train_op = optimizer.minimize(total_loss, var_list=train_var_list)
-
+    train_op = optimizer.minimize(total_loss, var_list=train_var_list, global_step=tf.train.get_global_step())
     # 3. define data collection
-    training_data = Replay(env, q_net, advantage_estimation.qlearning_target(target_net)) #
+    replay_memory = get_replay_buffer('rank_based', env, q_values, q_net, target_net,
+                                      {'size': 1000, 'batch_size': 64, 'learn_start': 20})
                                                              # ShihongSong: Replay(env, q_net, advantage_estimation.qlearning_target(target_network)), use your ReplayMemory, interact as follows. Simplify your advantage_estimation.dqn to run before YongRen's DQN
     # maybe a dict to manage the elements to be collected
 
@@ -70,14 +70,16 @@ if __name__ == '__main__':
 
         minibatch_count = 0
         collection_count = 0
+        collect_freq = 100
         while True: # until some stopping criterion met...
             # collect data
-            training_data.collect() # ShihongSong
-            collection_count += 1
-            print('Collected {} times.'.format(collection_count))
+            for i in range(0, collect_freq):
+                replay_memory.collect() # ShihongSong
+                collection_count += 1
+                print('Collected {} times.'.format(collection_count))
 
             # update network
-            data = training_data.next_batch(64) # YouQiaoben, ShihongSong
+            data = replay_memory.next_batch(10) # YouQiaoben, ShihongSong
             # TODO: auto managing of the placeholders? or add this to params of data.Batch
             sess.run(train_op, feed_dict={observation: data['observations'], action: data['actions'], target: data['target']})
             minibatch_count += 1
