@@ -46,6 +46,8 @@ Tianshou(天授) is a reinforcement learning platform. The following image illus
 
 Please follow [google python coding style](https://google.github.io/styleguide/pyguide.html)
 
+There's a more detailed Chinese version [google python coding style in Chinese](http://www.runoob.com/w3cnote/google-python-styleguide.html)
+
 All files/folders should be named with lower case letters and underline (except specified names such as `AlphaGo`).
 
 Try to use full names. Don't use abbrevations for class/function/variable names except common abbrevations (such as `num` for number, `dim` for dimension, `env` for environment, `op` for operation). For now we use `pi` to refer to the policy in examples/ppo_example.py.
