@@ -41,37 +41,27 @@ class GoEnv:
                     has_liberty = True
         return has_liberty, chain
 
-    def _bfs(self, vertex, color, block, status):
-        block.append(vertex)
-        status[self._flatten(vertex)] = True
-        nei = self._neighbor(vertex)
-        for n in nei:
-            if not status[self._flatten(n)]:
-                if self.board[self._flatten(n)] == color:
-                    self._bfs(n, color, block, status)
-
-    def _is_qi(self, color, vertex):
-        nei = self._neighbor(vertex)
-        for n in nei:
-            if self.board[self._flatten(n)] == utils.EMPTY:
-                return True
-
+    def _is_suicide(self, color, vertex):
+        ### assume that we already take this move
         self.board[self._flatten(vertex)] = color
-        for n in nei:
-            if self.board[self._flatten(n)] == utils.another_color(color):
-                has_liberty, group = self._find_group(n)
-                if not has_liberty:
-                    self.board[self._flatten(vertex)] = utils.EMPTY
-                    return True
 
-        ### avoid suicide
         has_liberty, group = self._find_group(vertex)
-        if not has_liberty:
+        if has_liberty:
+            ### this group still has liberty after this move, not suicide
             self.board[self._flatten(vertex)] = utils.EMPTY
             return False
-
-        self.board[self._flatten(vertex)] = utils.EMPTY
-        return True
+        else:
+            ### liberty is zero
+            for n in self._neighbor(vertex):
+                if self.board[self._flatten(n)] == utils.another_color(color):
+                    opponent_liberty, group = self._find_group(n)
+                    # this move is able to take opponent's stone, not suicide
+                    if not opponent_liberty:
+                        self.board[self._flatten(vertex)] = utils.EMPTY
+                        return False
+            # not a take, suicide
+            self.board[self._flatten(vertex)] = utils.EMPTY
+            return True
 
     def _check_global_isomorphous(self, color, vertex):
         ##backup
@@ -174,8 +164,8 @@ class GoEnv:
             # print(vertex)
             return False
 
-        ### check if it is qi
-        if not self._is_qi(color, vertex):
+        ### check if it is suicide
+        if self._is_suicide(color, vertex):
             return False
 
         ### forbid global isomorphous
