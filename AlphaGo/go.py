@@ -13,25 +13,24 @@ Settings of the Go game.
 
 NEIGHBOR_OFFSET = [[1, 0], [-1, 0], [0, -1], [0, 1]]
 
-
 class Go:
     def __init__(self, **kwargs):
         self.game = kwargs['game']
 
-    def _bfs(self, vertex, color, block, status, alive_break):
+    def _bfs(self, vertex, color, block, status):
         block.append(vertex)
         status[self.game._flatten(vertex)] = True
         nei = self._neighbor(vertex)
         for n in nei:
             if not status[self.game._flatten(n)]:
                 if self.game.board[self.game._flatten(n)] == color:
-                    self._bfs(n, color, block, status, alive_break)
+                    self._bfs(n, color, block, status)
 
-    def _find_block(self, vertex, alive_break=False):
+    def _find_block(self, vertex):
         block = []
         status = [False] * (self.game.size * self.game.size)
         color = self.game.board[self.game._flatten(vertex)]
-        self._bfs(vertex, color, block, status, alive_break)
+        self._bfs(vertex, color, block, status)
 
         for b in block:
             for n in self._neighbor(b):
@@ -42,7 +41,7 @@ class Go:
     def _find_boarder(self, vertex):
         block = []
         status = [False] * (self.game.size * self.game.size)
-        self._bfs(vertex, utils.EMPTY, block, status, False)
+        self._bfs(vertex, utils.EMPTY, block, status)
         border = []
         for b in block:
             for n in self._neighbor(b):
@@ -106,7 +105,7 @@ class Go:
         nei = self._neighbor(vertex)
         for n in nei:
             if self.game.board[self.game._flatten(n)] == utils.another_color(color):
-                can_kill, block = self._find_block(n, alive_break=True)
+                can_kill, block = self._find_block(n)
                 if can_kill:
                     for b in block:
                         self.game.board[self.game._flatten(b)] = utils.EMPTY

@@ -23,26 +23,32 @@ class GoEnv:
         x, y = vertex
         return (x - 1) * self.game.size + (y - 1)
 
-    def _bfs(self, vertex, color, block, status, alive_break):
+    def _find_group(self, start):
+        color = self.board[self._flatten(start)]
+        # print ("color : ", color)
+        chain = set()
+        frontier = [start]
+        has_liberty = False
+        while frontier:
+            current = frontier.pop()
+            # print ("current : ", current)
+            chain.add(current)
+            for n in self._neighbor(current):
+                # print n, self._flatten(n), self.board[self._flatten(n)],
+                if self.board[self._flatten(n)] == color and not n in chain:
+                    frontier.append(n)
+                if self.board[self._flatten(n)] == utils.EMPTY:
+                    has_liberty = True
+        return has_liberty, chain
+
+    def _bfs(self, vertex, color, block, status):
         block.append(vertex)
         status[self._flatten(vertex)] = True
         nei = self._neighbor(vertex)
         for n in nei:
             if not status[self._flatten(n)]:
                 if self.board[self._flatten(n)] == color:
-                    self._bfs(n, color, block, status, alive_break)
-
-    def _find_block(self, vertex, alive_break=False):
-        block = []
-        status = [False] * (self.game.size * self.game.size)
-        color = self.board[self._flatten(vertex)]
-        self._bfs(vertex, color, block, status, alive_break)
-
-        for b in block:
-            for n in self._neighbor(b):
-                if self.board[self._flatten(n)] == utils.EMPTY:
-                    return False, block
-        return True, block
+                    self._bfs(n, color, block, status)
 
     def _is_qi(self, color, vertex):
         nei = self._neighbor(vertex)
@@ -53,14 +59,14 @@ class GoEnv:
         self.board[self._flatten(vertex)] = color
         for n in nei:
             if self.board[self._flatten(n)] == utils.another_color(color):
-                can_kill, block = self._find_block(n)
-                if can_kill:
+                has_liberty, group = self._find_group(n)
+                if not has_liberty:
                     self.board[self._flatten(vertex)] = utils.EMPTY
                     return True
 
         ### avoid suicide
-        can_kill, block = self._find_block(vertex)
-        if can_kill:
+        has_liberty, group = self._find_group(vertex)
+        if not has_liberty:
             self.board[self._flatten(vertex)] = utils.EMPTY
             return False
 
@@ -110,25 +116,10 @@ class GoEnv:
         nei = self._neighbor(vertex)
         for n in nei:
             if self.board[self._flatten(n)] == utils.another_color(color):
-                can_kill, block = self._find_block(n, alive_break=True)
-                if can_kill:
-                    for b in block:
+                has_liberty, group = self._find_group(n)
+                if not has_liberty:
+                    for b in group:
                         self.board[self._flatten(b)] = utils.EMPTY
-
-    def _find_group(self, start):
-        color = self.board[self._flatten(start)]
-        # print ("color : ", color)
-        chain = set()
-        frontier = [start]
-        while frontier:
-            current = frontier.pop()
-            # print ("current : ", current)
-            chain.add(current)
-            for n in self._neighbor(current):
-                # print n, self._flatten(n), self.board[self._flatten(n)],
-                if self.board[self._flatten(n)] == color and not n in chain:
-                    frontier.append(n)
-        return chain
 
     def _is_eye(self, color, vertex):
         nei = self._neighbor(vertex)
@@ -137,7 +128,8 @@ class GoEnv:
         if False in ncolor:
             # print "not all neighbors are in same color with us"
             return False
-        if set(nei) < self._find_group(nei[0]):
+        _, group = self._find_group(nei[0])
+        if set(nei) < group:
             # print "all neighbors are in same group and same color with us"
             return True
         else:
