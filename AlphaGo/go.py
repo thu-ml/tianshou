@@ -72,18 +72,14 @@ class Go:
         self.game.board[self.game._flatten(vertex)] = utils.EMPTY
         return True
 
-    def _check_global_isomorphous(self, color, vertex):
-        ##backup
-        _board = copy.copy(self.game.board)
-        self.game.board[self.game._flatten(vertex)] = color
-        self._process_board(color, vertex)
-        if self.game.board in self.game.history:
-            res = True
-        else:
-            res = False
-
-        self.game.board = _board
-        return res
+    def _check_global_isomorphous(self, history_boards, current_board, color, vertex):
+        repeat = False
+        next_board = copy.copy(current_board)
+        next_board[self.game._flatten(vertex)] = color
+        self._process_board(next_board, color, vertex)
+        if next_board in history_boards:
+            repeat = True
+        return repeat
 
     def _in_board(self, vertex):
         x, y = vertex
@@ -101,38 +97,38 @@ class Go:
                 nei.append((_x, _y))
         return nei
 
-    def _process_board(self, color, vertex):
+    def _process_board(self, current_board, color, vertex):
         nei = self._neighbor(vertex)
         for n in nei:
-            if self.game.board[self.game._flatten(n)] == utils.another_color(color):
+            if current_board[self.game._flatten(n)] == utils.another_color(color):
                 can_kill, block = self._find_block(n)
                 if can_kill:
                     for b in block:
-                        self.game.board[self.game._flatten(b)] = utils.EMPTY
+                        current_board[self.game._flatten(b)] = utils.EMPTY
 
-    def is_valid(self, color, vertex):
+    def is_valid(self, history_boards, current_board, color, vertex):
         ### in board
         if not self._in_board(vertex):
             return False
 
         ### already have stone
-        if not self.game.board[self.game._flatten(vertex)] == utils.EMPTY:
+        if not current_board[self.game._flatten(vertex)] == utils.EMPTY:
             return False
 
         ### check if it is qi
         if not self._is_qi(color, vertex):
             return False
 
-        if self._check_global_isomorphous(color, vertex):
+        if self._check_global_isomorphous(history_boards, current_board, color, vertex):
             return False
 
         return True
 
     def do_move(self, color, vertex):
-        if not self.is_valid(color, vertex):
+        if not self.is_valid(self.game.history, self.game.board, color, vertex):
             return False
         self.game.board[self.game._flatten(vertex)] = color
-        self._process_board(color, vertex)
+        self._process_board(self.game.board, color, vertex)
         self.game.history.append(copy.copy(self.game.board))
         self.game.latest_boards.append(copy.copy(self.game.board))
         return True
