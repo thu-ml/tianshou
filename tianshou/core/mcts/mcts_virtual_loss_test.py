@@ -1,5 +1,15 @@
+# -*- coding: utf-8 -*-
+# vim:fenc=utf-8
+# $File: mcts_virtual_loss_test.py
+# $Date: Tue Dec 19 16:5459 2017 +0800
+# Original file: mcts_test.py
+# $Author: renyong15 © <mails.tsinghua.edu.cn>
+#
+
+
+
 import numpy as np
-from mcts import MCTS
+from mcts_virtual_loss import MCTSVirtualLoss
 from evaluator import rollout_policy
 
 
@@ -39,4 +49,7 @@ if __name__ == "__main__":
     env = TestEnv(2)
     rollout = rollout_policy(env, 2)
     evaluator = lambda state: rollout(state)
-    mcts = MCTS(env, evaluator, [0, 0], 2, max_step=1e4)
+    mcts_virtual_loss = MCTSVirtualLoss(env, evaluator, [0, 0], 2, batch_size = 10)
+    for i in range(10):
+        mcts_virtual_loss.do_search(max_step = 100)
+
