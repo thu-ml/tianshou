@@ -22,10 +22,12 @@ class Player(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint_path", type=str, default="./checkpoints/")
+    parser.add_argument("--checkpoint_path", type=str, default=None)
     parser.add_argument("--role", type=str, default="unknown")
     args = parser.parse_args()
 
+    if args.checkpoint_path == 'None':
+        args.checkpoint_path = None
     game = Game(checkpoint_path=args.checkpoint_path)
     engine = GTPEngine(game_obj=game, name='tianshou', version=0)
 

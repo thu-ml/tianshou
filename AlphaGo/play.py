@@ -1,3 +1,4 @@
+import argparse
 import subprocess
 import sys
 import re
@@ -11,14 +12,17 @@ if __name__ == '__main__':
     Note that, this function requires the installation of the Pyro4 library.
     """
     # TODO : we should set the network path in a more configurable way.
-    black_weight_path = "./checkpoints"
-    white_weight_path = "./checkpoints_origin"
-    if (not os.path.exists(black_weight_path)):
-        print "Can't not find the network weights for black player."
-        sys.exit()
-    if (not os.path.exists(white_weight_path)):
-        print "Can't not find the network weights for white player."
-        sys.exit()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--black_weight_path", type=str, default=None)
+    parser.add_argument("--white_weight_path", type=str, default=None)
+    args = parser.parse_args()
+
+    # black_weight_path = "./checkpoints"
+    # white_weight_path = "./checkpoints_origin"
+    if args.black_weight_path is not None and (not os.path.exists(args.black_weight_path)):
+        raise ValueError("Can't not find the network weights for black player.")
+    if args.white_weight_path is not None and (not os.path.exists(args.white_weight_path)):
+        raise ValueError("Can't not find the network weights for white player.")
 
     # kill the old server
     kill_old_server = subprocess.Popen(['killall', 'pyro4-ns'])
@@ -31,14 +35,16 @@ if __name__ == '__main__':
     time.sleep(1)
 
     # start two different player with different network weights.
-    agent_v0 = subprocess.Popen(['python', '-u', 'player.py', '--role=black'],
-                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    agent_v1 = subprocess.Popen(['python', '-u', 'player.py', '--role=white', '--checkpoint_path=./checkpoints_origin/'],
-                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    agent_v0 = subprocess.Popen(['python', '-u', 'player.py', '--role=black', '--checkpoint_path=' + str(args.black_weight_path)],
+                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    agent_v1 = subprocess.Popen(['python', '-u', 'player.py', '--role=white', '--checkpoint_path=' + str(args.white_weight_path)],
+                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
     server_list = ""
     while ("black" not in server_list) or ("white" not in server_list):
         server_list = subprocess.check_output(['pyro4-nsc', 'list'])
-        print "Waining for the server start..."
+        print "Waiting for the server start..."
         time.sleep(1)
     print server_list
     print "Start black player at : " + str(agent_v0.pid)
