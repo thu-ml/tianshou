@@ -28,7 +28,7 @@ class Go:
 
     def _find_block(self, vertex):
         block = []
-        status = [False] * (self.game.size * self.game.size)
+        status = [False] * (self.game.size ** 2)
         color = self.game.board[self.game._flatten(vertex)]
         self._bfs(vertex, color, block, status)
 
@@ -40,7 +40,7 @@ class Go:
 
     def _find_boarder(self, vertex):
         block = []
-        status = [False] * (self.game.size * self.game.size)
+        status = [False] * (self.game.size ** 2)
         self._bfs(vertex, utils.EMPTY, block, status)
         border = []
         for b in block:
@@ -141,6 +141,46 @@ class Go:
         idx = [i for i,x in enumerate(self.game.board) if x == utils.EMPTY ][0]
         return self.game._deflatten(idx)
 
+    def _add_nearby_stones(self, neighbor_vertex_set, start_vertex_x, start_vertex_y, x_diff, y_diff, num_step):
+        '''
+        add the nearby stones around the input vertex
+        :param neighbor_vertex_set: input list
+        :param start_vertex_x: x axis of the input vertex
+        :param start_vertex_y: y axis of the input vertex
+        :param x_diff: add x axis
+        :param y_diff: add y axis
+        :param num_step: number of steps to be added
+        :return:
+        '''
+        for step in xrange(num_step):
+            new_neighbor_vertex = (start_vertex_x, start_vertex_y)
+            if self._in_board(new_neighbor_vertex):
+                neighbor_vertex_set.append((start_vertex_x, start_vertex_y))
+            start_vertex_x += x_diff
+            start_vertex_y += y_diff
+
+    def _predict_from_nearby(self, vertex, neighbor_step = 3):
+        '''
+        step: the nearby 3 steps is considered
+        :vertex: position to be estimated
+        :neighbor_step: how many steps nearby
+        :return: the nearby positions of the input position
+            currently the nearby 3*3 grid is returned, altogether 4*8 points involved
+        '''
+        for step in range(1, neighbor_step + 1): # check the stones within the steps in range
+            neighbor_vertex_set = []
+            self._add_nearby_stones(neighbor_vertex_set, vertex[0] - step, vertex[1], 1, 1, neighbor_step)
+            self._add_nearby_stones(neighbor_vertex_set, vertex[0], vertex[1] + step, 1, -1, neighbor_step)
+            self._add_nearby_stones(neighbor_vertex_set, vertex[0] + step, vertex[1], -1, -1, neighbor_step)
+            self._add_nearby_stones(neighbor_vertex_set, vertex[0], vertex[1] -  step, -1, 1, neighbor_step)
+            color_estimate = 0
+            for neighbor_vertex in neighbor_vertex_set:
+                color_estimate += self.game.board[self.game._flatten(neighbor_vertex)]
+            if color_estimate > 0:
+                return utils.BLACK
+            elif color_estimate < 0:
+                return utils.WHITE
+
     def get_score(self, is_unknown_estimation = False):
         '''
             is_unknown_estimation: whether use nearby stone to predict the unknown
@@ -170,42 +210,3 @@ class Go:
         self.game.board = _board
         return score
 
-    def _predict_from_nearby(self, vertex, neighbor_step = 3):
-        '''
-        step: the nearby 3 steps is considered
-        :vertex: position to be estimated
-        :neighbor_step: how many steps nearby
-        :return: the nearby positions of the input position
-            currently the nearby 3*3 grid is returned, altogether 4*8 points involved
-        '''
-        for step in range(1, neighbor_step + 1): # check the stones within the steps in range
-            neighbor_vertex_set = []
-            self._add_nearby_stones(neighbor_vertex_set, vertex[0] - step, vertex[1], 1, 1, neighbor_step)
-            self._add_nearby_stones(neighbor_vertex_set, vertex[0], vertex[1] + step, 1, -1, neighbor_step)
-            self._add_nearby_stones(neighbor_vertex_set, vertex[0] + step, vertex[1], -1, -1, neighbor_step)
-            self._add_nearby_stones(neighbor_vertex_set, vertex[0], vertex[1] -  step, -1, 1, neighbor_step)
-            color_estimate = 0
-            for neighbor_vertex in neighbor_vertex_set:
-                color_estimate += self.game.board[self.game._flatten(neighbor_vertex)]
-            if color_estimate > 0:
-                return utils.BLACK
-            elif color_estimate < 0:
-                return utils.WHITE
-
-    def _add_nearby_stones(self, neighbor_vertex_set, start_vertex_x, start_vertex_y, x_diff, y_diff, num_step):
-        '''
-        add the nearby stones around the input vertex
-        :param neighbor_vertex_set: input list
-        :param start_vertex_x: x axis of the input vertex
-        :param start_vertex_y: y axis of the input vertex
-        :param x_diff: add x axis
-        :param y_diff: add y axis
-        :param num_step: number of steps to be added
-        :return:
-        '''
-        for step in xrange(num_step):
-            new_neighbor_vertex = (start_vertex_x, start_vertex_y)
-            if self._in_board(new_neighbor_vertex):
-                neighbor_vertex_set.append((start_vertex_x, start_vertex_y))
-            start_vertex_x += x_diff
-            start_vertex_y += y_diff
