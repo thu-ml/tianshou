@@ -9,15 +9,12 @@ import utils
 import copy
 import tensorflow as tf
 import numpy as np
-import sys
+import sys, os
 import go
 import network_small
-import strategy
 from collections import deque
+sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 from tianshou.core.mcts.mcts import MCTS
-
-import Network
-#from strategy import strategy
 
 class Game:
     '''
@@ -34,15 +31,11 @@ class Game:
         self.latest_boards = deque(maxlen=8)
         for _ in range(8):
             self.latest_boards.append(self.board)
-
-        self.executor = go.Go(game=self)
-        #self.strategy = strategy(checkpoint_path)
-
-        self.simulator = strategy.GoEnv(game=self)
         self.net = network_small.Network()
         self.sess = self.net.forward(checkpoint_path)
         self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
                                                      feed_dict={self.net.x: state, self.net.is_training: False})
+        self.game_engine = go.Go(game=self)
 
     def _flatten(self, vertex):
         x, y = vertex
@@ -79,10 +72,10 @@ class Game:
 
     def think(self, latest_boards, color):
         # TODO : using copy is right, or should we change to deepcopy?
-        self.simulator.simulate_latest_boards = copy.copy(latest_boards)
-        self.simulator.simulate_board = copy.copy(latest_boards[-1])
-        nn_input = self.generate_nn_input(self.simulator.simulate_latest_boards, color)
-        mcts = MCTS(self.simulator, self.evaluator, nn_input, self.size ** 2 + 1, inverse=True, max_step=1)
+        self.game_engine.simulate_latest_boards = copy.copy(latest_boards)
+        self.game_engine.simulate_board = copy.copy(latest_boards[-1])
+        nn_input = self.generate_nn_input(self.game_engine.simulate_latest_boards, color)
+        mcts = MCTS(self.game_engine, self.evaluator, nn_input, self.size ** 2 + 1, inverse=True, max_step=1)
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
         choice = np.random.choice(self.size ** 2 + 1, 1, p=prob).tolist()[0]
@@ -96,7 +89,7 @@ class Game:
         # this function can be called directly to play the opponent's move
         if vertex == utils.PASS:
             return True
-        res = self.executor.executor_do_move(color, vertex)
+        res = self.game_engine.executor_do_move(color, vertex)
         return res
 
     def think_play_move(self, color):
