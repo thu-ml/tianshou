@@ -77,7 +77,7 @@ class Game:
             state[0, :, :, 16] = np.zeros([self.size, self.size])
         return state
 
-    def strategy_gen_move(self, latest_boards, color):
+    def think(self, latest_boards, color):
         self.simulator.simulate_latest_boards = copy.copy(latest_boards)
         self.simulator.simulate_board = copy.copy(latest_boards[-1])
         nn_input = self.generate_nn_input(self.simulator.simulate_latest_boards, color)
@@ -91,17 +91,18 @@ class Game:
             move = self._deflatten(choice)
         return move, prob
 
-    def do_move(self, color, vertex):
+    def play_move(self, color, vertex):
+        # this function can be called directly to play the opponent's move
         if vertex == utils.PASS:
             return True
         res = self.executor.do_move(color, vertex)
         return res
 
-    def gen_move(self, color):
-        # move = self.strategy.gen_move(color)
-        # return move
-        move, self.prob = self.strategy_gen_move(self.latest_boards, color)
-        self.do_move(color, move)
+    def think_play_move(self, color):
+        # although we dont need to return self.prob, however it is needed for neural network training
+        move, self.prob = self.think(self.latest_boards, color)
+        # play the move immediately
+        self.play_move(color, move)
         return move
 
     def status2symbol(self, s):

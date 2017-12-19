@@ -116,7 +116,7 @@ class ActionNode(object):
             self.next_state = tuple2list(self.next_state)
 
     def selection(self, simulator):
-        self.next_state, self.reward = simulator.step_forward(self.parent.state, self.action)
+        self.next_state, self.reward = simulator.simulate_step_forward(self.parent.state, self.action)
         self.origin_state = self.next_state
         self.state_type = type(self.next_state)
         self.type_conversion_to_tuple()
