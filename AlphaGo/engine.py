@@ -167,7 +167,7 @@ class GTPEngine():
         move = self._parse_move(args)
         if move:
             color, vertex = move
-            res = self._game.do_move(color, vertex)
+            res = self._game.play_move(color, vertex)
             if res:
                 return None, True
             else:
@@ -177,7 +177,7 @@ class GTPEngine():
     def cmd_genmove(self, args, **kwargs):
         color = self._parse_color(args)
         if color:
-            move = self._game.gen_move(color)
+            move = self._game.think_play_move(color)
             return self._vertex_point2string(move), True
         else:
             return 'unknown player', False
