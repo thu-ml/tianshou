@@ -42,33 +42,27 @@ class GoEnv:
         return has_liberty, chain
 
     def _is_suicide(self, color, vertex):
-        ### assume that we already take this move
-        self.simulate_board[self.simulate_flatten(vertex)] = color
+        self.simulate_board[self.simulate_flatten(vertex)] = color # assume that we already take this move
+        suicide = False
 
         has_liberty, group = self._find_group(vertex)
-        if has_liberty:
-            ### this group still has liberty after this move, not suicide
-            self.simulate_board[self.simulate_flatten(vertex)] = utils.EMPTY
-            return False
-        else:
-            ### liberty is zero
+        if not has_liberty:
+            suicide = True # no liberty, suicide
             for n in self._neighbor(vertex):
                 if self.simulate_board[self.simulate_flatten(n)] == utils.another_color(color):
                     opponent_liberty, group = self._find_group(n)
-                    # this move is able to take opponent's stone, not suicide
                     if not opponent_liberty:
-                        self.simulate_board[self.simulate_flatten(vertex)] = utils.EMPTY
-                        return False
-            # not a take, suicide
-            self.simulate_board[self.simulate_flatten(vertex)] = utils.EMPTY
-            return True
+                        suicide = False # this move is able to take opponent's stone, not suicide
+
+        self.simulate_board[self.simulate_flatten(vertex)] = utils.EMPTY # undo this move
+        return suicide
 
     def _check_global_isomorphous(self, color, vertex):
         ##backup
         _board = copy.copy(self.simulate_board)
         self.simulate_board[self.simulate_flatten(vertex)] = color
         self._process_board(color, vertex)
-        if self.simulate_board in self.simulate_latest_boards:
+        if self.simulate_board in self.game.history:
             res = True
         else:
             res = False
@@ -140,7 +134,9 @@ class GoEnv:
         return True
 
     def simulate_is_valid(self, state, action):
-        # state is the play board, the shape is [1, 9, 9, 17]
+        # State is the play board, the shape is [1, self.game.size, self.game.size, 17].
+        # Action is an index
+        # We need to transfer the (state, action) pair into (color, vertex) pair to simulate the move
         if action == self.game.size ** 2:
             vertex = (0, 0)
         else:
@@ -177,7 +173,7 @@ class GoEnv:
 
         return True
 
-    def do_move(self, color, vertex):
+    def simulate_do_move(self, color, vertex):
         if vertex == utils.PASS:
             return True
 
@@ -200,7 +196,7 @@ class GoEnv:
         # print(vertex)
         # print(self.board)
         self.simulate_board = (state[:, :, :, 7] - state[:, :, :, 15]).reshape(-1).tolist()
-        self.do_move(color, vertex)
+        self.simulate_do_move(color, vertex)
         new_state = np.concatenate(
             [state[:, :, :, 1:8], (np.array(self.simulate_board) == utils.BLACK).reshape(1, self.game.size, self.game.size, 1),
              state[:, :, :, 9:16], (np.array(self.simulate_board) == utils.WHITE).reshape(1, self.game.size, self.game.size, 1),
