@@ -19,52 +19,47 @@ class GoEnv:
         self.simulate_board = [utils.EMPTY] * (self.game.size ** 2)
         self.simulate_latest_boards = deque(maxlen=8)
 
-    def _find_group(self, start):
-        color = self.simulate_board[self.game._flatten(start)]
+    def _find_group(self, current_board, vertex):
+        color = current_board[self.game._flatten(vertex)]
         # print ("color : ", color)
         chain = set()
-        frontier = [start]
+        frontier = [vertex]
         has_liberty = False
         while frontier:
             current = frontier.pop()
             # print ("current : ", current)
             chain.add(current)
             for n in self._neighbor(current):
-                # print n, self._flatten(n), self.board[self._flatten(n)],
-                if self.simulate_board[self.game._flatten(n)] == color and not n in chain:
+                if current_board[self.game._flatten(n)] == color and not n in chain:
                     frontier.append(n)
-                if self.simulate_board[self.game._flatten(n)] == utils.EMPTY:
+                if current_board[self.game._flatten(n)] == utils.EMPTY:
                     has_liberty = True
         return has_liberty, chain
 
-    def _is_suicide(self, color, vertex):
-        self.simulate_board[self.game._flatten(vertex)] = color # assume that we already take this move
+    def _is_suicide(self, current_board, color, vertex):
+        current_board[self.game._flatten(vertex)] = color # assume that we already take this move
         suicide = False
 
-        has_liberty, group = self._find_group(vertex)
+        has_liberty, group = self._find_group(current_board, vertex)
         if not has_liberty:
             suicide = True # no liberty, suicide
             for n in self._neighbor(vertex):
-                if self.simulate_board[self.game._flatten(n)] == utils.another_color(color):
-                    opponent_liberty, group = self._find_group(n)
+                if current_board[self.game._flatten(n)] == utils.another_color(color):
+                    opponent_liberty, group = self._find_group(current_board, n)
                     if not opponent_liberty:
                         suicide = False # this move is able to take opponent's stone, not suicide
 
-        self.simulate_board[self.game._flatten(vertex)] = utils.EMPTY # undo this move
+        current_board[self.game._flatten(vertex)] = utils.EMPTY # undo this move
         return suicide
 
-    def _check_global_isomorphous(self, color, vertex):
-        ##backup
-        _board = copy.copy(self.simulate_board)
-        self.simulate_board[self.game._flatten(vertex)] = color
-        self._process_board(color, vertex)
-        if self.simulate_board in self.game.history:
-            res = True
-        else:
-            res = False
-
-        self.simulate_board = _board
-        return res
+    def _check_global_isomorphous(self, history_boards, current_board, color, vertex):
+        repeat = False
+        next_board = copy.copy(current_board)
+        next_board[self.game._flatten(vertex)] = color
+        self._process_board(next_board, color, vertex)
+        if next_board in history_boards:
+            repeat = True
+        return repeat
 
     def _in_board(self, vertex):
         x, y = vertex
@@ -92,28 +87,28 @@ class GoEnv:
                 corner.append((_x, _y))
         return corner
 
-    def _process_board(self, color, vertex):
+    def _process_board(self, current_board, color, vertex):
         nei = self._neighbor(vertex)
         for n in nei:
-            if self.simulate_board[self.game._flatten(n)] == utils.another_color(color):
-                has_liberty, group = self._find_group(n)
+            if current_board[self.game._flatten(n)] == utils.another_color(color):
+                has_liberty, group = self._find_group(current_board, n)
                 if not has_liberty:
                     for b in group:
-                        self.simulate_board[self.game._flatten(b)] = utils.EMPTY
+                        current_board[self.game._flatten(b)] = utils.EMPTY
 
-    def _is_eye(self, color, vertex):
+    def _is_eye(self, current_board, color, vertex):
         nei = self._neighbor(vertex)
         cor = self._corner(vertex)
-        ncolor = {color == self.simulate_board[self.game._flatten(n)] for n in nei}
+        ncolor = {color == current_board[self.game._flatten(n)] for n in nei}
         if False in ncolor:
             # print "not all neighbors are in same color with us"
             return False
-        _, group = self._find_group(nei[0])
+        _, group = self._find_group(current_board, nei[0])
         if set(nei) < group:
             # print "all neighbors are in same group and same color with us"
             return True
         else:
-            opponent_number = [self.simulate_board[self.game._flatten(c)] for c in cor].count(-color)
+            opponent_number = [current_board[self.game._flatten(c)] for c in cor].count(-color)
             opponent_propotion = float(opponent_number) / float(len(cor))
             if opponent_propotion < 0.5:
                 # print "few opponents, real eye"
@@ -122,49 +117,54 @@ class GoEnv:
                 # print "many opponents, fake eye"
                 return False
 
-    def knowledge_prunning(self, color, vertex):
+    def knowledge_prunning(self, current_board, color, vertex):
         ### check if it is an eye of yourself
         ### assumptions : notice that this judgement requires that the state is an endgame
-        if self._is_eye(color, vertex):
+        if self._is_eye(current_board, color, vertex):
             return False
         return True
 
-    def simulate_is_valid(self, state, action):
-        # State is the play board, the shape is [1, self.game.size, self.game.size, 17].
-        # Action is an index
+    def sa2cv(self, state, action):
+        # State is the play board, the shape is [1, self.game.size, self.game.size, 17], action is an index.
         # We need to transfer the (state, action) pair into (color, vertex) pair to simulate the move
-        if action == self.game.size ** 2:
-            vertex = (0, 0)
-        else:
-            vertex = self.game._deflatten(action)
         if state[0, 0, 0, -1] == utils.BLACK:
             color = utils.BLACK
         else:
             color = utils.WHITE
+        if action == self.game.size ** 2:
+            vertex = (0, 0)
+        else:
+            vertex = self.game._deflatten(action)
+        return color, vertex
+
+    def simulate_is_valid(self, history_boards, current_board, state, action):
+        # initialize simulate_latest_boards and simulate_board from state
         self.simulate_latest_boards.clear()
         for i in range(8):
             self.simulate_latest_boards.append((state[:, :, :, i] - state[:, :, :, i + 8]).reshape(-1).tolist())
         self.simulate_board = copy.copy(self.simulate_latest_boards[-1])
+
+        color, vertex = self.sa2cv(state, action)
 
         ### in board
         if not self._in_board(vertex):
             return False
 
         ### already have stone
-        if not self.simulate_board[self.game._flatten(vertex)] == utils.EMPTY:
+        if not current_board[self.game._flatten(vertex)] == utils.EMPTY:
             # print(np.array(self.board).reshape(9, 9))
             # print(vertex)
             return False
 
         ### check if it is suicide
-        if self._is_suicide(color, vertex):
+        if self._is_suicide(current_board, color, vertex):
             return False
 
         ### forbid global isomorphous
-        if self._check_global_isomorphous(color, vertex):
+        if self._check_global_isomorphous(history_boards, current_board, color, vertex):
             return False
 
-        if not self.knowledge_prunning(color, vertex):
+        if not self.knowledge_prunning(current_board, color, vertex):
             return False
 
         return True
@@ -181,17 +181,11 @@ class GoEnv:
             return False
 
     def simulate_step_forward(self, state, action):
-        if state[0, 0, 0, -1] == 1:
-            color = utils.BLACK
-        else:
-            color = utils.WHITE
-        if action == self.game.size ** 2:
-            vertex = utils.PASS
-        else:
-            vertex = self.game._deflatten(action)
-        # print(vertex)
-        # print(self.board)
+        # initialize the simulate_board from state
         self.simulate_board = (state[:, :, :, 7] - state[:, :, :, 15]).reshape(-1).tolist()
+
+        color, vertex = self.sa2cv(state, action)
+
         self.simulate_do_move(color, vertex)
         new_state = np.concatenate(
             [state[:, :, :, 1:8], (np.array(self.simulate_board) == utils.BLACK).reshape(1, self.game.size, self.game.size, 1),
