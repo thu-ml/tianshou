@@ -79,7 +79,7 @@ while True:
         prob.append(np.array(game.prob).reshape(-1, game.size ** 2 + 1))
     print("Finished")
     print("\n")
-    score = game.executor.get_score(True)
+    score = game.executor.executor_get_score(True)
     if score > 0:
         winner = utils.BLACK
     else:

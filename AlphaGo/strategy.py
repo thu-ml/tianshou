@@ -117,14 +117,14 @@ class GoEnv:
                 # print "many opponents, fake eye"
                 return False
 
-    def knowledge_prunning(self, current_board, color, vertex):
+    def _knowledge_prunning(self, current_board, color, vertex):
         ### check if it is an eye of yourself
         ### assumptions : notice that this judgement requires that the state is an endgame
         if self._is_eye(current_board, color, vertex):
             return False
         return True
 
-    def sa2cv(self, state, action):
+    def _sa2cv(self, state, action):
         # State is the play board, the shape is [1, self.game.size, self.game.size, 17], action is an index.
         # We need to transfer the (state, action) pair into (color, vertex) pair to simulate the move
         if state[0, 0, 0, -1] == utils.BLACK:
@@ -137,23 +137,13 @@ class GoEnv:
             vertex = self.game._deflatten(action)
         return color, vertex
 
-    def simulate_is_valid(self, history_boards, current_board, state, action):
-        # initialize simulate_latest_boards and simulate_board from state
-        self.simulate_latest_boards.clear()
-        for i in range(8):
-            self.simulate_latest_boards.append((state[:, :, :, i] - state[:, :, :, i + 8]).reshape(-1).tolist())
-        self.simulate_board = copy.copy(self.simulate_latest_boards[-1])
-
-        color, vertex = self.sa2cv(state, action)
-
+    def _is_valid(self, history_boards, current_board, color, vertex):
         ### in board
         if not self._in_board(vertex):
             return False
 
         ### already have stone
         if not current_board[self.game._flatten(vertex)] == utils.EMPTY:
-            # print(np.array(self.board).reshape(9, 9))
-            # print(vertex)
             return False
 
         ### check if it is suicide
@@ -164,12 +154,26 @@ class GoEnv:
         if self._check_global_isomorphous(history_boards, current_board, color, vertex):
             return False
 
-        if not self.knowledge_prunning(current_board, color, vertex):
+        return True
+
+    def simulate_is_valid(self, history_boards, current_board, state, action):
+        # initialize simulate_latest_boards and simulate_board from state
+        self.simulate_latest_boards.clear()
+        for i in range(8):
+            self.simulate_latest_boards.append((state[:, :, :, i] - state[:, :, :, i + 8]).reshape(-1).tolist())
+        self.simulate_board = copy.copy(self.simulate_latest_boards[-1])
+
+        color, vertex = self._sa2cv(state, action)
+
+        if not self._is_valid(history_boards, current_board, color, vertex):
+            return False
+
+        if not self._knowledge_prunning(current_board, color, vertex):
             return False
 
         return True
 
-    def simulate_do_move(self, color, vertex):
+    def _do_move(self, color, vertex):
         if vertex == utils.PASS:
             return True
 
@@ -184,9 +188,9 @@ class GoEnv:
         # initialize the simulate_board from state
         self.simulate_board = (state[:, :, :, 7] - state[:, :, :, 15]).reshape(-1).tolist()
 
-        color, vertex = self.sa2cv(state, action)
+        color, vertex = self._sa2cv(state, action)
 
-        self.simulate_do_move(color, vertex)
+        self._do_move(color, vertex)
         new_state = np.concatenate(
             [state[:, :, :, 1:8], (np.array(self.simulate_board) == utils.BLACK).reshape(1, self.game.size, self.game.size, 1),
              state[:, :, :, 9:16], (np.array(self.simulate_board) == utils.WHITE).reshape(1, self.game.size, self.game.size, 1),

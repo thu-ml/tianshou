@@ -183,7 +183,7 @@ class GTPEngine():
             return 'unknown player', False
 
     def cmd_get_score(self, args, **kwargs):
-        return self._game.executor.get_score(), None
+        return self._game.executor.executor_get_score(), None
 
     def cmd_show_board(self, args, **kwargs):
         return self._game.board, True

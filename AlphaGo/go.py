@@ -84,7 +84,7 @@ class Go:
             repeat = True
         return repeat
 
-    def is_valid(self, history_boards, current_board, color, vertex):
+    def _is_valid(self, history_boards, current_board, color, vertex):
         ### in board
         if not self._in_board(vertex):
             return False
@@ -102,8 +102,8 @@ class Go:
 
         return True
 
-    def do_move(self, color, vertex):
-        if not self.is_valid(self.game.history, self.game.board, color, vertex):
+    def executor_do_move(self, color, vertex):
+        if not self._is_valid(self.game.history, self.game.board, color, vertex):
             return False
         self.game.board[self.game._flatten(vertex)] = color
         self._process_board(self.game.board, color, vertex)
@@ -164,7 +164,7 @@ class Go:
             elif color_estimate < 0:
                 return utils.WHITE
 
-    def get_score(self, is_unknown_estimation = False):
+    def executor_get_score(self, is_unknown_estimation = False):
         '''
             is_unknown_estimation: whether use nearby stone to predict the unknown
             return score from BLACK perspective.

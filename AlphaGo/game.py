@@ -78,6 +78,7 @@ class Game:
         return state
 
     def think(self, latest_boards, color):
+        # TODO : using copy is right, or should we change to deepcopy?
         self.simulator.simulate_latest_boards = copy.copy(latest_boards)
         self.simulator.simulate_board = copy.copy(latest_boards[-1])
         nn_input = self.generate_nn_input(self.simulator.simulate_latest_boards, color)
@@ -95,7 +96,7 @@ class Game:
         # this function can be called directly to play the opponent's move
         if vertex == utils.PASS:
             return True
-        res = self.executor.do_move(color, vertex)
+        res = self.executor.executor_do_move(color, vertex)
         return res
 
     def think_play_move(self, color):
