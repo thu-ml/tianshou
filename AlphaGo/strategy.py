@@ -19,6 +19,32 @@ class GoEnv:
         self.simulate_board = [utils.EMPTY] * (self.game.size ** 2)
         self.simulate_latest_boards = deque(maxlen=8)
 
+    def _in_board(self, vertex):
+        x, y = vertex
+        if x < 1 or x > self.game.size: return False
+        if y < 1 or y > self.game.size: return False
+        return True
+
+    def _neighbor(self, vertex):
+        x, y = vertex
+        nei = []
+        for d in NEIGHBOR_OFFSET:
+            _x = x + d[0]
+            _y = y + d[1]
+            if self._in_board((_x, _y)):
+                nei.append((_x, _y))
+        return nei
+
+    def _corner(self, vertex):
+        x, y = vertex
+        corner = []
+        for d in CORNER_OFFSET:
+            _x = x + d[0]
+            _y = y + d[1]
+            if self._in_board((_x, _y)):
+                corner.append((_x, _y))
+        return corner
+
     def _find_group(self, current_board, vertex):
         color = current_board[self.game._flatten(vertex)]
         # print ("color : ", color)
@@ -52,41 +78,6 @@ class GoEnv:
         current_board[self.game._flatten(vertex)] = utils.EMPTY # undo this move
         return suicide
 
-    def _check_global_isomorphous(self, history_boards, current_board, color, vertex):
-        repeat = False
-        next_board = copy.copy(current_board)
-        next_board[self.game._flatten(vertex)] = color
-        self._process_board(next_board, color, vertex)
-        if next_board in history_boards:
-            repeat = True
-        return repeat
-
-    def _in_board(self, vertex):
-        x, y = vertex
-        if x < 1 or x > self.game.size: return False
-        if y < 1 or y > self.game.size: return False
-        return True
-
-    def _neighbor(self, vertex):
-        x, y = vertex
-        nei = []
-        for d in NEIGHBOR_OFFSET:
-            _x = x + d[0]
-            _y = y + d[1]
-            if self._in_board((_x, _y)):
-                nei.append((_x, _y))
-        return nei
-
-    def _corner(self, vertex):
-        x, y = vertex
-        corner = []
-        for d in CORNER_OFFSET:
-            _x = x + d[0]
-            _y = y + d[1]
-            if self._in_board((_x, _y)):
-                corner.append((_x, _y))
-        return corner
-
     def _process_board(self, current_board, color, vertex):
         nei = self._neighbor(vertex)
         for n in nei:
@@ -95,6 +86,15 @@ class GoEnv:
                 if not has_liberty:
                     for b in group:
                         current_board[self.game._flatten(b)] = utils.EMPTY
+
+    def _check_global_isomorphous(self, history_boards, current_board, color, vertex):
+        repeat = False
+        next_board = copy.copy(current_board)
+        next_board[self.game._flatten(vertex)] = color
+        self._process_board(next_board, color, vertex)
+        if next_board in history_boards:
+            repeat = True
+        return repeat
 
     def _is_eye(self, current_board, color, vertex):
         nei = self._neighbor(vertex)

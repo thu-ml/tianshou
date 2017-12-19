@@ -17,70 +17,6 @@ class Go:
     def __init__(self, **kwargs):
         self.game = kwargs['game']
 
-    def _bfs(self, vertex, color, block, status):
-        block.append(vertex)
-        status[self.game._flatten(vertex)] = True
-        nei = self._neighbor(vertex)
-        for n in nei:
-            if not status[self.game._flatten(n)]:
-                if self.game.board[self.game._flatten(n)] == color:
-                    self._bfs(n, color, block, status)
-
-    def _find_block(self, vertex):
-        block = []
-        status = [False] * (self.game.size ** 2)
-        color = self.game.board[self.game._flatten(vertex)]
-        self._bfs(vertex, color, block, status)
-
-        for b in block:
-            for n in self._neighbor(b):
-                if self.game.board[self.game._flatten(n)] == utils.EMPTY:
-                    return False, block
-        return True, block
-
-    def _find_boarder(self, vertex):
-        block = []
-        status = [False] * (self.game.size ** 2)
-        self._bfs(vertex, utils.EMPTY, block, status)
-        border = []
-        for b in block:
-            for n in self._neighbor(b):
-                if not (n in block):
-                    border.append(n)
-        return border
-
-    def _is_qi(self, color, vertex):
-        nei = self._neighbor(vertex)
-        for n in nei:
-            if self.game.board[self.game._flatten(n)] == utils.EMPTY:
-                return True
-
-        self.game.board[self.game._flatten(vertex)] = color
-        for n in nei:
-            if self.game.board[self.game._flatten(n)] == utils.another_color(color):
-                can_kill, block = self._find_block(n)
-                if can_kill:
-                    self.game.board[self.game._flatten(vertex)] = utils.EMPTY
-                    return True
-
-        ### can not suicide
-        can_kill, block = self._find_block(vertex)
-        if can_kill:
-            self.game.board[self.game._flatten(vertex)] = utils.EMPTY
-            return False
-
-        self.game.board[self.game._flatten(vertex)] = utils.EMPTY
-        return True
-
-    def _check_global_isomorphous(self, history_boards, current_board, color, vertex):
-        repeat = False
-        next_board = copy.copy(current_board)
-        next_board[self.game._flatten(vertex)] = color
-        self._process_board(next_board, color, vertex)
-        if next_board in history_boards:
-            repeat = True
-        return repeat
-
     def _in_board(self, vertex):
         x, y = vertex
         if x < 1 or x > self.game.size: return False
@@ -97,14 +33,56 @@ class Go:
                 nei.append((_x, _y))
         return nei
 
+    def _find_group(self, current_board, vertex):
+        color = current_board[self.game._flatten(vertex)]
+        # print ("color : ", color)
+        chain = set()
+        frontier = [vertex]
+        has_liberty = False
+        while frontier:
+            current = frontier.pop()
+            # print ("current : ", current)
+            chain.add(current)
+            for n in self._neighbor(current):
+                if current_board[self.game._flatten(n)] == color and not n in chain:
+                    frontier.append(n)
+                if current_board[self.game._flatten(n)] == utils.EMPTY:
+                    has_liberty = True
+        return has_liberty, chain
+
+    def _is_suicide(self, current_board, color, vertex):
+        current_board[self.game._flatten(vertex)] = color # assume that we already take this move
+        suicide = False
+
+        has_liberty, group = self._find_group(current_board, vertex)
+        if not has_liberty:
+            suicide = True # no liberty, suicide
+            for n in self._neighbor(vertex):
+                if current_board[self.game._flatten(n)] == utils.another_color(color):
+                    opponent_liberty, group = self._find_group(current_board, n)
+                    if not opponent_liberty:
+                        suicide = False # this move is able to take opponent's stone, not suicide
+
+        current_board[self.game._flatten(vertex)] = utils.EMPTY # undo this move
+        return suicide
+
     def _process_board(self, current_board, color, vertex):
         nei = self._neighbor(vertex)
         for n in nei:
             if current_board[self.game._flatten(n)] == utils.another_color(color):
-                can_kill, block = self._find_block(n)
-                if can_kill:
-                    for b in block:
+                has_liberty, group = self._find_group(current_board, n)
+                if not has_liberty:
+                    for b in group:
                         current_board[self.game._flatten(b)] = utils.EMPTY
+
+    def _check_global_isomorphous(self, history_boards, current_board, color, vertex):
+        repeat = False
+        next_board = copy.copy(current_board)
+        next_board[self.game._flatten(vertex)] = color
+        self._process_board(next_board, color, vertex)
+        if next_board in history_boards:
+            repeat = True
+        return repeat
 
     def is_valid(self, history_boards, current_board, color, vertex):
         ### in board
@@ -115,8 +93,8 @@ class Go:
         if not current_board[self.game._flatten(vertex)] == utils.EMPTY:
             return False
 
-        ### check if it is qi
-        if not self._is_qi(color, vertex):
+        ### check if it is suicide
+        if self._is_suicide(current_board, color, vertex):
             return False
 
         if self._check_global_isomorphous(history_boards, current_board, color, vertex):
@@ -136,6 +114,15 @@ class Go:
     def _find_empty(self):
         idx = [i for i,x in enumerate(self.game.board) if x == utils.EMPTY ][0]
         return self.game._deflatten(idx)
+
+    def _find_boarder(self, vertex):
+        _, group = self._find_group(self.game.board, vertex)
+        border = []
+        for b in group:
+            for n in self._neighbor(b):
+                if not (n in group):
+                    border.append(n)
+        return border
 
     def _add_nearby_stones(self, neighbor_vertex_set, start_vertex_x, start_vertex_y, x_diff, y_diff, num_step):
         '''
