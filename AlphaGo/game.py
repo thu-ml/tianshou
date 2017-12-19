@@ -29,7 +29,7 @@ class Game:
     def __init__(self, size=9, komi=6.5, checkpoint_path=None):
         self.size = size
         self.komi = komi
-        self.board = [utils.EMPTY] * (self.size * self.size)
+        self.board = [utils.EMPTY] * (self.size ** 2)
         self.history = []
         self.latest_boards = deque(maxlen=8)
         for _ in range(8):
@@ -54,7 +54,7 @@ class Game:
         return (x,y)
 
     def clear(self):
-        self.board = [utils.EMPTY] * (self.size * self.size)
+        self.board = [utils.EMPTY] * (self.size ** 2)
         self.history = []
         for _ in range(8):
             self.latest_boards.append(self.board)
@@ -66,11 +66,11 @@ class Game:
     def set_komi(self, k):
         self.komi = k
 
-    def generate_nn_input(self, history, color):
+    def generate_nn_input(self, latest_boards, color):
         state = np.zeros([1, self.size, self.size, 17])
         for i in range(8):
-            state[0, :, :, i] = np.array(np.array(history[i]) == np.ones(self.size ** 2)).reshape(self.size, self.size)
-            state[0, :, :, i + 8] = np.array(np.array(history[i]) == -np.ones(self.size ** 2)).reshape(self.size, self.size)
+            state[0, :, :, i] = np.array(np.array(latest_boards[i]) == np.ones(self.size ** 2)).reshape(self.size, self.size)
+            state[0, :, :, i + 8] = np.array(np.array(latest_boards[i]) == -np.ones(self.size ** 2)).reshape(self.size, self.size)
         if color == utils.BLACK:
             state[0, :, :, 16] = np.ones([self.size, self.size])
         if color == utils.WHITE:
@@ -78,9 +78,9 @@ class Game:
         return state
 
     def strategy_gen_move(self, latest_boards, color):
-        self.simulator.latest_boards = copy.copy(latest_boards)
-        self.simulator.board = copy.copy(latest_boards[-1])
-        nn_input = self.generate_nn_input(self.simulator.latest_boards, color)
+        self.simulator.simulate_latest_boards = copy.copy(latest_boards)
+        self.simulator.simulate_board = copy.copy(latest_boards[-1])
+        nn_input = self.generate_nn_input(self.simulator.simulate_latest_boards, color)
         mcts = MCTS(self.simulator, self.evaluator, nn_input, self.size ** 2 + 1, inverse=True, max_step=1)
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
