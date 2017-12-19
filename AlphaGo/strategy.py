@@ -23,6 +23,11 @@ class GoEnv:
         x, y = vertex
         return (x - 1) * self.game.size + (y - 1)
 
+    def simulate_deflatten(self, idx):
+        x = idx // self.game.size + 1
+        y = idx % self.game.size + 1
+        return (x, y)
+
     def _find_group(self, start):
         color = self.simulate_board[self.simulate_flatten(start)]
         # print ("color : ", color)
@@ -140,7 +145,7 @@ class GoEnv:
         if action == self.game.size ** 2:
             vertex = (0, 0)
         else:
-            vertex = (action / self.game.size + 1, action % self.game.size + 1)
+            vertex = self.simulate_deflatten(action)
         if state[0, 0, 0, -1] == utils.BLACK:
             color = utils.BLACK
         else:
@@ -192,7 +197,7 @@ class GoEnv:
         if action == self.game.size ** 2:
             vertex = utils.PASS
         else:
-            vertex = (action % self.game.size + 1, action / self.game.size + 1)
+            vertex = self.simulate_deflatten(action)
         # print(vertex)
         # print(self.board)
         self.simulate_board = (state[:, :, :, 7] - state[:, :, :, 15]).reshape(-1).tolist()

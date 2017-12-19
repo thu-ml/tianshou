@@ -46,12 +46,12 @@ class Game:
 
     def _flatten(self, vertex):
         x, y = vertex
-        return (y - 1) * self.size + (x - 1)
+        return (x - 1) * self.size + (y - 1)
 
     def _deflatten(self, idx):
-        x = idx % self.size + 1
-        y = idx // self.size + 1
-        return (x,y)
+        x = idx // self.size + 1
+        y = idx % self.size + 1
+        return (x, y)
 
     def clear(self):
         self.board = [utils.EMPTY] * (self.size ** 2)
@@ -88,7 +88,7 @@ class Game:
         if choice == self.size ** 2:
             move = utils.PASS
         else:
-            move = (choice % self.size + 1, choice / self.size + 1)
+            move = self._deflatten(choice)
         return move, prob
 
     def do_move(self, color, vertex):
