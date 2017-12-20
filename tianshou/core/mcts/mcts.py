@@ -71,6 +71,7 @@ class UCTNode(MCTSNode):
                 self.parent.backpropagation(self.children[action].reward)
 
     def valid_mask(self, simulator):
+        # let all invalid actions illeagel in mcts
         if self.mask is None:
             self.mask = simulator.simulate_is_valid_list(self.state, range(self.action_num - 1))
         self.ucb[self.mask] = -float("Inf")
