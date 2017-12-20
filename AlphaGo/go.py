@@ -121,9 +121,9 @@ class Go:
         if self._is_eye(current_board, color, vertex):
             return False
             # forbid position on its own eye.
-        if self._is_game_finish(current_board, color) and vertex == utils.PASS
-            return False
-            # forbid pass if the game is not finished.
+        #if self._is_game_finish(current_board, color) and vertex == utils.PASS
+        #    return False
+        # forbid pass if the game is not finished.
         return True
 
 
@@ -182,6 +182,18 @@ class Go:
             return False
 
         return True
+
+    def simulate_is_valid_list(self, state, action_set):
+        ## find all the valid actions
+        ## if no action is valid, then pass
+        valid_action_set = []
+        for action_candidate in action_set:
+            if self.simulate_is_valid(self, state, action_candidate)
+                valid_action_set.append(action_candidate)
+        if not valid_action_set:
+            valid_action_set.append(utils.PASS)
+            # if valid_action_set is a empty set, add pass
+        return valid_action_set
 
     def _do_move(self, board, color, vertex):
         if vertex == utils.PASS:

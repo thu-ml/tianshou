@@ -72,13 +72,8 @@ class UCTNode(MCTSNode):
 
     def valid_mask(self, simulator):
         if self.mask is None:
-            self.mask = []
-            for act in range(self.action_num - 1):
-                if not simulator.simulate_is_valid(self.state, act):
-                    self.mask.append(act)
-                    self.ucb[act] = -float("Inf")
-        else:
-            self.ucb[self.mask] = -float("Inf")
+            self.mask = simulator.simulate_is_valid_list(self.state, range(self.action_num - 1))
+        self.ucb[self.mask] = -float("Inf")
 
 
 class TSNode(MCTSNode):
