@@ -117,10 +117,31 @@ class Go:
                 return False
 
     def _knowledge_prunning(self, current_board, color, vertex):
-        ### check if it is an eye of yourself
-        ### assumptions : notice that this judgement requires that the state is an endgame
+        #  forbid some stupid selfplay using human knowledge
         if self._is_eye(current_board, color, vertex):
             return False
+            # forbid position on its own eye.
+        if self._is_game_finish(current_board, color) and vertex == utils.PASS
+            return False
+            # forbid pass if the game is not finished.
+        return True
+
+
+    def _is_game_finished(self, current_board, color):
+        '''
+        for each empty position, if it has both BLACK and WHITE neighbors, the game is still not finished
+        :return: return the game is finished
+        '''
+        board = copy.deepcopy(current_board)
+        empty_idx = [i for i, x in enumerate(board) if x == utils.EMPTY]  # find all empty idx
+        for idx in empty_idx:
+            neighbor_idx = self._neighbor(self.game.deflatten(idx))
+        if len(neighbor_idx) > 1:
+            first_idx = neighbor_idx[0]
+        for other_idx in neighbor_idx[1:]:
+            if self.game.board[self.game.flatten(other_idx)] != self.game.board[self.game.flatten(first_idx)]:
+                return False
+
         return True
 
     def _action2vertex(self, action):
