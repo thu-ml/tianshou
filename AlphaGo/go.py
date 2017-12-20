@@ -180,7 +180,6 @@ class Go:
 
         if not self._knowledge_prunning(current_board, color, vertex):
             return False
-
         return True
 
     def simulate_is_valid_list(self, state, action_set):
@@ -188,7 +187,7 @@ class Go:
         ## if no action is valid, then pass
         valid_action_list = []
         for action_candidate in action_set:
-            if self.simulate_is_valid(state, action_candidate):
+            if not self.simulate_is_valid(state, action_candidate):
                 valid_action_list.append(action_candidate)
         if not valid_action_list:
             valid_action_list.append(utils.PASS)
