@@ -23,7 +23,7 @@ class Game:
     TODO : Maybe merge with the engine class in future, 
     currently leave it untouched for interacting with Go UI.
     '''
-    def __init__(self, size=9, komi=6.5, checkpoint_path=None):
+    def __init__(self, size=9, komi=3.75, checkpoint_path=None):
         self.size = size
         self.komi = komi
         self.board = [utils.EMPTY] * (self.size ** 2)
@@ -75,7 +75,7 @@ class Game:
         self.game_engine.simulate_board = copy.copy(latest_boards[-1])
         nn_input = self.generate_nn_input(self.game_engine.simulate_latest_boards, color)
         mcts = MCTS(self.game_engine, self.evaluator, [self.game_engine.simulate_latest_boards, color], self.size ** 2 + 1, inverse=True)
-        mcts.search(max_step=1)
+        mcts.search(max_step=5)
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
         choice = np.random.choice(self.size ** 2 + 1, 1, p=prob).tolist()[0]
