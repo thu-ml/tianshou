@@ -121,11 +121,7 @@ class Go:
         if self._is_eye(current_board, color, vertex):
             return False
             # forbid position on its own eye.
-        #if self._is_game_finish(current_board, color) and vertex == utils.PASS
-        #    return False
-        # forbid pass if the game is not finished.
         return True
-
 
     def _is_game_finished(self, current_board, color):
         '''
@@ -192,6 +188,7 @@ class Go:
         if len(invalid_action_list) < len(action_set) - 1:
             invalid_action_list.append(action_set[-1])
             # forbid pass, if we have other choices
+            # TODO: In fact we should not do this. In some extreme cases, we should permit pass.
         return invalid_action_list
 
     def _do_move(self, board, color, vertex):
