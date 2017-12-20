@@ -183,16 +183,16 @@ class Go:
         return True
 
     def simulate_is_valid_list(self, state, action_set):
-        ## find all the valid actions
-        ## if no action is valid, then pass
-        valid_action_list = []
-        for action_candidate in action_set:
+        # find all the invalid actions
+        invalid_action_list = []
+        for action_candidate in action_set[:-1]:
+            # go through all the actions excluding pass
             if not self.simulate_is_valid(state, action_candidate):
-                valid_action_list.append(action_candidate)
-        if not valid_action_list:
-            valid_action_list.append(utils.PASS)
-            # if valid_action_set is a empty set, add pass
-        return valid_action_list
+                invalid_action_list.append(action_candidate)
+        if len(invalid_action_list) < len(action_set) - 1:
+            invalid_action_list.append(action_set[-1])
+            # forbid pass, if we have other choices
+        return invalid_action_list
 
     def _do_move(self, board, color, vertex):
         if vertex == utils.PASS:
