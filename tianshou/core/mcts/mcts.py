@@ -72,11 +72,9 @@ class UCTNode(MCTSNode):
 
     def valid_mask(self, simulator):
         if self.mask is None:
-            start_time = time.time()
             self.mask = []
             for act in range(self.action_num - 1):
-                if not simulator.simulate_is_valid(
-                        simulator.simulate_latest_boards, simulator.simulate_board, self.state, act):
+                if not simulator.simulate_is_valid(self.state, act):
                     self.mask.append(act)
                     self.ucb[act] = -float("Inf")
         else:
@@ -144,8 +142,7 @@ class ActionNode(object):
 
 
 class MCTS(object):
-    def __init__(self, simulator, evaluator, root, action_num, method="UCT", inverse=False, max_step=None,
-                 max_time=None):
+    def __init__(self, simulator, evaluator, root, action_num, method="UCT", inverse=False):
         self.simulator = simulator
         self.evaluator = evaluator
         prior, _ = self.evaluator(root)
@@ -153,33 +150,26 @@ class MCTS(object):
         if method == "":
             self.root = root
         if method == "UCT":
-            self.root = UCTNode(None, None, root, action_num, prior, inverse)
+            self.root = UCTNode(None, None, root, action_num, prior, inverse=inverse)
         if method == "TS":
             self.root = TSNode(None, None, root, action_num, prior, inverse=inverse)
         self.inverse = inverse
-        if max_step is not None:
-            self.step = 0
-            self.max_step = max_step
-        # TODO: Optimize the stop criteria
-        # else:
-        #     self.max_step = 0
-        if max_time is not None:
-            self.start_time = time.time()
-            self.max_time = max_time
+
+    def search(self, max_step=None, max_time=None):
+        step = 0
+        start_time = time.time()
+        if max_step is None:
+            max_step = int("Inf")
+        if max_time is None:
+            max_time = float("Inf")
         if max_step is None and max_time is None:
             raise ValueError("Need a stop criteria!")
 
-        # TODO: running mcts should be implemented in another function, e.g. def search(self, max_step, max_time)
-        self.select_time = []
-        self.evaluate_time = []
-        self.bp_time = []
-        while (max_step is not None and self.step < self.max_step or max_step is None) \
-                and (max_time is not None and time.time() - self.start_time < self.max_time or max_time is None):
-            self.expand()
-            if max_step is not None:
-                self.step += 1
+        while step < max_step and time.time() - start_time < max_step:
+            self._expand()
+            step += 1
 
-    def expand(self):
+    def _expand(self):
         node, new_action = self.root.selection(self.simulator)
         value = node.children[new_action].expansion(self.evaluator, self.action_num)
         node.children[new_action].backpropagation(value + 0.)

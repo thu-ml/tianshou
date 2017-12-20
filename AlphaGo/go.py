@@ -17,8 +17,6 @@ CORNER_OFFSET = [[-1, -1], [-1, 1], [1, 1], [1, -1]]
 class Go:
     def __init__(self, **kwargs):
         self.game = kwargs['game']
-        self.simulate_board = [utils.EMPTY] * (self.game.size ** 2)
-        self.simulate_latest_boards = deque(maxlen=8)
 
     def _in_board(self, vertex):
         x, y = vertex
@@ -125,18 +123,12 @@ class Go:
             return False
         return True
 
-    def _sa2cv(self, state, action):
-        # State is the play board, the shape is [1, self.game.size, self.game.size, 17], action is an index.
-        # We need to transfer the (state, action) pair into (color, vertex) pair to simulate the move
-        if state[0, 0, 0, -1] == utils.BLACK:
-            color = utils.BLACK
-        else:
-            color = utils.WHITE
+    def _action2vertex(self, action):
         if action == self.game.size ** 2:
             vertex = (0, 0)
         else:
             vertex = self.game._deflatten(action)
-        return color, vertex
+        return vertex
 
     def _is_valid(self, history_boards, current_board, color, vertex):
         ### in board
@@ -157,14 +149,10 @@ class Go:
 
         return True
 
-    def simulate_is_valid(self, history_boards, current_board, state, action):
-        # initialize simulate_latest_boards and simulate_board from state
-        self.simulate_latest_boards.clear()
-        for i in range(8):
-            self.simulate_latest_boards.append((state[:, :, :, i] - state[:, :, :, i + 8]).reshape(-1).tolist())
-        self.simulate_board = copy.copy(self.simulate_latest_boards[-1])
-
-        color, vertex = self._sa2cv(state, action)
+    def simulate_is_valid(self, state, action):
+        history_boards, color = state
+        vertex = self._action2vertex(action)
+        current_board = history_boards[-1]
 
         if not self._is_valid(history_boards, current_board, color, vertex):
             return False
@@ -174,30 +162,22 @@ class Go:
 
         return True
 
-    def _do_move(self, color, vertex):
+    def _do_move(self, board, color, vertex):
         if vertex == utils.PASS:
-            return True
-
-        id_ = self.game._flatten(vertex)
-        if self.simulate_board[id_] == utils.EMPTY:
-            self.simulate_board[id_] = color
-            return True
+            return board
         else:
-            return False
+            id_ = self.game._flatten(vertex)
+            board[id_] = color
+            return board
 
     def simulate_step_forward(self, state, action):
         # initialize the simulate_board from state
-        self.simulate_board = (state[:, :, :, 7] - state[:, :, :, 15]).reshape(-1).tolist()
-
-        color, vertex = self._sa2cv(state, action)
-
-        self._do_move(color, vertex)
-        new_state = np.concatenate(
-            [state[:, :, :, 1:8], (np.array(self.simulate_board) == utils.BLACK).reshape(1, self.game.size, self.game.size, 1),
-             state[:, :, :, 9:16], (np.array(self.simulate_board) == utils.WHITE).reshape(1, self.game.size, self.game.size, 1),
-             np.array(1 - state[:, :, :, -1]).reshape(1, self.game.size, self.game.size, 1)],
-            axis=3)
-        return new_state, 0
+        history_boards, color = state
+        vertex = self._action2vertex(action)
+        new_board = self._do_move(copy.copy(history_boards[-1]), color, vertex)
+        history_boards.append(new_board)
+        new_color = -color
+        return [history_boards, new_color], 0
 
     def executor_do_move(self, color, vertex):
         if not self._is_valid(self.game.history, self.game.board, color, vertex):
@@ -239,7 +219,7 @@ class Go:
             start_vertex_x += x_diff
             start_vertex_y += y_diff
 
-    def _predict_from_nearby(self, vertex, neighbor_step = 3):
+    def _predict_from_nearby(self, vertex, neighbor_step=3):
         '''
         step: the nearby 3 steps is considered
         :vertex: position to be estimated
@@ -261,7 +241,7 @@ class Go:
             elif color_estimate < 0:
                 return utils.WHITE
 
-    def executor_get_score(self, is_unknown_estimation = False):
+    def executor_get_score(self, is_unknown_estimation=False):
         '''
             is_unknown_estimation: whether use nearby stone to predict the unknown
             return score from BLACK perspective.

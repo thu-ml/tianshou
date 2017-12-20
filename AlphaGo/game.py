@@ -11,7 +11,7 @@ import tensorflow as tf
 import numpy as np
 import sys, os
 import go
-import network_small
+import model
 from collections import deque
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 from tianshou.core.mcts.mcts import MCTS
@@ -31,10 +31,9 @@ class Game:
         self.latest_boards = deque(maxlen=8)
         for _ in range(8):
             self.latest_boards.append(self.board)
-        self.net = network_small.Network()
-        self.sess = self.net.forward(checkpoint_path)
-        self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
-                                                     feed_dict={self.net.x: state, self.net.is_training: False})
+        self.evaluator = model.ResNet(self.size, self.size**2 + 1, history_length=8)
+        # self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
+        #                                              feed_dict={self.net.x: state, self.net.is_training: False})
         self.game_engine = go.Go(game=self)
 
     def _flatten(self, vertex):
@@ -75,7 +74,8 @@ class Game:
         self.game_engine.simulate_latest_boards = copy.copy(latest_boards)
         self.game_engine.simulate_board = copy.copy(latest_boards[-1])
         nn_input = self.generate_nn_input(self.game_engine.simulate_latest_boards, color)
-        mcts = MCTS(self.game_engine, self.evaluator, nn_input, self.size ** 2 + 1, inverse=True, max_step=1)
+        mcts = MCTS(self.game_engine, self.evaluator, [self.game_engine.simulate_latest_boards, color], self.size ** 2 + 1, inverse=True)
+        mcts.search(max_step=1)
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
         choice = np.random.choice(self.size ** 2 + 1, 1, p=prob).tolist()[0]
@@ -93,7 +93,7 @@ class Game:
         return res
 
     def think_play_move(self, color):
-        # although we dont need to return self.prob, however it is needed for neural network training
+        # although we don't need to return self.prob, however it is needed for neural network training
         move, self.prob = self.think(self.latest_boards, color)
         # play the move immediately
         self.play_move(color, move)
@@ -122,6 +122,7 @@ class Game:
 if __name__ == "__main__":
     g = Game()
     g.show_board()
+    g.think_play_move(1)
     #file = open("debug.txt", "a")
     #file.write("mcts check\n")
     #file.close()
