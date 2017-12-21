@@ -76,6 +76,7 @@ if __name__ == '__main__':
     color = ['b', 'w']
 
     pattern = "[A-Z]{1}[0-9]{1}"
+    space = re.compile("\s+")
     size = 9
     show = ['.', 'X', 'O']
 
@@ -83,12 +84,20 @@ if __name__ == '__main__':
     game_num = 0
     try:
         while True:
+            start_time = time.time()
             num = 0
             pass_flag = [False, False]
             print("Start game {}".format(game_num))
             # end the game if both palyer chose to pass, or play too much turns
             while not (pass_flag[0] and pass_flag[1]) and num < size ** 2 * 2:
                 turn = num % 2
+                board = player[turn].run_cmd(str(num) + ' show_board')
+                board = eval(board[board.index('['):board.index(']') + 1])
+                for i in range(size):
+                    for j in range(size):
+                        print show[board[i * size + j]] + " ",
+                    print "\n",
+                data.boards.append(board)
                 move = player[turn].run_cmd(str(num) + ' genmove ' + color[turn] + '\n')
                 print role[turn] + " : " + str(move),
                 num += 1
@@ -102,21 +111,18 @@ if __name__ == '__main__':
                     play_or_pass = ' PASS'
                     pass_flag[turn] = True
                 result = player[1 - turn].run_cmd(str(num) + ' play ' + color[turn] + ' ' + play_or_pass + '\n')
-                board = player[turn].run_cmd(str(num) + ' show_board')
-                board = eval(board[board.index('['):board.index(']') + 1])
-                for i in range(size):
-                    for j in range(size):
-                        print show[board[i * size + j]] + " ",
-                    print "\n",
-                data.boards.append(board)
                 prob = player[turn].run_cmd(str(num) + ' get_prob')
+                prob = space.sub(',', prob[prob.index('['):prob.index(']') + 1])
+                prob = prob.replace('[,', '[')
+                prob = prob.replace('],', ']')
+                prob = eval(prob)
                 data.probs.append(prob)
             score = player[turn].run_cmd(str(num) + ' get_score')
             print "Finished : ", score.split(" ")[1]
             # TODO: generalize the player
-            if score > 0:
+            if eval(score.split(" ")[1]) > 0:
                 data.winner = 1
-            if score < 0:
+            if eval(score.split(" ")[1]) < 0:
                 data.winner = -1
             player[0].run_cmd(str(num) + ' clear_board')
             player[1].run_cmd(str(num) + ' clear_board')
@@ -127,12 +133,12 @@ if __name__ == '__main__':
                 file_list.sort(key=lambda file: os.path.getmtime(args.result_path + file) if not os.path.isdir(
                     args.result_path + file) else 0)
                 data_num = eval(file_list[-1][:-4]) + 1
-                print(file_list)
             with open("./data/" + str(data_num) + ".pkl", "w") as file:
                 picklestring = cPickle.dump(data, file)
             data.reset()
             game_num += 1
-    except KeyboardInterrupt:
+            print("Time {}".format(time.time()-start_time))
+    except Exception:
         subprocess.call(["kill", "-9", str(agent_v0.pid)])
         subprocess.call(["kill", "-9", str(agent_v1.pid)])
         print "Kill all player, finish all game."
