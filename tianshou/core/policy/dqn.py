@@ -1,5 +1,16 @@
 from tianshou.core.policy.base import QValuePolicy
 import tensorflow as tf
+import sys
+sys.path.append('..')
+import value_function.action_value as value_func
+
+
+class DQN_refactor(object):
+    """
+    use DQN from value_function as a member
+    """
+    def __init__(self, value_tensor, observation_placeholder, action_placeholder):
+        self._network = value_func.DQN(value_tensor, observation_placeholder, action_placeholder)
 
 
 class DQN(QValuePolicy):
