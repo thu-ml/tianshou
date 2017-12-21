@@ -34,16 +34,7 @@ class Game:
         self.evaluator = model.ResNet(self.size, self.size**2 + 1, history_length=8)
         # self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
         #                                              feed_dict={self.net.x: state, self.net.is_training: False})
-        self.game_engine = go.Go(game=self)
-
-    def _flatten(self, vertex):
-        x, y = vertex
-        return (x - 1) * self.size + (y - 1)
-
-    def _deflatten(self, idx):
-        x = idx // self.size + 1
-        y = idx % self.size + 1
-        return (x, y)
+        self.game_engine = go.Go(size=self.size, komi=self.komi)
 
     def clear(self):
         self.board = [utils.EMPTY] * (self.size ** 2)
@@ -67,14 +58,14 @@ class Game:
         if choice == self.size ** 2:
             move = utils.PASS
         else:
-            move = self._deflatten(choice)
+            move = self.game_engine._deflatten(choice)
         return move, prob
 
     def play_move(self, color, vertex):
         # this function can be called directly to play the opponent's move
         if vertex == utils.PASS:
             return True
-        res = self.game_engine.executor_do_move(color, vertex)
+        res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
         return res
 
     def think_play_move(self, color):
