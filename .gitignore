@@ -8,3 +8,4 @@ checkpoints
 checkpoints_origin
 *.json
 .DS_Store
+data

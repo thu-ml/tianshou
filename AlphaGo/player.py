@@ -20,6 +20,7 @@ class Player(object):
         #return "inside the Player of player.py"
         return self.engine.run_cmd(command)
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint_path", type=str, default=None)
