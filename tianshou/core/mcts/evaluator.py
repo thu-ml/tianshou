@@ -19,10 +19,10 @@ class rollout_policy(evaluator):
         # TODO: prior for rollout policy
         total_reward = 0.
         action = np.random.randint(0, self.action_num)
-        state, reward = self.env.step_forward(state, action)
+        state, reward = self.env.simulate_step_forward(state, action)
         total_reward += reward
         while state is not None:
             action = np.random.randint(0, self.action_num)
-            state, reward = self.env.step_forward(state, action)
+            state, reward = self.env.simulate_step_forward(state, action)
             total_reward += reward
         return np.ones([self.action_num])/self.action_num, total_reward
