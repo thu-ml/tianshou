@@ -82,7 +82,7 @@ if __name__ == '__main__':
     evaluate_rounds = 1
     game_num = 0
     try:
-        while True:
+        while game_num < evaluate_rounds:
             num = 0
             pass_flag = [False, False]
             print("Start game {}".format(game_num))
@@ -132,6 +132,8 @@ if __name__ == '__main__':
                 picklestring = cPickle.dump(data, file)
             data.reset()
             game_num += 1
+        subprocess.call(["kill", "-9", str(agent_v0.pid)])
+        subprocess.call(["kill", "-9", str(agent_v1.pid)])
     except KeyboardInterrupt:
         subprocess.call(["kill", "-9", str(agent_v0.pid)])
         subprocess.call(["kill", "-9", str(agent_v1.pid)])
