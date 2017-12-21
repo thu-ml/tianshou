@@ -58,24 +58,9 @@ class Game:
     def set_komi(self, k):
         self.komi = k
 
-    def generate_nn_input(self, latest_boards, color):
-        state = np.zeros([1, self.size, self.size, 17])
-        for i in range(8):
-            state[0, :, :, i] = np.array(np.array(latest_boards[i]) == np.ones(self.size ** 2)).reshape(self.size, self.size)
-            state[0, :, :, i + 8] = np.array(np.array(latest_boards[i]) == -np.ones(self.size ** 2)).reshape(self.size, self.size)
-        if color == utils.BLACK:
-            state[0, :, :, 16] = np.ones([self.size, self.size])
-        if color == utils.WHITE:
-            state[0, :, :, 16] = np.zeros([self.size, self.size])
-        return state
-
     def think(self, latest_boards, color):
-        # TODO : using copy is right, or should we change to deepcopy?
-        self.game_engine.simulate_latest_boards = copy.copy(latest_boards)
-        self.game_engine.simulate_board = copy.copy(latest_boards[-1])
-        nn_input = self.generate_nn_input(self.game_engine.simulate_latest_boards, color)
-        mcts = MCTS(self.game_engine, self.evaluator, [self.game_engine.simulate_latest_boards, color], self.size ** 2 + 1, inverse=True)
-        mcts.search(max_step=5)
+        mcts = MCTS(self.game_engine, self.evaluator, [latest_boards, color], self.size ** 2 + 1, inverse=True)
+        mcts.search(max_step=1)
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
         choice = np.random.choice(self.size ** 2 + 1, 1, p=prob).tolist()[0]

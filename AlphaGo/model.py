@@ -1,6 +1,7 @@
 import os
 import time
 import sys
+import cPickle
 
 import numpy as np
 import tensorflow as tf
@@ -167,4 +168,19 @@ class ResNet(object):
 
     #TODO: design the interface between the environment and training
     def train(self, mode='memory', *args, **kwargs):
-        pass
+        if mode == 'memory':
+            pass
+        if mode == 'file':
+            self.train_with_file(data_path=kwargs['data_path'], checkpoint_path=kwargs['checkpoint_path'])
+
+    def train_with_file(self, data_path, checkpoint_path):
+        if not os.path.exists(data_path):
+            raise ValueError("{} doesn't exist".format(data_path))
+
+        file_list = os.listdir(data_path)
+        if file_list <= 50:
+            time.sleep(1)
+        else:
+            file_list.sort(key=lambda file: os.path.getmtime(data_path + file) if not os.path.isdir(
+                data_path + file) else 0)
+
