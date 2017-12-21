@@ -28,6 +28,7 @@ if __name__ == '__main__':
     parser.add_argument("--result_path", type=str, default="./data/")
     parser.add_argument("--black_weight_path", type=str, default=None)
     parser.add_argument("--white_weight_path", type=str, default=None)
+    parser.add_argument("--id", type=int, default=0)
     args = parser.parse_args()
 
     if not os.path.exists(args.result_path):
@@ -50,12 +51,15 @@ if __name__ == '__main__':
     time.sleep(1)
 
     # start two different player with different network weights.
+    black_role_name = 'black' + str(args.id)
+    white_role_name = 'white' + str(args.id)
+
     agent_v0 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--role=black', '--checkpoint_path=' + str(args.black_weight_path)],
+        ['python', '-u', 'player.py', '--role=' + black_role_name, '--checkpoint_path=' + str(args.black_weight_path)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     agent_v1 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--role=white', '--checkpoint_path=' + str(args.white_weight_path)],
+        ['python', '-u', 'player.py', '--role=' + white_role_name, '--checkpoint_path=' + str(args.white_weight_path)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     server_list = ""
@@ -69,8 +73,8 @@ if __name__ == '__main__':
 
     data = Data()
     player = [None] * 2
-    player[0] = Pyro4.Proxy("PYRONAME:black")
-    player[1] = Pyro4.Proxy("PYRONAME:white")
+    player[0] = Pyro4.Proxy("PYRONAME:" + black_role_name)
+    player[1] = Pyro4.Proxy("PYRONAME:" + white_role_name)
 
     role = ["BLACK", "WHITE"]
     color = ['b', 'w']
