@@ -137,8 +137,12 @@ if __name__ == '__main__':
                 picklestring = cPickle.dump(data, file)
             data.reset()
             game_num += 1
-            print("Time {}".format(time.time()-start_time))
+
     except Exception:
         subprocess.call(["kill", "-9", str(agent_v0.pid)])
         subprocess.call(["kill", "-9", str(agent_v1.pid)])
         print "Kill all player, finish all game."
+
+    subprocess.call(["kill", "-9", str(agent_v0.pid)])
+    subprocess.call(["kill", "-9", str(agent_v1.pid)])
+    print "Kill all player, finish all game."
