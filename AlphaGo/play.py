@@ -41,14 +41,14 @@ if __name__ == '__main__':
         raise ValueError("Can't not find the network weights for white player.")
 
     # kill the old server
-    kill_old_server = subprocess.Popen(['killall', 'pyro4-ns'])
-    print "kill the old pyro4 name server, the return code is : " + str(kill_old_server.wait())
-    time.sleep(1)
+    # kill_old_server = subprocess.Popen(['killall', 'pyro4-ns'])
+    # print "kill the old pyro4 name server, the return code is : " + str(kill_old_server.wait())
+    # time.sleep(1)
 
     # start a name server to find the remote object
-    start_new_server = subprocess.Popen(['pyro4-ns', '&'])
-    print "Start Name Sever : " + str(start_new_server.pid)  # + str(start_new_server.wait())
-    time.sleep(1)
+    # start_new_server = subprocess.Popen(['pyro4-ns', '&'])
+    # print "Start Name Sever : " + str(start_new_server.pid)  # + str(start_new_server.wait())
+    # time.sleep(1)
 
     # start two different player with different network weights.
     black_role_name = 'black' + str(args.id)
@@ -63,7 +63,7 @@ if __name__ == '__main__':
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     server_list = ""
-    while ("black" not in server_list) or ("white" not in server_list):
+    while (black_role_name not in server_list) or (white_role_name not in server_list):
         server_list = subprocess.check_output(['pyro4-nsc', 'list'])
         print "Waiting for the server start..."
         time.sleep(1)
@@ -142,7 +142,8 @@ if __name__ == '__main__':
             data.reset()
             game_num += 1
 
-    except Exception:
+    except Exception as e:
+	print(e)
         subprocess.call(["kill", "-9", str(agent_v0.pid)])
         subprocess.call(["kill", "-9", str(agent_v1.pid)])
         print "Kill all player, finish all game."
