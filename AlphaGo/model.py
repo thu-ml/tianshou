@@ -101,8 +101,8 @@ class ResNet(object):
         self._build_network(residual_block_num, self.checkpoint_path)
 
         # training hyper-parameters:
-        self.window_length = 1000
-        self.save_freq = 1000
+        self.window_length = 7000
+        self.save_freq = 5000
         self.training_data = {'states': deque(maxlen=self.window_length), 'probs': deque(maxlen=self.window_length),
                               'winner': deque(maxlen=self.window_length)}
 
