@@ -50,6 +50,12 @@ if __name__ == '__main__':
     # print "Start Name Sever : " + str(start_new_server.pid)  # + str(start_new_server.wait())
     # time.sleep(1)
 
+    # start a name server if no name server exists
+    if len(os.popen('ps aux | grep pyro4-ns | grep -v grep').readlines()) == 0:
+        start_new_server = subprocess.Popen(['pyro4-ns', '&'])
+        print "Start Name Sever : " + str(start_new_server.pid)  # + str(start_new_server.wait())
+        time.sleep(1)
+
     # start two different player with different network weights.
     black_role_name = 'black' + str(args.id)
     white_role_name = 'white' + str(args.id)
@@ -137,13 +143,13 @@ if __name__ == '__main__':
                 file_list.sort(key=lambda file: os.path.getmtime(args.result_path + file) if not os.path.isdir(
                     args.result_path + file) else 0)
                 data_num = eval(file_list[-1][:-4]) + 1
-            with open("./data/" + str(data_num) + ".pkl", "w") as file:
+            with open("./data/" + str(data_num) + ".pkl", "wb") as file:
                 picklestring = cPickle.dump(data, file)
             data.reset()
             game_num += 1
 
     except Exception as e:
-	print(e)
+        print(e)
         subprocess.call(["kill", "-9", str(agent_v0.pid)])
         subprocess.call(["kill", "-9", str(agent_v1.pid)])
         print "Kill all player, finish all game."
