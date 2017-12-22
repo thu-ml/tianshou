@@ -1,22 +1,9 @@
 import numpy as np
 import math
 import time
+import sys,os
+from .utils import list2tuple, tuple2list
 
-c_puct = 5
-
-
-def list2tuple(list):
-    try:
-        return tuple(list2tuple(sub) for sub in list)
-    except TypeError:
-        return list
-
-
-def tuple2list(tuple):
-    try:
-        return list(tuple2list(sub) for sub in tuple)
-    except TypeError:
-        return tuple
 
 
 class MCTSNode(object):
@@ -39,12 +26,13 @@ class MCTSNode(object):
         pass
 
 class UCTNode(MCTSNode):
-    def __init__(self, parent, action, state, action_num, prior, inverse=False):
+    def __init__(self, parent, action, state, action_num, prior, inverse=False, c_puct = 5):
         super(UCTNode, self).__init__(parent, action, state, action_num, prior, inverse)
         self.Q = np.zeros([action_num])
         self.W = np.zeros([action_num])
         self.N = np.zeros([action_num])
-        self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
+        self.c_puct = c_puct
+        self.ucb = self.Q + self.c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
         self.mask = None
 
     def selection(self, simulator):

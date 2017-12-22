@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 # $File: mcts_virtual_loss_test.py
-# $Date: Tue Dec 19 16:5459 2017 +0800
+# $Date: Sat Dec 23 02:2139 2017 +0800
 # Original file: mcts_test.py
 # $Author: renyong15 © <mails.tsinghua.edu.cn>
 #
@@ -9,8 +9,8 @@
 
 
 import numpy as np
-from mcts_virtual_loss import MCTSVirtualLoss
-from evaluator import rollout_policy
+from .mcts_virtual_loss import MCTSVirtualLoss
+from .evaluator import rollout_policy
 
 
 class TestEnv:
