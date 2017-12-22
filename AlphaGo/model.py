@@ -101,8 +101,8 @@ class ResNet(object):
         self._build_network(residual_block_num, self.checkpoint_path)
 
         # training hyper-parameters:
-        self.window_length = 1000
-        self.save_freq = 1000
+        self.window_length = 7000
+        self.save_freq = 5000
         self.training_data = {'states': deque(maxlen=self.window_length), 'probs': deque(maxlen=self.window_length),
                               'winner': deque(maxlen=self.window_length)}
 
@@ -241,6 +241,7 @@ class ResNet(object):
                     self.saver.save(self.sess, self.checkpoint_path + save_path)
 
     def _file_to_training_data(self, file_name):
+	print(file_name)
         with open(file_name, 'r') as file:
             data = cPickle.load(file)
         history = deque(maxlen=self.history_length)
