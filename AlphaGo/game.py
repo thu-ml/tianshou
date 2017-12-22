@@ -31,7 +31,7 @@ class Game:
         self.latest_boards = deque(maxlen=8)
         for _ in range(8):
             self.latest_boards.append(self.board)
-        self.evaluator = model.ResNet(self.size, self.size**2 + 1, history_length=8)
+        self.evaluator = model.ResNet(self.size, self.size**2 + 1, history_length=8, checkpoint_path=checkpoint_path)
         # self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
         #                                              feed_dict={self.net.x: state, self.net.is_training: False})
         self.game_engine = go.Go(size=self.size, komi=self.komi)
@@ -96,7 +96,7 @@ class Game:
         sys.stdout.flush()
 
 if __name__ == "__main__":
-    g = Game()
+    g = Game(checkpoint_path='./checkpoints/')
     g.show_board()
     g.think_play_move(1)
     #file = open("debug.txt", "a")
