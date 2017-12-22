@@ -249,6 +249,7 @@ class ResNet(object):
                     file.seek(0)
                     data = cPickle.load(file)
                     read = True
+                    print("{} Loaded".format(file_name))
                 except Exception as e:
                     print(e)
                     time.sleep(1)
