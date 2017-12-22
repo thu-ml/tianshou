@@ -308,3 +308,42 @@ class Go:
 
         return score
 
+if __name__ == "__main__":
+    ### do unit test for Go class
+    pure_test = [
+        0, 1, 0, 1, 0, 1, 0, 0, 0,
+        1, 0, 1, 0, 1, 0, 0, 0, 0,
+        0, 1, 0, 1, 0, 0, 1, 0, 0,
+        0, 0, 1, 0, 0, 1, 0, 1, 0,
+        0, 0, 0, 0, 0, 1, 1, 1, 0,
+        1, 1, 1, 0, 0, 0, 0, 0, 0,
+        1, 0, 1, 0, 0, 1, 1, 0, 0,
+        1, 1, 1, 0, 1, 0, 1, 0, 0,
+        0, 0, 0, 0, 1, 1, 1, 0, 0
+    ]
+
+    pt_qry = [(1, 1), (1, 5), (3, 3), (4, 7), (7, 2), (8, 6)]
+    pt_ans = [True, True, True, True, True, True]
+
+    opponent_test = [
+        0, 1, 0, 1, 0, 1, 0,-1, 1,
+        1,-1, 0,-1, 1,-1, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 1,
+        1, 1,-1, 0, 1,-1, 1, 0, 0,
+        1, 0, 1, 0, 1, 0, 1, 0, 0,
+        -1,1, 1, 0, 1, 1, 1, 0, 0,
+        0, 1,-1, 0,-1,-1,-1, 0, 0,
+        1, 0, 1, 0,-1, 0,-1, 0, 0,
+        0, 1, 0, 0,-1,-1,-1, 0, 0
+    ]
+    ot_qry = [(1, 1), (1, 5), (2, 9), (5, 2), (5, 6), (8, 6), (8, 2)]
+    ot_ans = [False, False, False, False, False, False, True]
+
+    go = Go(size=9, komi=3.75)
+    for i in range(6):
+        print (go._is_eye(pure_test, utils.BLACK, pt_qry[i]))
+    print("Test of pure eye\n")
+
+    for i in range(7):
+        print (go._is_eye(opponent_test, utils.BLACK, ot_qry[i]))
+    print("Test of eye surrend by opponents\n")
