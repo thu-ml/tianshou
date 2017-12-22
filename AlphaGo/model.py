@@ -133,7 +133,7 @@ class ResNet(object):
         with tf.control_dependencies(self.update_ops):
             self.train_op = tf.train.AdamOptimizer(1e-4).minimize(self.total_loss)
         self.var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
-        self.saver = tf.train.Saver(var_list=self.var_list)
+        self.saver = tf.train.Saver(max_to_keep=0, var_list=self.var_list)
         self.sess = multi_gpu.create_session()
         self.sess.run(tf.global_variables_initializer())
         if checkpoint_path is not None:
