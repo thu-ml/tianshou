@@ -203,7 +203,8 @@ class ResNet(object):
         iters = 0
         while True:
             new_file_list = list(set(os.listdir(data_path)).difference(all_file_list))
-            all_file_list = os.listdir(data_path)
+            if new_file_list:
+                all_file_list = os.listdir(data_path)
             new_file_list.sort(
                 key=lambda file: os.path.getmtime(data_path + file) if not os.path.isdir(data_path + file) else 0)
             if new_file_list:
@@ -241,8 +242,16 @@ class ResNet(object):
                     self.saver.save(self.sess, self.checkpoint_path + save_path)
 
     def _file_to_training_data(self, file_name):
-        with open(file_name, 'r') as file:
-            data = cPickle.load(file)
+        read = False
+        with open(file_name, 'rb') as file:
+            while not read:
+                try:
+                    file.seek(0)
+                    data = cPickle.load(file)
+                    read = True
+                except Exception as e:
+                    print(e)
+                    time.sleep(1)
         history = deque(maxlen=self.history_length)
         states = []
         probs = []
