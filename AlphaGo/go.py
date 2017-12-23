@@ -212,11 +212,14 @@ class Go:
     def simulate_step_forward(self, state, action):
         # initialize the simulate_board from state
         history_boards, color = state
-        vertex = self._action2vertex(action)
-        new_board = self._do_move(copy.copy(history_boards[-1]), color, vertex)
-        history_boards.append(new_board)
-        new_color = -color
-        return [history_boards, new_color], 0
+        if history_boards[-1] == history_boards[-2] and action is utils.PASS:
+            return None, 2 * (float(self.executor_get_score(history_boards[-1]) > 0)-0.5) * color
+        else:
+            vertex = self._action2vertex(action)
+            new_board = self._do_move(copy.copy(history_boards[-1]), color, vertex)
+            history_boards.append(new_board)
+            new_color = -color
+            return [history_boards, new_color], 0
 
     def executor_do_move(self, history, latest_boards, current_board, color, vertex):
         if not self._rule_check(history, current_board, color, vertex):
