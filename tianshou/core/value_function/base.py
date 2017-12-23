@@ -11,14 +11,15 @@ class ValueFunctionBase(object):
         self._observation_placeholder = observation_placeholder
         self._value_tensor = tf.squeeze(value_tensor)  # canonical values has shape (batchsize, )
 
-    def get_value(self, **kwargs):
+    def eval_value(self, **kwargs):
         """
 
         :return: batch of corresponding values in numpy array
         """
         raise NotImplementedError()
 
-    def get_value_tensor(self):
+    @property
+    def value_tensor(self):
         """
 
         :return: tensor of the corresponding values
