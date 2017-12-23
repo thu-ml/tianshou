@@ -25,7 +25,6 @@ def find_correct_moves(own, enemy):
     mobility |= search_offset_right(own, enemy, mask, 7)  # Left bottom
     return mobility
 
-
 def calc_flip(pos, own, enemy):
     """return flip stones of enemy by bitboard when I place stone at pos.
 
@@ -34,7 +33,6 @@ def calc_flip(pos, own, enemy):
     :param enemy: bitboard
     :return: flip stones of enemy when I place stone at pos.
     """
-    assert 0 <= pos <= 63, f"pos={pos}"
     f1 = _calc_flip_half(pos, own, enemy)
     f2 = _calc_flip_half(63 - pos, rotate180(own), rotate180(enemy))
     return f1 | rotate180(f2)
@@ -125,27 +123,42 @@ class Reversi:
         self.board = None  # 8 * 8 board with 1 for black, -1 for white and 0 for blank
         self.color = None  # 1 for black and -1 for white
         self.action = None   # number in 0~63
-        self.winner = None
+        # self.winner = None
+        self.black_win = None
 
-    def simulate_is_valid(self, board, color):
+    def get_board(self, black=None, white=None):
+        self.black = black or (0b00001000 << 24 | 0b00010000 << 32)
+        self.white = white or (0b00010000 << 24 | 0b00001000 << 32)
+        self.board = self.bitboard2board() 	
+        return self.board
+
+    def simulate_get_mask(self, state, action_set):
+        history_boards, color = state
+        board = history_boards[-1]
         self.board = board
         self.color = color
         self.board2bitboard()
         own, enemy = self.get_own_and_enemy()
         mobility = find_correct_moves(own, enemy)
         valid_moves = bit_to_array(mobility, 64)
+        valid_moves = np.argwhere(valid_moves)
         valid_moves = list(np.reshape(valid_moves, len(valid_moves)))
-        return valid_moves
+        # TODO it seems that the pass move is not considered
+        invalid_action_mask = []
+        for action in action_set:
+            if action not in valid_moves:
+                invalid_action_mask.append(action)
+        return invalid_action_mask
 
-    def simulate_step_forward(self, board, color, vertex):
-        self.board = board
-        self.color = color
+    def simulate_step_forward(self, state, action):
+        self.board = state[0]
+        self.color = state[1]
         self.board2bitboard()
-        self.vertex2action(vertex)
+        self.action = action
         step_forward = self.step()
         if step_forward:
             new_board = self.bitboard2board()
-            return new_board
+            return [new_board, 0 - self.color], 0
 
     def executor_do_move(self, board, color, vertex):
         self.board = board
@@ -155,20 +168,21 @@ class Reversi:
         step_forward = self.step()
         if step_forward:
             new_board = self.bitboard2board()
-            return new_board
+        for i in range(64):
+        	board[i] = new_board[i]
 
     def executor_get_score(self, board):
         self.board = board
         self._game_over()
-        if self.winner is not None:
-            return self.winner, 0 - self.winner
+        if self.black_win is not None:
+            return self.black_win
         else:
-            ValueError("Game not finished!")
+            raise ValueError("Game not finished!")
 
     def board2bitboard(self):
         count = 1
         if self.board is None:
-            ValueError("None board!")
+            raise ValueError("None board!")
         self.black = 0
         self.white = 0
         for i in range(64):
@@ -200,7 +214,7 @@ class Reversi:
 
     def step(self):
         if self.action < 0 or self.action > 63:
-            ValueError("Wrong action!")
+            raise ValueError("Wrong action!")
         if self.action is None:
             return False
 
@@ -219,6 +233,7 @@ class Reversi:
 
     def _game_over(self):
         # self.done = True
+        '''
         if self.winner is None:
             black_num, white_num = self.number_of_black_and_white
             if black_num > white_num:
@@ -227,9 +242,12 @@ class Reversi:
                 self.winner = -1
             else:
                 self.winner = 0
+        '''
+        if self.black_win is None:
+        	black_num, white_num = self.number_of_black_and_white
+        	self.black_win = black_num - white_num
 
     def illegal_move_to_lose(self, action):
-        logger.warning(f"Illegal action={action}, No Flipped!")
         self._game_over()
 
     def get_own_and_enemy(self):
