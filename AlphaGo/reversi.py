@@ -1,291 +1,20 @@
-from __future__ import print_function
 import numpy as np
-
 '''
-Settings of the Go game.
+Settings of the Reversi game.
 
 (1, 1) is considered as the upper left corner of the board,
 (size, 1) is the lower left
 '''
 
 
-def find_correct_moves(own, enemy):
-    """return legal moves"""
-    left_right_mask = 0x7e7e7e7e7e7e7e7e  # Both most left-right edge are 0, else 1
-    top_bottom_mask = 0x00ffffffffffff00  # Both most top-bottom edge are 0, else 1
-    mask = left_right_mask & top_bottom_mask
-    mobility = 0
-    mobility |= search_offset_left(own, enemy, left_right_mask, 1)  # Left
-    mobility |= search_offset_left(own, enemy, mask, 9)  # Left Top
-    mobility |= search_offset_left(own, enemy, top_bottom_mask, 8)  # Top
-    mobility |= search_offset_left(own, enemy, mask, 7)  # Top Right
-    mobility |= search_offset_right(own, enemy, left_right_mask, 1)  # Right
-    mobility |= search_offset_right(own, enemy, mask, 9)  # Bottom Right
-    mobility |= search_offset_right(own, enemy, top_bottom_mask, 8)  # Bottom
-    mobility |= search_offset_right(own, enemy, mask, 7)  # Left bottom
-    return mobility
-
-
-def calc_flip(pos, own, enemy):
-    """return flip stones of enemy by bitboard when I place stone at pos.
-
-    :param pos: 0~63
-    :param own: bitboard (0=top left, 63=bottom right)
-    :param enemy: bitboard
-    :return: flip stones of enemy when I place stone at pos.
-    """
-    f1 = _calc_flip_half(pos, own, enemy)
-    f2 = _calc_flip_half(63 - pos, rotate180(own), rotate180(enemy))
-    return f1 | rotate180(f2)
-
-
-def _calc_flip_half(pos, own, enemy):
-    el = [enemy, enemy & 0x7e7e7e7e7e7e7e7e, enemy & 0x7e7e7e7e7e7e7e7e, enemy & 0x7e7e7e7e7e7e7e7e]
-    masks = [0x0101010101010100, 0x00000000000000fe, 0x0002040810204080, 0x8040201008040200]
-    masks = [b64(m << pos) for m in masks]
-    flipped = 0
-    for e, mask in zip(el, masks):
-        outflank = mask & ((e | ~mask) + 1) & own
-        flipped |= (outflank - (outflank != 0)) & mask
-    return flipped
-
-
-def search_offset_left(own, enemy, mask, offset):
-    e = enemy & mask
-    blank = ~(own | enemy)
-    t = e & (own >> offset)
-    t |= e & (t >> offset)
-    t |= e & (t >> offset)
-    t |= e & (t >> offset)
-    t |= e & (t >> offset)
-    t |= e & (t >> offset)  # Up to six stones can be turned at once
-    return blank & (t >> offset)  # Only the blank squares can be started
-
-
-def search_offset_right(own, enemy, mask, offset):
-    e = enemy & mask
-    blank = ~(own | enemy)
-    t = e & (own << offset)
-    t |= e & (t << offset)
-    t |= e & (t << offset)
-    t |= e & (t << offset)
-    t |= e & (t << offset)
-    t |= e & (t << offset)  # Up to six stones can be turned at once
-    return blank & (t << offset)  # Only the blank squares can be started
-
-
-def flip_vertical(x):
-    k1 = 0x00FF00FF00FF00FF
-    k2 = 0x0000FFFF0000FFFF
-    x = ((x >> 8) & k1) | ((x & k1) << 8)
-    x = ((x >> 16) & k2) | ((x & k2) << 16)
-    x = (x >> 32) | b64(x << 32)
-    return x
-
-
-def b64(x):
-    return x & 0xFFFFFFFFFFFFFFFF
-
-
-def bit_count(x):
-    return bin(x).count('1')
-
-
-def bit_to_array(x, size):
-    """bit_to_array(0b0010, 4) -> array([0, 1, 0, 0])"""
-    return np.array(list(reversed((("0" * size) + bin(x)[2:])[-size:])), dtype=np.uint8)
-
-
-def flip_diag_a1h8(x):
-    k1 = 0x5500550055005500
-    k2 = 0x3333000033330000
-    k4 = 0x0f0f0f0f00000000
-    t = k4 & (x ^ b64(x << 28))
-    x ^= t ^ (t >> 28)
-    t = k2 & (x ^ b64(x << 14))
-    x ^= t ^ (t >> 14)
-    t = k1 & (x ^ b64(x << 7))
-    x ^= t ^ (t >> 7)
-    return x
-
-
-def rotate90(x):
-    return flip_diag_a1h8(flip_vertical(x))
-
-
-def rotate180(x):
-    return rotate90(rotate90(x))
-
-
 class Reversi:
     def __init__(self, black=None, white=None):
-        self.black = black or (0b00001000 << 24 | 0b00010000 << 32)
-        self.white = white or (0b00010000 << 24 | 0b00001000 << 32)
         self.board = None  # 8 * 8 board with 1 for black, -1 for white and 0 for blank
         self.color = None  # 1 for black and -1 for white
         self.action = None   # number in 0~63
         self.winner = None
         self.black_win = None
         self.size = 8
-
-    def get_board(self, black=None, white=None):
-        self.black = black or (0b00001000 << 24 | 0b00010000 << 32)
-        self.white = white or (0b00010000 << 24 | 0b00001000 << 32)
-        self.board = self.bitboard2board() 	
-        return self.board
-
-    def is_valid(self, is_next=False):
-        self.board2bitboard()
-        own, enemy = self.get_own_and_enemy(is_next)
-        mobility = find_correct_moves(own, enemy)
-        valid_moves = bit_to_array(mobility, 64)
-        valid_moves = np.argwhere(valid_moves)
-        valid_moves = list(np.reshape(valid_moves, len(valid_moves)))
-        return valid_moves
-
-    def simulate_get_mask(self, state, action_set):
-        history_boards, color = state
-        board = history_boards[-1]
-        self.board = board
-        self.color = color
-        valid_moves = self.is_valid()
-        # TODO it seems that the pass move is not considered
-        if not len(valid_moves):
-            invalid_action_mask = action_set[0:-1]
-        else:
-            invalid_action_mask = []
-            for action in action_set:
-                if action not in valid_moves:
-                    invalid_action_mask.append(action)
-        return invalid_action_mask
-
-    def simulate_step_forward(self, state, action):
-        self.board = state[0]
-        self.color = state[1]
-        self.board2bitboard()
-        self.action = action
-        if self.action == 64:
-            valid_moves = self.is_valid(is_next=True)
-            if not len(valid_moves):
-                self._game_over()
-                return None, self.winner * self.color
-            else:
-                return [self.board, 0 - self.color], 0
-        self.step()
-        new_board = self.bitboard2board()
-        return [new_board, 0 - self.color], 0
-
-    def executor_do_move(self, board, color, vertex):
-        self.board = board
-        self.color = color
-        self.board2bitboard()
-        self.action = self._flatten(vertex)
-        if self.action == 64:
-            valid_moves = self.is_valid(is_next=True)
-            if not len(valid_moves):
-                return False
-            else:
-                return True
-        else:
-            self.step()
-            new_board = self.bitboard2board()
-            for i in range(64):
-                board[i] = new_board[i]
-            return True
-
-    def executor_get_score(self, board):
-        self.board = board
-        self._game_over()
-        if self.black_win is not None:
-            return self.black_win
-        else:
-            raise ValueError("Game not finished!")
-
-    def board2bitboard(self):
-        count = 1
-        if self.board is None:
-            raise ValueError("None board!")
-        self.black = 0
-        self.white = 0
-        for i in range(64):
-            if self.board[i] == 1:
-                self.black |= count
-            elif self.board[i] == -1:
-                self.white |= count
-            count *= 2
-    '''
-    def vertex2action(self, vertex):
-        x, y = vertex
-        if x == 0 and y == 0:
-            self.action = None
-        else:
-            self.action = 8 * (x - 1) + y - 1
-    '''
-
-    def bitboard2board(self):
-        board = []
-        black = bit_to_array(self.black, 64)
-        white = bit_to_array(self.white, 64)
-        for i in range(64):
-            if black[i]:
-                board.append(1)
-            elif white[i]:
-                board.append(-1)
-            else:
-                board.append(0)
-        return board
-
-    def step(self):
-        if self.action < 0 or self.action > 63:
-            raise ValueError("Action not in the range of [0,63]!")
-        if self.action is None:
-            raise ValueError("Action is None!")
-
-        own, enemy = self.get_own_and_enemy()
-
-        flipped = calc_flip(self.action, own, enemy)
-        if bit_count(flipped) == 0:
-            # self.illegal_move_to_lose(self.action)
-            raise ValueError("Illegal action!")
-        own ^= flipped
-        own |= 1 << self.action
-        enemy ^= flipped
-        self.set_own_and_enemy(own, enemy)
-
-    def _game_over(self):
-        # self.done = True
-
-        if self.winner is None:
-            black_num, white_num = self.number_of_black_and_white
-            self.black_win = black_num - white_num
-            if self.black_win > 0:
-                self.winner = 1
-            elif self.black_win < 0:
-                self.winner = -1
-            else:
-                self.winner = 0
-
-    def illegal_move_to_lose(self, action):
-        self._game_over()
-
-    def get_own_and_enemy(self, is_next=False):
-        if is_next:
-            color = 0 - self.color
-        else:
-            color = self.color
-        if color == 1:
-            own, enemy = self.black, self.white
-        elif color == -1:
-            own, enemy = self.white, self.black
-        else:
-            own, enemy = None, None
-        return own, enemy
-
-    def set_own_and_enemy(self, own, enemy):
-        if self.color == 1:
-            self.black, self.white = own, enemy
-        else:
-            self.white, self.black = own, enemy
 
     def _deflatten(self, idx):
         x = idx // self.size + 1
@@ -298,6 +27,176 @@ class Reversi:
             return 64
         return (x - 1) * self.size + (y - 1)
 
-    @property
-    def number_of_black_and_white(self):
-        return bit_count(self.black), bit_count(self.white)
+    def get_board(self, board=None):
+        self.board = board or np.zeros([8,8])
+        self.board[3, 3] = -1
+        self.board[4, 4] = -1
+        self.board[3, 4] = 1
+        self.board[4, 3] = 1
+        return self.board
+
+    def _find_correct_moves(self, is_next=False):
+        moves = []
+        if is_next:
+            color = 0 - self.color
+        else:
+            color = self.color
+        for i in range(64):
+            x, y = self._deflatten(i)
+            valid = self._is_valid(x - 1, y - 1, color)
+            if valid:
+                moves.append(i)
+        return moves
+
+    def _one_direction_valid(self, x, y, color):
+        if (x >= 0) and (x < self.size):
+            if (y >= 0) and (y < self.size):
+                if self.board[x, y] == color:
+                    return True
+        return False
+
+    def _is_valid(self, x, y, color):
+        if self.board[x, y]:
+            return False
+        for x_direction in [-1, 0, 1]:
+            for y_direction in [-1, 0, 1]:
+                new_x = x
+                new_y = y
+                flag = 0
+                while True:
+                    new_x += x_direction
+                    new_y += y_direction
+                    if self._one_direction_valid(new_x, new_y, 0 - color):
+                        flag = 1
+                    else:
+                        break
+                if self._one_direction_valid(new_x, new_y, color) and flag:
+                    return True
+        return False
+
+    def simulate_get_mask(self, state, action_set):
+        history_boards, color = state
+        self.board = np.reshape(history_boards[-1], (self.size, self.size))
+        self.color = color
+        valid_moves = self._find_correct_moves()
+        print(valid_moves)
+        if not len(valid_moves):
+            invalid_action_mask = action_set[0:-1]
+        else:
+            invalid_action_mask = []
+            for action in action_set:
+                if action not in valid_moves:
+                    invalid_action_mask.append(action)
+        return invalid_action_mask
+
+    def simulate_step_forward(self, state, action):
+        self.board = state[0].copy()
+        self.board = np.reshape(self.board, (self.size, self.size))
+        self.color = state[1]
+        self.action = action
+        if self.action == 64:
+            valid_moves = self._find_correct_moves(is_next=True)
+            if not len(valid_moves):
+                self._game_over()
+                return None, self.winner * self.color
+            else:
+                return [self.board, 0 - self.color], 0
+        self._step()
+        return [self.board, 0 - self.color], 0
+
+    def _game_over(self):
+        black_num, white_num = self._number_of_black_and_white()
+        self.black_win = black_num - white_num
+        if self.black_win > 0:
+            self.winner = 1
+        elif self.black_win < 0:
+            self.winner = -1
+        else:
+            self.winner = 0
+
+    def _number_of_black_and_white(self):
+        black_num = 0
+        white_num = 0
+        board_list = np.reshape(self.board, self.size ** 2)
+        for i in range(len(board_list)):
+            if board_list[i] == 1:
+                black_num += 1
+            elif board_list[i] == -1:
+                white_num += 1
+        return black_num, white_num
+
+    def _step(self):
+        if self.action < 0 or self.action > 63:
+            raise ValueError("Action not in the range of [0,63]!")
+        if self.action is None:
+            raise ValueError("Action is None!")
+        x, y = self._deflatten(self.action)
+        valid = self._flip(x -1, y - 1)
+        if not valid:
+            raise ValueError("Illegal action!")
+
+    def _flip(self, x, y):
+        valid = 0
+        self.board[x, y] = self.color
+        for x_direction in [-1, 0, 1]:
+            for y_direction in [-1, 0, 1]:
+                new_x = x
+                new_y = y
+                flag = 0
+                while True:
+                    new_x += x_direction
+                    new_y += y_direction
+                    if self._one_direction_valid(new_x, new_y, 0 - self.color):
+                        flag = 1
+                    else:
+                        break
+                if self._one_direction_valid(new_x, new_y, self.color) and flag:
+                    valid = 1
+                    flip_x = x
+                    flip_y = y
+                    while True:
+                        flip_x += x_direction
+                        flip_y += y_direction
+                        if self._one_direction_valid(flip_x, flip_y, 0 - self.color):
+                            self.board[flip_x, flip_y] = self.color
+                        else:
+                            break
+        if valid:
+            return True
+        else:
+            return False
+
+    def executor_do_move(self, history, latest_boards, board, color, vertex):
+        self.board = np.reshape(board, (self.size, self.size))
+        self.color = color
+        self.action = self._flatten(vertex)
+        if self.action == 64:
+            valid_moves = self._find_correct_moves(is_next=True)
+            if not len(valid_moves):
+                return False
+            else:
+                return True
+        else:
+            self._step()
+            return True
+
+    def executor_get_score(self, board):
+        self.board = board
+        self._game_over()
+        if self.black_win is not None:
+            return self.black_win
+        else:
+            raise ValueError("Game not finished!")
+
+
+if __name__ == "__main__":
+    reversi = Reversi()
+    # board = reversi.get_board()
+    # print(board)
+    # state, value = reversi.simulate_step_forward([board, -1], 20)
+    # print(state[0])
+    # print("board")
+    # print(board)
+    # r = reversi.executor_get_score(board)
+    # print(r)
+
