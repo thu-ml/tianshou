@@ -14,7 +14,7 @@ class StateValue(ValueFunctionBase):
             observation_placeholder=observation_placeholder
         )
 
-    def get_value(self, observation):
+    def eval_value(self, observation):
         """
 
         :param observation: numpy array of observations, of shape (batchsize, observation_dim).
@@ -22,4 +22,4 @@ class StateValue(ValueFunctionBase):
         # TODO: dealing with the last dim of 1 in V(s) and Q(s, a), this should rely on the action shape returned by env
         """
         sess = tf.get_default_session()
-        return sess.run(self.get_value_tensor(), feed_dict={self._observation_placeholder: observation})
+        return sess.run(self.value_tensor, feed_dict={self._observation_placeholder: observation})

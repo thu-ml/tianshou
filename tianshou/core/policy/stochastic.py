@@ -10,12 +10,6 @@ import tensorflow as tf
 from .base import StochasticPolicy
 
 
-__all__ = [
-    'OnehotCategorical',
-    'OnehotDiscrete',
-]
-
-
 class OnehotCategorical(StochasticPolicy):
     """
     The class of one-hot Categorical distribution.

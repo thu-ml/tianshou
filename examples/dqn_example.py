@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 import tensorflow as tf
-import numpy as np
-import time
 import gym
 
 # our lib imports here!
@@ -10,7 +8,7 @@ import sys
 sys.path.append('..')
 import tianshou.core.losses as losses
 from tianshou.data.replay_buffer.utils import get_replay_buffer
-import tianshou.core.policy as policy
+import tianshou.core.policy.dqn as policy
 
 
 def policy_net(observation, action_dim):
@@ -41,6 +39,8 @@ if __name__ == '__main__':
     # pass the observation variable to the replay buffer or find a more reasonable way to help replay buffer
     # access this observation variable.
     observation = tf.placeholder(tf.float32, shape=(None,) + observation_dim, name="dqn_observation") # network input
+    action = tf.placeholder(dtype=tf.int32, shape=(None,)) # batch of integer actions
+
 
     with tf.variable_scope('q_net'):
         q_values = policy_net(observation, action_dim)
@@ -48,10 +48,9 @@ if __name__ == '__main__':
         q_values_target = policy_net(observation, action_dim)
 
     # 2. build losses, optimizers
-    q_net = policy.DQN(q_values, observation_placeholder=observation) # YongRen: policy.DQN
-    target_net = policy.DQN(q_values_target, observation_placeholder=observation)
+    q_net = policy.DQNRefactor(q_values, observation_placeholder=observation, action_placeholder=action) # YongRen: policy.DQN
+    target_net = policy.DQNRefactor(q_values_target, observation_placeholder=observation, action_placeholder=action)
 
-    action = tf.placeholder(dtype=tf.int32, shape=[None]) # batch of integer actions
     target = tf.placeholder(dtype=tf.float32, shape=[None]) # target value for DQN
 
     dqn_loss = losses.dqn_loss(action, target, q_net) # TongzhengRen

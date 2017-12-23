@@ -3,18 +3,11 @@
 
 from __future__ import absolute_import
 from __future__ import division
-import warnings
 
 import tensorflow as tf
 
 # from zhusuan.utils import add_name_scope
 
-
-__all__ = [
-    'StochasticPolicy',
-    'QValuePolicy',
-    'PolicyBase'
-]
 
 # TODO: a even more "base" class for policy
 
@@ -23,8 +16,8 @@ class PolicyBase(object):
     """
     base class for policy. only provides `act` method with exploration
     """
-    def __init__(self):
-        pass
+    def __init__(self, observation_placeholder):
+        self._observation_placeholder = observation_placeholder
 
     def act(self, observation, exploration):
         raise NotImplementedError()
@@ -37,14 +30,14 @@ class QValuePolicy(object):
     def __init__(self, observation_placeholder):
         self._observation_placeholder = observation_placeholder
 
-    def act(self, observation, exploration=None): # first implement no exploration
+    def act(self, observation, exploration=None):  # first implement no exploration
         """
         return the action (int) to be executed.
         no exploration when exploration=None.
         """
         self._act(observation, exploration)
 
-    def _act(self, observation, exploration = None):
+    def _act(self, observation, exploration=None):
         raise NotImplementedError()
 
     def values(self, observation):
@@ -58,7 +51,6 @@ class QValuePolicy(object):
         returns the tensor of the values for all actions a at observation s
         """
         pass
-
 
 
 class StochasticPolicy(object):
@@ -130,7 +122,7 @@ class StochasticPolicy(object):
                  param_dtype,
                  is_continuous,
                  observation_placeholder,
-                 group_ndims=0, # maybe useful for repeat_action
+                 group_ndims=0,  # maybe useful for repeat_action
                  **kwargs):
 
         self._act_dtype = act_dtype
