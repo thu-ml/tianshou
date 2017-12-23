@@ -13,9 +13,21 @@ import tensorflow as tf
 __all__ = [
     'StochasticPolicy',
     'QValuePolicy',
+    'PolicyBase'
 ]
 
 # TODO: a even more "base" class for policy
+
+
+class PolicyBase(object):
+    """
+    base class for policy. only provides `act` method with exploration
+    """
+    def __init__(self):
+        pass
+
+    def act(self, observation, exploration):
+        raise NotImplementedError()
 
 
 class QValuePolicy(object):
