@@ -18,6 +18,7 @@ class Go:
     def __init__(self, **kwargs):
         self.size = kwargs['size']
         self.komi = kwargs['komi']
+        self.role = kwargs['role']
 
     def _flatten(self, vertex):
         x, y = vertex

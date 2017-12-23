@@ -28,6 +28,7 @@ if __name__ == '__main__':
     parser.add_argument("--black_weight_path", type=str, default=None)
     parser.add_argument("--white_weight_path", type=str, default=None)
     parser.add_argument("--id", type=int, default=0)
+    parser.add_argument("--debug", type=bool, default=False)
     args = parser.parse_args()
 
     if not os.path.exists(args.result_path):
@@ -60,11 +61,13 @@ if __name__ == '__main__':
     white_role_name = 'white' + str(args.id)
 
     agent_v0 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--role=' + black_role_name, '--checkpoint_path=' + str(args.black_weight_path)],
+        ['python', '-u', 'player.py', '--role=' + black_role_name,
+         '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     agent_v1 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--role=' + white_role_name, '--checkpoint_path=' + str(args.white_weight_path)],
+        ['python', '-u', 'player.py', '--role=' + white_role_name,
+        '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     server_list = ""
@@ -92,7 +95,8 @@ if __name__ == '__main__':
     evaluate_rounds = 1
     game_num = 0
     try:
-        while True:
+        #while True:
+        while game_num < evaluate_rounds:
             start_time = time.time()
             num = 0
             pass_flag = [False, False]
@@ -107,6 +111,7 @@ if __name__ == '__main__':
                         print show[board[i * size + j]] + " ",
                     print "\n",
                 data.boards.append(board)
+                start_time = time.time()
                 move = player[turn].run_cmd(str(num) + ' genmove ' + color[turn] + '\n')
                 print role[turn] + " : " + str(move),
                 num += 1

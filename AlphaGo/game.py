@@ -17,6 +17,7 @@ from tianshou.core.mcts.mcts import MCTS
 
 import go
 import reversi
+import time
 
 class Game:
     '''
@@ -25,8 +26,10 @@ class Game:
     TODO : Maybe merge with the engine class in future, 
     currently leave it untouched for interacting with Go UI.
     '''
-    def __init__(self, name="go", checkpoint_path=None):
+    def __init__(self, name="go", role="unknown", debug=False, checkpoint_path=None):
         self.name = name
+        self.role = role
+        self.debug = debug
         if self.name == "go":
             self.size = 9
             self.komi = 3.75
@@ -36,7 +39,7 @@ class Game:
             self.latest_boards = deque(maxlen=8)
             for _ in range(8):
                 self.latest_boards.append(self.board)
-            self.game_engine = go.Go(size=self.size, komi=self.komi)
+            self.game_engine = go.Go(size=self.size, komi=self.komi, role=self.role)
         elif self.name == "reversi":
             self.size = 8
             self.history_length = 1
@@ -61,7 +64,8 @@ class Game:
         self.komi = k
 
     def think(self, latest_boards, color):
-        mcts = MCTS(self.game_engine, self.evaluator, [latest_boards, color], self.size ** 2 + 1, inverse=True)
+        mcts = MCTS(self.game_engine, self.evaluator, [latest_boards, color],
+                    self.size ** 2 + 1, role=self.role, debug=self.debug, inverse=True)
         mcts.search(max_step=100)
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)

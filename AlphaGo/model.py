@@ -152,6 +152,9 @@ class ResNet(object):
         :param color: a string, indicate which one to play
         :return: a list of tensor, the predicted value and policy given the history and color
         """
+        # Note : maybe we can use it for isolating test of MCTS
+        #prob = [1.0 / self.action_num] * self.action_num
+        #return [prob, np.random.uniform(-1, 1)]
         history, color = state
         if len(history) != self.history_length:
             raise ValueError(
