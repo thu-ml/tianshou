@@ -41,6 +41,11 @@ Tianshou(天授) is a reinforcement learning platform. The following image illus
 
 <img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/go.png" height="150"/> <img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/reversi.jpg" height="150"/> <img src="https://github.com/sproblvem/tianshou/blob/master/docs/figures/warzone.jpg" height="150"/>
 
+## examples
+
+During development, run examples under `./examples/` directory with, e.g. `python ppo_example.py`.
+Running them under this directory with `python examples/ppo_example.py` will not work.
+
 
 ## About coding style
 
