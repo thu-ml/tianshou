@@ -38,6 +38,7 @@ class MCTSNode(object):
     def valid_mask(self, simulator):
         pass
 
+
 class UCTNode(MCTSNode):
     def __init__(self, parent, action, state, action_num, prior, inverse=False):
         super(UCTNode, self).__init__(parent, action, state, action_num, prior, inverse)
@@ -71,10 +72,13 @@ class UCTNode(MCTSNode):
                 self.parent.backpropagation(self.children[action].reward)
 
     def valid_mask(self, simulator):
-        # let all invalid actions be illeagel in mcts
-        if self.mask is None:
-            self.mask = simulator.simulate_get_mask(self.state, range(self.action_num))
-        self.ucb[self.mask] = -float("Inf")
+        # let all invalid actions be illegal in mcts
+        if not hasattr(simulator, 'simulate_get_mask'):
+            pass
+        else:
+            if self.mask is None:
+                self.mask = simulator.simulate_get_mask(self.state, range(self.action_num))
+            self.ucb[self.mask] = -float("Inf")
 
 
 class TSNode(MCTSNode):
