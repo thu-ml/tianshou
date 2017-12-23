@@ -183,7 +183,7 @@ class GTPEngine():
             return 'unknown player', False
 
     def cmd_get_score(self, args, **kwargs):
-        return self._game.game_engine.executor_get_score(self._game.board, True), True
+        return self._game.game_engine.executor_get_score(self._game.board), True
 
     def cmd_show_board(self, args, **kwargs):
         return self._game.board, True
@@ -194,4 +194,4 @@ class GTPEngine():
 
 if __name__ == "main":
     game = Game()
-    engine = GTPEngine(game_obj=Game)
+    engine = GTPEngine(game_obj=game)

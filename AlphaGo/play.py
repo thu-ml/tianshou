@@ -7,7 +7,6 @@ import time
 import os
 import cPickle
 
-
 class Data(object):
     def __init__(self):
         self.boards = []
