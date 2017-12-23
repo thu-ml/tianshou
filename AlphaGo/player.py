@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     daemon = Pyro4.Daemon()                # make a Pyro daemon
     ns = Pyro4.locateNS()                  # find the name server
-    player = Player(role = args.role, engine = engine)
+    player = Player(role=args.role, engine=engine)
     print "Init " + args.role + " player finished"
     uri = daemon.register(player)          # register the greeting maker as a Pyro object
     print "Start on name " + args.role
