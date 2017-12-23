@@ -177,12 +177,12 @@ class Reversi:
         if self.black_win is not None:
             return self.black_win
         else:
-            ValueError("Game not finished!")
+            raise ValueError("Game not finished!")
 
     def board2bitboard(self):
         count = 1
         if self.board is None:
-            ValueError("None board!")
+            raise ValueError("None board!")
         self.black = 0
         self.white = 0
         for i in range(64):
@@ -214,7 +214,7 @@ class Reversi:
 
     def step(self):
         if self.action < 0 or self.action > 63:
-            ValueError("Wrong action!")
+            raise ValueError("Wrong action!")
         if self.action is None:
             return False
 
