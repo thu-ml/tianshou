@@ -4,8 +4,8 @@ leela-zero
 parameters
 *.swp
 *.sublime*
-checkpoints
-checkpoints_origin
+checkpoint
 *.json
 .DS_Store
 data
+.log
