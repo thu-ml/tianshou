@@ -157,7 +157,7 @@ class Go:
             vertex = self._deflatten(action)
         return vertex
 
-    def _is_valid(self, history_boards, current_board, color, vertex):
+    def _rule_check(self, history_boards, current_board, color, vertex):
         ### in board
         if not self._in_board(vertex):
             return False
@@ -176,30 +176,30 @@ class Go:
 
         return True
 
-    def simulate_is_valid(self, state, action):
+    def _is_valid(self, state, action):
         history_boards, color = state
         vertex = self._action2vertex(action)
         current_board = history_boards[-1]
 
-        if not self._is_valid(history_boards, current_board, color, vertex):
+        if not self._rule_check(history_boards, current_board, color, vertex):
             return False
 
         if not self._knowledge_prunning(current_board, color, vertex):
             return False
         return True
 
-    def simulate_is_valid_list(self, state, action_set):
+    def simulate_get_mask(self, state, action_set):
         # find all the invalid actions
-        invalid_action_list = []
+        invalid_action_mask = []
         for action_candidate in action_set[:-1]:
             # go through all the actions excluding pass
-            if not self.simulate_is_valid(state, action_candidate):
-                invalid_action_list.append(action_candidate)
-        if len(invalid_action_list) < len(action_set) - 1:
-            invalid_action_list.append(action_set[-1])
+            if not self._is_valid(state, action_candidate):
+                invalid_action_mask.append(action_candidate)
+        if len(invalid_action_mask) < len(action_set) - 1:
+            invalid_action_mask.append(action_set[-1])
             # forbid pass, if we have other choices
             # TODO: In fact we should not do this. In some extreme cases, we should permit pass.
-        return invalid_action_list
+        return invalid_action_mask
 
     def _do_move(self, board, color, vertex):
         if vertex == utils.PASS:
@@ -219,7 +219,7 @@ class Go:
         return [history_boards, new_color], 0
 
     def executor_do_move(self, history, latest_boards, current_board, color, vertex):
-        if not self._is_valid(history, current_board, color, vertex):
+        if not self._rule_check(history, current_board, color, vertex):
             return False
         current_board[self._flatten(vertex)] = color
         self._process_board(current_board, color, vertex)
@@ -280,7 +280,7 @@ class Go:
             elif color_estimate < 0:
                 return utils.WHITE
 
-    def executor_get_score(self, current_board, is_unknown_estimation=False):
+    def executor_get_score(self, current_board):
         '''
             is_unknown_estimation: whether use nearby stone to predict the unknown
             return score from BLACK perspective.
@@ -294,10 +294,8 @@ class Go:
                 _board[self._flatten(vertex)] = utils.BLACK
             elif boarder_color == {utils.WHITE}:
                 _board[self._flatten(vertex)] = utils.WHITE
-            elif is_unknown_estimation:
-                _board[self._flatten(vertex)] = self._predict_from_nearby(_board, vertex)
             else:
-                _board[self._flatten(vertex)] =utils.UNKNOWN
+                _board[self._flatten(vertex)] = self._predict_from_nearby(_board, vertex)
         score = 0
         for i in _board:
             if i == utils.BLACK:

@@ -10,11 +10,13 @@ import copy
 import tensorflow as tf
 import numpy as np
 import sys, os
-import go
 import model
 from collections import deque
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 from tianshou.core.mcts.mcts import MCTS
+
+import go
+import reversi
 
 class Game:
     '''
@@ -23,18 +25,26 @@ class Game:
     TODO : Maybe merge with the engine class in future, 
     currently leave it untouched for interacting with Go UI.
     '''
-    def __init__(self, size=9, komi=3.75, checkpoint_path=None):
-        self.size = size
-        self.komi = komi
-        self.board = [utils.EMPTY] * (self.size ** 2)
-        self.history = []
-        self.latest_boards = deque(maxlen=8)
-        for _ in range(8):
-            self.latest_boards.append(self.board)
-        self.evaluator = model.ResNet(self.size, self.size**2 + 1, history_length=8, checkpoint_path=checkpoint_path)
-        # self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
-        #                                              feed_dict={self.net.x: state, self.net.is_training: False})
-        self.game_engine = go.Go(size=self.size, komi=self.komi)
+    def __init__(self, name="go", checkpoint_path=None):
+        self.name = name
+        if "go" == name:
+            self.size = 9
+            self.komi = 3.75
+            self.board = [utils.EMPTY] * (self.size ** 2)
+            self.history = []
+            self.latest_boards = deque(maxlen=8)
+            for _ in range(8):
+                self.latest_boards.append(self.board)
+
+            self.evaluator = model.ResNet(self.size, self.size**2 + 1, history_length=8)
+            self.game_engine = go.Go(size=self.size, komi=self.komi)
+        elif "reversi" == name:
+            self.size = 8
+            self.evaluator = model.ResNet(self.size, self.size**2 + 1, history_length=1)
+            self.game_engine = reversi.Reversi()
+            self.board = self.game_engine.get_board()
+        else:
+            print(name + " is an unknown game...")
 
     def clear(self):
         self.board = [utils.EMPTY] * (self.size ** 2)
@@ -65,7 +75,11 @@ class Game:
         # this function can be called directly to play the opponent's move
         if vertex == utils.PASS:
             return True
-        res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
+        # TODO this implementation is not very elegant
+        if "go" == self.name:
+            res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
+        elif "revsersi" == self.name:
+            res = self.game_engine.executor_do_move(self.board, color, vertex)
         return res
 
     def think_play_move(self, color):
@@ -96,7 +110,7 @@ class Game:
         sys.stdout.flush()
 
 if __name__ == "__main__":
-    g = Game(checkpoint_path='./checkpoints/')
+    g = Game()
     g.show_board()
     g.think_play_move(1)
     #file = open("debug.txt", "a")

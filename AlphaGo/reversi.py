@@ -25,7 +25,6 @@ def find_correct_moves(own, enemy):
     mobility |= search_offset_right(own, enemy, mask, 7)  # Left bottom
     return mobility
 
-
 def calc_flip(pos, own, enemy):
     """return flip stones of enemy by bitboard when I place stone at pos.
 
@@ -133,7 +132,9 @@ class Reversi:
         self.board = self.bitboard2board() 	
         return self.board
 
-    def simulate_is_valid(self, board, color):
+    def simulate_get_mask(self, state, action_set):
+        history_boards, color = state
+        board = history_boards[-1]
         self.board = board
         self.color = color
         self.board2bitboard()
@@ -142,13 +143,18 @@ class Reversi:
         valid_moves = bit_to_array(mobility, 64)
         valid_moves = np.argwhere(valid_moves)
         valid_moves = list(np.reshape(valid_moves, len(valid_moves)))
-        return valid_moves
+        # TODO it seems that the pass move is not considered
+        invalid_action_mask = []
+        for action in action_set:
+            if action not in valid_moves:
+                invalid_action_mask.append(action)
+        return invalid_action_mask
 
-    def simulate_step_forward(self, state, vertex):
+    def simulate_step_forward(self, state, action):
         self.board = state[0]
         self.color = state[1]
         self.board2bitboard()
-        self.vertex2action(vertex)
+        self.action = action
         step_forward = self.step()
         if step_forward:
             new_board = self.bitboard2board()
