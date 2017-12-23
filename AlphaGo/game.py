@@ -62,7 +62,7 @@ class Game:
 
     def think(self, latest_boards, color):
         mcts = MCTS(self.game_engine, self.evaluator, [latest_boards, color], self.size ** 2 + 1, inverse=True)
-        mcts.search(max_step=20)
+        mcts.search(max_step=100)
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
         choice = np.random.choice(self.size ** 2 + 1, 1, p=prob).tolist()[0]
