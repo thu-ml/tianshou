@@ -1,17 +1,16 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
 
 import tensorflow as tf
-import numpy as np
-import time
 import gym
 
 # our lib imports here!
 import sys
 sys.path.append('..')
-import tianshou.core.losses as losses
+from tianshou.core import losses
 from tianshou.data.batch import Batch
 import tianshou.data.advantage_estimation as advantage_estimation
-import tianshou.core.policy as policy
+import tianshou.core.policy.stochastic as policy  # TODO: fix imports as zhusuan so that only need to import to policy
 
 
 def policy_net(observation, action_dim, scope=None):
