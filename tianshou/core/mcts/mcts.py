@@ -37,7 +37,8 @@ class UCTNode(MCTSNode):
         self.Q = np.zeros([action_num])
         self.W = np.zeros([action_num])
         self.N = np.zeros([action_num])
-        self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
+        self.c_puct = c_puct
+        self.ucb = self.Q + self.c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
         self.mask = None
         self.elapse_time = 0
         self.mcts = mcts
