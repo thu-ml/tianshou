@@ -15,7 +15,7 @@ __all__ = [
     'QValuePolicy',
 ]
 
-# TODO: separate actor and critic, we should focus on it once we finish the basic module.
+# TODO: a even more "base" class for policy
 
 
 class QValuePolicy(object):
