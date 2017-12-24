@@ -3,7 +3,7 @@ import utils
 import copy
 import numpy as np
 from collections import deque
-
+import time
 '''
 Settings of the Go game.
 
@@ -214,7 +214,7 @@ class Go:
         # initialize the simulate_board from state
         history_boards, color = copy.deepcopy(state)
         if history_boards[-1] == history_boards[-2] and action is utils.PASS:
-            return None, 2 * (float(self.executor_get_score(history_boards[-1]) > 0)-0.5) * color
+            return None, 2 * (float(self.simple_executor_get_score(history_boards[-1]) > 0)-0.5) * color
         else:
             vertex = self._action2vertex(action)
             new_board = self._do_move(copy.deepcopy(history_boards[-1]), color, vertex)
@@ -285,10 +285,7 @@ class Go:
                 return utils.WHITE
 
     def executor_get_score(self, current_board):
-        '''
-            is_unknown_estimation: whether use nearby stone to predict the unknown
-            return score from BLACK perspective.
-        '''
+        #return score from BLACK perspective.
         _board = copy.deepcopy(current_board)
         while utils.EMPTY in _board:
             vertex = self._find_empty(_board)
@@ -310,7 +307,46 @@ class Go:
 
         return score
 
+
+    def simple_executor_get_score(self, current_board):
+        '''
+            can only be used for the empty group only have one single stone
+            return score from BLACK perspective.
+        '''
+        score = 0
+        for idx, color in enumerate(current_board):
+            if color == utils.EMPTY:
+                neighbors = self._neighbor(self._deflatten(idx))
+                color = current_board[self._flatten(neighbors[0])]
+            if color == utils.BLACK:
+                score += 1
+            elif color == utils.WHITE:
+                score -= 1
+        score -= self.komi
+        return score
+
+
 if __name__ == "__main__":
+    go = Go(size=9, komi=3.75, role = utils.BLACK)
+    endgame = [
+        1, 0, 1, 0, 1, 1, -1, 0, -1,
+        1, 1, 1, 1, 1, 1, -1, -1, -1,
+        0, 1, 1, 1, 1, -1, 0, -1, 0,
+        1, 1, 1, 1, 1, -1, -1, -1, -1,
+        1, -1, 1, -1, 1, 1, -1, -1, -1,
+        -1, -1, -1, -1, -1, 1, -1, 0, -1,
+        1, 1, 1, -1, -1, -1, -1, -1, -1,
+        1, 0, 1, 1, 1, 1, 1, -1, 0,
+        1, 1, 0, 1, -1, -1, -1, -1, -1
+    ]
+    time0 = time.time()
+    score = go.executor_get_score(endgame)
+    time1 = time.time()
+    print(score, time1 - time0)
+    score = go.new_executor_get_score(endgame)
+    time2 = time.time()
+    print(score, time2 - time1)
+    '''
     ### do unit test for Go class
     pure_test = [
         0, 1, 0, 1, 0, 1, 0, 0, 0,
@@ -349,3 +385,4 @@ if __name__ == "__main__":
     for i in range(7):
         print (go._is_eye(opponent_test, utils.BLACK, ot_qry[i]))
     print("Test of eye surrend by opponents\n")
+    '''
