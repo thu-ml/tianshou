@@ -1,3 +1,4 @@
 data
 checkpoints
 checkpoints_origin
+*.log

@@ -35,17 +35,16 @@ def vanilla_policy_gradient(sampled_action, reward, pi, baseline="None"):
     # TODO: Different baseline methods like REINFORCE, etc.
     return vanilla_policy_gradient_loss
 
-def dqn_loss(sampled_action, sampled_target, q_net):
+def dqn_loss(sampled_action, sampled_target, policy):
     """
     deep q-network
 
     :param sampled_action: placeholder of sampled actions during the interaction with the environment
     :param sampled_target: estimated Q(s,a)
-    :param q_net: current `policy` to be optimized
+    :param policy: current `policy` to be optimized
     :return:
     """
-    action_num = q_net.values_tensor().get_shape()[1]
-    sampled_q = tf.reduce_sum(q_net.values_tensor() * tf.one_hot(sampled_action, action_num), axis=1)
+    sampled_q = policy.q_net.value_tensor
     return tf.reduce_mean(tf.square(sampled_target - sampled_q))
 
 def deterministic_policy_gradient(sampled_state, critic):

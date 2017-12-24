@@ -7,7 +7,6 @@ import time
 import os
 import cPickle
 
-
 class Data(object):
     def __init__(self):
         self.boards = []
@@ -29,6 +28,7 @@ if __name__ == '__main__':
     parser.add_argument("--black_weight_path", type=str, default=None)
     parser.add_argument("--white_weight_path", type=str, default=None)
     parser.add_argument("--id", type=int, default=0)
+    parser.add_argument("--debug", type=bool, default=False)
     args = parser.parse_args()
 
     if not os.path.exists(args.result_path):
@@ -61,11 +61,13 @@ if __name__ == '__main__':
     white_role_name = 'white' + str(args.id)
 
     agent_v0 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--role=' + black_role_name, '--checkpoint_path=' + str(args.black_weight_path)],
+        ['python', '-u', 'player.py', '--role=' + black_role_name,
+         '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     agent_v1 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--role=' + white_role_name, '--checkpoint_path=' + str(args.white_weight_path)],
+        ['python', '-u', 'player.py', '--role=' + white_role_name,
+        '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     server_list = ""
@@ -87,27 +89,29 @@ if __name__ == '__main__':
 
     pattern = "[A-Z]{1}[0-9]{1}"
     space = re.compile("\s+")
-    size = 9
+    size = {"go":9, "reversi":8}
     show = ['.', 'X', 'O']
 
     evaluate_rounds = 1
     game_num = 0
     try:
-        while True:
+        #while True:
+        while game_num < evaluate_rounds:
             start_time = time.time()
             num = 0
             pass_flag = [False, False]
             print("Start game {}".format(game_num))
             # end the game if both palyer chose to pass, or play too much turns
-            while not (pass_flag[0] and pass_flag[1]) and num < size ** 2 * 2:
+            while not (pass_flag[0] and pass_flag[1]) and num < size["reversi"] ** 2 * 2:
                 turn = num % 2
                 board = player[turn].run_cmd(str(num) + ' show_board')
                 board = eval(board[board.index('['):board.index(']') + 1])
-                for i in range(size):
-                    for j in range(size):
-                        print show[board[i * size + j]] + " ",
+                for i in range(size["reversi"]):
+                    for j in range(size["reversi"]):
+                        print show[board[i * size["reversi"] + j]] + " ",
                     print "\n",
                 data.boards.append(board)
+                start_time = time.time()
                 move = player[turn].run_cmd(str(num) + ' genmove ' + color[turn] + '\n')
                 print role[turn] + " : " + str(move),
                 num += 1

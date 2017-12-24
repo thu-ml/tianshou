@@ -10,11 +10,14 @@ import copy
 import tensorflow as tf
 import numpy as np
 import sys, os
-import go
 import model
 from collections import deque
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 from tianshou.core.mcts.mcts import MCTS
+
+import go
+import reversi
+import time
 
 class Game:
     '''
@@ -23,23 +26,38 @@ class Game:
     TODO : Maybe merge with the engine class in future, 
     currently leave it untouched for interacting with Go UI.
     '''
-    def __init__(self, size=9, komi=3.75, checkpoint_path=None):
-        self.size = size
-        self.komi = komi
-        self.board = [utils.EMPTY] * (self.size ** 2)
-        self.history = []
-        self.latest_boards = deque(maxlen=8)
-        for _ in range(8):
+    def __init__(self, name="reversi", role="unknown", debug=False, checkpoint_path=None):
+        self.name = name
+        self.role = role
+        self.debug = debug
+        if self.name == "go":
+            self.size = 9
+            self.komi = 3.75
+            self.history = []
+            self.history_length = 8
+            self.game_engine = go.Go(size=self.size, komi=self.komi, role=self.role)
+            self.board = [utils.EMPTY] * (self.size ** 2)
+        elif self.name == "reversi":
+            self.size = 8
+            self.history_length = 1
+            self.history = []
+            self.game_engine = reversi.Reversi(size=self.size)
+            self.board = self.game_engine.get_board()
+        else:
+            raise ValueError(name + " is an unknown game...")
+
+        self.evaluator = model.ResNet(self.size, self.size ** 2 + 1, history_length=self.history_length)
+        self.latest_boards = deque(maxlen=self.history_length)
+        for _ in range(self.history_length):
             self.latest_boards.append(self.board)
-        self.evaluator = model.ResNet(self.size, self.size**2 + 1, history_length=8, checkpoint_path=checkpoint_path)
-        # self.evaluator = lambda state: self.sess.run([tf.nn.softmax(self.net.p), self.net.v],
-        #                                              feed_dict={self.net.x: state, self.net.is_training: False})
-        self.game_engine = go.Go(size=self.size, komi=self.komi)
 
     def clear(self):
-        self.board = [utils.EMPTY] * (self.size ** 2)
-        self.history = []
-        for _ in range(8):
+        if self.name == "go":
+            self.board = [utils.EMPTY] * (self.size ** 2)
+            self.history = []
+        if self.name == "reversi":
+            self.board = self.game_engine.get_board()
+        for _ in range(self.history_length):
             self.latest_boards.append(self.board)
 
     def set_size(self, n):
@@ -50,8 +68,9 @@ class Game:
         self.komi = k
 
     def think(self, latest_boards, color):
-        mcts = MCTS(self.game_engine, self.evaluator, [latest_boards, color], self.size ** 2 + 1, inverse=True)
-        mcts.search(max_step=20)
+        mcts = MCTS(self.game_engine, self.evaluator, [latest_boards, color],
+                    self.size ** 2 + 1, role=self.role, debug=self.debug, inverse=True)
+        mcts.search(max_step=100)
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
         choice = np.random.choice(self.size ** 2 + 1, 1, p=prob).tolist()[0]
@@ -65,7 +84,11 @@ class Game:
         # this function can be called directly to play the opponent's move
         if vertex == utils.PASS:
             return True
-        res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
+        # TODO this implementation is not very elegant
+        if self.name == "go":
+            res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
+        elif self.name == "reversi":
+            res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
         return res
 
     def think_play_move(self, color):
@@ -91,13 +114,14 @@ class Game:
             if row[i] < 10:
                 print(' ', end='')
             for j in range(self.size):
-                print(self.status2symbol(self.board[self._flatten((j + 1, i + 1))]), end='  ')
+                print(self.status2symbol(self.board[self.game_engine._flatten((j + 1, i + 1))]), end='  ')
             print('')
         sys.stdout.flush()
 
 if __name__ == "__main__":
-    g = Game(checkpoint_path='./checkpoints/')
-    g.show_board()
+    g = Game("go")
+    print(g.board)
+    g.clear()
     g.think_play_move(1)
     #file = open("debug.txt", "a")
     #file.write("mcts check\n")

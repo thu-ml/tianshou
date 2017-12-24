@@ -1,19 +1,34 @@
-from tianshou.core.policy.base import QValuePolicy
+from __future__ import absolute_import
+
+from .base import PolicyBase
 import tensorflow as tf
-import sys
-sys.path.append('..')
-import value_function.action_value as value_func
+from ..value_function.action_value import DQN
 
 
-class DQN_refactor(object):
+class DQNRefactor(PolicyBase):
     """
     use DQN from value_function as a member
     """
     def __init__(self, value_tensor, observation_placeholder, action_placeholder):
-        self._network = value_func.DQN(value_tensor, observation_placeholder, action_placeholder)
+        self._q_net = DQN(value_tensor, observation_placeholder, action_placeholder)
+        self._argmax_action = tf.argmax(value_tensor, axis=1)
+
+        super(DQNRefactor, self).__init__(observation_placeholder=observation_placeholder)
+
+    def act(self, observation, exploration=None):
+        sess = tf.get_default_session()
+        if not exploration:  # no exploration
+            action = sess.run(self._argmax_action, feed_dict={self._observation_placeholder: observation})
 
 
-class DQN(QValuePolicy):
+        return action
+
+    @property
+    def q_net(self):
+        return self._q_net
+
+
+class DQNOld(QValuePolicy):
     """
     The policy as in DQN
     """
