@@ -26,6 +26,7 @@ if __name__ == '__main__':
     parser.add_argument("--checkpoint_path", type=str, default=None)
     parser.add_argument("--role", type=str, default="unknown")
     parser.add_argument("--debug", type=str, default=False)
+    parser.add_argument("--game", type=str, default=False)
     args = parser.parse_args()
 
     if args.checkpoint_path == 'None':
@@ -33,7 +34,7 @@ if __name__ == '__main__':
     debug = False
     if args.debug == "True":
         debug = True
-    game = Game(role=args.role, checkpoint_path=args.checkpoint_path, debug=debug)
+    game = Game(name=args.game, role=args.role, checkpoint_path=args.checkpoint_path, debug=debug)
     engine = GTPEngine(game_obj=game, name='tianshou', version=0)
 
     daemon = Pyro4.Daemon()                # make a Pyro daemon
