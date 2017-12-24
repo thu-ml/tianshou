@@ -33,8 +33,8 @@ class Game:
         if self.name == "go":
             self.size = 9
             self.komi = 3.75
-            self.history = []
             self.history_length = 8
+            self.history = []
             self.game_engine = go.Go(size=self.size, komi=self.komi, role=self.role)
             self.board = [utils.EMPTY] * (self.size ** 2)
         elif self.name == "reversi":

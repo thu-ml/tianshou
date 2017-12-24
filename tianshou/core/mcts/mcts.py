@@ -1,23 +1,16 @@
 import numpy as np
 import math
 import time
+import sys
+import collections
 
 c_puct = 5
 
-
-def list2tuple(list):
-    try:
-        return tuple(list2tuple(sub) for sub in list)
-    except TypeError:
-        return list
-
-
-def tuple2list(tuple):
-    try:
-        return list(tuple2list(sub) for sub in tuple)
-    except TypeError:
-        return tuple
-
+def list2tuple(obj):
+    if isinstance(obj, collections.Hashable):
+        return obj
+    else:
+        return tuple(list2tuple(sub) for sub in obj)
 
 class MCTSNode(object):
     def __init__(self, parent, action, state, action_num, prior, inverse=False):
@@ -37,7 +30,6 @@ class MCTSNode(object):
 
     def valid_mask(self, simulator):
         pass
-
 
 class UCTNode(MCTSNode):
     def __init__(self, parent, action, state, action_num, prior, mcts, inverse=False):
@@ -119,12 +111,7 @@ class ActionNode(object):
         t2 = time.time()
         self.mcts.ndarray2list_time += t1 - t0
         self.mcts.list2tuple_time += t2 - t1
-
-    def type_conversion_to_origin(self):
-        if isinstance(self.state_type, np.ndarray):
-            self.next_state = np.array(self.next_state)
-        if isinstance(self.state_type, np.ndarray):
-            self.next_state = tuple2list(self.next_state)
+        self.mcts.check += sys.getsizeof(object)
 
     def selection(self, simulator):
         head = time.time()
