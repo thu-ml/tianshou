@@ -99,7 +99,7 @@ class Go:
 
     def _check_global_isomorphous(self, history_boards, current_board, color, vertex):
         repeat = False
-        next_board = copy.copy(current_board)
+        next_board = copy.deepcopy(current_board)
         next_board[self._flatten(vertex)] = color
         self._process_board(next_board, color, vertex)
         if next_board in history_boards:
