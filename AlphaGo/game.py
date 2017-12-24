@@ -26,7 +26,7 @@ class Game:
     TODO : Maybe merge with the engine class in future, 
     currently leave it untouched for interacting with Go UI.
     '''
-    def __init__(self, name="reversi", role="unknown", debug=False, checkpoint_path=None):
+    def __init__(self, name=None, role=None, debug=False, checkpoint_path=None):
         self.name = name
         self.role = role
         self.debug = debug
@@ -119,10 +119,7 @@ class Game:
         sys.stdout.flush()
 
 if __name__ == "__main__":
-    g = Game("go")
-    print(g.board)
-    g.clear()
-    g.think_play_move(1)
+    print("test game.py")
     #file = open("debug.txt", "a")
     #file.write("mcts check\n")
     #file.close()

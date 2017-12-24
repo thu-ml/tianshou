@@ -198,5 +198,4 @@ class GTPEngine():
 
 
 if __name__ == "main":
-    game = Game()
-    engine = GTPEngine(game_obj=game)
+    print ("test engine.py")

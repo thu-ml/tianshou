@@ -40,28 +40,27 @@ class MCTSNode(object):
 
 
 class UCTNode(MCTSNode):
-    def __init__(self, parent, action, state, action_num, prior, debug=False, inverse=False):
+    def __init__(self, parent, action, state, action_num, prior, mcts, inverse=False):
         super(UCTNode, self).__init__(parent, action, state, action_num, prior, inverse)
         self.Q = np.zeros([action_num])
         self.W = np.zeros([action_num])
         self.N = np.zeros([action_num])
         self.ucb = self.Q + c_puct * self.prior * math.sqrt(np.sum(self.N)) / (self.N + 1)
         self.mask = None
-        self.debug=debug
         self.elapse_time = 0
-
-    def clear_elapse_time(self):
-        self.elapse_time = 0
+        self.mcts = mcts
 
     def selection(self, simulator):
         head = time.time()
         self.valid_mask(simulator)
-        self.elapse_time += time.time() - head
+        self.mcts.valid_mask_time += time.time() - head
         action = np.argmax(self.ucb)
         if action in self.children.keys():
+            self.mcts.state_selection_time += time.time() - head
             return self.children[action].selection(simulator)
         else:
-            self.children[action] = ActionNode(self, action)
+            self.children[action] = ActionNode(self, action, mcts=self.mcts)
+            self.mcts.state_selection_time += time.time() - head
             return self.children[action].selection(simulator)
 
     def backpropagation(self, action):
@@ -100,7 +99,7 @@ class TSNode(MCTSNode):
 
 
 class ActionNode(object):
-    def __init__(self, parent, action):
+    def __init__(self, parent, action, mcts):
         self.parent = parent
         self.action = action
         self.children = {}
@@ -108,12 +107,18 @@ class ActionNode(object):
         self.origin_state = None
         self.state_type = None
         self.reward = 0
+        self.mcts = mcts
 
     def type_conversion_to_tuple(self):
+        t0 = time.time()
         if isinstance(self.next_state, np.ndarray):
             self.next_state = self.next_state.tolist()
+        t1 = time.time()
         if isinstance(self.next_state, list):
             self.next_state = list2tuple(self.next_state)
+        t2 = time.time()
+        self.mcts.ndarray2list_time += t1 - t0
+        self.mcts.list2tuple_time += t2 - t1
 
     def type_conversion_to_origin(self):
         if isinstance(self.state_type, np.ndarray):
@@ -122,23 +127,28 @@ class ActionNode(object):
             self.next_state = tuple2list(self.next_state)
 
     def selection(self, simulator):
+        head = time.time()
         self.next_state, self.reward = simulator.simulate_step_forward(self.parent.state, self.action)
+        self.mcts.simulate_sf_time += time.time() - head
         self.origin_state = self.next_state
         self.state_type = type(self.next_state)
         self.type_conversion_to_tuple()
         if self.next_state is not None:
             if self.next_state in self.children.keys():
+                self.mcts.action_selection_time += time.time() - head
                 return self.children[self.next_state].selection(simulator)
             else:
+                self.mcts.action_selection_time += time.time() - head
                 return self.parent, self.action
         else:
+            self.mcts.action_selection_time += time.time() - head
             return self.parent, self.action
 
     def expansion(self, evaluator, action_num):
         if self.next_state is not None:
             prior, value = evaluator(self.next_state)
             self.children[self.next_state] = UCTNode(self, self.action, self.origin_state, action_num, prior,
-                                                     self.parent.inverse)
+                                                     mcts=self.mcts, inverse=self.parent.inverse)
             return value
         else:
             return 0.
@@ -160,10 +170,22 @@ class MCTS(object):
         if method == "":
             self.root = root
         if method == "UCT":
-            self.root = UCTNode(None, None, root, action_num, prior, self.debug, inverse=inverse)
+            self.root = UCTNode(None, None, root, action_num, prior, mcts=self, inverse=inverse)
         if method == "TS":
             self.root = TSNode(None, None, root, action_num, prior, inverse=inverse)
         self.inverse = inverse
+
+        # time spend on each step
+        self.selection_time = 0
+        self.expansion_time = 0
+        self.backpropagation_time = 0
+        self.action_selection_time = 0
+        self.state_selection_time = 0
+        self.simulate_sf_time = 0
+        self.valid_mask_time = 0
+        self.ndarray2list_time = 0
+        self.list2tuple_time = 0
+        self.check = 0
 
     def search(self, max_step=None, max_time=None):
         step = 0
@@ -175,23 +197,25 @@ class MCTS(object):
         if max_step is None and max_time is None:
             raise ValueError("Need a stop criteria!")
 
-        selection_time = 0
-        expansion_time = 0
-        backprop_time = 0
-        self.root.clear_elapse_time()
         while step < max_step and time.time() - start_time < max_step:
             sel_time, exp_time, back_time = self._expand()
-            selection_time += sel_time
-            expansion_time += exp_time
-            backprop_time += back_time
+            self.selection_time += sel_time
+            self.expansion_time += exp_time
+            self.backpropagation_time += back_time
             step += 1
         if (self.debug):
-            file = open("debug.txt", "a")
+            file = open("mcts_profiling.txt", "a")
             file.write("[" + str(self.role) + "]"
-                       + " selection : " + str(selection_time) + "\t"
-                       + " validmask : " + str(self.root.elapse_time) + "\t"
-                       + " expansion : " + str(expansion_time) + "\t"
-                       + " backprop  : " + str(backprop_time) + "\t"
+                       + " sel  " + '%.3f' % self.selection_time + "  "
+                       + " sel_sta  " + '%.3f' % self.state_selection_time + "  "
+                       + " valid  " + '%.3f' % self.valid_mask_time + "  "
+                       + " sel_act  " + '%.3f' % self.action_selection_time + "  "
+                       + " array2list  " + '%.4f' % self.ndarray2list_time + "  "
+                       + " check " + str(self.check) + "  "
+                       + " list2tuple  " + '%.4f' % self.list2tuple_time + " \t"
+                       + " forward  " + '%.3f' % self.simulate_sf_time + "  "
+                       + " exp  " + '%.3f' % self.expansion_time + "  "
+                       + " bak  " + '%.3f' % self.backpropagation_time + "  "
                        + "\n")
             file.close()
 
