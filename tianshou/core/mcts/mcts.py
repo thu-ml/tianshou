@@ -110,15 +110,15 @@ class ActionNode(object):
         self.reward = 0
 
     def type_conversion_to_tuple(self):
-        if type(self.next_state) is np.ndarray:
+        if isinstance(self.next_state, np.ndarray):
             self.next_state = self.next_state.tolist()
-        if type(self.next_state) is list:
+        if isinstance(self.next_state, list):
             self.next_state = list2tuple(self.next_state)
 
     def type_conversion_to_origin(self):
-        if self.state_type is np.ndarray:
+        if isinstance(self.state_type, np.ndarray):
             self.next_state = np.array(self.next_state)
-        if self.state_type is list:
+        if isinstance(self.state_type, np.ndarray):
             self.next_state = tuple2list(self.next_state)
 
     def selection(self, simulator):

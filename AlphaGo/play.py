@@ -89,7 +89,7 @@ if __name__ == '__main__':
 
     pattern = "[A-Z]{1}[0-9]{1}"
     space = re.compile("\s+")
-    size = 9
+    size = {"go":9, "reversi":8}
     show = ['.', 'X', 'O']
 
     evaluate_rounds = 1
@@ -102,13 +102,13 @@ if __name__ == '__main__':
             pass_flag = [False, False]
             print("Start game {}".format(game_num))
             # end the game if both palyer chose to pass, or play too much turns
-            while not (pass_flag[0] and pass_flag[1]) and num < size ** 2 * 2:
+            while not (pass_flag[0] and pass_flag[1]) and num < size["reversi"] ** 2 * 2:
                 turn = num % 2
                 board = player[turn].run_cmd(str(num) + ' show_board')
                 board = eval(board[board.index('['):board.index(']') + 1])
-                for i in range(size):
-                    for j in range(size):
-                        print show[board[i * size + j]] + " ",
+                for i in range(size["reversi"]):
+                    for j in range(size["reversi"]):
+                        print show[board[i * size["reversi"] + j]] + " ",
                     print "\n",
                 data.boards.append(board)
                 start_time = time.time()

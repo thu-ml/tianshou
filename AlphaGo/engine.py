@@ -6,6 +6,8 @@
 #
 
 from game import Game
+import copy
+import numpy as np
 import utils
 
 
@@ -186,7 +188,10 @@ class GTPEngine():
         return self._game.game_engine.executor_get_score(self._game.board), True
 
     def cmd_show_board(self, args, **kwargs):
-        return self._game.board, True
+        board = copy.deepcopy(self._game.board)
+        if isinstance(board, np.ndarray):
+            board = board.flatten().tolist()
+        return board, True
 
     def cmd_get_prob(self, args, **kwargs):
         return self._game.prob, True

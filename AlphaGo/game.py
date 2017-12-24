@@ -26,33 +26,37 @@ class Game:
     TODO : Maybe merge with the engine class in future, 
     currently leave it untouched for interacting with Go UI.
     '''
-    def __init__(self, name="go", role="unknown", debug=False, checkpoint_path=None):
+    def __init__(self, name="reversi", role="unknown", debug=False, checkpoint_path=None):
         self.name = name
         self.role = role
         self.debug = debug
         if self.name == "go":
             self.size = 9
             self.komi = 3.75
-            self.board = [utils.EMPTY] * (self.size ** 2)
             self.history = []
             self.history_length = 8
-            self.latest_boards = deque(maxlen=8)
-            for _ in range(8):
-                self.latest_boards.append(self.board)
             self.game_engine = go.Go(size=self.size, komi=self.komi, role=self.role)
+            self.board = [utils.EMPTY] * (self.size ** 2)
         elif self.name == "reversi":
             self.size = 8
             self.history_length = 1
-            self.game_engine = reversi.Reversi()
+            self.history = []
+            self.game_engine = reversi.Reversi(size=self.size)
             self.board = self.game_engine.get_board()
         else:
             raise ValueError(name + " is an unknown game...")
 
         self.evaluator = model.ResNet(self.size, self.size ** 2 + 1, history_length=self.history_length)
+        self.latest_boards = deque(maxlen=self.history_length)
+        for _ in range(self.history_length):
+            self.latest_boards.append(self.board)
 
     def clear(self):
-        self.board = [utils.EMPTY] * (self.size ** 2)
-        self.history = []
+        if self.name == "go":
+            self.board = [utils.EMPTY] * (self.size ** 2)
+            self.history = []
+        if self.name == "reversi":
+            self.board = self.game_engine.get_board()
         for _ in range(self.history_length):
             self.latest_boards.append(self.board)
 
@@ -84,7 +88,7 @@ class Game:
         if self.name == "go":
             res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
         elif self.name == "reversi":
-            res = self.game_engine.executor_do_move(self.board, color, vertex)
+            res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
         return res
 
     def think_play_move(self, color):
@@ -110,13 +114,14 @@ class Game:
             if row[i] < 10:
                 print(' ', end='')
             for j in range(self.size):
-                print(self.status2symbol(self.board[self._flatten((j + 1, i + 1))]), end='  ')
+                print(self.status2symbol(self.board[self.game_engine._flatten((j + 1, i + 1))]), end='  ')
             print('')
         sys.stdout.flush()
 
 if __name__ == "__main__":
-    g = Game()
-    g.show_board()
+    g = Game("go")
+    print(g.board)
+    g.clear()
     g.think_play_move(1)
     #file = open("debug.txt", "a")
     #file.write("mcts check\n")

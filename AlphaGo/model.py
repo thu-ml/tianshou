@@ -173,10 +173,10 @@ class ResNet(object):
         """
         state = np.zeros([1, self.board_size, self.board_size, 2 * self.history_length + 1])
         for i in range(self.history_length):
-            state[0, :, :, i] = np.array(np.array(history[i]) == np.ones(self.board_size ** 2)).reshape(self.board_size,
+            state[0, :, :, i] = np.array(np.array(history[i]).flatten() == np.ones(self.board_size ** 2)).reshape(self.board_size,
                                                                                                         self.board_size)
             state[0, :, :, i + self.history_length] = np.array(
-                np.array(history[i]) == -np.ones(self.board_size ** 2)).reshape(self.board_size, self.board_size)
+                np.array(history[i]).flatten() == -np.ones(self.board_size ** 2)).reshape(self.board_size, self.board_size)
         # TODO: need a config to specify the BLACK and WHITE
         if color == +1:
             state[0, :, :, 2 * self.history_length] = np.ones([self.board_size, self.board_size])
@@ -301,7 +301,7 @@ class ResNet(object):
         :return:
         """
 
-        new_board = copy.copy(board)
+        new_board = copy.deepcopy(board)
         if new_board.ndim == 3:
             new_board = np.expand_dims(new_board, axis=0)
 
@@ -331,7 +331,7 @@ class ResNet(object):
         :param orientation: an integer, which orientation to reflect
         :return:
         """
-        new_board = copy.copy(board)
+        new_board = copy.deepcopy(board)
         for _ in range(times):
             if orientation == 0:
                 new_board = new_board[:, ::-1]

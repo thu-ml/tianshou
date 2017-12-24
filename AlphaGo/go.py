@@ -212,12 +212,12 @@ class Go:
 
     def simulate_step_forward(self, state, action):
         # initialize the simulate_board from state
-        history_boards, color = state
+        history_boards, color = copy.deepcopy(state)
         if history_boards[-1] == history_boards[-2] and action is utils.PASS:
             return None, 2 * (float(self.executor_get_score(history_boards[-1]) > 0)-0.5) * color
         else:
             vertex = self._action2vertex(action)
-            new_board = self._do_move(copy.copy(history_boards[-1]), color, vertex)
+            new_board = self._do_move(copy.deepcopy(history_boards[-1]), color, vertex)
             history_boards.append(new_board)
             new_color = -color
             return [history_boards, new_color], 0
@@ -227,8 +227,8 @@ class Go:
             return False
         current_board[self._flatten(vertex)] = color
         self._process_board(current_board, color, vertex)
-        history.append(copy.copy(current_board))
-        latest_boards.append(copy.copy(current_board))
+        history.append(copy.deepcopy(current_board))
+        latest_boards.append(copy.deepcopy(current_board))
         return True
 
     def _find_empty(self, current_board):
