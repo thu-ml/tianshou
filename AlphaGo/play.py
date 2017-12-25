@@ -92,7 +92,7 @@ if __name__ == '__main__':
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     agent_v1 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--game=' + game_name, '--role=' + white_role_name,
+        ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + white_role_name,
         '--checkpoint_path=' + str(args.white_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -183,9 +183,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
 
-    ns = Pyro4.locateNS()
-    ns.unregister(black_role_name)
-    ns.unregister(white_role_name)
     subprocess.call(["kill", "-9", str(agent_v0.pid)])
     subprocess.call(["kill", "-9", str(agent_v1.pid)])
     print("Kill all player, finish all game.")
