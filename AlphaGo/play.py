@@ -143,7 +143,7 @@ if __name__ == '__main__':
                 prob = eval(prob)
                 data.probs.append(prob)
             score = player[turn].run_cmd(str(num) + ' get_score')
-            print("Finished : ", score.split(" ")[1])
+            print("Finished : {}".format(score.split(" ")[1]))
             # TODO: generalize the player
             if eval(score.split(" ")[1]) > 0:
                 data.winner = 1
