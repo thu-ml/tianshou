@@ -5,7 +5,14 @@ import re
 import Pyro4
 import time
 import os
-import cPickle
+
+python_version = sys.version_info
+
+if python_version < (3, 0):
+    import cPickle
+else:
+    import _pickle as cPickle
+
 
 
 class Data(object):
@@ -55,7 +62,7 @@ if __name__ == '__main__':
     # start a name server if no name server exists
     if len(os.popen('ps aux | grep pyro4-ns | grep -v grep').readlines()) == 0:
         start_new_server = subprocess.Popen(['pyro4-ns', '&'])
-        print "Start Name Sever : " + str(start_new_server.pid)  # + str(start_new_server.wait())
+        print("Start Name Sever : " + str(start_new_server.pid))  # + str(start_new_server.wait())
         time.sleep(1)
 
     # start two different player with different network weights.
@@ -85,18 +92,21 @@ if __name__ == '__main__':
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     agent_v1 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + white_role_name,
-         '--checkpoint_path=' + str(args.white_weight_path), '--debug=' + str(args.debug)],
+        ['python', '-u', 'player.py', '--game=' + game_name, '--role=' + white_role_name,
+        '--checkpoint_path=' + str(args.white_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     server_list = ""
     while (black_role_name not in server_list) or (white_role_name not in server_list):
-        server_list = subprocess.check_output(['pyro4-nsc', 'list'])
-        print "Waiting for the server start..."
+        if python_version < (3, 0):
+            server_list = subprocess.check_output(['pyro4-nsc', 'list'])
+        else:
+            server_list = subprocess.check_output(['pyro4-nsc', 'list'])
+        print("Waiting for the server start...")
         time.sleep(1)
-    print server_list
-    print "Start black player at : " + str(agent_v0.pid)
-    print "Start white player at : " + str(agent_v1.pid)
+    print(server_list)
+    print("Start black player at : " + str(agent_v0.pid))
+    print("Start white player at : " + str(agent_v1.pid))
 
     data = Data()
     player = [None] * 2
@@ -132,7 +142,7 @@ if __name__ == '__main__':
                 data.boards.append(board)
                 start_time = time.time()
                 move = player[turn].run_cmd(str(num) + ' genmove ' + color[turn] + '\n')
-                print role[turn] + " : " + str(move),
+                print(role[turn] + " : " + str(move)),
                 num += 1
                 match = re.search(pattern, move)
                 if match is not None:
@@ -151,7 +161,7 @@ if __name__ == '__main__':
                 prob = eval(prob)
                 data.probs.append(prob)
             score = player[turn].run_cmd(str(num) + ' get_score')
-            print "Finished : ", score.split(" ")[1]
+            print("Finished : {}".format(score.split(" ")[1]))
             # TODO: generalize the player
             if eval(score.split(" ")[1]) > 0:
                 data.winner = 1
@@ -178,4 +188,4 @@ if __name__ == '__main__':
     ns.unregister(white_role_name)
     subprocess.call(["kill", "-9", str(agent_v0.pid)])
     subprocess.call(["kill", "-9", str(agent_v1.pid)])
-    print "Kill all player, finish all game."
+    print("Kill all player, finish all game.")
