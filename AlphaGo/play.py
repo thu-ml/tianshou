@@ -7,6 +7,7 @@ import time
 import os
 import cPickle
 
+
 class Data(object):
     def __init__(self):
         self.boards = []
@@ -24,15 +25,16 @@ if __name__ == '__main__':
     """
     # TODO : we should set the network path in a more configurable way.
     parser = argparse.ArgumentParser()
-    parser.add_argument("--result_path", type=str, default="./data/")
+    parser.add_argument("--data_path", type=str, default="./data/")
     parser.add_argument("--black_weight_path", type=str, default=None)
     parser.add_argument("--white_weight_path", type=str, default=None)
-    parser.add_argument("--id", type=int, default=0)
+    parser.add_argument("--id", type=int, default=-1)
     parser.add_argument("--debug", type=bool, default=False)
+    parser.add_argument("--game", type=str, default="go")
     args = parser.parse_args()
 
-    if not os.path.exists(args.result_path):
-        os.mkdir(args.result_path)
+    if not os.path.exists(args.data_path):
+        os.mkdir(args.data_path)
     # black_weight_path = "./checkpoints"
     # white_weight_path = "./checkpoints_origin"
     if args.black_weight_path is not None and (not os.path.exists(args.black_weight_path)):
@@ -57,18 +59,34 @@ if __name__ == '__main__':
         time.sleep(1)
 
     # start two different player with different network weights.
+    server_list = subprocess.check_output(['pyro4-nsc', 'list'])
+    index = []
+    if server_list is not None:
+        server_list = server_list.split("\n")[3:-2]
+        for s in server_list:
+            id = s.split(" ")[0][5:]
+            index.append(eval(id))
+        index.sort()
+    if args.id == -1:
+        if index:
+            args.id = index[-1] + 1
+        else:
+            args.id = 0
+    else:
+        if args.id in index:
+            raise ValueError("Name exists in name server!")
+
     black_role_name = 'black' + str(args.id)
     white_role_name = 'white' + str(args.id)
 
-    game_name = 'go'
     agent_v0 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--game=' + game_name, '--role=' + black_role_name,
+        ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + black_role_name,
          '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     agent_v1 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--game=' + game_name, '--role=' + white_role_name,
-        '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
+        ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + white_role_name,
+         '--checkpoint_path=' + str(args.white_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     server_list = ""
@@ -103,13 +121,13 @@ if __name__ == '__main__':
             pass_flag = [False, False]
             print("Start game {}".format(game_num))
             # end the game if both palyer chose to pass, or play too much turns
-            while not (pass_flag[0] and pass_flag[1]) and num < size[game_name] ** 2 * 2:
+            while not (pass_flag[0] and pass_flag[1]) and num < size[args.game] ** 2 * 2:
                 turn = num % 2
                 board = player[turn].run_cmd(str(num) + ' show_board')
                 board = eval(board[board.index('['):board.index(']') + 1])
-                for i in range(size[game_name]):
-                    for j in range(size[game_name]):
-                        print show[board[i * size[game_name] + j]] + " ",
+                for i in range(size[args.game]):
+                    for j in range(size[args.game]):
+                        print show[board[i * size[args.game] + j]] + " ",
                     print "\n",
                 data.boards.append(board)
                 start_time = time.time()
@@ -141,24 +159,23 @@ if __name__ == '__main__':
                 data.winner = -1
             player[0].run_cmd(str(num) + ' clear_board')
             player[1].run_cmd(str(num) + ' clear_board')
-            file_list = os.listdir(args.result_path)
+            file_list = os.listdir(args.data_path)
             if not file_list:
                 data_num = 0
             else:
-                file_list.sort(key=lambda file: os.path.getmtime(args.result_path + file) if not os.path.isdir(
-                    args.result_path + file) else 0)
+                file_list.sort(key=lambda file: os.path.getmtime(args.data_path + file) if not os.path.isdir(
+                    args.data_path + file) else 0)
                 data_num = eval(file_list[-1][:-4]) + 1
             with open("./data/" + str(data_num) + ".pkl", "wb") as file:
                 picklestring = cPickle.dump(data, file)
             data.reset()
             game_num += 1
+    except KeyboardInterrupt:
+        pass
 
-    except Exception as e:
-        print(e)
-        subprocess.call(["kill", "-9", str(agent_v0.pid)])
-        subprocess.call(["kill", "-9", str(agent_v1.pid)])
-        print "Kill all player, finish all game."
-
+    ns = Pyro4.locateNS()
+    ns.unregister(black_role_name)
+    ns.unregister(white_role_name)
     subprocess.call(["kill", "-9", str(agent_v0.pid)])
     subprocess.call(["kill", "-9", str(agent_v1.pid)])
     print "Kill all player, finish all game."
