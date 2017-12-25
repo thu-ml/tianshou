@@ -75,7 +75,7 @@ if __name__ == '__main__':
 
     agent_v1 = subprocess.Popen(
         ['python', '-u', 'player.py', '--game=' + game_name, '--role=' + white_role_name,
-        '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
+        '--checkpoint_path=' + str(args.white_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     server_list = ""
@@ -119,12 +119,12 @@ if __name__ == '__main__':
                 board = eval(board[board.index('['):board.index(']') + 1])
                 for i in range(size[game_name]):
                     for j in range(size[game_name]):
-                        print(show[board[i * size[game_name] + j]] + " ",)
-                    print("\n",)
+                        print(show[board[i * size[game_name] + j]] + " "),
+                    print("\n"),
                 data.boards.append(board)
                 start_time = time.time()
                 move = player[turn].run_cmd(str(num) + ' genmove ' + color[turn] + '\n')
-                print(role[turn] + " : " + str(move),)
+                print(role[turn] + " : " + str(move)),
                 num += 1
                 match = re.search(pattern, move)
                 if match is not None:
