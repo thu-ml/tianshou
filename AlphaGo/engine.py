@@ -13,8 +13,6 @@ import utils
 
 class GTPEngine():
     def __init__(self, **kwargs):
-        self.size = 9
-        self.komi = 6.5
         try:
             self._game = kwargs['game_obj']
             self._game.clear()
@@ -143,11 +141,9 @@ class GTPEngine():
         self.disconnect = True
         return None, True
 
-    def cmd_boardsize(self, args, **kwargs):
-        if args.isdigit():
-            size = int(args)
-            self.size = size
-            self._game.set_size(size)
+    def cmd_boardsize(self, board_size, **kwargs):
+        if board_size.isdigit():
+            self._game.set_size(int(board_size))
             return None, True
         else:
             return 'non digit size', False
@@ -156,11 +152,9 @@ class GTPEngine():
         self._game.clear()
         return None, True
 
-    def cmd_komi(self, args, **kwargs):
+    def cmd_komi(self, komi, **kwargs):
         try:
-            komi = float(args)
-            self.komi = komi
-            self._game.set_komi(komi)
+            self._game.set_komi(float(komi))
             return None, True
         except ValueError:
             raise ValueError("syntax error")

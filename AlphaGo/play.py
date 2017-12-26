@@ -5,6 +5,8 @@ import re
 import Pyro4
 import time
 import os
+import utils
+from time import gmtime, strftime
 
 python_version = sys.version_info
 
@@ -12,8 +14,6 @@ if python_version < (3, 0):
     import cPickle
 else:
     import _pickle as cPickle
-
-
 
 class Data(object):
     def __init__(self):
@@ -45,9 +45,9 @@ if __name__ == '__main__':
     # black_weight_path = "./checkpoints"
     # white_weight_path = "./checkpoints_origin"
     if args.black_weight_path is not None and (not os.path.exists(args.black_weight_path)):
-        raise ValueError("Can't not find the network weights for black player.")
+        raise ValueError("Can't find the network weights for black player.")
     if args.white_weight_path is not None and (not os.path.exists(args.white_weight_path)):
-        raise ValueError("Can't not find the network weights for white player.")
+        raise ValueError("Can't find the network weights for white player.")
 
     # kill the old server
     # kill_old_server = subprocess.Popen(['killall', 'pyro4-ns'])
@@ -86,27 +86,29 @@ if __name__ == '__main__':
     black_role_name = 'black' + str(args.id)
     white_role_name = 'white' + str(args.id)
 
-    agent_v0 = subprocess.Popen(
+    #TODO : check if we can get the output of player from the stdout, for debug convenience
+    black_player = subprocess.Popen(
         ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + black_role_name,
          '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    agent_v1 = subprocess.Popen(
+    white_player = subprocess.Popen(
         ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + white_role_name,
-        '--checkpoint_path=' + str(args.white_weight_path), '--debug=' + str(args.debug)],
+         '--checkpoint_path=' + str(args.white_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     server_list = ""
     while (black_role_name not in server_list) or (white_role_name not in server_list):
         if python_version < (3, 0):
+            # TODO : @renyong what is the difference between those two options?
             server_list = subprocess.check_output(['pyro4-nsc', 'list'])
         else:
             server_list = subprocess.check_output(['pyro4-nsc', 'list'])
         print("Waiting for the server start...")
         time.sleep(1)
     print(server_list)
-    print("Start black player at : " + str(agent_v0.pid))
-    print("Start white player at : " + str(agent_v1.pid))
+    print("Start black player at : " + str(black_player.pid))
+    print("Start white player at : " + str(white_player.pid))
 
     data = Data()
     player = [None] * 2
@@ -121,7 +123,7 @@ if __name__ == '__main__':
     size = {"go":9, "reversi":8}
     show = ['.', 'X', 'O']
 
-    evaluate_rounds = 1
+    evaluate_rounds = 100
     game_num = 0
     try:
         #while True:
@@ -141,8 +143,8 @@ if __name__ == '__main__':
                     print "\n",
                 data.boards.append(board)
                 start_time = time.time()
-                move = player[turn].run_cmd(str(num) + ' genmove ' + color[turn] + '\n')
-                print(role[turn] + " : " + str(move)),
+                move = player[turn].run_cmd(str(num) + ' genmove ' + color[turn])[:-1]
+                print("\n" + role[turn] + " : " + str(move)),
                 num += 1
                 match = re.search(pattern, move)
                 if match is not None:
@@ -160,29 +162,23 @@ if __name__ == '__main__':
                 prob = prob.replace('],', ']')
                 prob = eval(prob)
                 data.probs.append(prob)
-            score = player[turn].run_cmd(str(num) + ' get_score')
+            score = player[0].run_cmd(str(num) + ' get_score')
             print("Finished : {}".format(score.split(" ")[1]))
-            # TODO: generalize the player
             if eval(score.split(" ")[1]) > 0:
-                data.winner = 1
+                data.winner = utils.BLACK
             if eval(score.split(" ")[1]) < 0:
-                data.winner = -1
+                data.winner = utils.WHITE
             player[0].run_cmd(str(num) + ' clear_board')
             player[1].run_cmd(str(num) + ' clear_board')
             file_list = os.listdir(args.data_path)
-            if not file_list:
-                data_num = 0
-            else:
-                file_list.sort(key=lambda file: os.path.getmtime(args.data_path + file) if not os.path.isdir(
-                    args.data_path + file) else 0)
-                data_num = eval(file_list[-1][:-4]) + 1
-            with open("./data/" + str(data_num) + ".pkl", "wb") as file:
+            current_time = strftime("%Y%m%d_%H%M%S", gmtime())
+            with open(args.data_path + current_time + ".pkl", "wb") as file:
                 picklestring = cPickle.dump(data, file)
             data.reset()
             game_num += 1
     except KeyboardInterrupt:
         pass
 
-    subprocess.call(["kill", "-9", str(agent_v0.pid)])
-    subprocess.call(["kill", "-9", str(agent_v1.pid)])
+    subprocess.call(["kill", "-9", str(black_player.pid)])
+    subprocess.call(["kill", "-9", str(white_player.pid)])
     print("Kill all player, finish all game.")

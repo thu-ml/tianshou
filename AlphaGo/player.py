@@ -1,8 +1,5 @@
 import argparse
-import time
-import sys
 import Pyro4
-
 from game import Game
 from engine import GTPEngine
 
@@ -17,9 +14,7 @@ class Player(object):
         self.engine = kwargs['engine']
 
     def run_cmd(self, command):
-        #return "inside the Player of player.py"
         return self.engine.run_cmd(command)
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -29,12 +24,7 @@ if __name__ == '__main__':
     parser.add_argument("--game", type=str, default=False)
     args = parser.parse_args()
 
-    if args.checkpoint_path == 'None':
-        args.checkpoint_path = None
-    debug = False
-    if args.debug == "True":
-        debug = True
-    game = Game(name=args.game, role=args.role, checkpoint_path=args.checkpoint_path, debug=debug)
+    game = Game(name=args.game, role=args.role, checkpoint_path=eval(args.checkpoint_path), debug=eval(args.debug))
     engine = GTPEngine(game_obj=game, name='tianshou', version=0)
 
     daemon = Pyro4.Daemon()                # make a Pyro daemon
@@ -43,7 +33,7 @@ if __name__ == '__main__':
     print "Init " + args.role + " player finished"
     uri = daemon.register(player)          # register the greeting maker as a Pyro object
     print "Start on name " + args.role
-    ns.register(args.role, uri)       # register the object with a name in the name server
+    ns.register(args.role, uri)            # register the object with a name in the name server
     print "Start Request Loop " + str(uri)
     daemon.requestLoop()                   # start the event loop of the server to wait for calls
 
