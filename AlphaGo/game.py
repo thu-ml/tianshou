@@ -73,10 +73,10 @@ class Game:
         mcts.search(max_step=100)
         if self.debug:
             file = open("mcts_debug.log", 'ab')
-            np.savetxt(file, mcts.root.Q, header="\nQ value : ", fmt='%.4f', newline=", ")
-            np.savetxt(file, mcts.root.W, header="\nW value : ", fmt='%.4f', newline=", ")
-            np.savetxt(file, mcts.root.N, header="\nN value : ", fmt="%d", newline=", ")
-            np.savetxt(file, mcts.root.prior, header="\nprior   : ", fmt='%.4f', newline=", ")
+            np.savetxt(file, mcts.root.Q, header="\n" + self.role + " Q value : ", fmt='%.4f', newline=", ")
+            np.savetxt(file, mcts.root.W, header="\n" + self.role + " W value : ", fmt='%.4f', newline=", ")
+            np.savetxt(file, mcts.root.N, header="\n" + self.role + " N value : ", fmt="%d", newline=", ")
+            np.savetxt(file, mcts.root.prior, header="\n" + self.role + " prior : ", fmt='%.4f', newline=", ")
             file.close()
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
