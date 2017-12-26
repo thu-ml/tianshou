@@ -24,16 +24,20 @@ if __name__ == '__main__':
     parser.add_argument("--game", type=str, default=False)
     args = parser.parse_args()
 
-    game = Game(name=args.game, role=args.role, checkpoint_path=eval(args.checkpoint_path), debug=eval(args.debug))
+    if args.checkpoint_path == 'None':
+        args.checkpoint_path = None
+    game = Game(name=args.game, role=args.role,
+                checkpoint_path=args.checkpoint_path,
+                debug=eval(args.debug))
     engine = GTPEngine(game_obj=game, name='tianshou', version=0)
 
     daemon = Pyro4.Daemon()                # make a Pyro daemon
     ns = Pyro4.locateNS()                  # find the name server
     player = Player(role=args.role, engine=engine)
-    print "Init " + args.role + " player finished"
+    print("Init " + args.role + " player finished")
     uri = daemon.register(player)          # register the greeting maker as a Pyro object
-    print "Start on name " + args.role
+    print("Start on name " + args.role)
     ns.register(args.role, uri)            # register the object with a name in the name server
-    print "Start Request Loop " + str(uri)
+    print("Start requestLoop " + str(uri))
     daemon.requestLoop()                   # start the event loop of the server to wait for calls
 

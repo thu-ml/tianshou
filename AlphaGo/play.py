@@ -54,11 +54,6 @@ if __name__ == '__main__':
     # print "kill the old pyro4 name server, the return code is : " + str(kill_old_server.wait())
     # time.sleep(1)
 
-    # start a name server to find the remote object
-    # start_new_server = subprocess.Popen(['pyro4-ns', '&'])
-    # print "Start Name Sever : " + str(start_new_server.pid)  # + str(start_new_server.wait())
-    # time.sleep(1)
-
     # start a name server if no name server exists
     if len(os.popen('ps aux | grep pyro4-ns | grep -v grep').readlines()) == 0:
         start_new_server = subprocess.Popen(['pyro4-ns', '&'])
@@ -91,11 +86,23 @@ if __name__ == '__main__':
         ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + black_role_name,
          '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    bp_output = black_player.stdout.readline()
+    bp_message = bp_output
+    while bp_output != '' and "Start requestLoop" not in bp_output:
+        bp_output = black_player.stdout.readline()
+        bp_message += bp_output
+    print("============ " + black_role_name + " message ============" + "\n" + bp_message),
 
     white_player = subprocess.Popen(
         ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + white_role_name,
          '--checkpoint_path=' + str(args.white_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    wp_output = white_player.stdout.readline()
+    wp_message = wp_output
+    while wp_output != '' and "Start requestLoop" not in wp_output:
+        wp_output = white_player.stdout.readline()
+        wp_message += wp_output
+    print("============ " + white_role_name + " message ============" + "\n" + wp_message),
 
     server_list = ""
     while (black_role_name not in server_list) or (white_role_name not in server_list):
