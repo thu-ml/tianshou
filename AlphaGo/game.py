@@ -46,7 +46,8 @@ class Game:
         else:
             raise ValueError(name + " is an unknown game...")
 
-        self.evaluator = model.ResNet(self.size, self.size ** 2 + 1, history_length=self.history_length, checkpoint_path=checkpoint_path)
+        self.evaluator = model.ResNet(self.size, self.size ** 2 + 1, history_length=self.history_length,
+                                      checkpoint_path=checkpoint_path)
         self.latest_boards = deque(maxlen=self.history_length)
         for _ in range(self.history_length):
             self.latest_boards.append(self.board)
@@ -91,11 +92,7 @@ class Game:
         # this function can be called directly to play the opponent's move
         if vertex == utils.PASS:
             return True
-        # TODO this implementation is not very elegant
-        if self.name == "go":
-            res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
-        elif self.name == "reversi":
-            res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
+        res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
         return res
 
     def think_play_move(self, color):

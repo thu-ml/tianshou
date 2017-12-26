@@ -129,6 +129,7 @@ class ActionNode(object):
                 self.mcts.action_selection_time += time.time() - head
                 return self.parent, self.action
         else:
+            # self.next_state is None means we have reach the terminate state
             self.mcts.action_selection_time += time.time() - head
             return self.parent, self.action
 
@@ -147,20 +148,20 @@ class ActionNode(object):
 
 
 class MCTS(object):
-    def __init__(self, simulator, evaluator, root, action_num, method="UCT",
+    def __init__(self, simulator, evaluator, start_state, action_num, method="UCT",
                  role="unknown", debug=False, inverse=False):
         self.simulator = simulator
         self.evaluator = evaluator
         self.role = role
         self.debug = debug
-        prior, _ = self.evaluator(root)
+        prior, _ = self.evaluator(start_state)
         self.action_num = action_num
         if method == "":
-            self.root = root
+            self.root = start_state
         if method == "UCT":
-            self.root = UCTNode(None, None, root, action_num, prior, mcts=self, inverse=inverse)
+            self.root = UCTNode(None, None, start_state, action_num, prior, mcts=self, inverse=inverse)
         if method == "TS":
-            self.root = TSNode(None, None, root, action_num, prior, inverse=inverse)
+            self.root = TSNode(None, None, start_state, action_num, prior, inverse=inverse)
         self.inverse = inverse
 
         # time spend on each step
@@ -191,7 +192,7 @@ class MCTS(object):
             self.expansion_time += exp_time
             self.backpropagation_time += back_time
             step += 1
-        if (self.debug):
+        if self.debug:
             file = open("mcts_profiling.txt", "a")
             file.write("[" + str(self.role) + "]"
                        + " sel  " + '%.3f' % self.selection_time + "  "
