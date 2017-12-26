@@ -71,6 +71,13 @@ class Game:
         mcts = MCTS(self.game_engine, self.evaluator, [latest_boards, color],
                     self.size ** 2 + 1, role=self.role, debug=self.debug, inverse=True)
         mcts.search(max_step=100)
+        if self.debug:
+            file = open("mcts_debug.log", 'ab')
+            np.savetxt(file, mcts.root.Q, header="\nQ value : ", fmt='%.4f', newline=", ")
+            np.savetxt(file, mcts.root.W, header="\nW value : ", fmt='%.4f', newline=", ")
+            np.savetxt(file, mcts.root.N, header="\nN value : ", fmt="%d", newline=", ")
+            np.savetxt(file, mcts.root.prior, header="\nprior   : ", fmt='%.4f', newline=", ")
+            file.close()
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
         choice = np.random.choice(self.size ** 2 + 1, 1, p=prob).tolist()[0]
@@ -119,7 +126,7 @@ class Game:
         sys.stdout.flush()
 
 if __name__ == "__main__":
-    print("test game.py")
-    #file = open("debug.txt", "a")
-    #file.write("mcts check\n")
-    #file.close()
+    game = Game(name="go", checkpoint_path="./checkpoint")
+    game.debug = True
+    game.think_play_move(utils.BLACK)
+

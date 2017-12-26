@@ -80,7 +80,7 @@ class Data(object):
 
 
 class ResNet(object):
-    def __init__(self, board_size, action_num, history_length=1, residual_block_num=20, checkpoint_path=None):
+    def __init__(self, board_size, action_num, history_length=1, residual_block_num=10, checkpoint_path=None):
         """
         the resnet model
 
@@ -161,7 +161,7 @@ class ResNet(object):
                 'The length of history cannot meet the need of the model, given {}, need {}'.format(len(history),
                                                                                                     self.history_length))
         state = self._history2state(history, color)
-        return self.sess.run([self.p, self.v], feed_dict={self.x: state, self.is_training: False})
+        return self.sess.run([tf.nn.softmax(self.p), self.v], feed_dict={self.x: state, self.is_training: False})
 
     def _history2state(self, history, color):
         """
