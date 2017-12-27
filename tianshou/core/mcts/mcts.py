@@ -97,7 +97,6 @@ class ActionNode(object):
         self.action = action
         self.children = {}
         self.next_state = None
-        self.origin_state = None
         self.state_type = None
         self.reward = 0
         self.mcts = mcts
@@ -118,18 +117,15 @@ class ActionNode(object):
         head = time.time()
         self.next_state, self.reward = simulator.simulate_step_forward(self.parent.state, self.action)
         self.mcts.simulate_sf_time += time.time() - head
+        if self.next_state is None: # next_state is None means that self.parent.state is the terminate state
+            self.mcts.action_selection_time += time.time() - head
+            return self.parent, self.action
         self.origin_state = self.next_state
-        self.state_type = type(self.next_state)
         self.type_conversion_to_tuple()
-        if self.next_state is not None:
-            if self.next_state in self.children.keys():
-                self.mcts.action_selection_time += time.time() - head
-                return self.children[self.next_state].selection(simulator)
-            else:
-                self.mcts.action_selection_time += time.time() - head
-                return self.parent, self.action
-        else:
-            # self.next_state is None means we have reach the terminate state
+        if self.next_state in self.children.keys(): # next state has already visited before
+            self.mcts.action_selection_time += time.time() - head
+            return self.children[self.next_state].selection(simulator)
+        else: # next state is a new state never seen before
             self.mcts.action_selection_time += time.time() - head
             return self.parent, self.action
 

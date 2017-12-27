@@ -24,7 +24,6 @@ class Data(object):
     def reset(self):
         self.__init__()
 
-
 if __name__ == '__main__':
     """
     Starting two different players which load network weights to evaluate the winning ratio.
@@ -81,13 +80,13 @@ if __name__ == '__main__':
     black_role_name = 'black' + str(args.id)
     white_role_name = 'white' + str(args.id)
 
-    #TODO : check if we can get the output of player from the stdout, for debug convenience
     black_player = subprocess.Popen(
         ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + black_role_name,
          '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     bp_output = black_player.stdout.readline()
     bp_message = bp_output
+    # '' means player.py failed to start, "Start requestLoop" means player.py start successfully
     while bp_output != '' and "Start requestLoop" not in bp_output:
         bp_output = black_player.stdout.readline()
         bp_message += bp_output
