@@ -178,6 +178,9 @@ if __name__ == '__main__':
             player[1].run_cmd(str(num) + ' clear_board')
             file_list = os.listdir(args.data_path)
             current_time = strftime("%Y%m%d_%H%M%S", gmtime())
+            if os.path.exists(args.data_path + current_time + ".pkl"):
+                time.sleep(1)
+                current_time = strftime("%Y%m%d_%H%M%S", gmtime())
             with open(args.data_path + current_time + ".pkl", "wb") as file:
                 picklestring = cPickle.dump(data, file)
             data.reset()
