@@ -222,6 +222,10 @@ class Go:
             new_color = -color
             return [history_boards, new_color], 0
 
+    def simulate_hashable_conversion(self, state):
+        # since go is MDP, we only need the last board for hashing
+        return tuple(state[0][-1])
+
     def executor_do_move(self, history, latest_boards, current_board, color, vertex):
         if not self._rule_check(history, current_board, color, vertex):
             return False
