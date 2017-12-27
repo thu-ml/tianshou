@@ -161,8 +161,8 @@ class ResNet(object):
             raise ValueError(
                 'The length of history cannot meet the need of the model, given {}, need {}'.format(len(history),
                                                                                                     self.history_length))
-        state = self._history2state(history, color)
-        return self.sess.run([self.prob, self.v], feed_dict={self.x: state, self.is_training: False})
+        eval_state = self._history2state(history, color)
+        return self.sess.run([self.prob, self.v], feed_dict={self.x: eval_state, self.is_training: False})
 
     def _history2state(self, history, color):
         """
