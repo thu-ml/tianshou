@@ -278,8 +278,12 @@ class MCTSVirtualLoss(object):
                                                         priors[i],
                                                         nodes[i].inverse)
 
-        for i in range(self.batch_size):
-            nodes[i].children[new_actions[i]].backpropagation(values[i] + 0.)
+        if self.inverse:
+            for i in range(self.batch_size):
+                nodes[i].children[new_actions[i]].backpropagation(-values[i] + 0.)
+        else:
+            for i in range(self.batch_size):
+                nodes[i].children[new_actions[i]].backpropagation(values[i] + 0.)
 
 
 ##### TODO 

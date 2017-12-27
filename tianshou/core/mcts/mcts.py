@@ -198,7 +198,10 @@ class MCTS(object):
         t1 = time.time()
         value = node.children[new_action].expansion(self.evaluator, self.action_num)
         t2 = time.time()
-        node.children[new_action].backpropagation(value + 0.)
+        if self.inverse:
+            node.children[new_action].backpropagation(-value + 0.)
+        else:
+            node.children[new_action].backpropagation(value + 0.)
         t3 = time.time()
         return t1 - t0, t2 - t1, t3 - t2
 
