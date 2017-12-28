@@ -162,6 +162,8 @@ class MCTS(object):
             self.expansion_time += exp_time
             self.backpropagation_time += back_time
             step += 1
+            print("Q = {}".format(self.root.Q))
+            print("N = {}".format(self.root.N))
         if self.debug:
             file = open("mcts_profiling.log", "a")
             file.write("[" + str(self.role) + "]"

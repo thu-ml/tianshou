@@ -5,11 +5,11 @@ import agent
 if __name__ == '__main__':
     print("Our game has 2 players.")
     print("Player 1 has color 1 and plays first. Player 2 has color -1 and plays following player 1.")
-    print("Both player choose 1 or -1 for an action.")
+    print("Both player choose 1 or 0 for an action.")
     size = 1
     print("This game has {} iterations".format(size))
-    print("If the final sequence has more 1 that -1, player 1 wins.")
-    print("If the final sequence has less 1 that -1, player 2 wins.")
+    print("If the final sequence has more 1 that 0, player 1 wins.")
+    print("If the final sequence has less 1 that 0, player 2 wins.")
     print("Otherwise, both players get 0.\n")
     game = ZOGame.ZOTree(size)
     player1 = agent.Agent(size, 1)
