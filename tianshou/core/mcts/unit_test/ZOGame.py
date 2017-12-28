@@ -29,17 +29,10 @@ class ZOTree:
         length = len(seq)
         if length != self.depth:
             raise ValueError("The game is not terminated!")
-        ones = 0
-        zeros = 0
-        for i in range(len(seq)):
-            if seq[i] == 0:
-                zeros += 1
-            if seq[i] == 1:
-                ones += 1
-        result = ones - zeros
-        if result > 0:
+	result = np.sum(seq)
+        if result > self.size:
             winner = 1
-        elif result < 0:
+        elif result < self.size:
             winner = -1
         else:
             winner = 0
@@ -98,7 +91,7 @@ class ZOTree:
 if __name__ == "__main__":
     size = 2
     game = ZOTree(size)
-    seq = [1, -1, 1, 1]
+    seq = [1, 0, 1, 1]
     result = game.executor_do_move([seq, 1], 1)
     print(result)
     print(seq)
