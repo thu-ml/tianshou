@@ -97,12 +97,12 @@ class Go:
                     for b in group:
                         current_board[self._flatten(b)] = utils.EMPTY
 
-    def _check_global_isomorphous(self, history_boards, current_board, color, vertex):
+    def _check_global_isomorphous(self, history_boards_set, current_board, color, vertex):
         repeat = False
         next_board = copy.deepcopy(current_board)
         next_board[self._flatten(vertex)] = color
         self._process_board(next_board, color, vertex)
-        if next_board in history_boards:
+        if hash(tuple(next_board)) in history_boards_set:
             repeat = True
         return repeat
 
@@ -158,7 +158,7 @@ class Go:
             vertex = self._deflatten(action)
         return vertex
 
-    def _rule_check(self, history_boards, current_board, color, vertex):
+    def _rule_check(self, history_boards_set, current_board, color, vertex):
         ### in board
         if not self._in_board(vertex):
             return False
@@ -172,7 +172,7 @@ class Go:
             return False
 
         ### forbid global isomorphous
-        if self._check_global_isomorphous(history_boards, current_board, color, vertex):
+        if self._check_global_isomorphous(history_boards_set, current_board, color, vertex):
             return False
 
         return True
@@ -226,13 +226,14 @@ class Go:
         # since go is MDP, we only need the last board for hashing
         return tuple(state[0][-1])
 
-    def executor_do_move(self, history, latest_boards, current_board, color, vertex):
-        if not self._rule_check(history, current_board, color, vertex):
+    def executor_do_move(self, history, history_set, latest_boards, current_board, color, vertex):
+        if not self._rule_check(history_set, current_board, color, vertex):
             return False
         current_board[self._flatten(vertex)] = color
         self._process_board(current_board, color, vertex)
         history.append(copy.deepcopy(current_board))
         latest_boards.append(copy.deepcopy(current_board))
+        history_set.add(hash(tuple(current_board)))
         return True
 
     def _find_empty(self, current_board):

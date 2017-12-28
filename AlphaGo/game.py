@@ -35,6 +35,7 @@ class Game:
             self.komi = 3.75
             self.history_length = 8
             self.history = []
+            self.history_set = set()
             self.game_engine = go.Go(size=self.size, komi=self.komi, role=self.role)
             self.board = [utils.EMPTY] * (self.size ** 2)
         elif self.name == "reversi":
@@ -92,7 +93,10 @@ class Game:
         # this function can be called directly to play the opponent's move
         if vertex == utils.PASS:
             return True
-        res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
+        if self.name == "reversi":
+            res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
+        if self.name == "go":
+            res = self.game_engine.executor_do_move(self.history, self.history_set, self.latest_boards, self.board, color, vertex)
         return res
 
     def think_play_move(self, color):
@@ -124,6 +128,6 @@ class Game:
 
 if __name__ == "__main__":
     game = Game(name="reversi", checkpoint_path=None)
-    game.debug = True
+    game.debug = False
     game.think_play_move(utils.BLACK)
 
