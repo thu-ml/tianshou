@@ -123,7 +123,7 @@ class Game:
         sys.stdout.flush()
 
 if __name__ == "__main__":
-    game = Game(name="go", checkpoint_path="./checkpoint")
+    game = Game(name="reversi", checkpoint_path=None)
     game.debug = True
     game.think_play_move(utils.BLACK)
 

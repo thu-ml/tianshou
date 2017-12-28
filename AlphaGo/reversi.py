@@ -99,7 +99,7 @@ class Reversi:
 
     def simulate_hashable_conversion(self, state):
         # since go is MDP, we only need the last board for hashing
-        return tuple(state[0][-1])
+        return tuple(state[0][-1].flatten().tolist())
 
     def _get_winner(self, board):
         black_num, white_num = self._number_of_black_and_white(board)

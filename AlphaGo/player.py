@@ -18,12 +18,11 @@ class Player(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint_path", type=str, default=None)
+    parser.add_argument("--checkpoint_path", type=str, default="None")
     parser.add_argument("--role", type=str, default="unknown")
-    parser.add_argument("--debug", type=str, default=False)
-    parser.add_argument("--game", type=str, default=False)
+    parser.add_argument("--debug", type=str, default="False")
+    parser.add_argument("--game", type=str, default="go")
     args = parser.parse_args()
-
     if args.checkpoint_path == 'None':
         args.checkpoint_path = None
     game = Game(name=args.game, role=args.role,
