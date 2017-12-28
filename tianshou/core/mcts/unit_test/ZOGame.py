@@ -17,6 +17,10 @@ class ZOTree:
             seq.append(int(action))
             return [seq, 0 - color], 0
 
+    def simulate_hashable_conversion(self, state):
+        # since go is MDP, we only need the last board for hashing
+        return tuple(state[0])
+    
     def executor_get_reward(self, state):
         seq = np.array(state[0], dtype='int16')
         length = len(seq)
