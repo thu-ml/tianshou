@@ -28,6 +28,8 @@ class Game:
     '''
     def __init__(self, name=None, role=None, debug=False, checkpoint_path=None):
         self.name = name
+	if role is None:
+	    raise ValueError("Need a role!")
         self.role = role
         self.debug = debug
         if self.name == "go":
@@ -123,7 +125,7 @@ class Game:
         sys.stdout.flush()
 
 if __name__ == "__main__":
-    game = Game(name="reversi", checkpoint_path=None)
+    game = Game(name="reversi", role="black", checkpoint_path=None)
     game.debug = True
     game.think_play_move(utils.BLACK)
 
