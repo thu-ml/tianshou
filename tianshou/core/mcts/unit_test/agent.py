@@ -23,5 +23,5 @@ class Agent:
         N = np.power(N, 1.0 / temp)
         prob = N / np.sum(N)
         print("prob: {}".format(prob))
-        action = int(np.random.binomial(1, prob[1]) * 2 - 1)
+        action = int(np.random.binomial(1, prob[1]))
         return action
