@@ -156,8 +156,6 @@ class ResNet(object):
         # Note : maybe we can use it for isolating test of MCTS
         #prob = [1.0 / self.action_num] * self.action_num
         #return [prob, np.random.uniform(-1, 1)]
-        if state is None:
-            return [[0.0] * self.action_num, 0]
         history, color = state
         if len(history) != self.history_length:
             raise ValueError(
