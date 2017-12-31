@@ -185,7 +185,7 @@ class MCTS(object):
             prior, value = self.evaluator(next_action.next_state)
             next_action.expansion(prior, self.action_num)
         else:
-            value = 0
+            value = 0.
         t2 = time.time()
         if self.inverse:
             next_action.backpropagation(-value + 0.)

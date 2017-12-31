@@ -3,7 +3,7 @@ import utils
 import copy
 import numpy as np
 from collections import deque
-
+import time
 '''
 Settings of the Go game.
 
@@ -18,6 +18,7 @@ class Go:
     def __init__(self, **kwargs):
         self.size = kwargs['size']
         self.komi = kwargs['komi']
+        self.role = kwargs['role']
 
     def _flatten(self, vertex):
         x, y = vertex
@@ -96,12 +97,12 @@ class Go:
                     for b in group:
                         current_board[self._flatten(b)] = utils.EMPTY
 
-    def _check_global_isomorphous(self, history_boards, current_board, color, vertex):
+    def _check_global_isomorphous(self, history_boards_set, current_board, color, vertex):
         repeat = False
-        next_board = copy.copy(current_board)
+        next_board = copy.deepcopy(current_board)
         next_board[self._flatten(vertex)] = color
         self._process_board(next_board, color, vertex)
-        if next_board in history_boards:
+        if hash(tuple(next_board)) in history_boards_set:
             repeat = True
         return repeat
 
@@ -157,7 +158,7 @@ class Go:
             vertex = self._deflatten(action)
         return vertex
 
-    def _rule_check(self, history_boards, current_board, color, vertex):
+    def _rule_check(self, history_boards_set, current_board, color, vertex):
         ### in board
         if not self._in_board(vertex):
             return False
@@ -171,7 +172,7 @@ class Go:
             return False
 
         ### forbid global isomorphous
-        if self._check_global_isomorphous(history_boards, current_board, color, vertex):
+        if self._check_global_isomorphous(history_boards_set, current_board, color, vertex):
             return False
 
         return True
@@ -211,23 +212,28 @@ class Go:
 
     def simulate_step_forward(self, state, action):
         # initialize the simulate_board from state
-        history_boards, color = state
+        history_boards, color = copy.deepcopy(state)
         if history_boards[-1] == history_boards[-2] and action is utils.PASS:
-            return None, 2 * (float(self.executor_get_score(history_boards[-1]) > 0)-0.5) * color
+            return None, 2 * (float(self.simple_executor_get_score(history_boards[-1]) > 0)-0.5) * color
         else:
             vertex = self._action2vertex(action)
-            new_board = self._do_move(copy.copy(history_boards[-1]), color, vertex)
+            new_board = self._do_move(copy.deepcopy(history_boards[-1]), color, vertex)
             history_boards.append(new_board)
             new_color = -color
             return [history_boards, new_color], 0
 
-    def executor_do_move(self, history, latest_boards, current_board, color, vertex):
-        if not self._rule_check(history, current_board, color, vertex):
+    def simulate_hashable_conversion(self, state):
+        # since go is MDP, we only need the last board for hashing
+        return tuple(state[0][-1])
+
+    def executor_do_move(self, history, history_set, latest_boards, current_board, color, vertex):
+        if not self._rule_check(history_set, current_board, color, vertex):
             return False
         current_board[self._flatten(vertex)] = color
         self._process_board(current_board, color, vertex)
-        history.append(copy.copy(current_board))
-        latest_boards.append(copy.copy(current_board))
+        history.append(copy.deepcopy(current_board))
+        latest_boards.append(copy.deepcopy(current_board))
+        history_set.add(hash(tuple(current_board)))
         return True
 
     def _find_empty(self, current_board):
@@ -284,10 +290,7 @@ class Go:
                 return utils.WHITE
 
     def executor_get_score(self, current_board):
-        '''
-            is_unknown_estimation: whether use nearby stone to predict the unknown
-            return score from BLACK perspective.
-        '''
+        #return score from BLACK perspective.
         _board = copy.deepcopy(current_board)
         while utils.EMPTY in _board:
             vertex = self._find_empty(_board)
@@ -309,7 +312,46 @@ class Go:
 
         return score
 
+
+    def simple_executor_get_score(self, current_board):
+        '''
+            can only be used for the empty group only have one single stone
+            return score from BLACK perspective.
+        '''
+        score = 0
+        for idx, color in enumerate(current_board):
+            if color == utils.EMPTY:
+                neighbors = self._neighbor(self._deflatten(idx))
+                color = current_board[self._flatten(neighbors[0])]
+            if color == utils.BLACK:
+                score += 1
+            elif color == utils.WHITE:
+                score -= 1
+        score -= self.komi
+        return score
+
+
 if __name__ == "__main__":
+    go = Go(size=9, komi=3.75, role = utils.BLACK)
+    endgame = [
+        1, 0, 1, 0, 1, 1, -1, 0, -1,
+        1, 1, 1, 1, 1, 1, -1, -1, -1,
+        0, 1, 1, 1, 1, -1, 0, -1, 0,
+        1, 1, 1, 1, 1, -1, -1, -1, -1,
+        1, -1, 1, -1, 1, 1, -1, -1, -1,
+        -1, -1, -1, -1, -1, 1, -1, 0, -1,
+        1, 1, 1, -1, -1, -1, -1, -1, -1,
+        1, 0, 1, 1, 1, 1, 1, -1, 0,
+        1, 1, 0, 1, -1, -1, -1, -1, -1
+    ]
+    time0 = time.time()
+    score = go.executor_get_score(endgame)
+    time1 = time.time()
+    print(score, time1 - time0)
+    score = go.new_executor_get_score(endgame)
+    time2 = time.time()
+    print(score, time2 - time1)
+    '''
     ### do unit test for Go class
     pure_test = [
         0, 1, 0, 1, 0, 1, 0, 0, 0,
@@ -348,3 +390,4 @@ if __name__ == "__main__":
     for i in range(7):
         print (go._is_eye(opponent_test, utils.BLACK, ot_qry[i]))
     print("Test of eye surrend by opponents\n")
+    '''

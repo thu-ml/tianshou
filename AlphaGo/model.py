@@ -80,7 +80,7 @@ class Data(object):
 
 
 class ResNet(object):
-    def __init__(self, board_size, action_num, history_length=1, residual_block_num=20, checkpoint_path=None):
+    def __init__(self, board_size, action_num, history_length=1, residual_block_num=10, checkpoint_path=None):
         """
         the resnet model
 
@@ -101,7 +101,7 @@ class ResNet(object):
         self._build_network(residual_block_num, self.checkpoint_path)
 
         # training hyper-parameters:
-        self.window_length = 7000
+        self.window_length = 3
         self.save_freq = 5000
         self.training_data = {'states': deque(maxlen=self.window_length), 'probs': deque(maxlen=self.window_length),
                               'winner': deque(maxlen=self.window_length), 'length': deque(maxlen=self.window_length)}
@@ -124,6 +124,7 @@ class ResNet(object):
             h = residual_block(h, self.is_training)
         self.v = value_head(h, self.is_training)
         self.p = policy_head(h, self.is_training, self.action_num)
+        self.prob = tf.nn.softmax(self.p)
         self.value_loss = tf.reduce_mean(tf.square(self.z - self.v))
         self.policy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.pi, logits=self.p))
 
@@ -152,13 +153,16 @@ class ResNet(object):
         :param color: a string, indicate which one to play
         :return: a list of tensor, the predicted value and policy given the history and color
         """
+        # Note : maybe we can use it for isolating test of MCTS
+        #prob = [1.0 / self.action_num] * self.action_num
+        #return [prob, np.random.uniform(-1, 1)]
         history, color = state
         if len(history) != self.history_length:
             raise ValueError(
                 'The length of history cannot meet the need of the model, given {}, need {}'.format(len(history),
                                                                                                     self.history_length))
-        state = self._history2state(history, color)
-        return self.sess.run([self.p, self.v], feed_dict={self.x: state, self.is_training: False})
+        eval_state = self._history2state(history, color)
+        return self.sess.run([self.prob, self.v], feed_dict={self.x: eval_state, self.is_training: False})
 
     def _history2state(self, history, color):
         """
@@ -170,10 +174,10 @@ class ResNet(object):
         """
         state = np.zeros([1, self.board_size, self.board_size, 2 * self.history_length + 1])
         for i in range(self.history_length):
-            state[0, :, :, i] = np.array(np.array(history[i]) == np.ones(self.board_size ** 2)).reshape(self.board_size,
+            state[0, :, :, i] = np.array(np.array(history[i]).flatten() == np.ones(self.board_size ** 2)).reshape(self.board_size,
                                                                                                         self.board_size)
             state[0, :, :, i + self.history_length] = np.array(
-                np.array(history[i]) == -np.ones(self.board_size ** 2)).reshape(self.board_size, self.board_size)
+                np.array(history[i]).flatten() == -np.ones(self.board_size ** 2)).reshape(self.board_size, self.board_size)
         # TODO: need a config to specify the BLACK and WHITE
         if color == +1:
             state[0, :, :, 2 * self.history_length] = np.ones([self.board_size, self.board_size])
@@ -223,8 +227,8 @@ class ResNet(object):
             else:
                 start_time = time.time()
                 for i in range(batch_size):
-                    priority = self.training_data['length'] / sum(self.training_data['length'])
-                    game_num = np.random.choice(self.window_length, 1, p=priority)
+                    priority = np.array(self.training_data['length']) / (0.0 + np.sum(np.array(self.training_data['length'])))
+                    game_num = np.random.choice(self.window_length, 1, p=priority)[0]
                     state_num = np.random.randint(self.training_data['length'][game_num])
                     rotate_times = np.random.randint(4)
                     reflect_times = np.random.randint(2)
@@ -232,12 +236,10 @@ class ResNet(object):
                     training_data['states'].append(
                         self._preprocession(self.training_data['states'][game_num][state_num], reflect_times,
                                             reflect_orientation, rotate_times))
-                    training_data['probs'].append(
-                        self._preprocession(self.training_data['probs'][game_num][state_num], reflect_times,
-                                            reflect_orientation, rotate_times))
-                    training_data['winner'].append(
-                        self._preprocession(self.training_data['winner'][game_num][state_num], reflect_times,
-                                            reflect_orientation, rotate_times))
+                    training_data['probs'].append(np.concatenate(
+                        [self._preprocession(self.training_data['probs'][game_num][state_num][:-1].reshape(self.board_size, self.board_size, 1), reflect_times,
+                                            reflect_orientation, rotate_times).reshape(1, self.board_size**2), self.training_data['probs'][game_num][state_num][-1].reshape(1,1)], axis=1))
+                    training_data['winner'].append(self.training_data['winner'][game_num][state_num].reshape(1, 1))
                 value_loss, policy_loss, reg, _ = self.sess.run(
                     [self.value_loss, self.policy_loss, self.reg, self.train_op],
                     feed_dict={self.x: np.concatenate(training_data['states'], axis=0),
@@ -300,9 +302,9 @@ class ResNet(object):
         :return:
         """
 
-        new_board = copy.copy(board)
+        new_board = copy.deepcopy(board)
         if new_board.ndim == 3:
-            np.expand_dims(new_board, axis=0)
+            new_board = np.expand_dims(new_board, axis=0)
 
         new_board = self._board_reflection(new_board, reflect_times, reflect_orientation)
         new_board = self._board_rotation(new_board, rotate_times)
@@ -330,7 +332,7 @@ class ResNet(object):
         :param orientation: an integer, which orientation to reflect
         :return:
         """
-        new_board = copy.copy(board)
+        new_board = copy.deepcopy(board)
         for _ in range(times):
             if orientation == 0:
                 new_board = new_board[:, ::-1]

@@ -5,7 +5,15 @@ import re
 import Pyro4
 import time
 import os
-import cPickle
+import utils
+from time import gmtime, strftime
+
+python_version = sys.version_info
+
+if python_version < (3, 0):
+    import cPickle
+else:
+    import _pickle as cPickle
 
 class Data(object):
     def __init__(self):
@@ -16,7 +24,6 @@ class Data(object):
     def reset(self):
         self.__init__()
 
-
 if __name__ == '__main__':
     """
     Starting two different players which load network weights to evaluate the winning ratio.
@@ -24,57 +31,90 @@ if __name__ == '__main__':
     """
     # TODO : we should set the network path in a more configurable way.
     parser = argparse.ArgumentParser()
-    parser.add_argument("--result_path", type=str, default="./data/")
+    parser.add_argument("--data_path", type=str, default="./data/")
     parser.add_argument("--black_weight_path", type=str, default=None)
     parser.add_argument("--white_weight_path", type=str, default=None)
-    parser.add_argument("--id", type=int, default=0)
+    parser.add_argument("--id", type=int, default=-1)
+    parser.add_argument("--debug", type=bool, default=False)
+    parser.add_argument("--game", type=str, default="go")
     args = parser.parse_args()
 
-    if not os.path.exists(args.result_path):
-        os.mkdir(args.result_path)
+    if not os.path.exists(args.data_path):
+        os.mkdir(args.data_path)
     # black_weight_path = "./checkpoints"
     # white_weight_path = "./checkpoints_origin"
     if args.black_weight_path is not None and (not os.path.exists(args.black_weight_path)):
-        raise ValueError("Can't not find the network weights for black player.")
+        raise ValueError("Can't find the network weights for black player.")
     if args.white_weight_path is not None and (not os.path.exists(args.white_weight_path)):
-        raise ValueError("Can't not find the network weights for white player.")
+        raise ValueError("Can't find the network weights for white player.")
 
     # kill the old server
     # kill_old_server = subprocess.Popen(['killall', 'pyro4-ns'])
     # print "kill the old pyro4 name server, the return code is : " + str(kill_old_server.wait())
     # time.sleep(1)
 
-    # start a name server to find the remote object
-    # start_new_server = subprocess.Popen(['pyro4-ns', '&'])
-    # print "Start Name Sever : " + str(start_new_server.pid)  # + str(start_new_server.wait())
-    # time.sleep(1)
-
     # start a name server if no name server exists
     if len(os.popen('ps aux | grep pyro4-ns | grep -v grep').readlines()) == 0:
         start_new_server = subprocess.Popen(['pyro4-ns', '&'])
-        print "Start Name Sever : " + str(start_new_server.pid)  # + str(start_new_server.wait())
+        print("Start Name Sever : " + str(start_new_server.pid))  # + str(start_new_server.wait())
         time.sleep(1)
 
     # start two different player with different network weights.
+    server_list = subprocess.check_output(['pyro4-nsc', 'list'])
+    index = []
+    if server_list is not None:
+        server_list = server_list.split("\n")[3:-2]
+        for s in server_list:
+            id = s.split(" ")[0][5:]
+            index.append(eval(id))
+        index.sort()
+    if args.id == -1:
+        if index:
+            args.id = index[-1] + 1
+        else:
+            args.id = 0
+    else:
+        if args.id in index:
+            raise ValueError("Name exists in name server!")
+
     black_role_name = 'black' + str(args.id)
     white_role_name = 'white' + str(args.id)
 
-    agent_v0 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--role=' + black_role_name, '--checkpoint_path=' + str(args.black_weight_path)],
+    black_player = subprocess.Popen(
+        ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + black_role_name,
+         '--checkpoint_path=' + str(args.black_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    bp_output = black_player.stdout.readline()
+    bp_message = bp_output
+    # '' means player.py failed to start, "Start requestLoop" means player.py start successfully
+    while bp_output != '' and "Start requestLoop" not in bp_output:
+        bp_output = black_player.stdout.readline()
+        bp_message += bp_output
+    print("============ " + black_role_name + " message ============" + "\n" + bp_message),
 
-    agent_v1 = subprocess.Popen(
-        ['python', '-u', 'player.py', '--role=' + white_role_name, '--checkpoint_path=' + str(args.white_weight_path)],
+    white_player = subprocess.Popen(
+        ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + white_role_name,
+         '--checkpoint_path=' + str(args.white_weight_path), '--debug=' + str(args.debug)],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    wp_output = white_player.stdout.readline()
+    wp_message = wp_output
+    while wp_output != '' and "Start requestLoop" not in wp_output:
+        wp_output = white_player.stdout.readline()
+        wp_message += wp_output
+    print("============ " + white_role_name + " message ============" + "\n" + wp_message),
 
     server_list = ""
     while (black_role_name not in server_list) or (white_role_name not in server_list):
-        server_list = subprocess.check_output(['pyro4-nsc', 'list'])
-        print "Waiting for the server start..."
+        if python_version < (3, 0):
+            # TODO : @renyong what is the difference between those two options?
+            server_list = subprocess.check_output(['pyro4-nsc', 'list'])
+        else:
+            server_list = subprocess.check_output(['pyro4-nsc', 'list'])
+        print("Waiting for the server start...")
         time.sleep(1)
-    print server_list
-    print "Start black player at : " + str(agent_v0.pid)
-    print "Start white player at : " + str(agent_v1.pid)
+    print(server_list)
+    print("Start black player at : " + str(black_player.pid))
+    print("Start white player at : " + str(white_player.pid))
 
     data = Data()
     player = [None] * 2
@@ -86,29 +126,31 @@ if __name__ == '__main__':
 
     pattern = "[A-Z]{1}[0-9]{1}"
     space = re.compile("\s+")
-    size = 9
+    size = {"go":9, "reversi":8}
     show = ['.', 'X', 'O']
 
-    evaluate_rounds = 1
+    evaluate_rounds = 100
     game_num = 0
     try:
-        while True:
+        #while True:
+        while game_num < evaluate_rounds:
             start_time = time.time()
             num = 0
             pass_flag = [False, False]
             print("Start game {}".format(game_num))
             # end the game if both palyer chose to pass, or play too much turns
-            while not (pass_flag[0] and pass_flag[1]) and num < size ** 2 * 2:
+            while not (pass_flag[0] and pass_flag[1]) and num < size[args.game] ** 2 * 2:
                 turn = num % 2
                 board = player[turn].run_cmd(str(num) + ' show_board')
                 board = eval(board[board.index('['):board.index(']') + 1])
-                for i in range(size):
-                    for j in range(size):
-                        print show[board[i * size + j]] + " ",
+                for i in range(size[args.game]):
+                    for j in range(size[args.game]):
+                        print show[board[i * size[args.game] + j]] + " ",
                     print "\n",
                 data.boards.append(board)
-                move = player[turn].run_cmd(str(num) + ' genmove ' + color[turn] + '\n')
-                print role[turn] + " : " + str(move),
+                start_time = time.time()
+                move = player[turn].run_cmd(str(num) + ' genmove ' + color[turn])[:-1]
+                print("\n" + role[turn] + " : " + str(move)),
                 num += 1
                 match = re.search(pattern, move)
                 if match is not None:
@@ -126,33 +168,26 @@ if __name__ == '__main__':
                 prob = prob.replace('],', ']')
                 prob = eval(prob)
                 data.probs.append(prob)
-            score = player[turn].run_cmd(str(num) + ' get_score')
-            print "Finished : ", score.split(" ")[1]
-            # TODO: generalize the player
+            score = player[0].run_cmd(str(num) + ' get_score')
+            print("Finished : {}".format(score.split(" ")[1]))
             if eval(score.split(" ")[1]) > 0:
-                data.winner = 1
+                data.winner = utils.BLACK
             if eval(score.split(" ")[1]) < 0:
-                data.winner = -1
+                data.winner = utils.WHITE
             player[0].run_cmd(str(num) + ' clear_board')
             player[1].run_cmd(str(num) + ' clear_board')
-            file_list = os.listdir(args.result_path)
-            if not file_list:
-                data_num = 0
-            else:
-                file_list.sort(key=lambda file: os.path.getmtime(args.result_path + file) if not os.path.isdir(
-                    args.result_path + file) else 0)
-                data_num = eval(file_list[-1][:-4]) + 1
-            with open("./data/" + str(data_num) + ".pkl", "wb") as file:
+            file_list = os.listdir(args.data_path)
+            current_time = strftime("%Y%m%d_%H%M%S", gmtime())
+            if os.path.exists(args.data_path + current_time + ".pkl"):
+                time.sleep(1)
+                current_time = strftime("%Y%m%d_%H%M%S", gmtime())
+            with open(args.data_path + current_time + ".pkl", "wb") as file:
                 picklestring = cPickle.dump(data, file)
             data.reset()
             game_num += 1
+    except KeyboardInterrupt:
+        pass
 
-    except Exception as e:
-        print(e)
-        subprocess.call(["kill", "-9", str(agent_v0.pid)])
-        subprocess.call(["kill", "-9", str(agent_v1.pid)])
-        print "Kill all player, finish all game."
-
-    subprocess.call(["kill", "-9", str(agent_v0.pid)])
-    subprocess.call(["kill", "-9", str(agent_v1.pid)])
-    print "Kill all player, finish all game."
+    subprocess.call(["kill", "-9", str(black_player.pid)])
+    subprocess.call(["kill", "-9", str(white_player.pid)])
+    print("Kill all player, finish all game.")
