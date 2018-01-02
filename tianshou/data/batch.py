@@ -8,7 +8,7 @@ class Batch(object):
     class for batch datasets. Collect multiple observations (actions, rewards, etc.) on-policy.
     """
 
-    def __init__(self, env, pi, advantage_estimation_function): # how to name the function?
+    def __init__(self, env, pi, advantage_estimation_function):  # how to name the function?
         self._env = env
         self._pi = pi
         self._advantage_estimation_function = advantage_estimation_function
@@ -63,7 +63,7 @@ class Batch(object):
                     ob = env.reset()
                 t += 1
 
-        if num_episodes > 0: # YouQiaoben: fix memory growth, both del and gc.collect() fail
+        if num_episodes > 0:  # YouQiaoben: fix memory growth, both del and gc.collect() fail
             # initialize rawdata lists
             if not self._is_first_collect:
                 del self.observations
@@ -91,10 +91,10 @@ class Batch(object):
                     rewards.append(reward)
 
                     t_count += 1
-                    if t_count >= 200: # force episode stop, just to test if memory still grows
-                        break
+                    if t_count >= 100:  # force episode stop, just to test if memory still grows
+                        done = True
 
-                    if done: # end of episode, discard s_T
+                    if done:  # end of episode, discard s_T
                         break
                     else:
                         observations.append(ob)
@@ -122,7 +122,46 @@ class Batch(object):
     def apply_advantage_estimation_function(self):
         self.data = self._advantage_estimation_function(self.raw_data)
 
-    def next_batch(self, batch_size): # YouQiaoben: referencing other iterate over batches
+    def next_batch(self, batch_size, standardize_advantage=True):  # YouQiaoben: referencing other iterate over batches
         rand_idx = np.random.choice(self.data['observations'].shape[0], batch_size)
-        return {key: value[rand_idx] for key, value in self.data.items()}
+        current_batch = {key: value[rand_idx] for key, value in self.data.items()}
 
+        if standardize_advantage:
+            advantage_mean = np.mean(current_batch['returns'])
+            advantage_std = np.std(current_batch['returns'])
+            current_batch['returns'] = (current_batch['returns'] - advantage_mean) / advantage_std
+
+        return current_batch
+
+    def statistics(self):
+        """
+        compute the statistics of the current sampled paths
+        :return:
+        """
+        rewards = self.raw_data['rewards']
+        episode_start_flags = self.raw_data['episode_start_flags']
+        num_timesteps = rewards.shape[0]
+
+        returns = []
+        max_return = 0
+        episode_start_idx = 0
+        for i in range(1, num_timesteps):
+            if episode_start_flags[i] or (
+                    i == num_timesteps - 1):  # found the start of next episode or the end of all episodes
+                if i < rewards.shape[0] - 1:
+                    t = i - 1
+                else:
+                    t = i
+                Gt = 0
+                while t >= episode_start_idx:
+                    Gt += rewards[t]
+                    t -= 1
+
+                returns.append(Gt)
+                if Gt > max_return:
+                    max_return = Gt
+                episode_start_idx = i
+
+        print('AverageReturn: {}'.format(np.mean(returns)))
+        print('StdReturn:   : {}'.format(np.std(returns)))
+        print('MaxReturn    : {}'.format(max_return))

@@ -62,9 +62,11 @@ class OnehotCategorical(StochasticPolicy):
         return self._n_categories
 
     def _act(self, observation):
-        sess = tf.get_default_session() # TODO: this may be ugly. also maybe huge problem when parallel
-        sampled_action = sess.run(tf.multinomial(self.logits, num_samples=1), feed_dict={self._observation_placeholder: observation[None]})
+        # TODO: this may be ugly. also maybe huge problem when parallel
+        sess = tf.get_default_session()
         # observation[None] adds one dimension at the beginning
+        sampled_action = sess.run(tf.multinomial(self.logits, num_samples=1),
+                                           feed_dict={self._observation_placeholder: observation[None]})
 
         sampled_action = sampled_action[0, 0]
 
@@ -73,28 +75,75 @@ class OnehotCategorical(StochasticPolicy):
     def _log_prob(self, sampled_action):
         return -tf.nn.sparse_softmax_cross_entropy_with_logits(labels=sampled_action, logits=self.logits)
 
-        # given = tf.cast(given, self.param_dtype)
-        # given, logits = maybe_explicit_broadcast(
-        #     given, self.logits, 'given', 'logits')
-        # if (given.get_shape().ndims == 2) or (logits.get_shape().ndims == 2):
-        #     given_flat = given
-        #     logits_flat = logits
-        # else:
-        #     given_flat = tf.reshape(given, [-1, self.n_categories])
-        #     logits_flat = tf.reshape(logits, [-1, self.n_categories])
-        # log_p_flat = -tf.nn.softmax_cross_entropy_with_logits(
-        #     labels=given_flat, logits=logits_flat)
-        # if (given.get_shape().ndims == 2) or (logits.get_shape().ndims == 2):
-        #     log_p = log_p_flat
-        # else:
-        #     log_p = tf.reshape(log_p_flat, tf.shape(logits)[:-1])
-        #     if given.get_shape() and logits.get_shape():
-        #         log_p.set_shape(tf.broadcast_static_shape(
-        #             given.get_shape(), logits.get_shape())[:-1])
-        # return log_p
 
     def _prob(self, sampled_action):
         return tf.exp(self._log_prob(sampled_action))
 
 
 OnehotDiscrete = OnehotCategorical
+
+
+class Normal(StochasticPolicy):
+    """
+        The :class:`Normal' class is the Normal policy
+
+        :param mean:
+        :param std:
+        :param group_ndims
+        :param observation_placeholder
+    """
+    def __init__(self,
+                 mean = 0.,
+                 logstd = 1.,
+                 group_ndims = 1,
+                 observation_placeholder = None,
+                 **kwargs):
+
+        self._mean = tf.convert_to_tensor(mean, dtype = tf.float32)
+        self._logstd = tf.convert_to_tensor(logstd, dtype = tf.float32)
+        self._std = tf.exp(self._logstd)
+
+        super(Normal, self).__init__(
+            act_dtype = tf.float32,
+            param_dtype = tf.float32,
+            is_continuous = True,
+            observation_placeholder = observation_placeholder,
+            group_ndims = group_ndims,
+            **kwargs)
+
+    @property
+    def mean(self):
+        return self._mean
+
+    @property
+    def std(self):
+        return self._std
+
+    @property
+    def logstd(self):
+        return self._logstd
+
+    def _act(self, observation):
+        # TODO: getting session like this maybe ugly. also maybe huge problem when parallel
+        sess = tf.get_default_session()
+        mean, std = self._mean, self._std
+        shape = tf.broadcast_dynamic_shape(tf.shape(self._mean),\
+                                           tf.shape(self._std))
+
+
+        # observation[None] adds one dimension at the beginning
+        sampled_action = sess.run(tf.random_normal(tf.concat([[1], shape], 0),
+                                  dtype = tf.float32) * std + mean,
+                                  feed_dict={self._observation_placeholder: observation[None]})
+        sampled_action = sampled_action[0, 0]
+        return sampled_action
+
+
+    def _log_prob(self, sampled_action):
+        mean, logstd = self._mean, self._logstd
+        c = -0.5 * np.log(2 * np.pi)
+        precision = tf.exp(-2 * logstd)
+        return c - logstd - 0.5 * precision * tf.square(sampled_action - mean)
+
+    def _prob(self, sampled_action):
+        return tf.exp(self._log_prob(sampled_action))

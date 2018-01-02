@@ -55,7 +55,7 @@ class QValuePolicy(object):
 
 class StochasticPolicy(object):
     """
-    The :class:`Distribution` class is the base class for various probabilistic
+    The :class:`StochasticPolicy` class is the base class for various probabilistic
     distributions which support batch inputs, generating batches of samples and
     evaluate probabilities at batches of given values.
 
