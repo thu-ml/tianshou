@@ -14,19 +14,20 @@ class Batch(object):
         self._advantage_estimation_function = advantage_estimation_function
         self._is_first_collect = True
 
+    def collect(self, num_timesteps=0, num_episodes=0,
+                apply_function=True):  # specify how many data to collect here, or fix it in __init__()
+        assert sum(
+            [num_timesteps > 0, num_episodes > 0]) == 1, "One and only one collection number specification permitted!"
 
-    def collect(self, num_timesteps=0, num_episodes=0, apply_function=True): # specify how many data to collect here, or fix it in __init__()
-        assert sum([num_timesteps > 0, num_episodes > 0]) == 1, "One and only one collection number specification permitted!"
-
-        if num_timesteps > 0: # YouQiaoben: finish this implementation, the following code are just from openai/baselines
+        if num_timesteps > 0:  # YouQiaoben: finish this implementation, the following code are just from openai/baselines
             t = 0
-            ac = self.env.action_space.sample() # not used, just so we have the datatype
-            new = True # marks if we're on first timestep of an episode
+            ac = self.env.action_space.sample()  # not used, just so we have the datatype
+            new = True  # marks if we're on first timestep of an episode
             if self.is_first_collect:
                 ob = self.env.reset()
                 self.is_first_collect = False
             else:
-                ob = self.raw_data['observations'][0] # last observation!
+                ob = self.raw_data['observations'][0]  # last observation!
 
             # Initialize history arrays
             observations = np.array([ob for _ in range(num_timesteps)])
@@ -76,9 +77,11 @@ class Batch(object):
             rewards = []
             episode_start_flags = []
 
-            t_count = 0
+            # t_count = 0
 
             for _ in range(num_episodes):
+                t_count = 0
+
                 ob = self._env.reset()
                 observations.append(ob)
                 episode_start_flags.append(True)
@@ -92,7 +95,7 @@ class Batch(object):
 
                     t_count += 1
                     if t_count >= 100:  # force episode stop, just to test if memory still grows
-                        done = True
+                        break
 
                     if done:  # end of episode, discard s_T
                         break
@@ -110,8 +113,9 @@ class Batch(object):
             del rewards
             del episode_start_flags
 
-            self.raw_data = {'observations': self.observations, 'actions': self.actions, 'rewards': self.rewards, 'episode_start_flags': self.episode_start_flags}
-        
+            self.raw_data = {'observations': self.observations, 'actions': self.actions, 'rewards': self.rewards,
+                             'episode_start_flags': self.episode_start_flags}
+
             self._is_first_collect = False
 
         if apply_function:
@@ -133,6 +137,7 @@ class Batch(object):
 
         return current_batch
 
+    # TODO: this will definitely be refactored with a proper logger
     def statistics(self):
         """
         compute the statistics of the current sampled paths
@@ -143,16 +148,21 @@ class Batch(object):
         num_timesteps = rewards.shape[0]
 
         returns = []
+        episode_lengths = []
         max_return = 0
+        num_episodes = 1
         episode_start_idx = 0
         for i in range(1, num_timesteps):
             if episode_start_flags[i] or (
                     i == num_timesteps - 1):  # found the start of next episode or the end of all episodes
+                if episode_start_flags[i]:
+                    num_episodes += 1
                 if i < rewards.shape[0] - 1:
                     t = i - 1
                 else:
                     t = i
                 Gt = 0
+                episode_lengths.append(t - episode_start_idx)
                 while t >= episode_start_idx:
                     Gt += rewards[t]
                     t -= 1
@@ -163,5 +173,8 @@ class Batch(object):
                 episode_start_idx = i
 
         print('AverageReturn: {}'.format(np.mean(returns)))
-        print('StdReturn:   : {}'.format(np.std(returns)))
-        print('MaxReturn    : {}'.format(max_return))
+        print('StdReturn    : {}'.format(np.std(returns)))
+        print('NumEpisodes  : {}'.format(num_episodes))
+        print('MinMaxReturns: {}..., {}'.format(np.sort(returns)[:3], np.sort(returns)[-3:]))
+        print('AverageLength: {}'.format(np.mean(episode_lengths)))
+        print('MinMaxLengths: {}..., {}'.format(np.sort(episode_lengths)[:3], np.sort(episode_lengths)[-3:]))

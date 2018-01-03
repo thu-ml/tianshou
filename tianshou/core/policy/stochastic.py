@@ -35,6 +35,7 @@ class OnehotCategorical(StochasticPolicy):
 
     def __init__(self, logits, observation_placeholder, dtype=None, group_ndims=0, **kwargs):
         self._logits = tf.convert_to_tensor(logits)
+        self._action = tf.multinomial(self.logits, num_samples=1)
 
         if dtype is None:
             dtype = tf.int32
@@ -65,7 +66,7 @@ class OnehotCategorical(StochasticPolicy):
         # TODO: this may be ugly. also maybe huge problem when parallel
         sess = tf.get_default_session()
         # observation[None] adds one dimension at the beginning
-        sampled_action = sess.run(tf.multinomial(self.logits, num_samples=1),
+        sampled_action = sess.run(self._action,
                                            feed_dict={self._observation_placeholder: observation[None]})
 
         sampled_action = sampled_action[0, 0]
@@ -103,6 +104,9 @@ class Normal(StochasticPolicy):
         self._logstd = tf.convert_to_tensor(logstd, dtype = tf.float32)
         self._std = tf.exp(self._logstd)
 
+        shape = tf.broadcast_dynamic_shape(tf.shape(self._mean), tf.shape(self._std))
+        self._action = tf.random_normal(tf.concat([[1], shape], 0), dtype = tf.float32) * self._std + self._mean
+
         super(Normal, self).__init__(
             act_dtype = tf.float32,
             param_dtype = tf.float32,
@@ -126,14 +130,9 @@ class Normal(StochasticPolicy):
     def _act(self, observation):
         # TODO: getting session like this maybe ugly. also maybe huge problem when parallel
         sess = tf.get_default_session()
-        mean, std = self._mean, self._std
-        shape = tf.broadcast_dynamic_shape(tf.shape(self._mean),\
-                                           tf.shape(self._std))
-
 
         # observation[None] adds one dimension at the beginning
-        sampled_action = sess.run(tf.random_normal(tf.concat([[1], shape], 0),
-                                  dtype = tf.float32) * std + mean,
+        sampled_action = sess.run(self._action,
                                   feed_dict={self._observation_placeholder: observation[None]})
         sampled_action = sampled_action[0, 0]
         return sampled_action

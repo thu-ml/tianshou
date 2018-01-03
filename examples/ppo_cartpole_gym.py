@@ -2,8 +2,9 @@
 from __future__ import absolute_import
 
 import tensorflow as tf
-import time
+import gym
 import numpy as np
+import time
 
 # our lib imports here! It's ok to append path in examples
 import sys
@@ -29,19 +30,19 @@ def policy_net(observation, action_dim, scope=None):
     net = tf.layers.dense(observation, 32, activation=tf.nn.tanh)
     net = tf.layers.dense(net, 32, activation=tf.nn.tanh)
 
-    act_mean = tf.layers.dense(net, action_dim, activation=None)
+    act_logits = tf.layers.dense(net, action_dim, activation=None)
 
-    return act_mean
+    return act_logits
 
 
 if __name__ == '__main__': # a clean version with only policy net, no value net
-    env = normalize(CartpoleEnv())
+    env = gym.make('CartPole-v0')
     observation_dim = env.observation_space.shape
-    action_dim = env.action_space.flat_dim
+    action_dim = env.action_space.n
 
     clip_param = 0.2
     num_batches = 10
-    batch_size = 128
+    batch_size = 512
 
     seed = 10
     np.random.seed(seed)
@@ -51,20 +52,18 @@ if __name__ == '__main__': # a clean version with only policy net, no value net
     observation = tf.placeholder(tf.float32, shape=(None,) + observation_dim) # network input
 
     with tf.variable_scope('pi'):
-        action_mean = policy_net(observation, action_dim, 'pi')
-        action_logstd = tf.get_variable('action_logstd', shape=(action_dim,))
+        action_logits = policy_net(observation, action_dim, 'pi')
         train_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) # TODO: better management of TRAINABLE_VARIABLES
     with tf.variable_scope('pi_old'):
-        action_mean_old = policy_net(observation, action_dim, 'pi_old')
-        action_logstd_old = tf.get_variable('action_logstd_old', shape=(action_dim,))
+        action_logits_old = policy_net(observation, action_dim, 'pi_old')
         pi_old_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'pi_old')
 
     # 2. build losses, optimizers
-    pi = policy.Normal(action_mean, action_logstd, observation_placeholder=observation) # YongRen: policy.Gaussian (could reference the policy in TRPO paper, my code is adapted from zhusuan.distributions) policy.DQN etc.
+    pi = policy.OnehotCategorical(action_logits, observation_placeholder=observation) # YongRen: policy.Gaussian (could reference the policy in TRPO paper, my code is adapted from zhusuan.distributions) policy.DQN etc.
     # for continuous action space, you may need to change an environment to run
-    pi_old = policy.Normal(action_mean_old, action_logstd_old, observation_placeholder=observation)
+    pi_old = policy.OnehotCategorical(action_logits_old, observation_placeholder=observation)
 
-    action = tf.placeholder(dtype=tf.float32, shape=(None, action_dim)) # batch of integer actions
+    action = tf.placeholder(dtype=tf.int32, shape=(None,)) # batch of integer actions
     advantage = tf.placeholder(dtype=tf.float32, shape=(None,)) # advantage values used in the Gradients
 
     ppo_loss_clip = losses.ppo_clip(action, advantage, clip_param, pi, pi_old) # TongzhengRen: losses.vpg ... management of placeholders and feed_dict
@@ -89,7 +88,7 @@ if __name__ == '__main__': # a clean version with only policy net, no value net
         start_time = time.time()
         for i in range(100): # until some stopping criterion met...
             # collect data
-            training_data.collect(num_episodes=20) # YouQiaoben, ShihongSong
+            training_data.collect(num_episodes=50) # YouQiaoben, ShihongSong
 
             # print current return
             print('Epoch {}:'.format(i))
@@ -97,9 +96,10 @@ if __name__ == '__main__': # a clean version with only policy net, no value net
 
             # update network
             for _ in range(num_batches):
-                data = training_data.next_batch(batch_size) # YouQiaoben, ShihongSong
+                data = training_data.next_batch(batch_size)  # YouQiaoben, ShihongSong
                 # TODO: auto managing of the placeholders? or add this to params of data.Batch
-                sess.run(train_op, feed_dict={observation: data['observations'], action: data['actions'], advantage: data['returns']})
+                sess.run(train_op, feed_dict={observation: data['observations'], action: data['actions'],
+                                              advantage: data['returns']})
 
             # assigning pi to pi_old
             sess.run([tf.assign(theta_old, theta) for (theta_old, theta) in zip(pi_old_var_list, train_var_list)])

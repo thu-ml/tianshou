@@ -154,6 +154,7 @@ class RankBasedExperience(ReplayBuffer):
         target = list()
 
         sess = tf.get_default_session()
+        # TODO: pre-build the thing in sess.run
         current_datas, current_wis, current_indexs = self.sample({'global_step': sess.run(tf.train.get_global_step())})
 
         for i in range(0, batch_size):

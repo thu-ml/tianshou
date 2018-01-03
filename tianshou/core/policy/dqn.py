@@ -54,7 +54,7 @@ class DQNOld(QValuePolicy):
         return the action (int) to be executed.
         no exploration when exploration=None.
         """
-        # TODO: ensure thread safety
+        # TODO: ensure thread safety, tf.multinomial to init
         sess = tf.get_default_session()
         sampled_action = sess.run(tf.multinomial(self.logits, num_samples=1),
                                   feed_dict={self._observation_placeholder: observation[None]})

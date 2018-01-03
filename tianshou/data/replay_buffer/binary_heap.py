@@ -7,7 +7,7 @@
 import sys
 import math
 
-import utility
+from . import utility
 
 
 class BinaryHeap(object):
