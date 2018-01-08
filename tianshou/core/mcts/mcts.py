@@ -26,7 +26,7 @@ class MCTSNode(object):
 class UCTNode(MCTSNode):
     def __init__(self, parent, action, state, action_num, prior, mcts, inverse=False):
         super(UCTNode, self).__init__(parent, action, state, action_num, prior, inverse)
-        self.Q = np.zeros([action_num])
+        self.Q = np.random.uniform(-1, 1, action_num) * (1e-6)
         self.W = np.zeros([action_num])
         self.N = np.zeros([action_num])
         self.c_puct = c_puct
@@ -121,12 +121,14 @@ class ActionNode(object):
 
 class MCTS(object):
     def __init__(self, simulator, evaluator, start_state, action_num, method="UCT",
-                 role="unknown", debug=False, inverse=False):
+                 role="unknown", debug=False, inverse=False, epsilon=0.25):
         self.simulator = simulator
         self.evaluator = evaluator
         self.role = role
         self.debug = debug
+        self.epsilon = epsilon
         prior, _ = self.evaluator(start_state)
+        prior = (1 - self.epsilon) * prior + self.epsilon * np.random.dirichlet(1.0/action_num * np.ones([action_num]))
         self.action_num = action_num
         if method == "":
             self.root = start_state
