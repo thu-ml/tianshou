@@ -34,7 +34,6 @@ if __name__ == '__main__':
     parser.add_argument("--data_path", type=str, default="./data/")
     parser.add_argument("--black_weight_path", type=str, default=None)
     parser.add_argument("--white_weight_path", type=str, default=None)
-    parser.add_argument("--id", type=int, default=-1)
     parser.add_argument("--debug", type=bool, default=False)
     parser.add_argument("--game", type=str, default="go")
     args = parser.parse_args()
@@ -61,24 +60,10 @@ if __name__ == '__main__':
 
     # start two different player with different network weights.
     server_list = subprocess.check_output(['pyro4-nsc', 'list'])
-    index = []
-    if server_list is not None:
-        server_list = server_list.split("\n")[3:-2]
-        for s in server_list:
-            id = s.split(" ")[0][5:]
-            index.append(eval(id))
-        index.sort()
-    if args.id == -1:
-        if index:
-            args.id = index[-1] + 1
-        else:
-            args.id = 0
-    else:
-        if args.id in index:
-            raise ValueError("Name exists in name server!")
+    current_time = strftime("%Y%m%d_%H%M%S", gmtime())
 
-    black_role_name = 'black' + str(args.id)
-    white_role_name = 'white' + str(args.id)
+    black_role_name = 'black' + current_time
+    white_role_name = 'white' + current_time
 
     black_player = subprocess.Popen(
         ['python', '-u', 'player.py', '--game=' + args.game, '--role=' + black_role_name,
@@ -132,8 +117,8 @@ if __name__ == '__main__':
     evaluate_rounds = 100
     game_num = 0
     try:
-        #while True:
-        while game_num < evaluate_rounds:
+        while True:
+        # while game_num < evaluate_rounds:
             start_time = time.time()
             num = 0
             pass_flag = [False, False]
