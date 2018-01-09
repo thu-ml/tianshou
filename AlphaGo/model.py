@@ -168,7 +168,7 @@ class ResNet(object):
         self.__setattr__(scope + '_saver',
                          tf.train.Saver(max_to_keep=0, var_list=self.__getattribute__(scope + '_var_list')))
 
-    def __call__(self, state):
+    def __call__(self, role, state):
         """
 
         :param history: a list, the history
@@ -184,10 +184,10 @@ class ResNet(object):
                 'The length of history cannot meet the need of the model, given {}, need {}'.format(len(history),
                                                                                                     self.history_length))
         eval_state = self._history2state(history, color)
-        if color == +1:
+        if role == 'black':
             return self.sess.run([self.black_prob, self.black_v],
                                  feed_dict={self.x: eval_state, self.is_training: False})
-        if color == -1:
+        if role == 'white':
             return self.sess.run([self.white_prob, self.white_v],
                                  feed_dict={self.x: eval_state, self.is_training: False})
 

@@ -24,6 +24,7 @@ class Data(object):
     def reset(self):
         self.__init__()
 
+
 if __name__ == '__main__':
     """
     Starting two different players which load network weights to evaluate the winning ratio.
