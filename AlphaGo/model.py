@@ -122,7 +122,7 @@ class ResNet(object):
                 print('Successfully loaded')
             else:
                 raise ValueError("No model in path {}".format(white_checkpoint_path))
-        self.update = [tf.assign(black_params, white_params) for black_params, white_params in
+        self.update = [tf.assign(white_params, black_params) for black_params, white_params in
                        zip(self.black_var_list, self.white_var_list)]
 
         # training hyper-parameters:
