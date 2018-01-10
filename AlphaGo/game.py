@@ -29,11 +29,8 @@ class Game:
     currently leave it untouched for interacting with Go UI.
     '''
 
-    def __init__(self, name=None, role=None, debug=False, black_checkpoint_path=None, white_checkpoint_path=None):
+    def __init__(self, name=None, debug=False, black_checkpoint_path=None, white_checkpoint_path=None):
         self.name = name
-        if role is None:
-            raise ValueError("Need a role!")
-        self.role = role
         self.debug = debug
         if self.name == "go":
             self.size = 9
@@ -41,7 +38,7 @@ class Game:
             self.history_length = 8
             self.history = []
             self.history_set = set()
-            self.game_engine = go.Go(size=self.size, komi=self.komi, role=self.role)
+            self.game_engine = go.Go(size=self.size, komi=self.komi)
             self.board = [utils.EMPTY] * (self.size ** 2)
         elif self.name == "reversi":
             self.size = 8
@@ -76,20 +73,22 @@ class Game:
         self.komi = k
 
     def think(self, latest_boards, color):
-        if color == +1:
+        if color == utils.BLACK:
             role = 'black'
-        if color == -1:
+        elif color == utils.WHITE:
             role = 'white'
+        else:
+            raise ValueError("game.py[think] - unknown color : {}".format(color))
         evaluator = lambda state:self.model(role, state)
         mcts = MCTS(self.game_engine, evaluator, [latest_boards, color],
-                    self.size ** 2 + 1, role=self.role, debug=self.debug, inverse=True)
+                    self.size ** 2 + 1, role=role, debug=self.debug, inverse=True)
         mcts.search(max_step=100)
         if self.debug:
             file = open("mcts_debug.log", 'ab')
-            np.savetxt(file, mcts.root.Q, header="\n" + self.role + " Q value : ", fmt='%.4f', newline=", ")
-            np.savetxt(file, mcts.root.W, header="\n" + self.role + " W value : ", fmt='%.4f', newline=", ")
-            np.savetxt(file, mcts.root.N, header="\n" + self.role + " N value : ", fmt="%d", newline=", ")
-            np.savetxt(file, mcts.root.prior, header="\n" + self.role + " prior : ", fmt='%.4f', newline=", ")
+            np.savetxt(file, mcts.root.Q, header="\n" + role + " Q value : ", fmt='%.4f', newline=", ")
+            np.savetxt(file, mcts.root.W, header="\n" + role + " W value : ", fmt='%.4f', newline=", ")
+            np.savetxt(file, mcts.root.N, header="\n" + role + " N value : ", fmt="%d", newline=", ")
+            np.savetxt(file, mcts.root.prior, header="\n" + role + " prior : ", fmt='%.4f', newline=", ")
             file.close()
         temp = 1
         prob = mcts.root.N ** temp / np.sum(mcts.root.N ** temp)
@@ -140,6 +139,6 @@ class Game:
 
 
 if __name__ == "__main__":
-    game = Game(name="reversi", role="black", checkpoint_path=None)
+    game = Game(name="reversi", checkpoint_path=None)
     game.debug = True
     game.think_play_move(utils.BLACK)
