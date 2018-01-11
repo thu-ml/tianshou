@@ -58,8 +58,9 @@ class Game:
 
     def clear(self):
         if self.name == "go":
+            del self.board[:]
             self.board = [utils.EMPTY] * (self.size ** 2)
-            self.history = []
+            del self.history[:]
         if self.name == "reversi":
             self.board = self.game_engine.get_board()
         for _ in range(self.history_length):

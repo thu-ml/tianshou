@@ -5,6 +5,7 @@ import time
 import os
 from game import Game
 from engine import GTPEngine
+from utils import Data
 import utils
 from time import gmtime, strftime
 
@@ -14,15 +15,6 @@ if python_version < (3, 0):
     import cPickle
 else:
     import _pickle as cPickle
-
-class Data(object):
-    def __init__(self):
-        self.boards = []
-        self.probs = []
-        self.winner = 0
-
-    def reset(self):
-        self.__init__()
 
 
 if __name__ == '__main__':
