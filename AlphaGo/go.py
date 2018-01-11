@@ -18,7 +18,6 @@ class Go:
     def __init__(self, **kwargs):
         self.size = kwargs['size']
         self.komi = kwargs['komi']
-        self.role = kwargs['role']
 
     def _flatten(self, vertex):
         x, y = vertex
@@ -332,7 +331,7 @@ class Go:
 
 
 if __name__ == "__main__":
-    go = Go(size=9, komi=3.75, role = utils.BLACK)
+    go = Go(size=9, komi=3.75)
     endgame = [
         1, 0, 1, 0, 1, 1, -1, 0, -1,
         1, 1, 1, 1, 1, 1, -1, -1, -1,
