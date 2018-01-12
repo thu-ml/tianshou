@@ -61,6 +61,7 @@ if __name__ == '__main__':
         while True:
         #while game_num < evaluate_rounds:
             start_time = time.time()
+            game.model.check_latest_model()
             num = 0
             pass_flag = [False, False]
             print("Start game {}".format(game_num))
