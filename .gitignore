@@ -9,3 +9,4 @@ checkpoint
 .DS_Store
 data
 .log
+go-*

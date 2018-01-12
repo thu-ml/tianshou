@@ -5,6 +5,7 @@
 # $Author: renyong15 © <mails.tsinghua.edu.cn>
 #
 
+import sys
 from game import Game
 import copy
 import numpy as np
@@ -187,9 +188,23 @@ class GTPEngine():
             board = board.flatten().tolist()
         return board, True
 
+    def cmd_print_board(self, args, **kwargs):
+	board = copy.deepcopy(self._game.board)
+	print(board)
+	return None, True
+
     def cmd_get_prob(self, args, **kwargs):
         return self._game.prob, True
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     print ("test engine.py")
+    game = Game(name='reversi')
+    engine = GTPEngine(game_obj=game)
+    print ("Engine initialized!")
+    cmd = raw_input
+    while not engine.disconnect:
+	command = cmd()
+	result = engine.run_cmd(command)
+	sys.stdout.write(result)
+	sys.stdout.flush()
