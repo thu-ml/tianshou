@@ -101,8 +101,9 @@ class Go:
         next_board = copy.deepcopy(current_board)
         next_board[self._flatten(vertex)] = color
         self._process_board(next_board, color, vertex)
-        if hash(tuple(next_board)) in history_hashtable:
+        if tuple(next_board) in history_hashtable:
             repeat = True
+        del next_board
         return repeat
 
     def _is_eye(self, current_board, color, vertex):
@@ -206,7 +207,7 @@ class Go:
         history_boards, color = state
         history_hashtable = set()
         for board in history_boards:
-            history_hashtable.add(hash(tuple(board)))
+            history_hashtable.add(tuple(board))
         for action_candidate in action_set[:-1]:
             # go through all the actions excluding pass
             if not self._is_valid(state, action_candidate, history_hashtable):
@@ -242,15 +243,15 @@ class Go:
         # since go is MDP, we only need the last board for hashing
         return tuple(state[0][-1])
 
-    def executor_do_move(self, history, history_set, latest_boards, current_board, color, vertex):
-        if not self._rule_check(history_set, current_board, color, vertex, is_thinking=False):
+    def executor_do_move(self, history, history_hashtable, latest_boards, current_board, color, vertex):
+        if not self._rule_check(history_hashtable, current_board, color, vertex, is_thinking=False):
             # raise ValueError("!!! We have more than four ko at the same time !!!")
             return False
         current_board[self._flatten(vertex)] = color
         self._process_board(current_board, color, vertex)
         history.append(copy.deepcopy(current_board))
         latest_boards.append(copy.deepcopy(current_board))
-        history_set.add(hash(tuple(current_board)))
+        history_hashtable.add(copy.deepcopy(tuple(current_board)))
         return True
 
     def _find_empty(self, current_board):

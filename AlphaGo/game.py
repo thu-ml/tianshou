@@ -37,7 +37,7 @@ class Game:
             self.komi = 3.75
             self.history_length = 8
             self.history = []
-            self.history_set = set()
+            self.history_hashtable = set()
             self.game_engine = go.Go(size=self.size, komi=self.komi)
             self.board = [utils.EMPTY] * (self.size ** 2)
         elif self.name == "reversi":
@@ -61,7 +61,7 @@ class Game:
             del self.board[:]
             self.board = [utils.EMPTY] * (self.size ** 2)
             del self.history[:]
-            self.history_set.clear()
+            self.history_hashtable.clear()
         if self.name == "reversi":
             self.board = self.game_engine.get_board()
         for _ in range(self.history_length):
@@ -108,7 +108,7 @@ class Game:
         if self.name == "reversi":
             res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
         if self.name == "go":
-            res = self.game_engine.executor_do_move(self.history, self.history_set, self.latest_boards, self.board,
+            res = self.game_engine.executor_do_move(self.history, self.history_hashtable, self.latest_boards, self.board,
                                                     color, vertex)
         return res
 
