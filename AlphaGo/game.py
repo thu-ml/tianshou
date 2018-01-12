@@ -61,8 +61,7 @@ class Game:
             del self.board[:]
             self.board = [utils.EMPTY] * (self.size ** 2)
             del self.history[:]
-            del self.history_set
-            self.history_set = set()
+            self.history_set.clear()
         if self.name == "reversi":
             self.board = self.game_engine.get_board()
         for _ in range(self.history_length):

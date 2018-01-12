@@ -157,22 +157,34 @@ class Go:
             vertex = self._deflatten(action)
         return vertex
 
-    def _rule_check(self, history_hashtable, current_board, color, vertex):
+    def _rule_check(self, history_hashtable, current_board, color, vertex, is_thinking=True):
         ### in board
         if not self._in_board(vertex):
-            return False
+            if not is_thinking:
+                raise ValueError("Target point not in board, Current Board: {}, color: {}, vertex : {}".format(current_board, color, vertex))
+            else:
+                return False
 
         ### already have stone
         if not current_board[self._flatten(vertex)] == utils.EMPTY:
-            return False
+            if not is_thinking:
+                raise ValueError("Target point already has a stone, Current Board: {}, color: {}, vertex : {}".format(current_board, color, vertex))
+            else:
+                return False
 
         ### check if it is suicide
         if self._is_suicide(current_board, color, vertex):
-            return False
+            if not is_thinking:
+                raise ValueError("Target point causes suicide, Current Board: {}, color: {}, vertex : {}".format(current_board, color, vertex))
+            else:
+                return False
 
         ### forbid global isomorphous
         if self._check_global_isomorphous(history_hashtable, current_board, color, vertex):
-            return False
+            if not is_thinking:
+                raise ValueError("Target point causes global isomorphous, Current Board: {}, color: {}, vertex : {}".format(current_board, color, vertex))
+            else:
+                return False
 
         return True
 
@@ -231,9 +243,8 @@ class Go:
         return tuple(state[0][-1])
 
     def executor_do_move(self, history, history_set, latest_boards, current_board, color, vertex):
-        if not self._rule_check(history_set, current_board, color, vertex):
-            print(current_board)
-            raise ValueError("!!! We have more than four ko at the same time !!!")
+        if not self._rule_check(history_set, current_board, color, vertex, is_thinking=False):
+            # raise ValueError("!!! We have more than four ko at the same time !!!")
             return False
         current_board[self._flatten(vertex)] = color
         self._process_board(current_board, color, vertex)
