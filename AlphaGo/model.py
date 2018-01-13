@@ -119,13 +119,12 @@ class ResNet(object):
                        zip(self.black_var_list, self.white_var_list)]
 
         # training hyper-parameters:
-        self.window_length = 900
+        self.window_length = 500
         self.save_freq = 5000
         self.training_data = {'states': deque(maxlen=self.window_length), 'probs': deque(maxlen=self.window_length),
                               'winner': deque(maxlen=self.window_length), 'length': deque(maxlen=self.window_length)}
 
-        # training or not
-        self.training = False
+        self.use_latest = False
 
     def _build_network(self, scope, residual_block_num):
         """
@@ -188,16 +187,16 @@ class ResNet(object):
                                  feed_dict={self.x: eval_state, self.is_training: False})
 
     def check_latest_model(self):
-        if self.training:
+        if self.use_latest:
             black_ckpt_file = tf.train.latest_checkpoint(self.save_path + "black/")
-            if self.black_ckpt_file != black_ckpt_file:
+            if self.black_ckpt_file != black_ckpt_file and black_ckpt_file is not None:
                 self.black_ckpt_file = black_ckpt_file
                 print('Loading model from {}...'.format(self.black_ckpt_file))
                 self.black_saver.restore(self.sess, self.black_ckpt_file)
                 print('Black Model Updated!')
 
             white_ckpt_file = tf.train.latest_checkpoint(self.save_path + "white/")
-            if self.white_ckpt_file != white_ckpt_file:
+            if self.white_ckpt_file != white_ckpt_file and white_ckpt_file is not None:
                 self.white_ckpt_file = white_ckpt_file
                 print('Loading model from {}...'.format(self.white_ckpt_file))
                 self.white_saver.restore(self.sess, self.white_ckpt_file)
@@ -234,7 +233,7 @@ class ResNet(object):
         :param target: a string, which to optimize, can only be "both", "black" and "white"
         :param mode: a string, how to optimize, can only be "memory" and "file"
         """
-        self.training = True
+	self.use_latest = True
         if mode == 'memory':
             pass
         if mode == 'file':
@@ -401,5 +400,5 @@ class ResNet(object):
 
 
 if __name__ == "__main__":
-    model = ResNet(board_size=8, action_num=65, history_length=1, black_checkpoint_path="./checkpoint/black", white_checkpoint_path="./checkpoint/white")
-    model.train(mode="file", data_path="./data/", batch_size=128, save_path="./checkpoint/")
+    model = ResNet(board_size=9, action_num=82, history_length=8, black_checkpoint_path="./checkpoint/black", white_checkpoint_path="./checkpoint/white")
+    model.train(mode="file", data_path="./data/", batch_size=128, save_path="./go-v2/")
