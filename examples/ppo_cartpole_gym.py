@@ -14,28 +14,8 @@ from tianshou.data.batch import Batch
 import tianshou.data.advantage_estimation as advantage_estimation
 import tianshou.core.policy.stochastic as policy  # TODO: fix imports as zhusuan so that only need to import to policy
 
-from rllab.envs.box2d.cartpole_env import CartpoleEnv
-from rllab.envs.normalized_env import normalize
 
-
-def policy_net(observation, action_dim, scope=None):
-    """
-    Constructs the policy network. NOT NEEDED IN THE LIBRARY! this is pure tf
-
-    :param observation: Placeholder for the observation. A tensor of shape (bs, x, y, channels)
-    :param action_dim: int. The number of actions.
-    :param scope: str. Specifying the scope of the variables.
-    """
-    # with tf.variable_scope(scope):
-    net = tf.layers.dense(observation, 32, activation=tf.nn.tanh)
-    net = tf.layers.dense(net, 32, activation=tf.nn.tanh)
-
-    act_logits = tf.layers.dense(net, action_dim, activation=None)
-
-    return act_logits
-
-
-if __name__ == '__main__': # a clean version with only policy net, no value net
+if __name__ == '__main__':
     env = gym.make('CartPole-v0')
     observation_dim = env.observation_space.shape
     action_dim = env.action_space.n
@@ -44,51 +24,52 @@ if __name__ == '__main__': # a clean version with only policy net, no value net
     num_batches = 10
     batch_size = 512
 
-    seed = 10
+    seed = 5
     np.random.seed(seed)
     tf.set_random_seed(seed)
 
-    # 1. build network with pure tf
-    observation = tf.placeholder(tf.float32, shape=(None,) + observation_dim) # network input
+    ### 1. build network with pure tf
+    observation_ph = tf.placeholder(tf.float32, shape=(None,) + observation_dim)
 
-    with tf.variable_scope('pi'):
-        action_logits = policy_net(observation, action_dim, 'pi')
-        train_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) # TODO: better management of TRAINABLE_VARIABLES
-    with tf.variable_scope('pi_old'):
-        action_logits_old = policy_net(observation, action_dim, 'pi_old')
-        pi_old_var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'pi_old')
+    def my_policy():
+        net = tf.layers.dense(observation_ph, 64, activation=tf.nn.tanh)
+        net = tf.layers.dense(net, 64, activation=tf.nn.tanh)
 
-    # 2. build losses, optimizers
-    pi = policy.OnehotCategorical(action_logits, observation_placeholder=observation) # YongRen: policy.Gaussian (could reference the policy in TRPO paper, my code is adapted from zhusuan.distributions) policy.DQN etc.
-    # for continuous action space, you may need to change an environment to run
-    pi_old = policy.OnehotCategorical(action_logits_old, observation_placeholder=observation)
+        action_logits = tf.layers.dense(net, action_dim, activation=None)
 
-    action = tf.placeholder(dtype=tf.int32, shape=(None,)) # batch of integer actions
-    advantage = tf.placeholder(dtype=tf.float32, shape=(None,)) # advantage values used in the Gradients
+        return action_logits, None  # None value head
 
-    ppo_loss_clip = losses.ppo_clip(action, advantage, clip_param, pi, pi_old) # TongzhengRen: losses.vpg ... management of placeholders and feed_dict
+    # TODO: current implementation of passing function or overriding function has to return a value head
+    # to allow network sharing between policy and value networks. This makes 'policy' and 'value_function'
+    # imbalanced semantically (though they are naturally imbalanced since 'policy' is required to interact
+    # with the environment and 'value_function' is not). I have an idea to solve this imbalance, which is
+    # not based on passing function or overriding function.
+
+    ### 2. build policy, loss, optimizer
+    pi = policy.OnehotCategorical(my_policy, observation_placeholder=observation_ph, weight_update=0)
+
+    ppo_loss_clip = losses.ppo_clip(pi, clip_param)
 
     total_loss = ppo_loss_clip
     optimizer = tf.train.AdamOptimizer(1e-4)
-    train_op = optimizer.minimize(total_loss, var_list=train_var_list)
+    train_op = optimizer.minimize(total_loss, var_list=pi.trainable_variables)
 
-    # 3. define data collection
-    training_data = Batch(env, pi, advantage_estimation.full_return) # YouQiaoben: finish and polish Batch, advantage_estimation.gae_lambda as in PPO paper
-                                                             # ShihongSong: Replay(), see dqn_example.py
-    # maybe a dict to manage the elements to be collected
+    ### 3. define data collection
+    training_data = Batch(env, pi, advantage_estimation.full_return)
 
-    # 4. start training
+    ### 4. start training
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
-        # sync pi and pi_old
-        sess.run([tf.assign(theta_old, theta) for (theta_old, theta) in zip(pi_old_var_list, train_var_list)])
+
+        # assign pi to pi_old
+        pi.sync_weights()  # TODO: automate this for policies with target network
 
         start_time = time.time()
-        for i in range(100): # until some stopping criterion met...
+        for i in range(100):
             # collect data
-            training_data.collect(num_episodes=50) # YouQiaoben, ShihongSong
+            training_data.collect(num_episodes=50)
 
             # print current return
             print('Epoch {}:'.format(i))
@@ -96,12 +77,10 @@ if __name__ == '__main__': # a clean version with only policy net, no value net
 
             # update network
             for _ in range(num_batches):
-                data = training_data.next_batch(batch_size)  # YouQiaoben, ShihongSong
-                # TODO: auto managing of the placeholders? or add this to params of data.Batch
-                sess.run(train_op, feed_dict={observation: data['observations'], action: data['actions'],
-                                              advantage: data['returns']})
+                feed_dict = training_data.next_batch(batch_size)
+                sess.run(train_op, feed_dict=feed_dict)
 
             # assigning pi to pi_old
-            sess.run([tf.assign(theta_old, theta) for (theta_old, theta) in zip(pi_old_var_list, train_var_list)])
+            pi.update_weights()
 
             print('Elapsed time: {:.1f} min'.format((time.time() - start_time) / 60))

@@ -11,7 +11,7 @@ def ppo_clip(policy, clip_param):
     :param policy: current `policy` to be optimized
     :param pi_old: old `policy` for computing the ppo loss as in Eqn. (7) in the paper
     """
-    action_ph = tf.placeholder(policy.act_dtype, shape=(None, policy.action_dim), name='ppo_clip_loss/action_placeholder')
+    action_ph = tf.placeholder(policy.act_dtype, shape=(None,) + policy.action_shape, name='ppo_clip_loss/action_placeholder')
     advantage_ph = tf.placeholder(tf.float32, shape=(None,), name='ppo_clip_loss/advantage_placeholder')
     policy.managed_placeholders['action'] = action_ph
     policy.managed_placeholders['processed_reward'] = advantage_ph

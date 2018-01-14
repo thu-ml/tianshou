@@ -14,7 +14,7 @@ class Batch(object):
         self._advantage_estimation_function = advantage_estimation_function
         self._is_first_collect = True
 
-    def collect(self, num_timesteps=0, num_episodes=0,
+    def collect(self, num_timesteps=0, num_episodes=0, my_feed_dict={},
                 apply_function=True):  # specify how many data to collect here, or fix it in __init__()
         assert sum(
             [num_timesteps > 0, num_episodes > 0]) == 1, "One and only one collection number specification permitted!"
@@ -87,7 +87,7 @@ class Batch(object):
                 episode_start_flags.append(True)
 
                 while True:
-                    ac = self._pi.act(ob)
+                    ac = self._pi.act(ob, my_feed_dict)
                     actions.append(ac)
 
                     ob, reward, done, _ = self._env.step(ac)
@@ -139,6 +139,7 @@ class Batch(object):
         feed_dict[self._pi.managed_placeholders['observation']] = current_batch['observations']
         feed_dict[self._pi.managed_placeholders['action']] = current_batch['actions']
         feed_dict[self._pi.managed_placeholders['processed_reward']] = current_batch['returns']
+        # TODO: should use the keys in pi.managed_placeholders to find values in self.data and self.raw_data
 
         return feed_dict
 

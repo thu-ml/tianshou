@@ -9,7 +9,8 @@ import tensorflow as tf
 
 from .base import StochasticPolicy
 
-
+# TODO: the following, especially the target network construction should be refactored to be more neat
+# even if policy_callable don't return a distribution class
 class OnehotCategorical(StochasticPolicy):
     """
     The class of one-hot Categorical distribution.
@@ -33,19 +34,62 @@ class OnehotCategorical(StochasticPolicy):
     `[i, j, ..., k, :]` is a one-hot vector of the selected category.
     """
 
-    def __init__(self, logits, observation_placeholder, dtype=None, group_ndims=0, **kwargs):
-        self._logits = tf.convert_to_tensor(logits)
-        self._action = tf.multinomial(self.logits, num_samples=1)
+    def __init__(self,
+                 policy_callable,
+                 observation_placeholder,
+                 weight_update=1,
+                 group_ndims=1,
+                 **kwargs):
+        self.managed_placeholders = {'observation': observation_placeholder}
+        self.weight_update = weight_update
+        self.interaction_count = -1  # defaults to -1. only useful if weight_update > 1.
 
-        if dtype is None:
-            dtype = tf.int32
-        # assert_same_float_and_int_dtype([], dtype)
+        with tf.variable_scope('network'):
+            logits, value_head = policy_callable()
+            self._logits = tf.convert_to_tensor(logits, dtype=tf.float32)
+            self._action = tf.multinomial(self.logits, num_samples=1)
+            # TODO: self._action should be exactly the action tensor to run that directly gives action_dim
 
-        tf.assert_rank(self._logits, rank=2) # TODO: flexible policy output rank?
+            if value_head is not None:
+                pass
+
+        self.trainable_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='network')
+
+        if self.weight_update == 1:
+            self.weight_update_ops = None
+            self.sync_weights_ops = None
+        else:  # then we need to build another tf graph as target network
+            with tf.variable_scope('net_old'):
+                logits, value_head = policy_callable()
+                self._logits_old = tf.convert_to_tensor(logits, dtype=tf.float32)
+
+                if value_head is not None:  # useful in DDPG
+                    pass
+
+            network_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='network')
+            network_old_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='net_old')
+            # TODO: use a scope that the user will almost surely not use. so get_collection will return
+            # the correct weights and old_weights, since it filters by regular expression
+            # or we write a util to parse the variable names and use only the topmost scope
+
+            assert len(network_weights) == len(network_old_weights)
+            self.sync_weights_ops = [tf.assign(variable_old, variable)
+                                     for (variable_old, variable) in zip(network_old_weights, network_weights)]
+
+            if weight_update == 0:
+                self.weight_update_ops = self.sync_weights_ops
+            elif 0 < weight_update < 1:  # as in DDPG
+                pass
+            else:
+                self.interaction_count = 0  # as in DQN
+                import math
+                self.weight_update = math.ceil(weight_update)
+
+        tf.assert_rank(self._logits, rank=2) # TODO: flexible policy output rank, e.g. RNN
         self._n_categories = self._logits.get_shape()[-1].value
 
         super(OnehotCategorical, self).__init__(
-            act_dtype=dtype,
+            act_dtype=tf.int32,
             param_dtype=self._logits.dtype,
             is_continuous=False,
             observation_placeholder=observation_placeholder,
@@ -62,12 +106,18 @@ class OnehotCategorical(StochasticPolicy):
         """The number of categories in the distribution."""
         return self._n_categories
 
-    def _act(self, observation):
+    @property
+    def action_shape(self):
+        return ()
+
+    def _act(self, observation, my_feed_dict):
         # TODO: this may be ugly. also maybe huge problem when parallel
         sess = tf.get_default_session()
         # observation[None] adds one dimension at the beginning
-        sampled_action = sess.run(self._action,
-                                           feed_dict={self._observation_placeholder: observation[None]})
+
+        feed_dict = {self._observation_placeholder: observation[None]}
+        feed_dict.update(my_feed_dict)
+        sampled_action = sess.run(self._action, feed_dict=feed_dict)
 
         sampled_action = sampled_action[0, 0]
 
@@ -76,9 +126,29 @@ class OnehotCategorical(StochasticPolicy):
     def _log_prob(self, sampled_action):
         return -tf.nn.sparse_softmax_cross_entropy_with_logits(labels=sampled_action, logits=self.logits)
 
-
     def _prob(self, sampled_action):
         return tf.exp(self._log_prob(sampled_action))
+
+    def log_prob_old(self, sampled_action):
+        return -tf.nn.sparse_softmax_cross_entropy_with_logits(labels=sampled_action, logits=self._logits_old)
+
+    def update_weights(self):
+        """
+        updates the weights of policy_old.
+        :return:
+        """
+        if self.weight_update_ops is not None:
+            sess = tf.get_default_session()
+            sess.run(self.weight_update_ops)
+
+    def sync_weights(self):
+        """
+        sync the weights of network_old. Direct copy the weights of network.
+        :return:
+        """
+        if self.sync_weights_ops is not None:
+            sess = tf.get_default_session()
+            sess.run(self.sync_weights_ops)
 
 
 OnehotDiscrete = OnehotCategorical
@@ -111,7 +181,7 @@ class Normal(StochasticPolicy):
 
             shape = tf.broadcast_dynamic_shape(tf.shape(self._mean), tf.shape(self._std))
             self._action = tf.random_normal(tf.concat([[1], shape], 0), dtype = tf.float32) * self._std + self._mean
-            # TODO: self._action should be exactly the action tensor to run, without [0, 0] in self._act
+            # TODO: self._action should be exactly the action tensor to run that directly gives action_dim
 
             if value_head is not None:
                 pass
@@ -131,7 +201,10 @@ class Normal(StochasticPolicy):
                     pass
 
             network_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='network')
-            self.network_old_weights = network_old_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='net_old')
+            network_old_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='net_old')
+            # TODO: use a scope that the user will almost surely not use. so get_collection will return
+            # the correct weights and old_weights, since it filters by regular expression
+
             assert len(network_weights) == len(network_old_weights)
             self.sync_weights_ops = [tf.assign(variable_old, variable)
                                      for (variable_old, variable) in zip(network_old_weights, network_weights)]
@@ -168,12 +241,8 @@ class Normal(StochasticPolicy):
         return self._logstd
 
     @property
-    def action(self):
-        return self._action
-
-    @property
-    def action_dim(self):
-        return self.mean.shape.as_list()[-1]
+    def action_shape(self):
+        return tuple(self._mean.shape.as_list[1:])
 
     def _act(self, observation, my_feed_dict):
         # TODO: getting session like this maybe ugly. also maybe huge problem when parallel
