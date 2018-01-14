@@ -135,7 +135,12 @@ class Batch(object):
             advantage_std = np.std(current_batch['returns'])
             current_batch['returns'] = (current_batch['returns'] - advantage_mean) / advantage_std
 
-        return current_batch
+        feed_dict = {}
+        feed_dict[self._pi.managed_placeholders['observation']] = current_batch['observations']
+        feed_dict[self._pi.managed_placeholders['action']] = current_batch['actions']
+        feed_dict[self._pi.managed_placeholders['processed_reward']] = current_batch['returns']
+
+        return feed_dict
 
     # TODO: this will definitely be refactored with a proper logger
     def statistics(self):

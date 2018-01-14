@@ -94,24 +94,64 @@ class Normal(StochasticPolicy):
         :param observation_placeholder
     """
     def __init__(self,
-                 mean = 0.,
-                 logstd = 1.,
-                 group_ndims = 1,
-                 observation_placeholder = None,
+                 policy_callable,
+                 observation_placeholder,
+                 weight_update=1,
+                 group_ndims=1,
                  **kwargs):
+        self.managed_placeholders = {'observation': observation_placeholder}
+        self.weight_update = weight_update
+        self.interaction_count = -1  # defaults to -1. only useful if weight_update > 1.
 
-        self._mean = tf.convert_to_tensor(mean, dtype = tf.float32)
-        self._logstd = tf.convert_to_tensor(logstd, dtype = tf.float32)
-        self._std = tf.exp(self._logstd)
+        with tf.variable_scope('network'):
+            mean, logstd, value_head = policy_callable()
+            self._mean = tf.convert_to_tensor(mean, dtype = tf.float32)
+            self._logstd = tf.convert_to_tensor(logstd, dtype = tf.float32)
+            self._std = tf.exp(self._logstd)
 
-        shape = tf.broadcast_dynamic_shape(tf.shape(self._mean), tf.shape(self._std))
-        self._action = tf.random_normal(tf.concat([[1], shape], 0), dtype = tf.float32) * self._std + self._mean
+            shape = tf.broadcast_dynamic_shape(tf.shape(self._mean), tf.shape(self._std))
+            self._action = tf.random_normal(tf.concat([[1], shape], 0), dtype = tf.float32) * self._std + self._mean
+            # TODO: self._action should be exactly the action tensor to run, without [0, 0] in self._act
+
+            if value_head is not None:
+                pass
+
+        self.trainable_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='network')
+
+        if self.weight_update == 1:
+            self.weight_update_ops = None
+            self.sync_weights_ops = None
+        else:  # then we need to build another tf graph as target network
+            with tf.variable_scope('net_old'):
+                mean, logstd, value_head = policy_callable()
+                self._mean_old = tf.convert_to_tensor(mean, dtype=tf.float32)
+                self._logstd_old = tf.convert_to_tensor(logstd, dtype=tf.float32)
+
+                if value_head is not None:  # useful in DDPG
+                    pass
+
+            network_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='network')
+            self.network_old_weights = network_old_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='net_old')
+            assert len(network_weights) == len(network_old_weights)
+            self.sync_weights_ops = [tf.assign(variable_old, variable)
+                                     for (variable_old, variable) in zip(network_old_weights, network_weights)]
+
+            if weight_update == 0:
+                self.weight_update_ops = self.sync_weights_ops
+            elif 0 < weight_update < 1:
+                pass
+            else:
+                self.interaction_count = 0
+                import math
+                self.weight_update = math.ceil(weight_update)
+
+
 
         super(Normal, self).__init__(
-            act_dtype = tf.float32,
-            param_dtype = tf.float32,
-            is_continuous = True,
-            observation_placeholder = observation_placeholder,
+            act_dtype=tf.float32,
+            param_dtype=tf.float32,
+            is_continuous=True,
+            observation_placeholder=observation_placeholder,
             group_ndims = group_ndims,
             **kwargs)
 
@@ -127,13 +167,22 @@ class Normal(StochasticPolicy):
     def logstd(self):
         return self._logstd
 
-    def _act(self, observation):
+    @property
+    def action(self):
+        return self._action
+
+    @property
+    def action_dim(self):
+        return self.mean.shape.as_list()[-1]
+
+    def _act(self, observation, my_feed_dict):
         # TODO: getting session like this maybe ugly. also maybe huge problem when parallel
         sess = tf.get_default_session()
 
         # observation[None] adds one dimension at the beginning
-        sampled_action = sess.run(self._action,
-                                  feed_dict={self._observation_placeholder: observation[None]})
+        feed_dict = {self._observation_placeholder: observation[None]}
+        feed_dict.update(my_feed_dict)
+        sampled_action = sess.run(self._action, feed_dict=feed_dict)
         sampled_action = sampled_action[0, 0]
         return sampled_action
 
@@ -146,3 +195,35 @@ class Normal(StochasticPolicy):
 
     def _prob(self, sampled_action):
         return tf.exp(self._log_prob(sampled_action))
+
+    def log_prob_old(self, sampled_action):
+        """
+        return the log_prob of the old policy when constructing tf graphs. Raises error when there's no old policy.
+        :param sampled_action: the placeholder for sampled actions during interaction with the environment.
+        :return: tensor of the log_prob of the old policy
+        """
+        if self.weight_update == 1:
+            raise AttributeError('Policy has no policy_old since it\'s initialized with weight_update=1!')
+
+        mean, logstd = self._mean_old, self._logstd_old
+        c = -0.5 * np.log(2 * np.pi)
+        precision = tf.exp(-2 * logstd)
+        return c - logstd - 0.5 * precision * tf.square(sampled_action - mean)
+
+    def update_weights(self):
+        """
+        updates the weights of policy_old.
+        :return:
+        """
+        if self.weight_update_ops is not None:
+            sess = tf.get_default_session()
+            sess.run(self.weight_update_ops)
+
+    def sync_weights(self):
+        """
+        sync the weights of network_old. Direct copy the weights of network.
+        :return:
+        """
+        if self.sync_weights_ops is not None:
+            sess = tf.get_default_session()
+            sess.run(self.sync_weights_ops)

@@ -16,44 +16,11 @@ class PolicyBase(object):
     """
     base class for policy. only provides `act` method with exploration
     """
-    def __init__(self, observation_placeholder):
-        self._observation_placeholder = observation_placeholder
-
-    def act(self, observation, exploration):
+    def act(self, observation):
         raise NotImplementedError()
 
 
-class QValuePolicy(object):
-    """
-    The policy as in DQN
-    """
-    def __init__(self, observation_placeholder):
-        self._observation_placeholder = observation_placeholder
-
-    def act(self, observation, exploration=None):  # first implement no exploration
-        """
-        return the action (int) to be executed.
-        no exploration when exploration=None.
-        """
-        self._act(observation, exploration)
-
-    def _act(self, observation, exploration=None):
-        raise NotImplementedError()
-
-    def values(self, observation):
-        """
-        returns the Q(s, a) values (float) for all actions a at observation s
-        """
-        pass
-
-    def values_tensor(self):
-        """
-        returns the tensor of the values for all actions a at observation s
-        """
-        pass
-
-
-class StochasticPolicy(object):
+class StochasticPolicy(PolicyBase):
     """
     The :class:`StochasticPolicy` class is the base class for various probabilistic
     distributions which support batch inputs, generating batches of samples and
@@ -170,7 +137,7 @@ class StochasticPolicy(object):
         return self._group_ndims
 
     # @add_name_scope
-    def act(self, observation):
+    def act(self, observation, my_feed_dict={}):
         """
         sample(n_samples=None)
 
@@ -184,9 +151,9 @@ class StochasticPolicy(object):
             samples to draw from the distribution.
         :return: A Tensor of samples.
         """
-        return self._act(observation)
+        return self._act(observation, my_feed_dict)
 
-    def _act(self, observation):
+    def _act(self, observation, my_feed_dict):
         """
         Private method for subclasses to rewrite the :meth:`sample` method.
         """
