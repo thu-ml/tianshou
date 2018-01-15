@@ -174,6 +174,20 @@ class StochasticPolicy(PolicyBase):
         log_p = self._log_prob(sampled_action)
         return tf.reduce_sum(log_p, tf.range(-self._group_ndims, 0))
 
+    def log_prob_old(self, sampled_action):
+        """
+        log_prob(sampled_action)
+
+        Compute log probability density (mass) function at `given` value.
+
+        :param given: A Tensor. The value at which to evaluate log probability
+            density (mass) function. Must be able to broadcast to have a shape
+            of ``(... + )batch_shape + value_shape``.
+        :return: A Tensor of shape ``(... + )batch_shape[:-group_ndims]``.
+        """
+        log_p = self._log_prob_old(sampled_action)
+        return tf.reduce_sum(log_p, tf.range(-self._group_ndims, 0))
+
     # @add_name_scope
     def prob(self, sampled_action):
         """
@@ -190,6 +204,12 @@ class StochasticPolicy(PolicyBase):
         return tf.reduce_prod(p, tf.range(-self._group_ndims, 0))
 
     def _log_prob(self, sampled_action):
+        """
+        Private method for subclasses to rewrite the :meth:`log_prob` method.
+        """
+        raise NotImplementedError()
+
+    def _log_prob_old(self, sampled_action):
         """
         Private method for subclasses to rewrite the :meth:`log_prob` method.
         """

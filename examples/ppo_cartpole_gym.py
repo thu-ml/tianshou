@@ -24,7 +24,7 @@ if __name__ == '__main__':
     num_batches = 10
     batch_size = 512
 
-    seed = 5
+    seed = 0
     np.random.seed(seed)
     tf.set_random_seed(seed)
 
@@ -32,8 +32,8 @@ if __name__ == '__main__':
     observation_ph = tf.placeholder(tf.float32, shape=(None,) + observation_dim)
 
     def my_policy():
-        net = tf.layers.dense(observation_ph, 64, activation=tf.nn.tanh)
-        net = tf.layers.dense(net, 64, activation=tf.nn.tanh)
+        net = tf.layers.dense(observation_ph, 32, activation=tf.nn.tanh)
+        net = tf.layers.dense(net, 32, activation=tf.nn.tanh)
 
         action_logits = tf.layers.dense(net, action_dim, activation=None)
 

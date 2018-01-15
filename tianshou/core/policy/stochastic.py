@@ -38,7 +38,7 @@ class OnehotCategorical(StochasticPolicy):
                  policy_callable,
                  observation_placeholder,
                  weight_update=1,
-                 group_ndims=1,
+                 group_ndims=0,
                  **kwargs):
         self.managed_placeholders = {'observation': observation_placeholder}
         self.weight_update = weight_update
@@ -47,7 +47,7 @@ class OnehotCategorical(StochasticPolicy):
         with tf.variable_scope('network'):
             logits, value_head = policy_callable()
             self._logits = tf.convert_to_tensor(logits, dtype=tf.float32)
-            self._action = tf.multinomial(self.logits, num_samples=1)
+            self._action = tf.multinomial(self._logits, num_samples=1)
             # TODO: self._action should be exactly the action tensor to run that directly gives action_dim
 
             if value_head is not None:
@@ -129,7 +129,7 @@ class OnehotCategorical(StochasticPolicy):
     def _prob(self, sampled_action):
         return tf.exp(self._log_prob(sampled_action))
 
-    def log_prob_old(self, sampled_action):
+    def _log_prob_old(self, sampled_action):
         return -tf.nn.sparse_softmax_cross_entropy_with_logits(labels=sampled_action, logits=self._logits_old)
 
     def update_weights(self):
@@ -242,7 +242,7 @@ class Normal(StochasticPolicy):
 
     @property
     def action_shape(self):
-        return tuple(self._mean.shape.as_list[1:])
+        return tuple(self._mean.shape.as_list()[1:])
 
     def _act(self, observation, my_feed_dict):
         # TODO: getting session like this maybe ugly. also maybe huge problem when parallel
@@ -265,7 +265,7 @@ class Normal(StochasticPolicy):
     def _prob(self, sampled_action):
         return tf.exp(self._log_prob(sampled_action))
 
-    def log_prob_old(self, sampled_action):
+    def _log_prob_old(self, sampled_action):
         """
         return the log_prob of the old policy when constructing tf graphs. Raises error when there's no old policy.
         :param sampled_action: the placeholder for sampled actions during interaction with the environment.
