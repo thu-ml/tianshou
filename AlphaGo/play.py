@@ -28,10 +28,10 @@ def play(engine, data_path):
     size = {"go": 9, "reversi": 8}
     show = ['.', 'X', 'O']
 
-    # evaluate_rounds = 100
+    evaluate_rounds = 1
     game_num = 0
-    while True:
-        # while game_num < evaluate_rounds:
+    #while True:
+    while game_num < evaluate_rounds:
         engine._game.model.check_latest_model()
         num = 0
         pass_flag = [False, False]
