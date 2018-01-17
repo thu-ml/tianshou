@@ -44,7 +44,8 @@ class OnehotCategorical(StochasticPolicy):
         self.weight_update = weight_update
         self.interaction_count = -1  # defaults to -1. only useful if weight_update > 1.
 
-        with tf.variable_scope('network'):
+        # build network, action and value
+        with tf.variable_scope('network', reuse=tf.AUTO_REUSE):
             logits, value_head = policy_callable()
             self._logits = tf.convert_to_tensor(logits, dtype=tf.float32)
             self._action = tf.multinomial(self._logits, num_samples=1)
@@ -55,11 +56,12 @@ class OnehotCategorical(StochasticPolicy):
 
         self.trainable_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='network')
 
+        # deal with target network
         if self.weight_update == 1:
             self.weight_update_ops = None
             self.sync_weights_ops = None
         else:  # then we need to build another tf graph as target network
-            with tf.variable_scope('net_old'):
+            with tf.variable_scope('net_old', reuse=tf.AUTO_REUSE):
                 logits, value_head = policy_callable()
                 self._logits_old = tf.convert_to_tensor(logits, dtype=tf.float32)
 
@@ -173,7 +175,8 @@ class Normal(StochasticPolicy):
         self.weight_update = weight_update
         self.interaction_count = -1  # defaults to -1. only useful if weight_update > 1.
 
-        with tf.variable_scope('network'):
+        # build network, action and value
+        with tf.variable_scope('network', reuse=tf.AUTO_REUSE):
             mean, logstd, value_head = policy_callable()
             self._mean = tf.convert_to_tensor(mean, dtype = tf.float32)
             self._logstd = tf.convert_to_tensor(logstd, dtype = tf.float32)
@@ -188,11 +191,12 @@ class Normal(StochasticPolicy):
 
         self.trainable_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='network')
 
+        # deal with target network
         if self.weight_update == 1:
             self.weight_update_ops = None
             self.sync_weights_ops = None
         else:  # then we need to build another tf graph as target network
-            with tf.variable_scope('net_old'):
+            with tf.variable_scope('net_old', reuse=tf.AUTO_REUSE):
                 mean, logstd, value_head = policy_callable()
                 self._mean_old = tf.convert_to_tensor(mean, dtype=tf.float32)
                 self._logstd_old = tf.convert_to_tensor(logstd, dtype=tf.float32)

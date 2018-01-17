@@ -15,6 +15,30 @@ Tianshou(天授) is a reinforcement learning platform. The following image illus
 
 &nbsp;&nbsp;&nbsp;&nbsp;Specific network architectures in original paper of DQN, TRPO, A3C, etc. Policy-Value Network of AlphaGo Zero
 
+#### brief intro of current implementation:
+
+how to write your own network:
+- define the observation placeholder yourself, pass it to `observation_placeholder` when initializing a policy instance
+- pass a callable when initializing a policy instance. The callable should satisfy only three conditions:
+    - it accepts no parameters
+    - it does not create any new placeholders
+    - it returns `action-related tensors, value_head`
+
+Our lib will take care of your observation placeholder from now on, as well as
+all the placeholders that will be created by our lib.
+
+The other placeholders, such as `keep_prob` in dropout and `clip_param` in ppo loss
+should be managed by your own (see examples/ppo_cartpole_alternative.py)
+
+The `weight_update` parameter:
+- 0 means manually update target network
+- 1 means no target network (the target network is updated every 1 minibatch)
+- (0, 1) is the target network as used in DDPG
+- greater than 1 is the target network as used in DQN
+
+Other comments are in the python files in example/ and in the lib codes.
+Refactor is definitely needed so don't dwell too much on annoying details...
+
 ### Algorithm
 
 #### losses

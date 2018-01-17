@@ -14,7 +14,7 @@ def ppo_clip(policy, clip_param):
     action_ph = tf.placeholder(policy.act_dtype, shape=(None,) + policy.action_shape, name='ppo_clip_loss/action_placeholder')
     advantage_ph = tf.placeholder(tf.float32, shape=(None,), name='ppo_clip_loss/advantage_placeholder')
     policy.managed_placeholders['action'] = action_ph
-    policy.managed_placeholders['processed_reward'] = advantage_ph
+    policy.managed_placeholders['advantage'] = advantage_ph
 
     log_pi_act = policy.log_prob(action_ph)
     log_pi_old_act = policy.log_prob_old(action_ph)
@@ -24,7 +24,7 @@ def ppo_clip(policy, clip_param):
     return ppo_clip_loss
 
 
-def vanilla_policy_gradient(sampled_action, reward, pi, baseline="None"):
+def REINFORCE(policy):
     """
     vanilla policy gradient
 
@@ -34,10 +34,29 @@ def vanilla_policy_gradient(sampled_action, reward, pi, baseline="None"):
     :param baseline: the baseline method used to reduce the variance, default is 'None'
     :return:
     """
-    log_pi_act = pi.log_prob(sampled_action)
-    vanilla_policy_gradient_loss = tf.reduce_mean(reward * log_pi_act)
-    # TODO: Different baseline methods like REINFORCE, etc.
-    return vanilla_policy_gradient_loss
+    action_ph = tf.placeholder(policy.act_dtype, shape=(None,) + policy.action_shape,
+                               name='REINFORCE/action_placeholder')
+    advantage_ph = tf.placeholder(tf.float32, shape=(None,), name='REINFORCE/advantage_placeholder')
+    policy.managed_placeholders['action'] = action_ph
+    policy.managed_placeholders['advantage'] = advantage_ph
+
+    log_pi_act = policy.log_prob(action_ph)
+    REINFORCE_loss = -tf.reduce_mean(advantage_ph * log_pi_act)
+    return REINFORCE_loss
+
+
+def state_value_mse(state_value_function):
+    """
+    L2 loss of state value
+    :param state_value_function: instance of StateValue
+    :return: tensor of the mse loss
+    """
+    state_value_ph = tf.placeholder(tf.float32, shape=(None,), name='state_value_mse/state_value_placeholder')
+    state_value_function.managed_placeholders['return'] = state_value_ph
+
+    state_value = state_value_function.value_tensor
+    return tf.losses.mean_squared_error(state_value_ph, state_value)
+
 
 def dqn_loss(sampled_action, sampled_target, policy):
     """

@@ -1,6 +1,7 @@
 import numpy as np
 import gc
-
+import logging
+from . import utils
 
 # TODO: Refactor with tf.train.slice_input_producer, tf.train.Coordinator, tf.train.QueueRunner
 class Batch(object):
@@ -8,14 +9,31 @@ class Batch(object):
     class for batch datasets. Collect multiple observations (actions, rewards, etc.) on-policy.
     """
 
-    def __init__(self, env, pi, advantage_estimation_function):  # how to name the function?
+    def __init__(self, env, pi, reward_processors, networks):  # how to name the function?
+        """
+        constructor
+        :param env:
+        :param pi:
+        :param reward_processors: list of functions to process reward
+        :param networks: list of networks to be optimized, so as to match data in feed_dict
+        """
         self._env = env
         self._pi = pi
-        self._advantage_estimation_function = advantage_estimation_function
+        self.raw_data = {}
+        self.data = {}
+
+        self.reward_processors = reward_processors
+        self.networks = networks
+
+        self.required_placeholders = {}
+        for net in self.networks:
+            self.required_placeholders.update(net.managed_placeholders)
+        self.require_advantage = 'advantage' in self.required_placeholders.keys()
+
         self._is_first_collect = True
 
     def collect(self, num_timesteps=0, num_episodes=0, my_feed_dict={},
-                apply_function=True):  # specify how many data to collect here, or fix it in __init__()
+                process_reward=True):  # specify how many data to collect here, or fix it in __init__()
         assert sum(
             [num_timesteps > 0, num_episodes > 0]) == 1, "One and only one collection number specification permitted!"
 
@@ -98,6 +116,7 @@ class Batch(object):
                         break
 
                     if done:  # end of episode, discard s_T
+                        # TODO: for num_timesteps collection, has to store terminal flag instead of start flag!
                         break
                     else:
                         observations.append(ob)
@@ -113,33 +132,48 @@ class Batch(object):
             del rewards
             del episode_start_flags
 
-            self.raw_data = {'observations': self.observations, 'actions': self.actions, 'rewards': self.rewards,
-                             'episode_start_flags': self.episode_start_flags}
+            self.raw_data = {'observation': self.observations, 'action': self.actions, 'reward': self.rewards,
+                             'end_flag': self.episode_start_flags}
 
             self._is_first_collect = False
 
-        if apply_function:
+        if process_reward:
             self.apply_advantage_estimation_function()
 
         gc.collect()
 
     def apply_advantage_estimation_function(self):
-        self.data = self._advantage_estimation_function(self.raw_data)
+        for processor in self.reward_processors:
+            self.data.update(processor(self.raw_data))
 
-    def next_batch(self, batch_size, standardize_advantage=True):  # YouQiaoben: referencing other iterate over batches
-        rand_idx = np.random.choice(self.data['observations'].shape[0], batch_size)
-        current_batch = {key: value[rand_idx] for key, value in self.data.items()}
-
-        if standardize_advantage:
-            advantage_mean = np.mean(current_batch['returns'])
-            advantage_std = np.std(current_batch['returns'])
-            current_batch['returns'] = (current_batch['returns'] - advantage_mean) / advantage_std
+    def next_batch(self, batch_size, standardize_advantage=True):
+        rand_idx = np.random.choice(self.raw_data['observation'].shape[0], batch_size)
 
         feed_dict = {}
-        feed_dict[self._pi.managed_placeholders['observation']] = current_batch['observations']
-        feed_dict[self._pi.managed_placeholders['action']] = current_batch['actions']
-        feed_dict[self._pi.managed_placeholders['processed_reward']] = current_batch['returns']
-        # TODO: should use the keys in pi.managed_placeholders to find values in self.data and self.raw_data
+        for key, placeholder in self.required_placeholders.items():
+            found, data_key = utils.internal_key_match(key, self.raw_data.keys())
+            if found:
+                feed_dict[placeholder] = self.raw_data[data_key][rand_idx]
+            else:
+                found, data_key = utils.internal_key_match(key, self.data.keys())
+                if found:
+                    feed_dict[placeholder] = self.data[data_key][rand_idx]
+
+            if not found:
+                raise TypeError('Placeholder {} has no value to feed!'.format(str(placeholder.name)))
+
+        if standardize_advantage:
+            if self.require_advantage:
+                advantage_value = feed_dict[self.required_placeholders['advantage']]
+                advantage_mean = np.mean(advantage_value)
+                advantage_std = np.std(advantage_value)
+                if advantage_std < 1e-3:
+                    logging.warning('advantage_std too small (< 1e-3) for advantage standardization. may cause numerical issues')
+                feed_dict[self.required_placeholders['advantage']] = (advantage_value - advantage_mean) / advantage_std
+
+        # TODO: maybe move all advantage estimation functions to tf, as in tensorforce (though haven't
+        # understood tensorforce after reading) maybe tf.stop_gradient for targets/advantages
+        # this will simplify data collector as it only needs to collect raw data, (s, a, r, done) only
 
         return feed_dict
 
@@ -149,8 +183,8 @@ class Batch(object):
         compute the statistics of the current sampled paths
         :return:
         """
-        rewards = self.raw_data['rewards']
-        episode_start_flags = self.raw_data['episode_start_flags']
+        rewards = self.raw_data['reward']
+        episode_start_flags = self.raw_data['end_flag']
         num_timesteps = rewards.shape[0]
 
         returns = []

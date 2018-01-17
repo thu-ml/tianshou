@@ -47,7 +47,7 @@ if __name__ == '__main__':
     observation_dim = env.observation_space.shape
     action_dim = env.action_space.flat_dim
 
-    clip_param = 0.2
+    # clip_param = 0.2
     num_batches = 10
     batch_size = 128
 
@@ -65,6 +65,7 @@ if __name__ == '__main__':
     ### 2. build policy, loss, optimizer
     pi = policy.Normal(my_policy, observation_placeholder=observation_ph, weight_update=0)
 
+    clip_param = tf.placeholder(tf.float32, shape=(), name='ppo_loss_clip_param')
     ppo_loss_clip = losses.ppo_clip(pi, clip_param)
 
     total_loss = ppo_loss_clip
@@ -72,7 +73,7 @@ if __name__ == '__main__':
     train_op = optimizer.minimize(total_loss, var_list=pi.trainable_variables)
 
     ### 3. define data collection
-    training_data = Batch(env, pi, advantage_estimation.full_return)
+    training_data = Batch(env, pi, [advantage_estimation.full_return], [pi])
 
     ### 4. start training
     feed_dict_train = {is_training_ph: True, keep_prob_ph: 0.8}
@@ -83,7 +84,7 @@ if __name__ == '__main__':
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
 
-        # assign pi to pi_old
+        # assign actor to pi_old
         pi.sync_weights()  # TODO: automate this for policies with target network
 
         start_time = time.time()
@@ -95,13 +96,19 @@ if __name__ == '__main__':
             print('Epoch {}:'.format(i))
             training_data.statistics()
 
+            # manipulate decay_param
+            if i < 30:
+                feed_dict_train[clip_param] = 0.2
+            else:
+                feed_dict_train[clip_param] = 0.1
+
             # update network
             for _ in range(num_batches):
                 feed_dict = training_data.next_batch(batch_size)
                 feed_dict.update(feed_dict_train)
                 sess.run(train_op, feed_dict=feed_dict)
 
-            # assigning pi to pi_old
+            # assigning actor to pi_old
             pi.update_weights()
 
             # approximate test mode

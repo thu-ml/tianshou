@@ -6,15 +6,13 @@ def full_return(raw_data):
     naively compute full return
     :param raw_data: dict of specified keys and values.
     """
-    observations = raw_data['observations']
-    actions = raw_data['actions']
-    rewards = raw_data['rewards']
-    episode_start_flags = raw_data['episode_start_flags']
+    observations = raw_data['observation']
+    actions = raw_data['action']
+    rewards = raw_data['reward']
+    episode_start_flags = raw_data['end_flag']
     num_timesteps = rewards.shape[0]
 
     data = {}
-    data['observations'] = observations
-    data['actions'] = actions
 
     returns = rewards.copy()
     episode_start_idx = 0
@@ -33,9 +31,37 @@ def full_return(raw_data):
 
             episode_start_idx = i
 
-    data['returns'] = returns
+    data['return'] = returns
 
     return data
+
+
+class gae_lambda:
+    """
+    Generalized Advantage Estimation (Schulman, 15) to compute advantage
+    """
+    def __init__(self, T, value_function):
+        self.T = T
+        self.value_function = value_function
+
+    def __call__(self, raw_data):
+        reward = raw_data['reward']
+
+        return {'advantage': reward}
+
+
+class nstep_return:
+    """
+    compute the n-step return from n-step rewards and bootstrapped value function
+    """
+    def __init__(self, n, value_function):
+        self.n = n
+        self.value_function = value_function
+
+    def __call__(self, raw_data):
+        reward = raw_data['reward']
+
+        return {'return': reward}
 
 
 class QLearningTarget:
@@ -68,3 +94,4 @@ class QLearningTarget:
         data['rewards'] = np.array(rewards)
 
         return data
+

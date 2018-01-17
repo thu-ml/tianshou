@@ -8,7 +8,12 @@ class StateValue(ValueFunctionBase):
     """
     class of state values V(s).
     """
-    def __init__(self, value_tensor, observation_placeholder):
+    def __init__(self, policy_callable, observation_placeholder):
+        self.managed_placeholders = {'observation': observation_placeholder}
+        with tf.variable_scope('network', reuse=tf.AUTO_REUSE):
+            value_tensor = policy_callable()[-1]
+            self.trainable_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+
         super(StateValue, self).__init__(
             value_tensor=value_tensor,
             observation_placeholder=observation_placeholder
