@@ -31,7 +31,7 @@ def play(engine, data_path):
 
     evaluate_rounds = 5
     game_num = 0
-    total_time = 0
+    total = 0
     f=open('time.txt','w')
     #while True:
     while game_num < evaluate_rounds:
