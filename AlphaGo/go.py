@@ -309,9 +309,9 @@ class Go:
                 liberty[reverse_color_ancestor_idx].remove(idx)
 
     def executor_do_move(self, history, history_hashtable, latest_boards, current_board, group_ancestors, liberty, stones, color, vertex):
-        print("===")
-        print(color, vertex)
-        print(group_ancestors, liberty, stones)
+        #print("===")
+        #print(color, vertex)
+        #print(group_ancestors, liberty, stones)
         if not self._rule_check(history_hashtable, current_board, group_ancestors, liberty, color, vertex):
             return False
         idx = self._flatten(vertex)
@@ -327,7 +327,7 @@ class Go:
             self._remove_liberty(idx, reverse_color_neighbor, current_board, group_ancestors, liberty, stones)
         history.append(copy.deepcopy(current_board))
         latest_boards.append(copy.deepcopy(current_board))
-        history_hashtable.add(tuple(current_board))
+        history_hashtable.add(copy.deepcopy(tuple(current_board)))
         return True
 
     def _find_empty(self, current_board):

@@ -90,7 +90,7 @@ class Game:
         evaluator = lambda state:self.model(role, state)
         mcts = MCTS(self.game_engine, evaluator, [latest_boards, color],
                     self.size ** 2 + 1, role=role, debug=self.debug, inverse=True)
-        mcts.search(max_step=5)
+        mcts.search(max_step=100)
         if self.debug:
             file = open("mcts_debug.log", 'ab')
             np.savetxt(file, mcts.root.Q, header="\n" + role + " Q value : ", fmt='%.4f', newline=", ")
