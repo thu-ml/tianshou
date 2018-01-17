@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import tensorflow as tf
 import time
 import numpy as np
+import gym
 
 # our lib imports here! It's ok to append path in examples
 import sys
@@ -14,16 +15,13 @@ import tianshou.data.advantage_estimation as advantage_estimation
 import tianshou.core.policy.stochastic as policy  # TODO: fix imports as zhusuan so that only need to import to policy
 import tianshou.core.value_function.state_value as value_function
 
-from rllab.envs.box2d.cartpole_env import CartpoleEnv
-from rllab.envs.normalized_env import normalize
-
 
 # for tutorial purpose, placeholders are explicitly appended with '_ph' suffix
 
 if __name__ == '__main__':
-    env = normalize(CartpoleEnv())
+    env = gym.make('CartPole-v0')
     observation_dim = env.observation_space.shape
-    action_dim = env.action_space.flat_dim
+    action_dim = env.action_space.n
 
     clip_param = 0.2
     num_batches = 10
@@ -40,17 +38,16 @@ if __name__ == '__main__':
         net = tf.layers.dense(observation_ph, 32, activation=tf.nn.tanh)
         net = tf.layers.dense(net, 32, activation=tf.nn.tanh)
 
-        action_mean = tf.layers.dense(net, action_dim, activation=None)
-        action_logstd = tf.get_variable('action_logstd', shape=(action_dim, ))
+        action_logits = tf.layers.dense(net, action_dim, activation=None)
 
         net = tf.layers.dense(observation_ph, 32, activation=tf.nn.tanh)
         net = tf.layers.dense(net, 32, activation=tf.nn.tanh)
         value = tf.layers.dense(net, 1, activation=None)
 
-        return action_mean, action_logstd, value
+        return action_logits, value
 
     ### 2. build policy, critic, loss, optimizer
-    actor = policy.Normal(my_network, observation_placeholder=observation_ph, weight_update=1)
+    actor = policy.OnehotCategorical(my_network, observation_placeholder=observation_ph, weight_update=1)
     critic = value_function.StateValue(my_network, observation_placeholder=observation_ph)
 
     actor_loss = losses.REINFORCE(actor)

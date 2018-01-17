@@ -2,8 +2,9 @@
 from __future__ import absolute_import
 
 import tensorflow as tf
-import time
+import gym
 import numpy as np
+import time
 
 # our lib imports here! It's ok to append path in examples
 import sys
@@ -13,22 +14,17 @@ from tianshou.data.batch import Batch
 import tianshou.data.advantage_estimation as advantage_estimation
 import tianshou.core.policy.stochastic as policy  # TODO: fix imports as zhusuan so that only need to import to policy
 
-from rllab.envs.box2d.cartpole_env import CartpoleEnv
-from rllab.envs.normalized_env import normalize
-
-
-# for tutorial purpose, placeholders are explicitly appended with '_ph' suffix
 
 if __name__ == '__main__':
-    env = normalize(CartpoleEnv())
+    env = gym.make('CartPole-v0')
     observation_dim = env.observation_space.shape
-    action_dim = env.action_space.flat_dim
+    action_dim = env.action_space.n
 
     clip_param = 0.2
     num_batches = 10
-    batch_size = 128
+    batch_size = 512
 
-    seed = 10
+    seed = 0
     np.random.seed(seed)
     tf.set_random_seed(seed)
 
@@ -39,11 +35,9 @@ if __name__ == '__main__':
         net = tf.layers.dense(observation_ph, 32, activation=tf.nn.tanh)
         net = tf.layers.dense(net, 32, activation=tf.nn.tanh)
 
-        action_mean = tf.layers.dense(net, action_dim, activation=None)
-        action_logstd = tf.get_variable('action_logstd', shape=(action_dim, ))
-        # value = tf.layers.dense(net, 1, activation=None)
+        action_logits = tf.layers.dense(net, action_dim, activation=None)
 
-        return action_mean, action_logstd, None  # None value head
+        return action_logits, None  # None value head
 
     # TODO: current implementation of passing function or overriding function has to return a value head
     # to allow network sharing between policy and value networks. This makes 'policy' and 'value_function'
@@ -52,7 +46,7 @@ if __name__ == '__main__':
     # not based on passing function or overriding function.
 
     ### 2. build policy, loss, optimizer
-    pi = policy.Normal(my_policy, observation_placeholder=observation_ph, weight_update=0)
+    pi = policy.OnehotCategorical(my_policy, observation_placeholder=observation_ph, weight_update=0)
 
     ppo_loss_clip = losses.ppo_clip(pi, clip_param)
 
@@ -75,7 +69,7 @@ if __name__ == '__main__':
         start_time = time.time()
         for i in range(100):
             # collect data
-            training_data.collect(num_episodes=20)
+            training_data.collect(num_episodes=50)
 
             # print current return
             print('Epoch {}:'.format(i))
