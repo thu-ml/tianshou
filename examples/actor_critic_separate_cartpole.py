@@ -51,7 +51,7 @@ if __name__ == '__main__':
     critic = value_function.StateValue(my_network, observation_placeholder=observation_ph)
 
     actor_loss = losses.REINFORCE(actor)
-    critic_loss = losses.state_value_mse(critic)
+    critic_loss = losses.value_mse(critic)
 
     actor_optimizer = tf.train.AdamOptimizer(1e-4)
     actor_train_op = actor_optimizer.minimize(actor_loss, var_list=actor.trainable_variables)

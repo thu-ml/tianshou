@@ -8,12 +8,47 @@ class ActionValue(ValueFunctionBase):
     """
     class of action values Q(s, a).
     """
-    def __init__(self, value_tensor, observation_placeholder, action_placeholder):
+    def __init__(self, network_callable, observation_placeholder, action_placeholder, weight_update=1):
+        self._observation_placeholder = observation_placeholder
         self._action_placeholder = action_placeholder
-        super(ActionValue, self).__init__(
-            value_tensor=value_tensor,
-            observation_placeholder=observation_placeholder
-        )
+        self.managed_placeholders = {'observation': observation_placeholder, 'action': action_placeholder}
+        self.weight_update = weight_update
+        self.interaction_count = -1  # defaults to -1. only useful if weight_update > 1.
+
+        with tf.variable_scope('network', reuse=tf.AUTO_REUSE):
+            value_tensor = network_callable()[-1]
+
+        self.trainable_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='network')
+
+        super(ActionValue, self).__init__(value_tensor, observation_placeholder=observation_placeholder)
+
+        # deal with target network
+        if self.weight_update == 1:
+            self.weight_update_ops = None
+            self.sync_weights_ops = None
+        else:  # then we need to build another tf graph as target network
+            with tf.variable_scope('net_old', reuse=tf.AUTO_REUSE):
+                value_tensor = network_callable()[-1]
+                self.value_tensor_old = tf.squeeze(value_tensor)
+
+        network_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='network')
+        network_old_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='net_old')
+
+        assert len(network_weights) == len(network_old_weights)
+        self.sync_weights_ops = [tf.assign(variable_old, variable)
+                                 for (variable_old, variable) in zip(network_old_weights, network_weights)]
+
+        if weight_update == 0:
+            self.weight_update_ops = self.sync_weights_ops
+        elif 0 < weight_update < 1:  # useful in DDPG
+            self.weight_update_ops = [tf.assign(variable_old,
+                                                weight_update * variable + (1 - weight_update) * variable_old)
+                                      for (variable_old, variable) in zip(network_old_weights, network_weights)]
+        else:
+            self.interaction_count = 0
+            import math
+            self.weight_update = math.ceil(weight_update)
+            self.weight_update_ops = self.sync_weights_ops
 
     def eval_value(self, observation, action):
         """
@@ -26,6 +61,35 @@ class ActionValue(ValueFunctionBase):
         sess = tf.get_default_session()
         return sess.run(self.value_tensor, feed_dict=
         {self._observation_placeholder: observation, self._action_placeholder: action})
+
+    def eval_value_old(self, observation, action):
+        """
+        eval value using target network
+        :param observation: numpy array of obs
+        :param action: numpy array of action
+        :return: numpy array of action value
+        """
+        sess = tf.get_default_session()
+        feed_dict = {self._observation_placeholder: observation, self._action_placeholder: action}
+        return sess.run(self.value_tensor_old, feed_dict=feed_dict)
+
+    def sync_weights(self):
+        """
+        sync the weights of network_old. Direct copy the weights of network.
+        :return:
+        """
+        if self.sync_weights_ops is not None:
+            sess = tf.get_default_session()
+            sess.run(self.sync_weights_ops)
+
+    def update_weights(self):
+        """
+        updates the weights of policy_old.
+        :return:
+        """
+        if self.weight_update_ops is not None:
+            sess = tf.get_default_session()
+            sess.run(self.weight_update_ops)
 
 
 class DQN(ValueFunctionBase):

@@ -16,6 +16,9 @@ import tianshou.core.policy.dqn as policy  # TODO: fix imports as zhusuan so tha
 import tianshou.core.value_function.action_value as value_function
 
 
+# TODO: why this solves cartpole even without training?
+
+
 if __name__ == '__main__':
     env = gym.make('CartPole-v0')
     observation_dim = env.observation_space.shape

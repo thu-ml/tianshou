@@ -49,10 +49,10 @@ if __name__ == '__main__':
 
     ### 2. build policy, critic, loss, optimizer
     actor = policy.OnehotCategorical(my_network, observation_placeholder=observation_ph, weight_update=1)
-    critic = value_function.StateValue(my_network, observation_placeholder=observation_ph)
+    critic = value_function.StateValue(my_network, observation_placeholder=observation_ph)  # no target network
 
     actor_loss = losses.REINFORCE(actor)
-    critic_loss = losses.state_value_mse(critic)
+    critic_loss = losses.value_mse(critic)
     total_loss = actor_loss + critic_loss
 
     optimizer = tf.train.AdamOptimizer(1e-4)

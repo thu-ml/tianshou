@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
 
     actor_loss = losses.vanilla_policy_gradient(actor)
-    critic_loss = losses.state_value_mse(critic)
+    critic_loss = losses.value_mse(critic)
     total_loss = actor_loss + critic_loss
 
     optimizer = tf.train.AdamOptimizer(1e-4)

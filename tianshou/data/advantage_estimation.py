@@ -76,6 +76,31 @@ class nstep_return:
         return {'return': return_}
 
 
+class ddpg_return:
+    """
+    compute the return as in DDPG. this seems to have to be special
+    """
+    def __init__(self, actor, critic, use_target_network=True):
+        self.actor = actor
+        self.critic = critic
+        self.use_target_network = use_target_network
+
+    def __call__(self, raw_data):
+        observation = raw_data['observation']
+        reward = raw_data['reward']
+
+        if self.use_target_network:
+            action_target = self.actor.eval_action_old(observation)
+            value_target = self.critic.eval_value_old(observation, action_target)
+        else:
+            action_target = self.actor.eval_action(observation)
+            value_target = self.critic.eval_value(observation, action_target)
+
+        return_ = reward + value_target
+
+        return {'return': return_}
+
+
 class nstep_q_return:
     """
     compute the n-step return for Q-learning targets

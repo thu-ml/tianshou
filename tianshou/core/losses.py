@@ -45,13 +45,13 @@ def REINFORCE(policy):
     return REINFORCE_loss
 
 
-def state_value_mse(state_value_function):
+def value_mse(state_value_function):
     """
     L2 loss of state value
     :param state_value_function: instance of StateValue
     :return: tensor of the mse loss
     """
-    target_value_ph = tf.placeholder(tf.float32, shape=(None,), name='state_value_mse/state_value_placeholder')
+    target_value_ph = tf.placeholder(tf.float32, shape=(None,), name='value_mse/return_placeholder')
     state_value_function.managed_placeholders['return'] = target_value_ph
 
     state_value = state_value_function.value_tensor
