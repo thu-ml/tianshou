@@ -51,24 +51,25 @@ def state_value_mse(state_value_function):
     :param state_value_function: instance of StateValue
     :return: tensor of the mse loss
     """
-    state_value_ph = tf.placeholder(tf.float32, shape=(None,), name='state_value_mse/state_value_placeholder')
-    state_value_function.managed_placeholders['return'] = state_value_ph
+    target_value_ph = tf.placeholder(tf.float32, shape=(None,), name='state_value_mse/state_value_placeholder')
+    state_value_function.managed_placeholders['return'] = target_value_ph
 
     state_value = state_value_function.value_tensor
-    return tf.losses.mean_squared_error(state_value_ph, state_value)
+    return tf.losses.mean_squared_error(target_value_ph, state_value)
 
 
-def dqn_loss(sampled_action, sampled_target, policy):
+def qlearning(action_value_function):
     """
     deep q-network
-
-    :param sampled_action: placeholder of sampled actions during the interaction with the environment
-    :param sampled_target: estimated Q(s,a)
-    :param policy: current `policy` to be optimized
+    :param action_value_function: current `action_value` to be optimized
     :return:
     """
-    sampled_q = policy.q_net.value_tensor
-    return tf.reduce_mean(tf.square(sampled_target - sampled_q))
+    target_value_ph = tf.placeholder(tf.float32, shape=(None,), name='qlearning/action_value_placeholder')
+    action_value_function.managed_placeholders['return'] = target_value_ph
+
+    q_value = action_value_function.value_tensor
+    return tf.losses.mean_squared_error(target_value_ph, q_value)
+
 
 def deterministic_policy_gradient(sampled_state, critic):
     """

@@ -46,8 +46,14 @@ class gae_lambda:
 
     def __call__(self, raw_data):
         reward = raw_data['reward']
+        observation = raw_data['observation']
 
-        return {'advantage': reward}
+        state_value = self.value_function.eval_value(observation)
+
+        # wrong version of advantage just to run
+        advantage = reward + state_value
+
+        return {'advantage': advantage}
 
 
 class nstep_return:
@@ -60,8 +66,41 @@ class nstep_return:
 
     def __call__(self, raw_data):
         reward = raw_data['reward']
+        observation = raw_data['observation']
 
-        return {'return': reward}
+        state_value = self.value_function.eval_value(observation)
+
+        # wrong version of return just to run
+        return_ = reward + state_value
+
+        return {'return': return_}
+
+
+class nstep_q_return:
+    """
+    compute the n-step return for Q-learning targets
+    """
+    def __init__(self, n, action_value, use_target_network=True):
+        self.n = n
+        self.action_value = action_value
+        self.use_target_network = use_target_network
+
+    def __call__(self, raw_data):
+        # raw_data should contain 'next_observation' from replay memory...?
+        # maybe the main difference between Batch and Replay is the stored data format?
+        reward = raw_data['reward']
+        observation = raw_data['observation']
+
+        if self.use_target_network:
+            action_value_all_actions = self.action_value.eval_value_all_actions_old(observation)
+        else:
+            action_value_all_actions = self.action_value.eval_value_all_actions(observation)
+
+        action_value_max = np.max(action_value_all_actions, axis=1)
+
+        return_ = reward + action_value_max
+
+        return {'return': return_}
 
 
 class QLearningTarget:

@@ -13,6 +13,7 @@ from tianshou.core import losses
 from tianshou.data.batch import Batch
 import tianshou.data.advantage_estimation as advantage_estimation
 import tianshou.core.policy.dqn as policy  # TODO: fix imports as zhusuan so that only need to import to policy
+import tianshou.core.value_function.action_value as value_function
 
 
 if __name__ == '__main__':
@@ -31,31 +32,26 @@ if __name__ == '__main__':
     ### 1. build network with pure tf
     observation_ph = tf.placeholder(tf.float32, shape=(None,) + observation_dim)
 
-    def my_policy():
+    def my_network():
         net = tf.layers.dense(observation_ph, 32, activation=tf.nn.tanh)
         net = tf.layers.dense(net, 32, activation=tf.nn.tanh)
 
         action_values = tf.layers.dense(net, action_dim, activation=None)
 
-        return action_values, None  # None value head
-
-    # TODO: current implementation of passing function or overriding function has to return a value head
-    # to allow network sharing between policy and value networks. This makes 'policy' and 'value_function'
-    # imbalanced semantically (though they are naturally imbalanced since 'policy' is required to interact
-    # with the environment and 'value_function' is not). I have an idea to solve this imbalance, which is
-    # not based on passing function or overriding function.
+        return None, action_values  # no policy head
 
     ### 2. build policy, loss, optimizer
-    pi = policy.DQN(my_policy, observation_placeholder=observation_ph, weight_update=10)
+    dqn = value_function.DQN(my_network, observation_placeholder=observation_ph, weight_update=100)
+    pi = policy.DQN(dqn)
 
-    dqn_loss = losses.qlearning(pi)
+    dqn_loss = losses.qlearning(dqn)
 
     total_loss = dqn_loss
     optimizer = tf.train.AdamOptimizer(1e-4)
-    train_op = optimizer.minimize(total_loss, var_list=pi.trainable_variables)
+    train_op = optimizer.minimize(total_loss, var_list=dqn.trainable_variables)
 
     ### 3. define data collection
-    data_collector = Batch(env, pi, [advantage_estimation.nstep_q_return(1, pi.target_network)], [pi])
+    data_collector = Batch(env, pi, [advantage_estimation.nstep_q_return(1, dqn)], [dqn])
 
     ### 4. start training
     config = tf.ConfigProto()

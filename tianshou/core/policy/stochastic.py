@@ -65,7 +65,7 @@ class OnehotCategorical(StochasticPolicy):
                 logits, value_head = policy_callable()
                 self._logits_old = tf.convert_to_tensor(logits, dtype=tf.float32)
 
-                if value_head is not None:  # useful in DDPG
+                if value_head is not None:
                     pass
 
             network_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='network')
@@ -201,7 +201,7 @@ class Normal(StochasticPolicy):
                 self._mean_old = tf.convert_to_tensor(mean, dtype=tf.float32)
                 self._logstd_old = tf.convert_to_tensor(logstd, dtype=tf.float32)
 
-                if value_head is not None:  # useful in DDPG
+                if value_head is not None:
                     pass
 
             network_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='network')
@@ -215,7 +215,7 @@ class Normal(StochasticPolicy):
 
             if weight_update == 0:
                 self.weight_update_ops = self.sync_weights_ops
-            elif 0 < weight_update < 1:
+            elif 0 < weight_update < 1:  # useful in DDPG
                 pass
             else:
                 self.interaction_count = 0

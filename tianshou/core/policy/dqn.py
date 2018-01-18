@@ -2,88 +2,53 @@ from __future__ import absolute_import
 
 from .base import PolicyBase
 import tensorflow as tf
-from ..value_function.action_value import DQN
+import numpy as np
 
 
-class DQNRefactor(PolicyBase):
+class DQN(PolicyBase):
     """
     use DQN from value_function as a member
     """
-    def __init__(self, value_tensor, observation_placeholder, action_placeholder):
-        self._q_net = DQN(value_tensor, observation_placeholder, action_placeholder)
-        self._argmax_action = tf.argmax(value_tensor, axis=1)
-
-        super(DQNRefactor, self).__init__(observation_placeholder=observation_placeholder)
+    def __init__(self, dqn):
+        self.action_value = dqn
+        self._argmax_action = tf.argmax(dqn.value_tensor_all_actions, axis=1)
+        self.weight_update = dqn.weight_update
+        if self.weight_update > 1:
+            self.interaction_count = 0
+        else:
+            self.interaction_count = -1
 
     def act(self, observation, exploration=None):
         sess = tf.get_default_session()
-        if not exploration:  # no exploration
-            action = sess.run(self._argmax_action, feed_dict={self._observation_placeholder: observation})
+        if self.weight_update > 1:
+            if self.interaction_count % self.weight_update == 0:
+                self.update_weights()
 
+        feed_dict = {self.action_value._observation_placeholder: observation[None]}
+        action = sess.run(self._argmax_action, feed_dict=feed_dict)
 
-        return action
+        if self.weight_update > 0:
+            self.interaction_count += 1
+
+        if not exploration:
+            return np.squeeze(action)
 
     @property
     def q_net(self):
-        return self._q_net
+        return self.action_value
 
+    def sync_weights(self):
+        """
+        sync the weights of network_old. Direct copy the weights of network.
+        :return:
+        """
+        if self.action_value.sync_weights_ops is not None:
+            self.action_value.sync_weights()
 
-class DQNOld(QValuePolicy):
-    """
-    The policy as in DQN
-    """
-
-    def __init__(self, logits, observation_placeholder, dtype=None, **kwargs):
-        # TODO: this version only support non-continuous action space, extend it to support continuous action space
-        self._logits = tf.convert_to_tensor(logits)
-        if dtype is None:
-            dtype = tf.int32
-        self._n_categories = self._logits.get_shape()[-1].value
-
-        super(DQN, self).__init__(observation_placeholder)
-
-        # TODO: put the net definition outside of the class
-        net = tf.layers.conv2d(self._observation_placeholder, 16, 8, 4, 'valid', activation=tf.nn.relu)
-        net = tf.layers.conv2d(net, 32, 4, 2, 'valid', activation=tf.nn.relu)
-        net = tf.layers.flatten(net)
-        net = tf.layers.dense(net, 256, activation=tf.nn.relu, use_bias=True)
-        self._value = tf.layers.dense(net, self._n_categories)
-
-    def _act(self, observation, exploration=None):  # first implement no exploration
+    def update_weights(self):
         """
-        return the action (int) to be executed.
-        no exploration when exploration=None.
+        updates the weights of policy_old.
+        :return:
         """
-        # TODO: ensure thread safety, tf.multinomial to init
-        sess = tf.get_default_session()
-        sampled_action = sess.run(tf.multinomial(self.logits, num_samples=1),
-                                  feed_dict={self._observation_placeholder: observation[None]})
-        return sampled_action
-
-    @property
-    def logits(self):
-        """
-        :return: action values
-        """
-        return self._logits
-
-    @property
-    def n_categories(self):
-        """
-        :return: dimension of action space if not continuous
-        """
-        return self._n_categories
-
-    def values(self, observation):
-        """
-        returns the Q(s, a) values (float) for all actions a at observation s
-        """
-        sess = tf.get_default_session()
-        value = sess.run(self._value, feed_dict={self._observation_placeholder: observation[None]})
-        return value
-
-    def values_tensor(self):
-        """
-        returns the tensor of the values for all actions a at observation s
-        """
-        return self._value
+        if self.action_value.weight_update_ops is not None:
+            self.action_value.update_weights()
