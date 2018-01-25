@@ -8,5 +8,6 @@ checkpoint
 *.json
 .DS_Store
 data
+!tianshou/data
 .log
 go-*
