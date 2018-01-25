@@ -15,6 +15,7 @@ def DPG(policy, action_value):
 
     grad_ys = tf.gradients(critic_value_loss, critic_action_input)
     grad_policy_vars = tf.gradients(policy_action_output, trainable_variables, grad_ys=grad_ys)
+    # TODO: this is slightly different from ddpg implementations in baselines, keras-rl and rllab. it uses sampled action (with noise) rather than directly connect the two networks
 
     grads_and_vars = zip(grad_policy_vars, trainable_variables)
 
