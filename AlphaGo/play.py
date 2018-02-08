@@ -119,7 +119,10 @@ if __name__ == '__main__':
     thread_list.append(thread_play)
 
     for t in thread_list:
+        t.daemon = True
         t.start()
 
-    for t in thread_list:
-        t.join()
+    while True:
+        time.sleep(1)
+    #for t in thread_list:
+    #    t.join()
