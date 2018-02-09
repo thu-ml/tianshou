@@ -39,10 +39,10 @@ class Batch(object):
 
         if num_timesteps > 0:  # YouQiaoben: finish this implementation, the following code are just from openai/baselines
             t = 0
-            ac = self.env.action_space.sample()  # not used, just so we have the datatype
+            ac = self._env.action_space.sample()  # not used, just so we have the datatype
             new = True  # marks if we're on first timestep of an episode
             if self.is_first_collect:
-                ob = self.env.reset()
+                ob = self._env.reset()
                 self.is_first_collect = False
             else:
                 ob = self.raw_data['observations'][0]  # last observation!
@@ -69,7 +69,7 @@ class Batch(object):
                 actions[i] = ac
                 prevacs[i] = prevac
 
-                ob, rew, new, _ = env.step(ac)
+                ob, rew, new, _ = self._env.step(ac)
                 rewards[i] = rew
 
                 cur_ep_ret += rew
@@ -79,7 +79,7 @@ class Batch(object):
                     ep_lens.append(cur_ep_len)
                     cur_ep_ret = 0
                     cur_ep_len = 0
-                    ob = env.reset()
+                    ob = self._env.reset()
                 t += 1
 
         if num_episodes > 0:  # YouQiaoben: fix memory growth, both del and gc.collect() fail
