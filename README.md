@@ -105,3 +105,7 @@ HaoshengZou: collaborate mainly on Policy and losses; interfaces and architectur
 Note: install openai/gym first to run the Atari environment; note that interfaces between modules may not be finalized; the management of placeholders and `feed_dict` may have to be done manually for the time being;
 
 Without preprocessing and other tricks, this example will not train to any meaningful results. Codes should past two tests: individual module test and run through this example code.
+
+## Dependency
+Tensorflow (Version >= 1.4)
+Gym
