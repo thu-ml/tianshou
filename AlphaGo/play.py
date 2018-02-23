@@ -1,3 +1,4 @@
+from __future__ import division
 import argparse
 import sys
 import re
@@ -28,10 +29,13 @@ def play(engine, data_path):
     size = {"go": 9, "reversi": 8}
     show = ['.', 'X', 'O']
 
-    # evaluate_rounds = 100
+    evaluate_rounds = 5
     game_num = 0
-    while True:
-        # while game_num < evaluate_rounds:
+    total = 0
+    f=open('time.txt','w')
+    #while True:
+    while game_num < evaluate_rounds:
+        start = time.time()
         engine._game.model.check_latest_model()
         num = 0
         pass_flag = [False, False]
@@ -77,6 +81,13 @@ def play(engine, data_path):
             cPickle.dump(data, file)
         data.reset()
         game_num += 1
+        
+        this_time = time.time() - start
+        total += this_time
+        f.write('time:'+ str(this_time)+'\n')
+    f.write('Avg time:' + str(total/evaluate_rounds))
+    f.close()
+    
 
 
 if __name__ == '__main__':
