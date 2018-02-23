@@ -29,12 +29,12 @@ def play(engine, data_path):
     size = {"go": 9, "reversi": 8}
     show = ['.', 'X', 'O']
 
-    evaluate_rounds = 5
+    evaluate_rounds = 0
     game_num = 0
     total = 0
     f=open('time.txt','w')
-    #while True:
-    while game_num < evaluate_rounds:
+    while True:
+    #while game_num < evaluate_rounds:
         start = time.time()
         engine._game.model.check_latest_model()
         num = 0
@@ -85,6 +85,7 @@ def play(engine, data_path):
         this_time = time.time() - start
         total += this_time
         f.write('time:'+ str(this_time)+'\n')
+        evaluate_rounds += 1
     f.write('Avg time:' + str(total/evaluate_rounds))
     f.close()
     
