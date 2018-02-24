@@ -9,7 +9,7 @@ class Batch(object):
     class for batch datasets. Collect multiple observations (actions, rewards, etc.) on-policy.
     """
 
-    def __init__(self, env, pi, reward_processors, networks):  # how to name the function?
+    def __init__(self, env, pi, reward_processors, networks, render=False):  # how to name the function?
         """
         constructor
         :param env:
@@ -24,6 +24,7 @@ class Batch(object):
 
         self.reward_processors = reward_processors
         self.networks = networks
+        self.render = render
 
         self.required_placeholders = {}
         for net in self.networks:
@@ -108,6 +109,8 @@ class Batch(object):
                     ac = self._pi.act(ob, my_feed_dict)
                     actions.append(ac)
 
+                    if self.render:
+                        self._env.render()
                     ob, reward, done, _ = self._env.step(ac)
                     rewards.append(reward)
 

@@ -5,6 +5,7 @@ import tensorflow as tf
 import gym
 import numpy as np
 import time
+import argparse
 
 # our lib imports here! It's ok to append path in examples
 import sys
@@ -16,6 +17,9 @@ import tianshou.core.policy.stochastic as policy  # TODO: fix imports as zhusuan
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--render", action="store_true", default=False)
+    args = parser.parse_args()
     env = gym.make('CartPole-v0')
     observation_dim = env.observation_space.shape
     action_dim = env.action_space.n
@@ -55,7 +59,7 @@ if __name__ == '__main__':
     train_op = optimizer.minimize(total_loss, var_list=pi.trainable_variables)
 
     ### 3. define data collection
-    training_data = Batch(env, pi, [advantage_estimation.full_return], [pi])
+    training_data = Batch(env, pi, [advantage_estimation.full_return], [pi], render = args.render)
 
     ### 4. start training
     config = tf.ConfigProto()
