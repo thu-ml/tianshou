@@ -66,9 +66,11 @@ if __name__ == '__main__':
         pi.sync_weights()  # TODO: automate this for policies with target network
 
         start_time = time.time()
-        for i in range(100):
+        #TODO : repeat_num shoulde be defined in some configuration files
+        repeat_num = 100
+        for i in range(repeat_num):
             # collect data
-            data_collector.collect(num_episodes=50)
+            data_collector.collect(num_episodes=50, epsilon_greedy= (repeat_num - i + 0.0) / repeat_num)
 
             # print current return
             print('Epoch {}:'.format(i))
