@@ -106,6 +106,7 @@ Note: install openai/gym first to run the Atari environment; note that interface
 
 Without preprocessing and other tricks, this example will not train to any meaningful results. Codes should past two tests: individual module test and run through this example code.
 
-## Dependency
-Tensorflow (Version >= 1.4)
-Gym
+## Dependencies
+TensorFlow (Version >= 1.4)
+
+gym

@@ -3,7 +3,7 @@ import tensorflow as tf
 from collections import deque
 from math import fabs
 
-from tianshou.data.replay_buffer.buffer import ReplayBuffer
+from .buffer import ReplayBuffer
 
 
 class NaiveExperience(ReplayBuffer):

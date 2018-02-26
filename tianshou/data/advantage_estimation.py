@@ -158,4 +158,3 @@ class QLearningTarget:
         data['rewards'] = np.array(rewards)
 
         return data
-
