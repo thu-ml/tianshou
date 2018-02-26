@@ -40,6 +40,9 @@ class Game:
             self.history_hashtable = set()
             self.game_engine = go.Go(size=self.size, komi=self.komi)
             self.board = [utils.EMPTY] * (self.size ** 2)
+            self.group_ancestors = {}  # key: idx, value: ancestor idx
+            self.liberty = {}  # key: ancestor idx, value: set of liberty
+            self.stones = {}  # key: ancestor idx, value: set of stones
         elif self.name == "reversi":
             self.size = 8
             self.history_length = 1
@@ -62,6 +65,9 @@ class Game:
             self.board = [utils.EMPTY] * (self.size ** 2)
             del self.history[:]
             self.history_hashtable.clear()
+            self.group_ancestors.clear()
+            self.liberty.clear()
+            self.stones.clear()
         if self.name == "reversi":
             self.board = self.game_engine.get_board()
         for _ in range(self.history_length):
@@ -109,7 +115,7 @@ class Game:
             res = self.game_engine.executor_do_move(self.history, self.latest_boards, self.board, color, vertex)
         if self.name == "go":
             res = self.game_engine.executor_do_move(self.history, self.history_hashtable, self.latest_boards, self.board,
-                                                    color, vertex)
+                                                    self.group_ancestors, self.liberty, self.stones, color, vertex)
         return res
 
     def think_play_move(self, color):

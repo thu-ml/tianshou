@@ -18,7 +18,7 @@ class DQN(PolicyBase):
         else:
             self.interaction_count = -1
 
-    def act(self, observation, exploration=None):
+    def act(self, observation, my_feed_dict):
         sess = tf.get_default_session()
         if self.weight_update > 1:
             if self.interaction_count % self.weight_update == 0:
@@ -30,8 +30,7 @@ class DQN(PolicyBase):
         if self.weight_update > 0:
             self.interaction_count += 1
 
-        if not exploration:
-            return np.squeeze(action)
+        return np.squeeze(action)
 
     @property
     def q_net(self):
