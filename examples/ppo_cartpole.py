@@ -59,7 +59,7 @@ if __name__ == '__main__':
     train_op = optimizer.minimize(total_loss, var_list=pi.trainable_variables)
 
     ### 3. define data collection
-    training_data = Batch(env, pi, [advantage_estimation.full_return], [pi], render = args.render)
+    training_data = Batch(env, pi, [advantage_estimation.full_return], [pi], render=args.render)
 
     ### 4. start training
     config = tf.ConfigProto()

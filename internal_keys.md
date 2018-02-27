@@ -10,6 +10,6 @@ data_collector.data.keys()
 
 ['reward']
 
-['start_flag']
+['done_flag']
 
 ['advantage'] > ['return'] # they may appear simultaneously

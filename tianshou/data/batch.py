@@ -156,11 +156,19 @@ class Batch(object):
     def next_batch(self, batch_size, standardize_advantage=True):
         rand_idx = np.random.choice(self.raw_data['observation'].shape[0], batch_size)
 
+        # maybe re-compute advantage here, but only on rand_idx
+        # but how to construct the feed_dict?
+        if self.online:
+            self.data_batch.update(self.apply_advantage_estimation_function(rand_idx))
+
+
         feed_dict = {}
         for key, placeholder in self.required_placeholders.items():
+            feed_dict[placeholder] = utils.get_batch(self, key, rand_idx)
+
             found, data_key = utils.internal_key_match(key, self.raw_data.keys())
             if found:
-                feed_dict[placeholder] = self.raw_data[data_key][rand_idx]
+                feed_dict[placeholder] = utils.get_batch(self.raw_data[data_key], rand_idx)  # self.raw_data[data_key][rand_idx]
             else:
                 found, data_key = utils.internal_key_match(key, self.data.keys())
                 if found:
