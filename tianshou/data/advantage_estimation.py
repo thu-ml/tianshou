@@ -73,7 +73,6 @@ class nstep_return:
 
     def __call__(self, buffer, index=None):
         """
-        naively compute full return
         :param buffer: buffer with property index and data. index determines the current content in `buffer`.
         :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
                       each episode.
@@ -93,7 +92,6 @@ class ddpg_return:
 
     def __call__(self, buffer, index=None):
         """
-        naively compute full return
         :param buffer: buffer with property index and data. index determines the current content in `buffer`.
         :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
                       each episode.
@@ -113,7 +111,6 @@ class nstep_q_return:
 
     def __call__(self, buffer, index=None):
         """
-        naively compute full return
         :param buffer: buffer with property index and data. index determines the current content in `buffer`.
         :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
                       each episode.
