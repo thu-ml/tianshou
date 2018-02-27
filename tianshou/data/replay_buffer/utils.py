@@ -1,8 +1,8 @@
 import sys
 
-from tianshou.data.replay_buffer.naive import NaiveExperience
-from tianshou.data.replay_buffer.proportional import PropotionalExperience
-from tianshou.data.replay_buffer.rank_based import RankBasedExperience
+from .naive import NaiveExperience
+from .proportional import PropotionalExperience
+from .rank_based import RankBasedExperience
 
 
 def get_replay_buffer(name, env, policy, qnet, target_qnet, conf):

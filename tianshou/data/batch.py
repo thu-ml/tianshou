@@ -34,7 +34,7 @@ class Batch(object):
         self._is_first_collect = True
 
     def collect(self, num_timesteps=0, num_episodes=0, my_feed_dict={},
-                process_reward=True):  # specify how many data to collect here, or fix it in __init__()
+                process_reward=True, epsilon_greedy=0):  # specify how many data to collect here, or fix it in __init__()
         assert sum(
             [num_timesteps > 0, num_episodes > 0]) == 1, "One and only one collection number specification permitted!"
 
@@ -106,7 +106,11 @@ class Batch(object):
                 episode_start_flags.append(True)
 
                 while True:
-                    ac = self._pi.act(ob, my_feed_dict)
+                    # a simple implementation of epsilon greedy
+                    if epsilon_greedy > 0 and np.random.random() < epsilon_greedy:
+                        ac = np.random.randint(low = 0, high = self._env.action_space.n)
+                    else:
+                        ac = self._pi.act(ob, my_feed_dict)
                     actions.append(ac)
 
                     if self.render:
@@ -114,9 +118,9 @@ class Batch(object):
                     ob, reward, done, _ = self._env.step(ac)
                     rewards.append(reward)
 
-                    t_count += 1
-                    if t_count >= 100:  # force episode stop, just to test if memory still grows
-                        break
+                    #t_count += 1
+                    #if t_count >= 100:  # force episode stop, just to test if memory still grows
+                    #    break
 
                     if done:  # end of episode, discard s_T
                         # TODO: for num_timesteps collection, has to store terminal flag instead of start flag!
