@@ -14,6 +14,10 @@ from tianshou.data.batch import Batch
 import tianshou.data.advantage_estimation as advantage_estimation
 import tianshou.core.policy.dqn as policy  # TODO: fix imports as zhusuan so that only need to import to policy
 import tianshou.core.value_function.action_value as value_function
+import tianshou.data.replay_buffer.proportional as proportional
+import tianshou.data.replay_buffer.rank_based as rank_based
+import tianshou.data.replay_buffer.naive as naive
+import tianshou.data.replay_buffer.Replay as Replay
 
 
 # TODO: why this solves cartpole even without training?
@@ -50,11 +54,17 @@ if __name__ == '__main__':
     dqn_loss = losses.qlearning(dqn)
 
     total_loss = dqn_loss
+    global_step = tf.Variable(0, name='global_step', trainable=False)
     optimizer = tf.train.AdamOptimizer(1e-4)
-    train_op = optimizer.minimize(total_loss, var_list=dqn.trainable_variables)
+    train_op = optimizer.minimize(total_loss, var_list=dqn.trainable_variables, global_step=tf.train.get_global_step())
+
+    # replay_memory = naive.NaiveExperience({'size': 1000})
+    replay_memory = rank_based.RankBasedExperience({'size': 30})
+    # replay_memory = proportional.PropotionalExperience({'size': 100, 'batch_size': 10})
+    data_collector = Replay.Replay(replay_memory, env, pi, [advantage_estimation.ReplayMemoryQReturn(1, dqn)], [dqn])
 
     ### 3. define data collection
-    data_collector = Batch(env, pi, [advantage_estimation.nstep_q_return(1, dqn)], [dqn])
+    # data_collector = Batch(env, pi, [advantage_estimation.nstep_q_return(1, dqn)], [dqn])
 
     ### 4. start training
     config = tf.ConfigProto()
@@ -68,7 +78,7 @@ if __name__ == '__main__':
         start_time = time.time()
         for i in range(100):
             # collect data
-            data_collector.collect(num_episodes=50)
+            data_collector.collect(nums=50)
 
             # print current return
             print('Epoch {}:'.format(i))
@@ -76,7 +86,7 @@ if __name__ == '__main__':
 
             # update network
             for _ in range(num_batches):
-                feed_dict = data_collector.next_batch(batch_size)
+                feed_dict = data_collector.next_batch(batch_size, tf.train.global_step(sess, global_step))
                 sess.run(train_op, feed_dict=feed_dict)
 
             print('Elapsed time: {:.1f} min'.format((time.time() - start_time) / 60))

@@ -218,4 +218,5 @@ class BinaryHeap(object):
         :param priority_ids: list of priority id
         :return: list of experience id
         """
+        # print(priority_ids)
         return [self.p2e[i] for i in priority_ids]

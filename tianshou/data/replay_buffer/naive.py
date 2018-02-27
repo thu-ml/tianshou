@@ -7,13 +7,15 @@ from tianshou.data.replay_buffer.buffer import ReplayBuffer
 
 
 class NaiveExperience(ReplayBuffer):
-    def __init__(self, env, policy, qnet, target_qnet, conf):
+    # def __init__(self, env, policy, qnet, target_qnet, conf):
+    def __init__(self, conf):
         self.max_size = conf['size']
-        self._env = env
-        self._policy = policy
-        self._qnet = qnet
-        self._target_qnet = target_qnet
-        self._begin_act()
+        self._name = 'naive'
+        # self._env = env
+        # self._policy = policy
+        # self._qnet = qnet
+        # self._target_qnet = target_qnet
+        # self._begin_act()
         self.n_entries = 0
         self.memory = deque(maxlen=self.max_size)
 

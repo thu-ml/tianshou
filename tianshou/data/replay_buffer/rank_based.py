@@ -16,15 +16,16 @@ from tianshou.data.replay_buffer.buffer import ReplayBuffer
 
 class RankBasedExperience(ReplayBuffer):
 
-    def __init__(self, env, policy, qnet, target_qnet, conf):
+    def __init__(self, conf):
         self.size = conf['size']
         self.replace_flag = conf['replace_old'] if 'replace_old' in conf else True
         self.priority_size = conf['priority_size'] if 'priority_size' in conf else self.size
+        self._name = 'rank_based'
 
         self.alpha = conf['alpha'] if 'alpha' in conf else 0.7
         self.beta_zero = conf['beta_zero'] if 'beta_zero' in conf else 0.5
         self.batch_size = conf['batch_size'] if 'batch_size' in conf else 32
-        self.learn_start = conf['learn_start'] if 'learn_start' in conf else 1000
+        self.learn_start = conf['learn_start'] if 'learn_start' in conf else 10
         self.total_steps = conf['steps'] if 'steps' in conf else 100000
         # partition number N, split total size to N part
         self.partition_num = conf['partition_num'] if 'partition_num' in conf else 10
@@ -33,11 +34,11 @@ class RankBasedExperience(ReplayBuffer):
         self.record_size = 0
         self.isFull = False
 
-        self._env = env
-        self._policy = policy
-        self._qnet = qnet
-        self._target_qnet = target_qnet
-        self._begin_act()
+        # self._env = env
+        # self._policy = policy
+        # self._qnet = qnet
+        # self._target_qnet = target_qnet
+        # self._begin_act()
 
         self._experience = {}
         self.priority_queue = BinaryHeap(self.priority_size)
@@ -241,12 +242,14 @@ class RankBasedExperience(ReplayBuffer):
         # issue 1 by @camigord
         partition_size = math.floor(self.size * 1. / self.partition_num)
         partition_max = dist_index * partition_size
+        # print(self.record_size, self.partition_num, partition_max, partition_size, dist_index)
+        # print(self.distributions.keys())
         distribution = self.distributions[dist_index]
         rank_list = []
         # sample from k segments
         for n in range(1, self.batch_size + 1):
-            index = random.randint(distribution['strata_ends'][n],
-                                       distribution['strata_ends'][n + 1])
+            index = max(random.randint(distribution['strata_ends'][n],
+                                       distribution['strata_ends'][n + 1]), 1)
             rank_list.append(index)
 
         # beta, increase by global_step, max 1

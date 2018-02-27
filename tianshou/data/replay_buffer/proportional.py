@@ -18,7 +18,7 @@ class PropotionalExperience(ReplayBuffer):
 
     """
     
-    def __init__(self, env, policy, qnet, target_qnet, conf):
+    def __init__(self, conf):
         """ Prioritized experience replay buffer initialization.
         
         Parameters
@@ -38,11 +38,12 @@ class PropotionalExperience(ReplayBuffer):
         self.memory_size = memory_size
         self.batch_size = batch_size
         self.alpha = alpha
-        self._env = env
-        self._policy = policy
-        self._qnet = qnet
-        self._target_qnet = target_qnet
-        self._begin_act()
+        # self._env = env
+        # self._policy = policy
+        # self._qnet = qnet
+        # self._target_qnet = target_qnet
+        # self._begin_act()
+        self._name = 'proportional'
 
     def _begin_act(self):
         """
@@ -58,7 +59,7 @@ class PropotionalExperience(ReplayBuffer):
                 self.action = self._env.action_space.sample()
             self.observation, _, done, _ = self._env.step(self.action)
 
-    def add(self, data, priority):
+    def add(self, data, priority=1):
         """ Add new sample.
         
         Parameters
@@ -195,7 +196,3 @@ class PropotionalExperience(ReplayBuffer):
         priorities = [self.tree.get_val(i)**-old_alpha for i in range(self.tree.filled_size())]
         self.update_priority(range(self.tree.filled_size()), priorities)
 
-        
-            
-        
-        

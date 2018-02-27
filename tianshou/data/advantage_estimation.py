@@ -159,3 +159,31 @@ class QLearningTarget:
 
         return data
 
+
+class ReplayMemoryQReturn:
+    """
+    compute the n-step return for Q-learning targets
+    """
+    def __init__(self, n, action_value, use_target_network=True):
+        self.n = n
+        self._action_value = action_value
+        self._use_target_network = use_target_network
+
+    def __call__(self, raw_data):
+        reward = raw_data['reward']
+        observation = raw_data['observation']
+
+        if self._use_target_network:
+            # print(observation.shape)
+            # print((observation.reshape((1,) + observation.shape)))
+            action_value_all_actions = self._action_value.eval_value_all_actions_old(observation.reshape((1,) + observation.shape))
+        else:
+            # print(observation.shape)
+            # print((observation.reshape((1,) + observation.shape)))
+            action_value_all_actions = self._action_value.eval_value_all_actions(observation.reshape((1,) + observation.shape))
+
+        action_value_max = np.max(action_value_all_actions, axis=1)
+
+        return_ = reward + action_value_max
+
+        return {'return': return_}
