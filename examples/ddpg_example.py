@@ -5,6 +5,7 @@ import tensorflow as tf
 import gym
 import numpy as np
 import time
+import argparse
 
 # our lib imports here! It's ok to append path in examples
 import sys
@@ -18,6 +19,9 @@ import tianshou.core.opt as opt
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--render", action="store_true", default=False)
+    args = parser.parse_args()
     env = gym.make('Pendulum-v0')
     observation_dim = env.observation_space.shape
     action_dim = env.action_space.shape
@@ -60,7 +64,8 @@ if __name__ == '__main__':
     actor_train_op = actor_optimizer.apply_gradients(dpg_grads)
 
     ### 3. define data collection
-    data_collector = Batch(env, actor, [advantage_estimation.ddpg_return(actor, critic)], [actor, critic])
+    data_collector = Batch(env, actor, [advantage_estimation.ddpg_return(actor, critic)], [actor, critic],
+                           render = args.render)
 
     ### 4. start training
     config = tf.ConfigProto()
