@@ -15,11 +15,8 @@ import tianshou.data.advantage_estimation as advantage_estimation
 import tianshou.core.policy.dqn as policy  # TODO: fix imports as zhusuan so that only need to import to policy
 import tianshou.core.value_function.action_value as value_function
 
-import tianshou.data.replay as replay
-import tianshou.data.data_collector as data_collector
-
-
-# TODO: why this solves cartpole even without training?
+from tianshou.data.replay_buffer.vanilla import VanillaReplayBuffer
+from tianshou.data.data_collector import DataCollector
 
 
 if __name__ == '__main__':
@@ -57,9 +54,18 @@ if __name__ == '__main__':
     train_op = optimizer.minimize(total_loss, var_list=dqn.trainable_variables)
 
     ### 3. define data collection
-    replay_buffer = replay()
+    replay_buffer = VanillaReplayBuffer(capacity=1e5, nstep=1)
 
-    data_collector = data_collector(env, pi, [advantage_estimation.nstep_q_return(1, dqn)], [dqn], replay_buffer)
+    process_functions = [advantage_estimation.nstep_q_return(1, dqn)]
+    managed_networks = [dqn]
+
+    data_collector = DataCollector(
+        env=env,
+        policy=pi,
+        data_buffer=replay_buffer,
+        process_functions=process_functions,
+        managed_networks=managed_networks
+    )
 
     ### 4. start training
     config = tf.ConfigProto()
@@ -73,7 +79,7 @@ if __name__ == '__main__':
         start_time = time.time()
         for i in range(100):
             # collect data
-            data_collector.collect(num_episodes=50)
+            data_collector.collect()
 
             # print current return
             print('Epoch {}:'.format(i))
