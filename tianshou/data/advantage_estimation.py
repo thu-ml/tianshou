@@ -24,7 +24,7 @@ def full_return(buffer, index=None):
         if index_this:
             episode = raw_data[i_episode]
             if not episode[-1][DONE]:
-                logging.warning('Computing full return on episode {} with no terminal state.'.format(i_episode))
+                logging.warning('Computing full return on episode {} which is not terminated.'.format(i_episode))
 
             episode_length = len(episode)
             returns_episode = [0.] * episode_length
