@@ -77,13 +77,17 @@ if __name__ == '__main__':
         pi.sync_weights()  # TODO: automate this for policies with target network
 
         start_time = time.time()
-        for i in range(100):
+        epsilon = 0.5
+        pi.set_epsilon_train(epsilon)
+        data_collector.collect(num_timesteps=1e3)  # warm-up
+        for i in range(int(1e8)):  # number of training steps
+            # anneal epsilon step-wise
+            if (i + 1) % 1e4 == 0 and epsilon > 0.1:
+                epsilon -= 0.1
+                pi.set_epsilon_train(epsilon)
+
             # collect data
             data_collector.collect()
-
-            # print current return
-            print('Epoch {}:'.format(i))
-            data_collector.statistics()
 
             # update network
             for _ in range(num_batches):
@@ -91,3 +95,10 @@ if __name__ == '__main__':
                 sess.run(train_op, feed_dict=feed_dict)
 
             print('Elapsed time: {:.1f} min'.format((time.time() - start_time) / 60))
+
+            # test every 1000 training steps
+            # tester could share some code with batch!
+            if i % 1000 == 0:
+                # epsilon 0.05 as in nature paper
+                pi.set_epsilon_test(0.05)
+                test(env, pi)  # go for act_test of pi, not act

@@ -59,7 +59,7 @@ class DataCollector(object):
         if self.process_mode == 'minibatch':
             pass
 
-        # flatten rank-2 list to numpy array
+        # flatten rank-2 list to numpy array, construct feed_dict
 
         return
 

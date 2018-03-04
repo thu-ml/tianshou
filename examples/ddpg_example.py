@@ -78,13 +78,10 @@ if __name__ == '__main__':
         critic.sync_weights()
 
         start_time = time.time()
-        for i in range(100):
+        data_collector.collect(num_timesteps=1e3)  # warm-up
+        for i in range(int(1e8)):
             # collect data
-            data_collector.collect(num_episodes=50)
-
-            # print current return
-            print('Epoch {}:'.format(i))
-            data_collector.statistics()
+            data_collector.collect()
 
             # update network
             for _ in range(num_batches):
@@ -92,3 +89,7 @@ if __name__ == '__main__':
                 sess.run([actor_train_op, critic_train_op], feed_dict=feed_dict)
 
             print('Elapsed time: {:.1f} min'.format((time.time() - start_time) / 60))
+
+            # test every 1000 training steps
+            if i % 1000 == 0:
+                test(env, actor)
