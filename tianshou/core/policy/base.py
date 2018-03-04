@@ -16,7 +16,7 @@ class PolicyBase(object):
     """
     base class for policy. only provides `act` method with exploration
     """
-    def act(self, observation):
+    def act(self, observation, my_feed_dict):
         raise NotImplementedError()
 
 

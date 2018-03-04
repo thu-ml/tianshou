@@ -101,7 +101,7 @@ class ddpg_return:
         pass
 
 
-class ReplayMemoryQReturn:
+class nstep_q_return:
     """
     compute the n-step return for Q-learning targets
     """
@@ -111,7 +111,7 @@ class ReplayMemoryQReturn:
         self.use_target_network = use_target_network
 
     # TODO : we should transfer the tf -> numpy/python -> tf into a monolithic compute graph in tf
-    def __call__(self, buffer, indexes =None):
+    def __call__(self, buffer, index=None):
         """
         :param buffer: buffer with property index and data. index determines the current content in `buffer`.
         :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
@@ -119,7 +119,7 @@ class ReplayMemoryQReturn:
         :return: dict with key 'return' and value the computed returns corresponding to `index`.
         """
         qvalue = self.action_value._value_tensor_all_actions
-        indexes = indexes or buffer.index
+        index = index or buffer.index
         episodes = buffer.data
         discount_factor = 0.99
         returns = []
@@ -128,13 +128,11 @@ class ReplayMemoryQReturn:
         config.gpu_options.allow_growth = True
         with tf.Session(config=config) as sess:
             sess.run(tf.global_variables_initializer())
-            for episode_index in range(len(indexes)):
-                index = indexes[episode_index]
+            for episode_index in range(len(index)):
+                index = index[episode_index]
                 if index:
                     episode = episodes[episode_index]
                     episode_q = []
-                    if not episode[-1][DONE]:
-                        logging.warning('Computing Q return on episode {} with no terminal state.'.format(episode_index))
 
                     for i in index:
                         current_discount_factor = 1
@@ -155,4 +153,4 @@ class ReplayMemoryQReturn:
                     returns.append(episode_q)
                 else:
                     returns.append([])
-        return {'TD-lambda': returns}
+        return {'return': returns}
