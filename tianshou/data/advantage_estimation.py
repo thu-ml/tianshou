@@ -8,20 +8,20 @@ REWARD = 2
 DONE = 3
 
 # modified for new interfaces
-def full_return(buffer, index=None):
+def full_return(buffer, indexes=None):
     """
     naively compute full return
     :param buffer: buffer with property index and data. index determines the current content in `buffer`.
-    :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
+    :param indexes: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
                   each episode.
     :return: dict with key 'return' and value the computed returns corresponding to `index`.
     """
-    index = index or buffer.index
+    indexes = indexes or buffer.index
     raw_data = buffer.data
 
     returns = []
-    for i_episode in range(len(index)):
-        index_this = index[i_episode]
+    for i_episode in range(len(indexes)):
+        index_this = indexes[i_episode]
         if index_this:
             episode = raw_data[i_episode]
             if not episode[-1][DONE]:
@@ -111,7 +111,7 @@ class nstep_q_return:
         self.use_target_network = use_target_network
 
     # TODO : we should transfer the tf -> numpy/python -> tf into a monolithic compute graph in tf
-    def __call__(self, buffer, index=None):
+    def __call__(self, buffer, indexes=None):
         """
         :param buffer: buffer with property index and data. index determines the current content in `buffer`.
         :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
@@ -119,7 +119,7 @@ class nstep_q_return:
         :return: dict with key 'return' and value the computed returns corresponding to `index`.
         """
         qvalue = self.action_value._value_tensor_all_actions
-        index = index or buffer.index
+        indexes = indexes or buffer.index
         episodes = buffer.data
         discount_factor = 0.99
         returns = []
@@ -128,8 +128,8 @@ class nstep_q_return:
         config.gpu_options.allow_growth = True
         with tf.Session(config=config) as sess:
             sess.run(tf.global_variables_initializer())
-            for episode_index in range(len(index)):
-                index = index[episode_index]
+            for episode_index in range(len(indexes)):
+                index = indexes[episode_index]
                 if index:
                     episode = episodes[episode_index]
                     episode_q = []
@@ -145,9 +145,11 @@ class nstep_q_return:
                             current_discount_factor *= discount_factor
                             last_frame_index = lfi
                         if last_frame_index > i:
-                            target_q += current_discount_factor * \
-                                 max(sess.run(qvalue, feed_dict={self.action_value.managed_placeholders['observation']:
-                                                                     episode[last_frame_index][STATE]}))
+                            state = episode[last_frame_index][STATE]
+                            # the shape of qpredict is [batch_size, action_dimension]
+                            qpredict = sess.run(qvalue, feed_dict={self.action_value.managed_placeholders['observation']:
+                                                                        state.reshape(1, state.shape[0])})
+                            target_q += current_discount_factor * max(qpredict[0])
                         episode_q.append(target_q)
 
                     returns.append(episode_q)

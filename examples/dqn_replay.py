@@ -14,6 +14,7 @@ from tianshou.core import losses
 import tianshou.data.advantage_estimation as advantage_estimation
 import tianshou.core.policy.dqn as policy  # TODO: fix imports as zhusuan so that only need to import to policy
 import tianshou.core.value_function.action_value as value_function
+import sys
 
 from tianshou.data.replay_buffer.vanilla import VanillaReplayBuffer
 from tianshou.data.data_collector import DataCollector
@@ -79,7 +80,7 @@ if __name__ == '__main__':
         start_time = time.time()
         epsilon = 0.5
         pi.set_epsilon_train(epsilon)
-        data_collector.collect(num_timesteps=1e3)  # warm-up
+        data_collector.collect(num_timesteps=int(1e3))  # warm-up
         for i in range(int(1e8)):  # number of training steps
             # anneal epsilon step-wise
             if (i + 1) % 1e4 == 0 and epsilon > 0.1:
@@ -101,4 +102,4 @@ if __name__ == '__main__':
             if i % 1000 == 0:
                 # epsilon 0.05 as in nature paper
                 pi.set_epsilon_test(0.05)
-                test(env, pi)  # go for act_test of pi, not act
+                #test(env, pi)  # go for act_test of pi, not act

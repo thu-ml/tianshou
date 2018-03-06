@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 import itertools
+import sys
 
 from .replay_buffer.base import ReplayBufferBase
 
@@ -59,7 +60,7 @@ class DataCollector(object):
         sampled_index = self.data_buffer.sample(batch_size)
         if self.process_mode == 'sample':
             for processor in self.process_functions:
-                self.data_batch.update(processor(self.data_buffer, index=sampled_index))
+                self.data_batch.update(processor(self.data_buffer, indexes=sampled_index))
 
         # flatten rank-2 list to numpy array, construct feed_dict
         feed_dict = {}
