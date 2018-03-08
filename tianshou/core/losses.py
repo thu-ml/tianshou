@@ -69,14 +69,3 @@ def qlearning(action_value_function):
 
     q_value = action_value_function.value_tensor
     return tf.losses.mean_squared_error(target_value_ph, q_value)
-
-
-def deterministic_policy_gradient(sampled_state, critic):
-    """
-    deterministic policy gradient:
-
-    :param sampled_action: placeholder of sampled actions during the interaction with the environment
-    :param critic: current `value` function
-    :return:
-    """
-    return tf.reduce_mean(critic.get_value(sampled_state))

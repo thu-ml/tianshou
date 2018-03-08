@@ -30,8 +30,10 @@ class DQN(PolicyBase):
         feed_dict = {self.action_value._observation_placeholder: observation[None]}
         feed_dict.update(my_feed_dict)
         action = sess.run(self._argmax_action, feed_dict=feed_dict)
+
+        # epsilon_greedy
         if np.random.rand() < self.epsilon_train:
-            pass
+            action = np.random.randint(self.action_value.num_actions)
 
         if self.weight_update > 0:
             self.interaction_count += 1
@@ -39,7 +41,23 @@ class DQN(PolicyBase):
         return np.squeeze(action)
 
     def act_test(self, observation, my_feed_dict={}):
-        pass
+        sess = tf.get_default_session()
+        if self.weight_update > 1:
+            if self.interaction_count % self.weight_update == 0:
+                self.update_weights()
+
+        feed_dict = {self.action_value._observation_placeholder: observation[None]}
+        feed_dict.update(my_feed_dict)
+        action = sess.run(self._argmax_action, feed_dict=feed_dict)
+
+        # epsilon_greedy
+        if np.random.rand() < self.epsilon_test:
+            action = np.random.randint(self.action_value.num_actions)
+
+        if self.weight_update > 0:
+            self.interaction_count += 1
+
+        return np.squeeze(action)
 
     @property
     def q_net(self):

@@ -36,14 +36,20 @@ class DataCollector(object):
             "One and only one collection number specification permitted!"
 
         if num_timesteps > 0:
-            for _ in range(num_timesteps):
+            num_timesteps_ = int(num_timesteps)
+            for _ in range(num_timesteps_):
                 action = self.policy.act(self.current_observation, my_feed_dict=my_feed_dict)
                 next_observation, reward, done, _ = self.env.step(action)
                 self.data_buffer.add((self.current_observation, action, reward, done))
-                self.current_observation = next_observation
+
+                if done:
+                    self.current_observation = self.env.reset()
+                else:
+                    self.current_observation = next_observation
 
         if num_episodes > 0:
-            for _ in range(num_episodes):
+            num_episodes_ = int(num_episodes)
+            for _ in range(num_episodes_):
                 observation = self.env.reset()
                 done = False
                 while not done:
@@ -56,7 +62,7 @@ class DataCollector(object):
             for processor in self.process_functions:
                 self.data.update(processor(self.data_buffer))
 
-    def next_batch(self, batch_size, standardize_advantage=True):
+    def next_batch(self, batch_size, standardize_advantage=None):
         sampled_index = self.data_buffer.sample(batch_size)
         if self.process_mode == 'sample':
             for processor in self.process_functions:
@@ -87,7 +93,8 @@ class DataCollector(object):
             else:
                 raise TypeError('Placeholder {} has no value to feed!'.format(str(placeholder.name)))
 
-        if standardize_advantage:
+        auto_standardize = (standardize_advantage is None) and self.require_advantage
+        if standardize_advantage or auto_standardize:
             if self.require_advantage:
                 advantage_value = feed_dict[self.required_placeholders['advantage']]
                 advantage_mean = np.mean(advantage_value)

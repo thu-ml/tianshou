@@ -114,6 +114,8 @@ class DQN(ValueFunctionBase):
 
             self._value_tensor_all_actions = value_tensor
 
+            self.num_actions = value_tensor.shape.as_list()[-1]
+
             batch_size = tf.shape(value_tensor)[0]
             batch_dim_index = tf.range(batch_size)
             indices = tf.stack([batch_dim_index, action_placeholder], axis=1)

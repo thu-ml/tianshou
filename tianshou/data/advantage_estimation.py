@@ -1,5 +1,4 @@
 import logging
-import tensorflow as tf
 import numpy as np
 
 STATE = 0
@@ -105,12 +104,12 @@ class nstep_q_return:
     """
     compute the n-step return for Q-learning targets
     """
-    def __init__(self, n, action_value, use_target_network=True):
+    def __init__(self, n, action_value, use_target_network=True, discount_factor=0.99):
         self.n = n
         self.action_value = action_value
         self.use_target_network = use_target_network
+        self.discount_factor = discount_factor
 
-    # TODO : we should transfer the tf -> numpy/python -> tf into a monolithic compute graph in tf
     def __call__(self, buffer, indexes=None):
         """
         :param buffer: buffer with property index and data. index determines the current content in `buffer`.
@@ -118,41 +117,39 @@ class nstep_q_return:
                       each episode.
         :return: dict with key 'return' and value the computed returns corresponding to `index`.
         """
-        qvalue = self.action_value._value_tensor_all_actions
         indexes = indexes or buffer.index
         episodes = buffer.data
-        discount_factor = 0.99
         returns = []
 
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
-        with tf.Session(config=config) as sess:
-            sess.run(tf.global_variables_initializer())
-            for episode_index in range(len(indexes)):
-                index = indexes[episode_index]
-                if index:
-                    episode = episodes[episode_index]
-                    episode_q = []
+        for episode_index in range(len(indexes)):
+            index = indexes[episode_index]
+            if index:
+                episode = episodes[episode_index]
+                episode_q = []
 
-                    for i in index:
-                        current_discount_factor = 1
-                        last_frame_index = i
-                        target_q = episode[i][REWARD]
-                        for lfi in range(i, min(len(episode), i + self.n + 1)):
-                            if episode[lfi][DONE]:
-                                break
-                            target_q += current_discount_factor * episode[lfi][REWARD]
-                            current_discount_factor *= discount_factor
-                            last_frame_index = lfi
-                        if last_frame_index > i:
-                            state = episode[last_frame_index][STATE]
-                            # the shape of qpredict is [batch_size, action_dimension]
-                            qpredict = sess.run(qvalue, feed_dict={self.action_value.managed_placeholders['observation']:
-                                                                        state.reshape(1, state.shape[0])})
-                            target_q += current_discount_factor * max(qpredict[0])
-                        episode_q.append(target_q)
+                for i in index:
+                    current_discount_factor = 1
+                    last_frame_index = i
+                    target_q = episode[i][REWARD]
+                    for lfi in range(i, min(len(episode), i + self.n + 1)):
+                        if episode[lfi][DONE]:
+                            break
+                        target_q += current_discount_factor * episode[lfi][REWARD]
+                        current_discount_factor *= self.discount_factor
+                        last_frame_index = lfi
+                    if last_frame_index > i:
+                        state = episode[last_frame_index][STATE]
 
-                    returns.append(episode_q)
-                else:
-                    returns.append([])
+                        if self.use_target_network:
+                            # [None] adds one dimension to the beginning
+                            qpredict = self.action_value.eval_value_all_actions_old(state[None])
+                        else:
+                            qpredict = self.action_value.eval_value_all_actions(state[None])
+                        target_q += current_discount_factor * max(qpredict[0])
+                    episode_q.append(target_q)
+
+                returns.append(episode_q)
+            else:
+                returns.append([])
+
         return {'return': returns}

@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from __future__ import absolute_import
-
 import tensorflow as tf
 import gym
 import numpy as np
@@ -10,11 +8,9 @@ import time
 import sys
 sys.path.append('..')
 from tianshou.core import losses
-# from tianshou.data.batch import Batch
 import tianshou.data.advantage_estimation as advantage_estimation
-import tianshou.core.policy.dqn as policy  # TODO: fix imports as zhusuan so that only need to import to policy
+import tianshou.core.policy.dqn as policy
 import tianshou.core.value_function.action_value as value_function
-import sys
 
 from tianshou.data.replay_buffer.vanilla import VanillaReplayBuffer
 from tianshou.data.data_collector import DataCollector
@@ -24,14 +20,6 @@ if __name__ == '__main__':
     env = gym.make('CartPole-v0')
     observation_dim = env.observation_space.shape
     action_dim = env.action_space.n
-
-    clip_param = 0.2
-    num_batches = 10
-    batch_size = 512
-
-    seed = 0
-    np.random.seed(seed)
-    tf.set_random_seed(seed)
 
     ### 1. build network with pure tf
     observation_ph = tf.placeholder(tf.float32, shape=(None,) + observation_dim)
@@ -45,7 +33,7 @@ if __name__ == '__main__':
         return None, action_values  # no policy head
 
     ### 2. build policy, loss, optimizer
-    dqn = value_function.DQN(my_network, observation_placeholder=observation_ph, weight_update=100)
+    dqn = value_function.DQN(my_network, observation_placeholder=observation_ph, weight_update=200)
     pi = policy.DQN(dqn)
 
     dqn_loss = losses.qlearning(dqn)
@@ -69,6 +57,17 @@ if __name__ == '__main__':
     )
 
     ### 4. start training
+    # hyper-parameters
+    batch_size = 256
+    replay_buffer_warmup = 1000
+    epsilon_decay_interval = 200
+    epsilon = 0.3
+    test_interval = 1000
+
+    seed = 0
+    np.random.seed(seed)
+    tf.set_random_seed(seed)
+
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
@@ -78,12 +77,11 @@ if __name__ == '__main__':
         pi.sync_weights()  # TODO: automate this for policies with target network
 
         start_time = time.time()
-        epsilon = 0.5
         pi.set_epsilon_train(epsilon)
-        data_collector.collect(num_timesteps=int(1e3))  # warm-up
+        data_collector.collect(num_timesteps=replay_buffer_warmup)  # warm-up
         for i in range(int(1e8)):  # number of training steps
             # anneal epsilon step-wise
-            if (i + 1) % 1e4 == 0 and epsilon > 0.1:
+            if (i + 1) % epsilon_decay_interval == 0 and epsilon > 0.1:
                 epsilon -= 0.1
                 pi.set_epsilon_train(epsilon)
 
@@ -91,15 +89,13 @@ if __name__ == '__main__':
             data_collector.collect()
 
             # update network
-            for _ in range(num_batches):
-                feed_dict = data_collector.next_batch(batch_size)
-                sess.run(train_op, feed_dict=feed_dict)
-
-            print('Elapsed time: {:.1f} min'.format((time.time() - start_time) / 60))
+            feed_dict = data_collector.next_batch(batch_size)
+            sess.run(train_op, feed_dict=feed_dict)
 
             # test every 1000 training steps
             # tester could share some code with batch!
-            if i % 1000 == 0:
+            if i % test_interval == 0:
+                print('Elapsed time: {:.1f} min'.format((time.time() - start_time) / 60))
                 # epsilon 0.05 as in nature paper
                 pi.set_epsilon_test(0.05)
                 #test(env, pi)  # go for act_test of pi, not act
