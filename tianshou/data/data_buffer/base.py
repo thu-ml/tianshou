@@ -1,13 +1,13 @@
 
 
-class ReplayBufferBase(object):
+class DataBufferBase(object):
     """
-    base class for replay buffer.
+    base class for data buffer, including replay buffer as in DQN and batched dataset as in on-policy algos
     """
     def add(self, frame):
         raise NotImplementedError()
 
-    def remove(self):
+    def clear(self):
         raise NotImplementedError()
 
     def sample(self, batch_size):

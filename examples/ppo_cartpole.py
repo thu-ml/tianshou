@@ -11,15 +11,18 @@ import argparse
 import sys
 sys.path.append('..')
 from tianshou.core import losses
-from tianshou.data.batch import Batch
 import tianshou.data.advantage_estimation as advantage_estimation
-import tianshou.core.policy.stochastic as policy  # TODO: fix imports as zhusuan so that only need to import to policy
+import tianshou.core.policy.stochastic as policy
+
+from tianshou.data.data_buffer.vanilla import VanillaReplayBuffer
+from tianshou.data.data_collector import DataCollector
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--render", action="store_true", default=False)
     args = parser.parse_args()
+
     env = gym.make('CartPole-v0')
     observation_dim = env.observation_space.shape
     action_dim = env.action_space.n
@@ -59,7 +62,7 @@ if __name__ == '__main__':
     train_op = optimizer.minimize(total_loss, var_list=pi.trainable_variables)
 
     ### 3. define data collection
-    training_data = Batch(env, pi, [advantage_estimation.full_return], [pi], render=args.render)
+    data_collector = Batch(env, pi, [advantage_estimation.full_return], [pi], render=args.render)
 
     ### 4. start training
     config = tf.ConfigProto()
@@ -73,15 +76,15 @@ if __name__ == '__main__':
         start_time = time.time()
         for i in range(100):
             # collect data
-            training_data.collect(num_episodes=50)
+            data_collector.collect(num_episodes=50)
 
             # print current return
             print('Epoch {}:'.format(i))
-            training_data.statistics()
+            data_collector.statistics()
 
             # update network
             for _ in range(num_batches):
-                feed_dict = training_data.next_batch(batch_size)
+                feed_dict = data_collector.next_batch(batch_size)
                 sess.run(train_op, feed_dict=feed_dict)
 
             # assigning actor to pi_old

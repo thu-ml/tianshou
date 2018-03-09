@@ -1,6 +1,6 @@
 import numpy as np
 
-from replay_buffer.vanilla import VanillaReplayBuffer
+from data_buffer.vanilla import VanillaReplayBuffer
 
 capacity = 12
 nstep = 3

@@ -3,7 +3,8 @@ import logging
 import itertools
 import sys
 
-from .replay_buffer.base import ReplayBufferBase
+from .data_buffer.replay_buffer_base import ReplayBufferBase
+from .data_buffer.batch_set import BatchSet
 
 class DataCollector(object):
     """
@@ -31,9 +32,12 @@ class DataCollector(object):
 
         self.current_observation = self.env.reset()
 
-    def collect(self, num_timesteps=1, num_episodes=0, my_feed_dict={}):
+    def collect(self, num_timesteps=1, num_episodes=0, my_feed_dict={}, auto_clear=True):
         assert sum([num_timesteps > 0, num_episodes > 0]) == 1,\
             "One and only one collection number specification permitted!"
+
+        if isinstance(self.data_buffer, BatchSet) and auto_clear:
+            self.data_buffer.clear()
 
         if num_timesteps > 0:
             num_timesteps_ = int(num_timesteps)

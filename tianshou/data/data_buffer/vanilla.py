@@ -1,13 +1,14 @@
 import logging
 import numpy as np
 
-from .base import ReplayBufferBase
+from .replay_buffer_base import ReplayBufferBase
 
 STATE = 0
 ACTION = 1
 REWARD = 2
 DONE = 3
 
+# TODO: valid data points could be less than `nstep` timesteps
 class VanillaReplayBuffer(ReplayBufferBase):
     """
     vanilla replay buffer as used in (Mnih, et al., 2015).
