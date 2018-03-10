@@ -6,6 +6,8 @@ import gym
 import numpy as np
 import time
 import argparse
+import logging
+logging.basicConfig(level=logging.INFO)
 
 # our lib imports here! It's ok to append path in examples
 import sys
@@ -14,7 +16,7 @@ from tianshou.core import losses
 import tianshou.data.advantage_estimation as advantage_estimation
 import tianshou.core.policy.stochastic as policy
 
-from tianshou.data.data_buffer.vanilla import VanillaReplayBuffer
+from tianshou.data.data_buffer.batch_set import BatchSet
 from tianshou.data.data_collector import DataCollector
 
 
@@ -62,7 +64,15 @@ if __name__ == '__main__':
     train_op = optimizer.minimize(total_loss, var_list=pi.trainable_variables)
 
     ### 3. define data collection
-    data_collector = Batch(env, pi, [advantage_estimation.full_return], [pi], render=args.render)
+    data_buffer = BatchSet()
+
+    data_collector = DataCollector(
+        env=env,
+        policy=pi,
+        data_buffer=data_buffer,
+        process_functions=[advantage_estimation.full_return],
+        managed_networks=[pi],
+    )
 
     ### 4. start training
     config = tf.ConfigProto()
@@ -80,7 +90,7 @@ if __name__ == '__main__':
 
             # print current return
             print('Epoch {}:'.format(i))
-            data_collector.statistics()
+            data_buffer.statistics()
 
             # update network
             for _ in range(num_batches):

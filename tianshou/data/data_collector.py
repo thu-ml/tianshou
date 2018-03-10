@@ -1,10 +1,10 @@
 import numpy as np
 import logging
 import itertools
-import sys
 
 from .data_buffer.replay_buffer_base import ReplayBufferBase
 from .data_buffer.batch_set import BatchSet
+from .utils import internal_key_match
 
 class DataCollector(object):
     """
@@ -32,7 +32,7 @@ class DataCollector(object):
 
         self.current_observation = self.env.reset()
 
-    def collect(self, num_timesteps=1, num_episodes=0, my_feed_dict={}, auto_clear=True):
+    def collect(self, num_timesteps=0, num_episodes=0, my_feed_dict={}, auto_clear=True):
         assert sum([num_timesteps > 0, num_episodes > 0]) == 1,\
             "One and only one collection number specification permitted!"
 
@@ -76,26 +76,34 @@ class DataCollector(object):
         feed_dict = {}
         frame_key_map = {'observation': 0, 'action': 1, 'reward': 2, 'done_flag': 3}
         for key, placeholder in self.required_placeholders.items():
-            if key in frame_key_map.keys():  # access raw_data
-                frame_index = frame_key_map[key]
+            # check raw_data first
+            found, matched_key = internal_key_match(key, frame_key_map.keys())
+            if found:
+                frame_index = frame_key_map[matched_key]
                 flattened = []
                 for index_episode, data_episode in zip(sampled_index, self.data_buffer.data):
                     for i in index_episode:
                         flattened.append(data_episode[i][frame_index])
                 feed_dict[placeholder] = np.array(flattened)
-            elif key in self.data_batch.keys():  # access processed minibatch data
-                flattened = list(itertools.chain.from_iterable(self.data_batch[key]))
-                feed_dict[placeholder] = np.array(flattened)
-            elif key in self.data.keys():  # access processed full data
-                flattened = [0.] * batch_size  # float
-                i_in_batch = 0
-                for index_episode, data_episode in zip(sampled_index, self.data[key]):
-                    for i in index_episode:
-                        flattened[i_in_batch] = data_episode[i]
-                        i_in_batch += 1
-                feed_dict[placeholder] = np.array(flattened)
             else:
-                raise TypeError('Placeholder {} has no value to feed!'.format(str(placeholder.name)))
+                # then check processed minibatch data
+                found, matched_key = internal_key_match(key, self.data_batch.keys())
+                if found:
+                    flattened = list(itertools.chain.from_iterable(self.data_batch[matched_key]))
+                    feed_dict[placeholder] = np.array(flattened)
+                else:
+                    # finally check processed full data
+                    found, matched_key = internal_key_match(key, self.data.keys())
+                    if found:
+                        flattened = [0.] * batch_size  # float
+                        i_in_batch = 0
+                        for index_episode, data_episode in zip(sampled_index, self.data[matched_key]):
+                            for i in index_episode:
+                                flattened[i_in_batch] = data_episode[i]
+                                i_in_batch += 1
+                        feed_dict[placeholder] = np.array(flattened)
+                    else:
+                        raise TypeError('Placeholder {} has no value to feed!'.format(str(placeholder.name)))
 
         auto_standardize = (standardize_advantage is None) and self.require_advantage
         if standardize_advantage or auto_standardize:
@@ -108,6 +116,3 @@ class DataCollector(object):
                 feed_dict[self.required_placeholders['advantage']] = (advantage_value - advantage_mean) / advantage_std
 
         return feed_dict
-
-    def statistics(self):
-        pass
