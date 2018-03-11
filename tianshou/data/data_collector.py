@@ -48,6 +48,7 @@ class DataCollector(object):
 
                 if done:
                     self.current_observation = self.env.reset()
+                    self.policy.reset()
                 else:
                     self.current_observation = next_observation
 
@@ -61,6 +62,7 @@ class DataCollector(object):
                     next_observation, reward, done, _ = self.env.step(action)
                     self.data_buffer.add((observation, action, reward, done))
                     observation = next_observation
+            self.current_observation = self.env.reset()
 
         if self.process_mode == 'full':
             for processor in self.process_functions:

@@ -1,11 +1,12 @@
 import tensorflow as tf
 from .base import PolicyBase
+from ..random import OrnsteinUhlenbeckProcess
 
 class Deterministic(PolicyBase):
     """
     deterministic policy as used in deterministic policy gradient methods
     """
-    def __init__(self, policy_callable, observation_placeholder, weight_update=1):
+    def __init__(self, policy_callable, observation_placeholder, weight_update=1, random_process=None):
         self._observation_placeholder = observation_placeholder
         self.managed_placeholders = {'observation': observation_placeholder}
         self.weight_update = weight_update
@@ -49,12 +50,30 @@ class Deterministic(PolicyBase):
                 import math
                 self.weight_update = math.ceil(weight_update)
 
+        self.random_process = random_process or OrnsteinUhlenbeckProcess(
+                                            theta=0.15, sigma=0.2, size=self.action.shape.as_list()[-1])
+
     @property
     def action_shape(self):
         return self.action.shape.as_list()[1:]
 
     def act(self, observation, my_feed_dict={}):
         # TODO: this may be ugly. also maybe huge problem when parallel
+        sess = tf.get_default_session()
+        # observation[None] adds one dimension at the beginning
+
+        feed_dict = {self._observation_placeholder: observation[None]}
+        feed_dict.update(my_feed_dict)
+        sampled_action = sess.run(self.action, feed_dict=feed_dict)
+
+        sampled_action = sampled_action[0] + self.random_process.sample()
+
+        return sampled_action
+
+    def reset(self):
+        self.random_process.reset_states()
+
+    def act_test(self, observation, my_feed_dict={}):
         sess = tf.get_default_session()
         # observation[None] adds one dimension at the beginning
 

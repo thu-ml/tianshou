@@ -19,6 +19,13 @@ class PolicyBase(object):
     def act(self, observation, my_feed_dict):
         raise NotImplementedError()
 
+    def reset(self):
+        """
+        for temporal correlated random process exploration, as in DDPG
+        :return:
+        """
+        pass
+
 
 class StochasticPolicy(PolicyBase):
     """

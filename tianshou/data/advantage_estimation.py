@@ -127,19 +127,50 @@ class ddpg_return:
     """
     compute the return as in DDPG. this seems to have to be special
     """
-    def __init__(self, actor, critic, use_target_network=True):
+    def __init__(self, actor, critic, use_target_network=True, discount_factor=0.99):
         self.actor = actor
         self.critic = critic
         self.use_target_network = use_target_network
+        self.discount_factor = discount_factor
 
-    def __call__(self, buffer, index=None):
+    def __call__(self, buffer, indexes=None):
         """
         :param buffer: buffer with property index and data. index determines the current content in `buffer`.
         :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
                       each episode.
         :return: dict with key 'return' and value the computed returns corresponding to `index`.
         """
-        pass
+        indexes = indexes or buffer.index
+        episodes = buffer.data
+        returns = []
+
+        for i_episode in range(len(indexes)):
+            index_this = indexes[i_episode]
+            if index_this:
+                episode = episodes[i_episode]
+                returns_this = []
+
+                for i in index_this:
+                    return_ = episode[i][REWARD]
+                    if not episode[i][DONE]:
+                        if self.use_target_network:
+                            state = episode[i + 1][STATE][None]
+                            action = self.actor.eval_action_old(state)
+                            q_value = self.critic.eval_value_old(state, action)
+                            return_ += self.discount_factor * q_value
+                        else:
+                            state = episode[i + 1][STATE][None]
+                            action = self.actor.eval_action(state)
+                            q_value = self.critic.eval_value(state, action)
+                            return_ += self.discount_factor * q_value
+
+                    returns_this.append(return_)
+
+                returns.append(returns_this)
+            else:
+                returns.append([])
+
+        return {'return': returns}
 
 
 class nstep_q_return:
