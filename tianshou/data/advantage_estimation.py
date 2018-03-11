@@ -6,7 +6,8 @@ ACTION = 1
 REWARD = 2
 DONE = 3
 
-# modified for new interfaces
+
+# TODO: add discount_factor... maybe make it to be a global config?
 def full_return(buffer, indexes=None):
     """
     naively compute full return
@@ -67,18 +68,59 @@ class nstep_return:
     """
     compute the n-step return from n-step rewards and bootstrapped value function
     """
-    def __init__(self, n, value_function):
+    def __init__(self, n, value_function, return_advantage=False, discount_factor=0.99):
         self.n = n
         self.value_function = value_function
+        self.return_advantage = return_advantage
+        self.discount_factor = discount_factor
 
-    def __call__(self, buffer, index=None):
+    def __call__(self, buffer, indexes=None):
         """
         :param buffer: buffer with property index and data. index determines the current content in `buffer`.
-        :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
+        :param indexes: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
                       each episode.
         :return: dict with key 'return' and value the computed returns corresponding to `index`.
         """
-        pass
+        indexes = indexes or buffer.index
+        episodes = buffer.data
+        returns = []
+        advantages = []
+
+        for i_episode in range(len(indexes)):
+            index_this = indexes[i_episode]
+            if index_this:
+                episode = episodes[i_episode]
+                returns_this = []
+                advantages_this = []
+
+                for i in index_this:
+                    current_discount_factor = 1.
+                    last_frame_index = i
+                    return_ = 0.
+                    for last_frame_index in range(i, min(len(episode), i + self.n)):
+                        return_ += current_discount_factor * episode[last_frame_index][REWARD]
+                        current_discount_factor *= self.discount_factor
+                        if episode[last_frame_index][DONE]:
+                            break
+                    if not episode[last_frame_index][DONE]:
+                        state = episode[last_frame_index + 1][STATE]
+                        v_sT = self.value_function.eval_value(state[None])
+                        return_ += current_discount_factor * v_sT
+                    returns_this.append(return_)
+                    if self.return_advantage:
+                        v_s0 = self.value_function.eval_value(episode[i][STATE][None])
+                        advantages_this.append(return_ - v_s0)
+
+                returns.append(returns_this)
+                advantages.append(advantages_this)
+            else:
+                returns.append([])
+                advantages.append([])
+
+        if self.return_advantage:
+            return {'return': returns, 'advantage':advantages}
+        else:
+            return {'return': returns}
 
 
 class ddpg_return:
@@ -128,18 +170,16 @@ class nstep_q_return:
                 episode_q = []
 
                 for i in index:
-                    current_discount_factor = 1
+                    current_discount_factor = 1.
                     last_frame_index = i
-                    target_q = episode[i][REWARD]
-                    for lfi in range(i, min(len(episode), i + self.n + 1)):
-                        if episode[lfi][DONE]:
-                            break
-                        target_q += current_discount_factor * episode[lfi][REWARD]
+                    target_q = 0.
+                    for last_frame_index in range(i, min(len(episode), i + self.n)):
+                        target_q += current_discount_factor * episode[last_frame_index][REWARD]
                         current_discount_factor *= self.discount_factor
-                        last_frame_index = lfi
-                    if last_frame_index > i:
-                        state = episode[last_frame_index][STATE]
-
+                        if episode[last_frame_index][DONE]:
+                            break
+                    if not episode[last_frame_index][DONE]:  # not done will definitely have one frame later
+                        state = episode[last_frame_index + 1][STATE]
                         if self.use_target_network:
                             # [None] adds one dimension to the beginning
                             qpredict = self.action_value.eval_value_all_actions_old(state[None])

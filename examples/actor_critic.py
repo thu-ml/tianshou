@@ -5,18 +5,20 @@ import tensorflow as tf
 import time
 import numpy as np
 import gym
+import logging
+logging.basicConfig(level=logging.INFO)
 
 # our lib imports here! It's ok to append path in examples
 import sys
 sys.path.append('..')
 from tianshou.core import losses
-from tianshou.data.batch import Batch
 import tianshou.data.advantage_estimation as advantage_estimation
-import tianshou.core.policy.stochastic as policy  # TODO: fix imports as zhusuan so that only need to import to policy
+import tianshou.core.policy.stochastic as policy
 import tianshou.core.value_function.state_value as value_function
 
+from tianshou.data.data_buffer.batch_set import BatchSet
+from tianshou.data.data_collector import DataCollector
 
-# for tutorial purpose, placeholders are explicitly appended with '_ph' suffix
 
 if __name__ == '__main__':
     env = gym.make('CartPole-v0')
@@ -25,9 +27,9 @@ if __name__ == '__main__':
 
     clip_param = 0.2
     num_batches = 10
-    batch_size = 128
+    batch_size = 512
 
-    seed = 10
+    seed = 0
     np.random.seed(seed)
     tf.set_random_seed(seed)
 
@@ -36,13 +38,13 @@ if __name__ == '__main__':
 
     def my_network():
         # placeholders defined in this function would be very difficult to manage
-        net = tf.layers.dense(observation_ph, 32, activation=tf.nn.tanh)
-        net = tf.layers.dense(net, 32, activation=tf.nn.tanh)
+        net = tf.layers.dense(observation_ph, 64, activation=tf.nn.tanh)
+        net = tf.layers.dense(net, 64, activation=tf.nn.tanh)
 
-        action_logtis = tf.layers.dense(net, action_dim, activation=None)
+        action_logits = tf.layers.dense(net, action_dim, activation=None)
         value = tf.layers.dense(net, 1, activation=None)
 
-        return action_logtis, value
+        return action_logits, value
     # TODO: overriding seems not able to handle shared layers, unless a new class `SharedPolicyValue`
     # maybe the most desired thing is to freely build policy and value function from any tensor?
     # but for now, only the outputs of the network matters
@@ -53,7 +55,7 @@ if __name__ == '__main__':
 
     actor_loss = losses.REINFORCE(actor)
     critic_loss = losses.value_mse(critic)
-    total_loss = actor_loss + critic_loss
+    total_loss = actor_loss + 1e-2 * critic_loss
 
     optimizer = tf.train.AdamOptimizer(1e-4)
 
@@ -63,10 +65,15 @@ if __name__ == '__main__':
     train_op = optimizer.minimize(total_loss, var_list=var_list)
 
     ### 3. define data collection
-    data_collector = Batch(env, actor,
-                           [advantage_estimation.gae_lambda(1, critic), advantage_estimation.nstep_return(1, critic)],
-                           [actor, critic])
-    # TODO: refactor this, data_collector should be just the top-level abstraction
+    data_buffer = BatchSet()
+
+    data_collector = DataCollector(
+        env=env,
+        policy=actor,
+        data_buffer=data_buffer,
+        process_functions=[advantage_estimation.nstep_return(n=3, value_function=critic, return_advantage=True)],
+        managed_networks=[actor, critic],
+    )
 
     ### 4. start training
     config = tf.ConfigProto()
@@ -75,13 +82,13 @@ if __name__ == '__main__':
         sess.run(tf.global_variables_initializer())
 
         start_time = time.time()
-        for i in range(100):
+        for i in range(int(1e6)):
             # collect data
-            data_collector.collect(num_episodes=20)
+            data_collector.collect(num_episodes=50)
 
             # print current return
             print('Epoch {}:'.format(i))
-            data_collector.statistics()
+            data_buffer.statistics()
 
             # update network
             for _ in range(num_batches):
