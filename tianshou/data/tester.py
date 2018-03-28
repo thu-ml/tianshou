@@ -5,7 +5,7 @@ import logging
 import numpy as np
 
 
-def test_policy_in_env(policy, env, num_timesteps=0, num_episodes=0, discount_factor=0.99):
+def test_policy_in_env(policy, env, num_timesteps=0, num_episodes=0, discount_factor=0.99, episode_cutoff=None):
 
     assert sum([num_episodes > 0, num_timesteps > 0]) == 1, \
         'One and only one collection number specification permitted!'
@@ -29,12 +29,16 @@ def test_policy_in_env(policy, env, num_timesteps=0, num_episodes=0, discount_fa
             current_discount = 1.
             observation = env_.reset()
             done = False
+            step_count = 0
             while not done:
                 action = policy.act_test(observation)
                 observation, reward, done, _ = env_.step(action)
                 current_return += reward * current_discount
                 current_undiscounted_return += reward
                 current_discount *= discount_factor
+                step_count += 1
+                if episode_cutoff and step_count >= episode_cutoff:
+                    break
 
             returns[i] = current_return
             undiscounted_returns[i] = current_undiscounted_return

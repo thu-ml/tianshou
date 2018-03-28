@@ -31,8 +31,9 @@ class DataCollector(object):
             self.process_mode = 'full'
 
         self.current_observation = self.env.reset()
+        self.step_count_this_episode = 0
 
-    def collect(self, num_timesteps=0, num_episodes=0, my_feed_dict={}, auto_clear=True):
+    def collect(self, num_timesteps=0, num_episodes=0, my_feed_dict={}, auto_clear=True, episode_cutoff=None):
         assert sum([num_timesteps > 0, num_episodes > 0]) == 1,\
             "One and only one collection number specification permitted!"
 
@@ -44,11 +45,15 @@ class DataCollector(object):
             for _ in range(num_timesteps_):
                 action = self.policy.act(self.current_observation, my_feed_dict=my_feed_dict)
                 next_observation, reward, done, _ = self.env.step(action)
+                self.step_count_this_episode += 1
+                if episode_cutoff and self.step_count_this_episode >= episode_cutoff:
+                    done = True
                 self.data_buffer.add((self.current_observation, action, reward, done))
 
                 if done:
                     self.current_observation = self.env.reset()
                     self.policy.reset()
+                    self.step_count_this_episode = 0
                 else:
                     self.current_observation = next_observation
 
@@ -57,11 +62,18 @@ class DataCollector(object):
             for _ in range(num_episodes_):
                 observation = self.env.reset()
                 done = False
+                step_count = 0
                 while not done:
                     action = self.policy.act(observation, my_feed_dict=my_feed_dict)
                     next_observation, reward, done, _ = self.env.step(action)
+                    step_count += 1
+
+                    if episode_cutoff and step_count >= episode_cutoff:
+                        done = True
+
                     self.data_buffer.add((observation, action, reward, done))
                     observation = next_observation
+
             self.current_observation = self.env.reset()
 
         if self.process_mode == 'full':

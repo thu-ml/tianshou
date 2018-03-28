@@ -28,13 +28,13 @@ if __name__ == '__main__':
     parser.add_argument("--render", action="store_true", default=False)
     args = parser.parse_args()
 
-    env = gym.make('MountainCarContinuous-v0')
+    env = gym.make('Pendulum-v0')
     observation_dim = env.observation_space.shape
     action_dim = env.action_space.shape
 
     batch_size = 32
 
-    seed = 0
+    seed = 123
     np.random.seed(seed)
     tf.set_random_seed(seed)
 
@@ -43,12 +43,14 @@ if __name__ == '__main__':
     action_ph = tf.placeholder(tf.float32, shape=(None,) + action_dim)
 
     def my_network():
-        net = tf.layers.dense(observation_ph, 32, activation=tf.nn.relu)
-        net = tf.layers.dense(net, 32, activation=tf.nn.relu)
+        net = tf.layers.dense(observation_ph, 16, activation=tf.nn.relu)
+        net = tf.layers.dense(net, 16, activation=tf.nn.relu)
+        net = tf.layers.dense(net, 16, activation=tf.nn.relu)
         action = tf.layers.dense(net, action_dim[0], activation=None)
 
         action_value_input = tf.concat([observation_ph, action_ph], axis=1)
         net = tf.layers.dense(action_value_input, 32, activation=tf.nn.relu)
+        net = tf.layers.dense(net, 32, activation=tf.nn.relu)
         net = tf.layers.dense(net, 32, activation=tf.nn.relu)
         action_value = tf.layers.dense(net, 1, activation=None)
 
@@ -61,14 +63,20 @@ if __name__ == '__main__':
 
     critic_loss = losses.value_mse(critic)
     critic_optimizer = tf.train.AdamOptimizer(1e-3)
-    critic_train_op = critic_optimizer.minimize(critic_loss, var_list=critic.trainable_variables)
+    # clip by norm
+    critic_grads, vars = zip(*critic_optimizer.compute_gradients(critic_loss, var_list=critic.trainable_variables))
+    critic_grads, _ = tf.clip_by_global_norm(critic_grads, 1.0)
+    critic_train_op = critic_optimizer.apply_gradients(zip(critic_grads, vars))
 
-    dpg_grads = opt.DPG(actor, critic)  # check which action to use in dpg
-    actor_optimizer = tf.train.AdamOptimizer(1e-4)
-    actor_train_op = actor_optimizer.apply_gradients(dpg_grads)
+    dpg_grads_vars = opt.DPG(actor, critic)  # check which action to use in dpg
+    # clip by norm
+    dpg_grads, vars = zip(*dpg_grads_vars)
+    dpg_grads, _ = tf.clip_by_global_norm(dpg_grads, 1.0)
+    actor_optimizer = tf.train.AdamOptimizer(1e-3)
+    actor_train_op = actor_optimizer.apply_gradients(zip(dpg_grads, vars))
 
     ### 3. define data collection
-    data_buffer = VanillaReplayBuffer(capacity=2e4, nstep=1)
+    data_buffer = VanillaReplayBuffer(capacity=100000, nstep=1)
 
     process_functions = [advantage_estimation.ddpg_return(actor, critic)]
 
@@ -91,10 +99,10 @@ if __name__ == '__main__':
         critic.sync_weights()
 
         start_time = time.time()
-        data_collector.collect(num_timesteps=1e3)  # warm-up
+        data_collector.collect(num_timesteps=100)  # warm-up
         for i in range(int(1e8)):
             # collect data
-            data_collector.collect(num_timesteps=1)
+            data_collector.collect(num_timesteps=1, episode_cutoff=200)
 
             # update network
             feed_dict = data_collector.next_batch(batch_size)
@@ -108,4 +116,4 @@ if __name__ == '__main__':
             # test every 1000 training steps
             if i % 1000 == 0:
                 print('Step {}, elapsed time: {:.1f} min'.format(i, (time.time() - start_time) / 60))
-                test_policy_in_env(actor, env, num_timesteps=100)
+                test_policy_in_env(actor, env, num_episodes=5, episode_cutoff=200)

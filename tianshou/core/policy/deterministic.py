@@ -51,7 +51,7 @@ class Deterministic(PolicyBase):
                 self.weight_update = math.ceil(weight_update)
 
         self.random_process = random_process or OrnsteinUhlenbeckProcess(
-                                            theta=0.15, sigma=0.2, size=self.action.shape.as_list()[-1])
+                                            theta=0.15, sigma=0.3, size=self.action.shape.as_list()[-1])
 
     @property
     def action_shape(self):

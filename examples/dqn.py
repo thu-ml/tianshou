@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     ### 4. start training
     # hyper-parameters
-    batch_size = 128
+    batch_size = 32
     replay_buffer_warmup = 1000
     epsilon_decay_interval = 500
     epsilon = 0.6
