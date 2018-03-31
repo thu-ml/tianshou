@@ -61,6 +61,7 @@ class DataCollector(object):
             num_episodes_ = int(num_episodes)
             for _ in range(num_episodes_):
                 observation = self.env.reset()
+                self.policy.reset()
                 done = False
                 step_count = 0
                 while not done:
