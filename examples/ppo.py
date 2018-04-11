@@ -14,7 +14,7 @@ import sys
 sys.path.append('..')
 from tianshou.core import losses
 import tianshou.data.advantage_estimation as advantage_estimation
-import tianshou.core.policy.stochastic as policy
+import tianshou.core.policy.distributional as policy
 
 from tianshou.data.data_buffer.batch_set import BatchSet
 from tianshou.data.data_collector import DataCollector
@@ -45,23 +45,18 @@ if __name__ == '__main__':
         net = tf.layers.dense(net, 32, activation=tf.nn.tanh)
 
         action_logits = tf.layers.dense(net, action_dim, activation=None)
+        action_dist = tf.distributions.Categorical(logits=action_logits)
 
-        return action_logits, None  # None value head
-
-    # TODO: current implementation of passing function or overriding function has to return a value head
-    # to allow network sharing between policy and value networks. This makes 'policy' and 'value_function'
-    # imbalanced semantically (though they are naturally imbalanced since 'policy' is required to interact
-    # with the environment and 'value_function' is not). I have an idea to solve this imbalance, which is
-    # not based on passing function or overriding function.
+        return action_dist, None
 
     ### 2. build policy, loss, optimizer
-    pi = policy.OnehotCategorical(my_policy, observation_placeholder=observation_ph, weight_update=0)
+    pi = policy.Distributional(my_policy, observation_placeholder=observation_ph, has_old_net=True)
 
     ppo_loss_clip = losses.ppo_clip(pi, clip_param)
 
     total_loss = ppo_loss_clip
     optimizer = tf.train.AdamOptimizer(1e-4)
-    train_op = optimizer.minimize(total_loss, var_list=pi.trainable_variables)
+    train_op = optimizer.minimize(total_loss, var_list=list(pi.trainable_variables))
 
     ### 3. define data collection
     data_buffer = BatchSet()
@@ -81,10 +76,10 @@ if __name__ == '__main__':
         sess.run(tf.global_variables_initializer())
 
         # assign actor to pi_old
-        pi.sync_weights()  # TODO: automate this for policies with target network
+        pi.sync_weights()
 
         start_time = time.time()
-        for i in range(100):
+        for i in range(1000):
             # collect data
             data_collector.collect(num_episodes=50)
 
@@ -98,6 +93,6 @@ if __name__ == '__main__':
                 sess.run(train_op, feed_dict=feed_dict)
 
             # assigning actor to pi_old
-            pi.update_weights()
+            pi.sync_weights()
 
             print('Elapsed time: {:.1f} min'.format((time.time() - start_time) / 60))

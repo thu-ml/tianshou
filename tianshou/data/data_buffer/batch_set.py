@@ -102,5 +102,5 @@ class BatchSet(DataBufferBase):
         mean_return = np.mean(returns)
         mean_undiscounted_return = np.mean(undiscounted_returns)
 
-        logging.info('Mean return: {}'.format(mean_return))
-        logging.info('Mean undiscounted return: {}'.format(mean_undiscounted_return))
+        print('Mean return: {}'.format(mean_return))
+        print('Mean undiscounted return: {}'.format(mean_undiscounted_return))

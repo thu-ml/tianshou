@@ -36,14 +36,14 @@ if __name__ == '__main__':
         return None, action_values  # no policy head
 
     ### 2. build policy, loss, optimizer
-    dqn = value_function.DQN(my_network, observation_placeholder=observation_ph, weight_update=800)
+    dqn = value_function.DQN(my_network, observation_placeholder=observation_ph, has_old_net=True)
     pi = policy.DQN(dqn)
 
     dqn_loss = losses.qlearning(dqn)
 
     total_loss = dqn_loss
     optimizer = tf.train.AdamOptimizer(1e-4)
-    train_op = optimizer.minimize(total_loss, var_list=dqn.trainable_variables)
+    train_op = optimizer.minimize(total_loss, var_list=list(dqn.trainable_variables))
 
     ### 3. define data collection
     replay_buffer = VanillaReplayBuffer(capacity=2e4, nstep=1)
@@ -66,6 +66,7 @@ if __name__ == '__main__':
     epsilon_decay_interval = 500
     epsilon = 0.6
     test_interval = 5000
+    target_network_update_interval = 800
 
     seed = 0
     np.random.seed(seed)
@@ -77,11 +78,11 @@ if __name__ == '__main__':
         sess.run(tf.global_variables_initializer())
 
         # assign actor to pi_old
-        pi.sync_weights()  # TODO: rethink and redesign target network interface
+        pi.sync_weights()
 
         start_time = time.time()
         pi.set_epsilon_train(epsilon)
-        data_collector.collect(num_timesteps=replay_buffer_warmup)  # TODO: uniform random warm-up
+        data_collector.collect(num_timesteps=replay_buffer_warmup)
         for i in range(int(1e8)):  # number of training steps
             # anneal epsilon step-wise
             if (i + 1) % epsilon_decay_interval == 0 and epsilon > 0.1:
@@ -102,3 +103,6 @@ if __name__ == '__main__':
                 # epsilon 0.05 as in nature paper
                 pi.set_epsilon_test(0.05)
                 test_policy_in_env(pi, env, num_timesteps=1000)
+
+            if i % target_network_update_interval == 0:
+                pi.sync_weights()

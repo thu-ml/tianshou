@@ -131,3 +131,11 @@ class DataCollector(object):
                 feed_dict[self.required_placeholders['advantage']] = (advantage_value - advantage_mean) / advantage_std
 
         return feed_dict
+
+    def denoise_action(self, feed_dict):
+
+        observation = feed_dict[self.required_placeholders['observation']]
+        action_mean = self.policy.eval_action(observation)
+        feed_dict[self.required_placeholders['action']] = action_mean
+
+        return

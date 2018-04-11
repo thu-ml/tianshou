@@ -21,6 +21,7 @@ import tianshou.core.opt as opt
 from tianshou.data.data_buffer.vanilla import VanillaReplayBuffer
 from tianshou.data.data_collector import DataCollector
 from tianshou.data.tester import test_policy_in_env
+from tianshou.core.utils import get_soft_update_op
 
 
 if __name__ == '__main__':
@@ -37,46 +38,41 @@ if __name__ == '__main__':
     seed = 123
     np.random.seed(seed)
     tf.set_random_seed(seed)
+    env.seed(seed)
 
     ### 1. build network with pure tf
     observation_ph = tf.placeholder(tf.float32, shape=(None,) + observation_dim)
     action_ph = tf.placeholder(tf.float32, shape=(None,) + action_dim)
 
     def my_network():
-        net = tf.layers.dense(observation_ph, 16, activation=tf.nn.relu)
-        net = tf.layers.dense(net, 16, activation=tf.nn.relu)
-        net = tf.layers.dense(net, 16, activation=tf.nn.relu)
+        net = tf.layers.dense(observation_ph, 32, activation=tf.nn.relu)
+        net = tf.layers.dense(net, 32, activation=tf.nn.relu)
         action = tf.layers.dense(net, action_dim[0], activation=None)
 
         action_value_input = tf.concat([observation_ph, action_ph], axis=1)
-        net = tf.layers.dense(action_value_input, 32, activation=tf.nn.relu)
-        net = tf.layers.dense(net, 32, activation=tf.nn.relu)
-        net = tf.layers.dense(net, 32, activation=tf.nn.relu)
+        net = tf.layers.dense(action_value_input, 64, activation=tf.nn.relu)
+        net = tf.layers.dense(net, 64, activation=tf.nn.relu)
         action_value = tf.layers.dense(net, 1, activation=None)
 
         return action, action_value
 
     ### 2. build policy, loss, optimizer
-    actor = policy.Deterministic(my_network, observation_placeholder=observation_ph, weight_update=1e-3)
+    actor = policy.Deterministic(my_network, observation_placeholder=observation_ph,
+                                 has_old_net=True)
     critic = value_function.ActionValue(my_network, observation_placeholder=observation_ph,
-                                        action_placeholder=action_ph, weight_update=1e-3)
+                                        action_placeholder=action_ph, has_old_net=True)
+    soft_update_op = get_soft_update_op(1e-2, [actor, critic])
 
     critic_loss = losses.value_mse(critic)
     critic_optimizer = tf.train.AdamOptimizer(1e-3)
-    # clip by norm
-    critic_grads, vars = zip(*critic_optimizer.compute_gradients(critic_loss, var_list=critic.trainable_variables))
-    critic_grads, _ = tf.clip_by_global_norm(critic_grads, 1.0)
-    critic_train_op = critic_optimizer.apply_gradients(zip(critic_grads, vars))
+    critic_train_op = critic_optimizer.minimize(critic_loss, var_list=list(critic.trainable_variables))
 
-    dpg_grads_vars = opt.DPG(actor, critic)  # check which action to use in dpg
-    # clip by norm
-    dpg_grads, vars = zip(*dpg_grads_vars)
-    dpg_grads, _ = tf.clip_by_global_norm(dpg_grads, 1.0)
+    dpg_grads_vars = opt.DPG(actor, critic)
     actor_optimizer = tf.train.AdamOptimizer(1e-3)
-    actor_train_op = actor_optimizer.apply_gradients(zip(dpg_grads, vars))
+    actor_train_op = actor_optimizer.apply_gradients(dpg_grads_vars)
 
     ### 3. define data collection
-    data_buffer = VanillaReplayBuffer(capacity=100000, nstep=1)
+    data_buffer = VanillaReplayBuffer(capacity=10000, nstep=1)
 
     process_functions = [advantage_estimation.ddpg_return(actor, critic)]
 
@@ -99,19 +95,23 @@ if __name__ == '__main__':
         critic.sync_weights()
 
         start_time = time.time()
-        data_collector.collect(num_timesteps=100)  # warm-up
+        data_collector.collect(num_timesteps=5000)  # warm-up
         for i in range(int(1e8)):
             # collect data
             data_collector.collect(num_timesteps=1, episode_cutoff=200)
 
-            # update network
+            # train critic
             feed_dict = data_collector.next_batch(batch_size)
             sess.run(critic_train_op, feed_dict=feed_dict)
+
+            # recompute action
+            data_collector.denoise_action(feed_dict)
+
+            # train actor
             sess.run(actor_train_op, feed_dict=feed_dict)
 
             # update target networks
-            actor.sync_weights()
-            critic.sync_weights()
+            sess.run(soft_update_op)
 
             # test every 1000 training steps
             if i % 1000 == 0:

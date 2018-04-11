@@ -13,7 +13,7 @@ import sys
 sys.path.append('..')
 from tianshou.core import losses
 import tianshou.data.advantage_estimation as advantage_estimation
-import tianshou.core.policy.stochastic as policy
+import tianshou.core.policy.distributional as policy
 import tianshou.core.value_function.state_value as value_function
 
 from tianshou.data.data_buffer.batch_set import BatchSet
@@ -42,15 +42,14 @@ if __name__ == '__main__':
         net = tf.layers.dense(net, 64, activation=tf.nn.tanh)
 
         action_logits = tf.layers.dense(net, action_dim, activation=None)
+        action_dist = tf.distributions.Categorical(logits=action_logits)
+
         value = tf.layers.dense(net, 1, activation=None)
 
-        return action_logits, value
-    # TODO: overriding seems not able to handle shared layers, unless a new class `SharedPolicyValue`
-    # maybe the most desired thing is to freely build policy and value function from any tensor?
-    # but for now, only the outputs of the network matters
+        return action_dist, value
 
     ### 2. build policy, critic, loss, optimizer
-    actor = policy.OnehotCategorical(my_network, observation_placeholder=observation_ph, weight_update=1)
+    actor = policy.Distributional(my_network, observation_placeholder=observation_ph)  # no target network
     critic = value_function.StateValue(my_network, observation_placeholder=observation_ph)  # no target network
 
     actor_loss = losses.REINFORCE(actor)
@@ -60,7 +59,7 @@ if __name__ == '__main__':
     optimizer = tf.train.AdamOptimizer(1e-4)
 
     # this hack would be unnecessary if we have a `SharedPolicyValue` class, or hack the trainable_variables management
-    var_list = list(set(actor.trainable_variables + critic.trainable_variables))
+    var_list = list(actor.trainable_variables | critic.trainable_variables)
 
     train_op = optimizer.minimize(total_loss, var_list=var_list)
 
@@ -82,7 +81,7 @@ if __name__ == '__main__':
         sess.run(tf.global_variables_initializer())
 
         start_time = time.time()
-        for i in range(int(1e6)):
+        for i in range(1000):
             # collect data
             data_collector.collect(num_episodes=50)
 

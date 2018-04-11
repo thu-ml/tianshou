@@ -11,13 +11,13 @@ def ppo_clip(policy, clip_param):
     :param policy: current `policy` to be optimized
     :param pi_old: old `policy` for computing the ppo loss as in Eqn. (7) in the paper
     """
-    action_ph = tf.placeholder(policy.act_dtype, shape=(None,) + policy.action_shape, name='ppo_clip_loss/action_placeholder')
+    action_ph = tf.placeholder(policy.action.dtype, shape=policy.action.shape, name='ppo_clip_loss/action_placeholder')
     advantage_ph = tf.placeholder(tf.float32, shape=(None,), name='ppo_clip_loss/advantage_placeholder')
     policy.managed_placeholders['action'] = action_ph
     policy.managed_placeholders['advantage'] = advantage_ph
 
-    log_pi_act = policy.log_prob(action_ph)
-    log_pi_old_act = policy.log_prob_old(action_ph)
+    log_pi_act = policy.action_dist.log_prob(action_ph)
+    log_pi_old_act = policy.action_dist_old.log_prob(action_ph)
     ratio = tf.exp(log_pi_act - log_pi_old_act)
     clipped_ratio = tf.clip_by_value(ratio, 1. - clip_param, 1. + clip_param)
     ppo_clip_loss = -tf.reduce_mean(tf.minimum(ratio * advantage_ph, clipped_ratio * advantage_ph))
@@ -34,13 +34,13 @@ def REINFORCE(policy):
     :param baseline: the baseline method used to reduce the variance, default is 'None'
     :return:
     """
-    action_ph = tf.placeholder(policy.act_dtype, shape=(None,) + policy.action_shape,
+    action_ph = tf.placeholder(policy.action.dtype, shape=policy.action.shape,
                                name='REINFORCE/action_placeholder')
     advantage_ph = tf.placeholder(tf.float32, shape=(None,), name='REINFORCE/advantage_placeholder')
     policy.managed_placeholders['action'] = action_ph
     policy.managed_placeholders['advantage'] = advantage_ph
 
-    log_pi_act = policy.log_prob(action_ph)
+    log_pi_act = policy.action_dist.log_prob(action_ph)
     REINFORCE_loss = -tf.reduce_mean(advantage_ph * log_pi_act)
     return REINFORCE_loss
 

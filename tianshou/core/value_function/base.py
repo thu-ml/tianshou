@@ -2,13 +2,12 @@ from __future__ import absolute_import
 
 import tensorflow as tf
 
-# TODO: linear feature baseline also in tf?
 class ValueFunctionBase(object):
     """
     base class of value functions. Children include state values V(s) and action values Q(s, a)
     """
     def __init__(self, value_tensor, observation_placeholder):
-        self._observation_placeholder = observation_placeholder
+        self.observation_placeholder = observation_placeholder
         self._value_tensor = tf.squeeze(value_tensor)  # canonical values has shape (batchsize, )
 
     def eval_value(self, **kwargs):

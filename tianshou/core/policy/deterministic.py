@@ -1,68 +1,66 @@
 import tensorflow as tf
+import logging
+
 from .base import PolicyBase
 from ..random import OrnsteinUhlenbeckProcess
+from ..utils import identify_dependent_variables
+
 
 class Deterministic(PolicyBase):
     """
-    deterministic policy as used in deterministic policy gradient methods
+    deterministic policy as used in deterministic policy gradient (DDPG) methods
     """
-    def __init__(self, policy_callable, observation_placeholder, weight_update=1, random_process=None):
-        self._observation_placeholder = observation_placeholder
+    def __init__(self, network_callable, observation_placeholder, has_old_net=False, random_process=None):
+        self.observation_placeholder = observation_placeholder
         self.managed_placeholders = {'observation': observation_placeholder}
-        self.weight_update = weight_update
-        self.interaction_count = -1  # defaults to -1. only useful if weight_update > 1.
+
+        self.has_old_net = has_old_net
+
+        network_scope = 'network'
+        net_old_scope = 'net_old'
 
         # build network, action and value
-        with tf.variable_scope('network', reuse=tf.AUTO_REUSE):
-            action, _ = policy_callable()
+        with tf.variable_scope(network_scope, reuse=tf.AUTO_REUSE):
+            action = network_callable()[0]
+            assert action is not None
             self.action = action
-            # TODO: self._action should be exactly the action tensor to run that directly gives action_dim
 
-        self.trainable_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='network')
+        weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
+        self.network_weights = identify_dependent_variables(self.action, weights)
+        self._trainable_variables = [var for var in self.network_weights
+                                    if var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
 
         # deal with target network
-        if self.weight_update == 1:
-            self.weight_update_ops = None
+        if not has_old_net:
             self.sync_weights_ops = None
         else:  # then we need to build another tf graph as target network
             with tf.variable_scope('net_old', reuse=tf.AUTO_REUSE):
-                action, _ = policy_callable()
-                self.action_old = action
+                self.action_old = network_callable()[0]
 
-            network_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='network')
-            network_old_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='net_old')
-            # TODO: use a scope that the user will almost surely not use. so get_collection will return
-            # the correct weights and old_weights, since it filters by regular expression
-            # or we write a util to parse the variable names and use only the topmost scope
+            old_weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=net_old_scope)
 
-            assert len(network_weights) == len(network_old_weights)
+            # re-filter to rule out some edge cases
+            old_weights = [var for var in old_weights if var.name[:len(net_old_scope)] == net_old_scope]
+
+            self.network_old_weights = identify_dependent_variables(self.action_old, old_weights)
+            assert len(self.network_weights) == len(self.network_old_weights)
+
             self.sync_weights_ops = [tf.assign(variable_old, variable)
-                                     for (variable_old, variable) in zip(network_old_weights, network_weights)]
+                                     for (variable_old, variable) in zip(self.network_old_weights, self.network_weights)]
 
-            if weight_update == 0:
-                self.weight_update_ops = self.sync_weights_ops
-            elif 0 < weight_update < 1:  # as in DDPG
-                self.weight_update_ops = [tf.assign(variable_old,
-                                                    weight_update * variable + (1 - weight_update) * variable_old)
-                                          for (variable_old, variable) in zip(network_old_weights, network_weights)]
-            else:
-                self.interaction_count = 0  # as in DQN
-                import math
-                self.weight_update = math.ceil(weight_update)
-
+        # random process for exploration for deterministic policies
         self.random_process = random_process or OrnsteinUhlenbeckProcess(
                                             theta=0.15, sigma=0.3, size=self.action.shape.as_list()[-1])
 
     @property
-    def action_shape(self):
-        return self.action.shape.as_list()[1:]
+    def trainable_variables(self):
+        return set(self._trainable_variables)
 
     def act(self, observation, my_feed_dict={}):
-        # TODO: this may be ugly. also maybe huge problem when parallel
         sess = tf.get_default_session()
-        # observation[None] adds one dimension at the beginning
 
-        feed_dict = {self._observation_placeholder: observation[None]}
+        # observation[None] adds one dimension at the beginning
+        feed_dict = {self.observation_placeholder: observation[None]}
         feed_dict.update(my_feed_dict)
         sampled_action = sess.run(self.action, feed_dict=feed_dict)
 
@@ -75,24 +73,15 @@ class Deterministic(PolicyBase):
 
     def act_test(self, observation, my_feed_dict={}):
         sess = tf.get_default_session()
-        # observation[None] adds one dimension at the beginning
 
-        feed_dict = {self._observation_placeholder: observation[None]}
+        # observation[None] adds one dimension at the beginning
+        feed_dict = {self.observation_placeholder: observation[None]}
         feed_dict.update(my_feed_dict)
         sampled_action = sess.run(self.action, feed_dict=feed_dict)
 
         sampled_action = sampled_action[0]
 
         return sampled_action
-
-    def update_weights(self):
-        """
-        updates the weights of policy_old.
-        :return:
-        """
-        if self.weight_update_ops is not None:
-            sess = tf.get_default_session()
-            sess.run(self.weight_update_ops)
 
     def sync_weights(self):
         """
@@ -111,7 +100,7 @@ class Deterministic(PolicyBase):
         """
         sess = tf.get_default_session()
 
-        feed_dict = {self._observation_placeholder: observation}
+        feed_dict = {self.observation_placeholder: observation}
         action = sess.run(self.action, feed_dict=feed_dict)
 
         return action
@@ -124,7 +113,7 @@ class Deterministic(PolicyBase):
         """
         sess = tf.get_default_session()
 
-        feed_dict = {self._observation_placeholder: observation}
+        feed_dict = {self.observation_placeholder: observation}
         action = sess.run(self.action_old, feed_dict=feed_dict)
 
         return action

@@ -5,7 +5,7 @@ import logging
 import numpy as np
 
 
-def test_policy_in_env(policy, env, num_timesteps=0, num_episodes=0, discount_factor=0.99, episode_cutoff=None):
+def test_policy_in_env(policy, env, num_timesteps=0, num_episodes=0, discount_factor=0.99, seed=0, episode_cutoff=None):
 
     assert sum([num_episodes > 0, num_timesteps > 0]) == 1, \
         'One and only one collection number specification permitted!'
@@ -13,6 +13,7 @@ def test_policy_in_env(policy, env, num_timesteps=0, num_episodes=0, discount_fa
     # make another env as the original is for training data collection
     env_id = env.spec.id
     env_ = gym.make(env_id)
+    env.seed(seed)
 
     # test policy
     returns = []
@@ -56,7 +57,7 @@ def test_policy_in_env(policy, env, num_timesteps=0, num_episodes=0, discount_fa
             current_undiscounted_return += reward
             current_discount *= discount_factor
             step_count_this_episode += 1
-            if step_count_this_episode >= episode_cutoff:
+            if episode_cutoff and step_count_this_episode >= episode_cutoff:
                 done = True
 
             if done:
@@ -77,8 +78,8 @@ def test_policy_in_env(policy, env, num_timesteps=0, num_episodes=0, discount_fa
                         'Logging its return anyway.'.format(num_timesteps))
         mean_return = current_return
         mean_undiscounted_return = current_undiscounted_return
-    logging.info('Mean return: {}'.format(mean_return))
-    logging.info('Mean undiscounted return: {}'.format(mean_undiscounted_return))
+    print('Mean return: {}'.format(mean_return))
+    print('Mean undiscounted return: {}'.format(mean_undiscounted_return))
 
     # clear scene
     env_.close()
