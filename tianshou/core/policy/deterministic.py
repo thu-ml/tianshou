@@ -8,7 +8,18 @@ from ..utils import identify_dependent_variables
 
 class Deterministic(PolicyBase):
     """
-    deterministic policy as used in deterministic policy gradient (DDPG) methods
+    Deterministic policy as used in deterministic policy gradient (DDPG) methods. It can only be used with
+    continuous action space. The output of the policy network is directly the action.
+
+    :param network_callable: A Python callable returning (action head, value head). When called it builds the tf graph and returns a Tensor
+        of the action on the action head.
+    :param observation_placeholder: A :class:`tf.placeholder`. The observation placeholder of the network graph.
+    :param has_old_net: A bool defaulting to ``False``. If true this class will create another graph with another
+        set of :class:`tf.Variable` s to be the "old net". The "old net" could be the target networks as in DQN
+        and DDPG, or just an old net to help optimization as in PPO.
+    :param random_process: Optional. A :class:`RandomProcess`. The additional random process for exploration.
+        Defaults to an :class:`OrnsteinUhlenbeckProcess` with :math:`\\theta=0.15` and :math:`\sigma=0.3` if not
+        set explicitly.
     """
     def __init__(self, network_callable, observation_placeholder, has_old_net=False, random_process=None):
         self.observation_placeholder = observation_placeholder
@@ -54,9 +65,25 @@ class Deterministic(PolicyBase):
 
     @property
     def trainable_variables(self):
+        """
+        The trainable variables of the policy in a Python **set**. It contains only the :class:`tf.Variable` s
+        that affect the action.
+        """
         return set(self._trainable_variables)
 
     def act(self, observation, my_feed_dict={}):
+        """
+        Return action given observation, adding the exploration noise sampled from ``self.random_process``.
+
+        :param observation: An array-like with rank the same as a single observation of the environment.
+            Its "batch_size" is 1, but should not be explicitly set. This method will add the dimension
+            of "batch_size" to the first dimension.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation.
+
+        :return: A numpy array.
+            Action given the single observation. Its "batch_size" is 1, but should not be explicitly set.
+        """
         sess = tf.get_default_session()
 
         # observation[None] adds one dimension at the beginning
@@ -69,9 +96,24 @@ class Deterministic(PolicyBase):
         return sampled_action
 
     def reset(self):
+        """
+        Reset the internal states of ``self.random_process``.
+        """
         self.random_process.reset_states()
 
     def act_test(self, observation, my_feed_dict={}):
+        """
+        Return action given observation, removing the exploration noise.
+
+        :param observation: An array-like with rank the same as a single observation of the environment.
+            Its "batch_size" is 1, but should not be explicitly set. This method will add the dimension
+            of "batch_size" to the first dimension.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation.
+
+        :return: A numpy array.
+            Action given the single observation. Its "batch_size" is 1, but should not be explicitly set.
+        """
         sess = tf.get_default_session()
 
         # observation[None] adds one dimension at the beginning
@@ -85,18 +127,22 @@ class Deterministic(PolicyBase):
 
     def sync_weights(self):
         """
-        sync the weights of network_old. Direct copy the weights of network.
-        :return:
+        Sync the variables of the "old net" to be the same as the current network.
         """
         if self.sync_weights_ops is not None:
             sess = tf.get_default_session()
             sess.run(self.sync_weights_ops)
 
-    def eval_action(self, observation):
+    def eval_action(self, observation, my_feed_dict={}):
         """
-        evaluate action in minibatch
-        :param observation:
-        :return: 2-D numpy array
+        Evaluate action in minibatch using the current network.
+
+        :param observation: An array-like. Contrary to :func:`act` and :func:`act_test`, it has the dimension
+            of batch_size.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation.
+
+        :return: A numpy array with the batch_size dimension and same batch_size as ``observation``.
         """
         sess = tf.get_default_session()
 
@@ -105,11 +151,16 @@ class Deterministic(PolicyBase):
 
         return action
 
-    def eval_action_old(self, observation):
+    def eval_action_old(self, observation, my_feed_dict={}):
         """
-        evaluate action in minibatch
-        :param observation:
-        :return: 2-D numpy array
+        Evaluate action in minibatch using the old net.
+
+        :param observation: An array-like. Contrary to :func:`act` and :func:`act_test`, it has the dimension
+            of batch_size.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation.
+
+        :return: A numpy array with the batch_size dimension and same batch_size as ``observation``.
         """
         sess = tf.get_default_session()
 

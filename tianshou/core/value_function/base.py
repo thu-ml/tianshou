@@ -4,23 +4,25 @@ import tensorflow as tf
 
 class ValueFunctionBase(object):
     """
-    base class of value functions. Children include state values V(s) and action values Q(s, a)
+    Base class for value functions, including S-values and Q-values. The only
+    mandatory method for a value function class is:
+
+    :func:`eval_value`, which runs the graph and evaluates the corresponding value.
+
+    :param value_tensor: a Tensor. The tensor of V(s) or Q(s, a).
+    :param observation_placeholder: a :class:`tf.placeholder`. The observation placeholder of the network graph.
     """
     def __init__(self, value_tensor, observation_placeholder):
         self.observation_placeholder = observation_placeholder
-        self._value_tensor = tf.squeeze(value_tensor)  # canonical values has shape (batchsize, )
+        self._value_tensor = tf.squeeze(value_tensor)  # canonical value has shape (batchsize, )
 
     def eval_value(self, **kwargs):
         """
-
-        :return: batch of corresponding values in numpy array
+        Runs the graph and evaluates the corresponding value.
         """
         raise NotImplementedError()
 
     @property
     def value_tensor(self):
-        """
-
-        :return: tensor of the corresponding values
-        """
+        """Tensor of the corresponding value"""
         return self._value_tensor

@@ -6,7 +6,15 @@ from ..utils import identify_dependent_variables
 
 class Distributional(PolicyBase):
     """
-    policy class where action is specified by a probability distribution
+    Policy class where action is specified by a probability distribution. Depending on the distribution,
+    it can be applied to both continuous and discrete action spaces.
+
+    :param network_callable: A Python callable returning (action head, value head). When called it builds the tf graph and returns a
+        :class:`tf.distributions.Distribution` on the action space on the action head.
+    :param observation_placeholder: A :class:`tf.placeholder`. The observation placeholder of the network graph.
+    :param has_old_net: A bool defaulting to ``False``. If true this class will create another graph with another
+        set of :class:`tf.Variable` s to be the "old net". The "old net" could be the target networks as in DQN
+        and DDPG, or just an old net to help optimization as in PPO.
     """
     def __init__(self, network_callable, observation_placeholder, has_old_net=False):
         self.observation_placeholder = observation_placeholder
@@ -50,9 +58,25 @@ class Distributional(PolicyBase):
 
     @property
     def trainable_variables(self):
+        """
+        The trainable variables of the policy in a Python **set**. It contains only the :class:`tf.Variable` s
+        that affect the action.
+        """
         return set(self._trainable_variables)
 
     def act(self, observation, my_feed_dict={}):
+        """
+        Return action given observation, directly sampling from the action distribution.
+
+        :param observation: An array-like with rank the same as a single observation of the environment.
+            Its "batch_size" is 1, but should not be explicitly set. This method will add the dimension
+            of "batch_size" to the first dimension.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation.
+
+        :return: A numpy array.
+            Action given the single observation. Its "batch_size" is 1, but should not be explicitly set.
+        """
         sess = tf.get_default_session()
 
         # observation[None] adds one dimension at the beginning
@@ -64,12 +88,23 @@ class Distributional(PolicyBase):
         return sampled_action
 
     def act_test(self, observation, my_feed_dict={}):
+        """
+        Return action given observation, directly sampling from the action distribution.
+
+        :param observation: An array-like with rank the same as a single observation of the environment.
+            Its "batch_size" is 1, but should not be explicitly set. This method will add the dimension
+            of "batch_size" to the first dimension.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation.
+
+        :return: A numpy array.
+            Action given the single observation. Its "batch_size" is 1, but should not be explicitly set.
+        """
         return self.act(observation, my_feed_dict)
 
     def sync_weights(self):
         """
-        sync the weights of network_old. Direct copy the weights of network.
-        :return:
+        Sync the variables of the "old net" to be the same as the current network.
         """
         if self.sync_weights_ops is not None:
             sess = tf.get_default_session()

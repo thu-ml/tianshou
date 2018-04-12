@@ -68,7 +68,7 @@ if __name__ == '__main__':
     test_interval = 5000
     target_network_update_interval = 800
 
-    seed = 0
+    seed = 123
     np.random.seed(seed)
     tf.set_random_seed(seed)
 
