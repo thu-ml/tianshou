@@ -3,13 +3,15 @@ import tensorflow as tf
 
 def ppo_clip(policy, clip_param):
     """
-    the clip loss in ppo paper
+    Builds the graph of clipped loss :math:`L^{CLIP}` as in the
+    `Link PPO paper <https://arxiv.org/pdf/1707.06347.pdf>`_, which is basically
+    :math:`-\min(r_t(\\theta)Aˆt, clip(r_t(\\theta), 1 - \epsilon, 1 + \epsilon)Aˆt)`.
+    We minimize the objective instead of maximizing, hence the leading negative sign.
 
-    :param sampled_action: placeholder of sampled actions during interaction with the environment
-    :param advantage: placeholder of estimated advantage values.
-    :param clip param: float or Tensor of type float.
-    :param policy: current `policy` to be optimized
-    :param pi_old: old `policy` for computing the ppo loss as in Eqn. (7) in the paper
+    :param policy: A :class:`tianshou.core.policy` to be optimized.
+    :param clip param: A float or Tensor of type float. The :math:`\epsilon` in the loss equation.
+
+    :return: A scalar float Tensor of the loss.
     """
     action_ph = tf.placeholder(policy.action.dtype, shape=policy.action.shape, name='ppo_clip_loss/action_placeholder')
     advantage_ph = tf.placeholder(tf.float32, shape=(None,), name='ppo_clip_loss/advantage_placeholder')
@@ -26,13 +28,13 @@ def ppo_clip(policy, clip_param):
 
 def REINFORCE(policy):
     """
-    vanilla policy gradient
+    Builds the graph of the loss function as used in vanilla policy gradient algorithms, i.e., REINFORCE.
+    The loss is basically :math:`\log \pi(a|s) A^t`.
+    We minimize the objective instead of maximizing, hence the leading negative sign.
 
-    :param sampled_action: placeholder of sampled actions during interaction with the environment
-    :param reward: placeholder of reward the 'sampled_action' get
-    :param pi: current `policy` to be optimized
-    :param baseline: the baseline method used to reduce the variance, default is 'None'
-    :return:
+    :param policy: A :class:`tianshou.core.policy` to be optimized.
+
+    :return: A scalar float Tensor of the loss.
     """
     action_ph = tf.placeholder(policy.action.dtype, shape=policy.action.shape,
                                name='REINFORCE/action_placeholder')
@@ -45,27 +47,16 @@ def REINFORCE(policy):
     return REINFORCE_loss
 
 
-def value_mse(state_value_function):
+def value_mse(value_function):
     """
-    L2 loss of state value
-    :param state_value_function: instance of StateValue
-    :return: tensor of the mse loss
+    Builds the graph of L2 loss on value functions for, e.g., training critics or DQN.
+
+    :param value_function: A :class:`tianshou.core.value_function` to be optimized.
+
+    :return: A scalar float Tensor of the loss.
     """
     target_value_ph = tf.placeholder(tf.float32, shape=(None,), name='value_mse/return_placeholder')
-    state_value_function.managed_placeholders['return'] = target_value_ph
+    value_function.managed_placeholders['return'] = target_value_ph
 
-    state_value = state_value_function.value_tensor
+    state_value = value_function.value_tensor
     return tf.losses.mean_squared_error(target_value_ph, state_value)
-
-
-def qlearning(action_value_function):
-    """
-    deep q-network
-    :param action_value_function: current `action_value` to be optimized
-    :return:
-    """
-    target_value_ph = tf.placeholder(tf.float32, shape=(None,), name='qlearning/action_value_placeholder')
-    action_value_function.managed_placeholders['return'] = target_value_ph
-
-    q_value = action_value_function.value_tensor
-    return tf.losses.mean_squared_error(target_value_ph, q_value)

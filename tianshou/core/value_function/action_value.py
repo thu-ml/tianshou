@@ -8,7 +8,18 @@ from ..utils import identify_dependent_variables
 
 class ActionValue(ValueFunctionBase):
     """
-    class of action values Q(s, a).
+    Class for action values Q(s, a). The input of the value network is states and actions and the output
+    of the value network is directly the Q-value of the input (state, action) pairs.
+
+    :param network_callable: A Python callable returning (action head, value head). When called it builds
+        the tf graph and returns a Tensor of the value on the value head.
+    :param observation_placeholder: A :class:`tf.placeholder`. The observation placeholder for s in Q(s, a)
+        in the network graph.
+    :param action_placeholder: A :class:`tf.placeholder`. The action placeholder for a in Q(s, a)
+        in the network graph.
+    :param has_old_net: A bool defaulting to ``False``. If true this class will create another graph with another
+        set of :class:`tf.Variable` s to be the "old net". The "old net" could be the target networks as in DQN
+        and DDPG, or just an old net to help optimization as in PPO.
     """
     def __init__(self, network_callable, observation_placeholder, action_placeholder, has_old_net=False):
         self.observation_placeholder = observation_placeholder
@@ -51,35 +62,45 @@ class ActionValue(ValueFunctionBase):
 
     @property
     def trainable_variables(self):
+        """
+        The trainable variables of the value network in a Python **set**. It contains only the :class:`tf.Variable` s
+        that affect the value.
+        """
         return set(self._trainable_variables)
 
-    def eval_value(self, observation, action):
+    def eval_value(self, observation, action, my_feed_dict={}):
         """
-        :param observation: numpy array of observations, of shape (batchsize, observation_dim).
-        :param action: numpy array of actions, of shape (batchsize, action_dim)
-        # TODO: Atari discrete action should have dim 1. Super Mario may should have, say, dim 5, where each can be 0/1
-        :return: numpy array of state values, of shape (batchsize, )
-        # TODO: dealing with the last dim of 1 in V(s) and Q(s, a)
+        Evaluate value in minibatch using the current network.
+
+        :param observation: An array-like, of shape (batch_size,) + observation_shape.
+        :param action: An array-like, of shape (batch_size,) + action_shape.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation and action.
+
+        :return: A numpy array of shape (batch_size,). The corresponding action value for each observation.
         """
         sess = tf.get_default_session()
         return sess.run(self.value_tensor, feed_dict=
-        {self.observation_placeholder: observation, self.action_placeholder: action})
+        {self.observation_placeholder: observation, self.action_placeholder: action}.update(my_feed_dict))
 
-    def eval_value_old(self, observation, action):
+    def eval_value_old(self, observation, action, my_feed_dict={}):
         """
-        eval value using target network
-        :param observation: numpy array of obs
-        :param action: numpy array of action
-        :return: numpy array of action value
+        Evaluate value in minibatch using the old net.
+
+        :param observation: An array-like, of shape (batch_size,) + observation_shape.
+        :param action: An array-like, of shape (batch_size,) + action_shape.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation and action.
+
+        :return: A numpy array of shape (batch_size,). The corresponding action value for each observation.
         """
         sess = tf.get_default_session()
-        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}
+        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}.update(my_feed_dict)
         return sess.run(self.value_tensor_old, feed_dict=feed_dict)
 
     def sync_weights(self):
         """
-        sync the weights of network_old. Direct copy the weights of network.
-        :return:
+        Sync the variables of the "old net" to be the same as the current network.
         """
         if self.sync_weights_ops is not None:
             sess = tf.get_default_session()
@@ -88,8 +109,18 @@ class ActionValue(ValueFunctionBase):
 
 class DQN(ValueFunctionBase):
     """
-    class of the very DQN architecture. Instead of feeding s and a to the network to get a value, DQN feed s to the
-    network and the last layer is Q(s, *) for all actions
+    Class for the special action value function DQN. Instead of feeding s and a to the network to get a value,
+    DQN feeds s to the network and gets at the last layer Q(s, *) for all actions under this state. Still, as
+    :class:`ActionValue`, this class still builds the Q(s, a) value Tensor. It can only be used with discrete
+    (and finite) action spaces.
+
+    :param network_callable: A Python callable returning (action head, value head). When called it builds
+        the tf graph and returns a Tensor of Q(s, *) on the value head.
+    :param observation_placeholder: A :class:`tf.placeholder`. The observation placeholder for s in Q(s, *)
+        in the network graph.
+    :param has_old_net: A bool defaulting to ``False``. If true this class will create another graph with another
+        set of :class:`tf.Variable` s to be the "old net". The "old net" could be the target networks as in DQN
+        and DDPG, or just an old net to help optimization as in PPO.
     """
     def __init__(self, network_callable, observation_placeholder, has_old_net=False):
         self.observation_placeholder = observation_placeholder
@@ -149,43 +180,76 @@ class DQN(ValueFunctionBase):
 
     @property
     def trainable_variables(self):
+        """
+        The trainable variables of the value network in a Python **set**. It contains only the :class:`tf.Variable` s
+        that affect the value.
+        """
         return set(self._trainable_variables)
 
-    def eval_value_all_actions(self, observation):
+    def eval_value(self, observation, action, my_feed_dict={}):
         """
-        :param observation:
-        :return: numpy array of Q(s, *) given s, of shape (batchsize, num_actions)
+        Evaluate value Q(s, a) in minibatch using the current network.
+
+        :param observation: An array-like, of shape (batch_size,) + observation_shape.
+        :param action: An array-like, of shape (batch_size,) + action_shape.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation and action.
+
+        :return: A numpy array of shape (batch_size,). The corresponding action value for each observation.
         """
         sess = tf.get_default_session()
-        return sess.run(self._value_tensor_all_actions, feed_dict={self.observation_placeholder: observation})
+        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}.update(my_feed_dict)
+        return sess.run(self.value_tensor, feed_dict=feed_dict)
+
+    def eval_value_old(self, observation, action, my_feed_dict={}):
+        """
+        Evaluate value Q(s, a) in minibatch using the old net.
+
+        :param observation: An array-like, of shape (batch_size,) + observation_shape.
+        :param action: An array-like, of shape (batch_size,) + action_shape.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation and action.
+
+        :return: A numpy array of shape (batch_size,). The corresponding action value for each observation.
+        """
+        sess = tf.get_default_session()
+        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}.update(my_feed_dict)
+        return sess.run(self.value_tensor_old, feed_dict=feed_dict)
 
     @property
     def value_tensor_all_actions(self):
+        """The Tensor for Q(s, *)"""
         return self._value_tensor_all_actions
 
-    def eval_value_old(self, observation, action):
+    def eval_value_all_actions(self, observation, my_feed_dict={}):
         """
-        eval value using target network
-        :param observation: numpy array of obs
-        :param action: numpy array of action
-        :return: numpy array of action value
-        """
-        sess = tf.get_default_session()
-        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}
-        return sess.run(self.value_tensor_old, feed_dict=feed_dict)
+        Evaluate values Q(s, *) in minibatch using the current network.
 
-    def eval_value_all_actions_old(self, observation):
-        """
-        :param observation:
-        :return: numpy array of Q(s, *) given s, of shape (batchsize, num_actions)
+        :param observation: An array-like, of shape (batch_size,) + observation_shape.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation and action.
+
+        :return: A numpy array of shape (batch_size, num_actions). The corresponding action values for each observation.
         """
         sess = tf.get_default_session()
-        return sess.run(self.value_tensor_all_actions_old, feed_dict={self.observation_placeholder: observation})
+        return sess.run(self._value_tensor_all_actions, feed_dict={self.observation_placeholder: observation}.update(my_feed_dict))
+
+    def eval_value_all_actions_old(self, observation, my_feed_dict={}):
+        """
+        Evaluate values Q(s, *) in minibatch using the old net.
+
+        :param observation: An array-like, of shape (batch_size,) + observation_shape.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation and action.
+
+        :return: A numpy array of shape (batch_size, num_actions). The corresponding action values for each observation.
+        """
+        sess = tf.get_default_session()
+        return sess.run(self.value_tensor_all_actions_old, feed_dict={self.observation_placeholder: observation}.update(my_feed_dict))
 
     def sync_weights(self):
         """
-        sync the weights of network_old. Direct copy the weights of network.
-        :return:
+        Sync the variables of the "old net" to be the same as the current network.
         """
         if self.sync_weights_ops is not None:
             sess = tf.get_default_session()

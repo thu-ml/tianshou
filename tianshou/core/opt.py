@@ -3,10 +3,12 @@ import tensorflow as tf
 
 def DPG(policy, action_value):
     """
-    construct the gradient tensor of deterministic policy gradient
-    :param policy:
-    :param action_value:
-    :return: list of (gradient, variable) pairs
+    Constructs the gradient Tensor of `Link deterministic policy gradient <https://arxiv.org/pdf/1509.02971.pdf>`_.
+
+    :param policy: A :class:`tianshou.core.policy.Deterministic` to be optimized.
+    :param action_value: A :class:`tianshou.core.value_function.ActionValue` to guide the optimization of `policy`.
+
+    :return: A list of (gradient, variable) pairs.
     """
     trainable_variables = list(policy.trainable_variables)
     critic_action_input = action_value.action_placeholder

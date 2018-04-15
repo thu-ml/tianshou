@@ -9,7 +9,16 @@ from ..utils import identify_dependent_variables
 
 class StateValue(ValueFunctionBase):
     """
-    class of state values V(s).
+    Class for state value functions V(s). The input of the value network is states and the output
+    of the value network is directly the V-value of the input state.
+
+    :param network_callable: A Python callable returning (action head, value head). When called it builds
+        the tf graph and returns a Tensor of the value on the value head.
+    :param observation_placeholder: A :class:`tf.placeholder`. The observation placeholder for s in V(s)
+        in the network graph.
+    :param has_old_net: A bool defaulting to ``False``. If true this class will create another graph with another
+        set of :class:`tf.Variable` s to be the "old net". The "old net" could be the target networks as in DQN
+        and DDPG, or just an old net to help optimization as in PPO.
     """
     def __init__(self, network_callable, observation_placeholder, has_old_net=False):
         self.observation_placeholder = observation_placeholder
@@ -53,19 +62,42 @@ class StateValue(ValueFunctionBase):
 
     @property
     def trainable_variables(self):
+        """
+        The trainable variables of the value network in a Python **set**. It contains only the :class:`tf.Variable` s
+        that affect the value.
+        """
         return set(self._trainable_variables)
 
-    def eval_value(self, observation):
+    def eval_value(self, observation, my_feed_dict={}):
         """
+        Evaluate value in minibatch using the current network.
 
-        :param observation: numpy array of observations, of shape (batchsize, observation_dim).
-        :return: numpy array of state values, of shape (batchsize, )
-        # TODO: dealing with the last dim of 1 in V(s) and Q(s, a), this should rely on the action shape returned by env
+        :param observation: An array-like, of shape (batch_size,) + observation_shape.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation.
+
+        :return: A numpy array of shape (batch_size,). The corresponding state value for each observation.
         """
         sess = tf.get_default_session()
-        return sess.run(self.value_tensor, feed_dict={self.observation_placeholder: observation})
+        return sess.run(self.value_tensor, feed_dict={self.observation_placeholder: observation}.update(my_feed_dict))
+
+    def eval_value_old(self, observation, my_feed_dict={}):
+        """
+        Evaluate value in minibatch using the old net.
+
+        :param observation: An array-like, of shape (batch_size,) + observation_shape.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation.
+
+        :return: A numpy array of shape (batch_size,). The corresponding state value for each observation.
+        """
+        sess = tf.get_default_session()
+        return sess.run(self.value_tensor_old, feed_dict={self.observation_placeholder: observation}.update(my_feed_dict))
 
     def sync_weights(self):
+        """
+        Sync the variables of the "old net" to be the same as the current network.
+        """
         if self.sync_weights_ops is not None:
             sess = tf.get_default_session()
             sess.run(self.sync_weights_ops)

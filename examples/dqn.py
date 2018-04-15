@@ -39,7 +39,7 @@ if __name__ == '__main__':
     dqn = value_function.DQN(my_network, observation_placeholder=observation_ph, has_old_net=True)
     pi = policy.DQN(dqn)
 
-    dqn_loss = losses.qlearning(dqn)
+    dqn_loss = losses.value_mse(dqn)
 
     total_loss = dqn_loss
     optimizer = tf.train.AdamOptimizer(1e-4)
