@@ -6,9 +6,17 @@ from .data_buffer.replay_buffer_base import ReplayBufferBase
 from .data_buffer.batch_set import BatchSet
 from .utils import internal_key_match
 
+
 class DataCollector(object):
     """
-    a utility class to manage the interaction between buffer and advantage_estimation
+    A utility class to manage the data flow during the interaction between the policy and the environment.
+    It stores data into ``data_buffer``, processes the reward signals and returns the feed_dict for tf graph running.
+
+    :param env:
+    :param policy:
+    :param data_buffer:
+    :param process_functions:
+    :param managed_networks:
     """
     def __init__(self, env, policy, data_buffer, process_functions, managed_networks):
         self.env = env
