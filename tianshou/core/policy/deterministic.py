@@ -146,7 +146,7 @@ class Deterministic(PolicyBase):
         """
         sess = tf.get_default_session()
 
-        feed_dict = {self.observation_placeholder: observation}
+        feed_dict = {self.observation_placeholder: observation}.update(my_feed_dict)
         action = sess.run(self.action, feed_dict=feed_dict)
 
         return action
@@ -164,7 +164,7 @@ class Deterministic(PolicyBase):
         """
         sess = tf.get_default_session()
 
-        feed_dict = {self.observation_placeholder: observation}
+        feed_dict = {self.observation_placeholder: observation}.update(my_feed_dict)
         action = sess.run(self.action_old, feed_dict=feed_dict)
 
         return action

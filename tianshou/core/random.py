@@ -66,6 +66,11 @@ class GaussianWhiteNoiseProcess(AnnealedGaussianProcess):
         self.size = size
 
     def sample(self):
+        """
+        Draws one sample from the random process.
+
+        :return: A numpy array. The drawn sample.
+        """
         sample = np.random.normal(self.mu, self.current_sigma, self.size)
         self.n_steps += 1
         return sample
@@ -102,6 +107,11 @@ class OrnsteinUhlenbeckProcess(AnnealedGaussianProcess):
         self.reset_states()
 
     def sample(self):
+        """
+        Draws one sample from the random process.
+
+        :return: A numpy array. The drawn sample.
+        """
         x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + \
             self.current_sigma * np.sqrt(self.dt) * np.random.normal(size=self.size)
         self.x_prev = x
@@ -109,4 +119,7 @@ class OrnsteinUhlenbeckProcess(AnnealedGaussianProcess):
         return x
 
     def reset_states(self):
+        """
+        Reset ``self.x_prev`` to be ``self.x0``.
+        """
         self.x_prev = self.x0 if self.x0 is not None else np.zeros(self.size)

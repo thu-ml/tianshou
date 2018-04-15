@@ -10,11 +10,17 @@ DONE = 3
 # TODO: add discount_factor... maybe make it to be a global config?
 def full_return(buffer, indexes=None):
     """
-    naively compute full return
-    :param buffer: buffer with property index and data. index determines the current content in `buffer`.
-    :param indexes: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
-                  each episode.
-    :return: dict with key 'return' and value the computed returns corresponding to `index`.
+    Naively compute full undiscounted return on episodic data, :math:`G_t = \sum_{t=0}^T r_t`.
+    This function will print a warning when some of the episodes
+    in ``buffer`` has not yet terminated.
+
+    :param buffer: A :class:`tianshou.data.data_buffer`.
+    :param indexes: Optional. Indexes of data points on which the full return should be computed.
+        If not set, it defaults to all the data points in ``buffer``.
+        Note that if it's the index of a sampled minibatch, it doesn't have to be in order within
+        each episode.
+
+    :return: A dict with key 'return' and value the computed returns corresponding to ``indexes``.
     """
     indexes = indexes or buffer.index
     raw_data = buffer.data
@@ -46,27 +52,20 @@ def full_return(buffer, indexes=None):
     return {'return': returns}
 
 
-class gae_lambda:
-    """
-    Generalized Advantage Estimation (Schulman, 15) to compute advantage
-    """
-    def __init__(self, T, value_function):
-        self.T = T
-        self.value_function = value_function
-
-    def __call__(self, buffer, index=None):
-        """
-        :param buffer: buffer with property index and data. index determines the current content in `buffer`.
-        :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
-                      each episode.
-        :return: dict with key 'advantage' and value the computed advantages corresponding to `index`.
-        """
-        pass
-
-
 class nstep_return:
     """
-    compute the n-step return from n-step rewards and bootstrapped value function
+    Compute the n-step return from n-step rewards and bootstrapped state value function V(s),
+    :math:`V(s_t) = r_t + \gamma r_{t+1} + ... + \gamma^{n-1} r_{t+n-1} + \gamma^n V(s_{t+n})`.
+
+    :param n: An int. The number of steps to lookahead, where :math:`n=1` will directly apply V(s) to
+        the next observation, as in the above equation.
+    :param value_function: A :class:`tianshou.core.value_function.StateValue`. The V(s) as in the
+        above equation
+    :param return_advantage: Optional. A bool defaulting to ``False``. If ``True`` than this callable
+        also returns the advantage function
+        :math:`A(s_t) = r_t + \gamma r_{t+1} + ... + \gamma^{n-1} r_{t+n-1} + \gamma^n V(s_{t+n}) - V(s_t)` when called.
+    :param discount_factor: Optional. A float in range :math:`[0, 1]` defaulting to 0.99. The discount
+        factor :math:`\gamma` as in the above equation.
     """
     def __init__(self, n, value_function, return_advantage=False, discount_factor=0.99):
         self.n = n
@@ -76,10 +75,15 @@ class nstep_return:
 
     def __call__(self, buffer, indexes=None):
         """
-        :param buffer: buffer with property index and data. index determines the current content in `buffer`.
-        :param indexes: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
-                      each episode.
-        :return: dict with key 'return' and value the computed returns corresponding to `index`.
+        :param buffer: A :class:`tianshou.data.data_buffer`.
+        :param indexes: Optional. Indexes of data points on which the specified return should be computed.
+            If not set, it defaults to all the data points in ``buffer``.
+            Note that if it's the index of a sampled minibatch, it doesn't have to be in order within
+            each episode.
+
+        :return: A dict with key 'return' and value the computed returns corresponding to ``indexes``.
+            If ``return_advantage`` set to ``True`` then also a key 'advantage' and value the corresponding
+            advantages.
         """
         indexes = indexes or buffer.index
         episodes = buffer.data
@@ -125,7 +129,16 @@ class nstep_return:
 
 class ddpg_return:
     """
-    compute the return as in DDPG. this seems to have to be special
+    Compute the return as in `DDPG <https://arxiv.org/pdf/1509.02971.pdf>`_,
+    :math:`G_t = r_t + \gamma Q'(s_{t+1}, \mu'(s_{t+1}))`, where :math:`Q'` and :math:`\mu'` are the
+    target networks.
+
+    :param actor: A :class:`tianshou.core.policy.Deterministic`. A deterministic policy.
+    :param critic: A :class:`tianshou.core.value_function.ActionValue`. An action value function Q(s, a).
+    :param use_target_network: Optional. A bool defaulting to ``True``. Whether to use the target networks
+        in the above equation.
+    :param discount_factor: Optional. A float in range :math:`[0, 1]` defaulting to 0.99. The discount
+        factor :math:`\gamma` as in the above equation.
     """
     def __init__(self, actor, critic, use_target_network=True, discount_factor=0.99):
         self.actor = actor
@@ -135,10 +148,13 @@ class ddpg_return:
 
     def __call__(self, buffer, indexes=None):
         """
-        :param buffer: buffer with property index and data. index determines the current content in `buffer`.
-        :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
-                      each episode.
-        :return: dict with key 'return' and value the computed returns corresponding to `index`.
+        :param buffer: A :class:`tianshou.data.data_buffer`.
+        :param indexes: Optional. Indexes of data points on which the specified return should be computed.
+            If not set, it defaults to all the data points in ``buffer``.
+            Note that if it's the index of a sampled minibatch, it doesn't have to be in order within
+            each episode.
+
+        :return: A dict with key 'return' and value the computed returns corresponding to ``indexes``.
         """
         indexes = indexes or buffer.index
         episodes = buffer.data
@@ -175,7 +191,17 @@ class ddpg_return:
 
 class nstep_q_return:
     """
-    compute the n-step return for Q-learning targets
+    Compute the n-step return for Q-learning targets,
+    :math:`G_t = r_t + \gamma \max_a Q'(s_{t+1}, a)`.
+
+    :param n: An int. The number of steps to lookahead, where :math:`n=1` will directly apply :math:`Q'(s, \*)` to
+        the next observation, as in the above equation.
+    :param action_value: A :class:`tianshou.core.value_function.DQN`. The :math:`Q'(s, \*)` as in the
+        above equation.
+    :param use_target_network: Optional. A bool defaulting to ``True``. Whether to use the target networks
+        in the above equation.
+    :param discount_factor: Optional. A float in range :math:`[0, 1]` defaulting to 0.99. The discount
+        factor :math:`\gamma` as in the above equation.
     """
     def __init__(self, n, action_value, use_target_network=True, discount_factor=0.99):
         self.n = n
@@ -185,10 +211,13 @@ class nstep_q_return:
 
     def __call__(self, buffer, indexes=None):
         """
-        :param buffer: buffer with property index and data. index determines the current content in `buffer`.
-        :param index: (sampled) index to be computed. Defaults to all the data in `buffer`. Not necessarily in order within
-                      each episode.
-        :return: dict with key 'return' and value the computed returns corresponding to `index`.
+        :param buffer: A :class:`tianshou.data.data_buffer`.
+        :param indexes: Optional. Indexes of data points on which the full return should be computed.
+            If not set, it defaults to all the data points in ``buffer``.
+            Note that if it's the index of a sampled minibatch, it doesn't have to be in order within
+            each episode.
+
+        :return: A dict with key 'return' and value the computed returns corresponding to ``indexes``.
         """
         indexes = indexes or buffer.index
         episodes = buffer.data
@@ -224,3 +253,28 @@ class nstep_q_return:
                 returns.append([])
 
         return {'return': returns}
+
+
+class gae_lambda:
+    """
+    Generalized Advantage Estimation (Schulman, 15) to compute advantage. To be implemented.
+    """
+    def __init__(self, T, value_function):
+        self.T = T
+        self.value_function = value_function
+
+        raise NotImplementedError()
+
+    def __call__(self, buffer, indexes=None):
+        """
+        To be implemented
+
+        :param buffer: A :class:`tianshou.data.data_buffer`.
+        :param indexes: Optional. Indexes of data points on which the full return should be computed.
+            If not set, it defaults to all the data points in ``buffer``.
+            Note that if it's the index of a sampled minibatch, it doesn't have to be in order within
+            each episode.
+
+        :return: A dict with key 'advantage' and value the computed advantages corresponding to ``indexes``.
+        """
+        raise NotImplementedError()

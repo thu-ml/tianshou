@@ -3,7 +3,7 @@ import tensorflow as tf
 
 def DPG(policy, action_value):
     """
-    Constructs the gradient Tensor of `Link deterministic policy gradient <https://arxiv.org/pdf/1509.02971.pdf>`_.
+    Constructs the gradient Tensor of `deterministic policy gradient <https://arxiv.org/pdf/1509.02971.pdf>`_.
 
     :param policy: A :class:`tianshou.core.policy.Deterministic` to be optimized.
     :param action_value: A :class:`tianshou.core.value_function.ActionValue` to guide the optimization of `policy`.

@@ -8,18 +8,21 @@ ACTION = 1
 REWARD = 2
 DONE = 3
 
+
 # TODO: valid data points could be less than `nstep` timesteps. Check priority replay paper!
 class VanillaReplayBuffer(ReplayBufferBase):
     """
-    vanilla replay buffer as used in (Mnih, et al., 2015).
-    Frames are always continuous in temporal order. They are only removed from the beginning. This continuity
-    in `self.data` could be exploited, but only in vanilla replay buffer.
+    Class for vanilla replay buffer as used in (Mnih, et al., 2015).
+    Frames are always continuous in temporal order. They are only removed from the beginning
+    and added at the tail.
+    This continuity in `self.data` could be exploited only in vanilla replay buffer.
+
+    :param capacity: An int. The capacity of the buffer.
+    :param nstep: An int defaulting to 1. The number of timesteps to lookahead for temporal difference computation.
+        Only continuous data pieces longer than this number or already terminated ones are
+        considered valid data points.
     """
     def __init__(self, capacity, nstep=1):
-        """
-        :param capacity: int. capacity of the buffer.
-        :param nstep: int. number of timesteps to lookahead for temporal difference
-        """
         assert capacity > 0
         self.capacity = int(capacity)
         self.nstep = nstep
@@ -34,8 +37,9 @@ class VanillaReplayBuffer(ReplayBufferBase):
 
     def add(self, frame):
         """
-        add one frame to the buffer.
-        :param frame: tuple, (observation, action, reward, done_flag).
+        Adds one frame of data to the buffer.
+
+        :param frame: A tuple of (observation, action, reward, done_flag).
         """
         self.data[-1].append(frame)
 
@@ -65,17 +69,17 @@ class VanillaReplayBuffer(ReplayBufferBase):
 
     def remove(self):
         """
-        remove data until `self.size` <= `self.capacity`
+        Removes data from the buffer until ``self.size <= self.capacity``.
         """
         if self.size:
             while self.size > self.capacity:
-                self.remove_oldest()
+                self._remove_oldest()
         else:
             logging.warning('Attempting to remove from empty buffer!')
 
-    def remove_oldest(self):
+    def _remove_oldest(self):
         """
-        remove the oldest data point, in this case, just the oldest frame. Empty episodes are also removed
+        Removes the oldest data point, in this case, just the oldest frame. Empty episodes are also removed
         if resulted from removal.
         """
         self.index[0].pop()  # note that all index of frames in the first episode are shifted forward by 1
@@ -98,12 +102,14 @@ class VanillaReplayBuffer(ReplayBufferBase):
 
     def sample(self, batch_size):
         """
-        uniform random sampling on `self.index`. For simplicity, we do random sampling with replacement
-        for now with time O(`batch_size`). Fastest sampling without replacement seems to have to be of time
-        O(`batch_size` * log(num_episodes)).
-        :param batch_size: int.
-        :return: sampled index, same structure as `self.index`. Episodes without sampled data points
-        correspond to empty sub-lists.
+        Performs uniform random sampling on ``self.index``. For simplicity, we do random sampling with replacement
+        for now with time O(``batch_size``). Fastest sampling without replacement seems to have to be of time
+        O(``batch_size`` * log(num_episodes)).
+
+        :param batch_size: An int. The size of the minibatch.
+
+        :return: A list of list of the sampled indexes. Episodes without sampled data points
+            correspond to empty sub-lists.
         """
         prob_episode = np.array(self.index_lengths) * 1. / self.size
         num_episodes = len(self.index)

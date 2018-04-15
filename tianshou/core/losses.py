@@ -4,9 +4,11 @@ import tensorflow as tf
 def ppo_clip(policy, clip_param):
     """
     Builds the graph of clipped loss :math:`L^{CLIP}` as in the
-    `Link PPO paper <https://arxiv.org/pdf/1707.06347.pdf>`_, which is basically
-    :math:`-\min(r_t(\\theta)Aˆt, clip(r_t(\\theta), 1 - \epsilon, 1 + \epsilon)Aˆt)`.
+    `PPO paper <https://arxiv.org/pdf/1707.06347.pdf>`_, which is basically
+    :math:`-\min(r_t(\\theta)A_t, \mathrm{clip}(r_t(\\theta), 1 - \epsilon, 1 + \epsilon)A_t)`.
     We minimize the objective instead of maximizing, hence the leading negative sign.
+    It creates an action placeholder and an advantage placeholder and adds into the ``managed_placeholders``
+    of the ``policy``.
 
     :param policy: A :class:`tianshou.core.policy` to be optimized.
     :param clip param: A float or Tensor of type float. The :math:`\epsilon` in the loss equation.
@@ -29,8 +31,10 @@ def ppo_clip(policy, clip_param):
 def REINFORCE(policy):
     """
     Builds the graph of the loss function as used in vanilla policy gradient algorithms, i.e., REINFORCE.
-    The loss is basically :math:`\log \pi(a|s) A^t`.
+    The loss is basically :math:`\log \pi(a|s) A_t`.
     We minimize the objective instead of maximizing, hence the leading negative sign.
+    It creates an action placeholder and an advantage placeholder and adds into the ``managed_placeholders``
+    of the ``policy``.
 
     :param policy: A :class:`tianshou.core.policy` to be optimized.
 
@@ -50,6 +54,8 @@ def REINFORCE(policy):
 def value_mse(value_function):
     """
     Builds the graph of L2 loss on value functions for, e.g., training critics or DQN.
+    It creates an placeholder for the target value adds it into the ``managed_placeholders``
+    of the ``value_function``.
 
     :param value_function: A :class:`tianshou.core.value_function` to be optimized.
 

@@ -5,18 +5,24 @@ import itertools
 from .data_buffer.replay_buffer_base import ReplayBufferBase
 from .data_buffer.batch_set import BatchSet
 from .utils import internal_key_match
+from ..core.policy.deterministic import Deterministic
 
 
 class DataCollector(object):
     """
     A utility class to manage the data flow during the interaction between the policy and the environment.
-    It stores data into ``data_buffer``, processes the reward signals and returns the feed_dict for tf graph running.
+    It stores data into ``data_buffer``, processes the reward signals and returns the feed_dict for
+    tf graph running.
 
-    :param env:
-    :param policy:
-    :param data_buffer:
-    :param process_functions:
-    :param managed_networks:
+    :param env: An environment.
+    :param policy: A :class:`tianshou.core.policy`.
+    :param data_buffer: A :class:`tianshou.data.data_buffer`.
+    :param process_functions: A list of callables in :mod:`tianshou.data.advantage_estimation`
+        to process rewards.
+    :param managed_networks: A list of networks of :class:`tianshou.core.policy` and/or
+        :class:`tianshou.core.value_function`. The networks you want this class to manage. This class
+        will automatically generate the feed_dict for all the placeholders in the ``managed_placeholders``
+        of all networks in this list.
     """
     def __init__(self, env, policy, data_buffer, process_functions, managed_networks):
         self.env = env
@@ -42,6 +48,23 @@ class DataCollector(object):
         self.step_count_this_episode = 0
 
     def collect(self, num_timesteps=0, num_episodes=0, my_feed_dict={}, auto_clear=True, episode_cutoff=None):
+        """
+        Collect data in the environment using ``self.policy``.
+
+        :param num_timesteps: An int specifying the number of timesteps to act. It defaults to 0 and either
+            ``num_timesteps`` or ``num_episodes`` could be set but not both.
+        :param num_episodes: An int specifying the number of episodes to act. It defaults to 0 and either
+            ``num_timesteps`` or ``num_episodes`` could be set but not both.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation and action.
+        :param auto_clear: Optional. A bool defaulting to ``True``. If ``True`` then this method clears the
+            ``self.data_buffer`` if ``self.data_buffer`` is an instance of
+            :class:`tianshou.data.data_buffer.BatchSet.` and does nothing if it's not that instance.
+            If set to ``False`` then the aforementioned auto clearing behavior is disabled.
+        :param episode_cutoff: Optional. An int. The maximum number of timesteps in one episode. This is
+            useful when the environment has no terminal states or a single episode could be prohibitively long.
+            If set than all episodes are forced to stop beyond this number to timesteps.
+        """
         assert sum([num_timesteps > 0, num_episodes > 0]) == 1,\
             "One and only one collection number specification permitted!"
 
@@ -89,7 +112,20 @@ class DataCollector(object):
             for processor in self.process_functions:
                 self.data.update(processor(self.data_buffer))
 
-    def next_batch(self, batch_size, standardize_advantage=None):
+        return
+
+    def next_batch(self, batch_size, standardize_advantage=True):
+        """
+        Constructs and returns the feed_dict of data to be used with ``sess.run``.
+
+        :param batch_size: An int. The size of one minibatch.
+        :param standardize_advantage: Optional. A bool but defaulting to ``True``.
+            If ``True``, then this method standardize advantages if advantage is required by the networks.
+            If ``False`` then this method will never standardize advantage.
+
+        :return: A dict in the format of conventional feed_dict in tf, with keys the placeholders and
+            values the numpy arrays.
+        """
         sampled_index = self.data_buffer.sample(batch_size)
         if self.process_mode == 'sample':
             for processor in self.process_functions:
@@ -128,8 +164,7 @@ class DataCollector(object):
                     else:
                         raise TypeError('Placeholder {} has no value to feed!'.format(str(placeholder.name)))
 
-        auto_standardize = (standardize_advantage is None) and self.require_advantage
-        if standardize_advantage or auto_standardize:
+        if standardize_advantage:
             if self.require_advantage:
                 advantage_value = feed_dict[self.required_placeholders['advantage']]
                 advantage_mean = np.mean(advantage_value)
@@ -140,10 +175,21 @@ class DataCollector(object):
 
         return feed_dict
 
-    def denoise_action(self, feed_dict):
+    def denoise_action(self, feed_dict, my_feed_dict={}):
+        """
+        Recompute the actions of deterministic policies without exploration noise, hence denoising.
+        It modifies ``feed_dict`` **in place** and has no return value.
+        This is useful in, e.g., DDPG since the stored action in ``self.data_buffer`` is the sampled
+        action with additional exploration noise.
 
+        :param feed_dict: A dict. It has to be the dict returned by :func:`next_batch` by this class.
+        :param my_feed_dict: Optional. A dict defaulting to empty.
+            Specifies placeholders such as dropout and batch_norm except observation and action.
+        """
+        assert isinstance(self.policy, Deterministic), 'denoise_action() could only be called' \
+                                                       'with deterministic policies'
         observation = feed_dict[self.required_placeholders['observation']]
-        action_mean = self.policy.eval_action(observation)
+        action_mean = self.policy.eval_action(observation, my_feed_dict)
         feed_dict[self.required_placeholders['action']] = action_mean
 
         return

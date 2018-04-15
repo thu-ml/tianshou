@@ -17,11 +17,11 @@ def identify_dependent_variables(tensor, candidate_variables):
 def get_soft_update_op(update_fraction, including_nets, excluding_nets=None):
     """
     Builds the graph op to softly update the "old net" of policies and value_functions, as suggested in
-    `Link DDPG <https://arxiv.org/pdf/1509.02971.pdf>`_. It updates the :class:`tf.Variable` s in the old net,
+    `DDPG <https://arxiv.org/pdf/1509.02971.pdf>`_. It updates the :class:`tf.Variable` s in the old net,
     :math:`\\theta'` with the :class:`tf.Variable` s in the current network, :math:`\\theta` as
-    :math:`\\theta' = \tau \\theta + (1 - \tau) \\theta'`.
+    :math:`\\theta' = \\tau \\theta + (1 - \\tau) \\theta'`.
 
-    :param update_fraction: A float in range :math:`[0, 1]`. Corresponding to the :math:`\tau` in the update equation.
+    :param update_fraction: A float in range :math:`[0, 1]`. Corresponding to the :math:`\\tau` in the update equation.
     :param including_nets: A list of policies and/or value_functions. All :class:`tf.Variable` s in these networks
         are included for update. Shared Variables are updated only once in case of layer sharing among the networks.
     :param excluding_nets: Optional. A list of policies and/or value_functions defaulting to ``None``.

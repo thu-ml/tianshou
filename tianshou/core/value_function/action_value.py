@@ -110,13 +110,13 @@ class ActionValue(ValueFunctionBase):
 class DQN(ValueFunctionBase):
     """
     Class for the special action value function DQN. Instead of feeding s and a to the network to get a value,
-    DQN feeds s to the network and gets at the last layer Q(s, *) for all actions under this state. Still, as
+    DQN feeds s to the network and gets at the last layer Q(s, \*) for all actions under this state. Still, as
     :class:`ActionValue`, this class still builds the Q(s, a) value Tensor. It can only be used with discrete
     (and finite) action spaces.
 
     :param network_callable: A Python callable returning (action head, value head). When called it builds
-        the tf graph and returns a Tensor of Q(s, *) on the value head.
-    :param observation_placeholder: A :class:`tf.placeholder`. The observation placeholder for s in Q(s, *)
+        the tf graph and returns a Tensor of Q(s, \*) on the value head.
+    :param observation_placeholder: A :class:`tf.placeholder`. The observation placeholder for s in Q(s, \*)
         in the network graph.
     :param has_old_net: A bool defaulting to ``False``. If true this class will create another graph with another
         set of :class:`tf.Variable` s to be the "old net". The "old net" could be the target networks as in DQN
@@ -218,12 +218,12 @@ class DQN(ValueFunctionBase):
 
     @property
     def value_tensor_all_actions(self):
-        """The Tensor for Q(s, *)"""
+        """The Tensor for Q(s, \*)"""
         return self._value_tensor_all_actions
 
     def eval_value_all_actions(self, observation, my_feed_dict={}):
         """
-        Evaluate values Q(s, *) in minibatch using the current network.
+        Evaluate values Q(s, \*) in minibatch using the current network.
 
         :param observation: An array-like, of shape (batch_size,) + observation_shape.
         :param my_feed_dict: Optional. A dict defaulting to empty.
@@ -236,7 +236,7 @@ class DQN(ValueFunctionBase):
 
     def eval_value_all_actions_old(self, observation, my_feed_dict={}):
         """
-        Evaluate values Q(s, *) in minibatch using the old net.
+        Evaluate values Q(s, \*) in minibatch using the old net.
 
         :param observation: An array-like, of shape (batch_size,) + observation_shape.
         :param my_feed_dict: Optional. A dict defaulting to empty.
