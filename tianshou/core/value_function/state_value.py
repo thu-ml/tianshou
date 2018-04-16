@@ -79,7 +79,9 @@ class StateValue(ValueFunctionBase):
         :return: A numpy array of shape (batch_size,). The corresponding state value for each observation.
         """
         sess = tf.get_default_session()
-        return sess.run(self.value_tensor, feed_dict={self.observation_placeholder: observation}.update(my_feed_dict))
+        feed_dict = {self.observation_placeholder: observation}
+        feed_dict.update(my_feed_dict)
+        return sess.run(self.value_tensor, feed_dict=feed_dict)
 
     def eval_value_old(self, observation, my_feed_dict={}):
         """
@@ -92,7 +94,9 @@ class StateValue(ValueFunctionBase):
         :return: A numpy array of shape (batch_size,). The corresponding state value for each observation.
         """
         sess = tf.get_default_session()
-        return sess.run(self.value_tensor_old, feed_dict={self.observation_placeholder: observation}.update(my_feed_dict))
+        feed_dict = {self.observation_placeholder: observation}
+        feed_dict.update(my_feed_dict)
+        return sess.run(self.value_tensor_old, feed_dict=feed_dict)
 
     def sync_weights(self):
         """

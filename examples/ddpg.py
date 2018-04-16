@@ -9,20 +9,6 @@ import argparse
 
 import tianshou as ts
 
-# our lib imports here! It's ok to append path in examples
-import sys
-sys.path.append('..')
-from tianshou.core import losses
-import tianshou.data.advantage_estimation as advantage_estimation
-import tianshou.core.policy as policy
-import tianshou.core.value_function.action_value as value_function
-import tianshou.core.opt as opt
-
-from tianshou.data.data_buffer.vanilla import VanillaReplayBuffer
-from tianshou.data.data_collector import DataCollector
-from tianshou.data.tester import test_policy_in_env
-from tianshou.core.utils import get_soft_update_op
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

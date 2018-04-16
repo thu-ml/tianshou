@@ -80,8 +80,9 @@ class ActionValue(ValueFunctionBase):
         :return: A numpy array of shape (batch_size,). The corresponding action value for each observation.
         """
         sess = tf.get_default_session()
-        return sess.run(self.value_tensor, feed_dict=
-        {self.observation_placeholder: observation, self.action_placeholder: action}.update(my_feed_dict))
+        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}
+        feed_dict.update(my_feed_dict)
+        return sess.run(self.value_tensor, feed_dict=feed_dict)
 
     def eval_value_old(self, observation, action, my_feed_dict={}):
         """
@@ -95,7 +96,8 @@ class ActionValue(ValueFunctionBase):
         :return: A numpy array of shape (batch_size,). The corresponding action value for each observation.
         """
         sess = tf.get_default_session()
-        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}.update(my_feed_dict)
+        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}
+        feed_dict.update(my_feed_dict)
         return sess.run(self.value_tensor_old, feed_dict=feed_dict)
 
     def sync_weights(self):
@@ -198,7 +200,8 @@ class DQN(ValueFunctionBase):
         :return: A numpy array of shape (batch_size,). The corresponding action value for each observation.
         """
         sess = tf.get_default_session()
-        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}.update(my_feed_dict)
+        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}
+        feed_dict.update(my_feed_dict)
         return sess.run(self.value_tensor, feed_dict=feed_dict)
 
     def eval_value_old(self, observation, action, my_feed_dict={}):
@@ -213,7 +216,8 @@ class DQN(ValueFunctionBase):
         :return: A numpy array of shape (batch_size,). The corresponding action value for each observation.
         """
         sess = tf.get_default_session()
-        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}.update(my_feed_dict)
+        feed_dict = {self.observation_placeholder: observation, self.action_placeholder: action}
+        feed_dict.update(my_feed_dict)
         return sess.run(self.value_tensor_old, feed_dict=feed_dict)
 
     @property
@@ -232,7 +236,9 @@ class DQN(ValueFunctionBase):
         :return: A numpy array of shape (batch_size, num_actions). The corresponding action values for each observation.
         """
         sess = tf.get_default_session()
-        return sess.run(self._value_tensor_all_actions, feed_dict={self.observation_placeholder: observation}.update(my_feed_dict))
+        feed_dict = {self.observation_placeholder: observation}
+        feed_dict.update(my_feed_dict)
+        return sess.run(self._value_tensor_all_actions, feed_dict=feed_dict)
 
     def eval_value_all_actions_old(self, observation, my_feed_dict={}):
         """
@@ -245,7 +251,9 @@ class DQN(ValueFunctionBase):
         :return: A numpy array of shape (batch_size, num_actions). The corresponding action values for each observation.
         """
         sess = tf.get_default_session()
-        return sess.run(self.value_tensor_all_actions_old, feed_dict={self.observation_placeholder: observation}.update(my_feed_dict))
+        feed_dict = {self.observation_placeholder: observation}
+        feed_dict.update(my_feed_dict)
+        return sess.run(self.value_tensor_all_actions_old, feed_dict=feed_dict)
 
     def sync_weights(self):
         """

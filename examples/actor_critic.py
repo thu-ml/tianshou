@@ -7,16 +7,6 @@ import gym
 
 import tianshou as ts
 
-import sys
-sys.path.append('..')
-from tianshou.core import losses
-import tianshou.data.advantage_estimation as advantage_estimation
-import tianshou.core.policy.distributional as policy
-import tianshou.core.value_function.state_value as value_function
-
-from tianshou.data.data_buffer.batch_set import BatchSet
-from tianshou.data.data_collector import DataCollector
-
 
 if __name__ == '__main__':
     env = gym.make('CartPole-v0')
