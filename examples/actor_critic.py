@@ -1,14 +1,12 @@
-#!/usr/bin/env python
 from __future__ import absolute_import
 
 import tensorflow as tf
 import time
 import numpy as np
 import gym
-import logging
-logging.basicConfig(level=logging.INFO)
 
-# our lib imports here! It's ok to append path in examples
+import tianshou as ts
+
 import sys
 sys.path.append('..')
 from tianshou.core import losses
@@ -49,11 +47,11 @@ if __name__ == '__main__':
         return action_dist, value
 
     ### 2. build policy, critic, loss, optimizer
-    actor = policy.Distributional(my_network, observation_placeholder=observation_ph)  # no target network
-    critic = value_function.StateValue(my_network, observation_placeholder=observation_ph)  # no target network
+    actor = ts.policy.Distributional(my_network, observation_placeholder=observation_ph)  # no target network
+    critic = ts.value_function.StateValue(my_network, observation_placeholder=observation_ph)  # no target network
 
-    actor_loss = losses.REINFORCE(actor)
-    critic_loss = losses.value_mse(critic)
+    actor_loss = ts.losses.REINFORCE(actor)
+    critic_loss = ts.losses.value_mse(critic)
     total_loss = actor_loss + 1e-2 * critic_loss
 
     optimizer = tf.train.AdamOptimizer(1e-4)
@@ -64,13 +62,13 @@ if __name__ == '__main__':
     train_op = optimizer.minimize(total_loss, var_list=var_list)
 
     ### 3. define data collection
-    data_buffer = BatchSet()
+    data_buffer = ts.data.BatchSet()
 
-    data_collector = DataCollector(
+    data_collector = ts.data.DataCollector(
         env=env,
         policy=actor,
         data_buffer=data_buffer,
-        process_functions=[advantage_estimation.nstep_return(n=3, value_function=critic, return_advantage=True)],
+        process_functions=[ts.data.advantage_estimation.nstep_return(n=3, value_function=critic, return_advantage=True)],
         managed_networks=[actor, critic],
     )
 

@@ -6,8 +6,8 @@ import gym
 import numpy as np
 import time
 import argparse
-import logging
-logging.basicConfig(level=logging.INFO)
+
+import tianshou as ts
 
 # our lib imports here! It's ok to append path in examples
 import sys
@@ -57,26 +57,26 @@ if __name__ == '__main__':
         return action, action_value
 
     ### 2. build policy, loss, optimizer
-    actor = policy.Deterministic(my_network, observation_placeholder=observation_ph,
+    actor = ts.policy.Deterministic(my_network, observation_placeholder=observation_ph,
                                  has_old_net=True)
-    critic = value_function.ActionValue(my_network, observation_placeholder=observation_ph,
+    critic = ts.value_function.ActionValue(my_network, observation_placeholder=observation_ph,
                                         action_placeholder=action_ph, has_old_net=True)
-    soft_update_op = get_soft_update_op(1e-2, [actor, critic])
+    soft_update_op = ts.get_soft_update_op(1e-2, [actor, critic])
 
-    critic_loss = losses.value_mse(critic)
+    critic_loss = ts.losses.value_mse(critic)
     critic_optimizer = tf.train.AdamOptimizer(1e-3)
     critic_train_op = critic_optimizer.minimize(critic_loss, var_list=list(critic.trainable_variables))
 
-    dpg_grads_vars = opt.DPG(actor, critic)
+    dpg_grads_vars = ts.opt.DPG(actor, critic)
     actor_optimizer = tf.train.AdamOptimizer(1e-3)
     actor_train_op = actor_optimizer.apply_gradients(dpg_grads_vars)
 
     ### 3. define data collection
-    data_buffer = VanillaReplayBuffer(capacity=10000, nstep=1)
+    data_buffer = ts.data.VanillaReplayBuffer(capacity=10000, nstep=1)
 
-    process_functions = [advantage_estimation.ddpg_return(actor, critic)]
+    process_functions = [ts.data.advantage_estimation.ddpg_return(actor, critic)]
 
-    data_collector = DataCollector(
+    data_collector = ts.data.DataCollector(
         env=env,
         policy=actor,
         data_buffer=data_buffer,
@@ -116,4 +116,4 @@ if __name__ == '__main__':
             # test every 1000 training steps
             if i % 1000 == 0:
                 print('Step {}, elapsed time: {:.1f} min'.format(i, (time.time() - start_time) / 60))
-                test_policy_in_env(actor, env, num_episodes=5, episode_cutoff=200)
+                ts.data.test_policy_in_env(actor, env, num_episodes=5, episode_cutoff=200)
