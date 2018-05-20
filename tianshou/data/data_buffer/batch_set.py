@@ -4,6 +4,11 @@ import logging
 
 from .base import DataBufferBase
 
+__all__ = [
+    'BatchSet'
+]
+
+
 STATE = 0
 ACTION = 1
 REWARD = 2

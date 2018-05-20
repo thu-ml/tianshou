@@ -3,6 +3,11 @@ import numpy as np
 
 from .replay_buffer_base import ReplayBufferBase
 
+__all__ = [
+    'VanillaReplayBuffer',
+]
+
+
 STATE = 0
 ACTION = 1
 REWARD = 2

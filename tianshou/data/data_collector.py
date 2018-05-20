@@ -7,6 +7,10 @@ from .data_buffer.batch_set import BatchSet
 from .utils import internal_key_match
 from ..core.policy.deterministic import Deterministic
 
+__all__ = [
+    'DataCollector',
+]
+
 
 class DataCollector(object):
     """

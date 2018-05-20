@@ -1,5 +1,11 @@
 import tensorflow as tf
 
+__all__ = [
+    'ppo_clip',
+    'REINFORCE',
+    'value_mse'
+]
+
 
 def ppo_clip(policy, clip_param):
     """

@@ -1,9 +1,13 @@
 from __future__ import absolute_import
-import logging
 import tensorflow as tf
 
 from .base import ValueFunctionBase
 from ..utils import identify_dependent_variables
+
+__all__ = [
+    'ActionValue',
+    'DQN',
+]
 
 
 class ActionValue(ValueFunctionBase):

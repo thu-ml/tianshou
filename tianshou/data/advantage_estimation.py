@@ -1,5 +1,12 @@
 import logging
-import numpy as np
+
+__all__ = [
+    'full_return',
+    'nstep_return',
+    'nstep_q_return',
+    'ddpg_return',
+]
+
 
 STATE = 0
 ACTION = 1

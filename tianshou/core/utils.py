@@ -1,5 +1,9 @@
 import tensorflow as tf
 
+__all__ = [
+    'get_soft_update_op',
+]
+
 
 def identify_dependent_variables(tensor, candidate_variables):
     """

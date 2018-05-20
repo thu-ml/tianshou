@@ -2,6 +2,9 @@ from __future__ import absolute_import
 
 import tensorflow as tf
 
+__all__ = []
+
+
 class ValueFunctionBase(object):
     """
     Base class for value functions, including S-values and Q-values. The only

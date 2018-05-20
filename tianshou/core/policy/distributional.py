@@ -1,7 +1,10 @@
 import tensorflow as tf
-import logging
 from .base import PolicyBase
 from ..utils import identify_dependent_variables
+
+__all__ = [
+    'Distributional',
+]
 
 
 class Distributional(PolicyBase):

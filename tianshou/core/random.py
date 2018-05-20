@@ -5,6 +5,11 @@ adapted from keras-rl
 from __future__ import division
 import numpy as np
 
+__all__ = [
+    'GaussianWhiteNoiseProcess',
+    'OrnsteinUhlenbeckProcess',
+]
+
 
 class RandomProcess(object):
     """

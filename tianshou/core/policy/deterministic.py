@@ -1,9 +1,12 @@
 import tensorflow as tf
-import logging
 
 from .base import PolicyBase
 from ..random import OrnsteinUhlenbeckProcess
 from ..utils import identify_dependent_variables
+
+__all__ = [
+    'Deterministic',
+]
 
 
 class Deterministic(PolicyBase):

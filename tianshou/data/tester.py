@@ -4,6 +4,10 @@ import gym
 import logging
 import numpy as np
 
+__all__ = [
+    'test_policy_in_env',
+]
+
 
 def test_policy_in_env(policy, env, num_timesteps=0, num_episodes=0,
                        discount_factor=0.99, seed=0, episode_cutoff=None):

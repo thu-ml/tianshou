@@ -1,10 +1,13 @@
 from __future__ import absolute_import
 
 import tensorflow as tf
-import logging
 
 from .base import ValueFunctionBase
 from ..utils import identify_dependent_variables
+
+__all__ = [
+    'StateValue',
+]
 
 
 class StateValue(ValueFunctionBase):

@@ -1,5 +1,9 @@
 import tensorflow as tf
 
+__all__ = [
+    'DPG',
+]
+
 
 def DPG(policy, action_value):
     """

@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import division
 
-import tensorflow as tf
+__all__ = []
 
 
 class PolicyBase(object):
