@@ -28,7 +28,9 @@ in your terminal
 if you haven't installed it yet, and you will be able to run the simple example scripts
 provided by us.
 
-Then, in your Python code, simply make the environment::
+Then, in your Python code, simply import TianShou and make the environment::
+
+    import tianshou as ts
 
     env = gym.make('Pendulum-v0')
 
@@ -110,9 +112,9 @@ a single parameter set by you, as in::
 
         return action, action_value
 
-    actor = policy.Deterministic(my_network, observation_placeholder=observation_ph,
+    actor = ts.policy.Deterministic(my_network, observation_placeholder=observation_ph,
                                  has_old_net=True)
-    critic = value_function.ActionValue(my_network, observation_placeholder=observation_ph,
+    critic = ts.value_function.ActionValue(my_network, observation_placeholder=observation_ph,
                                         action_placeholder=action_ph, has_old_net=True)
 
 You pass the function handler ``my_network`` to TianShou's policy and value network wrappers,
@@ -126,7 +128,7 @@ the weights of the current network to the old net. Although it's sufficient for 
 :cite:`mnih2015human,schulman2015trust,schulman2017proximal`, DDPG proposes soft update on the
 old nets. Therefore, TianShou provides an additional utility for such soft update: ::
 
-    soft_update_op = get_soft_update_op(1e-2, [actor, critic])
+    soft_update_op = ts.get_soft_update_op(1e-2, [actor, critic])
 
 For detailed usage please refer to the API doc of :func:`tianshou.core.utils.get_soft_update_op`. This utility
 function gives you the runnable TensorFlow ops the perform soft update, i.e., you can simply do
@@ -151,7 +153,7 @@ encapsulation, namely loss, gradient and optimizer, and implement RL techniques 
 
 TianShou's ``loss`` resembles ``tf.losses``, and to apply L2 loss on the critic in DDPG you could simply do::
 
-    critic_loss = losses.value_mse(critic)
+    critic_loss = ts.losses.value_mse(critic)
     critic_optimizer = tf.train.AdamOptimizer(1e-3)
     critic_train_op = critic_optimizer.minimize(critic_loss, var_list=list(critic.trainable_variables))
 
@@ -167,7 +169,7 @@ conceptualized as gradients over a loss function under TianShou's paradigm, we w
 :func:`tf.train.Optimizer.compute_gradients` does. It can then be seamlessly combined with
 :func:`tf.train.Optimizer.apply_gradients` to optimize the actor: ::
 
-    dpg_grads_vars = opt.DPG(actor, critic)
+    dpg_grads_vars = ts.opt.DPG(actor, critic)
     actor_optimizer = tf.train.AdamOptimizer(1e-3)
     actor_train_op = actor_optimizer.apply_gradients(dpg_grads_vars)
 
@@ -188,17 +190,17 @@ optimization, facilitating more opportunities of combinations.
 
 First, we instantiate a replay buffer to store the off-policy experiences ::
 
-    data_buffer = VanillaReplayBuffer(capacity=10000, nstep=1)
+    data_buffer = ts.data.VanillaReplayBuffer(capacity=10000, nstep=1)
 
 All data buffers in TianShou store only the raw data of each episode, i.e., frames of data in the canonical
 RL form of tuple: (observation, action, reward, done_flag). Such raw data have to be processed before feeding
 to the optimization algorithms, so we specify the processing functions in a Python list ::
 
-    process_functions = [advantage_estimation.ddpg_return(actor, critic)]
+    process_functions = [ts.data.advantage_estimation.ddpg_return(actor, critic)]
 
 We are now ready to fully specify the data acquisition process ::
 
-    data_collector = DataCollector(
+    data_collector = ts.data.DataCollector(
         env=env,
         policy=actor,
         data_buffer=data_buffer,
@@ -255,7 +257,7 @@ Finally, we are all set and let the training begin!::
             # test every 1000 training steps
             if i % 1000 == 0:
                 print('Step {}, elapsed time: {:.1f} min'.format(i, (time.time() - start_time) / 60))
-                test_policy_in_env(actor, env, num_episodes=5, episode_cutoff=200)
+                ts.data.test_policy_in_env(actor, env, num_episodes=5, episode_cutoff=200)
 
 Note that, to optimize the actor in DDPG, we have to use the noiseless action computed by the current
 actor rather than the sampled action during interaction with the environment, hence

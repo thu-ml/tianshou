@@ -1,19 +1,14 @@
-#!/usr/bin/env python
 from __future__ import absolute_import
 
 import tensorflow as tf
 import gym
 import numpy as np
 import time
-import argparse
 
 import tianshou as ts
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--render", action="store_true", default=False)
-    args = parser.parse_args()
 
     env = gym.make('Pendulum-v0')
     observation_dim = env.observation_space.shape
