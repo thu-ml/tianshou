@@ -1,7 +1,7 @@
 import tensorflow as tf
-import time
-import numpy as np
 import gym
+import numpy as np
+import time
 
 import tianshou as ts
 
@@ -11,6 +11,7 @@ if __name__ == '__main__':
     observation_dim = env.observation_space.shape
     action_dim = env.action_space.n
 
+    clip_param = 0.2
     num_batches = 10
     batch_size = 512
 
@@ -21,42 +22,33 @@ if __name__ == '__main__':
     ### 1. build network with pure tf
     observation_ph = tf.placeholder(tf.float32, shape=(None,) + observation_dim)
 
-    def my_network():
-        # placeholders defined in this function would be very difficult to manage
-        net = tf.layers.dense(observation_ph, 64, activation=tf.nn.tanh)
-        net = tf.layers.dense(net, 64, activation=tf.nn.tanh)
+    def my_policy():
+        net = tf.layers.dense(observation_ph, 32, activation=tf.nn.tanh)
+        net = tf.layers.dense(net, 32, activation=tf.nn.tanh)
 
         action_logits = tf.layers.dense(net, action_dim, activation=None)
         action_dist = tf.distributions.Categorical(logits=action_logits)
 
-        value = tf.layers.dense(net, 1, activation=None)
+        return action_dist, None
 
-        return action_dist, value
+    ### 2. build policy, loss, optimizer
+    pi = ts.policy.Distributional(my_policy, observation_placeholder=observation_ph, has_old_net=True)
 
-    ### 2. build policy, critic, loss, optimizer
-    actor = ts.policy.Distributional(my_network, observation_placeholder=observation_ph)  # no target network
-    critic = ts.value_function.StateValue(my_network, observation_placeholder=observation_ph)  # no target network
+    ppo_loss_clip = ts.losses.ppo_clip(pi, clip_param)
 
-    actor_loss = ts.losses.REINFORCE(actor)
-    critic_loss = ts.losses.value_mse(critic)
-    total_loss = actor_loss + 1e-2 * critic_loss
-
+    total_loss = ppo_loss_clip
     optimizer = tf.train.AdamOptimizer(1e-4)
-
-    # this hack would be unnecessary if we have a `SharedPolicyValue` class, or hack the trainable_variables management
-    var_list = list(actor.trainable_variables | critic.trainable_variables)
-
-    train_op = optimizer.minimize(total_loss, var_list=var_list)
+    train_op = optimizer.minimize(total_loss, var_list=list(pi.trainable_variables))
 
     ### 3. define data collection
     data_buffer = ts.data.BatchSet()
 
     data_collector = ts.data.DataCollector(
         env=env,
-        policy=actor,
+        policy=pi,
         data_buffer=data_buffer,
-        process_functions=[ts.data.advantage_estimation.nstep_return(n=3, value_function=critic, return_advantage=True)],
-        managed_networks=[actor, critic],
+        process_functions=[ts.data.advantage_estimation.full_return],
+        managed_networks=[pi],
     )
 
     ### 4. start training
@@ -64,6 +56,9 @@ if __name__ == '__main__':
     config.gpu_options.allow_growth = True
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
+
+        # assign actor to pi_old
+        pi.sync_weights()
 
         start_time = time.time()
         for i in range(1000):
@@ -78,5 +73,8 @@ if __name__ == '__main__':
             for _ in range(num_batches):
                 feed_dict = data_collector.next_batch(batch_size)
                 sess.run(train_op, feed_dict=feed_dict)
+
+            # assigning pi_old to be current pi
+            pi.sync_weights()
 
             print('Elapsed time: {:.1f} min'.format((time.time() - start_time) / 60))
