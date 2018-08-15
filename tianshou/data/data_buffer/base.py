@@ -26,7 +26,7 @@ class DataBufferBase(object):
         raise NotImplementedError()
 
     def clear(self):
-        """Empties the data buffer, usually used in batch set but not in replay buffer."""
+        """Empties the data buffer, usually used in batch set, also supported in replay buffer."""
         raise NotImplementedError()
 
     def sample(self, batch_size):

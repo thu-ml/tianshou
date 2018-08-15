@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import gc
 
 from .replay_buffer_base import ReplayBufferBase
 
@@ -129,3 +130,19 @@ class VanillaReplayBuffer(ReplayBufferBase):
             sampled_index[sampled_episode_i].append(sampled_frame_i)
 
         return sampled_index
+
+    def clear(self):
+        """
+        Empties the replay buffer and prepares to add new data.
+        """
+        del self.data
+        del self.index
+        del self.index_lengths
+
+        gc.collect()
+
+        self.data = [[]]
+        self.index = [[]]
+        self.candidate_index = 0
+        self.size = 0
+        self.index_lengths = [0]
