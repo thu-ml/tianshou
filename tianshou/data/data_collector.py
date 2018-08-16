@@ -118,7 +118,7 @@ class DataCollector(object):
 
         return
 
-    def next_batch(self, batch_size, standardize_advantage=True):
+    def next_batch(self, batch_size, standardize_advantage=True, my_feed_dict={}):
         """
         Constructs and returns the feed_dict of data to be used with ``sess.run``.
 
@@ -133,7 +133,7 @@ class DataCollector(object):
         sampled_index = self.data_buffer.sample(batch_size)
         if self.process_mode == 'sample':
             for processor in self.process_functions:
-                self.data_batch.update(processor(self.data_buffer, indexes=sampled_index))
+                self.data_batch.update(processor(self.data_buffer, indexes=sampled_index, my_feed_dict=my_feed_dict))
 
         # flatten rank-2 list to numpy array, construct feed_dict
         feed_dict = {}

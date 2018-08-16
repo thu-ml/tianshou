@@ -216,7 +216,7 @@ class nstep_q_return:
         self.use_target_network = use_target_network
         self.discount_factor = discount_factor
 
-    def __call__(self, buffer, indexes=None):
+    def __call__(self, buffer, indexes=None, my_feed_dict={}):
         """
         :param buffer: A :class:`tianshou.data.data_buffer`.
         :param indexes: Optional. Indexes of data points on which the full return should be computed.
@@ -249,9 +249,9 @@ class nstep_q_return:
                         state = episode[last_frame_index + 1][STATE]
                         if self.use_target_network:
                             # [None] adds one dimension to the beginning
-                            qpredict = self.action_value.eval_value_all_actions_old(state[None])
+                            qpredict = self.action_value.eval_value_all_actions_old(state[None], my_feed_dict=my_feed_dict)
                         else:
-                            qpredict = self.action_value.eval_value_all_actions(state[None])
+                            qpredict = self.action_value.eval_value_all_actions(state[None], my_feed_dict=my_feed_dict)
                         target_q += current_discount_factor * max(qpredict[0])
                     episode_q.append(target_q)
 
