@@ -11,3 +11,4 @@ data
 !tianshou/data
 .log
 go-*
+*.egg-info/
