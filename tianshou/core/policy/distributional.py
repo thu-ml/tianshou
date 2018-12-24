@@ -36,7 +36,7 @@ class Distributional(PolicyBase):
             self.action = action_dist.sample()
 
         weights = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
-        self.network_weights = identify_dependent_variables(self.action_dist.log_prob(self.action), weights)
+        self.network_weights = identify_dependent_variables(self.action_dist.log_prob(tf.stop_gradient(self.action)), weights)
         self._trainable_variables = [var for var in self.network_weights
                                     if var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]
         # deal with target network
@@ -52,7 +52,7 @@ class Distributional(PolicyBase):
             # re-filter to rule out some edge cases
             old_weights = [var for var in old_weights if var.name[:len(net_old_scope)] == net_old_scope]
 
-            self.network_old_weights = identify_dependent_variables(self.action_dist_old.log_prob(self.action_old), old_weights)
+            self.network_old_weights = identify_dependent_variables(self.action_dist_old.log_prob(tf.stop_gradient(self.action_old)), old_weights)
             assert len(self.network_weights) == len(self.network_old_weights)
 
             self.sync_weights_ops = [tf.assign(variable_old, variable)
