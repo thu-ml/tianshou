@@ -27,9 +27,8 @@ class MyTestEnv(gym.Env):
             finished = self.index == self.size
             return self.index, int(finished), finished, {}
 
-def test_framestack():
-    k = 4
-    size = 10
+
+def test_framestack(k=4, size=10):
     env = MyTestEnv(size=size)
     fsenv = FrameStack(env, k)
     fsenv.seed()
@@ -53,5 +52,36 @@ def test_framestack():
     assert (rew, done) == (0, True)
     fsenv.close()
 
+
+def test_vecenv(verbose=False, size=10, num=8, sleep=0.001):
+    env_fns = [lambda: MyTestEnv(size=size, sleep=sleep) for _ in range(num)]
+    venv = [
+        VectorEnv(env_fns, reset_after_done=True),
+        SubprocVectorEnv(env_fns, reset_after_done=True),
+    ]
+    if verbose:
+        venv.append(RayVectorEnv(env_fns, reset_after_done=True))
+    for v in venv:
+        v.seed()
+    action_list = [1] * 5 + [0] * 10 + [1] * 9
+    if not verbose:
+        o = [v.reset() for v in venv]
+        for i, a in enumerate(action_list):
+            o = [v.step([a] * num) for v in venv]
+            for i in zip(*o):
+                for j in range(1, len(i)):
+                    assert (i[0] == i[j]).all()
+    else:
+        t = [0, 0, 0]
+        for i, e in enumerate(venv):
+            t[i] = time.time()
+            e.reset()
+            for a in action_list:
+                e.step([a] * num)
+            t[i] = time.time() - t[i]
+        print(f'VectorEnv: {t[0]:.6f}s\nSubprocVectorEnv: {t[1]:.6f}s\nRayVectorEnv: {t[2]:.6f}s')
+
+
 if __name__ == '__main__':
     test_framestack()
+    test_vecenv(True)

@@ -33,5 +33,5 @@ jobs:
         ./flake8.sh
     - name: Test with pytest
       run: |
-        pip install pytest
-        pytest
+        pip install pytest pytest-cov
+        pytest --cov tianshou
