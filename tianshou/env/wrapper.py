@@ -75,9 +75,9 @@ class VectorEnv(object):
         result = zip(*[e.step(a) for e, a in zip(self.envs, action)])
         obs, rew, done, info = result
         if self._reset_after_done and sum(done):
-            for i, e in enumerate(self.envs):
-                if done[i]:
-                    e.reset()
+            obs = np.stack(obs)
+            for i in np.where(done)[0]:
+                obs[i] = self.envs[i].reset()
         return np.stack(obs), np.stack(rew), np.stack(done), np.stack(info)
 
     def seed(self, seed=None):
@@ -198,6 +198,14 @@ class RayVectorEnv(object):
         assert len(action) == self.env_num
         result_obj = [e.step.remote(a) for e, a in zip(self.envs, action)]
         obs, rew, done, info = zip(*[ray.get(r) for r in result_obj])
+        if self._reset_after_done and sum(done):
+            obs = np.stack(obs)
+            index = np.where(done)[0]
+            result_obj = []
+            for i in range(len(index)):
+                result_obj.append(self.envs[index[i]].reset.remote())
+            for i in range(len(index)):
+                obs[index[i]] = ray.get(result_obj[i])
         return np.stack(obs), np.stack(rew), np.stack(done), np.stack(info)
 
     def reset(self):

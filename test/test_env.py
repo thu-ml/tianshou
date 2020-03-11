@@ -59,11 +59,11 @@ def test_vecenv(verbose=False, size=10, num=8, sleep=0.001):
         VectorEnv(env_fns, reset_after_done=True),
         SubprocVectorEnv(env_fns, reset_after_done=True),
     ]
-    if verbose:
+    if __name__ == '__main__':
         venv.append(RayVectorEnv(env_fns, reset_after_done=True))
     for v in venv:
         v.seed()
-    action_list = [1] * 5 + [0] * 10 + [1] * 9
+    action_list = [1] * 5 + [0] * 10 + [1] * 15
     if not verbose:
         o = [v.reset() for v in venv]
         for i, a in enumerate(action_list):
