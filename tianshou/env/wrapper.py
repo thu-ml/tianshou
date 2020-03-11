@@ -1,6 +1,10 @@
 import numpy as np
 from collections import deque
 from multiprocessing import Process, Pipe
+try:
+    import ray
+except ImportError:
+    pass
 
 from tianshou.utils import CloudpickleWrapper
 
@@ -11,10 +15,10 @@ class EnvWrapper(object):
 
     def step(self, action):
         return self.env.step(action)
-    
+
     def reset(self):
         self.env.reset()
-    
+
     def seed(self, seed=None):
         if hasattr(self.env, 'seed'):
             self.env.seed(seed)
@@ -55,7 +59,7 @@ class VectorEnv(object):
         super().__init__()
         self.envs = [_() for _ in env_fns]
         self._reset_after_done = kwargs.get('reset_after_done', False)
-        
+
     def __len__(self):
         return len(self.envs)
 
@@ -89,12 +93,15 @@ class VectorEnv(object):
 class SubprocVectorEnv(object):
     """docstring for SubProcVectorEnv"""
     def __init__(self, env_fns, **kwargs):
+
         super().__init__()
         self.env_num = len(env_fns)
         self.closed = False
         self.parent_remote, self.child_remote = zip(*[Pipe() for _ in range(self.env_num)])
-        self.processes = [Process(target=worker, args=(parent, child, CloudpickleWrapper(env_fn), kwargs), daemon=True)
-            for (parent, child, env_fn) in zip(self.parent_remote, self.child_remote, env_fns)]
+        self.processes = [
+            Process(target=self.worker, args=(parent, child, CloudpickleWrapper(env_fn), kwargs), daemon=True)
+            for (parent, child, env_fn) in zip(self.parent_remote, self.child_remote, env_fns)
+        ]
         for p in self.processes:
             p.start()
         for c in self.child_remote:
@@ -102,27 +109,27 @@ class SubprocVectorEnv(object):
 
     def __len__(self):
         return self.env_num
-        
-    def worker(parent, p, env_fn_wrapper, **kwargs):
+
+    def worker(self, parent, p, env_fn_wrapper, **kwargs):
         reset_after_done = kwargs.get('reset_after_done', True)
         parent.close()
         env = env_fn_wrapper.data()
         while True:
             cmd, data = p.recv()
-            if cmd is 'step':
+            if cmd == 'step':
                 obs, rew, done, info = env.step(data)
                 if reset_after_done and done:
                     # s_ is useless when episode finishes
                     obs = env.reset()
                 p.send([obs, rew, done, info])
-            elif cmd is 'reset':
+            elif cmd == 'reset':
                 p.send(env.reset())
-            elif cmd is 'close':
+            elif cmd == 'close':
                 p.close()
                 break
-            elif cmd is 'render':
+            elif cmd == 'render':
                 p.send(env.render())
-            elif cmd is 'seed':
+            elif cmd == 'seed':
                 p.send(env.seed(data))
             else:
                 raise NotImplementedError
@@ -161,7 +168,6 @@ class SubprocVectorEnv(object):
         self.closed = True
         for p in self.processes:
             p.join()
-
 
 
 class RayVectorEnv(object):

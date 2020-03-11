@@ -20,7 +20,7 @@ class ReplayBuffer(object):
                 self.__dict__[name] = np.zeros([self._maxsize, *inst.shape])
             elif isinstance(inst, dict):
                 self.__dict__[name] = np.array([{} for _ in range(self._maxsize)])
-            else: # assume `inst` is a number
+            else:  # assume `inst` is a number
                 self.__dict__[name] = np.zeros([self._maxsize])
         self.__dict__[name][self._index] = inst
 
@@ -46,15 +46,21 @@ class ReplayBuffer(object):
 
     def sample(self, batch_size):
         indice = self.sample_index(batch_size)
-        return Batch(obs=self.obs[indice], act=self.act[indice], rew=self.rew[indice], 
-            done=self.done[indice], obs_next=self.obs_next[indice], info=self.info[indice])
+        return Batch(
+            obs=self.obs[indice],
+            act=self.act[indice],
+            rew=self.rew[indice],
+            done=self.done[indice],
+            obs_next=self.obs_next[indice],
+            info=self.info[indice]
+        )
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
     """docstring for PrioritizedReplayBuffer"""
     def __init__(self, size):
         super().__init__(size)
-    
+
     def add(self, obs, act, rew, done, obs_next, info={}, weight=None):
         raise NotImplementedError
 
