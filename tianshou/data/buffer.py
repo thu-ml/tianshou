@@ -7,7 +7,7 @@ class ReplayBuffer(object):
     def __init__(self, size):
         super().__init__()
         self._maxsize = size
-        self._index = self._size = 0
+        self.reset()
 
     def __len__(self):
         return self._size
@@ -45,7 +45,7 @@ class ReplayBuffer(object):
         return np.random.choice(self._size, batch_size)
 
     def sample(self, batch_size):
-        indice = self.sample_index(batch_size)
+        indice = self.sample_indice(batch_size)
         return Batch(
             obs=self.obs[indice],
             act=self.act[indice],

@@ -80,6 +80,8 @@ def test_vecenv(verbose=False, size=10, num=8, sleep=0.001):
                 e.step([a] * num)
             t[i] = time.time() - t[i]
         print(f'VectorEnv: {t[0]:.6f}s\nSubprocVectorEnv: {t[1]:.6f}s\nRayVectorEnv: {t[2]:.6f}s')
+    for v in venv:
+        v.close()
 
 
 if __name__ == '__main__':
