@@ -50,7 +50,10 @@ class FrameStack(EnvWrapper):
         return self._get_obs()
 
     def _get_obs(self):
-        return np.concatenate(self._frames, axis=-1)
+        try:
+            return np.concatenate(self._frames, axis=-1)
+        except ValueError:
+            return np.stack(self._frames, axis=-1)
 
 
 class VectorEnv(object):
@@ -177,11 +180,10 @@ class RayVectorEnv(object):
         self.env_num = len(env_fns)
         self._reset_after_done = kwargs.get('reset_after_done', False)
         try:
-            import ray
-        except ImportError:
+            if not ray.is_initialized():
+                ray.init()
+        except NameError:
             raise ImportError('Please install ray to support VectorEnv: pip3 install ray -U')
-        if not ray.is_initialized():
-            ray.init()
         self.envs = [ray.remote(EnvWrapper).options(num_cpus=0).remote(e()) for e in env_fns]
 
     def __len__(self):
