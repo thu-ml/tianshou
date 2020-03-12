@@ -40,12 +40,20 @@ class ReplayBuffer(object):
 
     def reset(self):
         self._index = self._size = 0
+        self.indice = []
 
     def sample_indice(self, batch_size):
-        return np.random.choice(self._size, batch_size)
+        if batch_size > 0:
+            self.indice = np.random.choice(self._size, batch_size)
+        else:
+            self.indice = np.arange(self._size)
+        return self.indice
 
-    def sample(self, batch_size):
-        indice = self.sample_indice(batch_size)
+    def sample(self, batch_size, indice=None):
+        if indice is None:
+            indice = self.sample_indice(batch_size)
+        else:
+            self.indice = indice
         return Batch(
             obs=self.obs[indice],
             act=self.act[indice],

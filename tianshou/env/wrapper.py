@@ -1,5 +1,6 @@
 import numpy as np
 from collections import deque
+from abc import ABC, abstractmethod
 from multiprocessing import Process, Pipe
 try:
     import ray
@@ -56,13 +57,18 @@ class FrameStack(EnvWrapper):
             return np.stack(self._frames, axis=-1)
 
 
-class VectorEnv(object):
+class BaseVectorEnv(ABC):
+    def __init__(self):
+        pass
+
+
+class VectorEnv(BaseVectorEnv):
     """docstring for VectorEnv"""
-    def __init__(self, env_fns, **kwargs):
+    def __init__(self, env_fns, reset_after_done=False):
         super().__init__()
         self.envs = [_() for _ in env_fns]
         self.env_num = len(self.envs)
-        self._reset_after_done = kwargs.get('reset_after_done', False)
+        self._reset_after_done = reset_after_done
 
     def __len__(self):
         return len(self.envs)
@@ -97,8 +103,7 @@ class VectorEnv(object):
             e.close()
 
 
-def worker(parent, p, env_fn_wrapper, kwargs):
-    reset_after_done = kwargs.get('reset_after_done', True)
+def worker(parent, p, env_fn_wrapper, reset_after_done):
     parent.close()
     env = env_fn_wrapper.data()
     while True:
@@ -115,22 +120,22 @@ def worker(parent, p, env_fn_wrapper, kwargs):
             p.close()
             break
         elif cmd == 'render':
-            p.send(env.render())
+            p.send(env.render() if hasattr(env, 'render') else None)
         elif cmd == 'seed':
-            p.send(env.seed(data))
+            p.send(env.seed(data) if hasattr(env, 'seed') else None)
         else:
             raise NotImplementedError
 
 
-class SubprocVectorEnv(object):
+class SubprocVectorEnv(BaseVectorEnv):
     """docstring for SubProcVectorEnv"""
-    def __init__(self, env_fns, **kwargs):
+    def __init__(self, env_fns, reset_after_done=False):
         super().__init__()
         self.env_num = len(env_fns)
         self.closed = False
         self.parent_remote, self.child_remote = zip(*[Pipe() for _ in range(self.env_num)])
         self.processes = [
-            Process(target=worker, args=(parent, child, CloudpickleWrapper(env_fn), kwargs), daemon=True)
+            Process(target=worker, args=(parent, child, CloudpickleWrapper(env_fn), reset_after_done), daemon=True)
             for (parent, child, env_fn) in zip(self.parent_remote, self.child_remote, env_fns)
         ]
         for p in self.processes:
@@ -178,12 +183,12 @@ class SubprocVectorEnv(object):
             p.join()
 
 
-class RayVectorEnv(object):
+class RayVectorEnv(BaseVectorEnv):
     """docstring for RayVectorEnv"""
-    def __init__(self, env_fns, **kwargs):
+    def __init__(self, env_fns, reset_after_done=False):
         super().__init__()
         self.env_num = len(env_fns)
-        self._reset_after_done = kwargs.get('reset_after_done', False)
+        self._reset_after_done = reset_after_done
         try:
             if not ray.is_initialized():
                 ray.init()
@@ -213,6 +218,8 @@ class RayVectorEnv(object):
         return np.stack([ray.get(r) for r in result_obj])
 
     def seed(self, seed=None):
+        if not hasattr(self.envs[0], 'seed'):
+            return
         if np.isscalar(seed) or seed is None:
             seed = [seed for _ in range(self.env_num)]
         result_obj = [e.seed.remote(s) for e, s in zip(self.envs, seed)]
@@ -220,6 +227,8 @@ class RayVectorEnv(object):
             ray.get(r)
 
     def render(self):
+        if not hasattr(self.envs[0], 'render'):
+            return
         result_obj = [e.render.remote() for e in self.envs]
         for r in result_obj:
             ray.get(r)
