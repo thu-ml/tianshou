@@ -58,18 +58,18 @@ class FrameStack(EnvWrapper):
 
 
 class BaseVectorEnv(ABC):
-    def __init__(self):
-        pass
+    def __init__(self, env_fns, reset_after_done):
+        self._env_fns = env_fns
+        self.env_num = len(env_fns)
+        self._reset_after_done = reset_after_done
 
 
 class VectorEnv(BaseVectorEnv):
     """docstring for VectorEnv"""
 
     def __init__(self, env_fns, reset_after_done=False):
-        super().__init__()
+        super().__init__(env_fns, reset_after_done)
         self.envs = [_() for _ in env_fns]
-        self.env_num = len(self.envs)
-        self._reset_after_done = reset_after_done
 
     def __len__(self):
         return len(self.envs)
@@ -132,8 +132,7 @@ class SubprocVectorEnv(BaseVectorEnv):
     """docstring for SubProcVectorEnv"""
 
     def __init__(self, env_fns, reset_after_done=False):
-        super().__init__()
-        self.env_num = len(env_fns)
+        super().__init__(env_fns, reset_after_done)
         self.closed = False
         self.parent_remote, self.child_remote = \
             zip(*[Pipe() for _ in range(self.env_num)])
@@ -193,9 +192,7 @@ class RayVectorEnv(BaseVectorEnv):
     """docstring for RayVectorEnv"""
 
     def __init__(self, env_fns, reset_after_done=False):
-        super().__init__()
-        self.env_num = len(env_fns)
-        self._reset_after_done = reset_after_done
+        super().__init__(env_fns, reset_after_done)
         try:
             if not ray.is_initialized():
                 ray.init()

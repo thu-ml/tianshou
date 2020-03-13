@@ -9,7 +9,7 @@ class BasePolicy(ABC):
 
     @abstractmethod
     def act(self, batch, hidden_state=None):
-        # return {policy, action, hidden}
+        # return Batch(policy, action, hidden)
         pass
 
     def train(self):

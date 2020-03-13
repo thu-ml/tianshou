@@ -25,5 +25,5 @@ class Batch(object):
                 self.__dict__[k] += batch.__dict__[k]
             else:
                 raise TypeError(
-                    'No support append method with {} in class Batch.'
+                    'Do not support append with type {} in class Batch.'
                     .format(type(batch.__dict__[k])))

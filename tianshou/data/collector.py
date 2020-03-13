@@ -21,7 +21,7 @@ class Collector(object):
             self.env_num = len(env)
             if isinstance(self.buffer, list):
                 assert len(self.buffer) == self.env_num,\
-                    'Data buffer number does not match the input env number.'
+                    '# of data buffer does not match the # of input env.'
             elif isinstance(self.buffer, ReplayBuffer):
                 self.buffer = [deepcopy(buffer) for _ in range(self.env_num)]
             else:
