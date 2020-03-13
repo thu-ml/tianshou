@@ -4,6 +4,7 @@ from tianshou.data.batch import Batch
 
 class ReplayBuffer(object):
     """docstring for ReplayBuffer"""
+
     def __init__(self, size):
         super().__init__()
         self._maxsize = size
@@ -19,7 +20,8 @@ class ReplayBuffer(object):
             if isinstance(inst, np.ndarray):
                 self.__dict__[name] = np.zeros([self._maxsize, *inst.shape])
             elif isinstance(inst, dict):
-                self.__dict__[name] = np.array([{} for _ in range(self._maxsize)])
+                self.__dict__[name] = np.array(
+                    [{} for _ in range(self._maxsize)])
             else:  # assume `inst` is a number
                 self.__dict__[name] = np.zeros([self._maxsize])
         self.__dict__[name][self._index] = inst
@@ -28,7 +30,8 @@ class ReplayBuffer(object):
         '''
         weight: importance weights, disabled here
         '''
-        assert isinstance(info, dict), 'You should return a dict in the last argument of env.step function.'
+        assert isinstance(info, dict),\
+            'You should return a dict in the last argument of env.step().'
         self._add_to_buffer('obs', obs)
         self._add_to_buffer('act', act)
         self._add_to_buffer('rew', rew)
@@ -42,18 +45,11 @@ class ReplayBuffer(object):
         self._index = self._size = 0
         self.indice = []
 
-    def sample_indice(self, batch_size):
+    def sample(self, batch_size):
         if batch_size > 0:
-            self.indice = np.random.choice(self._size, batch_size)
+            indice = np.random.choice(self._size, batch_size)
         else:
-            self.indice = np.arange(self._size)
-        return self.indice
-
-    def sample(self, batch_size, indice=None):
-        if indice is None:
-            indice = self.sample_indice(batch_size)
-        else:
-            self.indice = indice
+            indice = np.arange(self._size)
         return Batch(
             obs=self.obs[indice],
             act=self.act[indice],
@@ -61,11 +57,12 @@ class ReplayBuffer(object):
             done=self.done[indice],
             obs_next=self.obs_next[indice],
             info=self.info[indice]
-        )
+        ), indice
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
     """docstring for PrioritizedReplayBuffer"""
+
     def __init__(self, size):
         super().__init__(size)
 

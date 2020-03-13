@@ -42,7 +42,7 @@ setup(
         'tqdm',
         'numpy',
         'torch',
-        'cloudpickle'
+        'cloudpickle',
         'tensorboard',
     ],
 )

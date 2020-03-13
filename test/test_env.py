@@ -79,7 +79,9 @@ def test_vecenv(verbose=False, size=10, num=8, sleep=0.001):
             for a in action_list:
                 e.step([a] * num)
             t[i] = time.time() - t[i]
-        print(f'VectorEnv: {t[0]:.6f}s\nSubprocVectorEnv: {t[1]:.6f}s\nRayVectorEnv: {t[2]:.6f}s')
+        print(f'VectorEnv: {t[0]:.6f}s')
+        print(f'SubprocVectorEnv: {t[1]:.6f}s')
+        print(f'RayVectorEnv: {t[2]:.6f}s')
     for v in venv:
         v.close()
 

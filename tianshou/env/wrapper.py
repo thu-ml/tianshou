@@ -1,6 +1,6 @@
 import numpy as np
+from abc import ABC
 from collections import deque
-from abc import ABC, abstractmethod
 from multiprocessing import Process, Pipe
 try:
     import ray
@@ -64,6 +64,7 @@ class BaseVectorEnv(ABC):
 
 class VectorEnv(BaseVectorEnv):
     """docstring for VectorEnv"""
+
     def __init__(self, env_fns, reset_after_done=False):
         super().__init__()
         self.envs = [_() for _ in env_fns]
@@ -129,14 +130,19 @@ def worker(parent, p, env_fn_wrapper, reset_after_done):
 
 class SubprocVectorEnv(BaseVectorEnv):
     """docstring for SubProcVectorEnv"""
+
     def __init__(self, env_fns, reset_after_done=False):
         super().__init__()
         self.env_num = len(env_fns)
         self.closed = False
-        self.parent_remote, self.child_remote = zip(*[Pipe() for _ in range(self.env_num)])
+        self.parent_remote, self.child_remote = \
+            zip(*[Pipe() for _ in range(self.env_num)])
         self.processes = [
-            Process(target=worker, args=(parent, child, CloudpickleWrapper(env_fn), reset_after_done), daemon=True)
-            for (parent, child, env_fn) in zip(self.parent_remote, self.child_remote, env_fns)
+            Process(target=worker, args=(
+                    parent, child,
+                    CloudpickleWrapper(env_fn), reset_after_done), daemon=True)
+            for (parent, child, env_fn) in zip(
+                self.parent_remote, self.child_remote, env_fns)
         ]
         for p in self.processes:
             p.start()
@@ -185,6 +191,7 @@ class SubprocVectorEnv(BaseVectorEnv):
 
 class RayVectorEnv(BaseVectorEnv):
     """docstring for RayVectorEnv"""
+
     def __init__(self, env_fns, reset_after_done=False):
         super().__init__()
         self.env_num = len(env_fns)
@@ -193,8 +200,11 @@ class RayVectorEnv(BaseVectorEnv):
             if not ray.is_initialized():
                 ray.init()
         except NameError:
-            raise ImportError('Please install ray to support VectorEnv: pip3 install ray -U')
-        self.envs = [ray.remote(EnvWrapper).options(num_cpus=0).remote(e()) for e in env_fns]
+            raise ImportError(
+                'Please install ray to support VectorEnv: pip3 install ray -U')
+        self.envs = [
+            ray.remote(EnvWrapper).options(num_cpus=0).remote(e())
+            for e in env_fns]
 
     def __len__(self):
         return self.env_num

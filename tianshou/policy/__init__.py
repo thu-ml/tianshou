@@ -1,3 +1,5 @@
-from tianshou.policy import BasePolicy
+from tianshou.policy.base import BasePolicy
 
-__all__ = ['BasePolicy']
+__all__ = [
+    'BasePolicy'
+]

@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 class BasePolicy(ABC):
     """docstring for BasePolicy"""
+
     def __init__(self):
         super().__init__()
 
@@ -21,8 +22,8 @@ class BasePolicy(ABC):
         pass
 
     @staticmethod
-    def process_fn(batch, buffer, index):
-        pass
+    def process_fn(batch, buffer, indice):
+        return batch
 
     def exploration(self):
         pass
