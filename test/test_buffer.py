@@ -14,7 +14,7 @@ def test_replaybuffer(size=10, bufsize=20):
         obs_next, rew, done, info = env.step(a)
         buf.add(obs, a, rew, done, obs_next, info)
         assert len(buf) == min(bufsize, i + 1), print(len(buf), i)
-    data, indice = buf.sample(4)
+    data, indice = buf.sample(bufsize * 2)
     assert (indice < len(buf)).all()
     assert (data.obs < size).all()
     assert (0 <= data.done).all() and (data.done <= 1).all()

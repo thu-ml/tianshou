@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 
 
@@ -8,8 +9,7 @@ class MovAvg(object):
         self.cache = []
 
     def add(self, x):
-        if hasattr(x, 'detach'):
-            # which means x is torch.Tensor (?)
+        if isinstance(x, torch.Tensor):
             x = x.detach().cpu().numpy()
         if x != np.inf:
             self.cache.append(x)

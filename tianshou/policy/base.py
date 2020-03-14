@@ -21,9 +21,11 @@ class BasePolicy(ABC):
     def reset(self):
         pass
 
-    @staticmethod
-    def process_fn(batch, buffer, indice):
+    def process_fn(self, batch, buffer, indice):
         return batch
+
+    def sync_weights(self):
+        pass
 
     def exploration(self):
         pass

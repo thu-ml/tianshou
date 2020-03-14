@@ -26,6 +26,12 @@ class ReplayBuffer(object):
                 self.__dict__[name] = np.zeros([self._maxsize])
         self.__dict__[name][self._index] = inst
 
+    def update(self, buffer):
+        for i in range(len(buffer)):
+            self.add(
+                buffer.obs[i], buffer.act[i], buffer.rew[i],
+                buffer.done[i], buffer.obs_next[i], buffer.info[i])
+
     def add(self, obs, act, rew, done, obs_next=0, info={}, weight=None):
         '''
         weight: importance weights, disabled here

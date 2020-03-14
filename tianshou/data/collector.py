@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 from copy import deepcopy
 
@@ -9,21 +10,26 @@ from tianshou.utils import MovAvg
 class Collector(object):
     """docstring for Collector"""
 
-    def __init__(self, policy, env, buffer):
+    def __init__(self, policy, env, buffer, contiguous=True):
         super().__init__()
         self.env = env
         self.env_num = 1
         self.buffer = buffer
         self.policy = policy
         self.process_fn = policy.process_fn
-        self.multi_env = isinstance(env, BaseVectorEnv)
-        if self.multi_env:
+        self._multi_env = isinstance(env, BaseVectorEnv)
+        self._multi_buf = False  # buf is a list
+        # need multiple cache buffers only if contiguous in one buffer
+        self._cached_buf = []
+        if self._multi_env:
             self.env_num = len(env)
             if isinstance(self.buffer, list):
                 assert len(self.buffer) == self.env_num,\
                     '# of data buffer does not match the # of input env.'
-            elif isinstance(self.buffer, ReplayBuffer):
-                self.buffer = [deepcopy(buffer) for _ in range(self.env_num)]
+                self._multi_buf = True
+            elif isinstance(self.buffer, ReplayBuffer) and contiguous:
+                self._cached_buf = [
+                    deepcopy(buffer) for _ in range(self.env_num)]
             else:
                 raise TypeError('The buffer in data collector is invalid!')
         self.reset_env()
@@ -34,7 +40,7 @@ class Collector(object):
         self.stat_length = MovAvg()
 
     def clear_buffer(self):
-        if self.multi_env:
+        if self._multi_buf:
             for b in self.buffer:
                 b.reset()
         else:
@@ -43,17 +49,24 @@ class Collector(object):
     def reset_env(self):
         self._obs = self.env.reset()
         self._act = self._rew = self._done = self._info = None
-        if self.multi_env:
+        if self._multi_env:
             self.reward = np.zeros(self.env_num)
             self.length = np.zeros(self.env_num)
         else:
             self.reward, self.length = 0, 0
+        for b in self._cached_buf:
+            b.reset()
+
+    def _make_batch(data):
+        if isinstance(data, np.ndarray):
+            return data[None]
+        else:
+            return [data]
 
     def collect(self, n_step=0, n_episode=0):
         assert sum([(n_step > 0), (n_episode > 0)]) == 1,\
             "One and only one collection number specification permitted!"
-        cur_step = 0
-        cur_episode = np.zeros(self.env_num) if self.multi_env else 0
+        cur_step, cur_episode = 0, 0
         while True:
             if self.multi_env:
                 batch_data = Batch(
@@ -61,41 +74,55 @@ class Collector(object):
                     done=self._done, obs_next=None, info=self._info)
             else:
                 batch_data = Batch(
-                    obs=[self._obs], act=[self._act], rew=[self._rew],
-                    done=[self._done], obs_next=None, info=[self._info])
+                    obs=self._make_batch(self._obs),
+                    act=self._make_batch(self._act),
+                    rew=self._make_batch(self._rew),
+                    done=self._make_batch(self._done),
+                    obs_next=None, info=self._make_batch(self._info))
             result = self.policy.act(batch_data, self.state)
-            self.state = result.state
+            self.state = result.state if hasattr(result, 'state') else None
             self._act = result.act
             obs_next, self._rew, self._done, self._info = self.env.step(
                 self._act)
-            cur_step += 1
             self.length += 1
             self.reward += self._rew
-            if self.multi_env:
+            if self._multi_env:
                 for i in range(self.env_num):
-                    if n_episode > 0 and \
-                            cur_episode[i] < n_episode or n_episode == 0:
-                        self.buffer[i].add(
-                            self._obs[i], self._act[i], self._rew[i],
-                            self._done[i], obs_next[i], self._info[i])
-                        if self._done[i]:
-                            cur_episode[i] += 1
-                            self.stat_reward.add(self.reward[i])
-                            self.stat_length.add(self.length[i])
-                            self.reward[i], self.length[i] = 0, 0
-                            if isinstance(self.state, list):
-                                self.state[i] = None
-                            else:
-                                self.state[i] = self.state[i] * 0
-                                if hasattr(self.state, 'detach'):
-                                    # remove ref in torch
-                                    self.state = self.state.detach()
-                if n_episode > 0 and (cur_episode >= n_episode).all():
+                    data = {
+                        'obs': self._obs[i], 'act': self._act[i],
+                        'rew': self._rew[i], 'done': self._done[i],
+                        'obs_next': obs_next[i], 'info': self._info[i]}
+                    if self._cached_buf:
+                        self._cached_buf[i].add(**data)
+                    elif self._multi_buf:
+                        self.buffer[i].add(**data)
+                        cur_step += 1
+                    else:
+                        self.buffer.add(**data)
+                        cur_step += 1
+                    if self._done[i]:
+                        cur_episode += 1
+                        self.stat_reward.add(self.reward[i])
+                        self.stat_length.add(self.length[i])
+                        self.reward[i], self.length[i] = 0, 0
+                        if self._cached_buf:
+                            self.buffer.update(self._cached_buf[i])
+                            cur_step += len(self._cached_buf[i])
+                            self._cached_buf[i].reset()
+                        if isinstance(self.state, list):
+                            self.state[i] = None
+                        else:
+                            self.state[i] = self.state[i] * 0
+                            if isinstance(self.state, torch.Tensor):
+                                # remove ref in torch (?)
+                                self.state = self.state.detach()
+                if n_episode > 0 and cur_episode >= n_episode:
                     break
             else:
                 self.buffer.add(
                     self._obs, self._act[0], self._rew,
                     self._done, obs_next, self._info)
+                cur_step += 1
                 if self._done:
                     cur_episode += 1
                     self.stat_reward.add(self.reward)
@@ -110,7 +137,7 @@ class Collector(object):
         self._obs = obs_next
 
     def sample(self, batch_size):
-        if self.multi_env:
+        if self._multi_buf:
             if batch_size > 0:
                 lens = [len(b) for b in self.buffer]
                 total = sum(lens)

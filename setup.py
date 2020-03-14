@@ -33,7 +33,7 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     keywords='reinforcement learning platform',
-    packages=find_packages(exclude=['tests', 'tests.*',
+    packages=find_packages(exclude=['test', 'test.*',
                                     'examples', 'examples.*',
                                     'docs', 'docs.*']),
     install_requires=[
