@@ -6,25 +6,21 @@ class BasePolicy(ABC):
 
     def __init__(self):
         super().__init__()
+        self.model = None
 
     @abstractmethod
-    def act(self, batch, hidden_state=None):
+    def __call__(self, batch, hidden_state=None):
         # return Batch(policy, action, hidden)
         pass
 
-    def train(self):
-        pass
-
-    def eval(self):
-        pass
-
-    def reset(self):
+    @abstractmethod
+    def learn(self, batch):
         pass
 
     def process_fn(self, batch, buffer, indice):
         return batch
 
-    def sync_weights(self):
+    def sync_weight(self):
         pass
 
     def exploration(self):

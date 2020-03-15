@@ -10,7 +10,7 @@ from tianshou.utils import MovAvg
 class Collector(object):
     """docstring for Collector"""
 
-    def __init__(self, policy, env, buffer, contiguous=True):
+    def __init__(self, policy, env, buffer, stat_size=100):
         super().__init__()
         self.env = env
         self.env_num = 1
@@ -19,27 +19,28 @@ class Collector(object):
         self.process_fn = policy.process_fn
         self._multi_env = isinstance(env, BaseVectorEnv)
         self._multi_buf = False  # buf is a list
-        # need multiple cache buffers only if contiguous in one buffer
+        # need multiple cache buffers only if storing in one buffer
         self._cached_buf = []
         if self._multi_env:
             self.env_num = len(env)
             if isinstance(self.buffer, list):
                 assert len(self.buffer) == self.env_num,\
-                    '# of data buffer does not match the # of input env.'
+                    'The number of data buffer does not match the number of '\
+                    'input env.'
                 self._multi_buf = True
-            elif isinstance(self.buffer, ReplayBuffer) and contiguous:
+            elif isinstance(self.buffer, ReplayBuffer):
                 self._cached_buf = [
                     deepcopy(buffer) for _ in range(self.env_num)]
             else:
                 raise TypeError('The buffer in data collector is invalid!')
         self.reset_env()
-        self.clear_buffer()
-        # state over batch is either a list, an np.ndarray, or torch.Tensor
+        self.reset_buffer()
+        # state over batch is either a list, an np.ndarray, or a torch.Tensor
         self.state = None
-        self.stat_reward = MovAvg()
-        self.stat_length = MovAvg()
+        self.stat_reward = MovAvg(stat_size)
+        self.stat_length = MovAvg(stat_size)
 
-    def clear_buffer(self):
+    def reset_buffer(self):
         if self._multi_buf:
             for b in self.buffer:
                 b.reset()
@@ -57,6 +58,18 @@ class Collector(object):
         for b in self._cached_buf:
             b.reset()
 
+    def seed(self, seed=None):
+        if hasattr(self.env, 'seed'):
+            self.env.seed(seed)
+
+    def render(self):
+        if hasattr(self.env, 'render'):
+            self.env.render()
+
+    def close(self):
+        if hasattr(self.env, 'close'):
+            self.env.close()
+
     def _make_batch(data):
         if isinstance(data, np.ndarray):
             return data[None]
@@ -66,9 +79,10 @@ class Collector(object):
     def collect(self, n_step=0, n_episode=0):
         assert sum([(n_step > 0), (n_episode > 0)]) == 1,\
             "One and only one collection number specification permitted!"
-        cur_step, cur_episode = 0, 0
+        cur_step = 0
+        cur_episode = np.zeros(self.env_num) if self._multi_env else 0
         while True:
-            if self.multi_env:
+            if self._multi_env:
                 batch_data = Batch(
                     obs=self._obs, act=self._act, rew=self._rew,
                     done=self._done, obs_next=None, info=self._info)
@@ -78,8 +92,9 @@ class Collector(object):
                     act=self._make_batch(self._act),
                     rew=self._make_batch(self._rew),
                     done=self._make_batch(self._done),
-                    obs_next=None, info=self._make_batch(self._info))
-            result = self.policy.act(batch_data, self.state)
+                    obs_next=None,
+                    info=self._make_batch(self._info))
+            result = self.policy(batch_data, self.state)
             self.state = result.state if hasattr(result, 'state') else None
             self._act = result.act
             obs_next, self._rew, self._done, self._info = self.env.step(
@@ -88,6 +103,9 @@ class Collector(object):
             self.reward += self._rew
             if self._multi_env:
                 for i in range(self.env_num):
+                    if not self.env.is_reset_after_done()\
+                            and cur_episode[i] > 0:
+                        continue
                     data = {
                         'obs': self._obs[i], 'act': self._act[i],
                         'rew': self._rew[i], 'done': self._done[i],
@@ -101,7 +119,7 @@ class Collector(object):
                         self.buffer.add(**data)
                         cur_step += 1
                     if self._done[i]:
-                        cur_episode += 1
+                        cur_episode[i] += 1
                         self.stat_reward.add(self.reward[i])
                         self.stat_length.add(self.length[i])
                         self.reward[i], self.length[i] = 0, 0
@@ -111,12 +129,12 @@ class Collector(object):
                             self._cached_buf[i].reset()
                         if isinstance(self.state, list):
                             self.state[i] = None
-                        else:
+                        elif self.state is not None:
                             self.state[i] = self.state[i] * 0
                             if isinstance(self.state, torch.Tensor):
-                                # remove ref in torch (?)
+                                # remove ref count in pytorch (?)
                                 self.state = self.state.detach()
-                if n_episode > 0 and cur_episode >= n_episode:
+                if n_episode > 0 and cur_episode.sum() >= n_episode:
                     break
             else:
                 self.buffer.add(
@@ -141,13 +159,13 @@ class Collector(object):
             if batch_size > 0:
                 lens = [len(b) for b in self.buffer]
                 total = sum(lens)
-                ib = np.random.choice(
+                batch_index = np.random.choice(
                     total, batch_size, p=np.array(lens) / total)
             else:
-                ib = np.array([])
+                batch_index = np.array([])
             batch_data = Batch()
             for i, b in enumerate(self.buffer):
-                cur_batch = (ib == i).sum()
+                cur_batch = (batch_index == i).sum()
                 if batch_size and cur_batch or batch_size <= 0:
                     batch, indice = b.sample(cur_batch)
                     batch = self.process_fn(batch, b, indice)

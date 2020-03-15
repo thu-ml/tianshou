@@ -1,6 +1,6 @@
 import numpy as np
-from abc import ABC
 from collections import deque
+from abc import ABC, abstractmethod
 from multiprocessing import Process, Pipe
 try:
     import ray
@@ -63,6 +63,32 @@ class BaseVectorEnv(ABC):
         self.env_num = len(env_fns)
         self._reset_after_done = reset_after_done
 
+    def is_reset_after_done(self):
+        return self._reset_after_done
+
+    def __len__(self):
+        return self.env_num
+
+    @abstractmethod
+    def reset(self):
+        pass
+
+    @abstractmethod
+    def step(self, action):
+        pass
+
+    @abstractmethod
+    def seed(self, seed=None):
+        pass
+
+    @abstractmethod
+    def render(self):
+        pass
+
+    @abstractmethod
+    def close(self):
+        pass
+
 
 class VectorEnv(BaseVectorEnv):
     """docstring for VectorEnv"""
@@ -70,9 +96,6 @@ class VectorEnv(BaseVectorEnv):
     def __init__(self, env_fns, reset_after_done=False):
         super().__init__(env_fns, reset_after_done)
         self.envs = [_() for _ in env_fns]
-
-    def __len__(self):
-        return len(self.envs)
 
     def reset(self):
         return np.stack([e.reset() for e in self.envs])
@@ -148,9 +171,6 @@ class SubprocVectorEnv(BaseVectorEnv):
         for c in self.child_remote:
             c.close()
 
-    def __len__(self):
-        return self.env_num
-
     def step(self, action):
         assert len(action) == self.env_num
         for p, a in zip(self.parent_remote, action):
@@ -202,9 +222,6 @@ class RayVectorEnv(BaseVectorEnv):
         self.envs = [
             ray.remote(EnvWrapper).options(num_cpus=0).remote(e())
             for e in env_fns]
-
-    def __len__(self):
-        return self.env_num
 
     def step(self, action):
         assert len(action) == self.env_num

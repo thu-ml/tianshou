@@ -21,3 +21,11 @@ class MovAvg(object):
         if len(self.cache) == 0:
             return 0
         return np.mean(self.cache)
+
+    def mean(self):
+        return self.get()
+
+    def std(self):
+        if len(self.cache) == 0:
+            return 0
+        return np.std(self.cache)

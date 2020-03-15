@@ -65,6 +65,16 @@ class ReplayBuffer(object):
             info=self.info[indice]
         ), indice
 
+    def __getitem__(self, index):
+        return Batch(
+            obs=self.obs[index],
+            act=self.act[index],
+            rew=self.rew[index],
+            done=self.done[index],
+            obs_next=self.obs_next[index],
+            info=self.info[index]
+        )
+
 
 class PrioritizedReplayBuffer(ReplayBuffer):
     """docstring for PrioritizedReplayBuffer"""
