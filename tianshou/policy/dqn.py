@@ -35,8 +35,10 @@ class DQNPolicy(BasePolicy, nn.Module):
         q, h = model(obs, hidden_state=hidden_state, info=batch.info)
         act = q.max(dim=1)[1].detach().cpu().numpy()
         # add eps to act
+        if eps is None:
+            eps = self.eps
         for i in range(len(q)):
-            if np.random.rand() < self.eps:
+            if np.random.rand() < eps:
                 act[i] = np.random.randint(q.shape[1])
         return Batch(Q=q, act=act, state=h)
 
@@ -66,7 +68,7 @@ class DQNPolicy(BasePolicy, nn.Module):
         terminal = (indice + self._n_step - 1) % len(buffer)
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-            a = self(buffer[terminal], input='obs_next').act
+            a = self(buffer[terminal], input='obs_next', eps=0).act
             target_q = self(
                 buffer[terminal], model='model_old', input='obs_next').Q
             if isinstance(target_q, torch.Tensor):

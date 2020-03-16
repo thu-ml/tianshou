@@ -13,7 +13,7 @@ class Batch(object):
         b = Batch()
         for k in self.__dict__.keys():
             if self.__dict__[k] is not None:
-                b.update(k=self.__dict__[k][index])
+                b.update(**{k: self.__dict__[k][index]})
         return b
 
     def update(self, **kwargs):

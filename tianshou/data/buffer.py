@@ -27,10 +27,14 @@ class ReplayBuffer(object):
         self.__dict__[name][self._index] = inst
 
     def update(self, buffer):
-        for i in range(len(buffer)):
+        i = begin = buffer._index % len(buffer)
+        while True:
             self.add(
                 buffer.obs[i], buffer.act[i], buffer.rew[i],
                 buffer.done[i], buffer.obs_next[i], buffer.info[i])
+            i = (i + 1) % len(buffer)
+            if i == begin:
+                break
 
     def add(self, obs, act, rew, done, obs_next=0, info={}, weight=None):
         '''

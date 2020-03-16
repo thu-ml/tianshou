@@ -1,4 +1,5 @@
 import gym
+import time
 import tqdm
 import torch
 import argparse
@@ -36,7 +37,7 @@ class Net(nn.Module):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--eps-test', type=float, default=0.05)
     parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
@@ -65,6 +66,7 @@ def test_dqn(args=get_args()):
     train_envs = SubprocVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)],
         reset_after_done=True)
+    # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)],
         reset_after_done=False)
@@ -124,11 +126,26 @@ def test_dqn(args=get_args()):
         if best_reward < result['reward']:
             best_reward = result['reward']
             best_epoch = epoch
-        print(f'Epoch #{epoch + 1} reward: {result["reward"]:.6f}, '
+        print(f'Epoch #{epoch + 1} test_reward: {result["reward"]:.6f}, '
               f'best_reward: {best_reward:.6f} in #{best_epoch}')
         if args.task == 'CartPole-v0' and best_reward >= 200:
             break
     assert best_reward >= 200
+    if __name__ == '__main__':
+        # let's watch its performance!
+        env = gym.make(args.task)
+        obs = env.reset()
+        done = False
+        total = 0
+        while not done:
+            q, _ = net([obs])
+            action = q.max(dim=1)[1]
+            obs, rew, done, info = env.step(action[0].detach().cpu().numpy())
+            total += rew
+            env.render()
+            time.sleep(1 / 100)
+        env.close()
+        print(f'Final test: {total}')
     return best_reward
 
 

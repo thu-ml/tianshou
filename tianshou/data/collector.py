@@ -1,3 +1,4 @@
+import time
 import torch
 import numpy as np
 from copy import deepcopy
@@ -70,13 +71,13 @@ class Collector(object):
         if hasattr(self.env, 'close'):
             self.env.close()
 
-    def _make_batch(data):
+    def _make_batch(self, data):
         if isinstance(data, np.ndarray):
             return data[None]
         else:
             return [data]
 
-    def collect(self, n_step=0, n_episode=0):
+    def collect(self, n_step=0, n_episode=0, render=0):
         assert sum([(n_step > 0), (n_episode > 0)]) == 1,\
             "One and only one collection number specification permitted!"
         cur_step = 0
@@ -98,7 +99,10 @@ class Collector(object):
             self.state = result.state if hasattr(result, 'state') else None
             self._act = result.act
             obs_next, self._rew, self._done, self._info = self.env.step(
-                self._act)
+                self._act if self._multi_env else self._act[0])
+            if render > 0:
+                self.env.render()
+                time.sleep(render)
             self.length += 1
             self.reward += self._rew
             if self._multi_env:
@@ -147,6 +151,7 @@ class Collector(object):
                     self.stat_length.add(self.length)
                     self.reward, self.length = 0, 0
                     self.state = None
+                    self._obs = self.env.reset()
                 if n_episode > 0 and cur_episode >= n_episode:
                     break
             if n_step > 0 and cur_step >= n_step:

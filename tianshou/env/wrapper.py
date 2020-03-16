@@ -62,6 +62,7 @@ class BaseVectorEnv(ABC):
         self._env_fns = env_fns
         self.env_num = len(env_fns)
         self._reset_after_done = reset_after_done
+        self._done = np.zeros(self.env_num)
 
     def is_reset_after_done(self):
         return self._reset_after_done
@@ -98,17 +99,26 @@ class VectorEnv(BaseVectorEnv):
         self.envs = [_() for _ in env_fns]
 
     def reset(self):
-        return np.stack([e.reset() for e in self.envs])
+        self._done = np.zeros(self.env_num)
+        self._obs = np.stack([e.reset() for e in self.envs])
+        return self._obs
 
     def step(self, action):
         assert len(action) == self.env_num
-        result = zip(*[e.step(a) for e, a in zip(self.envs, action)])
-        obs, rew, done, info = result
-        if self._reset_after_done and sum(done):
-            obs = np.stack(obs)
-            for i in np.where(done)[0]:
-                obs[i] = self.envs[i].reset()
-        return np.stack(obs), np.stack(rew), np.stack(done), np.stack(info)
+        result = []
+        for i, e in enumerate(self.envs):
+            if not self.is_reset_after_done() and self._done[i]:
+                result.append([
+                    self._obs[i], self._rew[i], self._done[i], self._info[i]])
+            else:
+                result.append(e.step(action[i]))
+        self._obs, self._rew, self._done, self._info = zip(*result)
+        if self.is_reset_after_done() and sum(self._done):
+            self._obs = np.stack(self._obs)
+            for i in np.where(self._done)[0]:
+                self._obs[i] = self.envs[i].reset()
+        return np.stack(self._obs), np.stack(self._rew),\
+            np.stack(self._done), np.stack(self._info)
 
     def seed(self, seed=None):
         if np.isscalar(seed) or seed is None:
@@ -130,15 +140,18 @@ class VectorEnv(BaseVectorEnv):
 def worker(parent, p, env_fn_wrapper, reset_after_done):
     parent.close()
     env = env_fn_wrapper.data()
+    done = False
     while True:
         cmd, data = p.recv()
         if cmd == 'step':
-            obs, rew, done, info = env.step(data)
+            if reset_after_done or not done:
+                obs, rew, done, info = env.step(data)
             if reset_after_done and done:
                 # s_ is useless when episode finishes
                 obs = env.reset()
             p.send([obs, rew, done, info])
         elif cmd == 'reset':
+            done = False
             p.send(env.reset())
         elif cmd == 'close':
             p.close()
@@ -225,21 +238,36 @@ class RayVectorEnv(BaseVectorEnv):
 
     def step(self, action):
         assert len(action) == self.env_num
-        result_obj = [e.step.remote(a) for e, a in zip(self.envs, action)]
-        obs, rew, done, info = zip(*[ray.get(r) for r in result_obj])
-        if self._reset_after_done and sum(done):
-            obs = np.stack(obs)
-            index = np.where(done)[0]
+        result_obj = []
+        for i, e in enumerate(self.envs):
+            if not self.is_reset_after_done() and self._done[i]:
+                result_obj.append(None)
+            else:
+                result_obj.append(e.step.remote(action[i]))
+        result = []
+        for i, r in enumerate(result_obj):
+            if r is None:
+                result.append([
+                    self._obs[i], self._rew[i], self._done[i], self._info[i]])
+            else:
+                result.append(ray.get(r))
+        self._obs, self._rew, self._done, self._info = zip(*result)
+        if self.is_reset_after_done() and sum(self._done):
+            self._obs = np.stack(self._obs)
+            index = np.where(self._done)[0]
             result_obj = []
             for i in range(len(index)):
                 result_obj.append(self.envs[index[i]].reset.remote())
             for i in range(len(index)):
-                obs[index[i]] = ray.get(result_obj[i])
-        return np.stack(obs), np.stack(rew), np.stack(done), np.stack(info)
+                self._obs[index[i]] = ray.get(result_obj[i])
+        return np.stack(self._obs), np.stack(self._rew),\
+            np.stack(self._done), np.stack(self._info)
 
     def reset(self):
+        self._done = np.zeros(self.env_num)
         result_obj = [e.reset.remote() for e in self.envs]
-        return np.stack([ray.get(r) for r in result_obj])
+        self._obs = np.stack([ray.get(r) for r in result_obj])
+        return self._obs
 
     def seed(self, seed=None):
         if not hasattr(self.envs[0], 'seed'):
