@@ -14,7 +14,7 @@ from tianshou.data import Collector, ReplayBuffer
 
 
 class Net(nn.Module):
-    def __init__(self, layer_num, state_shape, action_shape, device):
+    def __init__(self, layer_num, state_shape, action_shape, device='cpu'):
         super().__init__()
         self.device = device
         self.model = [
@@ -93,8 +93,9 @@ def test_dqn(args=get_args()):
     writer = SummaryWriter(args.logdir)
     best_epoch = -1
     best_reward = -1e10
-    for epoch in range(args.epoch):
-        desc = f"Epoch #{epoch + 1}"
+    start_time = time.time()
+    for epoch in range(1, 1 + args.epoch):
+        desc = f"Epoch #{epoch}"
         # train
         policy.train()
         policy.sync_weight()
@@ -102,9 +103,9 @@ def test_dqn(args=get_args()):
         with tqdm.trange(
                 0, args.step_per_epoch, desc=desc, **tqdm_config) as t:
             for _ in t:
-                training_collector.collect(n_step=args.collect_per_step)
+                result = training_collector.collect(
+                    n_step=args.collect_per_step)
                 global_step += 1
-                result = training_collector.stat()
                 loss = policy.learn(training_collector.sample(args.batch_size))
                 stat_loss.add(loss)
                 writer.add_scalar(
@@ -113,26 +114,34 @@ def test_dqn(args=get_args()):
                     'length', result['length'], global_step=global_step)
                 writer.add_scalar(
                     'loss', stat_loss.get(), global_step=global_step)
+                writer.add_scalar(
+                    'speed', result['speed'], global_step=global_step)
                 t.set_postfix(loss=f'{stat_loss.get():.6f}',
                               reward=f'{result["reward"]:.6f}',
-                              length=f'{result["length"]:.6f}')
+                              length=f'{result["length"]:.6f}',
+                              speed=f'{result["speed"]:.2f}')
         # eval
         test_collector.reset_env()
         test_collector.reset_buffer()
         policy.eval()
         policy.set_eps(args.eps_test)
-        test_collector.collect(n_episode=args.test_num)
-        result = test_collector.stat()
+        result = test_collector.collect(n_episode=args.test_num)
         if best_reward < result['reward']:
             best_reward = result['reward']
             best_epoch = epoch
-        print(f'Epoch #{epoch + 1} test_reward: {result["reward"]:.6f}, '
+        print(f'Epoch #{epoch}: test_reward: {result["reward"]:.6f}, '
               f'best_reward: {best_reward:.6f} in #{best_epoch}')
         if args.task == 'CartPole-v0' and best_reward >= 200:
             break
     assert best_reward >= 200
     if __name__ == '__main__':
-        # let's watch its performance!
+        train_cnt = training_collector.collect_step
+        test_cnt = test_collector.collect_step
+        duration = time.time() - start_time
+        print(f'Collect {train_cnt} training frame and {test_cnt} test frame '
+              f'in {duration:.2f}s, '
+              f'speed: {(train_cnt + test_cnt) / duration:.2f}it/s')
+        # Let's watch its performance!
         env = gym.make(args.task)
         obs = env.reset()
         done = False
@@ -143,10 +152,9 @@ def test_dqn(args=get_args()):
             obs, rew, done, info = env.step(action[0].detach().cpu().numpy())
             total += rew
             env.render()
-            time.sleep(1 / 100)
+            time.sleep(1 / 35)
         env.close()
         print(f'Final test: {total}')
-    return best_reward
 
 
 if __name__ == '__main__':

@@ -10,7 +10,7 @@ class BasePolicy(ABC):
 
     @abstractmethod
     def __call__(self, batch, hidden_state=None):
-        # return Batch(policy, action, hidden)
+        # return Batch(act=np.array(), state=None, ...)
         pass
 
     @abstractmethod
@@ -21,7 +21,4 @@ class BasePolicy(ABC):
         return batch
 
     def sync_weight(self):
-        pass
-
-    def exploration(self):
         pass

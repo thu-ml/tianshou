@@ -15,6 +15,7 @@ class Collector(object):
         super().__init__()
         self.env = env
         self.env_num = 1
+        self.collect_step = 0
         self.buffer = buffer
         self.policy = policy
         self.process_fn = policy.process_fn
@@ -40,6 +41,7 @@ class Collector(object):
         self.state = None
         self.stat_reward = MovAvg(stat_size)
         self.stat_length = MovAvg(stat_size)
+        self.stat_speed = MovAvg(stat_size)
 
     def reset_buffer(self):
         if self._multi_buf:
@@ -78,6 +80,8 @@ class Collector(object):
             return [data]
 
     def collect(self, n_step=0, n_episode=0, render=0):
+        start_time = time.time()
+        start_step = self.collect_step
         assert sum([(n_step > 0), (n_episode > 0)]) == 1,\
             "One and only one collection number specification permitted!"
         cur_step = 0
@@ -119,9 +123,11 @@ class Collector(object):
                     elif self._multi_buf:
                         self.buffer[i].add(**data)
                         cur_step += 1
+                        self.collect_step += 1
                     else:
                         self.buffer.add(**data)
                         cur_step += 1
+                        self.collect_step += 1
                     if self._done[i]:
                         cur_episode[i] += 1
                         self.stat_reward.add(self.reward[i])
@@ -130,6 +136,7 @@ class Collector(object):
                         if self._cached_buf:
                             self.buffer.update(self._cached_buf[i])
                             cur_step += len(self._cached_buf[i])
+                            self.collect_step += len(self._cached_buf[i])
                             self._cached_buf[i].reset()
                         if isinstance(self.state, list):
                             self.state[i] = None
@@ -145,6 +152,7 @@ class Collector(object):
                     self._obs, self._act[0], self._rew,
                     self._done, obs_next, self._info)
                 cur_step += 1
+                self.collect_step += 1
                 if self._done:
                     cur_episode += 1
                     self.stat_reward.add(self.reward)
@@ -158,6 +166,13 @@ class Collector(object):
                 break
             self._obs = obs_next
         self._obs = obs_next
+        self.stat_speed.add((self.collect_step - start_step) / (
+            time.time() - start_time))
+        return {
+            'reward': self.stat_reward.get(),
+            'length': self.stat_length.get(),
+            'speed': self.stat_speed.get(),
+        }
 
     def sample(self, batch_size):
         if self._multi_buf:
@@ -179,9 +194,3 @@ class Collector(object):
             batch_data, indice = self.buffer.sample(batch_size)
             batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data
-
-    def stat(self):
-        return {
-            'reward': self.stat_reward.get(),
-            'length': self.stat_length.get(),
-        }
