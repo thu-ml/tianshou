@@ -11,7 +11,7 @@ class PGPolicy(BasePolicy, nn.Module):
     """docstring for PGPolicy"""
 
     def __init__(self, model, optim, dist_fn=torch.distributions.Categorical,
-                 discount_factor=0.99, normalized_reward=True):
+                 discount_factor=0.99):
         super().__init__()
         self.model = model
         self.optim = optim
@@ -19,15 +19,10 @@ class PGPolicy(BasePolicy, nn.Module):
         self._eps = np.finfo(np.float32).eps.item()
         assert 0 <= discount_factor <= 1, 'discount_factor should in [0, 1]'
         self._gamma = discount_factor
-        self._rew_norm = normalized_reward
 
     def process_fn(self, batch, buffer, indice):
-        batch_size = len(batch.rew)
-        returns = self._vanilla_returns(batch, batch_size)
-        # returns = self._vectorized_returns(batch, batch_size)
-        returns = returns - returns.mean()
-        if self._rew_norm:
-            returns = returns / (returns.std() + self._eps)
+        returns = self._vanilla_returns(batch)
+        # returns = self._vectorized_returns(batch)
         batch.update(returns=returns)
         return batch
 
@@ -40,6 +35,8 @@ class PGPolicy(BasePolicy, nn.Module):
 
     def learn(self, batch, batch_size=None):
         losses = []
+        batch.returns = (batch.returns - batch.returns.mean()) \
+            / (batch.returns.std() + self._eps)
         for b in batch.split(batch_size):
             self.optim.zero_grad()
             dist = self(b).dist
@@ -51,21 +48,22 @@ class PGPolicy(BasePolicy, nn.Module):
             losses.append(loss.detach().cpu().numpy())
         return losses
 
-    def _vanilla_returns(self, batch, batch_size):
+    def _vanilla_returns(self, batch):
         returns = batch.rew[:]
         last = 0
-        for i in range(batch_size - 1, -1, -1):
+        for i in range(len(returns) - 1, -1, -1):
             if not batch.done[i]:
                 returns[i] += self._gamma * last
             last = returns[i]
         return returns
 
-    def _vectorized_returns(self, batch, batch_size):
+    def _vectorized_returns(self, batch):
         # according to my tests, it is slower than vanilla
         # import scipy.signal
         convolve = np.convolve
         # convolve = scipy.signal.convolve
         rew = batch.rew[::-1]
+        batch_size = len(rew)
         gammas = self._gamma ** np.arange(batch_size)
         c = convolve(rew, gammas)[:batch_size]
         T = np.where(batch.done[::-1])[0]

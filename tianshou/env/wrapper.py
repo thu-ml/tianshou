@@ -143,27 +143,31 @@ def worker(parent, p, env_fn_wrapper, reset_after_done):
     parent.close()
     env = env_fn_wrapper.data()
     done = False
-    while True:
-        cmd, data = p.recv()
-        if cmd == 'step':
-            if reset_after_done or not done:
-                obs, rew, done, info = env.step(data)
-            if reset_after_done and done:
-                # s_ is useless when episode finishes
-                obs = env.reset()
-            p.send([obs, rew, done, info])
-        elif cmd == 'reset':
-            done = False
-            p.send(env.reset())
-        elif cmd == 'close':
-            p.close()
-            break
-        elif cmd == 'render':
-            p.send(env.render() if hasattr(env, 'render') else None)
-        elif cmd == 'seed':
-            p.send(env.seed(data) if hasattr(env, 'seed') else None)
-        else:
-            raise NotImplementedError
+    try:
+        while True:
+            cmd, data = p.recv()
+            if cmd == 'step':
+                if reset_after_done or not done:
+                    obs, rew, done, info = env.step(data)
+                if reset_after_done and done:
+                    # s_ is useless when episode finishes
+                    obs = env.reset()
+                p.send([obs, rew, done, info])
+            elif cmd == 'reset':
+                done = False
+                p.send(env.reset())
+            elif cmd == 'close':
+                p.close()
+                break
+            elif cmd == 'render':
+                p.send(env.render() if hasattr(env, 'render') else None)
+            elif cmd == 'seed':
+                p.send(env.seed(data) if hasattr(env, 'seed') else None)
+            else:
+                p.close()
+                raise NotImplementedError
+    except KeyboardInterrupt:
+        p.close()
 
 
 class SubprocVectorEnv(BaseVectorEnv):
