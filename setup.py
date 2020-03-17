@@ -41,8 +41,8 @@ setup(
         'gym',
         'tqdm',
         'numpy',
-        'torch>=1.2.0',  # for supporting tensorboard
         'cloudpickle',
         'tensorboard',
+        'torch>=1.2.0',  # for supporting tensorboard
     ],
 )

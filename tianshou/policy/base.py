@@ -8,17 +8,17 @@ class BasePolicy(ABC):
         super().__init__()
         self.model = None
 
-    @abstractmethod
-    def __call__(self, batch, hidden_state=None):
-        # return Batch(act=np.array(), state=None, ...)
-        pass
-
-    @abstractmethod
-    def learn(self, batch):
-        pass
-
     def process_fn(self, batch, buffer, indice):
         return batch
+
+    @abstractmethod
+    def __call__(self, batch, state=None):
+        # return Batch(logits=..., act=np.array(), state=None, ...)
+        pass
+
+    @abstractmethod
+    def learn(self, batch, batch_size=None):
+        pass
 
     def sync_weight(self):
         pass

@@ -11,7 +11,11 @@ class MovAvg(object):
     def add(self, x):
         if isinstance(x, torch.Tensor):
             x = x.detach().cpu().numpy()
-        if x != np.inf:
+        if isinstance(x, list):
+            for _ in x:
+                if _ != np.inf:
+                    self.cache.append(_)
+        elif x != np.inf:
             self.cache.append(x)
         if self.size > 0 and len(self.cache) > self.size:
             self.cache = self.cache[-self.size:]

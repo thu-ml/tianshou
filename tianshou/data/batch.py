@@ -38,3 +38,14 @@ class Batch(object):
                 raise TypeError(
                     'No support for append with type {} in class Batch.'
                     .format(type(batch.__dict__[k])))
+
+    def split(self, size=None):
+        length = min([
+            len(self.__dict__[k]) for k in self.__dict__.keys()
+            if self.__dict__[k] is not None])
+        if size is None:
+            size = length
+        temp = 0
+        while temp < length:
+            yield self[temp:temp + size]
+            temp += size

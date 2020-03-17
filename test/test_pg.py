@@ -7,10 +7,67 @@ import numpy as np
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import DQNPolicy
+from tianshou.policy import PGPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils import tqdm_config, MovAvg
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Batch, Collector, ReplayBuffer
+
+
+def compute_return_base(batch, aa=None, bb=None, gamma=0.1):
+    returns = np.zeros_like(batch.rew)
+    last = 0
+    for i in reversed(range(len(batch.rew))):
+        returns[i] = batch.rew[i]
+        if not batch.done[i]:
+            returns[i] += last * gamma
+        last = returns[i]
+    batch.update(returns=returns)
+    return batch
+
+
+def test_fn(size=2560):
+    policy = PGPolicy(
+        None, None, None, discount_factor=0.1, normalized_reward=False)
+    fn = policy.process_fn
+    # fn = compute_return_base
+    batch = Batch(
+        done=np.array([1, 0, 0, 1, 0, 1, 0, 1.]),
+        rew=np.array([0, 1, 2, 3, 4, 5, 6, 7.]),
+    )
+    batch = fn(batch, None, None)
+    ans = np.array([0, 1.23, 2.3, 3, 4.5, 5, 6.7, 7])
+    ans -= ans.mean()
+    assert abs(batch.returns - ans).sum() <= 1e-5
+    batch = Batch(
+        done=np.array([0, 1, 0, 1, 0, 1, 0.]),
+        rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
+    )
+    batch = fn(batch, None, None)
+    ans = np.array([7.6, 6, 1.2, 2, 3.4, 4, 5])
+    ans -= ans.mean()
+    assert abs(batch.returns - ans).sum() <= 1e-5
+    batch = Batch(
+        done=np.array([0, 1, 0, 1, 0, 0, 1.]),
+        rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
+    )
+    batch = fn(batch, None, None)
+    ans = np.array([7.6, 6, 1.2, 2, 3.45, 4.5, 5])
+    ans -= ans.mean()
+    assert abs(batch.returns - ans).sum() <= 1e-5
+    if __name__ == '__main__':
+        batch = Batch(
+            done=np.random.randint(100, size=size) == 0,
+            rew=np.random.random(size),
+        )
+        cnt = 3000
+        t = time.time()
+        for _ in range(cnt):
+            compute_return_base(batch)
+        print(f'vanilla: {(time.time() - t) / cnt}')
+        t = time.time()
+        for _ in range(cnt):
+            policy.process_fn(batch, None, None)
+        print(f'policy: {(time.time() - t) / cnt}')
 
 
 class Net(nn.Module):
@@ -28,23 +85,20 @@ class Net(nn.Module):
     def forward(self, s, **kwargs):
         s = torch.tensor(s, device=self.device, dtype=torch.float)
         batch = s.shape[0]
-        q = self.model(s.view(batch, -1))
-        return q, None
+        logits = self.model(s.view(batch, -1))
+        return logits, None
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
     parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--eps-test', type=float, default=0.05)
-    parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--n-step', type=int, default=1)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=320)
-    parser.add_argument('--collect-per-step', type=int, default=10)
+    parser.add_argument('--collect-per-step', type=int, default=5)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=3)
     parser.add_argument('--training-num', type=int, default=8)
@@ -57,7 +111,7 @@ def get_args():
     return args
 
 
-def test_dqn(args=get_args()):
+def test_pg(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -78,14 +132,13 @@ def test_dqn(args=get_args()):
     net = Net(args.layer_num, args.state_shape, args.action_shape, args.device)
     net = net.to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    loss = nn.MSELoss()
-    policy = DQNPolicy(net, optim, loss, args.gamma, args.n_step)
+    dist = torch.distributions.Categorical
+    policy = PGPolicy(net, optim, dist, args.gamma)
     # collector
     training_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(
         policy, test_envs, ReplayBuffer(args.buffer_size), args.test_num)
-    training_collector.collect(n_step=args.batch_size)
     # log
     stat_loss = MovAvg()
     global_step = 0
@@ -97,16 +150,16 @@ def test_dqn(args=get_args()):
         desc = f"Epoch #{epoch}"
         # train
         policy.train()
-        policy.sync_weight()
-        policy.set_eps(args.eps_train)
-        with tqdm.trange(
-                0, args.step_per_epoch, desc=desc, **tqdm_config) as t:
-            for _ in t:
+        with tqdm.tqdm(
+                total=args.step_per_epoch, desc=desc, **tqdm_config) as t:
+            while t.n < t.total:
                 result = training_collector.collect(
-                    n_step=args.collect_per_step)
-                global_step += 1
-                loss = policy.learn(training_collector.sample(args.batch_size))
-                stat_loss.add(loss)
+                    n_episode=args.collect_per_step)
+                losses = policy.learn(
+                    training_collector.sample(0), args.batch_size)
+                global_step += len(losses)
+                t.update(len(losses))
+                stat_loss.add(losses)
                 writer.add_scalar(
                     'reward', result['reward'], global_step=global_step)
                 writer.add_scalar(
@@ -123,7 +176,6 @@ def test_dqn(args=get_args()):
         test_collector.reset_env()
         test_collector.reset_buffer()
         policy.eval()
-        policy.set_eps(args.eps_test)
         result = test_collector.collect(n_episode=args.test_num)
         if best_reward < result['reward']:
             best_reward = result['reward']
@@ -151,4 +203,5 @@ def test_dqn(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_dqn(get_args())
+    # test_fn()
+    test_pg()

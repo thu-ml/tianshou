@@ -121,8 +121,10 @@ class VectorEnv(BaseVectorEnv):
             np.stack(self._done), np.stack(self._info)
 
     def seed(self, seed=None):
-        if np.isscalar(seed) or seed is None:
-            seed = [seed for _ in range(self.env_num)]
+        if np.isscalar(seed):
+            seed = [seed + _ for _ in range(self.env_num)]
+        elif seed is None:
+            seed = [seed] * self.env_num
         for e, s in zip(self.envs, seed):
             if hasattr(e, 'seed'):
                 e.seed(s)
@@ -198,8 +200,10 @@ class SubprocVectorEnv(BaseVectorEnv):
         return np.stack([p.recv() for p in self.parent_remote])
 
     def seed(self, seed=None):
-        if np.isscalar(seed) or seed is None:
-            seed = [seed for _ in range(self.env_num)]
+        if np.isscalar(seed):
+            seed = [seed + _ for _ in range(self.env_num)]
+        elif seed is None:
+            seed = [seed] * self.env_num
         for p, s in zip(self.parent_remote, seed):
             p.send(['seed', s])
         for p in self.parent_remote:
@@ -272,8 +276,10 @@ class RayVectorEnv(BaseVectorEnv):
     def seed(self, seed=None):
         if not hasattr(self.envs[0], 'seed'):
             return
-        if np.isscalar(seed) or seed is None:
-            seed = [seed for _ in range(self.env_num)]
+        if np.isscalar(seed):
+            seed = [seed + _ for _ in range(self.env_num)]
+        elif seed is None:
+            seed = [seed] * self.env_num
         result_obj = [e.seed.remote(s) for e, s in zip(self.envs, seed)]
         for r in result_obj:
             ray.get(r)

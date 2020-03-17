@@ -59,7 +59,10 @@ class ReplayBuffer(object):
         if batch_size > 0:
             indice = np.random.choice(self._size, batch_size)
         else:
-            indice = np.arange(self._size)
+            indice = np.concatenate([
+                np.arange(self._index, self._size),
+                np.arange(0, self._index),
+            ])
         return Batch(
             obs=self.obs[indice],
             act=self.act[indice],

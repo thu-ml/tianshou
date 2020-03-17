@@ -10,14 +10,14 @@ from tianshou.policy import BasePolicy
 class DQNPolicy(BasePolicy, nn.Module):
     """docstring for DQNPolicy"""
 
-    def __init__(self, model, optim, loss,
+    def __init__(self, model, optim, loss_fn,
                  discount_factor=0.99,
                  estimation_step=1,
                  use_target_network=True):
         super().__init__()
         self.model = model
         self.optim = optim
-        self.loss = loss
+        self.loss_fn = loss_fn
         self.eps = 0
         assert 0 <= discount_factor <= 1, 'discount_factor should in [0, 1]'
         self._gamma = discount_factor
@@ -27,20 +27,6 @@ class DQNPolicy(BasePolicy, nn.Module):
         if use_target_network:
             self.model_old = deepcopy(self.model)
             self.model_old.eval()
-
-    def __call__(self, batch, hidden_state=None,
-                 model='model', input='obs', eps=None):
-        model = getattr(self, model)
-        obs = getattr(batch, input)
-        q, h = model(obs, hidden_state=hidden_state, info=batch.info)
-        act = q.max(dim=1)[1].detach().cpu().numpy()
-        # add eps to act
-        if eps is None:
-            eps = self.eps
-        for i in range(len(q)):
-            if np.random.rand() < eps:
-                act[i] = np.random.randint(q.shape[1])
-        return Batch(Q=q, act=act, state=h)
 
     def set_eps(self, eps):
         self.eps = eps
@@ -70,12 +56,12 @@ class DQNPolicy(BasePolicy, nn.Module):
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
             a = self(buffer[terminal], input='obs_next', eps=0).act
             target_q = self(
-                buffer[terminal], model='model_old', input='obs_next').Q
+                buffer[terminal], model='model_old', input='obs_next').logits
             if isinstance(target_q, torch.Tensor):
                 target_q = target_q.detach().cpu().numpy()
             target_q = target_q[np.arange(len(a)), a]
         else:
-            target_q = self(buffer[terminal], input='obs_next').Q
+            target_q = self(buffer[terminal], input='obs_next').logits
             if isinstance(target_q, torch.Tensor):
                 target_q = target_q.detach().cpu().numpy()
             target_q = target_q.max(axis=1)
@@ -84,14 +70,28 @@ class DQNPolicy(BasePolicy, nn.Module):
         batch.update(returns=returns)
         return batch
 
-    def learn(self, batch):
+    def __call__(self, batch, state=None,
+                 model='model', input='obs', eps=None):
+        model = getattr(self, model)
+        obs = getattr(batch, input)
+        q, h = model(obs, state=state, info=batch.info)
+        act = q.max(dim=1)[1].detach().cpu().numpy()
+        # add eps to act
+        if eps is None:
+            eps = self.eps
+        for i in range(len(q)):
+            if np.random.rand() < eps:
+                act[i] = np.random.randint(q.shape[1])
+        return Batch(logits=q, act=act, state=h)
+
+    def learn(self, batch, batch_size=None):
         self.optim.zero_grad()
-        q = self(batch).Q
+        q = self(batch).logits
         q = q[np.arange(len(q)), batch.act]
         r = batch.returns
         if isinstance(r, np.ndarray):
             r = torch.tensor(r, device=q.device, dtype=q.dtype)
-        loss = self.loss(q, r)
+        loss = self.loss_fn(q, r)
         loss.backward()
         self.optim.step()
         return loss.detach().cpu().numpy()

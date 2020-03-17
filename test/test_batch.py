@@ -14,6 +14,9 @@ def test_batch():
     assert batch[0].obs == batch[1].obs
     with pytest.raises(IndexError):
         batch[2]
+    batch.obs = np.arange(5)
+    for i, b in enumerate(batch.split(1)):
+        assert b.obs == batch[i].obs
 
 
 if __name__ == '__main__':
