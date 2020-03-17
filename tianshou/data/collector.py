@@ -11,7 +11,7 @@ from tianshou.utils import MovAvg
 class Collector(object):
     """docstring for Collector"""
 
-    def __init__(self, policy, env, buffer, stat_size=100):
+    def __init__(self, policy, env, buffer=ReplayBuffer(20000), stat_size=100):
         super().__init__()
         self.env = env
         self.env_num = 1
@@ -168,10 +168,14 @@ class Collector(object):
         self._obs = obs_next
         self.stat_speed.add((self.collect_step - start_step) / (
             time.time() - start_time))
+        if self._multi_env:
+            cur_episode = sum(cur_episode)
         return {
             'reward': self.stat_reward.get(),
             'length': self.stat_length.get(),
             'speed': self.stat_speed.get(),
+            'n_episode': cur_episode,
+            'n_step': cur_step,
         }
 
     def sample(self, batch_size):

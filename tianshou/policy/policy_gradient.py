@@ -2,7 +2,6 @@ import torch
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
-from torch.distributions import Categorical
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy
@@ -11,12 +10,12 @@ from tianshou.policy import BasePolicy
 class PGPolicy(BasePolicy, nn.Module):
     """docstring for PGPolicy"""
 
-    def __init__(self, model, optim, dist=Categorical,
+    def __init__(self, model, optim, dist_fn=torch.distributions.Categorical,
                  discount_factor=0.99, normalized_reward=True):
         super().__init__()
         self.model = model
         self.optim = optim
-        self.dist = dist
+        self.dist_fn = dist_fn
         self._eps = np.finfo(np.float32).eps.item()
         assert 0 <= discount_factor <= 1, 'discount_factor should in [0, 1]'
         self._gamma = discount_factor
@@ -35,7 +34,7 @@ class PGPolicy(BasePolicy, nn.Module):
     def __call__(self, batch, state=None):
         logits, h = self.model(batch.obs, state=state, info=batch.info)
         logits = F.softmax(logits, dim=1)
-        dist = self.dist(logits)
+        dist = self.dist_fn(logits)
         act = dist.sample().detach().cpu().numpy()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 

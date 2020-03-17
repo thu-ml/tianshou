@@ -94,15 +94,15 @@ def get_args():
     parser.add_argument('--task', type=str, default='CartPole-v0')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=320)
-    parser.add_argument('--collect-per-step', type=int, default=5)
+    parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=3)
     parser.add_argument('--training-num', type=int, default=8)
-    parser.add_argument('--test-num', type=int, default=20)
+    parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument(
         '--device', type=str,
@@ -157,6 +157,7 @@ def test_pg(args=get_args()):
                     n_episode=args.collect_per_step)
                 losses = policy.learn(
                     training_collector.sample(0), args.batch_size)
+                training_collector.reset_buffer()
                 global_step += len(losses)
                 t.update(len(losses))
                 stat_loss.add(losses)
@@ -196,7 +197,7 @@ def test_pg(args=get_args()):
               f'speed: {(train_cnt + test_cnt) / duration:.2f}it/s')
         # Let's watch its performance!
         env = gym.make(args.task)
-        test_collector = Collector(policy, env, ReplayBuffer(1))
+        test_collector = Collector(policy, env)
         result = test_collector.collect(n_episode=1, render=1 / 35)
         print(f'Final reward: {result["reward"]}, length: {result["length"]}')
         test_collector.close()
