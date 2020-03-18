@@ -133,8 +133,7 @@ def test_pg(args=get_args()):
     # collector
     training_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
-    test_collector = Collector(
-        policy, test_envs, ReplayBuffer(args.buffer_size), args.test_num)
+    test_collector = Collector(policy, test_envs, stat_size=args.test_num)
     # log
     stat_loss = MovAvg()
     global_step = 0
@@ -169,6 +168,8 @@ def test_pg(args=get_args()):
                               reward=f'{result["reward"]:.6f}',
                               length=f'{result["length"]:.2f}',
                               speed=f'{result["speed"]:.2f}')
+            if t.n <= t.total:
+                t.update()
         # eval
         test_collector.reset_env()
         test_collector.reset_buffer()

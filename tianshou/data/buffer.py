@@ -10,6 +10,10 @@ class ReplayBuffer(object):
         self._maxsize = size
         self.reset()
 
+    def __del__(self):
+        for k in list(self.__dict__.keys()):
+            del self.__dict__[k]
+
     def __len__(self):
         return self._size
 
@@ -24,6 +28,9 @@ class ReplayBuffer(object):
                     [{} for _ in range(self._maxsize)])
             else:  # assume `inst` is a number
                 self.__dict__[name] = np.zeros([self._maxsize])
+        if isinstance(inst, np.ndarray) and \
+                self.__dict__[name].shape[1:] != inst.shape:
+            self.__dict__[name] = np.zeros([self._maxsize, *inst.shape])
         self.__dict__[name][self._index] = inst
 
     def update(self, buffer):

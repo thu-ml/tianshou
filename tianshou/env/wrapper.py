@@ -24,9 +24,9 @@ class EnvWrapper(object):
         if hasattr(self.env, 'seed'):
             self.env.seed(seed)
 
-    def render(self):
+    def render(self, **kwargs):
         if hasattr(self.env, 'render'):
-            self.env.render()
+            self.env.render(**kwargs)
 
     def close(self):
         self.env.close()
@@ -83,7 +83,7 @@ class BaseVectorEnv(ABC):
         pass
 
     @abstractmethod
-    def render(self):
+    def render(self, **kwargs):
         pass
 
     @abstractmethod
@@ -129,10 +129,10 @@ class VectorEnv(BaseVectorEnv):
             if hasattr(e, 'seed'):
                 e.seed(s)
 
-    def render(self):
+    def render(self, **kwargs):
         for e in self.envs:
             if hasattr(e, 'render'):
-                e.render()
+                e.render(**kwargs)
 
     def close(self):
         for e in self.envs:
@@ -160,7 +160,7 @@ def worker(parent, p, env_fn_wrapper, reset_after_done):
                 p.close()
                 break
             elif cmd == 'render':
-                p.send(env.render() if hasattr(env, 'render') else None)
+                p.send(env.render(**data) if hasattr(env, 'render') else None)
             elif cmd == 'seed':
                 p.send(env.seed(data) if hasattr(env, 'seed') else None)
             else:
@@ -213,9 +213,9 @@ class SubprocVectorEnv(BaseVectorEnv):
         for p in self.parent_remote:
             p.recv()
 
-    def render(self):
+    def render(self, **kwargs):
         for p in self.parent_remote:
-            p.send(['render', None])
+            p.send(['render', kwargs])
         for p in self.parent_remote:
             p.recv()
 
@@ -239,7 +239,7 @@ class RayVectorEnv(BaseVectorEnv):
                 ray.init()
         except NameError:
             raise ImportError(
-                'Please install ray to support VectorEnv: pip3 install ray -U')
+                'Please install ray to support RayVectorEnv: pip3 install ray')
         self.envs = [
             ray.remote(EnvWrapper).options(num_cpus=0).remote(e())
             for e in env_fns]
@@ -288,10 +288,10 @@ class RayVectorEnv(BaseVectorEnv):
         for r in result_obj:
             ray.get(r)
 
-    def render(self):
+    def render(self, **kwargs):
         if not hasattr(self.envs[0], 'render'):
             return
-        result_obj = [e.render.remote() for e in self.envs]
+        result_obj = [e.render.remote(**kwargs) for e in self.envs]
         for r in result_obj:
             ray.get(r)
 

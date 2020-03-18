@@ -1,13 +1,12 @@
 import torch
 import numpy as np
-from torch import nn
 import torch.nn.functional as F
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy
 
 
-class PGPolicy(BasePolicy, nn.Module):
+class PGPolicy(BasePolicy):
     """docstring for PGPolicy"""
 
     def __init__(self, model, optim, dist_fn=torch.distributions.Categorical,
@@ -17,7 +16,7 @@ class PGPolicy(BasePolicy, nn.Module):
         self.optim = optim
         self.dist_fn = dist_fn
         self._eps = np.finfo(np.float32).eps.item()
-        assert 0 <= discount_factor <= 1, 'discount_factor should in [0, 1]'
+        assert 0 < discount_factor <= 1, 'discount_factor should in (0, 1]'
         self._gamma = discount_factor
 
     def process_fn(self, batch, buffer, indice):
@@ -30,7 +29,7 @@ class PGPolicy(BasePolicy, nn.Module):
         logits, h = self.model(batch.obs, state=state, info=batch.info)
         logits = F.softmax(logits, dim=1)
         dist = self.dist_fn(logits)
-        act = dist.sample().detach().cpu().numpy()
+        act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
     def learn(self, batch, batch_size=None):

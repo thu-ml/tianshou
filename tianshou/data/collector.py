@@ -20,7 +20,7 @@ class Collector(object):
         self.policy = policy
         self.process_fn = policy.process_fn
         self._multi_env = isinstance(env, BaseVectorEnv)
-        self._multi_buf = False  # buf is a list
+        self._multi_buf = False  # True if buf is a list
         # need multiple cache buffers only if storing in one buffer
         self._cached_buf = []
         if self._multi_env:
@@ -65,9 +65,9 @@ class Collector(object):
         if hasattr(self.env, 'seed'):
             self.env.seed(seed)
 
-    def render(self):
+    def render(self, **kwargs):
         if hasattr(self.env, 'render'):
-            self.env.render()
+            self.env.render(**kwargs)
 
     def close(self):
         if hasattr(self.env, 'close'):
@@ -101,7 +101,10 @@ class Collector(object):
                     info=self._make_batch(self._info))
             result = self.policy(batch_data, self.state)
             self.state = result.state if hasattr(result, 'state') else None
-            self._act = result.act
+            if isinstance(result.act, torch.Tensor):
+                self._act = result.act.detach().cpu().numpy()
+            else:
+                self._act = np.array(result.act)
             obs_next, self._rew, self._done, self._info = self.env.step(
                 self._act if self._multi_env else self._act[0])
             if render > 0:
@@ -141,7 +144,10 @@ class Collector(object):
                         if isinstance(self.state, list):
                             self.state[i] = None
                         elif self.state is not None:
-                            self.state[i] = self.state[i] * 0
+                            if isinstance(self.state[i], dict):
+                                self.state[i] = {}
+                            else:
+                                self.state[i] = self.state[i] * 0
                             if isinstance(self.state, torch.Tensor):
                                 # remove ref count in pytorch (?)
                                 self.state = self.state.detach()

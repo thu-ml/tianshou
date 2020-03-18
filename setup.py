@@ -37,12 +37,11 @@ setup(
                                     'examples', 'examples.*',
                                     'docs', 'docs.*']),
     install_requires=[
-        # 'ray',
         'gym',
         'tqdm',
         'numpy',
         'cloudpickle',
         'tensorboard',
-        'torch>=1.2.0',  # for supporting tensorboard
+        'torch>=1.4.0',
     ],
 )

@@ -1,25 +1,24 @@
 import torch
 import numpy as np
-from torch import nn
 from copy import deepcopy
+import torch.nn.functional as F
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy
 
 
-class DQNPolicy(BasePolicy, nn.Module):
+class DQNPolicy(BasePolicy):
     """docstring for DQNPolicy"""
 
-    def __init__(self, model, optim, loss_fn,
+    def __init__(self, model, optim,
                  discount_factor=0.99,
                  estimation_step=1,
                  use_target_network=True):
         super().__init__()
         self.model = model
         self.optim = optim
-        self.loss_fn = loss_fn
         self.eps = 0
-        assert 0 <= discount_factor <= 1, 'discount_factor should in [0, 1]'
+        assert 0 < discount_factor <= 1, 'discount_factor should in (0, 1]'
         self._gamma = discount_factor
         assert estimation_step > 0, 'estimation_step should greater than 0'
         self._n_step = estimation_step
@@ -91,7 +90,7 @@ class DQNPolicy(BasePolicy, nn.Module):
         r = batch.returns
         if isinstance(r, np.ndarray):
             r = torch.tensor(r, device=q.device, dtype=q.dtype)
-        loss = self.loss_fn(q, r)
+        loss = F.mse_loss(q, r)
         loss.backward()
         self.optim.step()
         return loss.detach().cpu().numpy()
