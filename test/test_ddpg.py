@@ -8,9 +8,9 @@ from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DDPGPolicy
-from tianshou.env import SubprocVectorEnv
 from tianshou.utils import tqdm_config, MovAvg
 from tianshou.data import Collector, ReplayBuffer
+from tianshou.env import VectorEnv, SubprocVectorEnv
 
 
 class Actor(nn.Module):
@@ -92,7 +92,7 @@ def test_ddpg(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
     # train_envs = gym.make(args.task)
-    train_envs = SubprocVectorEnv(
+    train_envs = VectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)],
         reset_after_done=True)
     # test_envs = gym.make(args.task)
