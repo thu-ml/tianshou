@@ -45,7 +45,7 @@ class PGPolicy(BasePolicy):
             loss.backward()
             self.optim.step()
             losses.append(loss.detach().cpu().numpy())
-        return losses
+        return {'loss': losses}
 
     def _vanilla_returns(self, batch):
         returns = batch.rew[:]

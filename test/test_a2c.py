@@ -1,6 +1,4 @@
 import gym
-import time
-import tqdm
 import torch
 import argparse
 import numpy as np
@@ -9,12 +7,12 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import A2CPolicy
 from tianshou.env import SubprocVectorEnv
-from tianshou.utils import tqdm_config, MovAvg
+from tianshou.trainer import episodic_trainer
 from tianshou.data import Collector, ReplayBuffer
 
 
 class Net(nn.Module):
-    def __init__(self, layer_num, state_shape, action_shape, device='cpu'):
+    def __init__(self, layer_num, state_shape, device='cpu'):
         super().__init__()
         self.device = device
         self.model = [
@@ -22,18 +20,40 @@ class Net(nn.Module):
             nn.ReLU(inplace=True)]
         for i in range(layer_num):
             self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
-        self.actor = self.model + [nn.Linear(128, np.prod(action_shape))]
-        self.critic = self.model + [nn.Linear(128, 1)]
-        self.actor = nn.Sequential(*self.actor)
-        self.critic = nn.Sequential(*self.critic)
+        self.model = nn.Sequential(*self.model)
 
-    def forward(self, s, **kwargs):
+    def forward(self, s):
         s = torch.tensor(s, device=self.device, dtype=torch.float)
         batch = s.shape[0]
         s = s.view(batch, -1)
-        logits = self.actor(s)
-        value = self.critic(s)
-        return logits, value, None
+        logits = self.model(s)
+        return logits
+
+
+class Actor(nn.Module):
+    def __init__(self, preprocess_net, action_shape):
+        super().__init__()
+        self.model = nn.Sequential(*[
+            preprocess_net,
+            nn.Linear(128, np.prod(action_shape)),
+        ])
+
+    def forward(self, s, **kwargs):
+        logits = self.model(s)
+        return logits, None
+
+
+class Critic(nn.Module):
+    def __init__(self, preprocess_net):
+        super().__init__()
+        self.model = nn.Sequential(*[
+            preprocess_net,
+            nn.Linear(128, 1),
+        ])
+
+    def forward(self, s):
+        logits = self.model(s)
+        return logits
 
 
 def get_args():
@@ -80,83 +100,45 @@ def test_a2c(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, args.action_shape, args.device)
-    net = net.to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    net = Net(args.layer_num, args.state_shape, args.device)
+    actor = Actor(net, args.action_shape).to(args.device)
+    critic = Critic(net).to(args.device)
+    optim = torch.optim.Adam(list(
+        actor.parameters()) + list(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
-        net, optim, dist, args.gamma,
-        vf_coef=args.vf_coef,
-        entropy_coef=args.entropy_coef,
-        max_grad_norm=args.max_grad_norm)
+        actor, critic, optim, dist, args.gamma, vf_coef=args.vf_coef,
+        entropy_coef=args.entropy_coef, max_grad_norm=args.max_grad_norm)
     # collector
-    training_collector = Collector(
+    train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs, stat_size=args.test_num)
     # log
-    stat_loss = MovAvg()
-    global_step = 0
     writer = SummaryWriter(args.logdir)
-    best_epoch = -1
-    best_reward = -1e10
-    start_time = time.time()
-    for epoch in range(1, 1 + args.epoch):
-        desc = f'Epoch #{epoch}'
-        # train
-        policy.train()
-        with tqdm.tqdm(
-                total=args.step_per_epoch, desc=desc, **tqdm_config) as t:
-            while t.n < t.total:
-                result = training_collector.collect(
-                    n_episode=args.collect_per_step)
-                losses = policy.learn(
-                    training_collector.sample(0), args.batch_size)
-                training_collector.reset_buffer()
-                global_step += len(losses)
-                t.update(len(losses))
-                stat_loss.add(losses)
-                writer.add_scalar(
-                    'reward', result['reward'], global_step=global_step)
-                writer.add_scalar(
-                    'length', result['length'], global_step=global_step)
-                writer.add_scalar(
-                    'loss', stat_loss.get(), global_step=global_step)
-                writer.add_scalar(
-                    'speed', result['speed'], global_step=global_step)
-                t.set_postfix(loss=f'{stat_loss.get():.6f}',
-                              reward=f'{result["reward"]:.6f}',
-                              length=f'{result["length"]:.2f}',
-                              speed=f'{result["speed"]:.2f}')
-            if t.n <= t.total:
-                t.update()
-        # eval
-        test_collector.reset_env()
-        test_collector.reset_buffer()
-        policy.eval()
-        result = test_collector.collect(n_episode=args.test_num)
-        if best_reward < result['reward']:
-            best_reward = result['reward']
-            best_epoch = epoch
-        print(f'Epoch #{epoch}: test_reward: {result["reward"]:.6f}, '
-              f'best_reward: {best_reward:.6f} in #{best_epoch}')
-        if best_reward >= env.spec.reward_threshold:
-            break
-    assert best_reward >= env.spec.reward_threshold
-    training_collector.close()
+
+    def stop_fn(x):
+        return x >= env.spec.reward_threshold
+
+    # trainer
+    train_step, train_episode, test_step, test_episode, best_rew, duration = \
+        episodic_trainer(
+            policy, train_collector, test_collector, args.epoch,
+            args.step_per_epoch, args.collect_per_step, args.test_num,
+            args.batch_size, stop_fn=stop_fn, writer=writer)
+    assert stop_fn(best_rew)
+    train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
-        train_cnt = training_collector.collect_step
-        test_cnt = test_collector.collect_step
-        duration = time.time() - start_time
-        print(f'Collect {train_cnt} training frame and {test_cnt} test frame '
-              f'in {duration:.2f}s, '
-              f'speed: {(train_cnt + test_cnt) / duration:.2f}it/s')
+        print(f'Collect {train_step} frame / {train_episode} episode during '
+              f'training and {test_step} frame / {test_episode} episode during'
+              f' test in {duration:.2f}s, best_reward: {best_rew}, speed: '
+              f'{(train_step + test_step) / duration:.2f}it/s')
         # Let's watch its performance!
         env = gym.make(args.task)
-        test_collector = Collector(policy, env)
-        result = test_collector.collect(n_episode=1, render=1 / 35)
-        print(f'Final reward: {result["reward"]}, length: {result["length"]}')
-        test_collector.close()
+        collector = Collector(policy, env)
+        result = collector.collect(n_episode=1, render=1 / 35)
+        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        collector.close()
 
 
 if __name__ == '__main__':

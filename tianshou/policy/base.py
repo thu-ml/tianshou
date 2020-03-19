@@ -18,6 +18,7 @@ class BasePolicy(ABC, nn.Module):
 
     @abstractmethod
     def learn(self, batch, batch_size=None):
+        # return a dict which includes loss and its name
         pass
 
     def sync_weight(self):

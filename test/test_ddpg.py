@@ -1,6 +1,4 @@
 import gym
-import time
-import tqdm
 import torch
 import argparse
 import numpy as np
@@ -8,7 +6,7 @@ from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DDPGPolicy
-from tianshou.utils import tqdm_config, MovAvg
+from tianshou.trainer import step_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
 
@@ -121,85 +119,39 @@ def test_ddpg(args=get_args()):
         [env.action_space.low[0], env.action_space.high[0]],
         args.tau, args.gamma, args.exploration_noise)
     # collector
-    training_collector = Collector(
+    train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size), 1)
     test_collector = Collector(policy, test_envs, stat_size=args.test_num)
     # log
-    stat_a_loss = MovAvg()
-    stat_c_loss = MovAvg()
-    global_step = 0
     writer = SummaryWriter(args.logdir)
-    best_epoch = -1
-    best_reward = -1e10
-    start_time = time.time()
-    # training_collector.collect(n_step=1000)
-    for epoch in range(1, 1 + args.epoch):
-        desc = f'Epoch #{epoch}'
-        # train
-        policy.train()
-        with tqdm.tqdm(
-                total=args.step_per_epoch, desc=desc, **tqdm_config) as t:
-            while t.n < t.total:
-                result = training_collector.collect(
-                    n_step=args.collect_per_step)
-                for i in range(min(
-                        result['n_step'] // args.collect_per_step,
-                        t.total - t.n)):
-                    t.update(1)
-                    global_step += 1
-                    actor_loss, critic_loss = policy.learn(
-                        training_collector.sample(args.batch_size))
-                    policy.sync_weight()
-                    stat_a_loss.add(actor_loss)
-                    stat_c_loss.add(critic_loss)
-                    writer.add_scalar(
-                        'reward', result['reward'], global_step=global_step)
-                    writer.add_scalar(
-                        'length', result['length'], global_step=global_step)
-                    writer.add_scalar(
-                        'actor_loss', stat_a_loss.get(),
-                        global_step=global_step)
-                    writer.add_scalar(
-                        'critic_loss', stat_a_loss.get(),
-                        global_step=global_step)
-                    writer.add_scalar(
-                        'speed', result['speed'], global_step=global_step)
-                    t.set_postfix(actor_loss=f'{stat_a_loss.get():.6f}',
-                                  critic_loss=f'{stat_c_loss.get():.6f}',
-                                  reward=f'{result["reward"]:.6f}',
-                                  length=f'{result["length"]:.2f}',
-                                  speed=f'{result["speed"]:.2f}')
-            if t.n <= t.total:
-                t.update()
-        # eval
-        test_collector.reset_env()
-        test_collector.reset_buffer()
-        policy.eval()
-        result = test_collector.collect(n_episode=args.test_num)
-        if best_reward < result['reward']:
-            best_reward = result['reward']
-            best_epoch = epoch
-        print(f'Epoch #{epoch}: test_reward: {result["reward"]:.6f}, '
-              f'best_reward: {best_reward:.6f} in #{best_epoch}')
-        if args.task == 'Pendulum-v0' and best_reward >= -250:
-            break
+
+    def stop_fn(x):
+        if args.task == 'Pendulum-v0':
+            return x >= -250
+        else:
+            return False
+
+    # trainer
+    train_step, train_episode, test_step, test_episode, best_rew, duration = \
+        step_trainer(
+            policy, train_collector, test_collector, args.epoch,
+            args.step_per_epoch, args.collect_per_step, args.test_num,
+            args.batch_size, stop_fn=stop_fn, writer=writer)
     if args.task == 'Pendulum-v0':
-        assert best_reward >= -250
-    training_collector.close()
+        assert stop_fn(best_rew)
+    train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
-        train_cnt = training_collector.collect_step
-        test_cnt = test_collector.collect_step
-        duration = time.time() - start_time
-        print(f'Collect {train_cnt} training frame and {test_cnt} test frame '
-              f'in {duration:.2f}s, '
-              f'speed: {(train_cnt + test_cnt) / duration:.2f}it/s')
+        print(f'Collect {train_step} frame / {train_episode} episode during '
+              f'training and {test_step} frame / {test_episode} episode during'
+              f' test in {duration:.2f}s, best_reward: {best_rew}, speed: '
+              f'{(train_step + test_step) / duration:.2f}it/s')
         # Let's watch its performance!
         env = gym.make(args.task)
-        test_collector = Collector(policy, env)
-        result = test_collector.collect(n_episode=1, render=1 / 35)
-        print(f'Final reward: {result["reward"]}, length: {result["length"]}')
-        test_collector.close()
+        collector = Collector(policy, env)
+        result = collector.collect(n_episode=1, render=1 / 35)
+        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        collector.close()
 
 
 if __name__ == '__main__':

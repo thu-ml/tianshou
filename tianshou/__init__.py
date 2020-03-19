@@ -1,4 +1,5 @@
-from tianshou import data, env, utils, policy, exploration
+from tianshou import data, env, utils, policy, trainer,\
+    exploration
 
 __version__ = '0.2.0'
 __all__ = [
@@ -6,5 +7,6 @@ __all__ = [
     'data',
     'utils',
     'policy',
+    'trainer',
     'exploration',
 ]

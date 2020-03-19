@@ -28,7 +28,7 @@ class DDPGPolicy(BasePolicy):
         self._tau = tau
         assert 0 < gamma <= 1, 'gamma should in (0, 1]'
         self._gamma = gamma
-        assert 0 <= exploration_noise, 'noise should greater than zero'
+        assert 0 <= exploration_noise, 'noise should not be negative'
         self._eps = exploration_noise
         self._range = action_range
         # self.noise = OUNoise()
@@ -87,5 +87,8 @@ class DDPGPolicy(BasePolicy):
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
-        return actor_loss.detach().cpu().numpy(),\
-            critic_loss.detach().cpu().numpy()
+        self.sync_weight()
+        return {
+            'loss/actor': actor_loss.detach().cpu().numpy(),
+            'loss/critic': critic_loss.detach().cpu().numpy(),
+        }

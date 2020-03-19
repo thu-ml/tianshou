@@ -93,4 +93,4 @@ class DQNPolicy(BasePolicy):
         loss = F.mse_loss(q, r)
         loss.backward()
         self.optim.step()
-        return loss.detach().cpu().numpy()
+        return {'loss': loss.detach().cpu().numpy()}
