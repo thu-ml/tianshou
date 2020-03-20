@@ -17,6 +17,7 @@ class Collector(object):
         self.env_num = 1
         self.collect_step = 0
         self.collect_episode = 0
+        self.collect_time = 0
         self.buffer = buffer
         self.policy = policy
         self.process_fn = policy.process_fn
@@ -176,11 +177,12 @@ class Collector(object):
         self.episode_speed.add(cur_episode / duration)
         self.collect_step += cur_step
         self.collect_episode += cur_episode
+        self.collect_time += duration
         return {
             'n/ep': cur_episode,
             'n/st': cur_step,
-            'speed/st': self.step_speed.get(),
-            'speed/ep': self.episode_speed.get(),
+            'v/st': self.step_speed.get(),
+            'v/ep': self.episode_speed.get(),
             'rew': reward_sum / cur_episode,
             'len': length_sum / cur_episode,
         }

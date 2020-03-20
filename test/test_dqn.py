@@ -1,5 +1,6 @@
 import gym
 import torch
+import pprint
 import argparse
 import numpy as np
 from torch import nn
@@ -7,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DQNPolicy
 from tianshou.env import SubprocVectorEnv
-from tianshou.trainer import step_trainer
+from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
 
@@ -96,21 +97,17 @@ def test_dqn(args=get_args()):
         policy.set_eps(args.eps_test)
 
     # trainer
-    train_step, train_episode, test_step, test_episode, best_rew, duration = \
-        step_trainer(
-            policy, train_collector, test_collector, args.epoch,
-            args.step_per_epoch, args.collect_per_step, args.test_num,
-            args.batch_size, train_fn=train_fn, test_fn=test_fn,
-            stop_fn=stop_fn, writer=writer)
+    result = offpolicy_trainer(
+        policy, train_collector, test_collector, args.epoch,
+        args.step_per_epoch, args.collect_per_step, args.test_num,
+        args.batch_size, train_fn=train_fn, test_fn=test_fn,
+        stop_fn=stop_fn, writer=writer)
 
-    assert stop_fn(best_rew)
+    assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
-        print(f'Collect {train_step} frame / {train_episode} episode during '
-              f'training and {test_step} frame / {test_episode} episode during'
-              f' test in {duration:.2f}s, best_reward: {best_rew}, speed: '
-              f'{(train_step + test_step) / duration:.2f}it/s')
+        pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
         collector = Collector(policy, env)

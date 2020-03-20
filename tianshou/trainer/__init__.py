@@ -1,7 +1,10 @@
-from tianshou.trainer.episodic import episodic_trainer
-from tianshou.trainer.step import step_trainer
+from tianshou.trainer.utils import test_episode, gather_info
+from tianshou.trainer.onpolicy import onpolicy_trainer
+from tianshou.trainer.offpolicy import offpolicy_trainer
 
 __all__ = [
-    'episodic_trainer',
-    'step_trainer',
+    'gather_info',
+    'test_episode',
+    'onpolicy_trainer',
+    'offpolicy_trainer',
 ]

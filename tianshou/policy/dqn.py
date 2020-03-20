@@ -83,7 +83,7 @@ class DQNPolicy(BasePolicy):
                 act[i] = np.random.randint(q.shape[1])
         return Batch(logits=q, act=act, state=h)
 
-    def learn(self, batch, batch_size=None):
+    def learn(self, batch, batch_size=None, repeat=1):
         self.optim.zero_grad()
         q = self(batch).logits
         q = q[np.arange(len(q)), batch.act]

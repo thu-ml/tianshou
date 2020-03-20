@@ -1,13 +1,15 @@
 import gym
 import torch
+import pprint
 import argparse
 import numpy as np
 from torch import nn
+import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import A2CPolicy
 from tianshou.env import SubprocVectorEnv
-from tianshou.trainer import episodic_trainer
+from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
 
@@ -39,7 +41,7 @@ class Actor(nn.Module):
         ])
 
     def forward(self, s, **kwargs):
-        logits = self.model(s)
+        logits = F.softmax(self.model(s), dim=-1)
         return logits, None
 
 
@@ -66,6 +68,7 @@ def get_args():
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=320)
     parser.add_argument('--collect-per-step', type=int, default=10)
+    parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=2)
     parser.add_argument('--training-num', type=int, default=32)
@@ -76,7 +79,7 @@ def get_args():
         default='cuda' if torch.cuda.is_available() else 'cpu')
     # a2c special
     parser.add_argument('--vf-coef', type=float, default=0.5)
-    parser.add_argument('--entropy-coef', type=float, default=0.001)
+    parser.add_argument('--ent-coef', type=float, default=0.001)
     parser.add_argument('--max-grad-norm', type=float, default=None)
     args = parser.parse_known_args()[0]
     return args
@@ -108,7 +111,7 @@ def test_a2c(args=get_args()):
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
         actor, critic, optim, dist, args.gamma, vf_coef=args.vf_coef,
-        entropy_coef=args.entropy_coef, max_grad_norm=args.max_grad_norm)
+        ent_coef=args.ent_coef, max_grad_norm=args.max_grad_norm)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
@@ -120,19 +123,15 @@ def test_a2c(args=get_args()):
         return x >= env.spec.reward_threshold
 
     # trainer
-    train_step, train_episode, test_step, test_episode, best_rew, duration = \
-        episodic_trainer(
-            policy, train_collector, test_collector, args.epoch,
-            args.step_per_epoch, args.collect_per_step, args.test_num,
-            args.batch_size, stop_fn=stop_fn, writer=writer)
-    assert stop_fn(best_rew)
+    result = onpolicy_trainer(
+        policy, train_collector, test_collector, args.epoch,
+        args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
+        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer)
+    assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
-        print(f'Collect {train_step} frame / {train_episode} episode during '
-              f'training and {test_step} frame / {test_episode} episode during'
-              f' test in {duration:.2f}s, best_reward: {best_rew}, speed: '
-              f'{(train_step + test_step) / duration:.2f}it/s')
+        pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
         collector = Collector(policy, env)

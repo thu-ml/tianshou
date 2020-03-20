@@ -1,12 +1,13 @@
 import gym
 import torch
+import pprint
 import argparse
 import numpy as np
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DDPGPolicy
-from tianshou.trainer import step_trainer
+from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
 
@@ -116,8 +117,8 @@ def test_ddpg(args=get_args()):
         critic.parameters(), lr=args.critic_lr, weight_decay=args.critic_wd)
     policy = DDPGPolicy(
         actor, actor_optim, critic, critic_optim,
-        [env.action_space.low[0], env.action_space.high[0]],
-        args.tau, args.gamma, args.exploration_noise)
+        args.tau, args.gamma, args.exploration_noise,
+        [env.action_space.low[0], env.action_space.high[0]])
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size), 1)
@@ -132,20 +133,16 @@ def test_ddpg(args=get_args()):
             return False
 
     # trainer
-    train_step, train_episode, test_step, test_episode, best_rew, duration = \
-        step_trainer(
-            policy, train_collector, test_collector, args.epoch,
-            args.step_per_epoch, args.collect_per_step, args.test_num,
-            args.batch_size, stop_fn=stop_fn, writer=writer)
+    result = offpolicy_trainer(
+        policy, train_collector, test_collector, args.epoch,
+        args.step_per_epoch, args.collect_per_step, args.test_num,
+        args.batch_size, stop_fn=stop_fn, writer=writer)
     if args.task == 'Pendulum-v0':
-        assert stop_fn(best_rew)
+        assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
-        print(f'Collect {train_step} frame / {train_episode} episode during '
-              f'training and {test_step} frame / {test_episode} episode during'
-              f' test in {duration:.2f}s, best_reward: {best_rew}, speed: '
-              f'{(train_step + test_step) / duration:.2f}it/s')
+        pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
         collector = Collector(policy, env)

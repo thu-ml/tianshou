@@ -39,13 +39,17 @@ class Batch(object):
                     'No support for append with type {} in class Batch.'
                     .format(type(batch.__dict__[k])))
 
-    def split(self, size=None):
+    def split(self, size=None, permute=True):
         length = min([
             len(self.__dict__[k]) for k in self.__dict__.keys()
             if self.__dict__[k] is not None])
         if size is None:
             size = length
         temp = 0
+        if permute:
+            index = np.random.permutation(length)
+        else:
+            index = np.arange(length)
         while temp < length:
-            yield self[temp:temp + size]
+            yield self[index[temp:temp + size]]
             temp += size

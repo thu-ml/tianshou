@@ -10,18 +10,14 @@ from tianshou.policy import BasePolicy
 class DDPGPolicy(BasePolicy):
     """docstring for DDPGPolicy"""
 
-    def __init__(self, actor, actor_optim,
-                 critic, critic_optim, action_range,
-                 tau=0.005, gamma=0.99, exploration_noise=0.1):
+    def __init__(self, actor, actor_optim, critic, critic_optim,
+                 tau=0.005, gamma=0.99, exploration_noise=0.1,
+                 action_range=None):
         super().__init__()
-        self.actor = actor
-        self.actor_old = deepcopy(actor)
-        self.actor_old.load_state_dict(self.actor.state_dict())
+        self.actor, self.actor_old = actor, deepcopy(actor)
         self.actor_old.eval()
         self.actor_optim = actor_optim
-        self.critic = critic
-        self.critic_old = deepcopy(critic)
-        self.critic_old.load_state_dict(self.critic.state_dict())
+        self.critic, self.critic_old = critic, deepcopy(critic)
         self.critic_old.eval()
         self.critic_optim = critic_optim
         assert 0 < tau <= 1, 'tau should in (0, 1]'
@@ -53,25 +49,24 @@ class DDPGPolicy(BasePolicy):
                 self.critic_old.parameters(), self.critic.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
 
-    def process_fn(self, batch, buffer, indice):
-        return batch
-
     def __call__(self, batch, state=None,
                  model='actor', input='obs', eps=None):
         model = getattr(self, model)
         obs = getattr(batch, input)
         logits, h = model(obs, state=state, info=batch.info)
         # noise = np.random.normal(0, self._eps, size=logits.shape)
-        logits += torch.randn(
-            size=logits.shape, device=logits.device) * self._eps
+        if eps is None:
+            eps = self._eps
+        logits += torch.randn(size=logits.shape, device=logits.device) * eps
         # noise = self.noise(logits.shape, self._eps)
         # logits += torch.tensor(noise, device=logits.device)
-        logits = logits.clamp(self._range[0], self._range[1])
+        if self._range:
+            logits = logits.clamp(self._range[0], self._range[1])
         return Batch(act=logits, state=h)
 
-    def learn(self, batch, batch_size=None):
-        target_q = self.critic_old(
-            batch.obs_next, self.actor_old(batch.obs_next, state=None)[0])
+    def learn(self, batch, batch_size=None, repeat=1):
+        target_q = self.critic_old(batch.obs_next, self(
+            batch, model='actor_old', input='obs_next', eps=0).act)
         dev = target_q.device
         rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)
         done = torch.tensor(batch.done, dtype=torch.float, device=dev)
@@ -82,8 +77,7 @@ class DDPGPolicy(BasePolicy):
         self.critic_optim.zero_grad()
         critic_loss.backward()
         self.critic_optim.step()
-        actor_loss = -self.critic(
-            batch.obs, self.actor(batch.obs, state=None)[0]).mean()
+        actor_loss = -self.critic(batch.obs, self(batch, eps=0).act).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
