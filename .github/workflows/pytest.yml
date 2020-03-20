@@ -37,4 +37,4 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
-        pytest --cov tianshou
+        pytest test --cov tianshou
