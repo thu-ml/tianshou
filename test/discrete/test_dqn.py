@@ -3,7 +3,6 @@ import torch
 import pprint
 import argparse
 import numpy as np
-from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DQNPolicy
@@ -11,24 +10,10 @@ from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
-
-class Net(nn.Module):
-    def __init__(self, layer_num, state_shape, action_shape, device='cpu'):
-        super().__init__()
-        self.device = device
-        self.model = [
-            nn.Linear(np.prod(state_shape), 128),
-            nn.ReLU(inplace=True)]
-        for i in range(layer_num):
-            self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
-        self.model += [nn.Linear(128, np.prod(action_shape))]
-        self.model = nn.Sequential(*self.model)
-
-    def forward(self, s, **kwargs):
-        s = torch.tensor(s, device=self.device, dtype=torch.float)
-        batch = s.shape[0]
-        q = self.model(s.view(batch, -1))
-        return q, None
+if __name__ == '__main__':
+    from net import Net
+else:  # pytest
+    from test.discrete.net import Net
 
 
 def get_args():

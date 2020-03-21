@@ -4,13 +4,17 @@ import torch
 import pprint
 import argparse
 import numpy as np
-from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import PGPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Batch, Collector, ReplayBuffer
+
+if __name__ == '__main__':
+    from net import Net
+else:  # pytest
+    from test.discrete.net import Net
 
 
 def compute_return_base(batch, aa=None, bb=None, gamma=0.1):
@@ -66,25 +70,6 @@ def test_fn(size=2560):
         print(f'policy: {(time.time() - t) / cnt}')
 
 
-class Net(nn.Module):
-    def __init__(self, layer_num, state_shape, action_shape, device='cpu'):
-        super().__init__()
-        self.device = device
-        self.model = [
-            nn.Linear(np.prod(state_shape), 128),
-            nn.ReLU(inplace=True)]
-        for i in range(layer_num):
-            self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
-        self.model += [nn.Linear(128, np.prod(action_shape))]
-        self.model = nn.Sequential(*self.model)
-
-    def forward(self, s, **kwargs):
-        s = torch.tensor(s, device=self.device, dtype=torch.float)
-        batch = s.shape[0]
-        logits = self.model(s.view(batch, -1))
-        return logits, None
-
-
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
@@ -126,7 +111,9 @@ def test_pg(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, args.action_shape, args.device)
+    net = Net(
+        args.layer_num, args.state_shape, args.action_shape,
+        device=args.device)
     net = net.to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical

@@ -1,8 +1,8 @@
 from tianshou.data import ReplayBuffer
 if __name__ == '__main__':
-    from test_env import MyTestEnv
+    from env import MyTestEnv
 else:  # pytest
-    from test.test_env import MyTestEnv
+    from test.base.env import MyTestEnv
 
 
 def test_replaybuffer(size=10, bufsize=20):

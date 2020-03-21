@@ -3,8 +3,6 @@ import torch
 import pprint
 import argparse
 import numpy as np
-from torch import nn
-import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import A2CPolicy
@@ -12,50 +10,10 @@ from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
-
-class Net(nn.Module):
-    def __init__(self, layer_num, state_shape, device='cpu'):
-        super().__init__()
-        self.device = device
-        self.model = [
-            nn.Linear(np.prod(state_shape), 128),
-            nn.ReLU(inplace=True)]
-        for i in range(layer_num):
-            self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
-        self.model = nn.Sequential(*self.model)
-
-    def forward(self, s):
-        s = torch.tensor(s, device=self.device, dtype=torch.float)
-        batch = s.shape[0]
-        s = s.view(batch, -1)
-        logits = self.model(s)
-        return logits
-
-
-class Actor(nn.Module):
-    def __init__(self, preprocess_net, action_shape):
-        super().__init__()
-        self.model = nn.Sequential(*[
-            preprocess_net,
-            nn.Linear(128, np.prod(action_shape)),
-        ])
-
-    def forward(self, s, **kwargs):
-        logits = F.softmax(self.model(s), dim=-1)
-        return logits, None
-
-
-class Critic(nn.Module):
-    def __init__(self, preprocess_net):
-        super().__init__()
-        self.model = nn.Sequential(*[
-            preprocess_net,
-            nn.Linear(128, 1),
-        ])
-
-    def forward(self, s):
-        logits = self.model(s)
-        return logits
+if __name__ == '__main__':
+    from net import Net, Actor, Critic
+else:  # pytest
+    from test.discrete.net import Net, Actor, Critic
 
 
 def get_args():
@@ -103,7 +61,7 @@ def test_a2c(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, args.device)
+    net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = Actor(net, args.action_shape).to(args.device)
     critic = Critic(net).to(args.device)
     optim = torch.optim.Adam(list(
