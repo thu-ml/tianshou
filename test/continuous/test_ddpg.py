@@ -22,18 +22,16 @@ def get_args():
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--actor-lr', type=float, default=1e-4)
-    parser.add_argument('--actor-wd', type=float, default=0)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
-    parser.add_argument('--critic-wd', type=float, default=1e-2)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--exploration-noise', type=float, default=0.1)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=2400)
-    parser.add_argument('--collect-per-step', type=int, default=1)
+    parser.add_argument('--collect-per-step', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--layer-num', type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=1)
+    parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument(
@@ -45,6 +43,8 @@ def get_args():
 
 def test_ddpg(args=get_args()):
     env = gym.make(args.task)
+    if args.task == 'Pendulum-v0':
+        env.spec.reward_threshold = -250
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
@@ -66,17 +66,16 @@ def test_ddpg(args=get_args()):
         args.layer_num, args.state_shape, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
-    actor_optim = torch.optim.Adam(
-        actor.parameters(), lr=args.actor_lr, weight_decay=args.actor_wd)
+    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     critic = Critic(
         args.layer_num, args.state_shape, args.action_shape, args.device
     ).to(args.device)
-    critic_optim = torch.optim.Adam(
-        critic.parameters(), lr=args.critic_lr, weight_decay=args.critic_wd)
+    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
     policy = DDPGPolicy(
         actor, actor_optim, critic, critic_optim,
         args.tau, args.gamma, args.exploration_noise,
-        [env.action_space.low[0], env.action_space.high[0]])
+        [env.action_space.low[0], env.action_space.high[0]],
+        reward_normalization=True)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size), 1)
@@ -85,10 +84,7 @@ def test_ddpg(args=get_args()):
     writer = SummaryWriter(args.logdir)
 
     def stop_fn(x):
-        if args.task == 'Pendulum-v0':
-            return x >= -250
-        else:
-            return False
+        return x >= env.spec.reward_threshold
 
     # trainer
     result = offpolicy_trainer(

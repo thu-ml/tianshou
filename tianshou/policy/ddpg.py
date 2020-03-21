@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from copy import deepcopy
 import torch.nn.functional as F
 
@@ -12,7 +13,7 @@ class DDPGPolicy(BasePolicy):
 
     def __init__(self, actor, actor_optim, critic, critic_optim,
                  tau=0.005, gamma=0.99, exploration_noise=0.1,
-                 action_range=None):
+                 action_range=None, reward_normalization=True):
         super().__init__()
         self.actor, self.actor_old = actor, deepcopy(actor)
         self.actor_old.eval()
@@ -28,6 +29,8 @@ class DDPGPolicy(BasePolicy):
         self._eps = exploration_noise
         self._range = action_range
         # self.noise = OUNoise()
+        self._rew_norm = reward_normalization
+        self.__eps = np.finfo(np.float32).eps.item()
 
     def set_eps(self, eps):
         self._eps = eps
@@ -42,6 +45,9 @@ class DDPGPolicy(BasePolicy):
         self.actor.eval()
         self.critic.eval()
 
+    def process_fn(self, batch, buffer, indice):
+        return batch
+
     def sync_weight(self):
         for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
@@ -54,12 +60,12 @@ class DDPGPolicy(BasePolicy):
         model = getattr(self, model)
         obs = getattr(batch, input)
         logits, h = model(obs, state=state, info=batch.info)
-        # noise = np.random.normal(0, self._eps, size=logits.shape)
         if eps is None:
             eps = self._eps
-        logits += torch.randn(size=logits.shape, device=logits.device) * eps
-        # noise = self.noise(logits.shape, self._eps)
+        # noise = np.random.normal(0, eps, size=logits.shape)
+        # noise = self.noise(logits.shape, eps)
         # logits += torch.tensor(noise, device=logits.device)
+        logits += torch.randn(size=logits.shape, device=logits.device) * eps
         if self._range:
             logits = logits.clamp(self._range[0], self._range[1])
         return Batch(act=logits, state=h)
@@ -68,10 +74,11 @@ class DDPGPolicy(BasePolicy):
         target_q = self.critic_old(batch.obs_next, self(
             batch, model='actor_old', input='obs_next', eps=0).act)
         dev = target_q.device
-        rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)
-        done = torch.tensor(batch.done, dtype=torch.float, device=dev)
-        target_q = rew[:, None] + ((
-            1. - done[:, None]) * self._gamma * target_q).detach()
+        rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
+        if self._rew_norm:
+            rew = (rew - rew.mean()) / (rew.std() + self.__eps)
+        done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
+        target_q = rew + ((1. - done) * self._gamma * target_q).detach()
         current_q = self.critic(batch.obs, batch.act)
         critic_loss = F.mse_loss(current_q, target_q)
         self.critic_optim.zero_grad()
