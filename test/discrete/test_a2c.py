@@ -73,7 +73,7 @@ def test_a2c(args=get_args()):
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
-    test_collector = Collector(policy, test_envs, stat_size=args.test_num)
+    test_collector = Collector(policy, test_envs)
     # log
     writer = SummaryWriter(args.logdir)
 

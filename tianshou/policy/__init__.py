@@ -4,6 +4,8 @@ from tianshou.policy.pg import PGPolicy
 from tianshou.policy.a2c import A2CPolicy
 from tianshou.policy.ddpg import DDPGPolicy
 from tianshou.policy.ppo import PPOPolicy
+from tianshou.policy.td3 import TD3Policy
+from tianshou.policy.sac import SACPolicy
 
 __all__ = [
     'BasePolicy',
@@ -12,4 +14,6 @@ __all__ = [
     'A2CPolicy',
     'DDPGPolicy',
     'PPOPolicy',
+    'TD3Policy',
+    'SACPolicy',
 ]

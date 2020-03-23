@@ -18,9 +18,10 @@ class DDPGPolicy(BasePolicy):
         self.actor, self.actor_old = actor, deepcopy(actor)
         self.actor_old.eval()
         self.actor_optim = actor_optim
-        self.critic, self.critic_old = critic, deepcopy(critic)
-        self.critic_old.eval()
-        self.critic_optim = critic_optim
+        if critic is not None:
+            self.critic, self.critic_old = critic, deepcopy(critic)
+            self.critic_old.eval()
+            self.critic_optim = critic_optim
         assert 0 < tau <= 1, 'tau should in (0, 1]'
         self._tau = tau
         assert 0 < gamma <= 1, 'gamma should in (0, 1]'
@@ -44,9 +45,6 @@ class DDPGPolicy(BasePolicy):
         self.training = False
         self.actor.eval()
         self.critic.eval()
-
-    def process_fn(self, batch, buffer, indice):
-        return batch
 
     def sync_weight(self):
         for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
