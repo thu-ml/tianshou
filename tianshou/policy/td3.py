@@ -8,6 +8,7 @@ from tianshou.policy import DDPGPolicy
 
 class TD3Policy(DDPGPolicy):
     """docstring for TD3Policy"""
+
     def __init__(self, actor, actor_optim, critic1, critic1_optim,
                  critic2, critic2_optim, tau=0.005, gamma=0.99,
                  exploration_noise=0.1, policy_noise=0.2, update_actor_freq=2,
@@ -57,14 +58,13 @@ class TD3Policy(DDPGPolicy):
         if self._noise_clip >= 0:
             noise = noise.clamp(-self._noise_clip, self._noise_clip)
         a_ += noise
-        if self._range:
-            a_ = a_.clamp(self._range[0], self._range[1])
+        a_ = a_.clamp(self._range[0], self._range[1])
         target_q = torch.min(
             self.critic1_old(batch.obs_next, a_),
             self.critic2_old(batch.obs_next, a_))
         rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
         if self._rew_norm:
-            rew = (rew - rew.mean()) / (rew.std() + self.__eps)
+            rew = (rew - self._rew_mean) / (self._rew_std + self.__eps)
         done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
         target_q = rew + ((1. - done) * self._gamma * target_q).detach()
         # critic 1

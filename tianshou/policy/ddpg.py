@@ -15,9 +15,10 @@ class DDPGPolicy(BasePolicy):
                  tau=0.005, gamma=0.99, exploration_noise=0.1,
                  action_range=None, reward_normalization=True):
         super().__init__()
-        self.actor, self.actor_old = actor, deepcopy(actor)
-        self.actor_old.eval()
-        self.actor_optim = actor_optim
+        if actor is not None:
+            self.actor, self.actor_old = actor, deepcopy(actor)
+            self.actor_old.eval()
+            self.actor_optim = actor_optim
         if critic is not None:
             self.critic, self.critic_old = critic, deepcopy(critic)
             self.critic_old.eval()
@@ -28,7 +29,11 @@ class DDPGPolicy(BasePolicy):
         self._gamma = gamma
         assert 0 <= exploration_noise, 'noise should not be negative'
         self._eps = exploration_noise
+        assert action_range is not None
         self._range = action_range
+        self._action_bias = (action_range[0] + action_range[1]) / 2
+        self._action_scale = (action_range[1] - action_range[0]) / 2
+        # it is only a little difference to use rand_normal
         # self.noise = OUNoise()
         self._rew_norm = reward_normalization
         self.__eps = np.finfo(np.float32).eps.item()
@@ -53,19 +58,27 @@ class DDPGPolicy(BasePolicy):
                 self.critic_old.parameters(), self.critic.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
 
+    def process_fn(self, batch, buffer, indice):
+        if self._rew_norm:
+            self._rew_mean = buffer.rew.mean()
+            self._rew_std = buffer.rew.std()
+        return batch
+
     def __call__(self, batch, state=None,
                  model='actor', input='obs', eps=None):
         model = getattr(self, model)
         obs = getattr(batch, input)
         logits, h = model(obs, state=state, info=batch.info)
+        logits += self._action_bias
         if eps is None:
             eps = self._eps
         # noise = np.random.normal(0, eps, size=logits.shape)
         # noise = self.noise(logits.shape, eps)
         # logits += torch.tensor(noise, device=logits.device)
-        logits += torch.randn(size=logits.shape, device=logits.device) * eps
-        if self._range:
-            logits = logits.clamp(self._range[0], self._range[1])
+        if eps > 0:
+            logits += torch.randn(
+                size=logits.shape, device=logits.device) * eps
+        logits = logits.clamp(self._range[0], self._range[1])
         return Batch(act=logits, state=h)
 
     def learn(self, batch, batch_size=None, repeat=1):
@@ -74,7 +87,7 @@ class DDPGPolicy(BasePolicy):
         dev = target_q.device
         rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
         if self._rew_norm:
-            rew = (rew - rew.mean()) / (rew.std() + self.__eps)
+            rew = (rew - self._rew_mean) / (self._rew_std + self.__eps)
         done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
         target_q = rew + ((1. - done) * self._gamma * target_q).detach()
         current_q = self.critic(batch.obs, batch.act)
