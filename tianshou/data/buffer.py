@@ -47,7 +47,7 @@ class ReplayBuffer(object):
         '''
         weight: importance weights, disabled here
         '''
-        assert isinstance(info, dict),\
+        assert isinstance(info, dict), \
             'You should return a dict in the last argument of env.step().'
         self._add_to_buffer('obs', obs)
         self._add_to_buffer('act', act)

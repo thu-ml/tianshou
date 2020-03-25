@@ -31,8 +31,8 @@ class Collector(object):
         if self._multi_env:
             self.env_num = len(env)
             if isinstance(self.buffer, list):
-                assert len(self.buffer) == self.env_num,\
-                    'The number of data buffer does not match the number of '\
+                assert len(self.buffer) == self.env_num, \
+                    'The number of data buffer does not match the number of ' \
                     'input env.'
                 self._multi_buf = True
             elif isinstance(self.buffer, ReplayBuffer):
@@ -87,7 +87,7 @@ class Collector(object):
         if not self._multi_env:
             n_episode = np.sum(n_episode)
         start_time = time.time()
-        assert sum([(n_step != 0), (n_episode != 0)]) == 1,\
+        assert sum([(n_step != 0), (n_episode != 0)]) == 1, \
             "One and only one collection number specification permitted!"
         cur_step = 0
         cur_episode = np.zeros(self.env_num) if self._multi_env else 0
