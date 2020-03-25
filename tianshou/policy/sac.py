@@ -12,9 +12,10 @@ class SACPolicy(DDPGPolicy):
 
     def __init__(self, actor, actor_optim, critic1, critic1_optim,
                  critic2, critic2_optim, tau=0.005, gamma=0.99,
-                 alpha=0.2, action_range=None, reward_normalization=True):
+                 alpha=0.2, action_range=None, reward_normalization=False,
+                 ignore_done=False):
         super().__init__(None, None, None, None, tau, gamma, 0,
-                         action_range, reward_normalization)
+                         action_range, reward_normalization, ignore_done)
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
@@ -70,10 +71,8 @@ class SACPolicy(DDPGPolicy):
             self.critic2_old(batch.obs_next, a_),
         ) - self._alpha * obs_next_result.log_prob
         rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
-        if self._rew_norm:
-            rew = (rew - self._rew_mean) / (self._rew_std + self.__eps)
         done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
-        target_q = rew + ((1. - done) * self._gamma * target_q).detach()
+        target_q = (rew + (1. - done) * self._gamma * target_q).detach()
         obs_result = self(batch)
         a = obs_result.act
         current_q1, current_q1a = self.critic1(

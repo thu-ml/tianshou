@@ -11,14 +11,17 @@ from tianshou.utils import MovAvg
 class Collector(object):
     """docstring for Collector"""
 
-    def __init__(self, policy, env, buffer=ReplayBuffer(20000), stat_size=100):
+    def __init__(self, policy, env, buffer=None, stat_size=100):
         super().__init__()
         self.env = env
         self.env_num = 1
         self.collect_step = 0
         self.collect_episode = 0
         self.collect_time = 0
-        self.buffer = buffer
+        if buffer is None:
+            self.buffer = ReplayBuffer(20000)
+        else:
+            self.buffer = buffer
         self.policy = policy
         self.process_fn = policy.process_fn
         self._multi_env = isinstance(env, BaseVectorEnv)
@@ -34,7 +37,7 @@ class Collector(object):
                 self._multi_buf = True
             elif isinstance(self.buffer, ReplayBuffer):
                 self._cached_buf = [
-                    deepcopy(buffer) for _ in range(self.env_num)]
+                    deepcopy(self.buffer) for _ in range(self.env_num)]
             else:
                 raise TypeError('The buffer in data collector is invalid!')
         self.reset_env()
@@ -64,11 +67,11 @@ class Collector(object):
 
     def seed(self, seed=None):
         if hasattr(self.env, 'seed'):
-            self.env.seed(seed)
+            return self.env.seed(seed)
 
     def render(self, **kwargs):
         if hasattr(self.env, 'render'):
-            self.env.render(**kwargs)
+            return self.env.render(**kwargs)
 
     def close(self):
         if hasattr(self.env, 'close'):
@@ -78,11 +81,13 @@ class Collector(object):
         if isinstance(data, np.ndarray):
             return data[None]
         else:
-            return [data]
+            return np.array([data])
 
     def collect(self, n_step=0, n_episode=0, render=0):
+        if not self._multi_env:
+            n_episode = np.sum(n_episode)
         start_time = time.time()
-        assert sum([(n_step > 0), (n_episode > 0)]) == 1,\
+        assert sum([(n_step != 0), (n_episode != 0)]) == 1,\
             "One and only one collection number specification permitted!"
         cur_step = 0
         cur_episode = np.zeros(self.env_num) if self._multi_env else 0
@@ -105,8 +110,10 @@ class Collector(object):
             self.state = result.state if hasattr(result, 'state') else None
             if isinstance(result.act, torch.Tensor):
                 self._act = result.act.detach().cpu().numpy()
-            else:
+            elif not isinstance(self._act, np.ndarray):
                 self._act = np.array(result.act)
+            else:
+                self._act = result.act
             obs_next, self._rew, self._done, self._info = self.env.step(
                 self._act if self._multi_env else self._act[0])
             if render > 0:
@@ -116,9 +123,6 @@ class Collector(object):
             self.reward += self._rew
             if self._multi_env:
                 for i in range(self.env_num):
-                    if not self.env.is_reset_after_done()\
-                            and cur_episode[i] > 0:
-                        continue
                     data = {
                         'obs': self._obs[i], 'act': self._act[i],
                         'rew': self._rew[i], 'done': self._done[i],
@@ -132,13 +136,16 @@ class Collector(object):
                         self.buffer.add(**data)
                         cur_step += 1
                     if self._done[i]:
-                        cur_episode[i] += 1
-                        reward_sum += self.reward[i]
-                        length_sum += self.length[i]
+                        if n_step != 0 or np.isscalar(n_episode) or \
+                                cur_episode[i] < n_episode[i]:
+                            cur_episode[i] += 1
+                            reward_sum += self.reward[i]
+                            length_sum += self.length[i]
+                            if self._cached_buf:
+                                cur_step += len(self._cached_buf[i])
+                                self.buffer.update(self._cached_buf[i])
                         self.reward[i], self.length[i] = 0, 0
                         if self._cached_buf:
-                            self.buffer.update(self._cached_buf[i])
-                            cur_step += len(self._cached_buf[i])
                             self._cached_buf[i].reset()
                         if isinstance(self.state, list):
                             self.state[i] = None
@@ -150,8 +157,14 @@ class Collector(object):
                             if isinstance(self.state, torch.Tensor):
                                 # remove ref count in pytorch (?)
                                 self.state = self.state.detach()
-                if n_episode > 0 and cur_episode.sum() >= n_episode:
-                    break
+                if sum(self._done):
+                    obs_next = self.env.reset(np.where(self._done)[0])
+                if n_episode != 0:
+                    if isinstance(n_episode, list) and \
+                            (cur_episode >= np.array(n_episode)).all() or \
+                            np.isscalar(n_episode) and \
+                            cur_episode.sum() >= n_episode:
+                        break
             else:
                 self.buffer.add(
                     self._obs, self._act[0], self._rew,
@@ -163,10 +176,10 @@ class Collector(object):
                     length_sum += self.length
                     self.reward, self.length = 0, 0
                     self.state = None
-                    self._obs = self.env.reset()
-                if n_episode > 0 and cur_episode >= n_episode:
+                    obs_next = self.env.reset()
+                if n_episode != 0 and cur_episode >= n_episode:
                     break
-            if n_step > 0 and cur_step >= n_step:
+            if n_step != 0 and cur_step >= n_step:
                 break
             self._obs = obs_next
         self._obs = obs_next
@@ -178,13 +191,17 @@ class Collector(object):
         self.collect_step += cur_step
         self.collect_episode += cur_episode
         self.collect_time += duration
+        if isinstance(n_episode, list):
+            n_episode = np.sum(n_episode)
+        else:
+            n_episode = max(cur_episode, 1)
         return {
             'n/ep': cur_episode,
             'n/st': cur_step,
             'v/st': self.step_speed.get(),
             'v/ep': self.episode_speed.get(),
-            'rew': reward_sum / cur_episode,
-            'len': length_sum / cur_episode,
+            'rew': reward_sum / n_episode,
+            'len': length_sum / n_episode,
         }
 
     def sample(self, batch_size):

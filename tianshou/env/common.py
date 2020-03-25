@@ -14,11 +14,11 @@ class EnvWrapper(object):
 
     def seed(self, seed=None):
         if hasattr(self.env, 'seed'):
-            self.env.seed(seed)
+            return self.env.seed(seed)
 
     def render(self, **kwargs):
         if hasattr(self.env, 'render'):
-            self.env.render(**kwargs)
+            return self.env.render(**kwargs)
 
     def close(self):
         self.env.close()

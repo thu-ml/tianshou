@@ -21,12 +21,12 @@ def get_args():
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=10)
-    parser.add_argument('--repeat-per-collect', type=int, default=1)
+    parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=16)
@@ -54,12 +54,10 @@ def _test_ppo(args=get_args()):
     args.max_action = env.action_space.high[0]
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)],
-        reset_after_done=True)
+        [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)],
-        reset_after_done=False)
+        [lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -85,7 +83,8 @@ def _test_ppo(args=get_args()):
         action_range=[env.action_space.low[0], env.action_space.high[0]])
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs, ReplayBuffer(args.buffer_size),
+        remove_done_flag=True)
     test_collector = Collector(policy, test_envs)
     train_collector.collect(n_step=args.step_per_epoch)
     # log

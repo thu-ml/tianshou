@@ -13,7 +13,8 @@ class DDPGPolicy(BasePolicy):
 
     def __init__(self, actor, actor_optim, critic, critic_optim,
                  tau=0.005, gamma=0.99, exploration_noise=0.1,
-                 action_range=None, reward_normalization=True):
+                 action_range=None, reward_normalization=False,
+                 ignore_done=False):
         super().__init__()
         if actor is not None:
             self.actor, self.actor_old = actor, deepcopy(actor)
@@ -35,6 +36,7 @@ class DDPGPolicy(BasePolicy):
         self._action_scale = (action_range[1] - action_range[0]) / 2
         # it is only a little difference to use rand_normal
         # self.noise = OUNoise()
+        self._rm_done = ignore_done
         self._rew_norm = reward_normalization
         self.__eps = np.finfo(np.float32).eps.item()
 
@@ -60,8 +62,12 @@ class DDPGPolicy(BasePolicy):
 
     def process_fn(self, batch, buffer, indice):
         if self._rew_norm:
-            self._rew_mean = buffer.rew.mean()
-            self._rew_std = buffer.rew.std()
+            bfr = buffer.rew[:len(buffer)]
+            mean, std = bfr.mean(), bfr.std()
+            if std > self.__eps:
+                batch.rew = (batch.rew - mean) / std
+        if self._rm_done:
+            batch.done = batch.done * 0.
         return batch
 
     def __call__(self, batch, state=None,
@@ -72,10 +78,10 @@ class DDPGPolicy(BasePolicy):
         logits += self._action_bias
         if eps is None:
             eps = self._eps
-        # noise = np.random.normal(0, eps, size=logits.shape)
-        # noise = self.noise(logits.shape, eps)
-        # logits += torch.tensor(noise, device=logits.device)
         if eps > 0:
+            # noise = np.random.normal(0, eps, size=logits.shape)
+            # logits += torch.tensor(noise, device=logits.device)
+            # noise = self.noise(logits.shape, eps)
             logits += torch.randn(
                 size=logits.shape, device=logits.device) * eps
         logits = logits.clamp(self._range[0], self._range[1])
@@ -86,10 +92,8 @@ class DDPGPolicy(BasePolicy):
             batch, model='actor_old', input='obs_next', eps=0).act)
         dev = target_q.device
         rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
-        if self._rew_norm:
-            rew = (rew - self._rew_mean) / (self._rew_std + self.__eps)
         done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
-        target_q = rew + ((1. - done) * self._gamma * target_q).detach()
+        target_q = (rew + (1. - done) * self._gamma * target_q).detach()
         current_q = self.critic(batch.obs, batch.act)
         critic_loss = F.mse_loss(current_q, target_q)
         self.critic_optim.zero_grad()

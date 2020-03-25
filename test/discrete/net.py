@@ -18,7 +18,8 @@ class Net(nn.Module):
         self.model = nn.Sequential(*self.model)
 
     def forward(self, s, state=None, info={}):
-        s = torch.tensor(s, device=self.device, dtype=torch.float)
+        if not isinstance(s, torch.Tensor):
+            s = torch.tensor(s, device=self.device, dtype=torch.float)
         batch = s.shape[0]
         s = s.view(batch, -1)
         logits = self.model(s)

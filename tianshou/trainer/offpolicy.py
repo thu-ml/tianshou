@@ -5,15 +5,6 @@ from tianshou.utils import tqdm_config, MovAvg
 from tianshou.trainer import test_episode, gather_info
 
 
-def test(policy, collector, test_fn, epoch, n_episode):
-    collector.reset_env()
-    collector.reset_buffer()
-    policy.eval()
-    if test_fn:
-        test_fn(epoch)
-    return collector.collect(n_episode=n_episode)
-
-
 def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                       step_per_epoch, collect_per_step, episode_per_test,
                       batch_size, train_fn=None, test_fn=None, stop_fn=None,
@@ -49,8 +40,7 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                         if train_fn:
                             train_fn(epoch)
                 for i in range(min(
-                        result['n/st'] // collect_per_step,
-                        t.total - t.n)):
+                        result['n/st'] // collect_per_step, t.total - t.n)):
                     global_step += 1
                     losses = policy.learn(train_collector.sample(batch_size))
                     for k in result.keys():

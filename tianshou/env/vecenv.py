@@ -10,14 +10,9 @@ from tianshou.env import EnvWrapper, CloudpickleWrapper
 
 
 class BaseVectorEnv(ABC):
-    def __init__(self, env_fns, reset_after_done):
+    def __init__(self, env_fns):
         self._env_fns = env_fns
         self.env_num = len(env_fns)
-        self._reset_after_done = reset_after_done
-        self._done = np.zeros(self.env_num)
-
-    def is_reset_after_done(self):
-        return self._reset_after_done
 
     def __len__(self):
         return self.env_num
@@ -46,67 +41,62 @@ class BaseVectorEnv(ABC):
 class VectorEnv(BaseVectorEnv):
     """docstring for VectorEnv"""
 
-    def __init__(self, env_fns, reset_after_done=False):
-        super().__init__(env_fns, reset_after_done)
+    def __init__(self, env_fns):
+        super().__init__(env_fns)
         self.envs = [_() for _ in env_fns]
 
-    def reset(self):
-        self._done = np.zeros(self.env_num)
-        self._obs = np.stack([e.reset() for e in self.envs])
+    def reset(self, id=None):
+        if id is None:
+            self._obs = np.stack([e.reset() for e in self.envs])
+        else:
+            if np.isscalar(id):
+                id = [id]
+            for i in id:
+                self._obs[i] = self.envs[i].reset()
         return self._obs
 
     def step(self, action):
         assert len(action) == self.env_num
-        result = []
-        for i, e in enumerate(self.envs):
-            if not self.is_reset_after_done() and self._done[i]:
-                result.append([
-                    self._obs[i], self._rew[i], self._done[i], self._info[i]])
-            else:
-                result.append(e.step(action[i]))
+        result = [e.step(a) for e, a in zip(self.envs, action)]
         self._obs, self._rew, self._done, self._info = zip(*result)
-        if self.is_reset_after_done() and sum(self._done):
-            self._obs = np.stack(self._obs)
-            for i in np.where(self._done)[0]:
-                self._obs[i] = self.envs[i].reset()
-        return np.stack(self._obs), np.stack(self._rew),\
-            np.stack(self._done), np.stack(self._info)
+        self._obs = np.stack(self._obs)
+        self._rew = np.stack(self._rew)
+        self._done = np.stack(self._done)
+        self._info = np.stack(self._info)
+        return self._obs, self._rew, self._done, self._info
 
     def seed(self, seed=None):
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
             seed = [seed] * self.env_num
+        result = []
         for e, s in zip(self.envs, seed):
             if hasattr(e, 'seed'):
-                e.seed(s)
+                result.append(e.seed(s))
+        return result
 
     def render(self, **kwargs):
+        result = []
         for e in self.envs:
             if hasattr(e, 'render'):
-                e.render(**kwargs)
+                result.append(e.render(**kwargs))
+        return result
 
     def close(self):
         for e in self.envs:
             e.close()
 
 
-def worker(parent, p, env_fn_wrapper, reset_after_done):
+def worker(parent, p, env_fn_wrapper):
     parent.close()
     env = env_fn_wrapper.data()
-    done = False
     try:
         while True:
             cmd, data = p.recv()
             if cmd == 'step':
-                if reset_after_done or not done:
-                    obs, rew, done, info = env.step(data)
-                if reset_after_done and done:
-                    # s_ is useless when episode finishes
-                    obs = env.reset()
-                p.send([obs, rew, done, info])
+                p.send(env.step(data))
             elif cmd == 'reset':
-                done = False
                 p.send(env.reset())
             elif cmd == 'close':
                 p.close()
@@ -125,15 +115,14 @@ def worker(parent, p, env_fn_wrapper, reset_after_done):
 class SubprocVectorEnv(BaseVectorEnv):
     """docstring for SubProcVectorEnv"""
 
-    def __init__(self, env_fns, reset_after_done=False):
-        super().__init__(env_fns, reset_after_done)
+    def __init__(self, env_fns):
+        super().__init__(env_fns)
         self.closed = False
         self.parent_remote, self.child_remote = \
             zip(*[Pipe() for _ in range(self.env_num)])
         self.processes = [
             Process(target=worker, args=(
-                    parent, child,
-                    CloudpickleWrapper(env_fn), reset_after_done), daemon=True)
+                    parent, child, CloudpickleWrapper(env_fn)), daemon=True)
             for (parent, child, env_fn) in zip(
                 self.parent_remote, self.child_remote, env_fns)
         ]
@@ -147,13 +136,27 @@ class SubprocVectorEnv(BaseVectorEnv):
         for p, a in zip(self.parent_remote, action):
             p.send(['step', a])
         result = [p.recv() for p in self.parent_remote]
-        obs, rew, done, info = zip(*result)
-        return np.stack(obs), np.stack(rew), np.stack(done), np.stack(info)
+        self._obs, self._rew, self._done, self._info = zip(*result)
+        self._obs = np.stack(self._obs)
+        self._rew = np.stack(self._rew)
+        self._done = np.stack(self._done)
+        self._info = np.stack(self._info)
+        return self._obs, self._rew, self._done, self._info
 
-    def reset(self):
-        for p in self.parent_remote:
-            p.send(['reset', None])
-        return np.stack([p.recv() for p in self.parent_remote])
+    def reset(self, id=None):
+        if id is None:
+            for p in self.parent_remote:
+                p.send(['reset', None])
+            self._obs = np.stack([p.recv() for p in self.parent_remote])
+            return self._obs
+        else:
+            if np.isscalar(id):
+                id = [id]
+            for i in id:
+                self.parent_remote[i].send(['reset', None])
+            for i in id:
+                self._obs[i] = self.parent_remote[i].recv()
+            return self._obs
 
     def seed(self, seed=None):
         if np.isscalar(seed):
@@ -162,14 +165,12 @@ class SubprocVectorEnv(BaseVectorEnv):
             seed = [seed] * self.env_num
         for p, s in zip(self.parent_remote, seed):
             p.send(['seed', s])
-        for p in self.parent_remote:
-            p.recv()
+        return [p.recv() for p in self.parent_remote]
 
     def render(self, **kwargs):
         for p in self.parent_remote:
             p.send(['render', kwargs])
-        for p in self.parent_remote:
-            p.recv()
+        return [p.recv() for p in self.parent_remote]
 
     def close(self):
         if self.closed:
@@ -184,8 +185,8 @@ class SubprocVectorEnv(BaseVectorEnv):
 class RayVectorEnv(BaseVectorEnv):
     """docstring for RayVectorEnv"""
 
-    def __init__(self, env_fns, reset_after_done=False):
-        super().__init__(env_fns, reset_after_done)
+    def __init__(self, env_fns):
+        super().__init__(env_fns)
         try:
             if not ray.is_initialized():
                 ray.init()
@@ -198,35 +199,27 @@ class RayVectorEnv(BaseVectorEnv):
 
     def step(self, action):
         assert len(action) == self.env_num
-        result_obj = []
-        for i, e in enumerate(self.envs):
-            if not self.is_reset_after_done() and self._done[i]:
-                result_obj.append(None)
-            else:
-                result_obj.append(e.step.remote(action[i]))
-        result = []
-        for i, r in enumerate(result_obj):
-            if r is None:
-                result.append([
-                    self._obs[i], self._rew[i], self._done[i], self._info[i]])
-            else:
-                result.append(ray.get(r))
+        result_obj = [e.step.remote(a) for e, a in zip(self.envs, action)]
+        result = [ray.get(r) for r in result_obj]
         self._obs, self._rew, self._done, self._info = zip(*result)
-        if self.is_reset_after_done() and sum(self._done):
-            self._obs = np.stack(self._obs)
-            index = np.where(self._done)[0]
-            result_obj = []
-            for i in range(len(index)):
-                result_obj.append(self.envs[index[i]].reset.remote())
-            for i in range(len(index)):
-                self._obs[index[i]] = ray.get(result_obj[i])
-        return np.stack(self._obs), np.stack(self._rew),\
-            np.stack(self._done), np.stack(self._info)
+        self._obs = np.stack(self._obs)
+        self._rew = np.stack(self._rew)
+        self._done = np.stack(self._done)
+        self._info = np.stack(self._info)
+        return self._obs, self._rew, self._done, self._info
 
-    def reset(self):
-        self._done = np.zeros(self.env_num)
-        result_obj = [e.reset.remote() for e in self.envs]
-        self._obs = np.stack([ray.get(r) for r in result_obj])
+    def reset(self, id=None):
+        if id is None:
+            result_obj = [e.reset.remote() for e in self.envs]
+            self._obs = np.stack([ray.get(r) for r in result_obj])
+        else:
+            result_obj = []
+            if np.isscalar(id):
+                id = [id]
+            for i in id:
+                result_obj.append(self.envs[i].reset.remote())
+            for _, i in enumerate(id):
+                self._obs[i] = ray.get(result_obj[_])
         return self._obs
 
     def seed(self, seed=None):
@@ -237,15 +230,13 @@ class RayVectorEnv(BaseVectorEnv):
         elif seed is None:
             seed = [seed] * self.env_num
         result_obj = [e.seed.remote(s) for e, s in zip(self.envs, seed)]
-        for r in result_obj:
-            ray.get(r)
+        return [ray.get(r) for r in result_obj]
 
     def render(self, **kwargs):
         if not hasattr(self.envs[0], 'render'):
             return
         result_obj = [e.render.remote(**kwargs) for e in self.envs]
-        for r in result_obj:
-            ray.get(r)
+        return [ray.get(r) for r in result_obj]
 
     def close(self):
         result_obj = [e.close.remote() for e in self.envs]

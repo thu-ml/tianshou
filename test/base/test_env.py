@@ -37,20 +37,34 @@ def test_framestack(k=4, size=10):
 
 def test_vecenv(size=10, num=8, sleep=0.001):
     verbose = __name__ == '__main__'
-    env_fns = [lambda: MyTestEnv(size=size, sleep=sleep) for _ in range(num)]
+    env_fns = [
+        lambda: MyTestEnv(size=size, sleep=sleep),
+        lambda: MyTestEnv(size=size + 1, sleep=sleep),
+        lambda: MyTestEnv(size=size + 2, sleep=sleep),
+        lambda: MyTestEnv(size=size + 3, sleep=sleep),
+        lambda: MyTestEnv(size=size + 4, sleep=sleep),
+        lambda: MyTestEnv(size=size + 5, sleep=sleep),
+        lambda: MyTestEnv(size=size + 6, sleep=sleep),
+        lambda: MyTestEnv(size=size + 7, sleep=sleep),
+    ]
     venv = [
-        VectorEnv(env_fns, reset_after_done=True),
-        SubprocVectorEnv(env_fns, reset_after_done=True),
+        VectorEnv(env_fns),
+        SubprocVectorEnv(env_fns),
     ]
     if verbose:
-        venv.append(RayVectorEnv(env_fns, reset_after_done=True))
+        venv.append(RayVectorEnv(env_fns))
     for v in venv:
         v.seed()
-    action_list = [1] * 5 + [0] * 10 + [1] * 15
+    action_list = [1] * 5 + [0] * 10 + [1] * 20
     if not verbose:
         o = [v.reset() for v in venv]
         for i, a in enumerate(action_list):
-            o = [v.step([a] * num) for v in venv]
+            o = []
+            for v in venv:
+                A, B, C, D = v.step([a] * num)
+                if sum(C):
+                    A = v.reset(np.where(C)[0])
+                o.append([A, B, C, D])
             for i in zip(*o):
                 for j in range(1, len(i)):
                     assert (i[0] == i[j]).all()
@@ -60,7 +74,9 @@ def test_vecenv(size=10, num=8, sleep=0.001):
             t[i] = time.time()
             e.reset()
             for a in action_list:
-                e.step([a] * num)
+                done = e.step([a] * num)[2]
+                if sum(done) > 0:
+                    e.reset(np.where(done)[0])
             t[i] = time.time() - t[i]
         print(f'VectorEnv: {t[0]:.6f}s')
         print(f'SubprocVectorEnv: {t[1]:.6f}s')
@@ -69,40 +85,6 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         v.close()
 
 
-def test_vecenv2():
-    verbose = __name__ == '__main__'
-    env_fns = [
-        lambda: MyTestEnv(size=1),
-        lambda: MyTestEnv(size=2),
-        lambda: MyTestEnv(size=3),
-        lambda: MyTestEnv(size=4),
-    ]
-    num = len(env_fns)
-    venv = [
-        VectorEnv(env_fns, reset_after_done=False),
-        SubprocVectorEnv(env_fns, reset_after_done=False),
-    ]
-    if verbose:
-        venv.append(RayVectorEnv(env_fns, reset_after_done=False))
-    for v in venv:
-        v.seed()
-    o = [v.reset() for v in venv]
-    action_list = [1] * 6
-    for i, a in enumerate(action_list):
-        o = [v.step([a] * num) for v in venv]
-        if verbose:
-            print(o[0])
-            print(o[1])
-            print(o[2])
-            print('---')
-        for i in zip(*o):
-            for j in range(1, len(i)):
-                assert (i[0] == i[j]).all()
-    for v in venv:
-        v.close()
-
-
 if __name__ == '__main__':
     test_framestack()
     test_vecenv()
-    test_vecenv2()

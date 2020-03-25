@@ -10,10 +10,9 @@ from tianshou.policy import BasePolicy
 class DQNPolicy(BasePolicy):
     """docstring for DQNPolicy"""
 
-    def __init__(self, model, optim,
-                 discount_factor=0.99,
-                 estimation_step=1,
-                 use_target_network=True):
+    def __init__(self, model, optim, discount_factor=0.99,
+                 estimation_step=1, use_target_network=True,
+                 target_update_freq=300):
         super().__init__()
         self.model = model
         self.optim = optim
@@ -23,6 +22,8 @@ class DQNPolicy(BasePolicy):
         assert estimation_step > 0, 'estimation_step should greater than 0'
         self._n_step = estimation_step
         self._target = use_target_network
+        self._freq = target_update_freq
+        self._cnt = 0
         if use_target_network:
             self.model_old = deepcopy(self.model)
             self.model_old.eval()
@@ -39,8 +40,7 @@ class DQNPolicy(BasePolicy):
         self.model.eval()
 
     def sync_weight(self):
-        if self._target:
-            self.model_old.load_state_dict(self.model.state_dict())
+        self.model_old.load_state_dict(self.model.state_dict())
 
     def process_fn(self, batch, buffer, indice):
         returns = np.zeros_like(indice)
@@ -84,6 +84,8 @@ class DQNPolicy(BasePolicy):
         return Batch(logits=q, act=act, state=h)
 
     def learn(self, batch, batch_size=None, repeat=1):
+        if self._target and self._cnt % self._freq == 0:
+            self.sync_weight()
         self.optim.zero_grad()
         q = self(batch).logits
         q = q[np.arange(len(q)), batch.act]
@@ -93,4 +95,5 @@ class DQNPolicy(BasePolicy):
         loss = F.mse_loss(q, r)
         loss.backward()
         self.optim.step()
+        self._cnt += 1
         return {'loss': loss.detach().cpu().numpy()}

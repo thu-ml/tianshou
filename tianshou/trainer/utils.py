@@ -7,7 +7,7 @@ def test_episode(policy, collector, test_fn, epoch, n_episode):
     policy.eval()
     if test_fn:
         test_fn(epoch)
-    return collector.collect(n_episode=n_episode)
+    return collector.collect(n_episode=[1] * n_episode)
 
 
 def gather_info(start_time, train_c, test_c, best_reward):

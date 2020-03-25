@@ -23,11 +23,12 @@ def get_args():
     parser.add_argument('--eps-test', type=float, default=0.05)
     parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=3e-4)
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--n-step', type=int, default=1)
+    parser.add_argument('--target-update-freq', type=int, default=320)
     parser.add_argument('--epoch', type=int, default=100)
-    parser.add_argument('--step-per-epoch', type=int, default=320)
+    parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=3)
@@ -47,12 +48,10 @@ def test_dqn(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)],
-        reset_after_done=True)
+        [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)],
-        reset_after_done=False)
+        [lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -62,12 +61,17 @@ def test_dqn(args=get_args()):
     net = Net(args.layer_num, args.state_shape, args.action_shape, args.device)
     net = net.to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = DQNPolicy(net, optim, args.gamma, args.n_step)
+    policy = DQNPolicy(
+        net, optim, args.gamma, args.n_step,
+        use_target_network=args.target_update_freq > 0,
+        target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
-    train_collector.collect(n_step=args.buffer_size)
+    # policy.set_eps(1)
+    train_collector.collect(n_step=args.batch_size)
+    print(len(train_collector.buffer))
     # log
     writer = SummaryWriter(args.logdir)
 
@@ -75,7 +79,6 @@ def test_dqn(args=get_args()):
         return x >= env.spec.reward_threshold
 
     def train_fn(x):
-        policy.sync_weight()
         policy.set_eps(args.eps_train)
 
     def test_fn(x):
