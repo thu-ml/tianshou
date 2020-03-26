@@ -36,18 +36,16 @@ class A2CPolicy(PGPolicy):
                 v = self.critic(b.obs)
                 a = torch.tensor(b.act, device=dist.logits.device)
                 r = torch.tensor(b.returns, device=dist.logits.device)
-                actor_loss = -(dist.log_prob(a) * (r - v).detach()).mean()
+                a_loss = -(dist.log_prob(a) * (r - v).detach()).mean()
                 vf_loss = F.mse_loss(r[:, None], v)
                 ent_loss = dist.entropy().mean()
-                loss = actor_loss \
-                       + self._w_vf * vf_loss \
-                       - self._w_ent * ent_loss
+                loss = a_loss + self._w_vf * vf_loss - self._w_ent * ent_loss
                 loss.backward()
                 if self._grad_norm:
                     nn.utils.clip_grad_norm_(
                         self.model.parameters(), max_norm=self._grad_norm)
                 self.optim.step()
-                actor_losses.append(actor_loss.detach().cpu().numpy())
+                actor_losses.append(a_loss.detach().cpu().numpy())
                 vf_losses.append(vf_loss.detach().cpu().numpy())
                 ent_losses.append(ent_loss.detach().cpu().numpy())
                 losses.append(loss.detach().cpu().numpy())

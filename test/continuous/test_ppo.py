@@ -83,8 +83,7 @@ def _test_ppo(args=get_args()):
         action_range=[env.action_space.low[0], env.action_space.high[0]])
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size),
-        remove_done_flag=True)
+        policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     train_collector.collect(n_step=args.step_per_epoch)
     # log

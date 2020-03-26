@@ -37,7 +37,7 @@ class Batch(object):
             else:
                 raise TypeError(
                     'No support for append with type {} in class Batch.'
-                        .format(type(batch.__dict__[k])))
+                    .format(type(batch.__dict__[k])))
 
     def split(self, size=None, permute=True):
         length = min([
