@@ -9,7 +9,7 @@
 [![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues)
 [![GitHub license](https://img.shields.io/github/license/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/blob/master/LICENSE)
 
-**Tianshou**(天授) is a reinforcement learning platform based on pure PyTorch. Unlike existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly api, or slow-speed, Tianshou provides a fast-speed framework and pythonic api for building the deep reinforcement learning agent. The supported interface algorithms include:
+**Tianshou**(天授) is a reinforcement learning platform based on pure PyTorch. Unlike existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed framework and pythonic API for building the deep reinforcement learning agent. The supported interface algorithms include:
 
 
 - [Policy Gradient (PG)](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
@@ -27,7 +27,7 @@ Tianshou is still under development. More algorithms are going to be added and w
 
 ## Installation
 
-Tianshou is currently hosted on [pypi](https://pypi.org/project/tianshou/). You can simply install Tianshou with the following command:
+Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/). You can simply install Tianshou with the following command:
 
 ```bash
 pip3 install tianshou
@@ -35,23 +35,59 @@ pip3 install tianshou
 
 ## Documentation
 
-The tutorials and api documentations are hosted on https://tianshou.readthedocs.io/en/latest/.
+The tutorials and API documentation are hosted on [https://tianshou.readthedocs.io](https://tianshou.readthedocs.io).
 
 The example scripts are under [test/discrete](/test/discrete) (CartPole) and [test/continuous](/test/continuous) (Pendulum).
 
 ## Why Tianshou?
 
-Tianshou is a lightweight but high-speed reinforcement learning platform. For example, here is a test on a laptop (i7-8750H + GTX1060). It only use 3 seconds for training a policy gradient agent on CartPole-v0 task.
+### Fast-speed
+
+Tianshou is a lightweight but high-speed reinforcement learning platform. For example, here is a test on a laptop (i7-8750H + GTX1060). It only uses 3 seconds for training a agent based on vanilla policy gradient on the CartPole-v0 task.
 
 ![testpg](docs/_static/images/testpg.gif)
 
-Here is the table for other algorithms and platforms:
+We select some of famous (>1k stars) reinforcement learning platform. Here is the table for other algorithms and platforms:
 
-TODO: a TABLE
+| Platform           | [Tianshou](https://github.com/thu-ml/tianshou)*              | [Baselines](https://github.com/openai/baselines)             | [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [PyTorch DRL](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch) | [rlpyt](https://github.com/astooke/rlpyt)                    |
+| ------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| GitHub Stars       | [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/openai/baselines)](https://github.com/openai/baselines/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/ray-project/ray)](https://github.com/ray-project/ray/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch)](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/astooke/rlpyt)](https://github.com/astooke/rlpyt/stargazers) |
+| Algo \ ML platform | PyTorch                                                      | TensorFlow                                                   | TF/PyTorch                                                   | PyTorch                                                      | PyTorch                                                      |
+| PG - CartPole      | 9.03±4.18s                                                   |                                                              |                                                              |                                                              |                                                              |
+| DQN - CartPole     | 20.94±11.38s                                                 |                                                              |                                                              |                                                              |                                                              |
+| A2C - CartPole     | 11.72±3.85s                                                  |                                                              |                                                              |                                                              |                                                              |
+| PPO - CartPole     | 35.25±16.47s                                                 |                                                              |                                                              |                                                              |                                                              |
+| DDPG - Pendulum    | 46.95±24.31s                                                 |                                                              |                                                              |                                                              |                                                              |
+| SAC - Pendulum     | 38.92±2.09s                                                  | None                                                         |                                                              |                                                              |                                                              |
+| TD3 - Pendulum     | 48.39±7.22s                                                  | None                                                         |                                                              |                                                              |                                                              |
 
-Tianshou also has unit tests. Different from other platforms, **the unit tests include the agent training procedure for all of the implemented algorithms**. It will be failed when it cannot train an agent to perform well enough on limited epochs on toy scenarios. The unit tests secure the reproducibility of our platform.
+The reward threshold is 195.0 in CartPole and -250.0 in Pendulum over consecutive 100 episodes.
 
-## Quick start
+*: Tianshou uses 10 seeds for testing in 10 epochs. We erase those trials which failed training within the given limitation.
+
+### Reproducible
+
+Tianshou has unit tests. Different from other platforms, **the unit tests include the full agent training procedure for all of the implemented algorithms**. It will be failed once it cannot train an agent to perform well enough on limited epochs on toy scenarios. The unit tests secure the reproducibility of our platform. 
+
+Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page for more detail.
+
+### Elegant and Flexible
+
+Currently, the overall code of Tianshou platform is less than 1500 lines. It is quite easy to go through the framework and understand how it works. We provide many flexible API as you wish, for instance, if you want to use your policy to interact with environment with `n` episodes:
+
+```python
+result = collector.collect(n_episode=n)
+```
+
+If you want to train the given policy with a sampled batch:
+
+```python
+result = policy.learn(collector.sample(batch_size))
+```
+
+You can check out the [documentation](https://tianshou.readthedocs.io) for further usage.
+
+## Quick Start
 
 This is an example of Policy Gradient. You can also run the full script under [test/discrete/test_pg.py](/test/discrete/test_pg.py).
 
@@ -59,6 +95,7 @@ First, import the relevant packages:
 
 ```python
 import gym, torch, numpy as np, torch.nn as nn
+from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import PGPolicy
 from tianshou.env import SubprocVectorEnv
@@ -81,6 +118,7 @@ batch_size = 64
 train_num = 8 
 test_num = 100 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+writer = SummaryWriter('log')  # tensorboard is also supported!
 ```
 
 Define the network:
@@ -135,10 +173,10 @@ test_collector = Collector(policy, test_envs)
 Let's train it:
 
 ```python
-result = onpolicy_trainer(policy, train_collector, test_collector, epoch, step_per_epoch, collect_per_step, repeat_per_collect, test_num, batch_size, stop_fn=lambda x: x >= env.spec.reward_threshold)
+result = onpolicy_trainer(policy, train_collector, test_collector, epoch, step_per_epoch, collect_per_step, repeat_per_collect, [1] * test_num, batch_size, stop_fn=lambda x: x >= env.spec.reward_threshold, writer=writer)
 ```
 
-Saving / loading trained policy (it's the same as PyTorch nn.module):
+Saving / loading trained policy (it's exactly the same as PyTorch nn.module):
 
 ```python
 torch.save(policy.state_dict(), 'pg.pth')
@@ -152,11 +190,17 @@ collecter = Collector(policy, env)
 collecter.collect(n_episode=1, render=1/35)
 ```
 
+Looking at the result saved in tensorboard: (on bash script)
+
+```bash
+tensorboard --logdir log
+```
+
 ## Citing Tianshou
 
 If you find Tianshou useful, please cite it in your publications.
 
-```
+```latex
 @misc{tianshou,
   author = {Jiayi Weng},
   title = {Tianshou},
@@ -167,6 +211,14 @@ If you find Tianshou useful, please cite it in your publications.
 }
 ```
 
+## TODO
+
+- [ ] Prioritized replay buffer
+- [ ] RNN support
+- [ ] Multi-agent
+- [ ] Distributed training
+
 ## Miscellaneous
 
-Tianshou was [previously](https://github.com/thu-ml/tianshou/tree/priv) a reinforcement learning platform based on TensorFlow. You can checkout the branch `priv` for more detail.
+Tianshou was previously a reinforcement learning platform based on TensorFlow. You can checkout the branch [`priv`](https://github.com/thu-ml/tianshou/tree/priv) for more detail.
+
