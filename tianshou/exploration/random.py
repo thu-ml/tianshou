@@ -14,7 +14,7 @@ class OUNoise(object):
         if self.x is None or self.x.shape != size:
             self.x = 0
         self.x = self.x + self.alpha * (mu - self.x) + \
-            self.beta * np.random.normal(size=size)
+                 self.beta * np.random.normal(size=size)
         return self.x
 
     def reset(self):

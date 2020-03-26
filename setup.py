@@ -37,11 +37,19 @@ setup(
                                     'examples', 'examples.*',
                                     'docs', 'docs.*']),
     install_requires=[
-        'gym',
+        'gym>=0.15.0',
         'tqdm',
         'numpy',
         'cloudpickle',
         'tensorboard',
         'torch>=1.4.0',
     ],
+    extras_require={
+        'atari': [
+            'atari_py',
+        ],
+        'mujoco': [
+            'mujoco_py',
+        ]
+    },
 )

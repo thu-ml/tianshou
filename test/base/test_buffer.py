@@ -1,4 +1,5 @@
 from tianshou.data import ReplayBuffer
+
 if __name__ == '__main__':
     from env import MyTestEnv
 else:  # pytest

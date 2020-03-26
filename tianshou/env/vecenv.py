@@ -1,6 +1,7 @@
 import numpy as np
 from abc import ABC, abstractmethod
 from multiprocessing import Process, Pipe
+
 try:
     import ray
 except ImportError:
@@ -122,7 +123,7 @@ class SubprocVectorEnv(BaseVectorEnv):
             zip(*[Pipe() for _ in range(self.env_num)])
         self.processes = [
             Process(target=worker, args=(
-                    parent, child, CloudpickleWrapper(env_fn)), daemon=True)
+                parent, child, CloudpickleWrapper(env_fn)), daemon=True)
             for (parent, child, env_fn) in zip(
                 self.parent_remote, self.child_remote, env_fns)
         ]
