@@ -32,6 +32,8 @@ def get_args():
     parser.add_argument('--training-num', type=int, default=32)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
+    parser.add_argument('--render', type=float, default=0.)
+
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -91,7 +93,7 @@ def test_a2c(args=get_args()):
         # Let's watch its performance!
         env = gym.make(args.task)
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=1 / 35)
+        result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
 
