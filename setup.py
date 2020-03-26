@@ -38,7 +38,6 @@ setup(
                                     'docs', 'docs.*']),
     install_requires=[
         'gym>=0.15.0',
-        'mujoco_py'
         'tqdm',
         'numpy',
         'cloudpickle',
