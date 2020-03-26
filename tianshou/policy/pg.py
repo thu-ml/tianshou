@@ -35,24 +35,21 @@ class PGPolicy(BasePolicy):
     def learn(self, batch, batch_size=None, repeat=1):
         losses = []
 
-<< << << < HEAD
-batch.returns = (batch.returns - batch.returns.mean()) \
-                / (batch.returns.std() + self._eps)
-== == == =
-r = batch.returns
-batch.returns = (r - r.mean()) / (r.std() + self._eps)
->> >> >> > c505cd8205acee66a294a2b222c0eb3671a6badc
-for _ in range(repeat):
-    for b in batch.split(batch_size):
-        self.optim.zero_grad()
-        dist = self(b).dist
-        a = torch.tensor(b.act, device=dist.logits.device)
-        r = torch.tensor(b.returns, device=dist.logits.device)
-        loss = -(dist.log_prob(a) * r).sum()
-        loss.backward()
-        self.optim.step()
-        losses.append(loss.detach().cpu().numpy())
-return {'loss': losses}
+        batch.returns = (batch.returns - batch.returns.mean()) \
+                        / (batch.returns.std() + self._eps)
+        r = batch.returns
+        batch.returns = (r - r.mean()) / (r.std() + self._eps)
+        for _ in range(repeat):
+            for b in batch.split(batch_size):
+                self.optim.zero_grad()
+                dist = self(b).dist
+                a = torch.tensor(b.act, device=dist.logits.device)
+                r = torch.tensor(b.returns, device=dist.logits.device)
+                loss = -(dist.log_prob(a) * r).sum()
+                loss.backward()
+                self.optim.step()
+                losses.append(loss.detach().cpu().numpy())
+        return {'loss': losses}
 
 
 def _vanilla_returns(self, batch):

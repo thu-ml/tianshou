@@ -40,25 +40,22 @@ class A2CPolicy(PGPolicy):
                 vf_loss = F.mse_loss(r[:, None], v)
                 ent_loss = dist.entropy().mean()
 
-<< << << < HEAD
-loss = actor_loss \
-       + self._w_vf * vf_loss \
-       - self._w_ent * ent_loss
-== == == =
-loss = a_loss + self._w_vf * vf_loss - self._w_ent * ent_loss
->> >> >> > c505cd8205acee66a294a2b222c0eb3671a6badc
-loss.backward()
-if self._grad_norm:
-    nn.utils.clip_grad_norm_(
-        self.model.parameters(), max_norm=self._grad_norm)
-self.optim.step()
-actor_losses.append(a_loss.detach().cpu().numpy())
-vf_losses.append(vf_loss.detach().cpu().numpy())
-ent_losses.append(ent_loss.detach().cpu().numpy())
-losses.append(loss.detach().cpu().numpy())
-return {
-    'loss': losses,
-    'loss/actor': actor_losses,
-    'loss/vf': vf_losses,
-    'loss/ent': ent_losses,
-}
+        loss = a_loss \
+               + self._w_vf * vf_loss \
+               - self._w_ent * ent_loss
+        loss = a_loss + self._w_vf * vf_loss - self._w_ent * ent_loss
+        loss.backward()
+        if self._grad_norm:
+            nn.utils.clip_grad_norm_(
+                self.model.parameters(), max_norm=self._grad_norm)
+        self.optim.step()
+        actor_losses.append(a_loss.detach().cpu().numpy())
+        vf_losses.append(vf_loss.detach().cpu().numpy())
+        ent_losses.append(ent_loss.detach().cpu().numpy())
+        losses.append(loss.detach().cpu().numpy())
+        return {
+            'loss': losses,
+            'loss/actor': actor_losses,
+            'loss/vf': vf_losses,
+            'loss/ent': ent_losses,
+        }

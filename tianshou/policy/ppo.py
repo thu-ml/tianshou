@@ -59,53 +59,47 @@ class PPOPolicy(PGPolicy):
     def learn(self, batch, batch_size=None, repeat=1):
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
 
-<< << << < HEAD
-batch.returns = (batch.returns - batch.returns.mean()) \
-                / (batch.returns.std() + self._eps)
-== == == =
-r = batch.returns
-batch.returns = (r - r.mean()) / (r.std() + self._eps)
->> >> >> > c505cd8205acee66a294a2b222c0eb3671a6badc
-batch.act = torch.tensor(batch.act)
-batch.returns = torch.tensor(batch.returns)[:, None]
-for _ in range(repeat):
-    for b in batch.split(batch_size):
-        vs_old, vs__old = self.critic_old(np.concatenate([
-            b.obs, b.obs_next])).split(b.obs.shape[0])
-        dist = self(b).dist
-        dist_old = self(b, model='actor_old').dist
-        target_v = b.returns.to(vs__old.device) + self._gamma * vs__old
-        adv = (target_v - vs_old).detach()
-        a = b.act.to(adv.device)
-        ratio = torch.exp(dist.log_prob(a) - dist_old.log_prob(a))
-        surr1 = ratio * adv
-        surr2 = ratio.clamp(
-            1. - self._eps_clip, 1. + self._eps_clip) * adv
-        clip_loss = -torch.min(surr1, surr2).mean()
-        clip_losses.append(clip_loss.detach().cpu().numpy())
-        vf_loss = F.smooth_l1_loss(self.critic(b.obs), target_v)
-        vf_losses.append(vf_loss.detach().cpu().numpy())
-<< << << < HEAD
-ent_loss = dist.entropy().mean()
-ent_losses.append(ent_loss.detach().cpu().numpy())
-loss = clip_loss \
-       + self._w_vf * vf_loss - self._w_ent * ent_loss
-== == == =
-e_loss = dist.entropy().mean()
-ent_losses.append(e_loss.detach().cpu().numpy())
-loss = clip_loss + self._w_vf * vf_loss - self._w_ent * e_loss
->> >> >> > c505cd8205acee66a294a2b222c0eb3671a6badc
-losses.append(loss.detach().cpu().numpy())
-self.optim.zero_grad()
-loss.backward()
-nn.utils.clip_grad_norm_(list(
-    self.actor.parameters()) + list(self.critic.parameters()),
-                         self._max_grad_norm)
-self.optim.step()
-self.sync_weight()
-return {
-    'loss': losses,
-    'loss/clip': clip_losses,
-    'loss/vf': vf_losses,
-    'loss/ent': ent_losses,
-}
+        batch.returns = (batch.returns - batch.returns.mean()) \
+                        / (batch.returns.std() + self._eps)
+        r = batch.returns
+        batch.returns = (r - r.mean()) / (r.std() + self._eps)
+        batch.act = torch.tensor(batch.act)
+        batch.returns = torch.tensor(batch.returns)[:, None]
+        for _ in range(repeat):
+            for b in batch.split(batch_size):
+                vs_old, vs__old = self.critic_old(np.concatenate([
+                    b.obs, b.obs_next])).split(b.obs.shape[0])
+                dist = self(b).dist
+                dist_old = self(b, model='actor_old').dist
+                target_v = b.returns.to(vs__old.device) + self._gamma * vs__old
+                adv = (target_v - vs_old).detach()
+                a = b.act.to(adv.device)
+                ratio = torch.exp(dist.log_prob(a) - dist_old.log_prob(a))
+                surr1 = ratio * adv
+                surr2 = ratio.clamp(
+                    1. - self._eps_clip, 1. + self._eps_clip) * adv
+                clip_loss = -torch.min(surr1, surr2).mean()
+                clip_losses.append(clip_loss.detach().cpu().numpy())
+                vf_loss = F.smooth_l1_loss(self.critic(b.obs), target_v)
+                vf_losses.append(vf_loss.detach().cpu().numpy())
+        ent_loss = dist.entropy().mean()
+        ent_losses.append(ent_loss.detach().cpu().numpy())
+        loss = clip_loss \
+               + self._w_vf * vf_loss - self._w_ent * ent_loss
+        e_loss = dist.entropy().mean()
+        ent_losses.append(e_loss.detach().cpu().numpy())
+        loss = clip_loss + self._w_vf * vf_loss - self._w_ent * e_loss
+        losses.append(loss.detach().cpu().numpy())
+        self.optim.zero_grad()
+        loss.backward()
+        nn.utils.clip_grad_norm_(list(
+            self.actor.parameters()) + list(self.critic.parameters()),
+                                 self._max_grad_norm)
+        self.optim.step()
+        self.sync_weight()
+        return {
+            'loss': losses,
+            'loss/clip': clip_losses,
+            'loss/vf': vf_losses,
+            'loss/ent': ent_losses,
+        }
