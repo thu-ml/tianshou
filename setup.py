@@ -38,7 +38,6 @@ setup(
                                     'docs', 'docs.*']),
     install_requires=[
         'gym>=0.15.0',
-        'atari_py',
         'mujoco_py'
         'tqdm',
         'numpy',
@@ -46,4 +45,12 @@ setup(
         'tensorboard',
         'torch>=1.4.0',
     ],
+    extras_require={
+        'atari': [
+            'atari_py',
+        ],
+        'mujoco': [
+            'mujoco_py',
+        ]
+    },
 )
