@@ -106,6 +106,8 @@ class Collector(object):
                     done=self._make_batch(self._done),
                     obs_next=None,
                     info=self._make_batch(self._info))
+            print(self._act)
+
             result = self.policy(batch_data, self.state)
             self.state = result.state if hasattr(result, 'state') else None
             if isinstance(result.act, torch.Tensor):
@@ -117,7 +119,7 @@ class Collector(object):
             obs_next, self._rew, self._done, self._info = self.env.step(
                 self._act if self._multi_env else self._act[0])
             if render > 0:
-                self.env.render()
+                # self.env.render()
                 time.sleep(render)
             self.length += 1
             self.reward += self._rew

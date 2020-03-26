@@ -34,45 +34,48 @@ class PGPolicy(BasePolicy):
 
     def learn(self, batch, batch_size=None, repeat=1):
         losses = []
-<<<<<<< HEAD
-        batch.returns = (batch.returns - batch.returns.mean()) \
-                        / (batch.returns.std() + self._eps)
-=======
-        r = batch.returns
-        batch.returns = (r - r.mean()) / (r.std() + self._eps)
->>>>>>> c505cd8205acee66a294a2b222c0eb3671a6badc
-        for _ in range(repeat):
-            for b in batch.split(batch_size):
-                self.optim.zero_grad()
-                dist = self(b).dist
-                a = torch.tensor(b.act, device=dist.logits.device)
-                r = torch.tensor(b.returns, device=dist.logits.device)
-                loss = -(dist.log_prob(a) * r).sum()
-                loss.backward()
-                self.optim.step()
-                losses.append(loss.detach().cpu().numpy())
-        return {'loss': losses}
 
-    def _vanilla_returns(self, batch):
-        returns = batch.rew[:]
-        last = 0
-        for i in range(len(returns) - 1, -1, -1):
-            if not batch.done[i]:
-                returns[i] += self._gamma * last
-            last = returns[i]
-        return returns
+<< << << < HEAD
+batch.returns = (batch.returns - batch.returns.mean()) \
+                / (batch.returns.std() + self._eps)
+== == == =
+r = batch.returns
+batch.returns = (r - r.mean()) / (r.std() + self._eps)
+>> >> >> > c505cd8205acee66a294a2b222c0eb3671a6badc
+for _ in range(repeat):
+    for b in batch.split(batch_size):
+        self.optim.zero_grad()
+        dist = self(b).dist
+        a = torch.tensor(b.act, device=dist.logits.device)
+        r = torch.tensor(b.returns, device=dist.logits.device)
+        loss = -(dist.log_prob(a) * r).sum()
+        loss.backward()
+        self.optim.step()
+        losses.append(loss.detach().cpu().numpy())
+return {'loss': losses}
 
-    def _vectorized_returns(self, batch):
-        # according to my tests, it is slower than vanilla
-        # import scipy.signal
-        convolve = np.convolve
-        # convolve = scipy.signal.convolve
-        rew = batch.rew[::-1]
-        batch_size = len(rew)
-        gammas = self._gamma ** np.arange(batch_size)
-        c = convolve(rew, gammas)[:batch_size]
-        T = np.where(batch.done[::-1])[0]
-        d = np.zeros_like(rew)
-        d[T] += c[T] - rew[T]
-        d[T[1:]] -= d[T[:-1]] * self._gamma ** np.diff(T)
-        return (c - convolve(d, gammas)[:batch_size])[::-1]
+
+def _vanilla_returns(self, batch):
+    returns = batch.rew[:]
+    last = 0
+    for i in range(len(returns) - 1, -1, -1):
+        if not batch.done[i]:
+            returns[i] += self._gamma * last
+        last = returns[i]
+    return returns
+
+
+def _vectorized_returns(self, batch):
+    # according to my tests, it is slower than vanilla
+    # import scipy.signal
+    convolve = np.convolve
+    # convolve = scipy.signal.convolve
+    rew = batch.rew[::-1]
+    batch_size = len(rew)
+    gammas = self._gamma ** np.arange(batch_size)
+    c = convolve(rew, gammas)[:batch_size]
+    T = np.where(batch.done[::-1])[0]
+    d = np.zeros_like(rew)
+    d[T] += c[T] - rew[T]
+    d[T[1:]] -= d[T[:-1]] * self._gamma ** np.diff(T)
+    return (c - convolve(d, gammas)[:batch_size])[::-1]

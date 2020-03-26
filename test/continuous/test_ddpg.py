@@ -18,7 +18,7 @@ else:  # pytest
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pendulum-v0')
+    parser.add_argument('--task', type=str, default='Ant-v2')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--actor-lr', type=float, default=1e-4)
@@ -33,11 +33,11 @@ def get_args():
     parser.add_argument('--layer-num', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
-    parser.add_argument('--logdir', type=str, default='log')
+    parser.add_argument('--logdir', type=str, default='../example')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
         '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        default='cuda:1' if torch.cuda.is_available() else 'cpu')
     args = parser.parse_known_args()[0]
     return args
 
@@ -80,7 +80,7 @@ def test_ddpg(args=get_args()):
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # log
-    writer = SummaryWriter(args.logdir)
+    writer = SummaryWriter(args.logdir + '/' + 'ddpg')
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold
@@ -89,7 +89,7 @@ def test_ddpg(args=get_args()):
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
-        args.batch_size, stop_fn=stop_fn, writer=writer)
+        args.batch_size, stop_fn=stop_fn, writer=writer, task=args.task)
     assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()

@@ -85,7 +85,7 @@ def get_args():
     parser.add_argument('--layer-num', type=int, default=3)
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
-    parser.add_argument('--logdir', type=str, default='log')
+    parser.add_argument('--logdir', type=str, default='../example')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
         '--device', type=str,
@@ -131,7 +131,7 @@ def test_pg(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
-        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer)
+        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer, task=args.task)
     assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()

@@ -34,7 +34,7 @@ def get_args():
     parser.add_argument('--layer-num', type=int, default=3)
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
-    parser.add_argument('--logdir', type=str, default='log')
+    parser.add_argument('--logdir', type=str, default='../example')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
         '--device', type=str,
@@ -90,7 +90,7 @@ def test_dqn(args=get_args()):
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, writer=writer)
+        stop_fn=stop_fn, writer=writer, task=args.task)
 
     assert stop_fn(result['best_reward'])
     train_collector.close()
