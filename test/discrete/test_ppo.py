@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument('--layer-num', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=32)
     parser.add_argument('--test-num', type=int, default=100)
-    parser.add_argument('--logdir', type=str, default='../example')
+    parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
         '--device', type=str,

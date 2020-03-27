@@ -106,7 +106,6 @@ class Collector(object):
                     done=self._make_batch(self._done),
                     obs_next=None,
                     info=self._make_batch(self._info))
-            print(self._act)
 
             result = self.policy(batch_data, self.state)
             self.state = result.state if hasattr(result, 'state') else None

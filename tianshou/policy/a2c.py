@@ -40,9 +40,6 @@ class A2CPolicy(PGPolicy):
                 vf_loss = F.mse_loss(r[:, None], v)
                 ent_loss = dist.entropy().mean()
 
-        loss = a_loss \
-               + self._w_vf * vf_loss \
-               - self._w_ent * ent_loss
         loss = a_loss + self._w_vf * vf_loss - self._w_ent * ent_loss
         loss.backward()
         if self._grad_norm:

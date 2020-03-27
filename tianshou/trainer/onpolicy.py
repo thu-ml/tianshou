@@ -50,7 +50,7 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                 global_step += step
                 for k in result.keys():
                     data[k] = f'{result[k]:.2f}'
-                    if writer:
+                    if writer and global_step % 100 == 0:
                         writer.add_scalar(
                             k + '_' + task, result[k], global_step=global_step)
                 for k in losses.keys():
@@ -58,7 +58,7 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                         stat[k] = MovAvg()
                     stat[k].add(losses[k])
                     data[k] = f'{stat[k].get():.6f}'
-                    if writer:
+                    if writer and global_step % 100 == 0:
                         writer.add_scalar(
                             k + '_' + task, stat[k].get(), global_step=global_step)
                 t.update(step)

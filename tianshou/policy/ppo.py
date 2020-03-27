@@ -82,10 +82,7 @@ class PPOPolicy(PGPolicy):
                 clip_losses.append(clip_loss.detach().cpu().numpy())
                 vf_loss = F.smooth_l1_loss(self.critic(b.obs), target_v)
                 vf_losses.append(vf_loss.detach().cpu().numpy())
-        ent_loss = dist.entropy().mean()
-        ent_losses.append(ent_loss.detach().cpu().numpy())
-        loss = clip_loss \
-               + self._w_vf * vf_loss - self._w_ent * ent_loss
+
         e_loss = dist.entropy().mean()
         ent_losses.append(e_loss.detach().cpu().numpy())
         loss = clip_loss + self._w_vf * vf_loss - self._w_ent * e_loss
