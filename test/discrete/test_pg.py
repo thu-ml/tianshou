@@ -122,7 +122,7 @@ def test_pg(args=get_args()):
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # log
-    writer = SummaryWriter(args.logdir)
+    writer = SummaryWriter(args.logdir + '/' + 'ppo')
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold
