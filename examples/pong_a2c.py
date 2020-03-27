@@ -26,7 +26,7 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--collect-per-step', type=int, default=10)
+    parser.add_argument('--collect-per-step', type=int, default=100)
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=2)
@@ -42,20 +42,21 @@ def get_args():
     parser.add_argument('--vf-coef', type=float, default=0.5)
     parser.add_argument('--ent-coef', type=float, default=0.001)
     parser.add_argument('--max-grad-norm', type=float, default=None)
+    parser.add_argument('--max_episode_steps', type=int, default=2000)
     args = parser.parse_known_args()[0]
     return args
 
 
 def test_a2c(args=get_args()):
-    env = create_atari_environment(args.task)
+    env = create_atari_environment(args.task, max_episode_steps=args.max_episode_steps)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.env.action_space.shape or env.env.action_space.n
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(args.task) for _ in range(args.training_num)])
+        [lambda: create_atari_environment(args.task, max_episode_steps=args.max_episode_steps) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(args.task) for _ in range(args.test_num)])
+        [lambda: create_atari_environment(args.task, max_episode_steps=args.max_episode_steps) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
