@@ -96,7 +96,7 @@ def test_td3(args=get_args()):
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, [1] * args.test_num,
+        args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, stop_fn=stop_fn, writer=writer)
     assert stop_fn(result['best_reward'])
     train_collector.close()

@@ -87,7 +87,7 @@ def test_dqn(args=get_args()):
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, [1] * args.test_num,
+        args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, writer=writer)
 

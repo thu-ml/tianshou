@@ -54,6 +54,9 @@ class Collector(object):
         else:
             self.buffer.reset()
 
+    def get_env_num(self):
+        return self.env_num
+
     def reset_env(self):
         self._obs = self.env.reset()
         self._act = self._rew = self._done = self._info = None
