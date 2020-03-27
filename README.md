@@ -2,7 +2,7 @@
 <h1 align="center">Tianshou</h1>
 
 ![PyPI](https://img.shields.io/pypi/v/tianshou)
-![Unittest](https://github.com/thu-ml/tianshou/workflows/Unittest/badge.svg)
+![Unittest](https://github.com/thu-ml/tianshou/workflows/Unittest/badge.svg?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/tianshou/badge/?version=latest)](https://tianshou.readthedocs.io/en/latest/?badge=latest)
 [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/network)
@@ -21,9 +21,9 @@
 - [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf)
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf)
 
-Tianshou supports parallel environment training for all algorithms as well.
+Tianshou supports parallel workers for all algorithms as well. All of these algorithms are reformatted as replay-buffer based algorithms.
 
-Tianshou is still under development. More algorithms are going to be added and we always welcome contributions to help make Tianshou better. If you would like to contribute, please check out the [guidelines](/CONTRIBUTING.md).
+Tianshou is still under development. More algorithms are going to be added and we always welcome contributions to help make Tianshou better. If you would like to contribute, please check out [CONTRIBUTING.md](/CONTRIBUTING.md).
 
 ## Installation
 
@@ -35,7 +35,7 @@ pip3 install tianshou
 
 ## Documentation
 
-The tutorials and API documentation are hosted on [https://tianshou.readthedocs.io](https://tianshou.readthedocs.io).
+The tutorials and API documentation are hosted on [https://tianshou.readthedocs.io](https://tianshou.readthedocs.io). It is under construction currently.
 
 The example scripts are under [test/discrete](/test/discrete) (CartPole) and [test/continuous](/test/continuous) (Pendulum).
 
@@ -47,21 +47,23 @@ Tianshou is a lightweight but high-speed reinforcement learning platform. For ex
 
 ![testpg](docs/_static/images/testpg.gif)
 
-We select some of famous (>1k stars) reinforcement learning platform. Here is the benchmark result for other algorithms and platforms on toy scenarios:
+We select some of famous (>1k stars) reinforcement learning platforms. Here is the benchmark result for other algorithms and platforms on toy scenarios:
 
-| Platform           | [Tianshou](https://github.com/thu-ml/tianshou)               | [Baselines](https://github.com/openai/baselines)             | [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [PyTorch DRL](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch) | [rlpyt](https://github.com/astooke/rlpyt)                    |
-| ------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| GitHub Stars       | [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/openai/baselines)](https://github.com/openai/baselines/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/ray-project/ray)](https://github.com/ray-project/ray/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch)](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/astooke/rlpyt)](https://github.com/astooke/rlpyt/stargazers) |
-| Algo \ ML platform | PyTorch                                                      | TensorFlow                                                   | TF/PyTorch                                                   | PyTorch                                                      | PyTorch                                                      |
-| PG - CartPole      | 9.03±4.18s                                                   |                                                              |                                                              | None                                                         |                                                              |
-| DQN - CartPole     | 20.94±11.38s                                                 |                                                              |                                                              | 175.55±53.81s                                                |                                                              |
-| A2C - CartPole     | 11.72±3.85s                                                  |                                                              |                                                              | Error                                                        |                                                              |
-| PPO - CartPole     | 35.25±16.47s                                                 |                                                              |                                                              | 29.16±15.46s                                                 |                                                              |
-| DDPG - Pendulum    | 46.95±24.31s                                                 |                                                              |                                                              | 652.83±471.28s                                               |                                                              |
-| SAC - Pendulum     | 38.92±2.09s                                                  | None                                                         |                                                              | 808.21±405.70s                                               |                                                              |
-| TD3 - Pendulum     | 48.39±7.22s                                                  | None                                                         |                                                              | 619.33±324.97s                                               |                                                              |
+| RL Platform      | [Tianshou](https://github.com/thu-ml/tianshou)               | [Baselines](https://github.com/openai/baselines)             | [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [PyTorch DRL](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch) | [rlpyt](https://github.com/astooke/rlpyt)                    |
+| ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| GitHub Stars     | [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/openai/baselines)](https://github.com/openai/baselines/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/ray-project/ray)](https://github.com/ray-project/ray/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch)](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/astooke/rlpyt)](https://github.com/astooke/rlpyt/stargazers) |
+| Algo \ Framework | PyTorch                                                      | TensorFlow                                                   | TF/PyTorch                                                   | PyTorch                                                      | PyTorch                                                      |
+| PG - CartPole    | 9.03±4.18s                                                   | None                                                         |                                                              | None                                                         |                                                              |
+| DQN - CartPole   | 20.94±11.38s                                                 | 1046.34±291.27s                                              |                                                              | 175.55±53.81s                                                |                                                              |
+| A2C - CartPole   | 11.72±3.85s                                                  | *(~1612s)                                                    |                                                              | Runtime Error                                                |                                                              |
+| PPO - CartPole   | 35.25±16.47s                                                 | *(~1179s)                                                    |                                                              | 29.16±15.46s                                                 |                                                              |
+| DDPG - Pendulum  | 46.95±24.31s                                                 | *(>1h)                                                       |                                                              | 652.83±471.28s                                               | 172.18±62.48s                                                |
+| TD3 - Pendulum   | 48.39±7.22s                                                  | None                                                         |                                                              | 619.33±324.97s                                               | 210.31±76.30s                                                |
+| SAC - Pendulum   | 38.92±2.09s                                                  | None                                                         |                                                              | 808.21±405.70s                                               | 295.92±140.85s                                               |
 
-All of the platforms use at most 10 different seeds for testing. We erase those trials which failed for training. The reward threshold is 195.0 in CartPole and -250.0 in Pendulum over consecutive 100 episodes. 
+*: Could not reach the target reward threshold in 1e6 steps in any of 10 runs. The total runtime is in the brackets.
+
+All of the platforms use 10 different seeds for testing. We erase those trials which failed for training. The reward threshold is 195.0 in CartPole and -250.0 in Pendulum over consecutive 100 episodes' mean returns. 
 
 ### Reproducible
 
@@ -71,10 +73,16 @@ Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page 
 
 ### Elegant and Flexible
 
-Currently, the overall code of Tianshou platform is less than 1500 lines. It is quite easy to go through the framework and understand how it works. We provide many flexible API as you wish, for instance, if you want to use your policy to interact with environment with `n` episodes:
+Currently, the overall code of Tianshou platform is less than 1500 lines. Most of the implemented algorithms are less than 100 lines of python code. It is quite easy to go through the framework and understand how it works. We provide many flexible API as you wish, for instance, if you want to use your policy to interact with environment with `n` steps:
 
 ```python
-result = collector.collect(n_episode=n)
+result = collector.collect(n_step=n)
+```
+
+If you have 3 environment in total and want to collect 1 episode in the first environment, 3 for third environment:
+
+```python
+result = collector.collect(n_episode=[1, 0, 3])
 ```
 
 If you want to train the given policy with a sampled batch:
@@ -116,7 +124,7 @@ batch_size = 64
 train_num = 8 
 test_num = 100 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-writer = SummaryWriter('log')  # tensorboard is also supported!
+writer = SummaryWriter('log/pg')  # tensorboard is also supported!
 ```
 
 Define the network:
@@ -191,7 +199,7 @@ collecter.collect(n_episode=1, render=1/35)
 Looking at the result saved in tensorboard: (on bash script)
 
 ```bash
-tensorboard --logdir log
+tensorboard --logdir log/pg
 ```
 
 ## Citing Tianshou
@@ -214,6 +222,7 @@ If you find Tianshou useful, please cite it in your publications.
 - [ ] More examples on [mujoco, atari] benchmark
 - [ ] Prioritized replay buffer
 - [ ] RNN support
+- [ ] Imitation Learning
 - [ ] Multi-agent
 - [ ] Distributed training
 
