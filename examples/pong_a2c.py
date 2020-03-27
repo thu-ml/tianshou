@@ -53,10 +53,12 @@ def test_a2c(args=get_args()):
     args.action_shape = env.env.action_space.shape or env.env.action_space.n
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(args.task, max_episode_steps=args.max_episode_steps) for _ in range(args.training_num)])
+        [lambda: create_atari_environment(args.task, max_episode_steps=args.max_episode_steps) for _ in
+         range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(args.task, max_episode_steps=args.max_episode_steps) for _ in range(args.test_num)])
+        [lambda: create_atari_environment(args.task, max_episode_steps=args.max_episode_steps) for _ in
+         range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
