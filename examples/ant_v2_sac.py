@@ -11,7 +11,7 @@ from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
 
 if __name__ == '__main__':
-    from net import ActorProb, Critic
+    from continuous_net import ActorProb, Critic
 else:  # pytest
     from test.continuous.net import ActorProb, Critic
 

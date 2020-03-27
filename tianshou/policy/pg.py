@@ -51,7 +51,6 @@ class PGPolicy(BasePolicy):
                 losses.append(loss.detach().cpu().numpy())
         return {'loss': losses}
 
-
     def _vanilla_returns(self, batch):
         returns = batch.rew[:]
         last = 0
@@ -60,7 +59,6 @@ class PGPolicy(BasePolicy):
                 returns[i] += self._gamma * last
             last = returns[i]
         return returns
-
 
     def _vectorized_returns(self, batch):
         # according to my tests, it is slower than vanilla

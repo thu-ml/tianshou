@@ -9,16 +9,17 @@ from tianshou.policy import PPOPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
+from tianshou.env.atari import create_atari_environment
 
 if __name__ == '__main__':
-    from net import Net, Actor, Critic
+    from discrete_net import Net, Actor, Critic
 else:  # pytest
     from test.discrete.net import Net, Actor, Critic
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pong-v0')
+    parser.add_argument('--task', type=str, default='Pong')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
@@ -29,8 +30,8 @@ def get_args():
     parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=32)
-    parser.add_argument('--test-num', type=int, default=100)
+    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--test-num', type=int, default=8)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
@@ -46,15 +47,15 @@ def get_args():
 
 
 def test_ppo(args=get_args()):
-    env = gym.make(args.task)
+    env = create_atari_environment(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
+    args.action_shape = env.action_space().shape or env.action_space().n
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)])
+        [lambda: create_atari_environment(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: create_atari_environment(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -82,7 +83,10 @@ def test_ppo(args=get_args()):
     writer = SummaryWriter(args.logdir + '/' + 'ppo')
 
     def stop_fn(x):
-        return x >= env.spec.reward_threshold
+        if env.env.spec.reward_threshold:
+            return x >= env.spec.reward_threshold
+        else:
+            return False
 
     # trainer
     result = onpolicy_trainer(
