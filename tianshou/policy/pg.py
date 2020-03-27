@@ -34,6 +34,9 @@ class PGPolicy(BasePolicy):
 
     def learn(self, batch, batch_size=None, repeat=1):
         losses = []
+
+        batch.returns = (batch.returns - batch.returns.mean()) \
+                        / (batch.returns.std() + self._eps)
         r = batch.returns
         batch.returns = (r - r.mean()) / (r.std() + self._eps)
         for _ in range(repeat):

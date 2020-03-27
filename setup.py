@@ -55,6 +55,7 @@ setup(
         ],
         'atari': [
             'atari_py',
+            'cv2'
         ],
         'mujoco': [
             'mujoco_py',

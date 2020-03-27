@@ -56,7 +56,7 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
         self.device = device
 
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=5, stride=2)
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=5, stride=2)
         self.bn1 = nn.BatchNorm2d(16)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
         self.bn2 = nn.BatchNorm2d(32)
@@ -73,7 +73,8 @@ class DQN(nn.Module):
 
     def forward(self, x, state=None, info={}):
         if not isinstance(x, torch.Tensor):
-            s = torch.tensor(x, device=self.device, dtype=torch.float)
+            x = torch.tensor(x, device=self.device, dtype=torch.float)
+        x = x.permute(0, 3, 1, 2)
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))

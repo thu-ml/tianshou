@@ -58,6 +58,9 @@ class PPOPolicy(PGPolicy):
 
     def learn(self, batch, batch_size=None, repeat=1):
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
+
+        batch.returns = (batch.returns - batch.returns.mean()) \
+                        / (batch.returns.std() + self._eps)
         r = batch.returns
         batch.returns = (r - r.mean()) / (r.std() + self._eps)
         batch.act = torch.tensor(batch.act)
@@ -79,6 +82,7 @@ class PPOPolicy(PGPolicy):
                 clip_losses.append(clip_loss.detach().cpu().numpy())
                 vf_loss = F.smooth_l1_loss(self.critic(b.obs), target_v)
                 vf_losses.append(vf_loss.detach().cpu().numpy())
+
                 e_loss = dist.entropy().mean()
                 ent_losses.append(e_loss.detach().cpu().numpy())
                 loss = clip_loss + self._w_vf * vf_loss - self._w_ent * e_loss
@@ -87,7 +91,7 @@ class PPOPolicy(PGPolicy):
                 loss.backward()
                 nn.utils.clip_grad_norm_(list(
                     self.actor.parameters()) + list(self.critic.parameters()),
-                    self._max_grad_norm)
+                                         self._max_grad_norm)
                 self.optim.step()
         self.sync_weight()
         return {

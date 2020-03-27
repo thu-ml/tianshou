@@ -2,7 +2,7 @@ import time
 import torch
 import numpy as np
 from copy import deepcopy
-
+import warnings
 from tianshou.env import BaseVectorEnv
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.utils import MovAvg
@@ -87,6 +87,7 @@ class Collector(object):
             return np.array([data])
 
     def collect(self, n_step=0, n_episode=0, render=0):
+        warning_count = 0
         if not self._multi_env:
             n_episode = np.sum(n_episode)
         start_time = time.time()
@@ -97,6 +98,10 @@ class Collector(object):
         reward_sum = 0
         length_sum = 0
         while True:
+            if warning_count >= 100000:
+                warnings.warn(
+                    'There are already many steps in an episode. You should add a time limitation to your environment!',
+                    Warning)
             if self._multi_env:
                 batch_data = Batch(
                     obs=self._obs, act=self._act, rew=self._rew,
@@ -131,11 +136,14 @@ class Collector(object):
                         'rew': self._rew[i], 'done': self._done[i],
                         'obs_next': obs_next[i], 'info': self._info[i]}
                     if self._cached_buf:
+                        warning_count += 1
                         self._cached_buf[i].add(**data)
                     elif self._multi_buf:
+                        warning_count += 1
                         self.buffer[i].add(**data)
                         cur_step += 1
                     else:
+                        warning_count += 1
                         self.buffer.add(**data)
                         cur_step += 1
                     if self._done[i]:
