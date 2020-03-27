@@ -1,4 +1,5 @@
 import time
+import numpy as np
 
 
 def test_episode(policy, collector, test_fn, epoch, n_episode):
@@ -7,7 +8,12 @@ def test_episode(policy, collector, test_fn, epoch, n_episode):
     policy.eval()
     if test_fn:
         test_fn(epoch)
-    return collector.collect(n_episode=[1] * n_episode)
+    if collector.get_env_num() > 1 and np.isscalar(n_episode):
+        n = collector.get_env_num()
+        n_ = np.zeros(n) + n_episode // n
+        n_[:n_episode % n] += 1
+        n_episode = list(n_)
+    return collector.collect(n_episode=n_episode)
 
 
 def gather_info(start_time, train_c, test_c, best_reward):
