@@ -11,9 +11,9 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
 if __name__ == '__main__':
-    from net import DQN
+    from net import Net
 else:  # pytest
-    from test.discrete.net import DQN
+    from test.discrete.net import Net
 
 
 def get_args():
@@ -59,7 +59,7 @@ def test_dqn(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = DQN(args.layer_num, args.state_shape, args.action_shape, args.device)
+    net = Net(args.layer_num, args.state_shape, args.action_shape, args.device)
     net = net.to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
