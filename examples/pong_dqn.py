@@ -12,9 +12,9 @@ from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
 if __name__ == '__main__':
-    from discrete_net import Net
+    from discrete_net import DQN
 else:  # pytest
-    from test.discrete.net import Net
+    from test.discrete.net import DQN
 
 
 def get_args():
@@ -60,7 +60,7 @@ def test_dqn(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, args.action_shape, args.device)
+    net = DQN(args.state_shape[0], args.state_shape[1], args.action_shape, args.device)
     net = net.to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
@@ -75,7 +75,7 @@ def test_dqn(args=get_args()):
     train_collector.collect(n_step=args.batch_size)
     print(len(train_collector.buffer))
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'ppo')
+    writer = SummaryWriter(args.logdir + '/' + 'dqn')
 
     def stop_fn(x):
         if env.env.spec.reward_threshold:
@@ -96,13 +96,12 @@ def test_dqn(args=get_args()):
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, writer=writer, task=args.task)
 
-    assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
-        env = gym.make(args.task)
+        env = create_atari_environment(args.task)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')

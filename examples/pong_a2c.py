@@ -76,7 +76,7 @@ def test_a2c(args=get_args()):
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'ppo')
+    writer = SummaryWriter(args.logdir + '/' + 'a2c')
 
     def stop_fn(x):
         if env.env.spec.reward_threshold:
@@ -89,13 +89,12 @@ def test_a2c(args=get_args()):
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
         args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer, task=args.task)
-    assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
-        env = gym.make(args.task)
+        env = create_atari_environment(args.task)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
