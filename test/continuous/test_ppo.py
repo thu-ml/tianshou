@@ -18,7 +18,7 @@ else:  # pytest
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Ant-v2')
+    parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=3e-4)

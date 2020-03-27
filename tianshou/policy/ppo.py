@@ -83,16 +83,16 @@ class PPOPolicy(PGPolicy):
                 vf_loss = F.smooth_l1_loss(self.critic(b.obs), target_v)
                 vf_losses.append(vf_loss.detach().cpu().numpy())
 
-        e_loss = dist.entropy().mean()
-        ent_losses.append(e_loss.detach().cpu().numpy())
-        loss = clip_loss + self._w_vf * vf_loss - self._w_ent * e_loss
-        losses.append(loss.detach().cpu().numpy())
-        self.optim.zero_grad()
-        loss.backward()
-        nn.utils.clip_grad_norm_(list(
-            self.actor.parameters()) + list(self.critic.parameters()),
-                                 self._max_grad_norm)
-        self.optim.step()
+                e_loss = dist.entropy().mean()
+                ent_losses.append(e_loss.detach().cpu().numpy())
+                loss = clip_loss + self._w_vf * vf_loss - self._w_ent * e_loss
+                losses.append(loss.detach().cpu().numpy())
+                self.optim.zero_grad()
+                loss.backward()
+                nn.utils.clip_grad_norm_(list(
+                    self.actor.parameters()) + list(self.critic.parameters()),
+                                         self._max_grad_norm)
+                self.optim.step()
         self.sync_weight()
         return {
             'loss': losses,
