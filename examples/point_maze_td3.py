@@ -45,6 +45,7 @@ def get_args():
 
 
 def test_td3(args=get_args()):
+    PointMazeEnv()
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
