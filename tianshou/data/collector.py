@@ -1,10 +1,10 @@
 import time
 import torch
-import numpy as np
-from copy import deepcopy
 import warnings
+import numpy as np
 from tianshou.env import BaseVectorEnv
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer,\
+    ListReplayBuffer
 from tianshou.utils import MovAvg
 
 
@@ -37,7 +37,7 @@ class Collector(object):
                 self._multi_buf = True
             elif isinstance(self.buffer, ReplayBuffer):
                 self._cached_buf = [
-                    deepcopy(self.buffer) for _ in range(self.env_num)]
+                    ListReplayBuffer() for _ in range(self.env_num)]
             else:
                 raise TypeError('The buffer in data collector is invalid!')
         self.reset_env()

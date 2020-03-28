@@ -55,8 +55,11 @@ class ReplayBuffer(object):
         self._add_to_buffer('done', done)
         self._add_to_buffer('obs_next', obs_next)
         self._add_to_buffer('info', info)
-        self._size = min(self._size + 1, self._maxsize)
-        self._index = (self._index + 1) % self._maxsize
+        if self._maxsize > 0:
+            self._size = min(self._size + 1, self._maxsize)
+            self._index = (self._index + 1) % self._maxsize
+        else:
+            self._size = self._index = self._index + 1
 
     def reset(self):
         self._index = self._size = 0
@@ -88,6 +91,25 @@ class ReplayBuffer(object):
             obs_next=self.obs_next[index],
             info=self.info[index]
         )
+
+
+class ListReplayBuffer(ReplayBuffer):
+    """docstring for ListReplayBuffer"""
+    def __init__(self):
+        super().__init__(size=0)
+
+    def _add_to_buffer(self, name, inst):
+        if inst is None:
+            return
+        if self.__dict__.get(name, None) is None:
+            self.__dict__[name] = []
+        self.__dict__[name].append(inst)
+
+    def reset(self):
+        self._index = self._size = 0
+        for k in list(self.__dict__.keys()):
+            if not k.startswith('_'):
+                self.__dict__[k] = []
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
