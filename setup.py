@@ -3,9 +3,18 @@
 
 from setuptools import setup, find_packages
 
+import re
+from os import path
+
+here = path.abspath(path.dirname(__file__))
+
+# Get the version string
+with open(path.join(here, 'tianshou', '__init__.py')) as f:
+    version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
+
 setup(
     name='tianshou',
-    version='0.2.0post1',
+    version=version,
     description='A Library for Deep Reinforcement Learning',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -32,7 +41,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
     ],
-    keywords='reinforcement learning platform',
+    keywords='reinforcement learning platform pytorch',
     packages=find_packages(exclude=['test', 'test.*',
                                     'examples', 'examples.*',
                                     'docs', 'docs.*']),
@@ -46,9 +55,9 @@ setup(
     ],
     extras_require={
         'dev': [
-            'Sphinx>=1.7.1',
+            'Sphinx',
             'sphinx_rtd_theme',
-            'sphinxcontrib-bibtex>=0.3.6',
+            'sphinxcontrib-bibtex',
             'flake8',
             'pytest',
             'pytest-cov',

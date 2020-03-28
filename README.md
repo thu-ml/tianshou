@@ -1,5 +1,6 @@
-
-<h1 align="center">Tianshou</h1>
+<div align="center">
+  <a href="http://tianshou.readthedocs.io"><img width="300px" height="auto" src="docs/_static/images/tianshou-logo.png"></a>
+</div>
 
 [![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/)
 [![Unittest](https://github.com/thu-ml/tianshou/workflows/Unittest/badge.svg?branch=master)](https://github.com/thu-ml/tianshou/actions)
@@ -45,7 +46,9 @@ The example scripts are under [test/](/test/) folder and [examples/](/examples/)
 
 Tianshou is a lightweight but high-speed reinforcement learning platform. For example, here is a test on a laptop (i7-8750H + GTX1060). It only uses 3 seconds for training a agent based on vanilla policy gradient on the CartPole-v0 task.
 
-![testpg](docs/_static/images/testpg.gif)
+<div align="center">
+  <img src="docs/_static/images/testpg.gif"></a>
+</div>
 
 We select some of famous (>1k stars) reinforcement learning platforms. Here is the benchmark result for other algorithms and platforms on toy scenarios:
 
@@ -61,13 +64,13 @@ We select some of famous (>1k stars) reinforcement learning platforms. Here is t
 | TD3 - Pendulum  | 48.39±7.22s                                                  | None                                                         | 620.83±248.43s                                               | 619.33±324.97s                                               | 210.31±76.30s                                                |
 | SAC - Pendulum  | 38.92±2.09s                                                  | None                                                         | 92.68±4.48s                                                  | 808.21±405.70s                                               | 295.92±140.85s                                               |
 
-*: Could not reach the target reward threshold in 1e6 steps in any of 10 runs. The total runtime is in the brackets.
+*\*: Could not reach the target reward threshold in 1e6 steps in any of 10 runs. The total runtime is in the brackets.*
 
-?: We have tried but it is nontrivial for running non-Atari game on rlpyt. See [here](https://github.com/astooke/rlpyt/issues/127#issuecomment-601741210).
+*?: We have tried but it is nontrivial for running non-Atari game on rlpyt. See [here](https://github.com/astooke/rlpyt/issues/127#issuecomment-601741210).*
 
 All of the platforms use 10 different seeds for testing. We erase those trials which failed for training. The reward threshold is 195.0 in CartPole and -250.0 in Pendulum over consecutive 100 episodes' mean returns. 
 
-Tianshou and RLlib's configures are very similar. They both use multiple workers for sampling. Indeed, both RLlib and rlpyt are excellent reinforcement learning platform :)
+Tianshou and RLlib's configures are very similar. They both use multiple workers for sampling. Indeed, both RLlib and rlpyt are excellent reinforcement learning platform.
 
 We will add results of Atari Pong / Mujoco these days.
 
@@ -76,6 +79,17 @@ We will add results of Atari Pong / Mujoco these days.
 Tianshou has unit tests. Different from other platforms, **the unit tests include the full agent training procedure for all of the implemented algorithms**. It will be failed once it cannot train an agent to perform well enough on limited epochs on toy scenarios. The unit tests secure the reproducibility of our platform. 
 
 Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page for more detail.
+
+### Modularized Policy
+
+We decouple all of the algorithms into 4 parts:
+
+- `__init__`: initialize the policy;
+- `process_fn`: to preprocess data from replay buffer (since we have reformulated all algorithms to replay-buffer based algorithms);
+- `__call__`: to compute actions over given observations;
+- `learn`: to learn from a given batch data.
+
+Within these API, we can interact with different policies conveniently.
 
 ### Elegant and Flexible
 
@@ -225,7 +239,7 @@ If you find Tianshou useful, please cite it in your publications.
 
 ## TODO
 
-- [ ] More examples on [mujoco, atari] benchmark
+- [x] More examples on [mujoco, atari] benchmark
 - [ ] Prioritized replay buffer
 - [ ] RNN support
 - [ ] Imitation Learning
