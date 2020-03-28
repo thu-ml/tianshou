@@ -1,4 +1,3 @@
-import gym
 import torch
 import pprint
 import argparse
@@ -12,7 +11,6 @@ from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
 from discrete_net import DQN
-
 
 
 def get_args():
@@ -47,18 +45,22 @@ def test_dqn(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.env.action_space.shape or env.env.action_space.n
     # train_envs = gym.make(args.task)
-    train_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(args.task) for _ in range(args.training_num)])
+    train_envs = SubprocVectorEnv([
+        lambda: create_atari_environment(args.task)
+        for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(args.task) for _ in range(args.test_num)])
+    test_envs = SubprocVectorEnv([
+        lambda: create_atari_environment(
+            args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = DQN(args.state_shape[0], args.state_shape[1], args.action_shape, args.device)
+    net = DQN(
+        args.state_shape[0], args.state_shape[1],
+        args.action_shape, args.device)
     net = net.to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(

@@ -35,9 +35,10 @@ class Batch(object):
             elif isinstance(batch.__dict__[k], list):
                 self.__dict__[k] += batch.__dict__[k]
             else:
-                raise TypeError(
-                    'No support for append with type {} in class Batch.'
-                        .format(type(batch.__dict__[k])))
+                s = 'No support for append with type'\
+                    + str(type(batch.__dict__[k]))\
+                    + 'in class Batch.'
+                raise TypeError(s)
 
     def split(self, size=None, permute=True):
         length = min([

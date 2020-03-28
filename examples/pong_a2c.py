@@ -1,4 +1,3 @@
-import gym
 import torch
 import pprint
 import argparse
@@ -11,8 +10,7 @@ from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
-from discrete_net import Net, Actor, Critic, DQN
-
+from discrete_net import Net, Actor, Critic
 
 
 def get_args():
@@ -46,25 +44,27 @@ def get_args():
 
 
 def test_a2c(args=get_args()):
-    env = create_atari_environment(args.task, max_episode_steps=args.max_episode_steps)
+    env = create_atari_environment(
+        args.task, max_episode_steps=args.max_episode_steps)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.env.action_space.shape or env.env.action_space.n
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(args.task, max_episode_steps=args.max_episode_steps) for _ in
-         range(args.training_num)])
+        [lambda: create_atari_environment(
+            args.task, max_episode_steps=args.max_episode_steps)
+            for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(args.task, max_episode_steps=args.max_episode_steps) for _ in
-         range(args.test_num)])
+        [lambda: create_atari_environment(
+            args.task, max_episode_steps=args.max_episode_steps)
+            for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    #net = Net(args.layer_num, args.state_shape, device=args.device)
-    net = DQN(args.state_shape[0], args.state_shape[1], args.action_shape, args.device)
+    net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = Actor(net, args.action_shape).to(args.device)
     critic = Critic(net).to(args.device)
     optim = torch.optim.Adam(list(
@@ -90,7 +90,8 @@ def test_a2c(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
-        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer, task=args.task)
+        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer,
+        task=args.task)
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':

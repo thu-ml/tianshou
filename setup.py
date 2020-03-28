@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='tianshou',
-    version='0.2.0',
+    version='0.2.0post1',
     description='A Library for Deep Reinforcement Learning',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -45,12 +45,20 @@ setup(
         'torch>=1.4.0',
     ],
     extras_require={
+        'dev': [
+            'Sphinx>=1.7.1',
+            'sphinx_rtd_theme',
+            'sphinxcontrib-bibtex>=0.3.6',
+            'flake8',
+            'pytest',
+            'pytest-cov',
+        ],
         'atari': [
             'atari_py',
-            'cv2'
+            'cv2',
         ],
         'mujoco': [
             'mujoco_py',
-        ]
+        ],
     },
 )

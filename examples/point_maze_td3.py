@@ -13,7 +13,6 @@ from tianshou.env import VectorEnv, SubprocVectorEnv
 from continuous_net import Actor, Critic
 
 
-
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='PointMaze-v0')
