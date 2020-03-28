@@ -9,7 +9,6 @@ from tianshou.policy import TD3Policy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
-from tianshou.env.mujoco.point_maze_env import PointMazeEnv
 from continuous_net import Actor, Critic
 
 
@@ -45,7 +44,6 @@ def get_args():
 
 
 def test_td3(args=get_args()):
-    PointMazeEnv()
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
