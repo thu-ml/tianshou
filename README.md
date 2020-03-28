@@ -212,7 +212,7 @@ If you find Tianshou useful, please cite it in your publications.
 
 ```latex
 @misc{tianshou,
-  author = {Jiayi Weng},
+  author = {Jiayi Weng, Minghao Zhang},
   title = {Tianshou},
   year = {2020},
   publisher = {GitHub},
