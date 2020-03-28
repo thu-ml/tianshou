@@ -9,13 +9,12 @@ from tianshou.policy import TD3Policy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
-
 from continuous_net import Actor, Critic
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='PointMaze-v0')
+    parser.add_argument('--task', type=str, default='PointMaze-v1')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--actor-lr', type=float, default=3e-5)

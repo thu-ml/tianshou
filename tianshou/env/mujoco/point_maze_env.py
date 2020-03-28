@@ -233,7 +233,7 @@ class PointMazeEnv(gym.Env):
 
         def valid(row, col):
             return self._view.shape[0] > row >= 0 \
-                and self._view.shape[1] > col >= 0
+                   and self._view.shape[1] > col >= 0
 
         def update_view(x, y, d, row=None, col=None):
             if row is None or col is None:
@@ -252,36 +252,36 @@ class PointMazeEnv(gym.Env):
 
             if valid(row, col):
                 self._view[row, col, d] += (
-                    (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
-                    (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
+                        (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
+                        (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
             if valid(row - 1, col):
                 self._view[row - 1, col, d] += (
-                    (max(0., 0.5 - row_frac)) *
-                    (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
+                        (max(0., 0.5 - row_frac)) *
+                        (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
             if valid(row + 1, col):
                 self._view[row + 1, col, d] += (
-                    (max(0., row_frac - 0.5)) *
-                    (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
+                        (max(0., row_frac - 0.5)) *
+                        (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
             if valid(row, col - 1):
                 self._view[row, col - 1, d] += (
-                    (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
-                    (max(0., 0.5 - col_frac)))
+                        (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
+                        (max(0., 0.5 - col_frac)))
             if valid(row, col + 1):
                 self._view[row, col + 1, d] += (
-                    (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
-                    (max(0., col_frac - 0.5)))
+                        (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
+                        (max(0., col_frac - 0.5)))
             if valid(row - 1, col - 1):
                 self._view[row - 1, col - 1, d] += (
-                    (max(0., 0.5 - row_frac)) * max(0., 0.5 - col_frac))
+                        (max(0., 0.5 - row_frac)) * max(0., 0.5 - col_frac))
             if valid(row - 1, col + 1):
                 self._view[row - 1, col + 1, d] += (
-                    (max(0., 0.5 - row_frac)) * max(0., col_frac - 0.5))
+                        (max(0., 0.5 - row_frac)) * max(0., col_frac - 0.5))
             if valid(row + 1, col + 1):
                 self._view[row + 1, col + 1, d] += (
-                    (max(0., row_frac - 0.5)) * max(0., col_frac - 0.5))
+                        (max(0., row_frac - 0.5)) * max(0., col_frac - 0.5))
             if valid(row + 1, col - 1):
                 self._view[row + 1, col - 1, d] += (
-                    (max(0., row_frac - 0.5)) * max(0., 0.5 - col_frac))
+                        (max(0., row_frac - 0.5)) * max(0., 0.5 - col_frac))
 
         # Draw ant.
         robot_x, robot_y = self.wrapped_env.get_body_com("torso")[:2]
@@ -376,7 +376,8 @@ class PointMazeEnv(gym.Env):
         sensor_readings = np.zeros((self._n_bins, 3))
         for ray_idx in range(self._n_bins):
             ray_ori = (ori - self._sensor_span * 0.5 + (
-                2 * ray_idx + 1.0) / (2 * self._n_bins) * self._sensor_span)
+                    2 * ray_idx + 1.0) /
+                       (2 * self._n_bins) * self._sensor_span)
             ray_segments = []
             # Get all segments that intersect with ray.
             for seg in segments:
@@ -401,8 +402,8 @@ class PointMazeEnv(gym.Env):
                        2 if maze_env_utils.can_move(seg_type) else  # Block.
                        None)
                 if first_seg["distance"] <= self._sensor_range:
-                    sensor_readings[ray_idx][idx] = (
-                        self._sensor_range - first_seg[
+                    sensor_readings[ray_idx][idx] = \
+                        (self._sensor_range - first_seg[
                             "distance"]) / self._sensor_range
         return sensor_readings
 
