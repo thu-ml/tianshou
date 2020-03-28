@@ -24,8 +24,7 @@ pytest test --cov tianshou -s
 
 We follow PEP8 python code style. To check, in the main directory, run:
 ```python
-flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-flake8 . --count --exit-zero --max-complexity=30 --max-line-length=79 --statistics
+flake8 . --count --show-source --statistics
 ```
 
 #### Documents

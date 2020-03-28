@@ -1,5 +1,4 @@
 from gym.envs.registration import register
-import gym
 
 register(
     id='PointMaze-v0',

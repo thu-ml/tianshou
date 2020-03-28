@@ -26,15 +26,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install .
+        pip install ".[dev]"
     - name: Lint with flake8
       run: |
-        pip install flake8
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=30 --max-line-length=79 --statistics
+        flake8 . --count --show-source --statistics
     - name: Test with pytest
       run: |
-        pip install pytest pytest-cov
         pytest test --cov tianshou
