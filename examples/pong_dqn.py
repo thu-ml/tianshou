@@ -11,10 +11,8 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
-if __name__ == '__main__':
-    from discrete_net import DQN
-else:  # pytest
-    from test.discrete.net import DQN
+from discrete_net import DQN
+
 
 
 def get_args():
