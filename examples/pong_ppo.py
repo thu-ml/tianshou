@@ -1,4 +1,3 @@
-import gym
 import torch
 import pprint
 import argparse
@@ -11,10 +10,7 @@ from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
-if __name__ == '__main__':
-    from discrete_net import Net, Actor, Critic
-else:  # pytest
-    from test.discrete.net import Net, Actor, Critic
+from discrete_net import Net, Actor, Critic
 
 
 def get_args():
@@ -48,17 +44,18 @@ def get_args():
 
 
 def test_ppo(args=get_args()):
-    env = create_atari_environment(args.task, max_episode_steps=args.max_episode_steps)
+    env = create_atari_environment(
+        args.task, max_episode_steps=args.max_episode_steps)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space().shape or env.action_space().n
     # train_envs = gym.make(args.task)
-    train_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(args.task, max_episode_steps=args.max_episode_steps) for _ in
-         range(args.training_num)])
+    train_envs = SubprocVectorEnv([lambda: create_atari_environment(
+        args.task, max_episode_steps=args.max_episode_steps)
+        for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(args.task, max_episode_steps=args.max_episode_steps) for _ in
-         range(args.test_num)])
+    test_envs = SubprocVectorEnv([lambda: create_atari_environment(
+        args.task, max_episode_steps=args.max_episode_steps)
+        for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -95,7 +92,8 @@ def test_ppo(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
-        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer, task=args.task)
+        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer,
+        task=args.task)
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':

@@ -13,8 +13,8 @@ class OUNoise(object):
     def __call__(self, size, mu=.1):
         if self.x is None or self.x.shape != size:
             self.x = 0
-        self.x = self.x + self.alpha * (mu - self.x) + \
-                 self.beta * np.random.normal(size=size)
+        r = self.beta * np.random.normal(size=size)
+        self.x = self.x + self.alpha * (mu - self.x) + r
         return self.x
 
     def reset(self):

@@ -19,7 +19,7 @@ class Collector(object):
         self.collect_episode = 0
         self.collect_time = 0
         if buffer is None:
-            self.buffer = ReplayBuffer(20000)
+            self.buffer = ReplayBuffer(100)
         else:
             self.buffer = buffer
         self.policy = policy
@@ -100,7 +100,8 @@ class Collector(object):
         while True:
             if warning_count >= 100000:
                 warnings.warn(
-                    'There are already many steps in an episode. You should add a time limitation to your environment!',
+                    'There are already many steps in an episode. '
+                    'You should add a time limitation to your environment!',
                     Warning)
             if self._multi_env:
                 batch_data = Batch(
