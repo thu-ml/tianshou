@@ -12,9 +12,9 @@ from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
 if __name__ == '__main__':
-    from discrete_net import Net, Actor, Critic
+    from discrete_net import Net, Actor, Critic, DQN
 else:  # pytest
-    from test.discrete.net import Net, Actor, Critic
+    from test.discrete.net import Net, Actor, Critic, DQN
 
 
 def get_args():
@@ -65,7 +65,8 @@ def test_a2c(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, device=args.device)
+    #net = Net(args.layer_num, args.state_shape, device=args.device)
+    net = DQN(args.state_shape[0], args.state_shape[1], args.action_shape, args.device)
     actor = Actor(net, args.action_shape).to(args.device)
     critic = Critic(net).to(args.device)
     optim = torch.optim.Adam(list(
