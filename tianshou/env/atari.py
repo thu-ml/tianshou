@@ -1,13 +1,11 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 import cv2
 import gym
 import numpy as np
 from gym.spaces.box import Box
 
 
-def create_atari_environment(name=None, sticky_actions=True, max_episode_steps=2000):
+def create_atari_environment(name=None, sticky_actions=True,
+                             max_episode_steps=2000):
     game_version = 'v0' if sticky_actions else 'v4'
     name = '{}NoFrameskip-{}'.format(name, game_version)
     env = gym.make(name)
@@ -61,7 +59,8 @@ class preprocessing(object):
         self._grayscale_obs(self.screen_buffer[0])
         self.screen_buffer[1].fill(0)
 
-        return np.stack([self._pool_and_resize() for _ in range(self.frame_skip)], axis=-1)
+        return np.stack([
+            self._pool_and_resize() for _ in range(self.frame_skip)], axis=-1)
 
     def render(self, mode):
 
@@ -95,7 +94,9 @@ class preprocessing(object):
         if len(observation) > 0:
             observation = np.stack(observation, axis=-1)
         else:
-            observation = np.stack([self._pool_and_resize() for _ in range(self.frame_skip)], axis=-1)
+            observation = np.stack([
+                self._pool_and_resize() for _ in range(self.frame_skip)],
+                axis=-1)
         if self.count >= self.max_episode_steps:
             terminal = True
         self.terminal = terminal

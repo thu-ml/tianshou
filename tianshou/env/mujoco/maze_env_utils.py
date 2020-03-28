@@ -1,5 +1,4 @@
 """Adapted from rllab maze_env_utils.py."""
-import numpy as np
 import math
 
 
@@ -111,25 +110,24 @@ def construct_maze(maze_id='Maze'):
             [1, 1, 1, 1],
         ]
     elif maze_id == 'Block':
-        O = 'r'
         structure = [
             [1, 1, 1, 1, 1],
-            [1, O, 0, 0, 1],
+            [1, 'r', 0, 0, 1],
             [1, 0, 0, 0, 1],
             [1, 0, 0, 0, 1],
             [1, 1, 1, 1, 1],
         ]
     elif maze_id == 'BlockMaze':
-        O = 'r'
         structure = [
             [1, 1, 1, 1],
-            [1, O, 0, 1],
+            [1, 'r', 0, 1],
             [1, 1, 0, 1],
             [1, 0, 0, 1],
             [1, 1, 1, 1],
         ]
     else:
-        raise NotImplementedError('The provided MazeId %s is not recognized' % maze_id)
+        raise NotImplementedError(
+            'The provided MazeId %s is not recognized' % maze_id)
 
     return structure
 
@@ -157,7 +155,8 @@ def line_intersect(pt1, pt2, ptA, ptB):
 
     DET = (-dx1 * dy + dy1 * dx)
 
-    if math.fabs(DET) < DET_TOLERANCE: return (0, 0, 0, 0, 0)
+    if math.fabs(DET) < DET_TOLERANCE:
+        return (0, 0, 0, 0, 0)
 
     # now, the determinant should be OK
     DETinv = 1.0 / DET
@@ -176,8 +175,9 @@ def line_intersect(pt1, pt2, ptA, ptB):
 
 def ray_segment_intersect(ray, segment):
     """
-    Check if the ray originated from (x, y) with direction theta intersects the line segment (x1, y1) -- (x2, y2),
-    and return the intersection point if there is one
+    Check if the ray originated from (x, y) with direction theta
+    intersects the line segment (x1, y1) -- (x2, y2), and return
+    the intersection point if there is one
     """
     (x, y), theta = ray
     # (x1, y1), (x2, y2) = segment

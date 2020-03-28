@@ -108,7 +108,7 @@ class PointMazeEnv(gym.Env):
                         rgba="0.9 0.9 0.9 1",
                     )
                 if struct == 1:  # Unmovable block.
-                    # Offset all coordinates so that robot starts at the origin.
+                    # Offset all coordinates so that robot starts at the origin
                     ET.SubElement(
                         worldbody, "geom",
                         name="block_%d_%d" % (i, j),
@@ -134,13 +134,13 @@ class PointMazeEnv(gym.Env):
                     y_offset = 0.0
                     shrink = 0.1 if spinning else 0.99 if falling else 1.0
                     height_shrink = 0.1 if spinning else 1.0
+                    _x = j * size_scaling - torso_x + x_offset
+                    _y = i * size_scaling - torso_y + y_offset
+                    _z = height / 2 * size_scaling * height_shrink
                     movable_body = ET.SubElement(
                         worldbody, "body",
                         name=name,
-                        pos="%f %f %f" % (j * size_scaling - torso_x + x_offset,
-                                          i * size_scaling - torso_y + y_offset,
-                                          height_offset +
-                                          height / 2 * size_scaling * height_shrink),
+                        pos="%f %f %f" % (_x, _y, height_offset + _z),
                     )
                     ET.SubElement(
                         movable_body, "geom",
@@ -148,7 +148,7 @@ class PointMazeEnv(gym.Env):
                         pos="0 0 0",
                         size="%f %f %f" % (0.5 * size_scaling * shrink,
                                            0.5 * size_scaling * shrink,
-                                           height / 2 * size_scaling * height_shrink),
+                                           _z),
                         type="box",
                         material="",
                         mass="0.001" if falling else "0.0002",
@@ -232,13 +232,13 @@ class PointMazeEnv(gym.Env):
         self._view = np.zeros_like(self._view)
 
         def valid(row, col):
-            return self._view.shape[0] > row >= 0 and self._view.shape[1] > col >= 0
+            return self._view.shape[0] > row >= 0 \
+                and self._view.shape[1] > col >= 0
 
         def update_view(x, y, d, row=None, col=None):
             if row is None or col is None:
                 x = x - self._robot_x
                 y = y - self._robot_y
-                th = self._robot_ori
 
                 row, col = self._xy_to_rowcol(x, y)
                 update_view(x, y, d, row=row, col=col)
@@ -252,36 +252,36 @@ class PointMazeEnv(gym.Env):
 
             if valid(row, col):
                 self._view[row, col, d] += (
-                        (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
-                        (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
+                    (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
+                    (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
             if valid(row - 1, col):
                 self._view[row - 1, col, d] += (
-                        (max(0., 0.5 - row_frac)) *
-                        (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
+                    (max(0., 0.5 - row_frac)) *
+                    (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
             if valid(row + 1, col):
                 self._view[row + 1, col, d] += (
-                        (max(0., row_frac - 0.5)) *
-                        (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
+                    (max(0., row_frac - 0.5)) *
+                    (min(1., col_frac + 0.5) - max(0., col_frac - 0.5)))
             if valid(row, col - 1):
                 self._view[row, col - 1, d] += (
-                        (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
-                        (max(0., 0.5 - col_frac)))
+                    (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
+                    (max(0., 0.5 - col_frac)))
             if valid(row, col + 1):
                 self._view[row, col + 1, d] += (
-                        (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
-                        (max(0., col_frac - 0.5)))
+                    (min(1., row_frac + 0.5) - max(0., row_frac - 0.5)) *
+                    (max(0., col_frac - 0.5)))
             if valid(row - 1, col - 1):
                 self._view[row - 1, col - 1, d] += (
-                        (max(0., 0.5 - row_frac)) * max(0., 0.5 - col_frac))
+                    (max(0., 0.5 - row_frac)) * max(0., 0.5 - col_frac))
             if valid(row - 1, col + 1):
                 self._view[row - 1, col + 1, d] += (
-                        (max(0., 0.5 - row_frac)) * max(0., col_frac - 0.5))
+                    (max(0., 0.5 - row_frac)) * max(0., col_frac - 0.5))
             if valid(row + 1, col + 1):
                 self._view[row + 1, col + 1, d] += (
-                        (max(0., row_frac - 0.5)) * max(0., col_frac - 0.5))
+                    (max(0., row_frac - 0.5)) * max(0., col_frac - 0.5))
             if valid(row + 1, col - 1):
                 self._view[row + 1, col - 1, d] += (
-                        (max(0., row_frac - 0.5)) * max(0., 0.5 - col_frac))
+                    (max(0., row_frac - 0.5)) * max(0., 0.5 - col_frac))
 
         # Draw ant.
         robot_x, robot_y = self.wrapped_env.get_body_com("torso")[:2]
@@ -291,7 +291,6 @@ class PointMazeEnv(gym.Env):
 
         structure = self.MAZE_STRUCTURE
         size_scaling = self.MAZE_SIZE_SCALING
-        height = self.MAZE_HEIGHT
 
         # Draw immovable blocks and chasms.
         for i in range(len(structure)):
@@ -311,7 +310,9 @@ class PointMazeEnv(gym.Env):
             update_view(block_x, block_y, 2)
 
         import cv2
-        cv2.imshow('x.jpg', cv2.resize(np.uint8(self._view * 255), (512, 512), interpolation=cv2.INTER_CUBIC))
+        cv2.imshow('x.jpg', cv2.resize(
+            np.uint8(self._view * 255), (512, 512),
+            interpolation=cv2.INTER_CUBIC))
         cv2.waitKey(0)
 
         return self._view
@@ -350,10 +351,11 @@ class PointMazeEnv(gym.Env):
                         ))
 
         for block_name, block_type in self.movable_blocks:
-            block_x, block_y, block_z = self.wrapped_env.get_body_com(block_name)[
-                                        :3]
+            block_x, block_y, block_z = \
+                self.wrapped_env.get_body_com(block_name)[:3]
             if (block_z + height * size_scaling / 2 >= robot_z and
-                    robot_z >= block_z - height * size_scaling / 2):  # Block in view.
+                    robot_z >= block_z - height * size_scaling / 2):
+                # Block in view.
                 x1 = block_x - 0.5 * size_scaling
                 x2 = block_x + 0.5 * size_scaling
                 y1 = block_y - 0.5 * size_scaling
@@ -373,8 +375,8 @@ class PointMazeEnv(gym.Env):
         # 3 for wall, drop-off, block
         sensor_readings = np.zeros((self._n_bins, 3))
         for ray_idx in range(self._n_bins):
-            ray_ori = (ori - self._sensor_span * 0.5 +
-                       (2 * ray_idx + 1.0) / (2 * self._n_bins) * self._sensor_span)
+            ray_ori = (ori - self._sensor_span * 0.5 + (
+                2 * ray_idx + 1.0) / (2 * self._n_bins) * self._sensor_span)
             ray_segments = []
             # Get all segments that intersect with ray.
             for seg in segments:
@@ -400,17 +402,14 @@ class PointMazeEnv(gym.Env):
                        None)
                 if first_seg["distance"] <= self._sensor_range:
                     sensor_readings[ray_idx][idx] = (
-                                                            self._sensor_range - first_seg[
-                                                        "distance"]) / self._sensor_range
+                        self._sensor_range - first_seg[
+                            "distance"]) / self._sensor_range
         return sensor_readings
 
     def _get_obs(self):
         wrapped_obs = self.wrapped_env._get_obs()
-        # print("ant obs", wrapped_obs)
         if self._top_down_view:
-            view = [self.get_top_down_view().flat]
-        else:
-            view = []
+            self.get_top_down_view()
 
         if self._observe_blocks:
             additional_obs = []
@@ -420,7 +419,7 @@ class PointMazeEnv(gym.Env):
             wrapped_obs = np.concatenate([wrapped_obs[:3]] + additional_obs +
                                          [wrapped_obs[3:]])
 
-        range_sensor_obs = self.get_range_sensor_obs()
+        self.get_range_sensor_obs()
         return wrapped_obs
 
     def seed(self, seed=None):
@@ -446,7 +445,8 @@ class PointMazeEnv(gym.Env):
                     pos="%f %f %f" % (goal_x,
                                       goal_y,
                                       self.MAZE_HEIGHT / 2 * size_scaling),
-                    size="%f %f %f" % (0.1 * size_scaling,  # smaller than the block to prevent collision
+                    # smaller than the block to prevent collision
+                    size="%f %f %f" % (0.1 * size_scaling,
                                        0.1 * size_scaling,
                                        self.MAZE_HEIGHT / 2 * size_scaling),
                     type="box",
@@ -455,7 +455,8 @@ class PointMazeEnv(gym.Env):
                     conaffinity="1",
                     rgba="1.0 0.0 0.0 0.5"
                 )
-            # Note: running the lines below will make the robot position wrong! (because the graph is rebuilt)
+            # Note: running the lines below will make the robot position wrong!
+            # (because the graph is rebuilt)
             torso = self.tree.find(".//body[@name='torso']")
             geoms = torso.findall(".//geom")
             for geom in geoms:
@@ -463,18 +464,21 @@ class PointMazeEnv(gym.Env):
                     raise Exception("Every geom of the torso must have a name "
                                     "defined")
             _, file_path = tempfile.mkstemp(text=True, suffix='.xml')
-            self.tree.write(
-                file_path)  # here we write a temporal file with the robot specifications. Why not the original one??
+            self.tree.write(file_path)
+            # here we write a temporal file with the robot specifications.
+            # Why not the original one??
 
             model_cls = self.__class__.MODEL_CLASS
-            self.wrapped_env = model_cls(*self.args, file_path=file_path,
-                                         **self.kwargs)  # file to the robot specifications; model_cls is AntEnv
+            # file to the robot specifications; model_cls is AntEnv
+            self.wrapped_env = model_cls(
+                *self.args, file_path=file_path, **self.kwargs)
 
         self.t = 0
         self.trajectory = []
         self.wrapped_env.reset()
         if len(self._init_positions) > 1:
-            xy = self._init_positions[self.np_random.randint(len(self._init_positions))]
+            xy = self._init_positions[self.np_random.randint(
+                len(self._init_positions))]
             self.wrapped_env.set_xy(xy)
         return self._get_obs()
 
@@ -518,38 +522,38 @@ class PointMazeEnv(gym.Env):
     def _is_in_collision(self, pos):
         x, y = pos
         structure = self.MAZE_STRUCTURE
-        size_scaling = self.MAZE_SIZE_SCALING
+        scale = self.MAZE_SIZE_SCALING
         for i in range(len(structure)):
             for j in range(len(structure[0])):
                 if structure[i][j] == 1:
-                    minx = j * size_scaling - size_scaling * 0.5 - self._init_torso_x
-                    maxx = j * size_scaling + size_scaling * 0.5 - self._init_torso_x
-                    miny = i * size_scaling - size_scaling * 0.5 - self._init_torso_y
-                    maxy = i * size_scaling + size_scaling * 0.5 - self._init_torso_y
+                    minx = j * scale - scale * 0.5 - self._init_torso_x
+                    maxx = j * scale + scale * 0.5 - self._init_torso_x
+                    miny = i * scale - scale * 0.5 - self._init_torso_y
+                    maxy = i * scale + scale * 0.5 - self._init_torso_y
                     if minx <= x <= maxx and miny <= y <= maxy:
                         return True
         return False
 
     def _rowcol_to_xy(self, j, i):
-        size_scaling = self.MAZE_SIZE_SCALING
-        minx = j * size_scaling - size_scaling * 0.5 - self._init_torso_x
-        maxx = j * size_scaling + size_scaling * 0.5 - self._init_torso_x
-        miny = i * size_scaling - size_scaling * 0.5 - self._init_torso_y
-        maxy = i * size_scaling + size_scaling * 0.5 - self._init_torso_y
+        scale = self.MAZE_SIZE_SCALING
+        minx = j * scale - scale * 0.5 - self._init_torso_x
+        maxx = j * scale + scale * 0.5 - self._init_torso_x
+        miny = i * scale - scale * 0.5 - self._init_torso_y
+        maxy = i * scale + scale * 0.5 - self._init_torso_y
         return (minx + maxx) / 2, (miny + maxy) / 2
 
     def step(self, action):
         self.t += 1
         if self._manual_collision:
             old_pos = self.wrapped_env.get_xy()
-            inner_next_obs, inner_reward, inner_done, info = self.wrapped_env.step(
-                action)
+            inner_next_obs, inner_reward, inner_done, info = \
+                self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
             if self._is_in_collision(new_pos):
                 self.wrapped_env.set_xy(old_pos)
         else:
-            inner_next_obs, inner_reward, inner_done, info = self.wrapped_env.step(
-                action)
+            inner_next_obs, inner_reward, inner_done, info = \
+                self.wrapped_env.step(action)
         next_obs = self._get_obs()
         done = False
         if self.goal is not None:
