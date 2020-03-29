@@ -140,3 +140,4 @@ dmypy.json
 flake8.sh
 log/
 MUJOCO_LOG.TXT
+*.pth

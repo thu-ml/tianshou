@@ -2,6 +2,7 @@
   <a href="http://tianshou.readthedocs.io"><img width="300px" height="auto" src="docs/_static/images/tianshou-logo.png"></a>
 </div>
 
+
 [![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/)
 [![Unittest](https://github.com/thu-ml/tianshou/workflows/Unittest/badge.svg?branch=master)](https://github.com/thu-ml/tianshou/actions)
 [![Documentation Status](https://readthedocs.org/projects/tianshou/badge/?version=latest)](https://tianshou.readthedocs.io)
@@ -15,7 +16,7 @@
 
 - [Policy Gradient (PG)](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
 - [Deep Q-Network (DQN)](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
-- [Double DQN (DDQN)](https://arxiv.org/pdf/1509.06461.pdf) + n-step returns
+- [Double DQN (DDQN)](https://arxiv.org/pdf/1509.06461.pdf) with n-step returns
 - [Advantage Actor-Critic (A2C)](http://incompleteideas.net/book/RLbook2018.pdf)
 - [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf)
 - [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf)
@@ -24,7 +25,7 @@
 
 Tianshou supports parallel workers for all algorithms as well. All of these algorithms are reformatted as replay-buffer based algorithms.
 
-Tianshou is still under development. More algorithms are going to be added and we always welcome contributions to help make Tianshou better. If you would like to contribute, please check out [CONTRIBUTING.md](/CONTRIBUTING.md).
+Tianshou is still under development. More algorithms are going to be added and we always welcome contributions to help make Tianshou better. If you would like to contribute, please check out [CONTRIBUTING.md](https://github.com/thu-ml/tianshou/blob/master/CONTRIBUTING.md).
 
 ## Installation
 
@@ -34,11 +35,26 @@ Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/). You 
 pip3 install tianshou
 ```
 
+You can also install with the newest version through GitHub:
+
+```bash
+pip3 install git+https://github.com/thu-ml/tianshou.git@master
+```
+
+After installation, open your python console and type
+
+```python
+import tianshou as ts
+print(ts.__version__)
+```
+
+If no error occurs, you have successfully installed Tianshou.
+
 ## Documentation
 
 The tutorials and API documentation are hosted on [https://tianshou.readthedocs.io](https://tianshou.readthedocs.io).
 
-The example scripts are under [test/](/test/) folder and [examples/](/examples/) folder.
+The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/master/test) folder and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folder.
 
 ## Why Tianshou?
 
@@ -50,7 +66,7 @@ Tianshou is a lightweight but high-speed reinforcement learning platform. For ex
   <img src="docs/_static/images/testpg.gif"></a>
 </div>
 
-We select some of famous (>1k stars) reinforcement learning platforms. Here is the benchmark result for other algorithms and platforms on toy scenarios:
+We select some of famous (>1k stars) reinforcement learning platforms. Here is the benchmark result for other algorithms and platforms on toy scenarios: (tested on the same laptop as mentioned above)
 
 | RL Platform     | [Tianshou](https://github.com/thu-ml/tianshou)               | [Baselines](https://github.com/openai/baselines)             | [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [PyTorch DRL](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch) | [rlpyt](https://github.com/astooke/rlpyt)                    |
 | --------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -115,18 +131,18 @@ You can check out the [documentation](https://tianshou.readthedocs.io) for furth
 
 ## Quick Start
 
-This is an example of Deep Q Network. You can also run the full script under [test/discrete/test_dqn.py](/test/discrete/test_dqn.py).
+This is an example of Deep Q Network. You can also run the full script under [test/discrete/test_dqn.py](https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_dqn.py).
 
-First, import the relevant packages:
+First, import some relevant packages:
 
 ```python
 import gym, torch, numpy as np, torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DQNPolicy
-from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
+from tianshou.env import VectorEnv, SubprocVectorEnv
 ```
 
 Define some hyper-parameters:
@@ -147,14 +163,15 @@ buffer_size = 20000
 writer = SummaryWriter('log/dqn')  # tensorboard is also supported!
 ```
 
-Make envs:
+Make environments:
 
 ```python
 env = gym.make(task)
 state_shape = env.observation_space.shape or env.observation_space.n
 action_shape = env.action_space.shape or env.action_space.n
-train_envs = SubprocVectorEnv([lambda: gym.make(task) for _ in range(train_num)])
-test_envs = SubprocVectorEnv([lambda: gym.make(task) for _ in range(test_num)])
+# you can also try with SubprocVectorEnv
+train_envs = VectorEnv([lambda: gym.make(task) for _ in range(train_num)])
+test_envs = VectorEnv([lambda: gym.make(task) for _ in range(test_num)])
 ```
 
 Define the network:
@@ -197,6 +214,7 @@ result = offpolicy_trainer(
     test_num, batch_size, train_fn=lambda e: policy.set_eps(eps_train),
     test_fn=lambda e: policy.set_eps(eps_test),
     stop_fn=lambda x: x >= env.spec.reward_threshold, writer=writer, task=task)
+print(f'Finished training! Use {result["duration"]}')
 ```
 
 Saving / loading trained policy (it's exactly the same as PyTorch nn.module):
@@ -211,6 +229,7 @@ Watch the performance with 35 FPS:
 ```python3
 collector = Collector(policy, env)
 collector.collect(n_episode=1, render=1/35)
+collector.close()
 ```
 
 Looking at the result saved in tensorboard: (on bash script)
