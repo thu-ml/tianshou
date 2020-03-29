@@ -49,6 +49,8 @@ If no error occurs, you have successfully installed Tianshou.
    :maxdepth: 1
    :caption: Tutorials
 
+   tutorials/dqn
+   tutorials/concepts
 
 .. toctree::
    :maxdepth: 1

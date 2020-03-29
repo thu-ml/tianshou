@@ -6,12 +6,13 @@
 [![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/)
 [![Unittest](https://github.com/thu-ml/tianshou/workflows/Unittest/badge.svg?branch=master)](https://github.com/thu-ml/tianshou/actions)
 [![Documentation Status](https://readthedocs.org/projects/tianshou/badge/?version=latest)](https://tianshou.readthedocs.io)
+[![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues)
 [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/network)
-[![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues)
 [![GitHub license](https://img.shields.io/github/license/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/blob/master/LICENSE)
+[![Join the chat at https://gitter.im/thu-ml/tianshou](https://badges.gitter.im/thu-ml/tianshou.svg)](https://gitter.im/thu-ml/tianshou?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-**Tianshou**(天授) is a reinforcement learning platform based on pure PyTorch. Unlike existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed framework and pythonic API for building the deep reinforcement learning agent. The supported interface algorithms include:
+**Tianshou** (天授) is a reinforcement learning platform based on pure PyTorch. Unlike existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed framework and pythonic API for building the deep reinforcement learning agent. The supported interface algorithms include:
 
 
 - [Policy Gradient (PG)](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
@@ -131,18 +132,14 @@ You can check out the [documentation](https://tianshou.readthedocs.io) for furth
 
 ## Quick Start
 
-This is an example of Deep Q Network. You can also run the full script under [test/discrete/test_dqn.py](https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_dqn.py).
+This is an example of Deep Q Network. You can also run the full script at [test/discrete/test_dqn.py](https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_dqn.py).
 
 First, import some relevant packages:
 
 ```python
 import gym, torch, numpy as np, torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
-
-from tianshou.policy import DQNPolicy
-from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
-from tianshou.env import VectorEnv, SubprocVectorEnv
+import tianshou as ts
 ```
 
 Define some hyper-parameters:
@@ -166,12 +163,9 @@ writer = SummaryWriter('log/dqn')  # tensorboard is also supported!
 Make environments:
 
 ```python
-env = gym.make(task)
-state_shape = env.observation_space.shape or env.observation_space.n
-action_shape = env.action_space.shape or env.action_space.n
 # you can also try with SubprocVectorEnv
-train_envs = VectorEnv([lambda: gym.make(task) for _ in range(train_num)])
-test_envs = VectorEnv([lambda: gym.make(task) for _ in range(test_num)])
+train_envs = ts.env.VectorEnv([lambda: gym.make(task) for _ in range(train_num)])
+test_envs = ts.env.VectorEnv([lambda: gym.make(task) for _ in range(test_num)])
 ```
 
 Define the network:
@@ -193,6 +187,9 @@ class Net(nn.Module):
         logits = self.model(s.view(batch, -1))
         return logits, state
 
+env = gym.make(task)
+state_shape = env.observation_space.shape or env.observation_space.n
+action_shape = env.action_space.shape or env.action_space.n
 net = Net(state_shape, action_shape)
 optim = torch.optim.Adam(net.parameters(), lr=lr)
 ```
@@ -200,16 +197,16 @@ optim = torch.optim.Adam(net.parameters(), lr=lr)
 Setup policy and collectors:
 
 ```python
-policy = DQNPolicy(net, optim, gamma, n_step,
-                   use_target_network=True, target_update_freq=target_freq)
-train_collector = Collector(policy, train_envs, ReplayBuffer(buffer_size))
-test_collector = Collector(policy, test_envs)
+policy = ts.policy.DQNPolicy(net, optim, gamma, n_step,
+    use_target_network=True, target_update_freq=target_freq)
+train_collector = ts.data.Collector(policy, train_envs, ts.data.ReplayBuffer(buffer_size))
+test_collector = ts.data.Collector(policy, test_envs)
 ```
 
 Let's train it:
 
 ```python
-result = offpolicy_trainer(
+result = ts.trainer.offpolicy_trainer(
     policy, train_collector, test_collector, epoch, step_per_epoch, collect_per_step,
     test_num, batch_size, train_fn=lambda e: policy.set_eps(eps_train),
     test_fn=lambda e: policy.set_eps(eps_test),
@@ -217,7 +214,7 @@ result = offpolicy_trainer(
 print(f'Finished training! Use {result["duration"]}')
 ```
 
-Saving / loading trained policy (it's exactly the same as PyTorch nn.module):
+Save / load the trained policy (it's exactly the same as PyTorch nn.module):
 
 ```python
 torch.save(policy.state_dict(), 'dqn.pth')
@@ -226,13 +223,13 @@ policy.load_state_dict(torch.load('dqn.pth'))
 
 Watch the performance with 35 FPS:
 
-```python3
-collector = Collector(policy, env)
-collector.collect(n_episode=1, render=1/35)
+```python
+collector = ts.data.Collector(policy, env)
+collector.collect(n_episode=1, render=1 / 35)
 collector.close()
 ```
 
-Looking at the result saved in tensorboard: (on bash script)
+Look at the result saved in tensorboard: (on bash script)
 
 ```bash
 tensorboard --logdir log/dqn
