@@ -28,7 +28,7 @@ with open(path.join(here, '..', 'tianshou', '__init__.py')) as f:
 # -- Project information -----------------------------------------------------
 
 project = 'Tianshou'
-copyright = '2020, Tianshou contributors'
+copyright = '2020, Tianshou contributors.'
 author = 'Tianshou contributors'
 
 # The full version, including alpha/beta/rc tags
