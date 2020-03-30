@@ -183,7 +183,7 @@ Train a Policy with Customized Codes
 
 "I don't want to use your provided trainer. I want to customize it!"
 
-No problem! Here are the usages:
+No problem! Here is the usage:
 ::
 
     # pre-collect 5000 frames with random action before training

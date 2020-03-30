@@ -73,14 +73,7 @@ class ReplayBuffer(object):
                 np.arange(self._index, self._size),
                 np.arange(0, self._index),
             ])
-        return Batch(
-            obs=self.obs[indice],
-            act=self.act[indice],
-            rew=self.rew[indice],
-            done=self.done[indice],
-            obs_next=self.obs_next[indice],
-            info=self.info[indice]
-        ), indice
+        return self[indice], indice
 
     def __getitem__(self, index):
         return Batch(
@@ -121,8 +114,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def add(self, obs, act, rew, done, obs_next, info={}, weight=None):
         raise NotImplementedError
 
-    def sample_indice(self, batch_size):
+    def sample(self, batch_size):
         raise NotImplementedError
 
-    def sample(self, batch_size):
+    def reset(self):
         raise NotImplementedError

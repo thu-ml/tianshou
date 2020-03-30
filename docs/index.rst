@@ -11,7 +11,7 @@ Welcome to Tianshou!
 * `Policy Gradient (PG) <https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf>`_
 * `Deep Q-Network (DQN) <https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf>`_
 * `Double DQN (DDQN) <https://arxiv.org/pdf/1509.06461.pdf>`_ with n-step returns
-* `Advantage Actor-Critic (A2C) <http://incompleteideas.net/book/RLbook2018.pdf>`_
+* `Advantage Actor-Critic (A2C) <https://openai.com/blog/baselines-acktr-a2c/>`_
 * `Deep Deterministic Policy Gradient (DDPG) <https://arxiv.org/pdf/1509.02971.pdf>`_
 * `Proximal Policy Optimization (PPO) <https://arxiv.org/pdf/1707.06347.pdf>`_
 * `Twin Delayed DDPG (TD3) <https://arxiv.org/pdf/1802.09477.pdf>`_
