@@ -34,7 +34,7 @@ class Actor(nn.Module):
 
     def forward(self, s, state=None, info={}):
         logits, h = self.preprocess(s, state)
-        logits = F.softmax(logits, dim=-1)
+        logits = F.softmax(self.last(logits), dim=-1)
         return logits, h
 
 
