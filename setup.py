@@ -16,7 +16,7 @@ setup(
     name='tianshou',
     version=version,
     description='A Library for Deep Reinforcement Learning',
-    long_description=open('README.md').read(),
+    long_description=open('README.md', encoding='utf8').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/thu-ml/tianshou',
     author='TSAIL',
