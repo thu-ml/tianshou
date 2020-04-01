@@ -13,7 +13,7 @@
 [![GitHub license](https://img.shields.io/github/license/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/blob/master/LICENSE)
 [![Join the chat at https://gitter.im/thu-ml/tianshou](https://badges.gitter.im/thu-ml/tianshou.svg)](https://gitter.im/thu-ml/tianshou?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-**Tianshou** (天授) is a reinforcement learning platform based on pure PyTorch. Unlike existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed framework and pythonic API for building the deep reinforcement learning agent. The supported interface algorithms include:
+**Tianshou** ([天授]([https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88/9342](https://baike.baidu.com/item/天授/9342))) is a reinforcement learning platform based on pure PyTorch. Unlike existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed framework and pythonic API for building the deep reinforcement learning agent. The supported interface algorithms include:
 
 
 - [Policy Gradient (PG)](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
@@ -242,21 +242,6 @@ You can check out the [documentation](https://tianshou.readthedocs.io) for advan
 
 Tianshou is still under development. More algorithms and features are going to be added and we always welcome contributions to help make Tianshou better. If you would like to contribute, please check out [CONTRIBUTING.md](https://github.com/thu-ml/tianshou/blob/master/CONTRIBUTING.md).
 
-## Citing Tianshou
-
-If you find Tianshou useful, please cite it in your publications.
-
-```latex
-@misc{tianshou,
-  author = {Jiayi Weng, Minghao Zhang},
-  title = {Tianshou},
-  year = {2020},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/thu-ml/tianshou}},
-}
-```
-
 ## TODO
 
 - [x] More examples on [mujoco, atari] benchmark
@@ -266,6 +251,23 @@ If you find Tianshou useful, please cite it in your publications.
 - [ ] Imitation Learning
 - [ ] Multi-agent
 - [ ] Distributed training
+
+## Citing Tianshou
+
+If you find Tianshou useful, please cite it in your publications.
+
+```latex
+@misc{tianshou,
+  author = {Jiayi Weng, Minghao Zhang, Dong Yan, Hang Su, Jun Zhu},
+  title = {Tianshou},
+  year = {2020},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/thu-ml/tianshou}},
+}
+```
+
+We would like to thank [TSAIL](http://ml.cs.tsinghua.edu.cn/) and [Institute for Artificial Intelligence, Tsinghua University](http://ai.tsinghua.edu.cn/) for providing such an excellent AI research platform.
 
 ## Miscellaneous
 
