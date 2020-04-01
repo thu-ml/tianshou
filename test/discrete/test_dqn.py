@@ -73,7 +73,7 @@ def test_dqn(args=get_args()):
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'ppo')
+    writer = SummaryWriter(args.logdir + '/' + 'dqn')
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold
