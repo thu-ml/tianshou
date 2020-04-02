@@ -1,11 +1,11 @@
 Basic Concepts in Tianshou
 ==========================
 
-Tianshou has split a Reinforcement Learning agent training procedure into these parts: trainer, collector, policy, and data buffer. The general control flow can be discribed as:
+Tianshou splits a Reinforcement Learning agent training procedure into these parts: trainer, collector, policy, and data buffer. The general control flow can be described as:
 
 .. image:: ../_static/images/concepts_arch.png
     :align: center
-    :height: 250
+    :height: 300
 
 
 Data Batch
@@ -27,16 +27,16 @@ Tianshou provides :class:`~tianshou.data.Batch` as the internal data structure t
 
 In short, you can define a :class:`~tianshou.data.Batch` with any key-value pair.
 
-Current implementation of Tianshou typically use 6 keys:
+Current implementation of Tianshou typically use 6 keys in :class:`~tianshou.data.Batch`:
 
-* ``obs``: observation of step t;
-* ``act``: action of step t;
-* ``rew``: reward of step t;
-* ``done``: the done flag of step t;
-* ``obs_next``: observation of step t+1;
-* ``info``: info of step t (in ``gym.Env``, the ``env.step()`` function return 4 arguments, and the last one is ``info``);
+* ``obs``: observation of step :math:`t` ;
+* ``act``: action of step :math:`t` ;
+* ``rew``: reward of step :math:`t` ;
+* ``done``: the done flag of step :math:`t` ;
+* ``obs_next``: observation of step :math:`t+1` ;
+* ``info``: info of step :math:`t` (in ``gym.Env``, the ``env.step()`` function return 4 arguments, and the last one is ``info``);
 
-:class:`~tianshou.data.Batch` has other methods:
+:class:`~tianshou.data.Batch` has other methods, including ``__getitem__``, ``append``, and ``split``:
 ::
 
     >>> data = Batch(obs=np.array([0, 11, 22]), rew=np.array([6, 6, 6]))
@@ -51,7 +51,7 @@ Current implementation of Tianshou typically use 6 keys:
 
     >>> # split whole data into multiple small batch
     >>> for d in data.split(size=2, permute=False):
-    >>>     print(d.obs, d.rew)
+    ...     print(d.obs, d.rew)
     [ 0 11] [6 6]
     [22  0] [6 6]
     [11 22] [6 6]
@@ -66,7 +66,7 @@ Data Buffer
     >>> from tianshou.data import ReplayBuffer
     >>> buf = ReplayBuffer(size=20)
     >>> for i in range(3):
-    >>>     buf.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
+    ...     buf.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
     >>> buf.obs
     # since we set size = 20, len(buf.obs) == 20.
     array([0., 1., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
@@ -74,7 +74,7 @@ Data Buffer
 
     >>> buf2 = ReplayBuffer(size=10)
     >>> for i in range(15):
-    >>>     buf2.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
+    ...     buf2.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
     >>> buf2.obs
     # since its size = 10, it only stores the last 10 steps' result.
     array([10., 11., 12., 13., 14.,  5.,  6.,  7.,  8.,  9.])
@@ -103,9 +103,9 @@ For demonstration, we use the source code of policy gradient :class:`~tianshou.p
 
     G_t = \sum_{i=t}^T \gamma^{i - t}r_i = r_t + \gamma r_{t + 1} + \cdots + \gamma^{T - t} r_T
 
-, where T is the terminal timestep, :math:`\gamma` is the discount factor :math:`\in [0, 1]`.
+, where :math:`T` is the terminal timestep, :math:`\gamma` is the discount factor, :math:`\gamma \in (0, 1]`.
 
-TODO
+This process is done in ``process_fn``
 
 
 Collector

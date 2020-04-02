@@ -200,8 +200,7 @@ class RayVectorEnv(BaseVectorEnv):
 
     def step(self, action):
         assert len(action) == self.env_num
-        result_obj = [e.step.remote(a) for e, a in zip(self.envs, action)]
-        result = [ray.get(r) for r in result_obj]
+        result = ray.get([e.step.remote(a) for e, a in zip(self.envs, action)])
         self._obs, self._rew, self._done, self._info = zip(*result)
         self._obs = np.stack(self._obs)
         self._rew = np.stack(self._rew)
@@ -212,7 +211,7 @@ class RayVectorEnv(BaseVectorEnv):
     def reset(self, id=None):
         if id is None:
             result_obj = [e.reset.remote() for e in self.envs]
-            self._obs = np.stack([ray.get(r) for r in result_obj])
+            self._obs = np.stack(ray.get(result_obj))
         else:
             result_obj = []
             if np.isscalar(id):
@@ -230,16 +229,12 @@ class RayVectorEnv(BaseVectorEnv):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
             seed = [seed] * self.env_num
-        result_obj = [e.seed.remote(s) for e, s in zip(self.envs, seed)]
-        return [ray.get(r) for r in result_obj]
+        return ray.get([e.seed.remote(s) for e, s in zip(self.envs, seed)])
 
     def render(self, **kwargs):
         if not hasattr(self.envs[0], 'render'):
             return
-        result_obj = [e.render.remote(**kwargs) for e in self.envs]
-        return [ray.get(r) for r in result_obj]
+        return ray.get([e.render.remote(**kwargs) for e in self.envs])
 
     def close(self):
-        result_obj = [e.close.remote() for e in self.envs]
-        for r in result_obj:
-            ray.get(r)
+        return ray.get([e.close.remote() for e in self.envs])

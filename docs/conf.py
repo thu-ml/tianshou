@@ -14,16 +14,12 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+
+import tianshou
 import sphinx_rtd_theme
 
-import re
-from os import path
-
-here = path.abspath(path.dirname(__file__))
-
 # Get the version string
-with open(path.join(here, '..', 'tianshou', '__init__.py')) as f:
-    version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
+version = tianshou.__version__
 
 # -- Project information -----------------------------------------------------
 
