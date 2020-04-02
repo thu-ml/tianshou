@@ -1,10 +1,9 @@
 from gym.envs.registration import register
-from .point_maze_env import *
 
 def reg():
     register(
         id='PointMaze-v0',
-        entry_point='point_maze_env:.point_maze_env.PointMazeEnv',
+        entry_point='mujoco.point_maze_env:PointMazeEnv',
         kwargs={
             "maze_size_scaling": 4,
             "maze_id": "Maze2",
@@ -16,7 +15,7 @@ def reg():
 
     register(
         id='PointMaze-v1',
-        entry_point='point_maze_env:.point_maze_env.PointMazeEnv',
+        entry_point='mujoco.point_maze_env:PointMazeEnv',
         kwargs={
             "maze_size_scaling": 2,
             "maze_id": "Maze2",
