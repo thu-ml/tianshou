@@ -126,10 +126,10 @@ Here is the pseudocode showing the training process **without Tianshou framework
             b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)
             # compute 2-step returns. How?
             b_ret = compute_2_step_return(buffer, b_r, b_d, ...)
-            # update DQN
+            # update DQN policy
             agent.update(b_s, b_a, b_s_, b_r, b_d, b_ret)
 
-Thus, we need a time-dependent interface for calculating the 2-step return. :meth:`~tianshou.policy.BasePolicy.process_fn` provides this interface by giving the replay buffer, the sample index, and the sample batch data. Since we store all the data in the order of time, you can simply compute the 2-step return as:
+Thus, we need a time-related interface for calculating the 2-step return. :meth:`~tianshou.policy.BasePolicy.process_fn` finishes this work by providing the replay buffer, the sample index, and the sample batch data. Since we store all the data in the order of time, you can simply compute the 2-step return as:
 ::
 
     class DQN_2step(BasePolicy):
@@ -140,7 +140,8 @@ Thus, we need a time-dependent interface for calculating the 2-step return. :met
             batch_2 = buffer[(indice + 2) % buffer_len]
             # this will return a batch data where batch_2.obs is s_t+2
             # we can also get s_t+2 through:
-            # batch_2_obs = buffer.obs[(indice + 2) % buffer_len]
+            #   batch_2_obs = buffer.obs[(indice + 2) % buffer_len]
+            # in short, buffer.obs[i] is equal to buffer[i].obs, but the former is more effecient.
             Q = self(batch_2, eps=0)  # shape: [batchsize, action_shape]
             maxQ = Q.max(dim=-1)
             batch.returns = batch.rew \
@@ -153,7 +154,7 @@ This code does not consider the done flag, so it may not work very well. It show
 For other method, you can check out the API documentation for more detail. We give a high-level explanation through the same pseudocode:
 ::
 
-    # pseudocode, cannot work
+    # pseudocode, cannot work                                       # methods in tianshou
     buffer = Buffer(size=10000)
     s = env.reset()
     agent = DQN()                                                   # done in policy.__init__(...)
@@ -166,7 +167,7 @@ For other method, you can check out the API documentation for more detail. We gi
             b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # done in collector.sample(batch_size)
             # compute 2-step returns. How?
             b_ret = compute_2_step_return(buffer, b_r, b_d, ...)    # done in policy.process_fn(batch, buffer, indice)
-            # update DQN
+            # update DQN policy
             agent.update(b_s, b_a, b_s_, b_r, b_d, b_ret)           # done in policy.learn(batch, ...)
 
 

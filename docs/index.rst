@@ -49,6 +49,7 @@ If no error occurs, you have successfully installed Tianshou.
 
    tutorials/dqn
    tutorials/concepts
+   tutorials/trick.rst
 
 .. toctree::
    :maxdepth: 1

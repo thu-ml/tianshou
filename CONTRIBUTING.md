@@ -16,11 +16,11 @@ pip install ".[dev]"
 #### Tests
 
 This command will run automatic tests in the main directory
-```python
+```bash
 pytest test --cov tianshou -s
 ```
 
-To run on your own GitHub Repo, enable the [GitHub Action](/actions) and it will automatically run the test.
+To run on your own GitHub Repo, enable the [GitHub Action](https://github.com/features/actions) and it will automatically run the test.
 
 ##### PEP8 Code Style Check
 

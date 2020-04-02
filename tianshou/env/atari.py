@@ -15,7 +15,6 @@ def create_atari_environment(name=None, sticky_actions=True,
 
 
 class preprocessing(object):
-
     def __init__(self, env, frame_skip=4, terminal_on_life_loss=False,
                  size=84, max_episode_steps=2000):
         self.max_episode_steps = max_episode_steps
@@ -36,7 +35,6 @@ class preprocessing(object):
 
     @property
     def observation_space(self):
-
         return Box(low=0, high=255, shape=(self.size, self.size, 4),
                    dtype=np.uint8)
 
@@ -63,11 +61,9 @@ class preprocessing(object):
             self._pool_and_resize() for _ in range(self.frame_skip)], axis=-1)
 
     def render(self, mode):
-
         return self.env.render(mode)
 
     def step(self, action):
-
         total_reward = 0.
         observation = []
         for t in range(self.frame_skip):
@@ -103,12 +99,10 @@ class preprocessing(object):
         return observation, total_reward, is_terminal, info
 
     def _grayscale_obs(self, output):
-
         self.env.ale.getScreenGrayscale(output)
         return output
 
     def _pool_and_resize(self):
-
         if self.frame_skip > 1:
             np.maximum(self.screen_buffer[0], self.screen_buffer[1],
                        out=self.screen_buffer[0])
@@ -119,7 +113,3 @@ class preprocessing(object):
         int_image = np.asarray(transformed_image, dtype=np.uint8)
         # return np.expand_dims(int_image, axis=2)
         return int_image
-
-
-if __name__ == '__main__':
-    create_atari_environment()
