@@ -20,6 +20,8 @@ This command will run automatic tests in the main directory
 pytest test --cov tianshou -s
 ```
 
+To run on your own GitHub Repo, enable the [GitHub Action](/actions) and it will automatically run the test.
+
 ##### PEP8 Code Style Check
 
 We follow PEP8 python code style. To check, in the main directory, run:

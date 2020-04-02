@@ -178,6 +178,8 @@ Watch the Agent's Performance
     collector.close()
 
 
+.. _customized_trainer:
+
 Train a Policy with Customized Codes
 ------------------------------------
 

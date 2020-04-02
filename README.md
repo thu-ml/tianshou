@@ -64,7 +64,7 @@ The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/ma
 
 Tianshou is a lightweight but high-speed reinforcement learning platform. For example, here is a test on a laptop (i7-8750H + GTX1060). It only uses 3 seconds for training an agent based on vanilla policy gradient on the CartPole-v0 task: (seed may be different across different platform and device)
 
-```python
+```bash
 python3 test/discrete/test_pg.py --seed 0 --render 0.03
 ```
 
