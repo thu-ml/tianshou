@@ -1,5 +1,6 @@
 from gym.envs.registration import register
 
+
 def reg():
     register(
         id='PointMaze-v0',
