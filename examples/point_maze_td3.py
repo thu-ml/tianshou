@@ -10,6 +10,7 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
 from continuous_net import Actor, Critic
+from mujoco.register import reg
 
 
 def get_args():
@@ -44,6 +45,7 @@ def get_args():
 
 
 def test_td3(args=get_args()):
+    reg()
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
