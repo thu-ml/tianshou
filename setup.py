@@ -61,6 +61,7 @@ setup(
             'flake8',
             'pytest',
             'pytest-cov',
+            'pybullet',
         ],
         'atari': [
             'atari_py',

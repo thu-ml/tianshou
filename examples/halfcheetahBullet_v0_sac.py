@@ -16,10 +16,7 @@ try:
 except:
     pass
 
-if __name__ == '__main__':
-    from net import ActorProb, Critic
-else:  # pytest
-    from test.continuous.net import ActorProb, Critic
+from continuous_net import ActorProb, Critic
 
 
 def get_args():
