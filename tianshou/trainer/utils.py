@@ -20,7 +20,7 @@ def gather_info(start_time, train_c, test_c, best_reward):
     duration = time.time() - start_time
     model_time = duration - train_c.collect_time - test_c.collect_time
     train_speed = train_c.collect_step / (duration - test_c.collect_time)
-    test_speed = test_c.collect_step / test_c.collect_time
+    test_speed = test_c.collect_step / (test_c.collect_time + 1e-8)
     return {
         'train_step': train_c.collect_step,
         'train_episode': train_c.collect_episode,
