@@ -116,4 +116,5 @@ def test_sac(args=get_args()):
 
 
 if __name__ == '__main__':
+    __all__ = ('pybullet_envs',)
     test_sac()
