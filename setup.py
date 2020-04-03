@@ -62,6 +62,7 @@ setup(
             'pytest',
             'pytest-cov',
             'pybullet',
+            'pybullet_envs',
         ],
         'atari': [
             'atari_py',
