@@ -3,6 +3,8 @@ Train a model-free RL agent within 30s
 
 This page summarizes some hyper-parameter tuning experience and code-level trick when training a model-free DRL agent.
 
+You can also contribute to this page with your own tricks :)
+
 
 Avoid batch-size = 1
 --------------------
@@ -44,7 +46,7 @@ Here is an example of showing how inefficient it is:
 
 The first test uses batch-size 128, and the second test uses batch-size = 1 for 128 times. In our test, the first is 70-80 times faster than the second.
 
-So how could we avoid the case of batch-size = 1? The answer is synchronize sampling: we create multiple independent environments and sample simultaneously. It is similar to A2C, but other algorithms can also use this method. In our experiments, sampling from more environments benefits not only the sample speed but also the convergence of neural network (we guess it lowers the sample bias).
+So how could we avoid the case of batch-size = 1? The answer is synchronize sampling: we create multiple independent environments and sample simultaneously. It is similar to A2C, but other algorithms can also use this method. In our experiments, sampling from more environments benefits not only the sample speed but also the converge speed of neural network (we guess it lowers the sample bias).
 
 By the way, A2C is better than A3C in some cases: A3C needs to act independently and sync the gradient to master, but, in a single node, using A3C to act with batch-size = 1 is quite resource-consuming.
 
@@ -74,6 +76,9 @@ Jiayi: I write each line of code after quite a lot of time of consideration. Det
 Finally
 -------
 
-With fast-speed sampling, we could use large batch-size and large learning rate
+With fast-speed sampling, we could use large batch-size and large learning rate for faster convergence.
 
 RL algorithms are seed-sensitive. Try more seeds and pick the best. But for our demo, we just used seed = 0 and found it work surprisingly well on policy gradient, so we did not try other seed.
+
+.. image:: ../_static/images/testpg.gif
+    :align: center

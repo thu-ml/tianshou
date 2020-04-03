@@ -99,7 +99,7 @@ class SACPolicy(DDPGPolicy):
         self.actor_optim.step()
         self.sync_weight()
         return {
-            'loss/actor': actor_loss.detach().cpu().numpy(),
-            'loss/critic1': critic1_loss.detach().cpu().numpy(),
-            'loss/critic2': critic2_loss.detach().cpu().numpy(),
+            'loss/actor': actor_loss.item(),
+            'loss/critic1': critic1_loss.item(),
+            'loss/critic2': critic2_loss.item(),
         }

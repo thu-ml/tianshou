@@ -107,6 +107,6 @@ class DDPGPolicy(BasePolicy):
         self.actor_optim.step()
         self.sync_weight()
         return {
-            'loss/actor': actor_loss.detach().cpu().numpy(),
-            'loss/critic': critic_loss.detach().cpu().numpy(),
+            'loss/actor': actor_loss.item(),
+            'loss/critic': critic_loss.item(),
         }

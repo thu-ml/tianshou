@@ -20,9 +20,8 @@ class PGPolicy(BasePolicy):
         self._gamma = discount_factor
 
     def process_fn(self, batch, buffer, indice):
-        returns = self._vanilla_returns(batch)
-        # returns = self._vectorized_returns(batch)
-        batch.update(returns=returns)
+        batch.returns = self._vanilla_returns(batch)
+        # batch.returns = self._vectorized_returns(batch)
         return batch
 
     def __call__(self, batch, state=None):
@@ -45,7 +44,7 @@ class PGPolicy(BasePolicy):
                 loss = -(dist.log_prob(a) * r).sum()
                 loss.backward()
                 self.optim.step()
-                losses.append(loss.detach().cpu().numpy())
+                losses.append(loss.item())
         return {'loss': losses}
 
     def _vanilla_returns(self, batch):

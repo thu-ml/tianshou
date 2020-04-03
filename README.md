@@ -29,11 +29,11 @@ Tianshou supports parallel workers for all algorithms as well. All of these algo
 
 In Chinese, Tianshou means the innate talent, not taught by others. Tianshou is a reinforcement learning platform. As we know, an RL agent does not learn from humans, so taking "Tianshou" means that there is no teacher to study with, but to learn by interacting with an environment.
 
-“[天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)”意指上天所授，引申为与生具有的天赋。天授是强化学习平台，不是和人类学习的，所以取“天授”意思是没有老师来教，而是自己通过跟环境不断交互来进行学习。
+“天授”意指上天所授，引申为与生具有的天赋。天授是强化学习平台，而强化学习算法并不是向人类学习的，所以取“天授”意思是没有老师来教，而是自己通过跟环境不断交互来进行学习。
 
 ## Installation
 
-Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/). You can simply install Tianshou with the following command:
+Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/). It requires Python >= 3.6. You can simply install Tianshou with the following command:
 
 ```bash
 pip3 install tianshou

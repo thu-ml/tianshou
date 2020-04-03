@@ -5,8 +5,8 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.env import VectorEnv
 from tianshou.policy import PPOPolicy
-from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
@@ -46,14 +46,16 @@ def get_args():
 
 
 def test_ppo(args=get_args()):
+    torch.set_num_threads(1)  # for poor CPU
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     # train_envs = gym.make(args.task)
-    train_envs = SubprocVectorEnv(
+    # you can also use tianshou.env.SubprocVectorEnv
+    train_envs = VectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
+    test_envs = VectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
@@ -88,8 +90,7 @@ def test_ppo(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
-        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer,
-        task=args.task)
+        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer)
     assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()

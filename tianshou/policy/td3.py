@@ -81,12 +81,12 @@ class TD3Policy(DDPGPolicy):
                 batch.obs, self(batch, eps=0).act).mean()
             self.actor_optim.zero_grad()
             actor_loss.backward()
-            self._last = actor_loss.detach().cpu().numpy()
+            self._last = actor_loss.item()
             self.actor_optim.step()
             self.sync_weight()
         self._cnt += 1
         return {
             'loss/actor': self._last,
-            'loss/critic1': critic1_loss.detach().cpu().numpy(),
-            'loss/critic2': critic2_loss.detach().cpu().numpy(),
+            'loss/critic1': critic1_loss.item(),
+            'loss/critic2': critic2_loss.item(),
         }
