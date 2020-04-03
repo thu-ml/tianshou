@@ -13,7 +13,7 @@ from tianshou.data import Collector, ReplayBuffer
 
 try:
     import pybullet_envs
-except:
+except ImportError:
     pass
 
 from continuous_net import ActorProb, Critic
@@ -100,7 +100,8 @@ def test_sac(args=get_args()):
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
-        args.batch_size, stop_fn=stop_fn, writer=writer, log_interval=args.log_interval)
+        args.batch_size, stop_fn=stop_fn,
+        writer=writer, log_interval=args.log_interval)
     assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()
