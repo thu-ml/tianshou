@@ -51,7 +51,7 @@ class ActorProbWithView(nn.Module):
 
     def forward(self, s, **kwargs):
         if not isinstance(s, torch.Tensor):
-            s = torch.tensor(self._view_mask, device=self.device, dtype=torch.float)
+            s = torch.tensor(s, device=self.device, dtype=torch.float)
         s *= self._view_mask
         batch = s.shape[0]
         s = s.view(batch, -1)

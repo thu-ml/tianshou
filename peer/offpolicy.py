@@ -6,7 +6,7 @@ from tianshou.trainer import test_episode, gather_info
 
 
 def offpolicy_trainer_with_views(A, B, max_epoch, step_per_epoch, collect_per_step,
-                                 episode_per_test, batch_size, copier=False, alpha=0.,
+                                 episode_per_test, batch_size, copier=False, peer=0.,
                                  verbose=True, test_fn=None, task=''):
     global_step = 0
     best_epoch, best_reward = -1, -1
@@ -41,7 +41,7 @@ def offpolicy_trainer_with_views(A, B, max_epoch, step_per_epoch, collect_per_st
                         # learn from demonstration
                         if copier:
                             demo_acts = other_view.policy(batch).act.detach()
-                            view.learn_from_demos(batch, demo_acts, alpha=alpha)
+                            view.learn_from_demos(batch, demo_acts, peer=peer)
 
                         for k in result.keys():
                             data[k] = f'{result[k]:.2f}'
