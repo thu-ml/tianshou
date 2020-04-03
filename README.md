@@ -13,7 +13,7 @@
 [![GitHub license](https://img.shields.io/github/license/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/blob/master/LICENSE)
 [![Join the chat at https://gitter.im/thu-ml/tianshou](https://badges.gitter.im/thu-ml/tianshou.svg)](https://gitter.im/thu-ml/tianshou?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch. Unlike existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed framework and pythonic API for building the deep reinforcement learning agent with the least number of lines of code. The supported interface algorithms include:
+**Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch. Unlike existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed framework and pythonic API for building the deep reinforcement learning agent with the least number of lines of code. The supported interface algorithms currently include:
 
 
 - [Policy Gradient (PG)](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
@@ -25,7 +25,11 @@
 - [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf)
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf)
 
-Tianshou supports parallel workers for all algorithms as well. All of these algorithms are reformatted as replay-buffer based algorithms. Our team is working on supporting more algorithms and more scenarios on Tianshou in this period of development, including model-based / atari / etc.
+Tianshou supports parallel workers for all algorithms as well. All of these algorithms are reformatted as replay-buffer based algorithms. Our team is working on supporting more algorithms and more scenarios on Tianshou in this period of development.
+
+In Chinese, Tianshou means the innate talent, not taught by others. Tianshou is a reinforcement learning platform. As we know, an RL agent does not learn from humans, so taking "Tianshou" means that there is no teacher to study with, but to learn by interacting with an environment.
+
+“[天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)”意指上天所授，引申为与生具有的天赋。天授是强化学习平台，不是和人类学习的，所以取“天授”意思是没有老师来教，而是自己通过跟环境不断交互来进行学习。
 
 ## Installation
 
