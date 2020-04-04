@@ -71,8 +71,10 @@ class SACPolicy(DDPGPolicy):
                 self.critic1_old(batch.obs_next, a_),
                 self.critic2_old(batch.obs_next, a_),
             ) - self._alpha * obs_next_result.log_prob
-            rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
-            done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
+            rew = torch.tensor(batch.rew,
+                               dtype=torch.float, device=dev)[:, None]
+            done = torch.tensor(batch.done,
+                                dtype=torch.float, device=dev)[:, None]
             target_q = (rew + (1. - done) * self._gamma * target_q)
         obs_result = self(batch)
         a = obs_result.act

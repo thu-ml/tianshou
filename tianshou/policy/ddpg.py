@@ -94,8 +94,10 @@ class DDPGPolicy(BasePolicy):
             target_q = self.critic_old(batch.obs_next, self(
                 batch, model='actor_old', input='obs_next', eps=0).act)
             dev = target_q.device
-            rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
-            done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
+            rew = torch.tensor(batch.rew,
+                               dtype=torch.float, device=dev)[:, None]
+            done = torch.tensor(batch.done,
+                                dtype=torch.float, device=dev)[:, None]
             target_q = (rew + (1. - done) * self._gamma * target_q)
         current_q = self.critic(batch.obs, batch.act)
         critic_loss = F.mse_loss(current_q, target_q)

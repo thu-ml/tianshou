@@ -62,8 +62,10 @@ class TD3Policy(DDPGPolicy):
             target_q = torch.min(
                 self.critic1_old(batch.obs_next, a_),
                 self.critic2_old(batch.obs_next, a_))
-            rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
-            done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
+            rew = torch.tensor(batch.rew,
+                               dtype=torch.float, device=dev)[:, None]
+            done = torch.tensor(batch.done,
+                                dtype=torch.float, device=dev)[:, None]
             target_q = (rew + (1. - done) * self._gamma * target_q)
         # critic 1
         current_q1 = self.critic1(batch.obs, batch.act)
