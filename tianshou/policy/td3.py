@@ -51,19 +51,20 @@ class TD3Policy(DDPGPolicy):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
 
     def learn(self, batch, batch_size=None, repeat=1):
-        a_ = self(batch, model='actor_old', input='obs_next').act
-        dev = a_.device
-        noise = torch.randn(size=a_.shape, device=dev) * self._policy_noise
-        if self._noise_clip >= 0:
-            noise = noise.clamp(-self._noise_clip, self._noise_clip)
-        a_ += noise
-        a_ = a_.clamp(self._range[0], self._range[1])
-        target_q = torch.min(
-            self.critic1_old(batch.obs_next, a_),
-            self.critic2_old(batch.obs_next, a_))
-        rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
-        done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
-        target_q = (rew + (1. - done) * self._gamma * target_q).detach()
+        with torch.no_grad():
+            a_ = self(batch, model='actor_old', input='obs_next').act
+            dev = a_.device
+            noise = torch.randn(size=a_.shape, device=dev) * self._policy_noise
+            if self._noise_clip >= 0:
+                noise = noise.clamp(-self._noise_clip, self._noise_clip)
+            a_ += noise
+            a_ = a_.clamp(self._range[0], self._range[1])
+            target_q = torch.min(
+                self.critic1_old(batch.obs_next, a_),
+                self.critic2_old(batch.obs_next, a_))
+            rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
+            done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
+            target_q = (rew + (1. - done) * self._gamma * target_q)
         # critic 1
         current_q1 = self.critic1(batch.obs, batch.act)
         critic1_loss = F.mse_loss(current_q1, target_q)

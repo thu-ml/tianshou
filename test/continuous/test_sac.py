@@ -1,3 +1,4 @@
+import os
 import gym
 import torch
 import pprint
@@ -19,14 +20,15 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
-    parser.add_argument('--seed', type=int, default=1626)
+    parser.add_argument('--run-id', type=str, default='test')
+    parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--actor-lr', type=float, default=3e-4)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.2)
-    parser.add_argument('--epoch', type=int, default=100)
+    parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=2400)
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=128)
@@ -43,6 +45,7 @@ def get_args():
 
 
 def test_sac(args=get_args()):
+    torch.set_num_threads(1)  # we just need only one thread for NN
     env = gym.make(args.task)
     if args.task == 'Pendulum-v0':
         env.spec.reward_threshold = -250
@@ -86,7 +89,8 @@ def test_sac(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'sac')
+    log_path = os.path.join(args.logdir, args.task, 'sac', args.run_id)
+    writer = SummaryWriter(log_path)
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold

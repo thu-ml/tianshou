@@ -90,12 +90,13 @@ class DDPGPolicy(BasePolicy):
         return Batch(act=logits, state=h)
 
     def learn(self, batch, batch_size=None, repeat=1):
-        target_q = self.critic_old(batch.obs_next, self(
-            batch, model='actor_old', input='obs_next', eps=0).act)
-        dev = target_q.device
-        rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
-        done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
-        target_q = (rew + (1. - done) * self._gamma * target_q).detach()
+        with torch.no_grad():
+            target_q = self.critic_old(batch.obs_next, self(
+                batch, model='actor_old', input='obs_next', eps=0).act)
+            dev = target_q.device
+            rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
+            done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
+            target_q = (rew + (1. - done) * self._gamma * target_q)
         current_q = self.critic(batch.obs, batch.act)
         critic_loss = F.mse_loss(current_q, target_q)
         self.critic_optim.zero_grad()
