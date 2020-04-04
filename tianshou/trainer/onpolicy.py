@@ -9,7 +9,7 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                      step_per_epoch, collect_per_step, repeat_per_collect,
                      episode_per_test, batch_size,
                      train_fn=None, test_fn=None, stop_fn=None,
-                     writer=None, verbose=True, task=''):
+                     writer=None, log_interval=1, verbose=True, task=''):
     global_step = 0
     best_epoch, best_reward = -1, -1
     stat = {}
@@ -50,7 +50,7 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                 global_step += step
                 for k in result.keys():
                     data[k] = f'{result[k]:.2f}'
-                    if writer:
+                    if writer and global_step % log_interval == 0:
                         writer.add_scalar(
                             k + '_' + task if task else k,
                             result[k], global_step=global_step)
@@ -59,7 +59,7 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                         stat[k] = MovAvg()
                     stat[k].add(losses[k])
                     data[k] = f'{stat[k].get():.6f}'
-                    if writer and global_step:
+                    if writer and global_step % log_interval == 0:
                         writer.add_scalar(
                             k + '_' + task if task else k,
                             stat[k].get(), global_step=global_step)
