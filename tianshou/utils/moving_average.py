@@ -43,23 +43,17 @@ class MovAvg(object):
         return self.get()
 
     def get(self):
-        """
-        Get the average.
-        """
+        """Get the average."""
         if len(self.cache) == 0:
             return 0
         return np.mean(self.cache)
 
     def mean(self):
-        """
-        Get the average. Same as :meth:`get`.
-        """
+        """Get the average. Same as :meth:`get`."""
         return self.get()
 
     def std(self):
-        """
-        Get the standard deviation.
-        """
+        """Get the standard deviation."""
         if len(self.cache) == 0:
             return 0
         return np.std(self.cache)

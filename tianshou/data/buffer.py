@@ -43,14 +43,8 @@ class ReplayBuffer(object):
         self._maxsize = size
         self.reset()
 
-    def __del__(self):
-        for k in list(self.__dict__.keys()):
-            del self.__dict__[k]
-
     def __len__(self):
-        """
-        Return len(self).
-        """
+        """Return len(self)."""
         return self._size
 
     def _add_to_buffer(self, name, inst):
@@ -70,9 +64,7 @@ class ReplayBuffer(object):
         self.__dict__[name][self._index] = inst
 
     def update(self, buffer):
-        """
-        Move the data from the given buffer to self.
-        """
+        """Move the data from the given buffer to self."""
         i = begin = buffer._index % len(buffer)
         while True:
             self.add(
@@ -83,9 +75,7 @@ class ReplayBuffer(object):
                 break
 
     def add(self, obs, act, rew, done, obs_next=0, info={}, weight=None):
-        '''
-        Add a batch of data into replay buffer.
-        '''
+        """Add a batch of data into replay buffer."""
         assert isinstance(info, dict), \
             'You should return a dict in the last argument of env.step().'
         self._add_to_buffer('obs', obs)
@@ -101,9 +91,7 @@ class ReplayBuffer(object):
             self._size = self._index = self._index + 1
 
     def reset(self):
-        """
-        Clear all the data in replay buffer.
-        """
+        """Clear all the data in replay buffer."""
         self._index = self._size = 0
         self.indice = []
 
@@ -123,9 +111,7 @@ class ReplayBuffer(object):
         return self[indice], indice
 
     def __getitem__(self, index):
-        """
-        Return a data batch: self[index].
-        """
+        """Return a data batch: self[index]."""
         return Batch(
             obs=self.obs[index],
             act=self.act[index],

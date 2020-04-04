@@ -80,5 +80,5 @@ With fast-speed sampling, we could use large batch-size and large learning rate 
 
 RL algorithms are seed-sensitive. Try more seeds and pick the best. But for our demo, we just used seed = 0 and found it work surprisingly well on policy gradient, so we did not try other seed.
 
-.. image:: ../_static/images/testpg.gif
+.. image:: /_static/images/testpg.gif
     :align: center

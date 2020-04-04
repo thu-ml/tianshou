@@ -3,7 +3,7 @@ Basic concepts in Tianshou
 
 Tianshou splits a Reinforcement Learning agent training procedure into these parts: trainer, collector, policy, and data buffer. The general control flow can be described as:
 
-.. image:: ../_static/images/concepts_arch.png
+.. image:: /_static/images/concepts_arch.png
     :align: center
     :height: 300
 

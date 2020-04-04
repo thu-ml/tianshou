@@ -67,9 +67,7 @@ class Batch(object):
         self.__dict__.update(kwargs)
 
     def __getitem__(self, index):
-        """
-        Return self[index].
-        """
+        """Return self[index]."""
         b = Batch()
         for k in self.__dict__.keys():
             if self.__dict__[k] is not None:
@@ -77,9 +75,7 @@ class Batch(object):
         return b
 
     def append(self, batch):
-        """
-        Append a :class:`~tianshou.data.Batch` object to the end.
-        """
+        """Append a :class:`~tianshou.data.Batch` object to the end."""
         assert isinstance(batch, Batch), 'Only append Batch is allowed!'
         for k in batch.__dict__.keys():
             if batch.__dict__[k] is None:
@@ -101,9 +97,7 @@ class Batch(object):
                 raise TypeError(s)
 
     def __len__(self):
-        """
-        Return len(self).
-        """
+        """Return len(self)."""
         return min([
             len(self.__dict__[k]) for k in self.__dict__.keys()
             if self.__dict__[k] is not None])
