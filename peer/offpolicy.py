@@ -52,7 +52,7 @@ def offpolicy_trainer_with_views(A, B, max_epoch, step_per_epoch, collect_per_st
                             if stat.get(k) is None:
                                 stat[k] = MovAvg()
                             stat[k].add(losses[k])
-                            data[k] = f'{stat[k].get():.6f}'
+                            data[k] = f'{stat[k].get():.4f}'
                             view.writer.add_scalar(
                                 k + '_' + task if task else k,
                                 stat[k].get(), global_step=global_step)

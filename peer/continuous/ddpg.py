@@ -65,7 +65,7 @@ class View(object):
         self.test_collector = Collector(self.policy, self.test_envs)
 
         # log
-        self.writer = SummaryWriter(f"{args.logdir}/ddpg/{args.note}/{name}")
+        self.writer = SummaryWriter(f"{args.logdir}/{args.task}/ddpg/{args.note}/{name}")
 
     def seed(self, _seed):
         self.train_envs.seed(_seed)
@@ -112,8 +112,7 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--device', type=str,
-                        default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--device', type=str, default='cpu')
     args = parser.parse_known_args()[0]
     args.note = args.note or datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
     return args

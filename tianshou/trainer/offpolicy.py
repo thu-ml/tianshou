@@ -53,7 +53,7 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                         if stat.get(k) is None:
                             stat[k] = MovAvg()
                         stat[k].add(losses[k])
-                        data[k] = f'{stat[k].get():.6f}'
+                        data[k] = f'{stat[k].get():.4f}'
                         if writer:
                             writer.add_scalar(
                                 k + '_' + task if task else k,
@@ -69,8 +69,8 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
             best_reward = result['rew']
             best_epoch = epoch
         if verbose:
-            print(f'Epoch #{epoch}: test_reward: {result["rew"]:.6f}, '
-                  f'best_reward: {best_reward:.6f} in #{best_epoch}')
+            print(f'Epoch #{epoch}: test_reward: {result["rew"]:.4f}, '
+                  f'best_reward: {best_reward:.4f} in #{best_epoch}')
         if stop_fn and stop_fn(best_reward):
             break
     return gather_info(

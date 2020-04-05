@@ -1,3 +1,4 @@
+import datetime
 import gym
 import torch
 import pprint
@@ -10,11 +11,12 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
 
-from continuous_net import ActorProb, Critic
+from examples.continuous_net import ActorProb, Critic
 
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--note', type=str, default=None)
     parser.add_argument('--task', type=str, default='Ant-v2')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
@@ -32,10 +34,9 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--device', type=str, default='cpu')
     args = parser.parse_known_args()[0]
+    args.note = args.note or datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
     return args
 
 
@@ -80,7 +81,7 @@ def test_sac(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'sac')
+    writer = SummaryWriter(f"{args.logdir}/{args.task}/sac/{args.note}")
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold

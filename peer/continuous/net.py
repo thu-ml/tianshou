@@ -13,11 +13,11 @@ class ActorWithView(nn.Module):
         super().__init__()
         self.device = device
         self.model = [
-            nn.Linear(int(np.prod(state_shape)), 128),
+            nn.Linear(int(np.prod(state_shape)), 256),
             nn.ReLU(inplace=True)]
         for i in range(layer_num):
-            self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
-        self.model += [nn.Linear(128, int(np.prod(action_shape)))]
+            self.model += [nn.Linear(256, 256), nn.ReLU(inplace=True)]
+        self.model += [nn.Linear(256, int(np.prod(action_shape)))]
         self.model = nn.Sequential(*self.model)
         self._max = max_action
         self._view_mask = view_mask if isinstance(view_mask, torch.Tensor) \
@@ -39,13 +39,13 @@ class ActorProbWithView(nn.Module):
         super().__init__()
         self.device = device
         self.model = [
-            nn.Linear(int(np.prod(state_shape)), 128),
+            nn.Linear(int(np.prod(state_shape)), 256),
             nn.ReLU(inplace=True)]
         for i in range(layer_num):
-            self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
+            self.model += [nn.Linear(256, 256), nn.ReLU(inplace=True)]
         self.model = nn.Sequential(*self.model)
-        self.mu = nn.Linear(128, int(np.prod(action_shape)))
-        self.sigma = nn.Linear(128, int(np.prod(action_shape)))
+        self.mu = nn.Linear(256, int(np.prod(action_shape)))
+        self.sigma = nn.Linear(256, int(np.prod(action_shape)))
         self._max = max_action
         self._view_mask = view_mask
 
@@ -66,11 +66,11 @@ class CriticWithView(nn.Module):
         super().__init__()
         self.device = device
         self.model = [
-            nn.Linear(np.prod(state_shape) + np.prod(action_shape), 128),
+            nn.Linear(np.prod(state_shape) + np.prod(action_shape), 256),
             nn.ReLU(inplace=True)]
         for i in range(layer_num):
-            self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
-        self.model += [nn.Linear(128, 1)]
+            self.model += [nn.Linear(256, 256), nn.ReLU(inplace=True)]
+        self.model += [nn.Linear(256, 1)]
         self.model = nn.Sequential(*self.model)
         self._view_mask = view_mask
 
