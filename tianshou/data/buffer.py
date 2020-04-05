@@ -3,17 +3,18 @@ from tianshou.data.batch import Batch
 
 
 class ReplayBuffer(object):
-    """
-    :class:`~tianshou.data.ReplayBuffer` stores data generated from interaction
-    between the policy and environment. It stores basically 6 types of data, as
-    mentioned in :class:`~tianshou.data.Batch`, based on ``numpy.ndarray``.
-    Here is the usage:
+    """:class:`~tianshou.data.ReplayBuffer` stores data generated from
+    interaction between the policy and environment. It stores basically 6 types
+    of data, as mentioned in :class:`~tianshou.data.Batch`, based on
+    ``numpy.ndarray``. Here is the usage:
     ::
 
         >>> from tianshou.data import ReplayBuffer
         >>> buf = ReplayBuffer(size=20)
         >>> for i in range(3):
         ...     buf.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
+        >>> len(buf)
+        3
         >>> buf.obs
         # since we set size = 20, len(buf.obs) == 20.
         array([0., 1., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
@@ -22,11 +23,13 @@ class ReplayBuffer(object):
         >>> buf2 = ReplayBuffer(size=10)
         >>> for i in range(15):
         ...     buf2.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
+        >>> len(buf2)
+        10
         >>> buf2.obs
         # since its size = 10, it only stores the last 10 steps' result.
         array([10., 11., 12., 13., 14.,  5.,  6.,  7.,  8.,  9.])
 
-        >>> # move buf2's result into buf (keep it chronologically meanwhile)
+        >>> # move buf2's result into buf (meanwhile keep it chronologically)
         >>> buf.update(buf2)
         array([ 0.,  1.,  2.,  5.,  6.,  7.,  8.,  9., 10., 11., 12., 13., 14.,
                 0.,  0.,  0.,  0.,  0.,  0.,  0.])
@@ -96,8 +99,8 @@ class ReplayBuffer(object):
         self.indice = []
 
     def sample(self, batch_size):
-        """
-        Get a random sample from buffer with size = ``batch_size``
+        """Get a random sample from buffer with size equal to batch_size. \
+        Return all the data in the buffer if batch_size is ``0``.
 
         :return: Sample data and its corresponding index inside the buffer.
         """
@@ -123,9 +126,8 @@ class ReplayBuffer(object):
 
 
 class ListReplayBuffer(ReplayBuffer):
-    """
-    The function of :class:`~tianshou.data.ListReplayBuffer` is almost the same
-    as :class:`~tianshou.data.ReplayBuffer`. The only difference is that
+    """The function of :class:`~tianshou.data.ListReplayBuffer` is almost the
+    same as :class:`~tianshou.data.ReplayBuffer`. The only difference is that
     :class:`~tianshou.data.ListReplayBuffer` is based on ``list``.
     """
 

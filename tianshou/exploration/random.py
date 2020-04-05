@@ -2,8 +2,7 @@ import numpy as np
 
 
 class OUNoise(object):
-    """
-    Class for Ornstein-Uhlenbeck process, as used for exploration in DDPG.
+    """Class for Ornstein-Uhlenbeck process, as used for exploration in DDPG.
     Usage:
     ::
 
@@ -25,9 +24,8 @@ class OUNoise(object):
         self.reset()
 
     def __call__(self, size, mu=.1):
-        """
-        Generate new noise. Return a ``numpy.ndarray`` which size is equal to
-        ``size``.
+        """Generate new noise. Return a ``numpy.ndarray`` which size is equal
+        to ``size``.
         """
         if self.x is None or self.x.shape != size:
             self.x = 0
@@ -36,7 +34,5 @@ class OUNoise(object):
         return self.x
 
     def reset(self):
-        """
-        Reset to the initial state.
-        """
+        """Reset to the initial state."""
         self.x = None

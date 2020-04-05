@@ -64,7 +64,7 @@ class DDPGPolicy(BasePolicy):
 
     def process_fn(self, batch, buffer, indice):
         if self._rew_norm:
-            bfr = buffer.rew[:len(buffer)]
+            bfr = buffer.rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
             if std > self.__eps:
                 batch.rew = (batch.rew - mean) / std

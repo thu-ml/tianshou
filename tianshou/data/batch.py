@@ -3,8 +3,7 @@ import numpy as np
 
 
 class Batch(object):
-    """
-    Tianshou provides :class:`~tianshou.data.Batch` as the internal data
+    """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
     structure to pass any kind of data to other methods, for example, a
     collector gives a :class:`~tianshou.data.Batch` to policy for learning.
     Here is the usage:
@@ -25,12 +24,12 @@ class Batch(object):
     current implementation of Tianshou typically use 6 keys in
     :class:`~tianshou.data.Batch`:
 
-    * ``obs``: the observation of step :math:`t` ;
-    * ``act``: the action of step :math:`t` ;
-    * ``rew``: the reward of step :math:`t` ;
-    * ``done``: the done flag of step :math:`t` ;
-    * ``obs_next``: the observation of step :math:`t+1` ;
-    * ``info``: the info of step :math:`t` (in ``gym.Env``, the ``env.step()``\
+    * ``obs`` the observation of step :math:`t` ;
+    * ``act`` the action of step :math:`t` ;
+    * ``rew`` the reward of step :math:`t` ;
+    * ``done`` the done flag of step :math:`t` ;
+    * ``obs_next`` the observation of step :math:`t+1` ;
+    * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()``\
         function return 4 arguments, and the last one is ``info``);
 
     :class:`~tianshou.data.Batch` has other methods, including
@@ -75,7 +74,7 @@ class Batch(object):
         return b
 
     def append(self, batch):
-        """Append a :class:`~tianshou.data.Batch` object to the end."""
+        """Append a :class:`~tianshou.data.Batch` object to current batch."""
         assert isinstance(batch, Batch), 'Only append Batch is allowed!'
         for k in batch.__dict__.keys():
             if batch.__dict__[k] is None:
@@ -103,12 +102,11 @@ class Batch(object):
             if self.__dict__[k] is not None])
 
     def split(self, size=None, permute=True):
-        """
-        Split whole data into multiple small batch.
+        """Split whole data into multiple small batch.
 
-        :param size: if equals to ``None``, it does not split the data batch; \
+        :param size: if it is ``None``, it does not split the data batch;
             otherwise it will divide the data batch with the given size.
-        :param permute: randomly shuffle the entire data batch if it equals to\
+        :param permute: randomly shuffle the entire data batch if it is
             ``True``, otherwise remain in the same.
         """
         length = len(self)

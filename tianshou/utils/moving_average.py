@@ -3,8 +3,7 @@ import numpy as np
 
 
 class MovAvg(object):
-    """
-    Class for moving average. Usage:
+    """Class for moving average. Usage:
     ::
 
         >>> stat = MovAvg(size=66)
@@ -25,8 +24,7 @@ class MovAvg(object):
         self.cache = []
 
     def add(self, x):
-        """
-        Add a scalar into :class:`MovAvg`. You can add ``torch.Tensor`` with
+        """Add a scalar into :class:`MovAvg`. You can add ``torch.Tensor`` with
         only one element, a python scalar, or a list of python scalar. It will
         exclude the infinity.
         """

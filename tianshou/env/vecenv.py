@@ -12,12 +12,12 @@ from tianshou.env.utils import CloudpickleWrapper
 
 
 class BaseVectorEnv(ABC, gym.Wrapper):
-    """
-    Base class for vectorized environments wrapper. Usage:
+    """Base class for vectorized environments wrapper. Usage:
     ::
 
         env_num = 8
         envs = VectorEnv([lambda: gym.make(task) for _ in range(env_num)])
+        assert len(envs) == env_num
 
     It accepts a list of environment generators. In other words, an environment
     generator ``efn`` of a specific task means that ``efn()`` returns the
@@ -46,8 +46,7 @@ class BaseVectorEnv(ABC, gym.Wrapper):
 
     @abstractmethod
     def reset(self, id=None):
-        """
-        Reset the state of all the environments and returns initial
+        """Reset the state of all the environments and return initial
         observations if id is ``None``, otherwise reset the specific
         environments with given id, either an int or a list.
         """
@@ -55,38 +54,38 @@ class BaseVectorEnv(ABC, gym.Wrapper):
 
     @abstractmethod
     def step(self, action):
-        """
-        Run one timestep of all the environments’ dynamics. When end of episode
-        is reached, you are responsible for calling reset(id) to reset this
-        environment’s state.
+        """Run one timestep of all the environments’ dynamics. When the end of
+        episode is reached, you are responsible for calling reset(id) to reset
+        this environment’s state.
 
-        Accepts a batch of action and returns a tuple (obs, rew, done, info).
+        Accept a batch of action and return a tuple (obs, rew, done, info).
 
-        :args:
-            action (numpy.ndarray): a batch of action provided by the agent
+        :param action: a numpy.ndarray, a batch of action provided by the
+            agent.
 
-        :return:
-            * obs (numpy.ndarray): agent's observation of current environments
-            * rew (numpy.ndarray) : amount of rewards returned after previous \
-                actions
-            * done (numpy.ndarray): whether these episodes have ended, in \
+        :return: A tuple including four items:
+
+            * ``obs`` a numpy.ndarray, the agent's observation of current \
+                environments
+            * ``rew`` a numpy.ndarray, the amount of rewards returned after \
+                previous actions
+            * ``done`` a numpy.ndarray, whether these episodes have ended, in \
                 which case further step() calls will return undefined results
-            * info (numpy.ndarray): contains auxiliary diagnostic information \
-                (helpful for debugging, and sometimes learning)
+            * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
+                information (helpful for debugging, and sometimes learning)
         """
         pass
 
     @abstractmethod
     def seed(self, seed=None):
-        """
-        Set the seed for all environments. Accept ``None``, an int (which will
-        extend ``i`` to ``[i, i + 1, i + 2, ...]``) or a list.
+        """Set the seed for all environments. Accept ``None``, an int (which
+        will extend ``i`` to ``[i, i + 1, i + 2, ...]``) or a list.
         """
         pass
 
     @abstractmethod
     def render(self, **kwargs):
-        """Renders the environment."""
+        """Render all of the environments."""
         pass
 
     @abstractmethod
@@ -96,8 +95,7 @@ class BaseVectorEnv(ABC, gym.Wrapper):
 
 
 class VectorEnv(BaseVectorEnv):
-    """
-    Dummy vectorized environment wrapper, implemented in for-loop. The usage \
+    """Dummy vectorized environment wrapper, implemented in for-loop. The usage
     is in :class:`~tianshou.env.BaseVectorEnv`.
     """
 
@@ -173,8 +171,7 @@ def worker(parent, p, env_fn_wrapper):
 
 
 class SubprocVectorEnv(BaseVectorEnv):
-    """
-    Vectorized environment wrapper based on subprocess. The usage is in \
+    """Vectorized environment wrapper based on subprocess. The usage is in
     :class:`~tianshou.env.BaseVectorEnv`.
     """
 
@@ -248,11 +245,11 @@ class SubprocVectorEnv(BaseVectorEnv):
 
 
 class RayVectorEnv(BaseVectorEnv):
-    """
-    Vectorized environment wrapper based on \
-    `ray <https://github.com/ray-project/ray>`_. However, according to our \
-    test, it is slower than :class:`~tianshou.env.SubprocVectorEnv`. The usage\
-    is in :class:`~tianshou.env.BaseVectorEnv`.
+    """Vectorized environment wrapper based on
+    `ray <https://github.com/ray-project/ray>`_. However, according to our
+    test, it is about two times slower than
+    :class:`~tianshou.env.SubprocVectorEnv`. The usage is in
+    :class:`~tianshou.env.BaseVectorEnv`.
     """
 
     def __init__(self, env_fns):

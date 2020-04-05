@@ -8,7 +8,41 @@ from tianshou.trainer import test_episode, gather_info
 def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                       step_per_epoch, collect_per_step, episode_per_test,
                       batch_size, train_fn=None, test_fn=None, stop_fn=None,
-                      writer=None, log_interval=1, verbose=True, task=''):
+                      writer=None, log_interval=1, verbose=True, task='',
+                      **kwargs):
+    """A wrapper for off-policy trainer procedure.
+
+    Parameters
+        * **policy** – an instance of the :class:`~tianshou.policy.BasePolicy`\
+            class.
+        * **train_collector** – the collector used for training.
+        * **test_collector** – the collector used for testing.
+        * **max_epoch** – the maximum of epochs for training. The training \
+            process might be finished before reaching the ``max_epoch``.
+        * **step_per_epoch** – the number of step for updating policy network \
+            in one epoch.
+        * **collect_per_step** – the number of frames the collector would \
+            collect before the network update. In other words, collect some \
+            frames and do one policy network update.
+        * **episode_per_test** – the number of episodes for one policy \
+            evaluation.
+        * **batch_size** – the batch size of sample data, which is going to \
+            feed in the policy network.
+        * **train_fn** – a function receives the current number of epoch index\
+            and performs some operations at the beginning of training in this \
+            epoch.
+        * **test_fn** – a function receives the current number of epoch index \
+            and performs some operations at the beginning of testing in this \
+            epoch.
+        * **stop_fn** – a function receives the average undiscounted returns \
+            of the testing result, return a boolean which indicates whether \
+            reaching the goal.
+        * **writer** – a SummaryWriter provided from TensorBoard.
+        * **log_interval** – an int indicating the log interval of the writer.
+        * **verbose** – a boolean indicating whether to print the information.
+
+    :return: See :func:`~tianshou.trainer.gather_info`.
+    """
     global_step = 0
     best_epoch, best_reward = -1, -1
     stat = {}
