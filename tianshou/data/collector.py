@@ -3,7 +3,7 @@ import torch
 import warnings
 import numpy as np
 from tianshou.env import BaseVectorEnv
-from tianshou.data import Batch, ReplayBuffer,\
+from tianshou.data import Batch, ReplayBuffer, \
     ListReplayBuffer
 from tianshou.utils import MovAvg
 
@@ -115,7 +115,8 @@ class Collector(object):
                     done=self._make_batch(self._done),
                     obs_next=None,
                     info=self._make_batch(self._info))
-            result = self.policy(batch_data, self.state)
+            with torch.no_grad():
+                result = self.policy(batch_data, self.state)
             self.state = result.state if hasattr(result, 'state') else None
             if isinstance(result.act, torch.Tensor):
                 self._act = result.act.detach().cpu().numpy()

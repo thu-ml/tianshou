@@ -1,3 +1,4 @@
+import os
 import gym
 import torch
 import pprint
@@ -19,7 +20,8 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
-    parser.add_argument('--seed', type=int, default=1626)
+    parser.add_argument('--run-id', type=str, default='test')
+    parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--actor-lr', type=float, default=3e-4)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
@@ -29,7 +31,7 @@ def get_args():
     parser.add_argument('--policy-noise', type=float, default=0.2)
     parser.add_argument('--noise-clip', type=float, default=0.5)
     parser.add_argument('--update-actor-freq', type=int, default=2)
-    parser.add_argument('--epoch', type=int, default=100)
+    parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=2400)
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=128)
@@ -46,6 +48,7 @@ def get_args():
 
 
 def test_td3(args=get_args()):
+    torch.set_num_threads(1)  # we just need only one thread for NN
     env = gym.make(args.task)
     if args.task == 'Pendulum-v0':
         env.spec.reward_threshold = -250
@@ -90,7 +93,8 @@ def test_td3(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'td3')
+    log_path = os.path.join(args.logdir, args.task, 'td3', args.run_id)
+    writer = SummaryWriter(log_path)
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold

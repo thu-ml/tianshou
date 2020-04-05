@@ -62,17 +62,20 @@ class SACPolicy(DDPGPolicy):
             logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
 
     def learn(self, batch, batch_size=None, repeat=1):
-        obs_next_result = self(batch, input='obs_next')
-        a_ = obs_next_result.act
-        dev = a_.device
-        batch.act = torch.tensor(batch.act, dtype=torch.float, device=dev)
-        target_q = torch.min(
-            self.critic1_old(batch.obs_next, a_),
-            self.critic2_old(batch.obs_next, a_),
-        ) - self._alpha * obs_next_result.log_prob
-        rew = torch.tensor(batch.rew, dtype=torch.float, device=dev)[:, None]
-        done = torch.tensor(batch.done, dtype=torch.float, device=dev)[:, None]
-        target_q = (rew + (1. - done) * self._gamma * target_q).detach()
+        with torch.no_grad():
+            obs_next_result = self(batch, input='obs_next')
+            a_ = obs_next_result.act
+            dev = a_.device
+            batch.act = torch.tensor(batch.act, dtype=torch.float, device=dev)
+            target_q = torch.min(
+                self.critic1_old(batch.obs_next, a_),
+                self.critic2_old(batch.obs_next, a_),
+            ) - self._alpha * obs_next_result.log_prob
+            rew = torch.tensor(batch.rew,
+                               dtype=torch.float, device=dev)[:, None]
+            done = torch.tensor(batch.done,
+                                dtype=torch.float, device=dev)[:, None]
+            target_q = (rew + (1. - done) * self._gamma * target_q)
         obs_result = self(batch)
         a = obs_result.act
         current_q1, current_q1a = self.critic1(
