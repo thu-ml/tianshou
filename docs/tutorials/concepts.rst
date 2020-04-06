@@ -25,13 +25,14 @@ Data Buffer
 
 Tianshou provides other type of data buffer such as :class:`~tianshou.data.ListReplayBuffer` (based on list), :class:`~tianshou.data.PrioritizedReplayBuffer` (based on Segment Tree and ``numpy.ndarray``). Check out :class:`~tianshou.data.ReplayBuffer` for more detail.
 
+.. _policy_concept:
 
 Policy
 ------
 
 Tianshou aims to modularizing RL algorithms. It comes into several classes of policies in Tianshou. All of the policy classes must inherit :class:`~tianshou.policy.BasePolicy`.
 
-A policy class typically has four parts: 
+A policy class typically has four parts:
 
 * :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including coping the target network and so on;
 * :meth:`~tianshou.policy.BasePolicy.__call__`: compute action with given observation;
@@ -119,7 +120,7 @@ There will be more types of trainers, for instance, multi-agent trainer.
 A High-level Explanation
 ------------------------
 
-We give a high-level explanation through the pseudocode used in section Policy:
+We give a high-level explanation through the pseudocode used in section :ref:`policy_concept`:
 ::
 
     # pseudocode, cannot work                                       # methods in tianshou

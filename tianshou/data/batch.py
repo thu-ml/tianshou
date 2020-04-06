@@ -104,10 +104,11 @@ class Batch(object):
     def split(self, size=None, permute=True):
         """Split whole data into multiple small batch.
 
-        :param size: if it is ``None``, it does not split the data batch;
+        :param int size: if it is ``None``, it does not split the data batch;
             otherwise it will divide the data batch with the given size.
-        :param permute: randomly shuffle the entire data batch if it is
-            ``True``, otherwise remain in the same.
+            Default to ``None``.
+        :param bool permute: randomly shuffle the entire data batch if it is
+            ``True``, otherwise remain in the same. Default to ``True``.
         """
         length = len(self)
         if size is None:

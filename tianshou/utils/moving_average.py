@@ -26,7 +26,7 @@ class MovAvg(object):
     def add(self, x):
         """Add a scalar into :class:`MovAvg`. You can add ``torch.Tensor`` with
         only one element, a python scalar, or a list of python scalar. It will
-        exclude the infinity.
+        automatically exclude the infinity.
         """
         if isinstance(x, torch.Tensor):
             x = x.item()

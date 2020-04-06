@@ -10,7 +10,22 @@ from tianshou.utils import MovAvg
 
 class Collector(object):
     """The :class:`~tianshou.data.Collector` enables the policy to interact
-    with different types of environments conveniently. Here is the usage:
+    with different types of environments conveniently.
+
+    :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
+        class.
+    :param env: an environment or an instance of the
+        :class:`~tianshou.env.BaseVectorEnv` class.
+    :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer`
+        class, or a list of :class:`~tianshou.data.ReplayBuffer`. If set to
+        ``None``, it will automatically assign a small-size
+        :class:`~tianshou.data.ReplayBuffer`.
+    :param int stat_size: for the moving average of recording speed, defaults
+        to 100.
+    :param bool store_obs_next: whether to store the obs_next to replay
+        buffer, defaults to ``True``.
+
+    Example:
     ::
 
         policy = PGPolicy(...)  # or other policies if you wish
@@ -55,7 +70,8 @@ class Collector(object):
         Please make sure the given environment has a time limitation.
     """
 
-    def __init__(self, policy, env, buffer=None, stat_size=100):
+    def __init__(self, policy, env, buffer=None, stat_size=100,
+                 store_obs_next=True, **kwargs):
         super().__init__()
         self.env = env
         self.env_num = 1
@@ -90,6 +106,7 @@ class Collector(object):
         self.state = None
         self.step_speed = MovAvg(stat_size)
         self.episode_speed = MovAvg(stat_size)
+        self._save_s_ = store_obs_next
 
     def reset_buffer(self):
         """Reset the main data buffer."""
@@ -141,11 +158,12 @@ class Collector(object):
     def collect(self, n_step=0, n_episode=0, render=0):
         """Collect a specified number of step or episode.
 
-        :param n_step:  an int, indicates how many steps you want to collect.
-        :param n_episode: an int or a list, indicates how many episodes you
-            want to collect (in each environment).
-        :param render: a float, the sleep time between rendering consecutive
-            frames. ``0`` means no rendering.
+        :param int n_step: how many steps you want to collect.
+        :param n_episode: how many episodes you want to collect (in each
+            environment).
+        :type n_episode: int or list
+        :param float render: the sleep time between rendering consecutive
+            frames. No rendering if it is ``0`` (default option).
 
         .. note::
 
@@ -210,7 +228,8 @@ class Collector(object):
                     data = {
                         'obs': self._obs[i], 'act': self._act[i],
                         'rew': self._rew[i], 'done': self._done[i],
-                        'obs_next': obs_next[i], 'info': self._info[i]}
+                        'obs_next': obs_next[i] if self._save_s_ else None,
+                        'info': self._info[i]}
                     if self._cached_buf:
                         warning_count += 1
                         self._cached_buf[i].add(**data)
@@ -255,7 +274,8 @@ class Collector(object):
             else:
                 self.buffer.add(
                     self._obs, self._act[0], self._rew,
-                    self._done, obs_next, self._info)
+                    self._done, obs_next if self._save_s_ else None,
+                    self._info)
                 cur_step += 1
                 if self._done:
                     cur_episode += 1
@@ -296,9 +316,9 @@ class Collector(object):
         :meth:`~tianshou.policy.BasePolicy.process_fn` before returning
         the final batch data.
 
-        :param batch_size: an int, ``0`` means it will extract all the data
-            from the buffer, otherwise it will extract the given batch_size of
-            data.
+        :param int batch_size: ``0`` means it will extract all the data from
+            the buffer, otherwise it will extract the data with the given
+            batch_size.
         """
         if self._multi_buf:
             if batch_size > 0:

@@ -5,7 +5,8 @@ import torch.nn.functional as F
 
 
 class Net(nn.Module):
-    def __init__(self, layer_num, state_shape, action_shape=0, device='cpu'):
+    def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',
+                 softmax=False):
         super().__init__()
         self.device = device
         self.model = [
@@ -15,6 +16,8 @@ class Net(nn.Module):
             self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
         if action_shape:
             self.model += [nn.Linear(128, np.prod(action_shape))]
+        if softmax:
+            self.model += [nn.Softmax(dim=-1)]
         self.model = nn.Sequential(*self.model)
 
     def forward(self, s, state=None, info={}):

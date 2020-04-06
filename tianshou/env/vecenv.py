@@ -60,8 +60,7 @@ class BaseVectorEnv(ABC, gym.Wrapper):
 
         Accept a batch of action and return a tuple (obs, rew, done, info).
 
-        :param action: a numpy.ndarray, a batch of action provided by the
-            agent.
+        :param numpy.ndarray action: a batch of action provided by the agent.
 
         :return: A tuple including four items:
 

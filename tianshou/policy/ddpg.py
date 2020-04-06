@@ -5,18 +5,35 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy
-
-
 # from tianshou.exploration import OUNoise
 
 
 class DDPGPolicy(BasePolicy):
-    """docstring for DDPGPolicy"""
+    """Implementation of Deep Deterministic Policy Gradient. arXiv:1509.02971
+
+    :param torch.nn.Module actor: the actor network following the rules in
+        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+    :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
+    :param torch.nn.Module critic: the critic network. (s, a -> Q(s, a))
+    :param torch.optim.Optimizer critic_optim: the optimizer for critic
+        network.
+    :param float tau: param for soft update of the target network, defaults to
+        0.005.
+    :param float gamma: discount factor, in [0, 1], defaults to 0.99.
+    :param float exploration_noise: the noise intensity, add to the action,
+        defaults to 0.1.
+    :param action_range: the action range (minimum, maximum).
+    :type action_range: [float, float]
+    :param bool reward_normalization: normalize the reward to Normal(0, 1),
+        defaults to ``False``.
+    :param bool ignore_done: ignore the done flag while training the policy,
+        defaults to ``False``.
+    """
 
     def __init__(self, actor, actor_optim, critic, critic_optim,
                  tau=0.005, gamma=0.99, exploration_noise=0.1,
                  action_range=None, reward_normalization=False,
-                 ignore_done=False):
+                 ignore_done=False, **kwargs):
         super().__init__()
         if actor is not None:
             self.actor, self.actor_old = actor, deepcopy(actor)
@@ -26,9 +43,9 @@ class DDPGPolicy(BasePolicy):
             self.critic, self.critic_old = critic, deepcopy(critic)
             self.critic_old.eval()
             self.critic_optim = critic_optim
-        assert 0 < tau <= 1, 'tau should in (0, 1]'
+        assert 0 <= tau <= 1, 'tau should in [0, 1]'
         self._tau = tau
-        assert 0 < gamma <= 1, 'gamma should in (0, 1]'
+        assert 0 <= gamma <= 1, 'gamma should in [0, 1]'
         self._gamma = gamma
         assert 0 <= exploration_noise, 'noise should not be negative'
         self._eps = exploration_noise
@@ -43,19 +60,23 @@ class DDPGPolicy(BasePolicy):
         self.__eps = np.finfo(np.float32).eps.item()
 
     def set_eps(self, eps):
+        """Set the eps for exploration."""
         self._eps = eps
 
     def train(self):
+        """Set the module in training mode, except for the target network."""
         self.training = True
         self.actor.train()
         self.critic.train()
 
     def eval(self):
+        """Set the module in evaluation mode, except for the target network."""
         self.training = False
         self.actor.eval()
         self.critic.eval()
 
     def sync_weight(self):
+        """Soft-update the weight for the target network."""
         for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
         for o, n in zip(
@@ -73,7 +94,19 @@ class DDPGPolicy(BasePolicy):
         return batch
 
     def __call__(self, batch, state=None,
-                 model='actor', input='obs', eps=None):
+                 model='actor', input='obs', eps=None, **kwargs):
+        """Compute action over the given batch data.
+
+        :param float eps: in [0, 1], for exploration use.
+
+        :return: A :class:`~tianshou.data.Batch` which has 2 keys:
+
+            * ``act`` the action.
+            * ``state`` the hidden state.
+
+        More information can be found at
+        :meth:`~tianshou.policy.BasePolicy.__call__`.
+        """
         model = getattr(self, model)
         obs = getattr(batch, input)
         logits, h = model(obs, state=state, info=batch.info)
@@ -89,7 +122,7 @@ class DDPGPolicy(BasePolicy):
         logits = logits.clamp(self._range[0], self._range[1])
         return Batch(act=logits, state=h)
 
-    def learn(self, batch, batch_size=None, repeat=1):
+    def learn(self, batch, **kwargs):
         with torch.no_grad():
             target_q = self.critic_old(batch.obs_next, self(
                 batch, model='actor_old', input='obs_next', eps=0).act)

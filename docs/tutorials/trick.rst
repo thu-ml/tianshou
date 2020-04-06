@@ -68,9 +68,9 @@ Here is about the experience of hyper-parameter tuning on CartPole and Pendulum:
 Code-level optimization
 -----------------------
 
-Tianshou has many short-but-efficient lines of code. For example, when we want to compute :math:`V_s` and :math:`V_{s'}` by the same network, the best way is to concatenate :math:`s` and :math:`s'` together instead of computing the value function using twice of network forward.
+Tianshou has many short-but-efficient lines of code. For example, when we want to compute :math:`V(s)` and :math:`V(s')` by the same network, the best way is to concatenate :math:`s` and :math:`s'` together instead of computing the value function using twice of network forward.
 
-Jiayi: I write each line of code after quite a lot of time of consideration. Details make a difference.
+.. Jiayi: I write each line of code after quite a lot of time of consideration. Details make a difference.
 
 
 Finally

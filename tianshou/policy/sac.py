@@ -8,12 +8,37 @@ from tianshou.policy import DDPGPolicy
 
 
 class SACPolicy(DDPGPolicy):
-    """docstring for SACPolicy"""
+    """Implementation of Soft Actor-Critic. arXiv:1812.05905
+
+    :param torch.nn.Module actor: the actor network following the rules in
+        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+    :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
+    :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s,
+        a))
+    :param torch.optim.Optimizer critic1_optim: the optimizer for the first
+        critic network.
+    :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s,
+        a))
+    :param torch.optim.Optimizer critic2_optim: the optimizer for the second
+        critic network.
+    :param float tau: param for soft update of the target network, defaults to
+        0.005.
+    :param float gamma: discount factor, in [0, 1], defaults to 0.99.
+    :param float exploration_noise: the noise intensity, add to the action,
+        defaults to 0.1.
+    :param float alpha: entropy regularization coefficient, default to 0.2.
+    :param action_range: the action range (minimum, maximum).
+    :type action_range: [float, float]
+    :param bool reward_normalization: normalize the reward to Normal(0, 1),
+        defaults to ``False``.
+    :param bool ignore_done: ignore the done flag while training the policy,
+        defaults to ``False``.
+    """
 
     def __init__(self, actor, actor_optim, critic1, critic1_optim,
                  critic2, critic2_optim, tau=0.005, gamma=0.99,
                  alpha=0.2, action_range=None, reward_normalization=False,
-                 ignore_done=False):
+                 ignore_done=False, **kwargs):
         super().__init__(None, None, None, None, tau, gamma, 0,
                          action_range, reward_normalization, ignore_done)
         self.actor, self.actor_optim = actor, actor_optim
@@ -46,12 +71,11 @@ class SACPolicy(DDPGPolicy):
                 self.critic2_old.parameters(), self.critic2.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
 
-    def __call__(self, batch, state=None, input='obs'):
+    def __call__(self, batch, state=None, input='obs', **kwargs):
         obs = getattr(batch, input)
         logits, h = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
         dist = torch.distributions.Normal(*logits)
-
         x = dist.rsample()
         y = torch.tanh(x)
         act = y * self._action_scale + self._action_bias
@@ -61,7 +85,7 @@ class SACPolicy(DDPGPolicy):
         return Batch(
             logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
 
-    def learn(self, batch, batch_size=None, repeat=1):
+    def learn(self, batch, **kwargs):
         with torch.no_grad():
             obs_next_result = self(batch, input='obs_next')
             a_ = obs_next_result.act
