@@ -14,16 +14,12 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+
+import tianshou
 import sphinx_rtd_theme
 
-import re
-from os import path
-
-here = path.abspath(path.dirname(__file__))
-
 # Get the version string
-with open(path.join(here, '..', 'tianshou', '__init__.py')) as f:
-    version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
+version = tianshou.__version__
 
 # -- Project information -----------------------------------------------------
 
@@ -62,7 +58,7 @@ master_doc = 'index'
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
+autodoc_default_options = {'special-members': '__call__, __getitem__, __len__'}
 
 # -- Options for HTML output -------------------------------------------------
 

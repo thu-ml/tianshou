@@ -9,7 +9,44 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                      step_per_epoch, collect_per_step, repeat_per_collect,
                      episode_per_test, batch_size,
                      train_fn=None, test_fn=None, stop_fn=None,
-                     writer=None, verbose=True, task=''):
+                     writer=None, log_interval=1, verbose=True, task='',
+                     **kwargs):
+    """A wrapper for on-policy trainer procedure.
+
+    Parameters
+        * **policy** – an instance of the :class:`~tianshou.policy.BasePolicy`\
+            class.
+        * **train_collector** – the collector used for training.
+        * **test_collector** – the collector used for testing.
+        * **max_epoch** – the maximum of epochs for training. The training \
+            process might be finished before reaching the ``max_epoch``.
+        * **step_per_epoch** – the number of step for updating policy network \
+            in one epoch.
+        * **collect_per_step** – the number of frames the collector would \
+            collect before the network update. In other words, collect some \
+            frames and do one policy network update.
+        * **repeat_per_collect** – the number of repeat time for policy \
+            learning, for example, set it to 2 means the policy needs to learn\
+            each given batch data twice.
+        * **episode_per_test** – the number of episodes for one policy \
+            evaluation.
+        * **batch_size** – the batch size of sample data, which is going to \
+            feed in the policy network.
+        * **train_fn** – a function receives the current number of epoch index\
+            and performs some operations at the beginning of training in this \
+            epoch.
+        * **test_fn** – a function receives the current number of epoch index \
+            and performs some operations at the beginning of testing in this \
+            epoch.
+        * **stop_fn** – a function receives the average undiscounted returns \
+            of the testing result, return a boolean which indicates whether \
+            reaching the goal.
+        * **writer** – a SummaryWriter provided from TensorBoard.
+        * **log_interval** – an int indicating the log interval of the writer.
+        * **verbose** – a boolean indicating whether to print the information.
+
+    :return: See :func:`~tianshou.trainer.gather_info`.
+    """
     global_step = 0
     best_epoch, best_reward = -1, -1
     stat = {}
@@ -50,7 +87,7 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                 global_step += step
                 for k in result.keys():
                     data[k] = f'{result[k]:.2f}'
-                    if writer:
+                    if writer and global_step % log_interval == 0:
                         writer.add_scalar(
                             k + '_' + task if task else k,
                             result[k], global_step=global_step)
@@ -59,7 +96,7 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                         stat[k] = MovAvg()
                     stat[k].add(losses[k])
                     data[k] = f'{stat[k].get():.6f}'
-                    if writer and global_step:
+                    if writer and global_step % log_interval == 0:
                         writer.add_scalar(
                             k + '_' + task if task else k,
                             stat[k].get(), global_step=global_step)

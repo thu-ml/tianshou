@@ -6,8 +6,8 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import PGPolicy
 from tianshou.env import VectorEnv
+from tianshou.policy import PGPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Batch, Collector, ReplayBuffer
 
@@ -25,7 +25,7 @@ def compute_return_base(batch, aa=None, bb=None, gamma=0.1):
         if not batch.done[i]:
             returns[i] += last * gamma
         last = returns[i]
-    batch.update(returns=returns)
+    batch.returns = returns
     return batch
 
 
@@ -99,6 +99,7 @@ def test_pg(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     # train_envs = gym.make(args.task)
+    # you can also use tianshou.env.SubprocVectorEnv
     train_envs = VectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
@@ -131,8 +132,7 @@ def test_pg(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
-        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer,
-        task=args.task)
+        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer)
     assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()

@@ -12,7 +12,7 @@ Contrary to existing Deep RL libraries such as `RLlib <https://github.com/ray-pr
 Make an Environment
 -------------------
 
-First of all, you have to make an environment for your agent to act in. For the environment interfaces, we follow the convention of `OpenAI Gym <https://github.com/openai/gym>`_. In your Python code, simply import Tianshou and make the environment
+First of all, you have to make an environment for your agent to interact with. For environment interfaces, we follow the convention of `OpenAI Gym <https://github.com/openai/gym>`_. In your Python code, simply import Tianshou and make the environment:
 ::
 
     import gym
@@ -40,7 +40,7 @@ Tianshou supports parallel sampling for all algorithms. It provides three types 
 
 Here, we set up 8 environments in ``train_envs`` and 100 environments in ``test_envs``.
 
-For demonstrating, here we use the second block of codes.
+For the demonstration, here we use the second block of codes.
 
 
 Build the Network
@@ -121,9 +121,9 @@ The meaning of each parameter is as follows:
 
 * ``max_epoch``: The maximum of epochs for training. The training process might be finished before reaching the ``max_epoch``;
 * ``step_per_epoch``: The number of step for updating policy network in one epoch;
-* ``collect_per_step``: The number of frame the collector would collect before the network update. For example, the code above means "collect 10 frames and do one policy network update";
-* ``episode_per_test``: The number of episode for one policy evaluation.
-* ``batch_size``: The batch size of sampled data, which is going to feed in the policy network.
+* ``collect_per_step``: The number of frames the collector would collect before the network update. For example, the code above means "collect 10 frames and do one policy network update";
+* ``episode_per_test``: The number of episodes for one policy evaluation.
+* ``batch_size``: The batch size of sample data, which is going to feed in the policy network.
 * ``train_fn``: A function receives the current number of epoch index and performs some operations at the beginning of training in this epoch. For example, the code above means "reset the epsilon to 0.1 in DQN before training".
 * ``test_fn``: A function receives the current number of epoch index and performs some operations at the beginning of testing in this epoch. For example, the code above means "reset the epsilon to 0.05 in DQN before testing".
 * ``stop_fn``: A function receives the average undiscounted returns of the testing result, return a boolean which indicates whether reaching the goal.
@@ -167,10 +167,10 @@ Since the policy inherits the ``torch.nn.Module`` class, saving and loading the 
     policy.load_state_dict(torch.load('dqn.pth'))
 
 
-Watch the Performance
----------------------
+Watch the Agent's Performance
+-----------------------------
 
-:class:`~tianshou.data.Collector` supports rendering. Here is the example of watching the agent in 35 FPS:
+:class:`~tianshou.data.Collector` supports rendering. Here is the example of watching the agent's performance in 35 FPS:
 ::
 
     collector = ts.data.Collector(policy, env)
@@ -178,12 +178,14 @@ Watch the Performance
     collector.close()
 
 
+.. _customized_trainer:
+
 Train a Policy with Customized Codes
 ------------------------------------
 
 "I don't want to use your provided trainer. I want to customize it!"
 
-No problem! Here is the usage:
+No problem! Tianshou supports user-defined training code. Here is the usage:
 ::
 
     # pre-collect 5000 frames with random action before training
@@ -209,8 +211,9 @@ No problem! Here is the usage:
         # train policy with a sampled batch data
         losses = policy.learn(train_collector.sample(batch_size=64))
 
+For further usage, you can refer to :doc:`/tutorials/tabular`.
 
 .. rubric:: References
 
-.. bibliography:: ../refs.bib
+.. bibliography:: /refs.bib
     :style: unsrtalpha

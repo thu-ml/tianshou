@@ -5,8 +5,8 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import DQNPolicy
 from tianshou.env import VectorEnv
+from tianshou.policy import DQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
@@ -48,6 +48,7 @@ def test_dqn(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     # train_envs = gym.make(args.task)
+    # you can also use tianshou.env.SubprocVectorEnv
     train_envs = VectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
@@ -89,7 +90,7 @@ def test_dqn(args=get_args()):
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, writer=writer, task=args.task)
+        stop_fn=stop_fn, writer=writer)
 
     assert stop_fn(result['best_reward'])
     train_collector.close()

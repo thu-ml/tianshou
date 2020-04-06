@@ -46,10 +46,10 @@ class A2CPolicy(PGPolicy):
                     nn.utils.clip_grad_norm_(
                         self.model.parameters(), max_norm=self._grad_norm)
                 self.optim.step()
-                actor_losses.append(a_loss.detach().cpu().numpy())
-                vf_losses.append(vf_loss.detach().cpu().numpy())
-                ent_losses.append(ent_loss.detach().cpu().numpy())
-                losses.append(loss.detach().cpu().numpy())
+                actor_losses.append(a_loss.item())
+                vf_losses.append(vf_loss.item())
+                ent_losses.append(ent_loss.item())
+                losses.append(loss.item())
         return {
             'loss': losses,
             'loss/actor': actor_losses,

@@ -1,38 +1,11 @@
 import time
-import pytest
 import numpy as np
-from tianshou.env import FrameStack, VectorEnv, SubprocVectorEnv, RayVectorEnv
+from tianshou.env import VectorEnv, SubprocVectorEnv, RayVectorEnv
 
 if __name__ == '__main__':
     from env import MyTestEnv
 else:  # pytest
     from test.base.env import MyTestEnv
-
-
-def test_framestack(k=4, size=10):
-    env = MyTestEnv(size=size)
-    fsenv = FrameStack(env, k)
-    fsenv.seed()
-    obs = fsenv.reset()
-    assert abs(obs - np.array([0, 0, 0, 0])).sum() == 0
-    for i in range(5):
-        obs, rew, done, info = fsenv.step(1)
-    assert abs(obs - np.array([2, 3, 4, 5])).sum() == 0
-    for i in range(10):
-        obs, rew, done, info = fsenv.step(0)
-    assert abs(obs - np.array([0, 0, 0, 0])).sum() == 0
-    for i in range(9):
-        obs, rew, done, info = fsenv.step(1)
-    assert abs(obs - np.array([6, 7, 8, 9])).sum() == 0
-    assert (rew, done) == (0, False)
-    obs, rew, done, info = fsenv.step(1)
-    assert abs(obs - np.array([7, 8, 9, 10])).sum() == 0
-    assert (rew, done) == (1, True)
-    with pytest.raises(ValueError):
-        obs, rew, done, info = fsenv.step(0)
-    # assert abs(obs - np.array([8, 9, 10, 10])).sum() == 0
-    # assert (rew, done) == (0, True)
-    fsenv.close()
 
 
 def test_vecenv(size=10, num=8, sleep=0.001):
@@ -86,5 +59,4 @@ def test_vecenv(size=10, num=8, sleep=0.001):
 
 
 if __name__ == '__main__':
-    test_framestack()
     test_vecenv()

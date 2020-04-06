@@ -1,3 +1,4 @@
+import gym
 import numpy as np
 from abc import ABC, abstractmethod
 from multiprocessing import Process, Pipe
@@ -7,40 +8,96 @@ try:
 except ImportError:
     pass
 
-from tianshou.env import EnvWrapper, CloudpickleWrapper
+from tianshou.env.utils import CloudpickleWrapper
 
 
-class BaseVectorEnv(ABC):
+class BaseVectorEnv(ABC, gym.Wrapper):
+    """Base class for vectorized environments wrapper. Usage:
+    ::
+
+        env_num = 8
+        envs = VectorEnv([lambda: gym.make(task) for _ in range(env_num)])
+        assert len(envs) == env_num
+
+    It accepts a list of environment generators. In other words, an environment
+    generator ``efn`` of a specific task means that ``efn()`` returns the
+    environment of the given task, for example, ``gym.make(task)``.
+
+    All of the VectorEnv must inherit :class:`~tianshou.env.BaseVectorEnv`.
+    Here are some other usages:
+    ::
+
+        envs.seed(2)  # which is equal to the next line
+        envs.seed([2, 3, 4, 5, 6, 7, 8, 9])  # set specific seed for each env
+        obs = envs.reset()  # reset all environments
+        obs = envs.reset([0, 5, 7])  # reset 3 specific environments
+        obs, rew, done, info = envs.step([1] * 8)  # step synchronously
+        envs.render()  # render all environments
+        envs.close()  # close all environments
+    """
+
     def __init__(self, env_fns):
         self._env_fns = env_fns
         self.env_num = len(env_fns)
 
     def __len__(self):
+        """Return len(self), which is the number of environments."""
         return self.env_num
 
     @abstractmethod
-    def reset(self):
+    def reset(self, id=None):
+        """Reset the state of all the environments and return initial
+        observations if id is ``None``, otherwise reset the specific
+        environments with given id, either an int or a list.
+        """
         pass
 
     @abstractmethod
     def step(self, action):
+        """Run one timestep of all the environments’ dynamics. When the end of
+        episode is reached, you are responsible for calling reset(id) to reset
+        this environment’s state.
+
+        Accept a batch of action and return a tuple (obs, rew, done, info).
+
+        :param action: a numpy.ndarray, a batch of action provided by the
+            agent.
+
+        :return: A tuple including four items:
+
+            * ``obs`` a numpy.ndarray, the agent's observation of current \
+                environments
+            * ``rew`` a numpy.ndarray, the amount of rewards returned after \
+                previous actions
+            * ``done`` a numpy.ndarray, whether these episodes have ended, in \
+                which case further step() calls will return undefined results
+            * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
+                information (helpful for debugging, and sometimes learning)
+        """
         pass
 
     @abstractmethod
     def seed(self, seed=None):
+        """Set the seed for all environments. Accept ``None``, an int (which
+        will extend ``i`` to ``[i, i + 1, i + 2, ...]``) or a list.
+        """
         pass
 
     @abstractmethod
     def render(self, **kwargs):
+        """Render all of the environments."""
         pass
 
     @abstractmethod
     def close(self):
+        """Close all of the environments."""
         pass
 
 
 class VectorEnv(BaseVectorEnv):
-    """docstring for VectorEnv"""
+    """Dummy vectorized environment wrapper, implemented in for-loop. The usage
+    is in :class:`~tianshou.env.BaseVectorEnv`.
+    """
 
     def __init__(self, env_fns):
         super().__init__(env_fns)
@@ -85,8 +142,7 @@ class VectorEnv(BaseVectorEnv):
         return result
 
     def close(self):
-        for e in self.envs:
-            e.close()
+        return [e.close() for e in self.envs]
 
 
 def worker(parent, p, env_fn_wrapper):
@@ -100,6 +156,7 @@ def worker(parent, p, env_fn_wrapper):
             elif cmd == 'reset':
                 p.send(env.reset())
             elif cmd == 'close':
+                p.send(env.close())
                 p.close()
                 break
             elif cmd == 'render':
@@ -114,7 +171,9 @@ def worker(parent, p, env_fn_wrapper):
 
 
 class SubprocVectorEnv(BaseVectorEnv):
-    """docstring for SubProcVectorEnv"""
+    """Vectorized environment wrapper based on subprocess. The usage is in
+    :class:`~tianshou.env.BaseVectorEnv`.
+    """
 
     def __init__(self, env_fns):
         super().__init__(env_fns)
@@ -178,13 +237,20 @@ class SubprocVectorEnv(BaseVectorEnv):
             return
         for p in self.parent_remote:
             p.send(['close', None])
+        result = [p.recv() for p in self.parent_remote]
         self.closed = True
         for p in self.processes:
             p.join()
+        return result
 
 
 class RayVectorEnv(BaseVectorEnv):
-    """docstring for RayVectorEnv"""
+    """Vectorized environment wrapper based on
+    `ray <https://github.com/ray-project/ray>`_. However, according to our
+    test, it is about two times slower than
+    :class:`~tianshou.env.SubprocVectorEnv`. The usage is in
+    :class:`~tianshou.env.BaseVectorEnv`.
+    """
 
     def __init__(self, env_fns):
         super().__init__(env_fns)
@@ -195,13 +261,12 @@ class RayVectorEnv(BaseVectorEnv):
             raise ImportError(
                 'Please install ray to support RayVectorEnv: pip3 install ray')
         self.envs = [
-            ray.remote(EnvWrapper).options(num_cpus=0).remote(e())
+            ray.remote(gym.Wrapper).options(num_cpus=0).remote(e())
             for e in env_fns]
 
     def step(self, action):
         assert len(action) == self.env_num
-        result_obj = [e.step.remote(a) for e, a in zip(self.envs, action)]
-        result = [ray.get(r) for r in result_obj]
+        result = ray.get([e.step.remote(a) for e, a in zip(self.envs, action)])
         self._obs, self._rew, self._done, self._info = zip(*result)
         self._obs = np.stack(self._obs)
         self._rew = np.stack(self._rew)
@@ -212,7 +277,7 @@ class RayVectorEnv(BaseVectorEnv):
     def reset(self, id=None):
         if id is None:
             result_obj = [e.reset.remote() for e in self.envs]
-            self._obs = np.stack([ray.get(r) for r in result_obj])
+            self._obs = np.stack(ray.get(result_obj))
         else:
             result_obj = []
             if np.isscalar(id):
@@ -230,16 +295,12 @@ class RayVectorEnv(BaseVectorEnv):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
             seed = [seed] * self.env_num
-        result_obj = [e.seed.remote(s) for e, s in zip(self.envs, seed)]
-        return [ray.get(r) for r in result_obj]
+        return ray.get([e.seed.remote(s) for e, s in zip(self.envs, seed)])
 
     def render(self, **kwargs):
         if not hasattr(self.envs[0], 'render'):
             return
-        result_obj = [e.render.remote(**kwargs) for e in self.envs]
-        return [ray.get(r) for r in result_obj]
+        return ray.get([e.render.remote(**kwargs) for e in self.envs])
 
     def close(self):
-        result_obj = [e.close.remote() for e in self.envs]
-        for r in result_obj:
-            ray.get(r)
+        return ray.get([e.close.remote() for e in self.envs])

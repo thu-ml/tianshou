@@ -17,7 +17,7 @@ class DQNPolicy(BasePolicy):
         self.model = model
         self.optim = optim
         self.eps = 0
-        assert 0 < discount_factor <= 1, 'discount_factor should in (0, 1]'
+        assert 0 <= discount_factor <= 1, 'discount_factor should in [0, 1]'
         self._gamma = discount_factor
         assert estimation_step > 0, 'estimation_step should greater than 0'
         self._n_step = estimation_step
@@ -66,7 +66,7 @@ class DQNPolicy(BasePolicy):
             target_q = target_q.max(axis=1)
         target_q[gammas != self._n_step] = 0
         returns += (self._gamma ** gammas) * target_q
-        batch.update(returns=returns)
+        batch.returns = returns
         return batch
 
     def __call__(self, batch, state=None,
@@ -96,4 +96,4 @@ class DQNPolicy(BasePolicy):
         loss.backward()
         self.optim.step()
         self._cnt += 1
-        return {'loss': loss.detach().cpu().numpy()}
+        return {'loss': loss.item()}

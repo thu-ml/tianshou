@@ -69,5 +69,8 @@ setup(
         'mujoco': [
             'mujoco_py',
         ],
+        'pybullet': [
+            'pybullet',
+        ],
     },
 )
