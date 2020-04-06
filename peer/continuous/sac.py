@@ -98,7 +98,7 @@ class View(object):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--note', type=str, default=None)
-    parser.add_argument('--peer', type=float, default=1.0)
+    parser.add_argument('--peer', type=float, default=0)
     parser.add_argument('--copier', action='store_true')
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=1626)

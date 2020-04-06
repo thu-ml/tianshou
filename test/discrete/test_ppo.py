@@ -2,6 +2,7 @@ import gym
 import torch
 import pprint
 import argparse
+import datetime
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
@@ -11,13 +12,14 @@ from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
 if __name__ == '__main__':
-    from net import Net, Actor, Critic
+    from .net import Net, Actor, Critic
 else:  # pytest
     from test.discrete.net import Net, Actor, Critic
 
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--note', type=str, default=None)
     parser.add_argument('--task', type=str, default='CartPole-v0')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
@@ -42,6 +44,7 @@ def get_args():
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
     args = parser.parse_known_args()[0]
+    args.note = args.note or datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
     return args
 
 
@@ -79,7 +82,7 @@ def test_ppo(args=get_args()):
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'ppo')
+    writer = SummaryWriter(f'{args.logdir}/{args.task}/ppo/{args.note}')
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold
