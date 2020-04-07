@@ -36,6 +36,7 @@ class TestEnv:
         #self.reward = {0: 0.8740523271103036, 1: 0.04428927517208081, 2: 0.8643087058089024, 3: 0.02011970879109981}
         # failed when cput == 0.01, no matter how large the max_step is
         #self.reward = {0: 0.06594878953409933, 1: 0.49721536292003776, 2: 0.26740756411293487, 3: 0.36596764079057453}
+        # another failure
         #self.reward = {0: 0.44351562749061946, 1: 0.051276175250161815, 2: 0.6484666942496972, 3: 0.4799672332733024}
         self.max_reward = [0, 0]
         for i in range(self.half_leaf_node_num):
