@@ -3,15 +3,75 @@ import torch
 import warnings
 import numpy as np
 from tianshou.env import BaseVectorEnv
-from tianshou.data import Batch, ReplayBuffer,\
+from tianshou.data import Batch, ReplayBuffer, \
     ListReplayBuffer
 from tianshou.utils import MovAvg
 
 
 class Collector(object):
-    """docstring for Collector"""
+    """The :class:`~tianshou.data.Collector` enables the policy to interact
+    with different types of environments conveniently.
 
-    def __init__(self, policy, env, buffer=None, stat_size=100):
+    :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
+        class.
+    :param env: an environment or an instance of the
+        :class:`~tianshou.env.BaseVectorEnv` class.
+    :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer`
+        class, or a list of :class:`~tianshou.data.ReplayBuffer`. If set to
+        ``None``, it will automatically assign a small-size
+        :class:`~tianshou.data.ReplayBuffer`.
+    :param int stat_size: for the moving average of recording speed, defaults
+        to 100.
+    :param bool store_obs_next: whether to store the obs_next to replay
+        buffer, defaults to ``True``.
+
+    Example:
+    ::
+
+        policy = PGPolicy(...)  # or other policies if you wish
+        env = gym.make('CartPole-v0')
+        replay_buffer = ReplayBuffer(size=10000)
+        # here we set up a collector with a single environment
+        collector = Collector(policy, env, buffer=replay_buffer)
+
+        # the collector supports vectorized environments as well
+        envs = VectorEnv([lambda: gym.make('CartPole-v0') for _ in range(3)])
+        buffers = [ReplayBuffer(size=5000) for _ in range(3)]
+        # you can also pass a list of replay buffer to collector, for multi-env
+        # collector = Collector(policy, envs, buffer=buffers)
+        collector = Collector(policy, envs, buffer=replay_buffer)
+
+        # collect at least 3 episodes
+        collector.collect(n_episode=3)
+        # collect 1 episode for the first env, 3 for the third env
+        collector.collect(n_episode=[1, 0, 3])
+        # collect at least 2 steps
+        collector.collect(n_step=2)
+        # collect episodes with visual rendering (the render argument is the
+        #   sleep time between rendering consecutive frames)
+        collector.collect(n_episode=1, render=0.03)
+
+        # sample data with a given number of batch-size:
+        batch_data = collector.sample(batch_size=64)
+        # policy.learn(batch_data)  # btw, vanilla policy gradient only
+        #   supports on-policy training, so here we pick all data in the buffer
+        batch_data = collector.sample(batch_size=0)
+        policy.learn(batch_data)
+        # on-policy algorithms use the collected data only once, so here we
+        #   clear the buffer
+        collector.reset_buffer()
+
+    For the scenario of collecting data from multiple environments to a single
+    buffer, the cache buffers will turn on automatically. It may return the
+    data more than the given limitation.
+
+    .. note::
+
+        Please make sure the given environment has a time limitation.
+    """
+
+    def __init__(self, policy, env, buffer=None, stat_size=100,
+                 store_obs_next=True, **kwargs):
         super().__init__()
         self.env = env
         self.env_num = 1
@@ -46,8 +106,10 @@ class Collector(object):
         self.state = None
         self.step_speed = MovAvg(stat_size)
         self.episode_speed = MovAvg(stat_size)
+        self._save_s_ = store_obs_next
 
     def reset_buffer(self):
+        """Reset the main data buffer."""
         if self._multi_buf:
             for b in self.buffer:
                 b.reset()
@@ -55,9 +117,13 @@ class Collector(object):
             self.buffer.reset()
 
     def get_env_num(self):
+        """Return the number of environments the collector has."""
         return self.env_num
 
     def reset_env(self):
+        """Reset all of the environment(s)' states and reset all of the cache
+        buffers (if need).
+        """
         self._obs = self.env.reset()
         self._act = self._rew = self._done = self._info = None
         if self._multi_env:
@@ -69,14 +135,17 @@ class Collector(object):
             b.reset()
 
     def seed(self, seed=None):
+        """Reset all the seed(s) of the given environment(s)."""
         if hasattr(self.env, 'seed'):
             return self.env.seed(seed)
 
     def render(self, **kwargs):
+        """Render all the environment(s)."""
         if hasattr(self.env, 'render'):
             return self.env.render(**kwargs)
 
     def close(self):
+        """Close the environment(s)."""
         if hasattr(self.env, 'close'):
             self.env.close()
 
@@ -87,12 +156,35 @@ class Collector(object):
             return np.array([data])
 
     def collect(self, n_step=0, n_episode=0, render=0):
+        """Collect a specified number of step or episode.
+
+        :param int n_step: how many steps you want to collect.
+        :param n_episode: how many episodes you want to collect (in each
+            environment).
+        :type n_episode: int or list
+        :param float render: the sleep time between rendering consecutive
+            frames. No rendering if it is ``0`` (default option).
+
+        .. note::
+
+            One and only one collection number specification is permitted,
+            either ``n_step`` or ``n_episode``.
+
+        :return: A dict including the following keys
+
+            * ``n/ep`` the collected number of episodes.
+            * ``n/st`` the collected number of steps.
+            * ``v/st`` the speed of steps per second.
+            * ``v/ep`` the speed of episode per second.
+            * ``rew`` the mean reward over collected episodes.
+            * ``len`` the mean length over collected episodes.
+        """
         warning_count = 0
         if not self._multi_env:
             n_episode = np.sum(n_episode)
         start_time = time.time()
         assert sum([(n_step != 0), (n_episode != 0)]) == 1, \
-            "One and only one collection number specification permitted!"
+            "One and only one collection number specification is permitted!"
         cur_step = 0
         cur_episode = np.zeros(self.env_num) if self._multi_env else 0
         reward_sum = 0
@@ -115,7 +207,8 @@ class Collector(object):
                     done=self._make_batch(self._done),
                     obs_next=None,
                     info=self._make_batch(self._info))
-            result = self.policy(batch_data, self.state)
+            with torch.no_grad():
+                result = self.policy(batch_data, self.state)
             self.state = result.state if hasattr(result, 'state') else None
             if isinstance(result.act, torch.Tensor):
                 self._act = result.act.detach().cpu().numpy()
@@ -135,7 +228,8 @@ class Collector(object):
                     data = {
                         'obs': self._obs[i], 'act': self._act[i],
                         'rew': self._rew[i], 'done': self._done[i],
-                        'obs_next': obs_next[i], 'info': self._info[i]}
+                        'obs_next': obs_next[i] if self._save_s_ else None,
+                        'info': self._info[i]}
                     if self._cached_buf:
                         warning_count += 1
                         self._cached_buf[i].add(**data)
@@ -180,7 +274,8 @@ class Collector(object):
             else:
                 self.buffer.add(
                     self._obs, self._act[0], self._rew,
-                    self._done, obs_next, self._info)
+                    self._done, obs_next if self._save_s_ else None,
+                    self._info)
                 cur_step += 1
                 if self._done:
                     cur_episode += 1
@@ -217,6 +312,14 @@ class Collector(object):
         }
 
     def sample(self, batch_size):
+        """Sample a data batch from the internal replay buffer. It will call
+        :meth:`~tianshou.policy.BasePolicy.process_fn` before returning
+        the final batch data.
+
+        :param int batch_size: ``0`` means it will extract all the data from
+            the buffer, otherwise it will extract the data with the given
+            batch_size.
+        """
         if self._multi_buf:
             if batch_size > 0:
                 lens = [len(b) for b in self.buffer]
