@@ -36,7 +36,7 @@ class PPOPolicy(PGPolicy):
                  ent_coef=.0,
                  action_range=None,
                  **kwargs):
-        super().__init__(None, None, dist_fn, discount_factor)
+        super().__init__(None, None, dist_fn, discount_factor, **kwargs)
         self._max_grad_norm = max_grad_norm
         self._eps_clip = eps_clip
         self._w_vf = vf_coef

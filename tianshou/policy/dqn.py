@@ -22,7 +22,7 @@ class DQNPolicy(BasePolicy):
 
     def __init__(self, model, optim, discount_factor=0.99,
                  estimation_step=1, target_update_freq=0, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         self.model = model
         self.optim = optim
         self.eps = 0

@@ -41,9 +41,10 @@ class ReplayBuffer(object):
         array([ True,  True,  True,  True])
     """
 
-    def __init__(self, size):
+    def __init__(self, size, stack_num=0):
         super().__init__()
         self._maxsize = size
+        self._stack = stack_num
         self.reset()
 
     def __len__(self):
@@ -113,14 +114,28 @@ class ReplayBuffer(object):
             ])
         return self[indice], indice
 
+    def _get_stack(self, indice, key):
+        if self.__dict__.get(key, None) is None:
+            return None
+        if self._stack == 0:
+            return self.__dict__[key][indice]
+        stack = []
+        for i in range(self._stack):
+            stack = [self.__dict__[key][indice]] + stack
+            indice = indice - 1 + self.done[indice - 1].astype(np.int)
+            indice[indice == -1] = self._size - 1
+        return np.stack(stack, axis=1)
+
     def __getitem__(self, index):
-        """Return a data batch: self[index]."""
+        """Return a data batch: self[index]. If stack_num is set to be > 0,
+        return the stacked obs and obs_next with shape [batch, len, ...].
+        """
         return Batch(
-            obs=self.obs[index],
+            obs=self._get_stack(index, 'obs'),
             act=self.act[index],
             rew=self.rew[index],
             done=self.done[index],
-            obs_next=self.obs_next[index],
+            obs_next=self._get_stack(index, 'obs_next'),
             info=self.info[index]
         )
 

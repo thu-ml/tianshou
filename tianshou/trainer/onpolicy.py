@@ -58,9 +58,8 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
         policy.train()
         if train_fn:
             train_fn(epoch)
-        with tqdm.tqdm(
-                total=step_per_epoch, desc=f'Epoch #{epoch}',
-                **tqdm_config) as t:
+        with tqdm.tqdm(total=step_per_epoch, desc=f'Epoch #{epoch}',
+                       **tqdm_config) as t:
             while t.n < t.total:
                 result = train_collector.collect(n_episode=collect_per_step)
                 data = {}

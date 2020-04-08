@@ -27,7 +27,7 @@ class A2CPolicy(PGPolicy):
                  dist_fn=torch.distributions.Categorical,
                  discount_factor=0.99, vf_coef=.5, ent_coef=.01,
                  max_grad_norm=None, **kwargs):
-        super().__init__(None, optim, dist_fn, discount_factor)
+        super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
         self.actor = actor
         self.critic = critic
         self._w_vf = vf_coef

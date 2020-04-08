@@ -17,7 +17,7 @@ class PGPolicy(BasePolicy):
 
     def __init__(self, model, optim, dist_fn=torch.distributions.Categorical,
                  discount_factor=0.99, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         self.model = model
         self.optim = optim
         self.dist_fn = dist_fn

@@ -34,7 +34,7 @@ class DDPGPolicy(BasePolicy):
                  tau=0.005, gamma=0.99, exploration_noise=0.1,
                  action_range=None, reward_normalization=False,
                  ignore_done=False, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         if actor is not None:
             self.actor, self.actor_old = actor, deepcopy(actor)
             self.actor_old.eval()

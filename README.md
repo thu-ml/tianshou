@@ -256,7 +256,7 @@ Tianshou is still under development. More algorithms and features are going to b
 - [ ] More examples on [mujoco, atari] benchmark
 - [ ] More algorithms
 - [ ] Prioritized replay buffer
-- [ ] RNN support
+- [x] RNN support
 - [ ] Imitation Learning
 - [ ] Multi-agent
 - [ ] Distributed training

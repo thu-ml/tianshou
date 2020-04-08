@@ -40,7 +40,8 @@ class SACPolicy(DDPGPolicy):
                  alpha=0.2, action_range=None, reward_normalization=False,
                  ignore_done=False, **kwargs):
         super().__init__(None, None, None, None, tau, gamma, 0,
-                         action_range, reward_normalization, ignore_done)
+                         action_range, reward_normalization, ignore_done,
+                         **kwargs)
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
