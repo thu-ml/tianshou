@@ -35,9 +35,7 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--device', type=str, default='cpu')
     # ppo special
     parser.add_argument('--vf-coef', type=float, default=0.5)
     parser.add_argument('--ent-coef', type=float, default=0.0)

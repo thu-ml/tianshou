@@ -41,7 +41,7 @@ class PGPolicy(BasePolicy):
                 self.optim.zero_grad()
                 dist = self(b).dist
                 a = torch.tensor(b.act, device=dist.logits.device)
-                r = torch.tensor(b.returns, device=dist.logits.device)
+                r = torch.tensor(b.returns, device=dist.logits.device, dtype=torch.float)
                 loss = -(dist.log_prob(a) * r).sum()
                 loss.backward()
                 self.optim.step()

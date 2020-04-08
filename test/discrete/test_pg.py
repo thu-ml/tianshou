@@ -3,6 +3,7 @@ import time
 import torch
 import pprint
 import argparse
+import datetime
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
@@ -12,7 +13,7 @@ from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Batch, Collector, ReplayBuffer
 
 if __name__ == '__main__':
-    from net import Net
+    from .net import Net
 else:  # pytest
     from test.discrete.net import Net
 
@@ -72,6 +73,7 @@ def test_fn(size=2560):
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--note', type=str, default=None)
     parser.add_argument('--task', type=str, default='CartPole-v0')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
@@ -87,10 +89,9 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--device', type=str, default='cpu')
     args = parser.parse_known_args()[0]
+    args.note = args.note or datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
     return args
 
 
@@ -122,7 +123,7 @@ def test_pg(args=get_args()):
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'pg')
+    writer = SummaryWriter(f'{args.logdir}/{args.task}/pg/{args.note}')
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold

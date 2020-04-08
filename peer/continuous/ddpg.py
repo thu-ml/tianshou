@@ -40,7 +40,7 @@ class View(object):
                 self._view_mask[i] = 0
         elif mask == "odd":
             for i in range(1, state_dim, 2):
-                self._view_mask[i] = 1
+                self._view_mask[i] = 0
 
         # policy
         self.actor = ActorWithView(
@@ -79,12 +79,13 @@ class View(object):
         self.actor.train()
         self.critic.train()
 
-    def learn_from_demos(self, batch, demo_acts, peer=0):
+    def learn_from_demos(self, batch, demo, peer=0):
         acts = self.policy(batch).act
-        loss = F.mse_loss(acts, demo_acts)
+        demo = demo.act.detach()
+        loss = F.cross_entropy(acts, demo)
         if peer != 0:
-            peer_demos = demo_acts[torch.randperm(len(demo_acts))]
-            loss += peer * F.mse_loss(acts, peer_demos)
+            peer_demo = demo[torch.randperm(len(demo))]
+            loss += peer * F.cross_entropy(acts, peer_demo)
         self.policy.actor_optim.zero_grad()
         loss.backward()
         self.policy.actor_optim.step()
@@ -93,7 +94,7 @@ class View(object):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--note', type=str, default=None)
-    parser.add_argument('--peer', type=float, default=1.0)
+    parser.add_argument('--peer', type=float, default=0)
     parser.add_argument('--copier', action='store_true')
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=1626)

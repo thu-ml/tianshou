@@ -141,3 +141,4 @@ flake8.sh
 log/
 MUJOCO_LOG.TXT
 *.pth
+.DS_Store

@@ -61,7 +61,7 @@ class PPOPolicy(PGPolicy):
         r = batch.returns
         batch.returns = (r - r.mean()) / (r.std() + self._eps)
         batch.act = torch.tensor(batch.act)
-        batch.returns = torch.tensor(batch.returns)[:, None]
+        batch.returns = torch.tensor(batch.returns, dtype=torch.float)[:, None]
         for _ in range(repeat):
             for b in batch.split(batch_size):
                 vs_old, vs__old = self.critic_old(np.concatenate([

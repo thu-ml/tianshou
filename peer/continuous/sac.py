@@ -17,7 +17,7 @@ from peer.continuous.net import ActorProbWithView, CriticWithView
 
 
 class View(object):
-    def __init__(self, args, mask=None, name=None):
+    def __init__(self, args, mask=None, name='full'):
         env = gym.make(args.task)
         if args.task == 'Pendulum-v0':
             env.spec.reward_threshold = -250
@@ -41,7 +41,9 @@ class View(object):
                 self._view_mask[i] = 0
         elif mask == "odd":
             for i in range(1, state_dim, 2):
-                self._view_mask[i] = 1
+                self._view_mask[i] = 0
+        elif type(mask) == int:
+            self._view_mask[mask] = 0
 
         # policy
         self.actor = ActorProbWithView(
@@ -84,12 +86,13 @@ class View(object):
         self.critic1.train()
         self.critic2.train()
 
-    def learn_from_demos(self, batch, demo_acts, peer=0):
+    def learn_from_demos(self, batch, demo, peer=0):
         acts = self.policy(batch).act
-        loss = F.mse_loss(acts, demo_acts)
+        demo = demo.act.detach()
+        loss = F.cross_entropy(acts, demo)
         if peer != 0:
-            peer_demos = demo_acts[torch.randperm(len(demo_acts))]
-            loss += peer * F.mse_loss(acts, peer_demos)
+            peer_demo = demo[torch.randperm(len(demo))]
+            loss += peer * F.cross_entropy(acts, peer_demo)
         self.policy.actor_optim.zero_grad()
         loss.backward()
         self.policy.actor_optim.step()

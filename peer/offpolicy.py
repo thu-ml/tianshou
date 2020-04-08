@@ -16,6 +16,7 @@ def offpolicy_trainer_with_views(A, B, max_epoch, step_per_epoch, collect_per_st
     for epoch in range(1, 1 + max_epoch):
         # train
         A.train()
+        B.train()
         with tqdm.tqdm(total=step_per_epoch, desc=f'Epoch #{epoch}', **tqdm_config) as t:
             while t.n < t.total:
                 for view, other_view in zip([A, B], [B, A]):
@@ -38,10 +39,10 @@ def offpolicy_trainer_with_views(A, B, max_epoch, step_per_epoch, collect_per_st
                         batch = view.train_collector.sample(batch_size)
                         losses = view.policy.learn(batch)
 
-                        # learn from demonstration
+                        # Learn from demonstration
                         if copier:
-                            demo_acts = other_view.policy(batch).act.detach()
-                            view.learn_from_demos(batch, demo_acts, peer=peer)
+                            demo = other_view.policy(batch)
+                            view.learn_from_demos(batch, demo, peer=peer)
 
                         for k in result.keys():
                             data[k] = f'{result[k]:.2f}'
@@ -61,16 +62,20 @@ def offpolicy_trainer_with_views(A, B, max_epoch, step_per_epoch, collect_per_st
             if t.n <= t.total:
                 t.update()
         # test
-        # result = test_episode(
-        #     policy, test_collector, test_fn, epoch, episode_per_test)
-        # if best_epoch == -1 or best_reward < result['rew']:
-        #     best_reward = result['rew']
-        #     best_epoch = epoch
-        # if verbose:
-        #     print(f'Epoch #{epoch}: test_reward: {result["rew"]:.6f}, '
-        #           f'best_reward: {best_reward:.6f} in #{best_epoch}')
-        # if stop_fn and stop_fn(best_reward):
-        #     break
+        brk = False
+        for view in A, B:
+            result = test_episode(
+                view.policy, view.test_collector, test_fn, epoch, episode_per_test)
+            if best_epoch == -1 or best_reward < result['rew']:
+                best_reward = result['rew']
+                best_epoch = epoch
+            if verbose:
+                print(f'Epoch #{epoch}: test_reward: {result["rew"]:.4f}, '
+                      f'best_reward: {best_reward:.4f} in #{best_epoch}')
+            if view.stop_fn(best_reward):
+                brk = True
+        if brk:
+            break
     return (
         gather_info(start_time, A.train_collector, A.test_collector, best_reward),
         gather_info(start_time, B.train_collector, B.test_collector, best_reward),
