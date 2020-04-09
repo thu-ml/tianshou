@@ -36,7 +36,7 @@ def get_args():
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument('--device', type=str, default='cpu')
     args = parser.parse_known_args()[0]
-    args.note = args.note or datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
+    args.note = args.note or datetime.datetime.now().strftime('%y%m%d%H%M%S')
     return args
 
 
@@ -81,7 +81,7 @@ def test_sac(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
-    writer = SummaryWriter(f"{args.logdir}/{args.task}/sac/{args.note}")
+    writer = SummaryWriter(f'{args.logdir}/{args.task}/sac/{args.note}')
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold
@@ -102,6 +102,8 @@ def test_sac(args=get_args()):
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
+        torch.save(policy.state_dict(),
+                   f'{args.logdir}/{args.task}/sac/{args.note}/policy.pth')
 
 
 if __name__ == '__main__':

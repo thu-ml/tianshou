@@ -4,11 +4,14 @@ import pprint
 import argparse
 import datetime
 import numpy as np
+from copy import deepcopy
+
 from torch.utils.tensorboard import SummaryWriter
+import torch.nn.functional as F
 
 from tianshou.policy import PPOPolicy
 from tianshou.env import SubprocVectorEnv
-from tianshou.trainer import onpolicy_trainer
+from tianshou.trainer import imitation_trainer
 from tianshou.data import Collector, ReplayBuffer
 
 if __name__ == '__main__':
@@ -19,20 +22,25 @@ else:  # pytest
 
 def get_args():
     parser = argparse.ArgumentParser()
+    # spec
     parser.add_argument('--note', type=str, default=None)
+    parser.add_argument('--peer', type=float, default=0.)
+    parser.add_argument('--peer-decay-steps', type=int, default=0)
+    parser.add_argument('--load', type=str, default=None)
     parser.add_argument('--reward-threshold', type=float, default=None)
-    parser.add_argument('--task', type=str, default='CartPole-v0')
+    #
+    parser.add_argument('--task', type=str, default='Acrobot-v1')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--collect-per-step', type=int, default=10)
-    parser.add_argument('--repeat-per-collect', type=int, default=2)
-    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--collect-per-step', type=int, default=8)
+    parser.add_argument('--repeat-per-collect', type=int, default=1)
+    parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--layer-num', type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=32)
+    parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -43,7 +51,8 @@ def get_args():
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
     args = parser.parse_known_args()[0]
-    args.note = args.note or datetime.datetime.now().strftime("%y%m%d%H%M%S")
+    args.note = args.note or \
+                datetime.datetime.now().strftime('%y%m%d%H%M%S')
     return args
 
 
@@ -62,6 +71,9 @@ def test_ppo(args=get_args()):
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
+    # log
+    writer = SummaryWriter(
+        f'{args.logdir}/imitation/{args.task}/ppo/{args.note}')
     # model
     net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = Actor(net, args.action_shape).to(args.device)
@@ -76,26 +88,51 @@ def test_ppo(args=get_args()):
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         action_range=None)
+
+    # Load expert model.
+    assert args.load is not None, 'args.load should not be None'
+    expert = deepcopy(policy)
+    expert.load_state_dict(torch.load(
+        f'{args.logdir}/{args.task}/ppo/{args.load}/policy.pth'))
+    expert.eval()
+
     # collector
-    train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+    expert_collector = Collector(
+        expert, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
-    # log
-    path = f'{args.logdir}/{args.task}/ppo/{args.note}'
-    writer = SummaryWriter(path)
 
     def stop_fn(x):
         return x >= (args.reward_threshold or env.spec.reward_threshold)
 
+    def learner(pol, batch, batch_size, repeat, peer=0.):
+        losses, ent_losses = [], []
+        for _ in range(repeat):
+            for b in batch.split(batch_size):
+                logits = pol(b).logits
+                demo = torch.tensor(b.act, dtype=torch.long)
+                loss = F.cross_entropy(logits, demo)
+                if peer != 0:
+                    peer_demo = demo[torch.randperm(len(demo))]
+                    loss -= peer * F.cross_entropy(logits, peer_demo)
+                pol.optim.zero_grad()
+                loss.backward()
+                pol.optim.step()
+                losses.append(loss.detach().cpu().numpy())
+        return {
+            'loss': losses,
+            'loss/ent': ent_losses,
+        }
+
     # trainer
-    result = onpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
+    result = imitation_trainer(
+        policy, learner, expert_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
         args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer,
-        task=args.task)
+        task=args.task, peer=args.peer)
     assert stop_fn(result['best_reward'])
-    train_collector.close()
+    expert_collector.close()
     test_collector.close()
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
@@ -104,7 +141,9 @@ def test_ppo(args=get_args()):
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
-        torch.save(policy.state_dict(), f'{path}/policy.pth')
+        torch.save(
+            policy.state_dict(),
+            f'{args.logdir}/imitation/{args.task}/ppo/{args.note}/policy.pth')
 
 
 if __name__ == '__main__':

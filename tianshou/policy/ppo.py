@@ -88,7 +88,7 @@ class PPOPolicy(PGPolicy):
                 loss.backward()
                 nn.utils.clip_grad_norm_(list(
                     self.actor.parameters()) + list(self.critic.parameters()),
-                                         self._max_grad_norm)
+                                          self._max_grad_norm)
                 self.optim.step()
         self.sync_weight()
         return {

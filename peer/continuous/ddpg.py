@@ -85,7 +85,7 @@ class View(object):
         loss = F.cross_entropy(acts, demo)
         if peer != 0:
             peer_demo = demo[torch.randperm(len(demo))]
-            loss += peer * F.cross_entropy(acts, peer_demo)
+            loss -= peer * F.cross_entropy(acts, peer_demo)
         self.policy.actor_optim.zero_grad()
         loss.backward()
         self.policy.actor_optim.step()
