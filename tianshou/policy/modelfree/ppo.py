@@ -26,6 +26,11 @@ class PPOPolicy(PGPolicy):
     :param float ent_coef: weight for entropy loss, defaults to 0.01.
     :param action_range: the action range (minimum, maximum).
     :type action_range: [float, float]
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
+        explanation.
     """
 
     def __init__(self, actor, critic, optim, dist_fn,
@@ -70,8 +75,10 @@ class PPOPolicy(PGPolicy):
             * ``dist`` the action distribution.
             * ``state`` the hidden state.
 
-        More information can be found at
-        :meth:`~tianshou.policy.BasePolicy.__call__`.
+        .. seealso::
+
+            Please refer to :meth:`~tianshou.policy.BasePolicy.__call__` for
+            more detailed explanation.
         """
         model = getattr(self, model)
         logits, h = model(batch.obs, state=state, info=batch.info)

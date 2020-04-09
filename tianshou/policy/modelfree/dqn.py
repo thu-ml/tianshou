@@ -18,6 +18,11 @@ class DQNPolicy(BasePolicy):
         ahead.
     :param int target_update_freq: the target network update frequency (``0``
         if you do not use the target network).
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
+        explanation.
     """
 
     def __init__(self, model, optim, discount_factor=0.99,
@@ -106,8 +111,10 @@ class DQNPolicy(BasePolicy):
             * ``logits`` the network's raw output.
             * ``state`` the hidden state.
 
-        More information can be found at
-        :meth:`~tianshou.policy.BasePolicy.__call__`.
+        .. seealso::
+
+            Please refer to :meth:`~tianshou.policy.BasePolicy.__call__` for
+            more detailed explanation.
         """
         model = getattr(self, model)
         obs = getattr(batch, input)

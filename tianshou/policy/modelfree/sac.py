@@ -33,6 +33,11 @@ class SACPolicy(DDPGPolicy):
         defaults to ``False``.
     :param bool ignore_done: ignore the done flag while training the policy,
         defaults to ``False``.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
+        explanation.
     """
 
     def __init__(self, actor, actor_optim, critic1, critic1_optim,

@@ -94,8 +94,12 @@ class BaseVectorEnv(ABC, gym.Wrapper):
 
 
 class VectorEnv(BaseVectorEnv):
-    """Dummy vectorized environment wrapper, implemented in for-loop. The usage
-    is in :class:`~tianshou.env.BaseVectorEnv`.
+    """Dummy vectorized environment wrapper, implemented in for-loop.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
+        explanation.
     """
 
     def __init__(self, env_fns):
@@ -170,8 +174,12 @@ def worker(parent, p, env_fn_wrapper):
 
 
 class SubprocVectorEnv(BaseVectorEnv):
-    """Vectorized environment wrapper based on subprocess. The usage is in
-    :class:`~tianshou.env.BaseVectorEnv`.
+    """Vectorized environment wrapper based on subprocess.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
+        explanation.
     """
 
     def __init__(self, env_fns):
@@ -247,8 +255,12 @@ class RayVectorEnv(BaseVectorEnv):
     """Vectorized environment wrapper based on
     `ray <https://github.com/ray-project/ray>`_. However, according to our
     test, it is about two times slower than
-    :class:`~tianshou.env.SubprocVectorEnv`. The usage is in
-    :class:`~tianshou.env.BaseVectorEnv`.
+    :class:`~tianshou.env.SubprocVectorEnv`.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
+        explanation.
     """
 
     def __init__(self, env_fns):

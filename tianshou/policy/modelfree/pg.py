@@ -13,6 +13,11 @@ class PGPolicy(BasePolicy):
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param torch.distributions.Distribution dist_fn: for computing the action.
     :param float discount_factor: in [0, 1].
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
+        explanation.
     """
 
     def __init__(self, model, optim, dist_fn=torch.distributions.Categorical,
@@ -50,8 +55,10 @@ class PGPolicy(BasePolicy):
             * ``dist`` the action distribution.
             * ``state`` the hidden state.
 
-        More information can be found at
-        :meth:`~tianshou.policy.BasePolicy.__call__`.
+        .. seealso::
+
+            Please refer to :meth:`~tianshou.policy.BasePolicy.__call__` for
+            more detailed explanation.
         """
         logits, h = self.model(batch.obs, state=state, info=batch.info)
         if isinstance(logits, tuple):

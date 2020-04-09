@@ -15,10 +15,12 @@ class Batch(object):
         >>> data.b
         [5, 5]
         >>> data.b = np.array([3, 4, 5])
-        >>> len(data.b)
-        3
-        >>> data.b[-1]
-        5
+        >>> print(data)
+        Batch(
+            a: 4,
+            b: [3 4 5],
+            c: 2312312,
+        )
 
     In short, you can define a :class:`Batch` with any key-value pair. The
     current implementation of Tianshou typically use 6 keys in

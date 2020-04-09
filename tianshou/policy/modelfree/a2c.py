@@ -21,6 +21,11 @@ class A2CPolicy(PGPolicy):
     :param float ent_coef: weight for entropy loss, defaults to 0.01.
     :param float max_grad_norm: clipping gradients in back propagation,
         defaults to ``None``.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
+        explanation.
     """
 
     def __init__(self, actor, critic, optim,
@@ -44,8 +49,10 @@ class A2CPolicy(PGPolicy):
             * ``dist`` the action distribution.
             * ``state`` the hidden state.
 
-        More information can be found at
-        :meth:`~tianshou.policy.BasePolicy.__call__`.
+        .. seealso::
+
+            Please refer to :meth:`~tianshou.policy.BasePolicy.__call__` for
+            more detailed explanation.
         """
         logits, h = self.actor(batch.obs, state=state, info=batch.info)
         if isinstance(logits, tuple):

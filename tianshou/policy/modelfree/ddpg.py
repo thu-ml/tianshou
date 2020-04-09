@@ -28,6 +28,11 @@ class DDPGPolicy(BasePolicy):
         defaults to ``False``.
     :param bool ignore_done: ignore the done flag while training the policy,
         defaults to ``False``.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
+        explanation.
     """
 
     def __init__(self, actor, actor_optim, critic, critic_optim,
@@ -104,8 +109,10 @@ class DDPGPolicy(BasePolicy):
             * ``act`` the action.
             * ``state`` the hidden state.
 
-        More information can be found at
-        :meth:`~tianshou.policy.BasePolicy.__call__`.
+        .. seealso::
+
+            Please refer to :meth:`~tianshou.policy.BasePolicy.__call__` for
+            more detailed explanation.
         """
         model = getattr(self, model)
         obs = getattr(batch, input)

@@ -9,6 +9,7 @@ class ReplayBuffer(object):
     ``numpy.ndarray``. Here is the usage:
     ::
 
+        >>> import numpy as np
         >>> from tianshou.data import ReplayBuffer
         >>> buf = ReplayBuffer(size=20)
         >>> for i in range(3):
@@ -48,10 +49,15 @@ class ReplayBuffer(object):
         >>> for i in range(16):
         ...     done = i % 5 == 0
         ...     buf.add(obs=i, act=i, rew=i, done=done, obs_next=0, info={})
-        >>> print(buf.obs)
-        [ 9. 10. 11. 12. 13. 14. 15. 7. 8.]
-        >>> print(buf.done)
-        [0. 1. 0. 0. 0. 0. 1. 0. 0.]
+        >>> print(buf)
+        ReplayBuffer(
+            obs: [ 9. 10. 11. 12. 13. 14. 15.  7.  8.],
+            act: [ 9. 10. 11. 12. 13. 14. 15.  7.  8.],
+            rew: [ 9. 10. 11. 12. 13. 14. 15.  7.  8.],
+            done: [0. 1. 0. 0. 0. 0. 1. 0. 0.],
+            obs_next: [0. 0. 0. 0. 0. 0. 0. 0. 0.],
+            info: [{} {} {} {} {} {} {} {} {}],
+        )
         >>> index = np.arange(len(buf))
         >>> print(buf.get_stack(index, 'obs'))
         [[ 7.  7.  8.  9.]
@@ -65,7 +71,7 @@ class ReplayBuffer(object):
          [ 7.  7.  7.  8.]]
         >>> # here is another way to get the stacked data
         >>> # (stack only for obs and obs_next)
-        >>> sum(sum(buf.get_stack(index, 'obs') - buf[index].obs))
+        >>> abs(buf.get_stack(index, 'obs') - buf[index].obs).sum().sum()
         0.0
     """
 
@@ -200,6 +206,11 @@ class ListReplayBuffer(ReplayBuffer):
     """The function of :class:`~tianshou.data.ListReplayBuffer` is almost the
     same as :class:`~tianshou.data.ReplayBuffer`. The only difference is that
     :class:`~tianshou.data.ListReplayBuffer` is based on ``list``.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.data.ListReplayBuffer` for more
+        detailed explanation.
     """
 
     def __init__(self):
