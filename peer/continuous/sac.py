@@ -89,10 +89,10 @@ class View(object):
     def learn_from_demos(self, batch, demo, peer=0):
         acts = self.policy(batch).act
         demo = demo.act.detach()
-        loss = F.cross_entropy(acts, demo)
+        loss = F.mse_loss(acts, demo)
         if peer != 0:
             peer_demo = demo[torch.randperm(len(demo))]
-            loss -= peer * F.cross_entropy(acts, peer_demo)
+            loss -= peer * F.mse_loss(acts, peer_demo)
         self.policy.actor_optim.zero_grad()
         loss.backward()
         self.policy.actor_optim.step()
@@ -122,7 +122,7 @@ def get_args():
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument('--device', type=str, default='cpu')
     args = parser.parse_known_args()[0]
-    args.note = args.note or datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
+    args.note = args.note or datetime.datetime.now().strftime("%y%m%d%H%M%S")
     return args
 
 
