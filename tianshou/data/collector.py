@@ -2,10 +2,10 @@ import time
 import torch
 import warnings
 import numpy as np
-from tianshou.env import BaseVectorEnv
-from tianshou.data import Batch, ReplayBuffer, \
-    ListReplayBuffer
+
 from tianshou.utils import MovAvg
+from tianshou.env import BaseVectorEnv
+from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer
 
 
 class Collector(object):
@@ -22,8 +22,8 @@ class Collector(object):
         :class:`~tianshou.data.ReplayBuffer`.
     :param int stat_size: for the moving average of recording speed, defaults
         to 100.
-    :param bool store_obs_next: whether to store the obs_next to replay
-        buffer, defaults to ``True``.
+    :param bool store_obs_next: store the next observation to replay buffer or
+        not, defaults to ``True``.
 
     Example:
     ::
@@ -302,7 +302,7 @@ class Collector(object):
         self._obs = obs_next
         if self._multi_env:
             cur_episode = sum(cur_episode)
-        duration = time.time() - start_time
+        duration = max(time.time() - start_time, 1e-9)
         self.step_speed.add(cur_step / duration)
         self.episode_speed.add(cur_episode / duration)
         self.collect_step += cur_step

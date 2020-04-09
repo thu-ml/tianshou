@@ -8,9 +8,9 @@ class MyTestEnv(gym.Env):
         self.sleep = sleep
         self.reset()
 
-    def reset(self):
+    def reset(self, state=0):
         self.done = False
-        self.index = 0
+        self.index = state
         return self.index
 
     def step(self, action):

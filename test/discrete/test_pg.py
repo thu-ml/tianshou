@@ -31,27 +31,29 @@ def compute_return_base(batch, aa=None, bb=None, gamma=0.1):
 
 def test_fn(size=2560):
     policy = PGPolicy(None, None, None, discount_factor=0.1)
+    buf = ReplayBuffer(100)
+    buf.add(1, 1, 1, 1, 1)
     fn = policy.process_fn
     # fn = compute_return_base
     batch = Batch(
         done=np.array([1, 0, 0, 1, 0, 1, 0, 1.]),
         rew=np.array([0, 1, 2, 3, 4, 5, 6, 7.]),
     )
-    batch = fn(batch, None, None)
+    batch = fn(batch, buf, 0)
     ans = np.array([0, 1.23, 2.3, 3, 4.5, 5, 6.7, 7])
     assert abs(batch.returns - ans).sum() <= 1e-5
     batch = Batch(
         done=np.array([0, 1, 0, 1, 0, 1, 0.]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
     )
-    batch = fn(batch, None, None)
+    batch = fn(batch, buf, 0)
     ans = np.array([7.6, 6, 1.2, 2, 3.4, 4, 5])
     assert abs(batch.returns - ans).sum() <= 1e-5
     batch = Batch(
         done=np.array([0, 1, 0, 1, 0, 0, 1.]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
     )
-    batch = fn(batch, None, None)
+    batch = fn(batch, buf, 0)
     ans = np.array([7.6, 6, 1.2, 2, 3.45, 4.5, 5])
     assert abs(batch.returns - ans).sum() <= 1e-5
     if __name__ == '__main__':
@@ -66,7 +68,7 @@ def test_fn(size=2560):
         print(f'vanilla: {(time.time() - t) / cnt}')
         t = time.time()
         for _ in range(cnt):
-            policy.process_fn(batch, None, None)
+            policy.process_fn(batch, buf, 0)
         print(f'policy: {(time.time() - t) / cnt}')
 
 
@@ -147,5 +149,5 @@ def test_pg(args=get_args()):
 
 
 if __name__ == '__main__':
-    # test_fn()
+    test_fn()
     test_pg()

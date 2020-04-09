@@ -39,6 +39,34 @@ class ReplayBuffer(object):
         >>> batch_data, indice = buf.sample(batch_size=4)
         >>> batch_data.obs == buf[indice].obs
         array([ True,  True,  True,  True])
+
+    From version v0.2.2, :class:`~tianshou.data.ReplayBuffer` supports
+    frame_stack sampling, typically for RNN usage:
+    ::
+
+        >>> buf = ReplayBuffer(size=9, stack_num=4)
+        >>> for i in range(16):
+        ...     done = i % 5 == 0
+        ...     buf.add(obs=i, act=i, rew=i, done=done, obs_next=0, info={})
+        >>> print(buf.obs)
+        [ 9. 10. 11. 12. 13. 14. 15. 7. 8.]
+        >>> print(buf.done)
+        [0. 1. 0. 0. 0. 0. 1. 0. 0.]
+        >>> index = np.arange(len(buf))
+        >>> print(buf.get_stack(index, 'obs'))
+        [[ 7.  7.  8.  9.]
+         [ 7.  8.  9. 10.]
+         [11. 11. 11. 11.]
+         [11. 11. 11. 12.]
+         [11. 11. 12. 13.]
+         [11. 12. 13. 14.]
+         [12. 13. 14. 15.]
+         [ 7.  7.  7.  7.]
+         [ 7.  7.  7.  8.]]
+        >>> # here is another way to get the stacked data
+        >>> # (stack only for obs and obs_next)
+        >>> sum(sum(buf.get_stack(index, 'obs') - buf[index].obs))
+        0.0
     """
 
     def __init__(self, size, stack_num=0):
@@ -51,8 +79,26 @@ class ReplayBuffer(object):
         """Return len(self)."""
         return self._size
 
+    def __repr__(self):
+        """Return str(self)."""
+        s = self.__class__.__name__ + '(\n'
+        flag = False
+        for k in self.__dict__.keys():
+            if k[0] != '_' and self.__dict__[k] is not None:
+                rpl = '\n' + ' ' * (6 + len(k))
+                obj = str(self.__dict__[k]).replace('\n', rpl)
+                s += f'    {k}: {obj},\n'
+                flag = True
+        if flag:
+            s += ')\n'
+        else:
+            s = self.__class__.__name__ + '()\n'
+        return s
+
     def _add_to_buffer(self, name, inst):
         if inst is None:
+            if getattr(self, name, None) is None:
+                self.__dict__[name] = None
             return
         if self.__dict__.get(name, None) is None:
             if isinstance(inst, np.ndarray):
@@ -72,13 +118,14 @@ class ReplayBuffer(object):
         i = begin = buffer._index % len(buffer)
         while True:
             self.add(
-                buffer.obs[i], buffer.act[i], buffer.rew[i],
-                buffer.done[i], buffer.obs_next[i], buffer.info[i])
+                buffer.obs[i], buffer.act[i], buffer.rew[i], buffer.done[i],
+                None if buffer.obs_next is None else buffer.obs_next[i],
+                buffer.info[i])
             i = (i + 1) % len(buffer)
             if i == begin:
                 break
 
-    def add(self, obs, act, rew, done, obs_next=0, info={}, weight=None):
+    def add(self, obs, act, rew, done, obs_next=None, info={}, weight=None):
         """Add a batch of data into replay buffer."""
         assert isinstance(info, dict), \
             'You should return a dict in the last argument of env.step().'
@@ -97,7 +144,6 @@ class ReplayBuffer(object):
     def reset(self):
         """Clear all the data in replay buffer."""
         self._index = self._size = 0
-        self.indice = []
 
     def sample(self, batch_size):
         """Get a random sample from buffer with size equal to batch_size. \
@@ -114,16 +160,26 @@ class ReplayBuffer(object):
             ])
         return self[indice], indice
 
-    def _get_stack(self, indice, key):
+    def get_stack(self, indice, key):
+        """Return the stacked result, e.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t],
+        where s is self.key, t is indice. The stack_num (here equals to 4) is
+        given from buffer initialization procedure.
+        """
         if self.__dict__.get(key, None) is None:
             return None
         if self._stack == 0:
             return self.__dict__[key][indice]
         stack = []
+        # set last frame done to True
+        last_index = (self._index - 1 + self._size) % self._size
+        last_done, self.done[last_index] = self.done[last_index], True
         for i in range(self._stack):
             stack = [self.__dict__[key][indice]] + stack
-            indice = indice - 1 + self.done[indice - 1].astype(np.int)
-            indice[indice == -1] = self._size - 1
+            pre_indice = indice - 1
+            pre_indice[pre_indice == -1] = self._size - 1
+            indice = pre_indice + self.done[pre_indice].astype(np.int)
+            indice[indice == self._size] = 0
+        self.done[last_index] = last_done
         return np.stack(stack, axis=1)
 
     def __getitem__(self, index):
@@ -131,11 +187,11 @@ class ReplayBuffer(object):
         return the stacked obs and obs_next with shape [batch, len, ...].
         """
         return Batch(
-            obs=self._get_stack(index, 'obs'),
+            obs=self.get_stack(index, 'obs'),
             act=self.act[index],
             rew=self.rew[index],
             done=self.done[index],
-            obs_next=self._get_stack(index, 'obs_next'),
+            obs_next=self.get_stack(index, 'obs_next'),
             info=self.info[index]
         )
 

@@ -17,6 +17,7 @@ def test_batch():
     batch.obs = np.arange(5)
     for i, b in enumerate(batch.split(1, permute=False)):
         assert b.obs == batch[i].obs
+    print(batch)
 
 
 if __name__ == '__main__':

@@ -73,6 +73,22 @@ class Batch(object):
                 b.__dict__.update(**{k: self.__dict__[k][index]})
         return b
 
+    def __repr__(self):
+        """Return str(self)."""
+        s = self.__class__.__name__ + '(\n'
+        flag = False
+        for k in self.__dict__.keys():
+            if k[0] != '_' and self.__dict__[k] is not None:
+                rpl = '\n' + ' ' * (6 + len(k))
+                obj = str(self.__dict__[k]).replace('\n', rpl)
+                s += f'    {k}: {obj},\n'
+                flag = True
+        if flag:
+            s += ')\n'
+        else:
+            s = self.__class__.__name__ + '()\n'
+        return s
+
     def append(self, batch):
         """Append a :class:`~tianshou.data.Batch` object to current batch."""
         assert isinstance(batch, Batch), 'Only append Batch is allowed!'

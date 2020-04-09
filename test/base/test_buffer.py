@@ -1,3 +1,4 @@
+import numpy as np
 from tianshou.data import ReplayBuffer
 
 if __name__ == '__main__':
@@ -28,5 +29,24 @@ def test_replaybuffer(size=10, bufsize=20):
     assert buf2[-1].obs == buf[4].obs
 
 
+def test_stack(size=5, bufsize=9, stack_num=4):
+    env = MyTestEnv(size)
+    buf = ReplayBuffer(bufsize, stack_num)
+    obs = env.reset(1)
+    for i in range(15):
+        obs_next, rew, done, info = env.step(1)
+        buf.add(obs, 1, rew, done, None, info)
+        obs = obs_next
+        if done:
+            obs = env.reset(1)
+    indice = np.arange(len(buf))
+    assert abs(buf.get_stack(indice, 'obs') - np.array([
+        [1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
+        [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
+        [3, 3, 3, 3], [3, 3, 3, 4], [1, 1, 1, 1]])).sum() < 1e-6
+    print(buf)
+
+
 if __name__ == '__main__':
     test_replaybuffer()
+    test_stack()
