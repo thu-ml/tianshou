@@ -1,7 +1,7 @@
 import numpy as np
 from tianshou.policy import BasePolicy
 from tianshou.env import SubprocVectorEnv
-from tianshou.data import Collector, Batch
+from tianshou.data import Collector, Batch, ReplayBuffer
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -36,21 +36,21 @@ def test_collector():
     venv = SubprocVectorEnv(env_fns)
     policy = MyPolicy()
     env = env_fns[0]()
-    c0 = Collector(policy, env)
+    c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False))
     c0.collect(n_step=3)
     assert equal(c0.buffer.obs[:3], [0, 1, 0])
-    assert equal(c0.buffer.obs_next[:3], [1, 2, 1])
+    assert equal(c0.buffer[:3].obs_next, [1, 2, 1])
     c0.collect(n_episode=3)
     assert equal(c0.buffer.obs[:8], [0, 1, 0, 1, 0, 1, 0, 1])
-    assert equal(c0.buffer.obs_next[:8], [1, 2, 1, 2, 1, 2, 1, 2])
-    c1 = Collector(policy, venv)
+    assert equal(c0.buffer[:8].obs_next, [1, 2, 1, 2, 1, 2, 1, 2])
+    c1 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False))
     c1.collect(n_step=6)
     assert equal(c1.buffer.obs[:11], [0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3])
-    assert equal(c1.buffer.obs_next[:11], [1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4])
+    assert equal(c1.buffer[:11].obs_next, [1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4])
     c1.collect(n_episode=2)
     assert equal(c1.buffer.obs[11:21], [0, 1, 2, 3, 4, 0, 1, 0, 1, 2])
-    assert equal(c1.buffer.obs_next[11:21], [1, 2, 3, 4, 5, 1, 2, 1, 2, 3])
-    c2 = Collector(policy, venv)
+    assert equal(c1.buffer[11:21].obs_next, [1, 2, 3, 4, 5, 1, 2, 1, 2, 3])
+    c2 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False))
     c2.collect(n_episode=[1, 2, 2, 2])
     assert equal(c2.buffer.obs_next[:26], [
         1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5,

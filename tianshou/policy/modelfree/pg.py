@@ -40,8 +40,6 @@ class PGPolicy(BasePolicy):
         discount factor, :math:`\gamma \in [0, 1]`.
         """
         batch.returns = self._vanilla_returns(batch)
-        if getattr(batch, 'obs_next', None) is None:
-            batch.obs_next = buffer[(indice + 1) % len(buffer)].obs
         # batch.returns = self._vectorized_returns(batch)
         return batch
 

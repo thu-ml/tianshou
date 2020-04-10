@@ -81,16 +81,17 @@ class DQNPolicy(BasePolicy):
             returns[buffer.done[now] > 0] = 0
             returns = buffer.rew[now] + self._gamma * returns
         terminal = (indice + self._n_step - 1) % len(buffer)
+        terminal_data = buffer[terminal]
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-            a = self(buffer[terminal], input='obs_next', eps=0).act
+            a = self(terminal_data, input='obs_next', eps=0).act
             target_q = self(
-                buffer[terminal], model='model_old', input='obs_next').logits
+                terminal_data, model='model_old', input='obs_next').logits
             if isinstance(target_q, torch.Tensor):
                 target_q = target_q.detach().cpu().numpy()
             target_q = target_q[np.arange(len(a)), a]
         else:
-            target_q = self(buffer[terminal], input='obs_next').logits
+            target_q = self(terminal_data, input='obs_next').logits
             if isinstance(target_q, torch.Tensor):
                 target_q = target_q.detach().cpu().numpy()
             target_q = target_q.max(axis=1)

@@ -41,14 +41,15 @@ class ReplayBuffer(object):
         >>> batch_data.obs == buf[indice].obs
         array([ True,  True,  True,  True])
 
-    From version v0.2.2, :class:`~tianshou.data.ReplayBuffer` supports
-    frame_stack sampling, typically for RNN usage:
+    Since version v0.2.2, :class:`~tianshou.data.ReplayBuffer` supports
+    frame_stack sampling (typically for RNN usage) and ignoring storing the
+    next observation (save memory):
     ::
 
-        >>> buf = ReplayBuffer(size=9, stack_num=4)
+        >>> buf = ReplayBuffer(size=9, stack_num=4, ignore_obs_next=True)
         >>> for i in range(16):
         ...     done = i % 5 == 0
-        ...     buf.add(obs=i, act=i, rew=i, done=done, obs_next=0, info={})
+        ...     buf.add(obs=i, act=i, rew=i, done=done, obs_next=i, info={})
         >>> print(buf)
         ReplayBuffer(
             obs: [ 9. 10. 11. 12. 13. 14. 15.  7.  8.],
@@ -59,7 +60,7 @@ class ReplayBuffer(object):
             info: [{} {} {} {} {} {} {} {} {}],
         )
         >>> index = np.arange(len(buf))
-        >>> print(buf.get_stack(index, 'obs'))
+        >>> print(buf.get(index, 'obs'))
         [[ 7.  7.  8.  9.]
          [ 7.  8.  9. 10.]
          [11. 11. 11. 11.]
@@ -71,14 +72,15 @@ class ReplayBuffer(object):
          [ 7.  7.  7.  8.]]
         >>> # here is another way to get the stacked data
         >>> # (stack only for obs and obs_next)
-        >>> abs(buf.get_stack(index, 'obs') - buf[index].obs).sum().sum()
+        >>> abs(buf.get(index, 'obs') - buf[index].obs).sum().sum()
         0.0
     """
 
-    def __init__(self, size, stack_num=0):
+    def __init__(self, size, stack_num=0, ignore_obs_next=False, **kwargs):
         super().__init__()
         self._maxsize = size
         self._stack = stack_num
+        self._save_s_ = not ignore_obs_next
         self.reset()
 
     def __len__(self):
@@ -125,7 +127,7 @@ class ReplayBuffer(object):
         while True:
             self.add(
                 buffer.obs[i], buffer.act[i], buffer.rew[i], buffer.done[i],
-                None if buffer.obs_next is None else buffer.obs_next[i],
+                buffer.obs_next[i] if self._save_s_ else None,
                 buffer.info[i])
             i = (i + 1) % len(buffer)
             if i == begin:
@@ -139,7 +141,8 @@ class ReplayBuffer(object):
         self._add_to_buffer('act', act)
         self._add_to_buffer('rew', rew)
         self._add_to_buffer('done', done)
-        self._add_to_buffer('obs_next', obs_next)
+        if self._save_s_:
+            self._add_to_buffer('obs_next', obs_next)
         self._add_to_buffer('info', info)
         if self._maxsize > 0:
             self._size = min(self._size + 1, self._maxsize)
@@ -166,19 +169,30 @@ class ReplayBuffer(object):
             ])
         return self[indice], indice
 
-    def get_stack(self, indice, key):
+    def get(self, indice, key):
         """Return the stacked result, e.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t],
         where s is self.key, t is indice. The stack_num (here equals to 4) is
         given from buffer initialization procedure.
         """
-        if self.__dict__.get(key, None) is None:
-            return None
-        if self._stack == 0:
-            return self.__dict__[key][indice]
-        stack = []
+        if not isinstance(indice, np.ndarray):
+            if np.isscalar(indice):
+                indice = np.array(indice)
+            elif isinstance(indice, slice):
+                indice = np.arange(
+                    0 if indice.start is None else indice.start,
+                    self._size if indice.stop is None else indice.stop,
+                    1 if indice.step is None else indice.step)
         # set last frame done to True
         last_index = (self._index - 1 + self._size) % self._size
         last_done, self.done[last_index] = self.done[last_index], True
+        if key == 'obs_next' and not self._save_s_:
+            indice += 1 - self.done[indice].astype(np.int)
+            indice[indice == self._size] = 0
+            key = 'obs'
+        if self._stack == 0:
+            self.done[last_index] = last_done
+            return self.__dict__[key][indice]
+        stack = []
         for i in range(self._stack):
             stack = [self.__dict__[key][indice]] + stack
             pre_indice = indice - 1
@@ -193,11 +207,11 @@ class ReplayBuffer(object):
         return the stacked obs and obs_next with shape [batch, len, ...].
         """
         return Batch(
-            obs=self.get_stack(index, 'obs'),
+            obs=self.get(index, 'obs'),
             act=self.act[index],
             rew=self.rew[index],
             done=self.done[index],
-            obs_next=self.get_stack(index, 'obs_next'),
+            obs_next=self.get(index, 'obs_next'),
             info=self.info[index]
         )
 
@@ -213,8 +227,8 @@ class ListReplayBuffer(ReplayBuffer):
         detailed explanation.
     """
 
-    def __init__(self):
-        super().__init__(size=0)
+    def __init__(self, **kwargs):
+        super().__init__(size=0, ignore_obs_next=False, **kwargs)
 
     def _add_to_buffer(self, name, inst):
         if inst is None:
@@ -233,8 +247,8 @@ class ListReplayBuffer(ReplayBuffer):
 class PrioritizedReplayBuffer(ReplayBuffer):
     """docstring for PrioritizedReplayBuffer"""
 
-    def __init__(self, size):
-        super().__init__(size)
+    def __init__(self, size, **kwargs):
+        super().__init__(size, **kwargs)
 
     def add(self, obs, act, rew, done, obs_next=0, info={}, weight=None):
         raise NotImplementedError

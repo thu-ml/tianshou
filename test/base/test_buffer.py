@@ -40,7 +40,7 @@ def test_stack(size=5, bufsize=9, stack_num=4):
         if done:
             obs = env.reset(1)
     indice = np.arange(len(buf))
-    assert abs(buf.get_stack(indice, 'obs') - np.array([
+    assert abs(buf.get(indice, 'obs') - np.array([
         [1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
         [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
         [3, 3, 3, 3], [3, 3, 3, 4], [1, 1, 1, 1]])).sum() < 1e-6

@@ -22,8 +22,6 @@ class Collector(object):
         :class:`~tianshou.data.ReplayBuffer`.
     :param int stat_size: for the moving average of recording speed, defaults
         to 100.
-    :param bool store_obs_next: store the next observation to replay buffer or
-        not, defaults to ``True``.
 
     Example:
     ::
@@ -70,8 +68,7 @@ class Collector(object):
         Please make sure the given environment has a time limitation.
     """
 
-    def __init__(self, policy, env, buffer=None, stat_size=100,
-                 store_obs_next=True, **kwargs):
+    def __init__(self, policy, env, buffer=None, stat_size=100, **kwargs):
         super().__init__()
         self.env = env
         self.env_num = 1
@@ -106,7 +103,6 @@ class Collector(object):
         self.state = None
         self.step_speed = MovAvg(stat_size)
         self.episode_speed = MovAvg(stat_size)
-        self._save_s_ = store_obs_next
 
     def reset_buffer(self):
         """Reset the main data buffer."""
@@ -247,8 +243,7 @@ class Collector(object):
                     data = {
                         'obs': self._obs[i], 'act': self._act[i],
                         'rew': self._rew[i], 'done': self._done[i],
-                        'obs_next': obs_next[i] if self._save_s_ else None,
-                        'info': self._info[i]}
+                        'obs_next': obs_next[i], 'info': self._info[i]}
                     if self._cached_buf:
                         warning_count += 1
                         self._cached_buf[i].add(**data)
@@ -284,8 +279,7 @@ class Collector(object):
             else:
                 self.buffer.add(
                     self._obs, self._act[0], self._rew,
-                    self._done, obs_next if self._save_s_ else None,
-                    self._info)
+                    self._done, obs_next, self._info)
                 cur_step += 1
                 if self._done:
                     cur_episode += 1
