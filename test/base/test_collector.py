@@ -1,4 +1,6 @@
 import numpy as np
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.policy import BasePolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.data import Collector, Batch, ReplayBuffer
@@ -26,21 +28,34 @@ def equal(a, b):
     return abs(np.array(a) - np.array(b)).sum() < 1e-6
 
 
+class Logger(object):
+    def __init__(self, writer):
+        self.cnt = 0
+        self.writer = writer
+
+    def log(self, info):
+        self.writer.add_scalar('key', info['key'], global_step=self.cnt)
+        self.cnt += 1
+
+
 def test_collector():
+    writer = SummaryWriter('log/collector')
+    logger = Logger(writer)
     env_fns = [
         lambda: MyTestEnv(size=2, sleep=0),
         lambda: MyTestEnv(size=3, sleep=0),
         lambda: MyTestEnv(size=4, sleep=0),
         lambda: MyTestEnv(size=5, sleep=0),
     ]
+
     venv = SubprocVectorEnv(env_fns)
     policy = MyPolicy()
     env = env_fns[0]()
     c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False))
-    c0.collect(n_step=3)
+    c0.collect(n_step=3, log_fn=logger.log)
     assert equal(c0.buffer.obs[:3], [0, 1, 0])
     assert equal(c0.buffer[:3].obs_next, [1, 2, 1])
-    c0.collect(n_episode=3)
+    c0.collect(n_episode=3, log_fn=logger.log)
     assert equal(c0.buffer.obs[:8], [0, 1, 0, 1, 0, 1, 0, 1])
     assert equal(c0.buffer[:8].obs_next, [1, 2, 1, 2, 1, 2, 1, 2])
     c1 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False))

@@ -27,4 +27,4 @@ class MyTestEnv(gym.Env):
         elif action == 1:
             self.index += 1
             self.done = self.index == self.size
-            return self.index, int(self.done), self.done, {}
+            return self.index, int(self.done), self.done, {'key': 1}

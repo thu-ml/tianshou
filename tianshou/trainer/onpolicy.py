@@ -8,7 +8,7 @@ from tianshou.trainer import test_episode, gather_info
 def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                      step_per_epoch, collect_per_step, repeat_per_collect,
                      episode_per_test, batch_size,
-                     train_fn=None, test_fn=None, stop_fn=None,
+                     train_fn=None, test_fn=None, stop_fn=None, log_fn=None,
                      writer=None, log_interval=1, verbose=True, task='',
                      **kwargs):
     """A wrapper for on-policy trainer procedure.
@@ -42,6 +42,7 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
     :param function stop_fn: a function receives the average undiscounted
         returns of the testing result, return a boolean which indicates whether
         reaching the goal.
+    :param function log_fn: a function receives env info for logging.
     :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard
         SummaryWriter.
     :param int log_interval: the log interval of the writer.
@@ -61,7 +62,8 @@ def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
         with tqdm.tqdm(total=step_per_epoch, desc=f'Epoch #{epoch}',
                        **tqdm_config) as t:
             while t.n < t.total:
-                result = train_collector.collect(n_episode=collect_per_step)
+                result = train_collector.collect(n_episode=collect_per_step,
+                                                 log_fn=log_fn)
                 data = {}
                 if stop_fn and stop_fn(result['rew']):
                     test_result = test_episode(

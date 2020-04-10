@@ -169,7 +169,7 @@ class Collector(object):
                 isinstance(self.state, np.ndarray):
             self.state[id] = 0
 
-    def collect(self, n_step=0, n_episode=0, render=None):
+    def collect(self, n_step=0, n_episode=0, render=None, log_fn=None):
         """Collect a specified number of step or episode.
 
         :param int n_step: how many steps you want to collect.
@@ -178,6 +178,8 @@ class Collector(object):
         :type n_episode: int or list
         :param float render: the sleep time between rendering consecutive
             frames, defaults to ``None`` (no rendering).
+        :param function log_fn: a function which receives env info, typically
+            for tensorboard logging.
 
         .. note::
 
@@ -232,6 +234,8 @@ class Collector(object):
                 self._act = result.act
             obs_next, self._rew, self._done, self._info = self.env.step(
                 self._act if self._multi_env else self._act[0])
+            if log_fn is not None:
+                log_fn(self._info)
             if render is not None:
                 self.env.render()
                 if render > 0:
