@@ -15,7 +15,7 @@ class MyPolicy(BasePolicy):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, batch, state=None):
+    def forward(self, batch, state=None):
         return Batch(act=np.ones(batch.obs.shape[0]))
 
     def learn(self):

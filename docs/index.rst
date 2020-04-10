@@ -42,6 +42,7 @@ After installation, open your python console and type
 
 If no error occurs, you have successfully installed Tianshou.
 
+Tianshou is still under development, you can also check out the documents in stable version through `tianshou.readthedocs.io/en/stable/ <https://tianshou.readthedocs.io/en/stable/>`_.
 
 .. toctree::
    :maxdepth: 1
@@ -50,7 +51,7 @@ If no error occurs, you have successfully installed Tianshou.
    tutorials/dqn
    tutorials/concepts
    tutorials/tabular
-   tutorials/trick
+   tutorials/cheatsheet
 
 .. toctree::
    :maxdepth: 1

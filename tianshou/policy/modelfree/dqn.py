@@ -100,8 +100,8 @@ class DQNPolicy(BasePolicy):
         batch.returns = returns
         return batch
 
-    def __call__(self, batch, state=None,
-                 model='model', input='obs', eps=None, **kwargs):
+    def forward(self, batch, state=None,
+                model='model', input='obs', eps=None, **kwargs):
         """Compute action over the given batch data.
 
         :param float eps: in [0, 1], for epsilon-greedy exploration method.
@@ -114,7 +114,7 @@ class DQNPolicy(BasePolicy):
 
         .. seealso::
 
-            Please refer to :meth:`~tianshou.policy.BasePolicy.__call__` for
+            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
         model = getattr(self, model)

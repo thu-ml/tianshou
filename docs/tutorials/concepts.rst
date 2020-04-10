@@ -35,7 +35,7 @@ Tianshou aims to modularizing RL algorithms. It comes into several classes of po
 A policy class typically has four parts:
 
 * :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including coping the target network and so on;
-* :meth:`~tianshou.policy.BasePolicy.__call__`: compute action with given observation;
+* :meth:`~tianshou.policy.BasePolicy.forward`: compute action with given observation;
 * :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the replay buffer (this function can interact with replay buffer);
 * :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given batch of data.
 
@@ -126,18 +126,18 @@ We give a high-level explanation through the pseudocode used in section :ref:`po
     # pseudocode, cannot work                                       # methods in tianshou
     s = env.reset()
     buffer = Buffer(size=10000)                                     # buffer = tianshou.data.ReplayBuffer(size=10000)
-    agent = DQN()                                                   # done in policy.__init__(...)
+    agent = DQN()                                                   # policy.__init__(...)
     for i in range(int(1e6)):                                       # done in trainer
-        a = agent.compute_action(s)                                 # done in policy.__call__(batch, ...)
-        s_, r, d, _ = env.step(a)                                   # done in collector.collect(...)
-        buffer.store(s, a, s_, r, d)                                # done in collector.collect(...)
-        s = s_                                                      # done in collector.collect(...)
+        a = agent.compute_action(s)                                 # policy(batch, ...)
+        s_, r, d, _ = env.step(a)                                   # collector.collect(...)
+        buffer.store(s, a, s_, r, d)                                # collector.collect(...)
+        s = s_                                                      # collector.collect(...)
         if i % 1000 == 0:                                           # done in trainer
-            b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # done in collector.sample(batch_size)
+            b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # collector.sample(batch_size)
             # compute 2-step returns. How?
-            b_ret = compute_2_step_return(buffer, b_r, b_d, ...)    # done in policy.process_fn(batch, buffer, indice)
+            b_ret = compute_2_step_return(buffer, b_r, b_d, ...)    # policy.process_fn(batch, buffer, indice)
             # update DQN policy
-            agent.update(b_s, b_a, b_s_, b_r, b_d, b_ret)           # done in policy.learn(batch, ...)
+            agent.update(b_s, b_a, b_s_, b_r, b_d, b_ret)           # policy.learn(batch, ...)
 
 
 Conclusion

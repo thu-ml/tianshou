@@ -39,7 +39,7 @@ class A2CPolicy(PGPolicy):
         self._w_ent = ent_coef
         self._grad_norm = max_grad_norm
 
-    def __call__(self, batch, state=None, **kwargs):
+    def forward(self, batch, state=None, **kwargs):
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
@@ -51,7 +51,7 @@ class A2CPolicy(PGPolicy):
 
         .. seealso::
 
-            Please refer to :meth:`~tianshou.policy.BasePolicy.__call__` for
+            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
         logits, h = self.actor(batch.obs, state=state, info=batch.info)

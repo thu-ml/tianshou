@@ -43,7 +43,7 @@ class PGPolicy(BasePolicy):
         # batch.returns = self._vectorized_returns(batch)
         return batch
 
-    def __call__(self, batch, state=None, **kwargs):
+    def forward(self, batch, state=None, **kwargs):
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
@@ -55,7 +55,7 @@ class PGPolicy(BasePolicy):
 
         .. seealso::
 
-            Please refer to :meth:`~tianshou.policy.BasePolicy.__call__` for
+            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
         logits, h = self.model(batch.obs, state=state, info=batch.info)

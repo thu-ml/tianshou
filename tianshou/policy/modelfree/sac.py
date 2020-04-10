@@ -77,7 +77,7 @@ class SACPolicy(DDPGPolicy):
                 self.critic2_old.parameters(), self.critic2.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
 
-    def __call__(self, batch, state=None, input='obs', **kwargs):
+    def forward(self, batch, state=None, input='obs', **kwargs):
         obs = getattr(batch, input)
         logits, h = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)

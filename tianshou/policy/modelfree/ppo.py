@@ -65,7 +65,7 @@ class PPOPolicy(PGPolicy):
         self.actor.eval()
         self.critic.eval()
 
-    def __call__(self, batch, state=None, model='actor', **kwargs):
+    def forward(self, batch, state=None, model='actor', **kwargs):
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
@@ -77,7 +77,7 @@ class PPOPolicy(PGPolicy):
 
         .. seealso::
 
-            Please refer to :meth:`~tianshou.policy.BasePolicy.__call__` for
+            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
         model = getattr(self, model)

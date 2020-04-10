@@ -57,7 +57,7 @@ If no error occurs, you have successfully installed Tianshou.
 
 ## Documentation
 
-The tutorials and API documentation are hosted on [tianshou.readthedocs.io](https://tianshou.readthedocs.io).
+The tutorials and API documentation are hosted on [tianshou.readthedocs.io/en/stable/](https://tianshou.readthedocs.io/en/stable/) (stable version) and [tianshou.readthedocs.io/en/latest/](https://tianshou.readthedocs.io/en/latest/) (develop version).
 
 The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/master/test) folder and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folder.
 
@@ -112,8 +112,8 @@ Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page 
 We decouple all of the algorithms into 4 parts:
 
 - `__init__`: initialize the policy;
+- `forward`: to compute actions over given observations;
 - `process_fn`: to preprocess data from replay buffer (since we have reformulated all algorithms to replay-buffer based algorithms);
-- `__call__`: to compute actions over given observations;
 - `learn`: to learn from a given batch data.
 
 Within these API, we can interact with different policies conveniently.
