@@ -30,8 +30,8 @@ class BasePolicy(ABC, nn.Module):
         the network might be ``(mu, sigma), state`` for Gaussian policy.
 
     Since :class:`~tianshou.policy.BasePolicy` inherits ``torch.nn.Module``,
-    you can operate :class:`~tianshou.policy.BasePolicy` almost the same as
-    ``torch.nn.Module``, for instance, load and save the model:
+    you can use :class:`~tianshou.policy.BasePolicy` almost the same as
+    ``torch.nn.Module``, for instance, loading and saving the model:
     ::
 
         torch.save(policy.state_dict(), 'policy.pth')

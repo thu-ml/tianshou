@@ -211,7 +211,7 @@ No problem! Tianshou supports user-defined training code. Here is the usage:
         # train policy with a sampled batch data
         losses = policy.learn(train_collector.sample(batch_size=64))
 
-For further usage, you can refer to :doc:`/tutorials/tabular`.
+For further usage, you can refer to :doc:`/tutorials/cheatsheet`.
 
 .. rubric:: References
 
