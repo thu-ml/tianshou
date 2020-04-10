@@ -50,7 +50,7 @@ def get_args():
     parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
-    args = parser.parse_known_args()[0]
+    args = parser.parse_args()
     args.note = args.note or \
                 datetime.datetime.now().strftime('%y%m%d%H%M%S')
     return args
@@ -121,6 +121,7 @@ def test_ppo(args=get_args()):
         return {
             'loss': losses,
             'loss/ent': ent_losses,
+            'peer': peer,
         }
 
     # trainer

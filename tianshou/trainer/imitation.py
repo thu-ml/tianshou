@@ -39,10 +39,10 @@ def imitation_trainer(policy, learner, expert_collector, test_collector,
                     if train_fn:
                         train_fn(epoch)
 
-                if peer_decay_steps:
-                    peer = peer * global_step / peer_decay_steps
+                decay = 1. if not peer_decay_steps else \
+                    max(0., 1 - global_step / peer_decay_steps)
                 losses = learner(policy, expert_collector.sample(0),
-                                 batch_size, repeat_per_collect, peer)
+                                 batch_size, repeat_per_collect, peer * decay)
                 expert_collector.reset_buffer()
                 step = 1
                 for k in losses.keys():
