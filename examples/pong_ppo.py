@@ -11,7 +11,7 @@ from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
-from discrete_net import Net, Actor, Critic
+from .discrete_net import Net, Actor, Critic
 
 
 def get_args():
@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--training-num', type=int, default=32)
     parser.add_argument('--test-num', type=int, default=8)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -91,12 +91,16 @@ def test_ppo(args=get_args()):
         else:
             return False
 
+    def save_fn(pol):
+        torch.save(pol.state_dict(),
+                   f'{args.logdir}/{args.task}/ppo/{args.note}/policy.pth')
+
     # trainer
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
-        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer,
-        task=args.task)
+        args.test_num, args.batch_size, stop_fn=stop_fn, save_fn=save_fn,
+        writer=writer, task=args.task)
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
