@@ -8,7 +8,7 @@ from tianshou.trainer import test_episode, gather_info
 def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                       step_per_epoch, collect_per_step, episode_per_test,
                       batch_size, train_fn=None, test_fn=None, stop_fn=None,
-                      writer=None, verbose=True, task=''):
+                      save_fn=None, writer=None, verbose=True, task=''):
     global_step = 0
     best_epoch, best_reward = -1, -1
     stat = {}
@@ -68,6 +68,8 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
         if best_epoch == -1 or best_reward < result['rew']:
             best_reward = result['rew']
             best_epoch = epoch
+            if save_fn:
+                save_fn(policy)
         if verbose:
             print(f'Epoch #{epoch}: test_reward: {result["rew"]:.4f}, '
                   f'best_reward: {best_reward:.4f} in #{best_epoch}')

@@ -87,13 +87,25 @@ def test_sac(args=get_args()):
     def stop_fn(x):
         return x >= (args.reward_threshold or env.spec.reward_threshold)
 
+    def save_fn(pol):
+        torch.save(pol.state_dict(),
+                   f'{args.logdir}/{args.task}/sac/{args.note}/policy.pth')
+
     # trainer
     result = offpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, args.test_num,
-        args.batch_size, stop_fn=stop_fn, writer=writer, task=args.task)
-    assert stop_fn(result['best_reward'])
-    train_collector.close()
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        collect_per_step=args.collect_per_step,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        writer=writer,
+        task=args.task
+    )
     test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
@@ -103,8 +115,7 @@ def test_sac(args=get_args()):
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
-        torch.save(policy.state_dict(),
-                   f'{args.logdir}/{args.task}/sac/{args.note}/policy.pth')
+
 
 
 if __name__ == '__main__':
