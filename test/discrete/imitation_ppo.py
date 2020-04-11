@@ -73,7 +73,7 @@ def test_ppo(args=get_args()):
     test_envs.seed(args.seed)
     # log
     writer = SummaryWriter(
-        f'{args.logdir}/imitation/{args.task}/ppo/{args.note}')
+        f'{args.logdir}/imitation/{args.task}/imitation/{args.note}')
     # model
     net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = Actor(net, args.action_shape).to(args.device)
@@ -142,9 +142,6 @@ def test_ppo(args=get_args()):
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
-        torch.save(
-            policy.state_dict(),
-            f'{args.logdir}/imitation/{args.task}/ppo/{args.note}/policy.pth')
 
 
 if __name__ == '__main__':

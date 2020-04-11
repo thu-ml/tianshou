@@ -89,7 +89,7 @@ def test_sac(args=get_args()):
     assert args.load is not None, 'args.load should not be None'
     expert = deepcopy(policy)
     expert.load_state_dict(torch.load(
-        f'{args.logdir}/imitation/{args.task}/sac/{args.load}/policy.pth'))
+        f'{args.logdir}/{args.task}/sac/{args.load}/policy.pth'))
     expert.eval()
 
     # collector
@@ -98,7 +98,7 @@ def test_sac(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
-    writer = SummaryWriter(f'{args.logdir}/{args.task}/sac/{args.note}')
+    writer = SummaryWriter(f'{args.logdir}/{args.task}/imitation/{args.note}')
 
     def stop_fn(x):
         return x >= (args.reward_threshold or env.spec.reward_threshold)
