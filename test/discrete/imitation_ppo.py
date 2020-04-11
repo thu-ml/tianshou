@@ -6,8 +6,8 @@ import datetime
 import numpy as np
 from copy import deepcopy
 
-from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import PPOPolicy
 from tianshou.env import SubprocVectorEnv
@@ -129,7 +129,7 @@ def test_ppo(args=get_args()):
         policy, learner, expert_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
         args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer,
-        task=args.task, peer=args.peer)
+        task=args.task, peer=args.peer, peer_decay_steps=args.peer_decay_steps)
     assert stop_fn(result['best_reward'])
     expert_collector.close()
     test_collector.close()
