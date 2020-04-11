@@ -1,3 +1,4 @@
+import os
 import gym
 import torch
 import pprint
@@ -74,7 +75,11 @@ def test_dqn(args=get_args()):
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'dqn')
+    log_path = os.path.join(args.logdir, args.task, 'dqn')
+    writer = SummaryWriter(log_path)
+
+    def save_fn(policy):
+        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold
@@ -90,7 +95,7 @@ def test_dqn(args=get_args()):
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, writer=writer)
+        stop_fn=stop_fn, save_fn=save_fn, writer=writer)
 
     assert stop_fn(result['best_reward'])
     train_collector.close()

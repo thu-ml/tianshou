@@ -49,7 +49,7 @@ class ReplayBuffer(object):
         >>> buf = ReplayBuffer(size=9, stack_num=4, ignore_obs_next=True)
         >>> for i in range(16):
         ...     done = i % 5 == 0
-        ...     buf.add(obs=i, act=i, rew=i, done=done, obs_next=i, info={})
+        ...     buf.add(obs=i, act=i, rew=i, done=done, obs_next=i + 1)
         >>> print(buf)
         ReplayBuffer(
             obs: [ 9. 10. 11. 12. 13. 14. 15.  7.  8.],
@@ -74,6 +74,17 @@ class ReplayBuffer(object):
         >>> # (stack only for obs and obs_next)
         >>> abs(buf.get(index, 'obs') - buf[index].obs).sum().sum()
         0.0
+        >>> # we can get obs_next through __getitem__, even if it doesn't store
+        >>> print(buf[:].obs_next)
+        [[ 7.  8.  9. 10.]
+         [ 7.  8.  9. 10.]
+         [11. 11. 11. 12.]
+         [11. 11. 12. 13.]
+         [11. 12. 13. 14.]
+         [12. 13. 14. 15.]
+         [12. 13. 14. 15.]
+         [ 7.  7.  7.  8.]
+         [ 7.  7.  8.  9.]]
     """
 
     def __init__(self, size, stack_num=0, ignore_obs_next=False, **kwargs):

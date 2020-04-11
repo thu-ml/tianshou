@@ -8,9 +8,9 @@ from tianshou.trainer import test_episode, gather_info
 def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                       step_per_epoch, collect_per_step, episode_per_test,
                       batch_size,
-                      train_fn=None, test_fn=None, stop_fn=None, log_fn=None,
-                      writer=None, log_interval=1, verbose=True, task='',
-                      **kwargs):
+                      train_fn=None, test_fn=None, stop_fn=None, save_fn=None,
+                      log_fn=None, writer=None, log_interval=1, verbose=True,
+                      task='', **kwargs):
     """A wrapper for off-policy trainer procedure.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
@@ -35,6 +35,8 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
     :param function test_fn: a function receives the current number of epoch
         index and performs some operations at the beginning of testing in this
         epoch.
+    :param function save_fn: a function for saving policy when the undiscounted
+        average mean reward in evaluation phase gets better.
     :param function stop_fn: a function receives the average undiscounted
         returns of the testing result, return a boolean which indicates whether
         reaching the goal.
@@ -66,6 +68,8 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                         policy, test_collector, test_fn,
                         epoch, episode_per_test)
                     if stop_fn and stop_fn(test_result['rew']):
+                        if save_fn:
+                            save_fn(policy)
                         for k in result.keys():
                             data[k] = f'{result[k]:.2f}'
                         t.set_postfix(**data)
@@ -105,6 +109,8 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
         if best_epoch == -1 or best_reward < result['rew']:
             best_reward = result['rew']
             best_epoch = epoch
+            if save_fn:
+                save_fn(policy)
         if verbose:
             print(f'Epoch #{epoch}: test_reward: {result["rew"]:.6f}, '
                   f'best_reward: {best_reward:.6f} in #{best_epoch}')
