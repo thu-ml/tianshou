@@ -69,6 +69,7 @@ Tianshou is still under development, you can also check out the documents in sta
    :caption: Community
 
    contributing
+   contributor
 
 
 Indices and tables

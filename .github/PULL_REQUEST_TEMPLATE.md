@@ -17,4 +17,4 @@ Less important but also useful:
 
   [source website]: https://github.com/thu-ml/tianshou
   [known issues]: https://github.com/thu-ml/tianshou/#faq-and-known-issues
-  [issue tracker]: https://github.com/thu-ml/tianshou/issues?q=
+  [issue tracker]: https://github.com/thu-ml/tianshou/projects/2
