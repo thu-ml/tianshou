@@ -1,4 +1,3 @@
-import os
 import torch
 import datetime
 import pprint
@@ -12,7 +11,7 @@ from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
-from .discrete_net import Net, Actor, Critic
+from .net import Net, Actor, Critic
 
 
 def get_args():
@@ -42,8 +41,8 @@ def get_args():
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
     parser.add_argument('--max_episode_steps', type=int, default=2000)
-    args = parser.parse_args()
-    args.note = args.note or datetime.datetime.now().strftime("%y%m%d%H%M%S")
+    args = parser.parse_known_args()[0]
+    args.note = args.note or datetime.datetime.now().strftime("%y-%m-%d-%H-%M-%S")
     return args
 
 
@@ -84,8 +83,7 @@ def test_ppo(args=get_args()):
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'ppo', args.note)
-    writer = SummaryWriter(log_path)
+    writer = SummaryWriter(f'{args.logdir}/{args.task}/ppo/{args.note}')
 
     def stop_fn(x):
         if env.env.spec.reward_threshold:
@@ -94,7 +92,8 @@ def test_ppo(args=get_args()):
             return False
 
     def save_fn(pol):
-        torch.save(pol.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(pol.state_dict(),
+                   f'{args.logdir}/{args.task}/ppo/{args.note}/policy.pth')
 
     # trainer
     result = onpolicy_trainer(

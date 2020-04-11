@@ -1,6 +1,8 @@
+import os
 import torch
 import pprint
 import argparse
+import datetime
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
@@ -10,11 +12,12 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
-from discrete_net import DQN
+from .discrete_net import DQN
 
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--note', type=str, default=None)
     parser.add_argument('--task', type=str, default='Pong')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--eps-test', type=float, default=0.05)
@@ -36,7 +39,8 @@ def get_args():
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
-    args = parser.parse_known_args()[0]
+    args = parser.parse_args()
+    args.note = args.note or datetime.datetime.now().strftime("%y%m%d%H%M%S")
     return args
 
 
@@ -75,7 +79,8 @@ def test_dqn(args=get_args()):
     train_collector.collect(n_step=args.batch_size * 4)
     print(len(train_collector.buffer))
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'dqn')
+    log_path = os.path.join(args.logdir, args.task, 'dqn', args.note)
+    writer = SummaryWriter(log_path)
 
     def stop_fn(x):
         if env.env.spec.reward_threshold:
@@ -88,6 +93,9 @@ def test_dqn(args=get_args()):
 
     def test_fn(x):
         policy.set_eps(args.eps_test)
+
+    def save_fn(pol):
+        torch.save(pol.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     # trainer
     result = offpolicy_trainer(
