@@ -43,7 +43,7 @@ This command will run automatic tests in the main directory
 Test by GitHub Actions
 ----------------------
 
-1. Click the `Actions` button in your own repo:
+1. Click the ``Actions`` button in your own repo:
 
 .. image:: _static/images/action1.jpg
     :align: center

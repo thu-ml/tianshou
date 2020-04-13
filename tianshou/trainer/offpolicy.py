@@ -52,6 +52,7 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
     best_epoch, best_reward = -1, -1
     stat = {}
     start_time = time.time()
+    test_in_train = train_collector.policy == policy
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()
@@ -63,7 +64,7 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                 result = train_collector.collect(n_step=collect_per_step,
                                                  log_fn=log_fn)
                 data = {}
-                if stop_fn and stop_fn(result['rew']):
+                if test_in_train and stop_fn and stop_fn(result['rew']):
                     test_result = test_episode(
                         policy, test_collector, test_fn,
                         epoch, episode_per_test)

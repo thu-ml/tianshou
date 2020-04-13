@@ -7,14 +7,14 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import VectorEnv
-from tianshou.policy import SACPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
+from tianshou.policy import SACPolicy, ImitationPolicy
 
 if __name__ == '__main__':
-    from net import ActorProb, Critic
+    from net import Actor, ActorProb, Critic
 else:  # pytest
-    from test.continuous.net import ActorProb, Critic
+    from test.continuous.net import Actor, ActorProb, Critic
 
 
 def get_args():
@@ -24,6 +24,7 @@ def get_args():
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--actor-lr', type=float, default=3e-4)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
+    parser.add_argument('--il-lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.2)
@@ -43,7 +44,7 @@ def get_args():
     return args
 
 
-def test_sac(args=get_args()):
+def test_sac_with_il(args=get_args()):
     torch.set_num_threads(1)  # we just need only one thread for NN
     env = gym.make(args.task)
     if args.task == 'Pendulum-v0':
@@ -103,7 +104,6 @@ def test_sac(args=get_args()):
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
     assert stop_fn(result['best_reward'])
-    train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
@@ -114,6 +114,31 @@ def test_sac(args=get_args()):
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
 
+    # here we define an imitation collector with a trivial policy
+    if args.task == 'Pendulum-v0':
+        env.spec.reward_threshold = -300  # lower the goal
+    net = Actor(1, args.state_shape, args.action_shape,
+                args.max_action, args.device).to(args.device)
+    optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
+    il_policy = ImitationPolicy(net, optim)
+    il_test_collector = Collector(il_policy, test_envs)
+    train_collector.reset()
+    result = offpolicy_trainer(
+        il_policy, train_collector, il_test_collector, args.epoch,
+        args.step_per_epoch, args.collect_per_step, args.test_num,
+        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
+    assert stop_fn(result['best_reward'])
+    train_collector.close()
+    il_test_collector.close()
+    if __name__ == '__main__':
+        pprint.pprint(result)
+        # Let's watch its performance!
+        env = gym.make(args.task)
+        collector = Collector(il_policy, env)
+        result = collector.collect(n_episode=1, render=args.render)
+        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        collector.close()
+
 
 if __name__ == '__main__':
-    test_sac()
+    test_sac_with_il()

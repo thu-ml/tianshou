@@ -97,12 +97,20 @@ class Collector(object):
                     ListReplayBuffer() for _ in range(self.env_num)]
             else:
                 raise TypeError('The buffer in data collector is invalid!')
+        self.stat_size = stat_size
+        self.reset()
+
+    def reset(self):
+        """Reset all related variables in the collector."""
         self.reset_env()
         self.reset_buffer()
         # state over batch is either a list, an np.ndarray, or a torch.Tensor
         self.state = None
-        self.step_speed = MovAvg(stat_size)
-        self.episode_speed = MovAvg(stat_size)
+        self.step_speed = MovAvg(self.stat_size)
+        self.episode_speed = MovAvg(self.stat_size)
+        self.collect_step = 0
+        self.collect_episode = 0
+        self.collect_time = 0
 
     def reset_buffer(self):
         """Reset the main data buffer."""
