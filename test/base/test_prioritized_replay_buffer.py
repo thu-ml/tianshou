@@ -1,7 +1,6 @@
 import numpy as np
 from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer
 from env import MyTestEnv
-from timeit import timeit
 
 def test_replaybuffer(size=32, bufsize=15):
     env = MyTestEnv(size)
