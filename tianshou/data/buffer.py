@@ -258,14 +258,55 @@ class ListReplayBuffer(ReplayBuffer):
 class PrioritizedReplayBuffer(ReplayBuffer):
     """docstring for PrioritizedReplayBuffer"""
 
-    def __init__(self, size, **kwargs):
-        super().__init__(size, **kwargs)
+    def __init__(self, size, alpha:float, beta:float, mode='weight', **kwargs):
+        if mode != 'weight':
+            raise NotImplementedError
+        super().__init__(size)
+        self._alpha = alpha  # prioritization exponent
+        self._beta = beta  # importance sample soft coefficient
+        self._weight_sum = 0.0
+        self.weight = np.zeros(size)
 
-    def add(self, obs, act, rew, done, obs_next=0, info={}, weight=None):
-        raise NotImplementedError
 
-    def sample(self, batch_size):
-        raise NotImplementedError
+    def add(self, obs, act, rew, done, obs_next=0, info={}, weight=0.0):
+        """Add a batch of data into replay buffer."""
+        self._weight_sum += np.abs(weight)**self._alpha - self.weight[self._index]
+        # we have to sacrifice some convenience for speed :(
+        self._add_to_buffer('weight', np.abs(weight)**self._alpha)  
+        super().add(obs, act, rew, done, obs_next, info)
+
+    def sample(self, batch_size, importance_sample:bool=True):
+        """ Get a random sample from buffer with priority probability. \
+        Return all the data in the buffer if batch_size is ``0``.
+
+        :return: Sample data and its corresponding index inside the buffer.
+        """
+        if batch_size > 0:
+            indice = np.random.choice(self._size, batch_size, p=self.weight/self._weight_sum)
+        else:
+            indice = np.concatenate([
+                np.arange(self._index, self._size),
+                np.arange(0, self._index),
+            ])
+        batch = self[indice]
+        if importance_sample:
+            batch.append(Batch(impt_weight=1/np.power(self._size*batch.weight, self._beta)))
+        return batch, indice
 
     def reset(self):
-        raise NotImplementedError
+        super().reset()
+
+    def update_weight(self, indice, new_weight:np.ndarray):
+        self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
+        
+
+    def __getitem__(self, index):
+        return Batch(
+            obs=self.get(index, 'obs'),
+            act=self.act[index],
+            rew=self.rew[index],
+            done=self.done[index],
+            obs_next=self.get(index, 'obs_next'),
+            info=self.info[index],
+            weight=self.weight[index]
+        )
