@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.99)
+    parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=10)
@@ -42,6 +42,7 @@ def get_args():
     parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
+    parser.add_argument('--gae-lambda', type=float, default=0.95)
     args = parser.parse_known_args()[0]
     return args
 
@@ -76,7 +77,8 @@ def test_ppo(args=get_args()):
         eps_clip=args.eps_clip,
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
-        action_range=None)
+        action_range=None,
+        gae_lambda=args.gae_lambda)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))

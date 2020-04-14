@@ -26,6 +26,8 @@ class PPOPolicy(PGPolicy):
     :param float ent_coef: weight for entropy loss, defaults to 0.01.
     :param action_range: the action range (minimum, maximum).
     :type action_range: [float, float]
+    :param float gae_lambda: in [0, 1], param for Generalized Advantage
+        Estimation, defaults to 0.95.
 
     .. seealso::
 
@@ -40,6 +42,7 @@ class PPOPolicy(PGPolicy):
                  vf_coef=.5,
                  ent_coef=.0,
                  action_range=None,
+                 gae_lambda=0.95,
                  **kwargs):
         super().__init__(None, None, dist_fn, discount_factor, **kwargs)
         self._max_grad_norm = max_grad_norm
@@ -52,6 +55,9 @@ class PPOPolicy(PGPolicy):
         self.critic, self.critic_old = critic, deepcopy(critic)
         self.critic_old.eval()
         self.optim = optim
+        self._batch = 64
+        assert 0 <= gae_lambda <= 1, 'GAE lambda should be in [0, 1].'
+        self._lambda = gae_lambda
 
     def train(self):
         """Set the module in training mode, except for the target network."""
@@ -64,6 +70,19 @@ class PPOPolicy(PGPolicy):
         self.training = False
         self.actor.eval()
         self.critic.eval()
+
+    def process_fn(self, batch, buffer, indice):
+        if self._lambda in [0, 1]:
+            return self.compute_episodic_return(
+                batch, None, gamma=self._gamma, gae_lambda=self._lambda)
+        v_ = []
+        with torch.no_grad():
+            for b in batch.split(self._batch * 4, permute=False):
+                v_.append(self.critic(b.obs_next).detach().cpu().numpy())
+        v_ = np.concatenate(v_, axis=0)
+        batch.v_ = v_
+        return self.compute_episodic_return(
+            batch, v_, gamma=self._gamma, gae_lambda=self._lambda)
 
     def forward(self, batch, state=None, model='actor', **kwargs):
         """Compute action over the given batch data.
@@ -97,18 +116,20 @@ class PPOPolicy(PGPolicy):
         self.critic_old.load_state_dict(self.critic.state_dict())
 
     def learn(self, batch, batch_size=None, repeat=1, **kwargs):
+        self._batch = batch_size
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         r = batch.returns
         batch.returns = (r - r.mean()) / (r.std() + self._eps)
         batch.act = torch.tensor(batch.act)
         batch.returns = torch.tensor(batch.returns)[:, None]
+        batch.v_ = torch.tensor(batch.v_)
         for _ in range(repeat):
             for b in batch.split(batch_size):
-                vs_old, vs__old = self.critic_old(np.concatenate([
-                    b.obs, b.obs_next])).split(b.obs.shape[0])
+                vs_old = self.critic_old(b.obs)
+                vs__old = b.v_.to(vs_old.device)
                 dist = self(b).dist
                 dist_old = self(b, model='actor_old').dist
-                target_v = b.returns.to(vs__old.device) + self._gamma * vs__old
+                target_v = b.returns.to(vs_old.device) + self._gamma * vs__old
                 adv = (target_v - vs_old).detach()
                 a = b.act.to(adv.device)
                 ratio = torch.exp(dist.log_prob(a) - dist_old.log_prob(a))

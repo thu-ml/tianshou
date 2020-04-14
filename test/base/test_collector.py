@@ -12,8 +12,6 @@ else:  # pytest
 
 
 class MyPolicy(BasePolicy):
-    """docstring for MyPolicy"""
-
     def __init__(self):
         super().__init__()
 

@@ -1,3 +1,4 @@
+import numpy as np
 from torch import nn
 from abc import ABC, abstractmethod
 
@@ -74,3 +75,34 @@ class BasePolicy(ABC, nn.Module):
         :return: A dict which includes loss and its corresponding label.
         """
         pass
+
+    def compute_episodic_return(self, batch, v_s_=None,
+                                gamma=0.99, gae_lambda=0.95):
+        """Compute returns over given full-length episodes, including the
+        implementation of Generalized Advantage Estimation (arXiv:1506.02438).
+
+        :param batch: a data batch which contains several full-episode data
+            chronologically.
+        :type batch: :class:`~tianshou.data.Batch`
+        :param v_s_: the value function of all next states :math:`V(s')`.
+        :type v_s_: numpy.ndarray
+        :param float gamma: the discount factor, should be in [0, 1], defaults
+            to 0.99.
+        :param float gae_lambda: the parameter for Generalized Advantage
+            Estimation, should be in [0, 1], defaults to 0.95.
+        """
+        if v_s_ is None:
+            v_s_ = np.zeros_like(batch.rew)
+        if not isinstance(v_s_, np.ndarray):
+            v_s_ = np.array(v_s_, np.float)
+        else:
+            v_s_ = v_s_.flatten()
+        batch.returns = np.roll(v_s_, 1)
+        m = (1. - batch.done) * gamma
+        delta = batch.rew + v_s_ * m - batch.returns
+        m *= gae_lambda
+        gae = 0.
+        for i in range(len(batch.rew) - 1, -1, -1):
+            gae = delta[i] + m[i] * gae
+            batch.returns[i] += gae
+        return batch

@@ -6,8 +6,8 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import PPOPolicy
 from tianshou.env import VectorEnv
+from tianshou.policy import PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
@@ -22,15 +22,15 @@ def get_args():
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=3e-4)
-    parser.add_argument('--gamma', type=float, default=0.9)
+    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--collect-per-step', type=int, default=10)
-    parser.add_argument('--repeat-per-collect', type=int, default=10)
+    parser.add_argument('--collect-per-step', type=int, default=1)
+    parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--layer-num', type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=16)
+    parser.add_argument('--layer-num', type=int, default=2)
+    parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -42,6 +42,7 @@ def get_args():
     parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
+    parser.add_argument('--gae-lambda', type=float, default=0.95)
     args = parser.parse_known_args()[0]
     return args
 
@@ -84,12 +85,12 @@ def _test_ppo(args=get_args()):
         eps_clip=args.eps_clip,
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
-        action_range=[env.action_space.low[0], env.action_space.high[0]])
+        action_range=[env.action_space.low[0], env.action_space.high[0]],
+        gae_lambda=args.gae_lambda)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
-    train_collector.collect(n_step=args.step_per_epoch)
     # log
     log_path = os.path.join(args.logdir, args.task, 'ppo')
     writer = SummaryWriter(log_path)

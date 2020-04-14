@@ -39,9 +39,11 @@ class PGPolicy(BasePolicy):
         , where :math:`T` is the terminal time step, :math:`\gamma` is the
         discount factor, :math:`\gamma \in [0, 1]`.
         """
-        batch.returns = self._vanilla_returns(batch)
+        # batch.returns = self._vanilla_returns(batch)
         # batch.returns = self._vectorized_returns(batch)
-        return batch
+        # return batch
+        return self.compute_episodic_return(
+            batch, gamma=self._gamma, gae_lambda=1.)
 
     def forward(self, batch, state=None, **kwargs):
         """Compute action over the given batch data.
@@ -82,26 +84,26 @@ class PGPolicy(BasePolicy):
                 losses.append(loss.item())
         return {'loss': losses}
 
-    def _vanilla_returns(self, batch):
-        returns = batch.rew[:]
-        last = 0
-        for i in range(len(returns) - 1, -1, -1):
-            if not batch.done[i]:
-                returns[i] += self._gamma * last
-            last = returns[i]
-        return returns
+    # def _vanilla_returns(self, batch):
+    #     returns = batch.rew[:]
+    #     last = 0
+    #     for i in range(len(returns) - 1, -1, -1):
+    #         if not batch.done[i]:
+    #             returns[i] += self._gamma * last
+    #         last = returns[i]
+    #     return returns
 
-    def _vectorized_returns(self, batch):
-        # according to my tests, it is slower than _vanilla_returns
-        # import scipy.signal
-        convolve = np.convolve
-        # convolve = scipy.signal.convolve
-        rew = batch.rew[::-1]
-        batch_size = len(rew)
-        gammas = self._gamma ** np.arange(batch_size)
-        c = convolve(rew, gammas)[:batch_size]
-        T = np.where(batch.done[::-1])[0]
-        d = np.zeros_like(rew)
-        d[T] += c[T] - rew[T]
-        d[T[1:]] -= d[T[:-1]] * self._gamma ** np.diff(T)
-        return (c - convolve(d, gammas)[:batch_size])[::-1]
+    # def _vectorized_returns(self, batch):
+    #     # according to my tests, it is slower than _vanilla_returns
+    #     # import scipy.signal
+    #     convolve = np.convolve
+    #     # convolve = scipy.signal.convolve
+    #     rew = batch.rew[::-1]
+    #     batch_size = len(rew)
+    #     gammas = self._gamma ** np.arange(batch_size)
+    #     c = convolve(rew, gammas)[:batch_size]
+    #     T = np.where(batch.done[::-1])[0]
+    #     d = np.zeros_like(rew)
+    #     d[T] += c[T] - rew[T]
+    #     d[T[1:]] -= d[T[:-1]] * self._gamma ** np.diff(T)
+    #     return (c - convolve(d, gammas)[:batch_size])[::-1]

@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--epoch', type=int, default=100)
+    parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--repeat-per-collect', type=int, default=1)
@@ -41,6 +41,7 @@ def get_args():
     parser.add_argument('--vf-coef', type=float, default=0.5)
     parser.add_argument('--ent-coef', type=float, default=0.001)
     parser.add_argument('--max-grad-norm', type=float, default=None)
+    parser.add_argument('--gae-lambda', type=float, default=1.)
     args = parser.parse_known_args()[0]
     return args
 
@@ -70,8 +71,9 @@ def test_a2c(args=get_args()):
         actor.parameters()) + list(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
-        actor, critic, optim, dist, args.gamma, vf_coef=args.vf_coef,
-        ent_coef=args.ent_coef, max_grad_norm=args.max_grad_norm)
+        actor, critic, optim, dist, args.gamma, gae_lambda=args.gae_lambda,
+        vf_coef=args.vf_coef, ent_coef=args.ent_coef,
+        max_grad_norm=args.max_grad_norm)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
