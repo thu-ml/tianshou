@@ -18,10 +18,11 @@ def test_replaybuffer(size=32, bufsize=15):
         obs = obs_next
         assert len(buf) == min(bufsize, i + 1), print(len(buf), i)
         assert np.isclose(buf._weight_sum, (buf.weight).sum())
-    data, indice = buf.sample(bufsize * 2)
+    data, indice = buf.sample(bufsize // 2)
     buf.update_weight(indice, -data.weight/2)
     assert np.isclose(buf.weight[indice], np.power(
         np.abs(-data.weight/2), buf._alpha)).all()
+    assert np.isclose(buf._weight_sum, (buf.weight).sum())
 
 
 if __name__ == "__main__":

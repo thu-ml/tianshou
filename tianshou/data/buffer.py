@@ -276,20 +276,27 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._add_to_buffer('weight', np.abs(weight)**self._alpha)
         super().add(obs, act, rew, done, obs_next, info)
 
-    def sample(self, batch_size, importance_sample: bool = True):
+    def sample(self, batch_size: int = 0, importance_sample: bool = True):
         """ Get a random sample from buffer with priority probability. \
         Return all the data in the buffer if batch_size is ``0``.
 
         :return: Sample data and its corresponding index inside the buffer.
         """
-        if batch_size > 0:
+        if batch_size > 0 and batch_size <= self._size:
             indice = np.random.choice(
-                self._size, batch_size, p=self.weight/self._weight_sum)
-        else:
+                self._size, batch_size,
+                # Multiple sampling of the same sample
+                # will cause weight update conflict
+                p=self.weight/self._weight_sum, replace=False)
+        elif batch_size == 0:
             indice = np.concatenate([
                 np.arange(self._index, self._size),
                 np.arange(0, self._index),
             ])
+        else:
+            # if batch_size larger than len(self),
+            # it will lead to a bug in update weight
+            raise ValueError("batch_size should be less than len(self)")
         batch = self[indice]
         if importance_sample:
             impt_weight = Batch(
@@ -301,6 +308,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         super().reset()
 
     def update_weight(self, indice, new_weight: np.ndarray):
+        self._weight_sum += np.power(np.abs(new_weight), self._alpha).sum() \
+                         - self.weight[indice].sum()
         self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
 
     def __getitem__(self, index):
