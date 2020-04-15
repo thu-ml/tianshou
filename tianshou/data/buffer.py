@@ -287,7 +287,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                 self._size, batch_size,
                 # Multiple sampling of the same sample
                 # will cause weight update conflict
-                p=self.weight/self._weight_sum, replace=False)
+                p=(self.weight/self._weight_sum)[:self._size], replace=False)
         elif batch_size == 0:
             indice = np.concatenate([
                 np.arange(self._index, self._size),

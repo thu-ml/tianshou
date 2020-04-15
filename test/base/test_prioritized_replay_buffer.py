@@ -16,6 +16,11 @@ def test_replaybuffer(size=32, bufsize=15):
         obs_next, rew, done, info = env.step(a)
         buf.add(obs, a, rew, done, obs_next, info, np.random.randn()-0.5)
         obs = obs_next
+        data, indice = buf.sample(len(buf) // 2)
+        if len(buf)//2 == 0:
+            assert len(data) == len(buf)
+        else:
+            assert len(data) == len(buf)//2
         assert len(buf) == min(bufsize, i + 1), print(len(buf), i)
         assert np.isclose(buf._weight_sum, (buf.weight).sum())
     data, indice = buf.sample(bufsize // 2)
@@ -27,3 +32,4 @@ def test_replaybuffer(size=32, bufsize=15):
 
 if __name__ == "__main__":
     test_replaybuffer()
+    print("pass")
