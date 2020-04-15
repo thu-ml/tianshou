@@ -37,7 +37,7 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--stochastic-prioritization', type=float, default=1.0)
+    parser.add_argument('--prioritized-replay', type=int, default=0)
     parser.add_argument('--alpha', type=float, default=0.5)
     parser.add_argument('--beta', type=float, default=0.5)
     parser.add_argument(
@@ -72,8 +72,9 @@ def test_dqn(args=get_args()):
         use_target_network=args.target_update_freq > 0,
         target_update_freq=args.target_update_freq)
     # collector
-    if args.stochastic_prioritization > 0:
-        buf = PrioritizedReplayBuffer(args.buffer_size)
+    if args.prioritized_replay > 0:
+        buf = PrioritizedReplayBuffer(
+            args.buffer_size, alpha=args.alpha, beta=args.alpha)
     else:
         buf = ReplayBuffer(args.buffer_size)
     train_collector = Collector(
