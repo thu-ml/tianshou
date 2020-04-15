@@ -268,7 +268,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._weight_sum = 0.0
         self.weight = np.zeros(size)
 
-    def add(self, obs, act, rew, done, obs_next=0, info={}, weight=0.0):
+    def add(self, obs, act, rew, done, obs_next=0, info={}, weight=1.0):
         """Add a batch of data into replay buffer."""
         self._weight_sum += np.abs(weight)**self._alpha - \
             self.weight[self._index]
