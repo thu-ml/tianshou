@@ -267,6 +267,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._beta = beta  # importance sample soft coefficient
         self._weight_sum = 0.0
         self.weight = np.zeros(size)
+        self._amortization_freq = 1500
+        self._amortization_counter = 0
 
     def add(self, obs, act, rew, done, obs_next=0, info={}, weight=1.0):
         """Add a batch of data into replay buffer."""
@@ -275,6 +277,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         # we have to sacrifice some convenience for speed :(
         self._add_to_buffer('weight', np.abs(weight)**self._alpha)
         super().add(obs, act, rew, done, obs_next, info)
+        self._check_weight_sum()
 
     def sample(self, batch_size: int = 0, importance_sample: bool = True):
         """ Get a random sample from buffer with priority probability. \
@@ -300,16 +303,19 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         batch = self[indice]
         if importance_sample:
             impt_weight = Batch(
-                impt_weight=1/np.power(self._size*batch.weight, self._beta))
+                impt_weight=1/np.power(
+                    self._size*(batch.weight/self._weight_sum), self._beta))
             batch.append(impt_weight)
+        self._check_weight_sum()
         return batch, indice
 
     def reset(self):
+        self._amortization_counter = 0
         super().reset()
 
     def update_weight(self, indice, new_weight: np.ndarray):
         self._weight_sum += np.power(np.abs(new_weight), self._alpha).sum() \
-                         - self.weight[indice].sum()
+            - self.weight[indice].sum()
         self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
 
     def __getitem__(self, index):
@@ -322,3 +328,10 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             info=self.info[index],
             weight=self.weight[index]
         )
+
+    def _check_weight_sum(self):
+        # keep a accurate _weight_sum
+        self._amortization_counter += 1
+        if self._amortization_counter % self._amortization_freq == 0:
+            self._weight_sum = np.sum(self.weight)
+            self._amortization_counter = 0
