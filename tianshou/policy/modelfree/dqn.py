@@ -3,7 +3,7 @@ import numpy as np
 from copy import deepcopy
 import torch.nn.functional as F
 
-from tianshou.data import Batch
+from tianshou.data import Batch, PrioritizedReplayBuffer
 from tianshou.policy import BasePolicy
 
 
@@ -98,6 +98,18 @@ class DQNPolicy(BasePolicy):
         target_q[gammas != self._n_step] = 0
         returns += (self._gamma ** gammas) * target_q
         batch.returns = returns
+        if isinstance(buffer, PrioritizedReplayBuffer):
+            q = self(batch).logits
+            q = q[np.arange(len(q)), batch.act]
+            r = batch.returns
+            if isinstance(r, np.ndarray):
+                r = torch.tensor(r, device=q.device, dtype=q.dtype)
+            td = r-q
+            buffer.update_weight(indice, td.detach().numpy())
+            impt_weight = torch.tensor(batch.impt_weight,
+                                       device=q.device, dtype=torch.float)
+            loss = (td.pow(2)*impt_weight).mean()
+            batch.loss = loss
         return batch
 
     def forward(self, batch, state=None,
@@ -133,12 +145,15 @@ class DQNPolicy(BasePolicy):
         if self._target and self._cnt % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
-        q = self(batch).logits
-        q = q[np.arange(len(q)), batch.act]
-        r = batch.returns
-        if isinstance(r, np.ndarray):
-            r = torch.tensor(r, device=q.device, dtype=q.dtype)
-        loss = F.mse_loss(q, r)
+        if hasattr(batch, 'loss'):
+            loss = batch.loss
+        else:
+            q = self(batch).logits
+            q = q[np.arange(len(q)), batch.act]
+            r = batch.returns
+            if isinstance(r, np.ndarray):
+                r = torch.tensor(r, device=q.device, dtype=q.dtype)
+            loss = F.mse_loss(q, r)
         loss.backward()
         self.optim.step()
         self._cnt += 1

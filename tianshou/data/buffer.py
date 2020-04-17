@@ -266,8 +266,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._alpha = alpha  # prioritization exponent
         self._beta = beta  # importance sample soft coefficient
         self._weight_sum = 0.0
-        self.weight = np.zeros(size)
-        self._amortization_freq = 1500
+        self.weight = np.zeros(size, dtype=np.float64)
+        self._amortization_freq = 50
         self._amortization_counter = 0
 
     def add(self, obs, act, rew, done, obs_next=0, info={}, weight=1.0):
@@ -286,11 +286,13 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         :return: Sample data and its corresponding index inside the buffer.
         """
         if batch_size > 0 and batch_size <= self._size:
+            # Multiple sampling of the same sample
+            # will cause weight update conflict
             indice = np.random.choice(
                 self._size, batch_size,
-                # Multiple sampling of the same sample
-                # will cause weight update conflict
-                p=(self.weight/self._weight_sum)[:self._size], replace=False)
+                p=(self.weight/self.weight.sum())[:self._size], replace=False)
+            # self._weight_sum is not work for the accuracy issue
+            # p=(self.weight/self._weight_sum)[:self._size], replace=False)
         elif batch_size == 0:
             indice = np.concatenate([
                 np.arange(self._index, self._size),
