@@ -112,7 +112,7 @@ def test_sac(args=get_args()):
                 loss = F.mse_loss(acts, demo)
                 if peer != 0:
                     peer_demo = demo[torch.randperm(len(demo))]
-                    loss -= peer * F.cross_entropy(acts, peer_demo)
+                    loss -= peer * F.mse_loss(acts, peer_demo)
                 pol.actor_optim.zero_grad()
                 loss.backward()
                 pol.actor_optim.step()

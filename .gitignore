@@ -142,3 +142,4 @@ log/
 MUJOCO_LOG.TXT
 *.pth
 .DS_Store
+log_outdated/
