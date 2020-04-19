@@ -20,7 +20,7 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.99)
@@ -28,9 +28,9 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=1)
     parser.add_argument('--repeat-per-collect', type=int, default=2)
-    parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--layer-num', type=int, default=2)
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--batch-size', type=int, default=128)
+    parser.add_argument('--layer-num', type=int, default=1)
+    parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -39,16 +39,18 @@ def get_args():
         default='cuda' if torch.cuda.is_available() else 'cpu')
     # ppo special
     parser.add_argument('--vf-coef', type=float, default=0.5)
-    parser.add_argument('--ent-coef', type=float, default=0.0)
+    parser.add_argument('--ent-coef', type=float, default=0.01)
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
     parser.add_argument('--gae-lambda', type=float, default=0.95)
+    parser.add_argument('--rew-norm', type=bool, default=True)
+    parser.add_argument('--dual-clip', type=float, default=5.)
+    parser.add_argument('--value-clip', type=bool, default=True)
     args = parser.parse_known_args()[0]
     return args
 
 
-def _test_ppo(args=get_args()):
-    # just a demo, I have not made it work :(
+def test_ppo(args=get_args()):
     torch.set_num_threads(1)  # we just need only one thread for NN
     env = gym.make(args.task)
     if args.task == 'Pendulum-v0':
@@ -85,7 +87,11 @@ def _test_ppo(args=get_args()):
         eps_clip=args.eps_clip,
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
-        action_range=[env.action_space.low[0], env.action_space.high[0]],
+        reward_normalization=args.rew_norm,
+        dual_clip=args.dual_clip,
+        value_clip=args.value_clip,
+        # action_range=[env.action_space.low[0], env.action_space.high[0]],)
+        # if clip the action, ppo would not converge :)
         gae_lambda=args.gae_lambda)
     # collector
     train_collector = Collector(
@@ -121,4 +127,4 @@ def _test_ppo(args=get_args()):
 
 
 if __name__ == '__main__':
-    _test_ppo()
+    test_ppo()

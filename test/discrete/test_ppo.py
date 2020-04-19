@@ -20,17 +20,17 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=1626)
+    parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--epoch', type=int, default=100)
-    parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--collect-per-step', type=int, default=10)
+    parser.add_argument('--gamma', type=float, default=0.99)
+    parser.add_argument('--epoch', type=int, default=10)
+    parser.add_argument('--step-per-epoch', type=int, default=2000)
+    parser.add_argument('--collect-per-step', type=int, default=20)
     parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=32)
+    parser.add_argument('--training-num', type=int, default=20)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -42,7 +42,10 @@ def get_args():
     parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
-    parser.add_argument('--gae-lambda', type=float, default=0.95)
+    parser.add_argument('--gae-lambda', type=float, default=1)
+    parser.add_argument('--rew-norm', type=bool, default=True)
+    parser.add_argument('--dual-clip', type=float, default=None)
+    parser.add_argument('--value-clip', type=bool, default=True)
     args = parser.parse_known_args()[0]
     return args
 
@@ -78,7 +81,10 @@ def test_ppo(args=get_args()):
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         action_range=None,
-        gae_lambda=args.gae_lambda)
+        gae_lambda=args.gae_lambda,
+        reward_normalization=args.rew_norm,
+        dual_clip=args.dual_clip,
+        value_clip=args.value_clip)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))

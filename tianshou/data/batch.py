@@ -79,7 +79,7 @@ class Batch(object):
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
-        for k in self.__dict__.keys():
+        for k in sorted(self.__dict__.keys()):
             if k[0] != '_' and self.__dict__[k] is not None:
                 rpl = '\n' + ' ' * (6 + len(k))
                 obj = str(self.__dict__[k]).replace('\n', rpl)

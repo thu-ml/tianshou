@@ -57,6 +57,18 @@ def test_fn(size=2560):
     batch = fn(batch, buf, 0)
     ans = np.array([7.6, 6, 1.2, 2, 3.45, 4.5, 5])
     assert abs(batch.returns - ans).sum() <= 1e-5
+    batch = Batch(
+        done=np.array([0, 0, 0, 1., 0, 0, 0, 1, 0, 0, 0, 1]),
+        rew=np.array([
+            101, 102, 103., 200, 104, 105, 106, 201, 107, 108, 109, 202])
+    )
+    v = np.array([2., 3., 4, -1, 5., 6., 7, -2, 8., 9., 10, -3])
+    ret = policy.compute_episodic_return(batch, v, gamma=0.99, gae_lambda=0.95)
+    returns = np.array([
+        454.8344, 376.1143, 291.298, 200.,
+        464.5610, 383.1085, 295.387, 201.,
+        474.2876, 390.1027, 299.476, 202.])
+    assert abs(ret.returns - returns).sum() <= 1e-3
     if __name__ == '__main__':
         batch = Batch(
             done=np.random.randint(100, size=size) == 0,

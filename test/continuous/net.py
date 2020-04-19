@@ -39,7 +39,8 @@ class ActorProb(nn.Module):
             self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
         self.model = nn.Sequential(*self.model)
         self.mu = nn.Linear(128, np.prod(action_shape))
-        self.sigma = nn.Linear(128, np.prod(action_shape))
+        self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
+        # self.sigma = nn.Linear(128, np.prod(action_shape))
         self._max = max_action
 
     def forward(self, s, **kwargs):
@@ -48,8 +49,13 @@ class ActorProb(nn.Module):
         batch = s.shape[0]
         s = s.view(batch, -1)
         logits = self.model(s)
-        mu = self._max * torch.tanh(self.mu(logits))
-        sigma = torch.exp(self.sigma(logits))
+        mu = self.mu(logits)
+        shape = [1] * len(mu.shape)
+        shape[1] = -1
+        sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
+        # assert sigma.shape == mu.shape
+        # mu = self._max * torch.tanh(self.mu(logits))
+        # sigma = torch.exp(self.sigma(logits))
         return (mu, sigma), None
 
 

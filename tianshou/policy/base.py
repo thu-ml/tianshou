@@ -76,7 +76,8 @@ class BasePolicy(ABC, nn.Module):
         """
         pass
 
-    def compute_episodic_return(self, batch, v_s_=None,
+    @staticmethod
+    def compute_episodic_return(batch, v_s_=None,
                                 gamma=0.99, gae_lambda=0.95):
         """Compute returns over given full-length episodes, including the
         implementation of Generalized Advantage Estimation (arXiv:1506.02438).
@@ -93,11 +94,11 @@ class BasePolicy(ABC, nn.Module):
         """
         if v_s_ is None:
             v_s_ = np.zeros_like(batch.rew)
-        if not isinstance(v_s_, np.ndarray):
-            v_s_ = np.array(v_s_, np.float)
         else:
-            v_s_ = v_s_.flatten()
-        batch.returns = np.roll(v_s_, 1)
+            if not isinstance(v_s_, np.ndarray):
+                v_s_ = np.array(v_s_, np.float)
+            v_s_ = v_s_.reshape(batch.rew.shape)
+        batch.returns = np.roll(v_s_, 1, axis=0)
         m = (1. - batch.done) * gamma
         delta = batch.rew + v_s_ * m - batch.returns
         m *= gae_lambda

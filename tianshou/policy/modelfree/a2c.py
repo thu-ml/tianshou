@@ -51,7 +51,7 @@ class A2CPolicy(PGPolicy):
                 batch, None, gamma=self._gamma, gae_lambda=self._lambda)
         v_ = []
         with torch.no_grad():
-            for b in batch.split(self._batch * 4, permute=False):
+            for b in batch.split(self._batch, permute=False):
                 v_.append(self.critic(b.obs_next).detach().cpu().numpy())
         v_ = np.concatenate(v_, axis=0)
         return self.compute_episodic_return(

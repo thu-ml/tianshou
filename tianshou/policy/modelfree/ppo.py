@@ -1,8 +1,6 @@
 import torch
 import numpy as np
 from torch import nn
-from copy import deepcopy
-import torch.nn.functional as F
 
 from tianshou.data import Batch
 from tianshou.policy import PGPolicy
@@ -28,6 +26,13 @@ class PPOPolicy(PGPolicy):
     :type action_range: [float, float]
     :param float gae_lambda: in [0, 1], param for Generalized Advantage
         Estimation, defaults to 0.95.
+    :param float dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
+        where c > 1 is a constant indicating the lower bound,
+        defaults to 5.0 (set ``None`` if you do not want to use it).
+    :param bool value_clip: a parameter mentioned in arXiv:1811.02553 Sec. 4.1,
+        defaults to ``True``.
+    :param bool reward_normalization: normalize the returns to Normal(0, 1),
+        defaults to ``True``.
 
     .. seealso::
 
@@ -36,13 +41,9 @@ class PPOPolicy(PGPolicy):
     """
 
     def __init__(self, actor, critic, optim, dist_fn,
-                 discount_factor=0.99,
-                 max_grad_norm=.5,
-                 eps_clip=.2,
-                 vf_coef=.5,
-                 ent_coef=.0,
-                 action_range=None,
-                 gae_lambda=0.95,
+                 discount_factor=0.99, max_grad_norm=.5, eps_clip=.2,
+                 vf_coef=.5, ent_coef=.01, action_range=None, gae_lambda=0.95,
+                 dual_clip=5., value_clip=True, reward_normalization=True,
                  **kwargs):
         super().__init__(None, None, dist_fn, discount_factor, **kwargs)
         self._max_grad_norm = max_grad_norm
@@ -50,41 +51,36 @@ class PPOPolicy(PGPolicy):
         self._w_vf = vf_coef
         self._w_ent = ent_coef
         self._range = action_range
-        self.actor, self.actor_old = actor, deepcopy(actor)
-        self.actor_old.eval()
-        self.critic, self.critic_old = critic, deepcopy(critic)
-        self.critic_old.eval()
+        self.actor = actor
+        self.critic = critic
         self.optim = optim
         self._batch = 64
         assert 0 <= gae_lambda <= 1, 'GAE lambda should be in [0, 1].'
         self._lambda = gae_lambda
-
-    def train(self):
-        """Set the module in training mode, except for the target network."""
-        self.training = True
-        self.actor.train()
-        self.critic.train()
-
-    def eval(self):
-        """Set the module in evaluation mode, except for the target network."""
-        self.training = False
-        self.actor.eval()
-        self.critic.eval()
+        assert dual_clip is None or dual_clip > 1, \
+            'Dual-clip PPO parameter should greater than 1.'
+        self._dual_clip = dual_clip
+        self._value_clip = value_clip
+        self._rew_norm = reward_normalization
+        self.__eps = np.finfo(np.float32).eps.item()
 
     def process_fn(self, batch, buffer, indice):
+        if self._rew_norm:
+            mean, std = batch.rew.mean(), batch.rew.std()
+            if std > self.__eps:
+                batch.rew = (batch.rew - mean) / std
         if self._lambda in [0, 1]:
             return self.compute_episodic_return(
                 batch, None, gamma=self._gamma, gae_lambda=self._lambda)
         v_ = []
         with torch.no_grad():
-            for b in batch.split(self._batch * 4, permute=False):
-                v_.append(self.critic(b.obs_next).detach().cpu().numpy())
-        v_ = np.concatenate(v_, axis=0)
-        batch.v_ = v_
+            for b in batch.split(self._batch, permute=False):
+                v_.append(self.critic(b.obs_next))
+        v_ = torch.cat(v_, dim=0).cpu().numpy()
         return self.compute_episodic_return(
             batch, v_, gamma=self._gamma, gae_lambda=self._lambda)
 
-    def forward(self, batch, state=None, model='actor', **kwargs):
+    def forward(self, batch, state=None, **kwargs):
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
@@ -99,8 +95,7 @@ class PPOPolicy(PGPolicy):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
-        model = getattr(self, model)
-        logits, h = model(batch.obs, state=state, info=batch.info)
+        logits, h = self.actor(batch.obs, state=state, info=batch.info)
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
@@ -110,35 +105,54 @@ class PPOPolicy(PGPolicy):
             act = act.clamp(self._range[0], self._range[1])
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def sync_weight(self):
-        """Synchronize the weight for the target network."""
-        self.actor_old.load_state_dict(self.actor.state_dict())
-        self.critic_old.load_state_dict(self.critic.state_dict())
-
     def learn(self, batch, batch_size=None, repeat=1, **kwargs):
         self._batch = batch_size
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
-        r = batch.returns
-        batch.returns = (r - r.mean()) / (r.std() + self._eps)
-        batch.act = torch.tensor(batch.act)
-        batch.returns = torch.tensor(batch.returns)[:, None]
-        batch.v_ = torch.tensor(batch.v_)
+        v = []
+        old_log_prob = []
+        with torch.no_grad():
+            for b in batch.split(batch_size, permute=False):
+                v.append(self.critic(b.obs))
+                old_log_prob.append(self(b).dist.log_prob(
+                    torch.tensor(b.act, device=v[0].device)))
+        batch.v = torch.cat(v, dim=0)  # old value
+        dev = batch.v.device
+        batch.act = torch.tensor(batch.act, dtype=torch.float, device=dev)
+        batch.logp_old = torch.cat(old_log_prob, dim=0)
+        batch.returns = torch.tensor(
+            batch.returns, dtype=torch.float, device=dev
+        ).reshape(batch.v.shape)
+        if self._rew_norm:
+            mean, std = batch.returns.mean(), batch.returns.std()
+            if std > self.__eps:
+                batch.returns = (batch.returns - mean) / std
+        batch.adv = batch.returns - batch.v
+        if self._rew_norm:
+            mean, std = batch.adv.mean(), batch.adv.std()
+            if std > self.__eps:
+                batch.adv = (batch.adv - mean) / std
         for _ in range(repeat):
             for b in batch.split(batch_size):
-                vs_old = self.critic_old(b.obs)
-                vs__old = b.v_.to(vs_old.device)
                 dist = self(b).dist
-                dist_old = self(b, model='actor_old').dist
-                target_v = b.returns.to(vs_old.device) + self._gamma * vs__old
-                adv = (target_v - vs_old).detach()
-                a = b.act.to(adv.device)
-                ratio = torch.exp(dist.log_prob(a) - dist_old.log_prob(a))
-                surr1 = ratio * adv
+                value = self.critic(b.obs)
+                ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
+                surr1 = ratio * b.adv
                 surr2 = ratio.clamp(
-                    1. - self._eps_clip, 1. + self._eps_clip) * adv
-                clip_loss = -torch.min(surr1, surr2).mean()
+                    1. - self._eps_clip, 1. + self._eps_clip) * b.adv
+                if self._dual_clip:
+                    clip_loss = -torch.max(torch.min(surr1, surr2),
+                                           self._dual_clip * b.adv).mean()
+                else:
+                    clip_loss = -torch.min(surr1, surr2).mean()
                 clip_losses.append(clip_loss.item())
-                vf_loss = F.smooth_l1_loss(self.critic(b.obs), target_v)
+                if self._value_clip:
+                    v_clip = b.v + (value - b.v).clamp(
+                        -self._eps_clip, self._eps_clip)
+                    vf1 = (b.returns - value).pow(2)
+                    vf2 = (b.returns - v_clip).pow(2)
+                    vf_loss = .5 * torch.max(vf1, vf2).mean()
+                else:
+                    vf_loss = .5 * (b.returns - value).pow(2).mean()
                 vf_losses.append(vf_loss.item())
                 e_loss = dist.entropy().mean()
                 ent_losses.append(e_loss.item())
@@ -150,7 +164,6 @@ class PPOPolicy(PGPolicy):
                     self.actor.parameters()) + list(self.critic.parameters()),
                     self._max_grad_norm)
                 self.optim.step()
-        self.sync_weight()
         return {
             'loss': losses,
             'loss/clip': clip_losses,
