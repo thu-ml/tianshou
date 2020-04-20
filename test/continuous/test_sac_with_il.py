@@ -121,7 +121,7 @@ def test_sac_with_il(args=get_args()):
     net = Actor(1, args.state_shape, args.action_shape,
                 args.max_action, args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
-    il_policy = ImitationPolicy(net, optim)
+    il_policy = ImitationPolicy(net, optim, mode='continuous')
     il_test_collector = Collector(il_policy, test_envs)
     train_collector.reset()
     result = offpolicy_trainer(

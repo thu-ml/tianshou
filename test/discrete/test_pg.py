@@ -167,5 +167,5 @@ def test_pg(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_fn()
+    # test_fn()
     test_pg()

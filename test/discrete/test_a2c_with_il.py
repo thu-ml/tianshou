@@ -6,10 +6,10 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import A2CPolicy
 from tianshou.env import VectorEnv
-from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
+from tianshou.policy import A2CPolicy, ImitationPolicy
+from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
 
 if __name__ == '__main__':
     from net import Net, Actor, Critic
@@ -23,6 +23,7 @@ def get_args():
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=3e-4)
+    parser.add_argument('--il-lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
@@ -95,13 +96,37 @@ def test_a2c(args=get_args()):
         args.test_num, args.batch_size, stop_fn=stop_fn, save_fn=save_fn,
         writer=writer)
     assert stop_fn(result['best_reward'])
-    train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
         collector = Collector(policy, env)
+        result = collector.collect(n_episode=1, render=args.render)
+        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        collector.close()
+
+    # here we define an imitation collector with a trivial policy
+    if args.task == 'Pendulum-v0':
+        env.spec.reward_threshold = -300  # lower the goal
+    net = Net(1, args.state_shape, device=args.device)
+    net = Actor(net, args.action_shape).to(args.device)
+    optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
+    il_policy = ImitationPolicy(net, optim, mode='discrete')
+    il_test_collector = Collector(il_policy, test_envs)
+    train_collector.reset()
+    result = offpolicy_trainer(
+        il_policy, train_collector, il_test_collector, args.epoch,
+        args.step_per_epoch, args.collect_per_step, args.test_num,
+        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
+    assert stop_fn(result['best_reward'])
+    train_collector.close()
+    il_test_collector.close()
+    if __name__ == '__main__':
+        pprint.pprint(result)
+        # Let's watch its performance!
+        env = gym.make(args.task)
+        collector = Collector(il_policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
