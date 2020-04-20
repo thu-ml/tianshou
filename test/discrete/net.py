@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class Net(nn.Module):
-    def __init__(self, layer_num, state_shape, action_shape=0, device='cpu'):
+    def __init__(self, layer_num, layer_size, state_shape, action_shape=0, device='cpu'):
         super().__init__()
         self.device = device
         self.model = [

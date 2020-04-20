@@ -104,7 +104,7 @@ def test_sac(args=get_args()):
         return x >= (args.reward_threshold or env.spec.reward_threshold)
 
     def learner(pol, batch, batch_size, repeat, peer=0.):
-        losses, ent_losses = [], []
+        losses, peer_terms, ent_losses = [], [], []
         for _ in range(repeat):
             for b in batch.split(batch_size):
                 acts = pol(b).act
@@ -112,7 +112,9 @@ def test_sac(args=get_args()):
                 loss = F.mse_loss(acts, demo)
                 if peer != 0:
                     peer_demo = demo[torch.randperm(len(demo))]
-                    loss -= peer * F.mse_loss(acts, peer_demo)
+                    peer_term = peer * F.mse_loss(acts, peer_demo)
+                    loss -= peer_term
+                    peer_terms.append(peer_term.detach().cpu.numpy())
                 pol.actor_optim.zero_grad()
                 loss.backward()
                 pol.actor_optim.step()
@@ -120,6 +122,7 @@ def test_sac(args=get_args()):
         return {
             'loss': losses,
             'loss/ent': ent_losses,
+            'loss/peer': peer_terms if peer else None,
             'peer': peer,
         }
 

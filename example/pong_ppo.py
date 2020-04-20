@@ -12,7 +12,7 @@ from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
-from .discrete_net import Net, Actor, Critic
+from example.discrete_net import CNN, Actor, Critic
 
 
 def get_args():
@@ -33,15 +33,13 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=8)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--device', type=str, default='cpu')
     # ppo special
     parser.add_argument('--vf-coef', type=float, default=0.5)
     parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
-    parser.add_argument('--max_episode_steps', type=int, default=2000)
+    parser.add_argument('--max-episode-steps', type=int, default=2000)
     args = parser.parse_args()
     args.note = args.note or datetime.datetime.now().strftime("%y%m%d%H%M%S")
     return args
@@ -66,7 +64,7 @@ def test_ppo(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, device=args.device)
+    net = CNN(args.state_shape, device=args.device)
     actor = Actor(net, args.action_shape).to(args.device)
     critic = Critic(net).to(args.device)
     optim = torch.optim.Adam(list(

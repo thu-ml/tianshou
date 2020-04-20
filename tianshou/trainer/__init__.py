@@ -8,4 +8,5 @@ __all__ = [
     'test_episode',
     'onpolicy_trainer',
     'offpolicy_trainer',
+    'imitation_trainer'
 ]
