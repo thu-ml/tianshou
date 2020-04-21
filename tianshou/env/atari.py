@@ -95,8 +95,9 @@ class preprocessing(object):
                 axis=-1)
         if self.count >= self.max_episode_steps:
             terminal = True
-        self.terminal = terminal
-        return observation, total_reward, is_terminal, info
+        else:
+            terminal = False
+        return observation, total_reward, (terminal or is_terminal), info
 
     def _grayscale_obs(self, output):
         self.env.ale.getScreenGrayscale(output)
