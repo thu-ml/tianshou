@@ -60,7 +60,7 @@ class preprocessing(object):
         return np.stack([
             self._pool_and_resize() for _ in range(self.frame_skip)], axis=-1)
 
-    def render(self, mode):
+    def render(self, mode='human'):
         return self.env.render(mode)
 
     def step(self, action):

@@ -3,7 +3,8 @@ import numpy as np
 
 
 class MovAvg(object):
-    """Class for moving average. Usage:
+    """Class for moving average. It will automatically exclude the infinity and
+    NaN. Usage:
     ::
 
         >>> stat = MovAvg(size=66)
@@ -22,19 +23,19 @@ class MovAvg(object):
         super().__init__()
         self.size = size
         self.cache = []
+        self.banned = [np.inf, np.nan, -np.inf]
 
     def add(self, x):
         """Add a scalar into :class:`MovAvg`. You can add ``torch.Tensor`` with
-        only one element, a python scalar, or a list of python scalar. It will
-        automatically exclude the infinity and NaN.
+        only one element, a python scalar, or a list of python scalar.
         """
         if isinstance(x, torch.Tensor):
             x = x.item()
         if isinstance(x, list):
             for _ in x:
-                if _ not in [np.inf, np.nan, -np.inf]:
+                if _ not in self.banned:
                     self.cache.append(_)
-        elif x != np.inf:
+        elif x not in self.banned:
             self.cache.append(x)
         if self.size > 0 and len(self.cache) > self.size:
             self.cache = self.cache[-self.size:]
