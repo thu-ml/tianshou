@@ -316,6 +316,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         super().reset()
 
     def update_weight(self, indice, new_weight: np.ndarray):
+        """update priority weight by indice in this buffer
+
+        :param indice: indice you want to update weight
+        :param new_weight: new priority weight you wangt to update
+        """
         self._weight_sum += np.power(np.abs(new_weight), self._alpha).sum() \
             - self.weight[indice].sum()
         self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
