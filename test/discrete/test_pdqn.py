@@ -37,7 +37,7 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--prioritized-replay', type=int, default=0)
+    parser.add_argument('--prioritized-replay', type=int, default=1)
     parser.add_argument('--alpha', type=float, default=0.5)
     parser.add_argument('--beta', type=float, default=0.5)
     parser.add_argument(
