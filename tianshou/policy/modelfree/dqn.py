@@ -3,8 +3,8 @@ import numpy as np
 from copy import deepcopy
 import torch.nn.functional as F
 
-from tianshou.data import Batch, PrioritizedReplayBuffer
 from tianshou.policy import BasePolicy
+from tianshou.data import Batch, PrioritizedReplayBuffer
 
 
 class DQNPolicy(BasePolicy):

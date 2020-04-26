@@ -211,7 +211,7 @@ Setup policy and collectors:
 
 ```python
 policy = ts.policy.DQNPolicy(net, optim, gamma, n_step,
-    use_target_network=True, target_update_freq=target_freq)
+                             target_update_freq=target_freq)
 train_collector = ts.data.Collector(policy, train_envs, ts.data.ReplayBuffer(buffer_size))
 test_collector = ts.data.Collector(policy, test_envs)
 ```
@@ -242,7 +242,7 @@ collector.collect(n_episode=1, render=1 / 35)
 collector.close()
 ```
 
-Look at the result saved in tensorboard: (on bash script)
+Look at the result saved in tensorboard: (with bash script in your terminal)
 
 ```bash
 tensorboard --logdir log/dqn

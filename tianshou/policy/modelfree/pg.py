@@ -21,14 +21,15 @@ class PGPolicy(BasePolicy):
     """
 
     def __init__(self, model, optim, dist_fn=torch.distributions.Categorical,
-                 discount_factor=0.99, **kwargs):
+                 discount_factor=0.99, reward_normalization=False, **kwargs):
         super().__init__(**kwargs)
         self.model = model
         self.optim = optim
         self.dist_fn = dist_fn
-        self._eps = np.finfo(np.float32).eps.item()
         assert 0 <= discount_factor <= 1, 'discount factor should in [0, 1]'
         self._gamma = discount_factor
+        self._rew_norm = reward_normalization
+        self.__eps = np.finfo(np.float32).eps.item()
 
     def process_fn(self, batch, buffer, indice):
         r"""Compute the discounted returns for each frame:
@@ -71,7 +72,8 @@ class PGPolicy(BasePolicy):
     def learn(self, batch, batch_size=None, repeat=1, **kwargs):
         losses = []
         r = batch.returns
-        batch.returns = (r - r.mean()) / (r.std() + self._eps)
+        if self._rew_norm and r.std() > self.__eps:
+            batch.returns = (r - r.mean()) / r.std()
         for _ in range(repeat):
             for b in batch.split(batch_size):
                 self.optim.zero_grad()

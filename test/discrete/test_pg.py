@@ -102,6 +102,7 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument('--rew-norm', type=bool, default=True)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -132,7 +133,8 @@ def test_pg(args=get_args()):
     net = net.to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
-    policy = PGPolicy(net, optim, dist, args.gamma)
+    policy = PGPolicy(net, optim, dist, args.gamma,
+                      reward_normalization=args.rew_norm)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))

@@ -34,7 +34,8 @@ class A2CPolicy(PGPolicy):
     def __init__(self, actor, critic, optim,
                  dist_fn=torch.distributions.Categorical,
                  discount_factor=0.99, vf_coef=.5, ent_coef=.01,
-                 max_grad_norm=None, gae_lambda=0.95, **kwargs):
+                 max_grad_norm=None, gae_lambda=0.95,
+                 reward_normalization=False, **kwargs):
         super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
         self.actor = actor
         self.critic = critic
@@ -44,6 +45,8 @@ class A2CPolicy(PGPolicy):
         self._w_ent = ent_coef
         self._grad_norm = max_grad_norm
         self._batch = 64
+        self._rew_norm = reward_normalization
+        self.__eps = np.finfo(np.float32).eps.item()
 
     def process_fn(self, batch, buffer, indice):
         if self._lambda in [0, 1]:
@@ -82,6 +85,9 @@ class A2CPolicy(PGPolicy):
 
     def learn(self, batch, batch_size=None, repeat=1, **kwargs):
         self._batch = batch_size
+        r = batch.returns
+        if self._rew_norm and r.std() > self.__eps:
+            batch.returns = (r - r.mean()) / r.std()
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for b in batch.split(batch_size):
