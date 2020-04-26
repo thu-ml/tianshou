@@ -258,14 +258,87 @@ class ListReplayBuffer(ReplayBuffer):
 class PrioritizedReplayBuffer(ReplayBuffer):
     """docstring for PrioritizedReplayBuffer"""
 
-    def __init__(self, size, **kwargs):
+    def __init__(self, size, alpha: float, beta: float,
+                 mode: str = 'weight', **kwargs):
+        if mode != 'weight':
+            raise NotImplementedError
         super().__init__(size, **kwargs)
+        self._alpha = alpha  # prioritization exponent
+        self._beta = beta  # importance sample soft coefficient
+        self._weight_sum = 0.0
+        self.weight = np.zeros(size, dtype=np.float64)
+        self._amortization_freq = 50
+        self._amortization_counter = 0
 
-    def add(self, obs, act, rew, done, obs_next=0, info={}, weight=None):
-        raise NotImplementedError
+    def add(self, obs, act, rew, done, obs_next=0, info={}, weight=1.0):
+        """Add a batch of data into replay buffer."""
+        self._weight_sum += np.abs(weight)**self._alpha - \
+            self.weight[self._index]
+        # we have to sacrifice some convenience for speed :(
+        self._add_to_buffer('weight', np.abs(weight)**self._alpha)
+        super().add(obs, act, rew, done, obs_next, info)
+        self._check_weight_sum()
 
-    def sample(self, batch_size):
-        raise NotImplementedError
+    def sample(self, batch_size: int = 0, importance_sample: bool = True):
+        """ Get a random sample from buffer with priority probability. \
+        Return all the data in the buffer if batch_size is ``0``.
+
+        :return: Sample data and its corresponding index inside the buffer.
+        """
+        if batch_size > 0 and batch_size <= self._size:
+            # Multiple sampling of the same sample
+            # will cause weight update conflict
+            indice = np.random.choice(
+                self._size, batch_size,
+                p=(self.weight/self.weight.sum())[:self._size], replace=False)
+            # self._weight_sum is not work for the accuracy issue
+            # p=(self.weight/self._weight_sum)[:self._size], replace=False)
+        elif batch_size == 0:
+            indice = np.concatenate([
+                np.arange(self._index, self._size),
+                np.arange(0, self._index),
+            ])
+        else:
+            # if batch_size larger than len(self),
+            # it will lead to a bug in update weight
+            raise ValueError("batch_size should be less than len(self)")
+        batch = self[indice]
+        if importance_sample:
+            impt_weight = Batch(
+                impt_weight=1/np.power(
+                    self._size*(batch.weight/self._weight_sum), self._beta))
+            batch.append(impt_weight)
+        self._check_weight_sum()
+        return batch, indice
 
     def reset(self):
-        raise NotImplementedError
+        self._amortization_counter = 0
+        super().reset()
+
+    def update_weight(self, indice, new_weight: np.ndarray):
+        """update priority weight by indice in this buffer
+
+        :param indice: indice you want to update weight
+        :param new_weight: new priority weight you wangt to update
+        """
+        self._weight_sum += np.power(np.abs(new_weight), self._alpha).sum() \
+            - self.weight[indice].sum()
+        self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
+
+    def __getitem__(self, index):
+        return Batch(
+            obs=self.get(index, 'obs'),
+            act=self.act[index],
+            rew=self.rew[index],
+            done=self.done[index],
+            obs_next=self.get(index, 'obs_next'),
+            info=self.info[index],
+            weight=self.weight[index]
+        )
+
+    def _check_weight_sum(self):
+        # keep a accurate _weight_sum
+        self._amortization_counter += 1
+        if self._amortization_counter % self._amortization_freq == 0:
+            self._weight_sum = np.sum(self.weight)
+            self._amortization_counter = 0
