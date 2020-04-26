@@ -104,12 +104,15 @@ class DQNPolicy(BasePolicy):
             r = batch.returns
             if isinstance(r, np.ndarray):
                 r = torch.tensor(r, device=q.device, dtype=q.dtype)
-            td = r-q
-            buffer.update_weight(indice, td.detach().numpy())
+            td = r - q
+            buffer.update_weight(indice, td.detach().cpu().numpy())
             impt_weight = torch.tensor(batch.impt_weight,
                                        device=q.device, dtype=torch.float)
-            loss = (td.pow(2)*impt_weight).mean()
-            batch.loss = loss
+            loss = (td.pow(2) * impt_weight).mean()
+            if not hasattr(batch, 'loss'):
+                batch.loss = loss
+            else:
+                batch.loss += loss
         return batch
 
     def forward(self, batch, state=None,
