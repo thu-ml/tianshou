@@ -15,7 +15,7 @@ def test_batch():
     with pytest.raises(IndexError):
         batch[2]
     batch.obs = np.arange(5)
-    for i, b in enumerate(batch.split(1, permute=False)):
+    for i, b in enumerate(batch.split(1, shuffle=False)):
         assert b.obs == batch[i].obs
     print(batch)
 

@@ -3,15 +3,16 @@ import time
 
 
 class MyTestEnv(gym.Env):
-    def __init__(self, size, sleep=0):
+    def __init__(self, size, sleep=0, dict_state=False):
         self.size = size
         self.sleep = sleep
+        self.dict_state = dict_state
         self.reset()
 
     def reset(self, state=0):
         self.done = False
         self.index = state
-        return self.index
+        return {'index': self.index} if self.dict_state else self.index
 
     def step(self, action):
         if self.done:
@@ -20,11 +21,21 @@ class MyTestEnv(gym.Env):
             time.sleep(self.sleep)
         if self.index == self.size:
             self.done = True
-            return self.index, 0, True, {}
+            if self.dict_state:
+                return {'index': self.index}, 0, True, {}
+            else:
+                return self.index, 0, True, {}
         if action == 0:
             self.index = max(self.index - 1, 0)
-            return self.index, 0, False, {}
+            if self.dict_state:
+                return {'index': self.index}, 0, False, {}
+            else:
+                return self.index, 0, False, {}
         elif action == 1:
             self.index += 1
             self.done = self.index == self.size
-            return self.index, int(self.done), self.done, {'key': 1}
+            if self.dict_state:
+                return {'index': self.index}, int(self.done), self.done, \
+                    {'key': 1}
+            else:
+                return self.index, int(self.done), self.done, {'key': 1}

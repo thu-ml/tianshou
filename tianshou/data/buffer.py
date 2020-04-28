@@ -1,3 +1,4 @@
+import pprint
 import numpy as np
 from tianshou.data.batch import Batch
 
@@ -92,6 +93,7 @@ class ReplayBuffer(object):
         self._maxsize = size
         self._stack = stack_num
         self._save_s_ = not ignore_obs_next
+        self._meta = {}
         self.reset()
 
     def __len__(self):
@@ -102,10 +104,11 @@ class ReplayBuffer(object):
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
-        for k in self.__dict__.keys():
-            if k[0] != '_' and self.__dict__[k] is not None:
+        for k in sorted(list(self.__dict__.keys()) + list(self._meta.keys())):
+            if k[0] != '_' and (self.__dict__.get(k, None) is not None or
+                                k in self._meta.keys()):
                 rpl = '\n' + ' ' * (6 + len(k))
-                obj = str(self.__dict__[k]).replace('\n', rpl)
+                obj = pprint.pformat(self.__getattr__(k)).replace('\n', rpl)
                 s += f'    {k}: {obj},\n'
                 flag = True
         if flag:
@@ -114,23 +117,51 @@ class ReplayBuffer(object):
             s = self.__class__.__name__ + '()\n'
         return s
 
+    def __getattr__(self, key):
+        """Return self.key"""
+        if key not in self._meta.keys():
+            if key not in self.__dict__.keys():
+                raise AttributeError(key)
+            return self.__dict__[key]
+        d = {}
+        for k_ in self._meta[key]:
+            k__ = '_' + key + '@' + k_
+            d[k_] = self.__dict__[k__]
+        return d
+
     def _add_to_buffer(self, name, inst):
         if inst is None:
             if getattr(self, name, None) is None:
                 self.__dict__[name] = None
             return
+        if name in self._meta.keys():
+            for k in inst.keys():
+                self._add_to_buffer('_' + name + '@' + k, inst[k])
+            return
         if self.__dict__.get(name, None) is None:
             if isinstance(inst, np.ndarray):
                 self.__dict__[name] = np.zeros([self._maxsize, *inst.shape])
             elif isinstance(inst, dict):
-                self.__dict__[name] = np.array(
-                    [{} for _ in range(self._maxsize)])
+                if name == 'info':
+                    self.__dict__[name] = np.array(
+                        [{} for _ in range(self._maxsize)])
+                else:
+                    if self._meta.get(name, None) is None:
+                        self._meta[name] = [
+                            '_' + name + '@' + k for k in inst.keys()]
+                    for k in inst.keys():
+                        k_ = '_' + name + '@' + k
+                        self._add_to_buffer(k_, inst[k])
             else:  # assume `inst` is a number
                 self.__dict__[name] = np.zeros([self._maxsize])
         if isinstance(inst, np.ndarray) and \
                 self.__dict__[name].shape[1:] != inst.shape:
-            self.__dict__[name] = np.zeros([self._maxsize, *inst.shape])
-        self.__dict__[name][self._index] = inst
+            raise ValueError(
+                "Cannot add data to a buffer with different shape, "
+                f"key: {name}, expect shape: {self.__dict__[name].shape[1:]}, "
+                f"given shape: {inst.shape}.")
+        if name not in self._meta.keys():
+            self.__dict__[name][self._index] = inst
 
     def update(self, buffer):
         """Move the data from the given buffer to self."""
@@ -144,7 +175,8 @@ class ReplayBuffer(object):
             if i == begin:
                 break
 
-    def add(self, obs, act, rew, done, obs_next=None, info={}, weight=None):
+    def add(self, obs, act, rew, done, obs_next=None, info={}, policy={},
+            **kwargs):
         """Add a batch of data into replay buffer."""
         assert isinstance(info, dict), \
             'You should return a dict in the last argument of env.step().'
@@ -155,6 +187,7 @@ class ReplayBuffer(object):
         if self._save_s_:
             self._add_to_buffer('obs_next', obs_next)
         self._add_to_buffer('info', info)
+        self._add_to_buffer('policy', policy)
         if self._maxsize > 0:
             self._size = min(self._size + 1, self._maxsize)
             self._index = (self._index + 1) % self._maxsize
@@ -180,11 +213,13 @@ class ReplayBuffer(object):
             ])
         return self[indice], indice
 
-    def get(self, indice, key):
+    def get(self, indice, key, stack_num=None):
         """Return the stacked result, e.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t],
         where s is self.key, t is indice. The stack_num (here equals to 4) is
         given from buffer initialization procedure.
         """
+        if stack_num is None:
+            stack_num = self._stack
         if not isinstance(indice, np.ndarray):
             if np.isscalar(indice):
                 indice = np.array(indice)
@@ -200,18 +235,37 @@ class ReplayBuffer(object):
             indice += 1 - self.done[indice].astype(np.int)
             indice[indice == self._size] = 0
             key = 'obs'
-        if self._stack == 0:
+        if stack_num == 0:
             self.done[last_index] = last_done
-            return self.__dict__[key][indice]
-        stack = []
-        for i in range(self._stack):
-            stack = [self.__dict__[key][indice]] + stack
+            if key in self._meta:
+                return {k.split('@')[-1]: self.__dict__[k][indice]
+                        for k in self._meta[key]}
+            else:
+                return self.__dict__[key][indice]
+        if key in self._meta:
+            many_keys = self._meta[key]
+            stack = {k.split('@')[-1]: [] for k in self._meta[key]}
+        else:
+            stack = []
+            many_keys = None
+        for i in range(stack_num):
+            if many_keys is not None:
+                for k_ in many_keys:
+                    k = k_.split('@')[-1]
+                    stack[k] = [self.__dict__[k_][indice]] + stack[k]
+            else:
+                stack = [self.__dict__[key][indice]] + stack
             pre_indice = indice - 1
             pre_indice[pre_indice == -1] = self._size - 1
             indice = pre_indice + self.done[pre_indice].astype(np.int)
             indice[indice == self._size] = 0
         self.done[last_index] = last_done
-        return np.stack(stack, axis=1)
+        if many_keys is not None:
+            for k in stack:
+                stack[k] = np.stack(stack[k], axis=1)
+        else:
+            stack = np.stack(stack, axis=1)
+        return stack
 
     def __getitem__(self, index):
         """Return a data batch: self[index]. If stack_num is set to be > 0,
@@ -223,7 +277,8 @@ class ReplayBuffer(object):
             rew=self.rew[index],
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
-            info=self.info[index]
+            info=self.info[index],
+            policy=self.get(index, 'policy'),
         )
 
 
@@ -234,7 +289,7 @@ class ListReplayBuffer(ReplayBuffer):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ListReplayBuffer` for more
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for more
         detailed explanation.
     """
 
@@ -256,7 +311,13 @@ class ListReplayBuffer(ReplayBuffer):
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
-    """docstring for PrioritizedReplayBuffer"""
+    """Prioritized replay buffer implementation.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for more
+        detailed explanation.
+    """
 
     def __init__(self, size, alpha: float, beta: float,
                  mode: str = 'weight', **kwargs):
@@ -270,17 +331,18 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._amortization_freq = 50
         self._amortization_counter = 0
 
-    def add(self, obs, act, rew, done, obs_next=0, info={}, weight=1.0):
+    def add(self, obs, act, rew, done, obs_next=0, info={}, policy={},
+            weight=1.0):
         """Add a batch of data into replay buffer."""
         self._weight_sum += np.abs(weight)**self._alpha - \
             self.weight[self._index]
         # we have to sacrifice some convenience for speed :(
-        self._add_to_buffer('weight', np.abs(weight)**self._alpha)
-        super().add(obs, act, rew, done, obs_next, info)
+        self._add_to_buffer('weight', np.abs(weight) ** self._alpha)
+        super().add(obs, act, rew, done, obs_next, info, policy)
         self._check_weight_sum()
 
     def sample(self, batch_size: int = 0, importance_sample: bool = True):
-        """ Get a random sample from buffer with priority probability. \
+        """Get a random sample from buffer with priority probability. \
         Return all the data in the buffer if batch_size is ``0``.
 
         :return: Sample data and its corresponding index inside the buffer.
@@ -290,7 +352,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             # will cause weight update conflict
             indice = np.random.choice(
                 self._size, batch_size,
-                p=(self.weight/self.weight.sum())[:self._size], replace=False)
+                p=(self.weight / self.weight.sum())[:self._size],
+                replace=False)
             # self._weight_sum is not work for the accuracy issue
             # p=(self.weight/self._weight_sum)[:self._size], replace=False)
         elif batch_size == 0:
@@ -305,8 +368,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         batch = self[indice]
         if importance_sample:
             impt_weight = Batch(
-                impt_weight=1/np.power(
-                    self._size*(batch.weight/self._weight_sum), self._beta))
+                impt_weight=1 / np.power(
+                    self._size * (batch.weight / self._weight_sum),
+                    self._beta))
             batch.append(impt_weight)
         self._check_weight_sum()
         return batch, indice
@@ -316,7 +380,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         super().reset()
 
     def update_weight(self, indice, new_weight: np.ndarray):
-        """update priority weight by indice in this buffer
+        """Update priority weight by indice in this buffer.
 
         :param indice: indice you want to update weight
         :param new_weight: new priority weight you wangt to update
@@ -333,7 +397,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
             info=self.info[index],
-            weight=self.weight[index]
+            weight=self.weight[index],
+            policy=self.get(index, 'policy'),
         )
 
     def _check_weight_sum(self):

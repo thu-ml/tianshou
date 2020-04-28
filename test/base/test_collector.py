@@ -2,7 +2,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import BasePolicy
-from tianshou.env import SubprocVectorEnv
+from tianshou.env import VectorEnv, SubprocVectorEnv
 from tianshou.data import Collector, Batch, ReplayBuffer
 
 if __name__ == '__main__':
@@ -12,10 +12,13 @@ else:  # pytest
 
 
 class MyPolicy(BasePolicy):
-    def __init__(self):
+    def __init__(self, dict_state=False):
         super().__init__()
+        self.dict_state = dict_state
 
     def forward(self, batch, state=None):
+        if self.dict_state:
+            return Batch(act=np.ones(batch.obs['index'].shape[0]))
         return Batch(act=np.ones(batch.obs.shape[0]))
 
     def learn(self):
@@ -75,5 +78,24 @@ def test_collector():
         1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5])
 
 
+def test_collector_with_dict_state():
+    env = MyTestEnv(size=5, sleep=0, dict_state=True)
+    policy = MyPolicy(dict_state=True)
+    c0 = Collector(policy, env, ReplayBuffer(size=100))
+    c0.collect(n_step=3)
+    c0.collect(n_episode=3)
+    env_fns = [
+        lambda: MyTestEnv(size=2, sleep=0, dict_state=True),
+        lambda: MyTestEnv(size=3, sleep=0, dict_state=True),
+        lambda: MyTestEnv(size=4, sleep=0, dict_state=True),
+        lambda: MyTestEnv(size=5, sleep=0, dict_state=True),
+    ]
+    envs = VectorEnv(env_fns)
+    c1 = Collector(policy, envs, ReplayBuffer(size=100))
+    c1.collect(n_step=10)
+    c1.collect(n_episode=[2, 1, 1, 2])
+
+
 if __name__ == '__main__':
     test_collector()
+    test_collector_with_dict_state()

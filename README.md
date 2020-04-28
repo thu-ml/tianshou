@@ -5,9 +5,9 @@
 ---
 
 [![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/)
+[![Documentation Status](https://readthedocs.org/projects/tianshou/badge/?version=latest)](https://tianshou.readthedocs.io)
 [![Unittest](https://github.com/thu-ml/tianshou/workflows/Unittest/badge.svg?branch=master)](https://github.com/thu-ml/tianshou/actions)
 [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou)
-[![Documentation Status](https://readthedocs.org/projects/tianshou/badge/?version=latest)](https://tianshou.readthedocs.io)
 [![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues)
 [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/network)
@@ -40,13 +40,24 @@ In Chinese, Tianshou means the innate talent, not taught by others. Tianshou is 
 Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/). It requires Python >= 3.6. You can simply install Tianshou with the following command:
 
 ```bash
-pip3 install tianshou -U
+pip3 install tianshou
 ```
 
 You can also install with the newest version through GitHub:
 
 ```bash
 pip3 install git+https://github.com/thu-ml/tianshou.git@master
+```
+
+If you use Anaconda or Miniconda, you can install Tianshou through the following command lines:
+
+```bash
+# create a new virtualenv and install pip, change the env name if you like
+conda create -n myenv pip
+# activate the environment
+conda activate myenv
+# install tianshou
+pip install tianshou
 ```
 
 After installation, open your python console and type

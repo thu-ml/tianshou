@@ -1,4 +1,5 @@
 import torch
+import pprint
 import numpy as np
 
 
@@ -23,7 +24,7 @@ class Batch(object):
         )
 
     In short, you can define a :class:`Batch` with any key-value pair. The
-    current implementation of Tianshou typically use 6 keys in
+    current implementation of Tianshou typically use 6 reserved keys in
     :class:`~tianshou.data.Batch`:
 
     * ``obs`` the observation of step :math:`t` ;
@@ -56,7 +57,7 @@ class Batch(object):
         array([0, 11, 22, 0, 11, 22])
 
         >>> # split whole data into multiple small batch
-        >>> for d in data.split(size=2, permute=False):
+        >>> for d in data.split(size=2, shuffle=False):
         ...     print(d.obs, d.rew)
         [ 0 11] [6 6]
         [22  0] [6 6]
@@ -65,24 +66,56 @@ class Batch(object):
 
     def __init__(self, **kwargs):
         super().__init__()
-        self.__dict__.update(kwargs)
+        self._meta = {}
+        for k, v in kwargs.items():
+            if (isinstance(v, list) or isinstance(v, np.ndarray)) \
+                    and len(v) > 0 and isinstance(v[0], dict) and k != 'info':
+                self._meta[k] = list(v[0].keys())
+                for k_ in v[0].keys():
+                    k__ = '_' + k + '@' + k_
+                    self.__dict__[k__] = np.array([
+                        v[i][k_] for i in range(len(v))
+                    ])
+            elif isinstance(v, dict):
+                self._meta[k] = list(v.keys())
+                for k_ in v.keys():
+                    k__ = '_' + k + '@' + k_
+                    self.__dict__[k__] = v[k_]
+            else:
+                self.__dict__[k] = kwargs[k]
 
     def __getitem__(self, index):
         """Return self[index]."""
+        if isinstance(index, str):
+            return self.__getattr__(index)
         b = Batch()
         for k in self.__dict__.keys():
-            if self.__dict__[k] is not None:
+            if k != '_meta' and self.__dict__[k] is not None:
                 b.__dict__.update(**{k: self.__dict__[k][index]})
+        b._meta = self._meta
         return b
+
+    def __getattr__(self, key):
+        """Return self.key"""
+        if key not in self._meta.keys():
+            if key not in self.__dict__.keys():
+                raise AttributeError(key)
+            return self.__dict__[key]
+        d = {}
+        for k_ in self._meta[key]:
+            k__ = '_' + key + '@' + k_
+            d[k_] = self.__dict__[k__]
+        return d
 
     def __repr__(self):
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
-        for k in sorted(self.__dict__.keys()):
-            if k[0] != '_' and self.__dict__[k] is not None:
+        for k in sorted(list(self.__dict__.keys()) + list(self._meta.keys())):
+            if k[0] != '_' and (self.__dict__.get(k, None) is not None or
+                                k in self._meta.keys()):
                 rpl = '\n' + ' ' * (6 + len(k))
-                obj = str(self.__dict__[k]).replace('\n', rpl)
+                obj = pprint.pformat(self.__getattr__(k)).replace('\n', rpl)
                 s += f'    {k}: {obj},\n'
                 flag = True
         if flag:
@@ -91,10 +124,18 @@ class Batch(object):
             s = self.__class__.__name__ + '()\n'
         return s
 
+    def keys(self):
+        """Return self.keys()."""
+        return sorted([i for i in self.__dict__.keys() if i[0] != '_'] +
+                      list(self._meta.keys()))
+
     def append(self, batch):
         """Append a :class:`~tianshou.data.Batch` object to current batch."""
         assert isinstance(batch, Batch), 'Only append Batch is allowed!'
         for k in batch.__dict__.keys():
+            if k == '_meta':
+                self._meta.update(batch.__dict__[k])
+                continue
             if batch.__dict__[k] is None:
                 continue
             if not hasattr(self, k) or self.__dict__[k] is None:
@@ -117,22 +158,22 @@ class Batch(object):
         """Return len(self)."""
         return min([
             len(self.__dict__[k]) for k in self.__dict__.keys()
-            if self.__dict__[k] is not None])
+            if k != '_meta' and self.__dict__[k] is not None])
 
-    def split(self, size=None, permute=True):
+    def split(self, size=None, shuffle=True):
         """Split whole data into multiple small batch.
 
         :param int size: if it is ``None``, it does not split the data batch;
             otherwise it will divide the data batch with the given size.
             Default to ``None``.
-        :param bool permute: randomly shuffle the entire data batch if it is
+        :param bool shuffle: randomly shuffle the entire data batch if it is
             ``True``, otherwise remain in the same. Default to ``True``.
         """
         length = len(self)
         if size is None:
             size = length
         temp = 0
-        if permute:
+        if shuffle:
             index = np.random.permutation(length)
         else:
             index = np.arange(length)

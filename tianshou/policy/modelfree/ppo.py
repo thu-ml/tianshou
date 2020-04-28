@@ -74,7 +74,7 @@ class PPOPolicy(PGPolicy):
                 batch, None, gamma=self._gamma, gae_lambda=self._lambda)
         v_ = []
         with torch.no_grad():
-            for b in batch.split(self._batch, permute=False):
+            for b in batch.split(self._batch, shuffle=False):
                 v_.append(self.critic(b.obs_next))
         v_ = torch.cat(v_, dim=0).cpu().numpy()
         return self.compute_episodic_return(
@@ -111,7 +111,7 @@ class PPOPolicy(PGPolicy):
         v = []
         old_log_prob = []
         with torch.no_grad():
-            for b in batch.split(batch_size, permute=False):
+            for b in batch.split(batch_size, shuffle=False):
                 v.append(self.critic(b.obs))
                 old_log_prob.append(self(b).dist.log_prob(
                     torch.tensor(b.act, device=v[0].device)))

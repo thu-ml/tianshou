@@ -30,12 +30,22 @@ Installation
 Tianshou is currently hosted on `PyPI <https://pypi.org/project/tianshou/>`_. You can simply install Tianshou with the following command:
 ::
 
-    pip3 install tianshou -U
+    pip3 install tianshou
 
 You can also install with the newest version through GitHub:
 ::
 
     pip3 install git+https://github.com/thu-ml/tianshou.git@master
+
+If you use Anaconda or Miniconda, you can install Tianshou through the following command lines:
+::
+
+    # create a new virtualenv and install pip, change the env name if you like
+    conda create -n myenv pip
+    # activate the environment
+    conda activate myenv
+    # install tianshou
+    pip install tianshou
 
 After installation, open your python console and type
 ::
