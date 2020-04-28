@@ -49,7 +49,6 @@ setup(
         'gym>=0.15.0',
         'tqdm',
         'numpy',
-        'cloudpickle',
         'tensorboard',
         'torch>=1.4.0',
     ],
