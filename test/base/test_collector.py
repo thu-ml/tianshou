@@ -94,6 +94,17 @@ def test_collector_with_dict_state():
     c1 = Collector(policy, envs, ReplayBuffer(size=100))
     c1.collect(n_step=10)
     c1.collect(n_episode=[2, 1, 1, 2])
+    batch = c1.sample(10)
+    print(batch)
+    c0.buffer.update(c1.buffer)
+    assert equal(c0.buffer[:len(c0.buffer)].obs.index, [
+        0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1.,
+        0., 1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4., 0., 1., 0.,
+        1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.])
+    c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4))
+    c2.collect(n_episode=[0, 0, 0, 10])
+    batch = c2.sample(10)
+    print(batch['obs_next']['index'])
 
 
 if __name__ == '__main__':

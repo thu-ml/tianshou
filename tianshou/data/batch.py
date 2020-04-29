@@ -76,7 +76,7 @@ class Batch(object):
                     self.__dict__[k__] = np.array([
                         v[i][k_] for i in range(len(v))
                     ])
-            elif isinstance(v, dict):
+            elif isinstance(v, dict) or isinstance(v, Batch):
                 self._meta[k] = list(v.keys())
                 for k_ in v.keys():
                     k__ = '_' + k + '@' + k_
@@ -89,7 +89,7 @@ class Batch(object):
         if isinstance(index, str):
             return self.__getattr__(index)
         b = Batch()
-        for k in self.__dict__.keys():
+        for k in self.__dict__:
             if k != '_meta' and self.__dict__[k] is not None:
                 b.__dict__.update(**{k: self.__dict__[k][index]})
         b._meta = self._meta
@@ -97,44 +97,44 @@ class Batch(object):
 
     def __getattr__(self, key):
         """Return self.key"""
-        if key not in self._meta.keys():
-            if key not in self.__dict__.keys():
+        if key not in self._meta:
+            if key not in self.__dict__:
                 raise AttributeError(key)
             return self.__dict__[key]
         d = {}
         for k_ in self._meta[key]:
             k__ = '_' + key + '@' + k_
             d[k_] = self.__dict__[k__]
-        return d
+        return Batch(**d)
 
     def __repr__(self):
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
-        for k in sorted(list(self.__dict__.keys()) + list(self._meta.keys())):
+        for k in sorted(list(self.__dict__) + list(self._meta)):
             if k[0] != '_' and (self.__dict__.get(k, None) is not None or
-                                k in self._meta.keys()):
+                                k in self._meta):
                 rpl = '\n' + ' ' * (6 + len(k))
                 obj = pprint.pformat(self.__getattr__(k)).replace('\n', rpl)
                 s += f'    {k}: {obj},\n'
                 flag = True
         if flag:
-            s += ')\n'
+            s += ')'
         else:
-            s = self.__class__.__name__ + '()\n'
+            s = self.__class__.__name__ + '()'
         return s
 
     def keys(self):
         """Return self.keys()."""
-        return sorted([i for i in self.__dict__.keys() if i[0] != '_'] +
-                      list(self._meta.keys()))
+        return sorted([i for i in self.__dict__ if i[0] != '_'] +
+                      list(self._meta))
 
     def append(self, batch):
         """Append a :class:`~tianshou.data.Batch` object to current batch."""
         assert isinstance(batch, Batch), 'Only append Batch is allowed!'
-        for k in batch.__dict__.keys():
+        for k in batch.__dict__:
             if k == '_meta':
-                self._meta.update(batch.__dict__[k])
+                self._meta.update(batch._meta)
                 continue
             if batch.__dict__[k] is None:
                 continue
@@ -149,15 +149,15 @@ class Batch(object):
             elif isinstance(batch.__dict__[k], list):
                 self.__dict__[k] += batch.__dict__[k]
             else:
-                s = 'No support for append with type'\
-                    + str(type(batch.__dict__[k]))\
+                s = 'No support for append with type' \
+                    + str(type(batch.__dict__[k])) \
                     + 'in class Batch.'
                 raise TypeError(s)
 
     def __len__(self):
         """Return len(self)."""
         return min([
-            len(self.__dict__[k]) for k in self.__dict__.keys()
+            len(self.__dict__[k]) for k in self.__dict__
             if k != '_meta' and self.__dict__[k] is not None])
 
     def split(self, size=None, shuffle=True):
