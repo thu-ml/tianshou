@@ -92,8 +92,7 @@ class A2CPolicy(PGPolicy):
         for _ in range(repeat):
             for b in batch.split(batch_size):
                 self.optim.zero_grad()
-                result = self(b)
-                dist = result.dist
+                dist = self(b).dist
                 v = self.critic(b.obs)
                 a = torch.tensor(b.act, device=v.device)
                 r = torch.tensor(b.returns, device=v.device)

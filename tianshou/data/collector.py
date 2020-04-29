@@ -175,6 +175,20 @@ class Collector(object):
                 isinstance(self.state, np.ndarray):
             self.state[id] = 0
 
+    def _to_numpy(self, x):
+        """Return an object without torch.Tensor."""
+        if isinstance(x, torch.Tensor):
+            return x.cpu().numpy()
+        elif isinstance(x, dict):
+            for k in x:
+                if isinstance(x[k], torch.Tensor):
+                    x[k] = x[k].cpu().numpy()
+            return x
+        elif isinstance(x, Batch):
+            x.to_numpy()
+            return x
+        return x
+
     def collect(self, n_step=0, n_episode=0, render=None, log_fn=None):
         """Collect a specified number of step or episode.
 
@@ -232,8 +246,11 @@ class Collector(object):
             with torch.no_grad():
                 result = self.policy(batch_data, self.state)
             self.state = result.state if hasattr(result, 'state') else None
+            self._policy = self._to_numpy(result.policy) \
+                if hasattr(result, 'policy') \
+                else [{}] * self.env_num if self._multi_env else {}
             if isinstance(result.act, torch.Tensor):
-                self._act = result.act.detach().cpu().numpy()
+                self._act = self._to_numpy(result.act)
             elif not isinstance(self._act, np.ndarray):
                 self._act = np.array(result.act)
             else:
@@ -253,7 +270,8 @@ class Collector(object):
                     data = {
                         'obs': self._obs[i], 'act': self._act[i],
                         'rew': self._rew[i], 'done': self._done[i],
-                        'obs_next': obs_next[i], 'info': self._info[i]}
+                        'obs_next': obs_next[i], 'info': self._info[i],
+                        'policy': self._policy[i]}
                     if self._cached_buf:
                         warning_count += 1
                         self._cached_buf[i].add(**data)
@@ -292,7 +310,7 @@ class Collector(object):
                 if self.buffer is not None:
                     self.buffer.add(
                         self._obs, self._act[0], self._rew,
-                        self._done, obs_next, self._info)
+                        self._done, obs_next, self._info, self._policy)
                 cur_step += 1
                 if self._done:
                     cur_episode += 1

@@ -42,26 +42,30 @@ class ReplayBuffer(object):
         >>> batch_data.obs == buf[indice].obs
         array([ True,  True,  True,  True])
 
-    Since version v0.2.2, :class:`~tianshou.data.ReplayBuffer` supports
-    frame_stack sampling (typically for RNN usage) and ignoring storing the
-    next observation (save memory):
+    :class:`~tianshou.data.ReplayBuffer` also supports frame_stack sampling
+    (typically for RNN usage, see issue#19), ignoring storing the next
+    observation (save memory in atari tasks), and multi-modal observation (see
+    issue#38, need version >= 0.2.3):
     ::
 
         >>> buf = ReplayBuffer(size=9, stack_num=4, ignore_obs_next=True)
         >>> for i in range(16):
         ...     done = i % 5 == 0
-        ...     buf.add(obs=i, act=i, rew=i, done=done, obs_next=i + 1)
-        >>> print(buf)
+        ...     buf.add(obs={'id': i}, act=i, rew=i, done=done,
+        ...             obs_next={'id': i + 1})
+        >>> print(buf)  # you can see obs_next is not saved in buf
         ReplayBuffer(
-            obs: [ 9. 10. 11. 12. 13. 14. 15.  7.  8.],
-            act: [ 9. 10. 11. 12. 13. 14. 15.  7.  8.],
-            rew: [ 9. 10. 11. 12. 13. 14. 15.  7.  8.],
-            done: [0. 1. 0. 0. 0. 0. 1. 0. 0.],
-            obs_next: [0. 0. 0. 0. 0. 0. 0. 0. 0.],
-            info: [{} {} {} {} {} {} {} {} {}],
+            act: array([ 9., 10., 11., 12., 13., 14., 15.,  7.,  8.]),
+            done: array([0., 1., 0., 0., 0., 0., 1., 0., 0.]),
+            info: array([{}, {}, {}, {}, {}, {}, {}, {}, {}], dtype=object),
+            obs: Batch(
+                     id: array([ 9., 10., 11., 12., 13., 14., 15.,  7.,  8.]),
+                 ),
+            policy: Batch(),
+            rew: array([ 9., 10., 11., 12., 13., 14., 15.,  7.,  8.]),
         )
         >>> index = np.arange(len(buf))
-        >>> print(buf.get(index, 'obs'))
+        >>> print(buf.get(index, 'obs').id)
         [[ 7.  7.  8.  9.]
          [ 7.  8.  9. 10.]
          [11. 11. 11. 11.]
@@ -73,10 +77,10 @@ class ReplayBuffer(object):
          [ 7.  7.  7.  8.]]
         >>> # here is another way to get the stacked data
         >>> # (stack only for obs and obs_next)
-        >>> abs(buf.get(index, 'obs') - buf[index].obs).sum().sum()
+        >>> abs(buf.get(index, 'obs')['id'] - buf[index].obs.id).sum().sum()
         0.0
-        >>> # we can get obs_next through __getitem__, even if it doesn't store
-        >>> print(buf[:].obs_next)
+        >>> # we can get obs_next through __getitem__, even if it doesn't exist
+        >>> print(buf[:].obs_next.id)
         [[ 7.  8.  9. 10.]
          [ 7.  8.  9. 10.]
          [11. 11. 11. 12.]
@@ -169,7 +173,7 @@ class ReplayBuffer(object):
             self.add(
                 buffer.obs[i], buffer.act[i], buffer.rew[i], buffer.done[i],
                 buffer.obs_next[i] if self._save_s_ else None,
-                buffer.info[i])
+                buffer.info[i], buffer.policy[i])
             i = (i + 1) % len(buffer)
             if i == begin:
                 break

@@ -24,7 +24,7 @@ class Batch(object):
         )
 
     In short, you can define a :class:`Batch` with any key-value pair. The
-    current implementation of Tianshou typically use 6 reserved keys in
+    current implementation of Tianshou typically use 7 reserved keys in
     :class:`~tianshou.data.Batch`:
 
     * ``obs`` the observation of step :math:`t` ;
@@ -34,6 +34,7 @@ class Batch(object):
     * ``obs_next`` the observation of step :math:`t+1` ;
     * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()``\
         function return 4 arguments, and the last one is ``info``);
+    * ``policy`` the data computed by policy in step :math:`t`;
 
     :class:`~tianshou.data.Batch` has other methods, including
     :meth:`~tianshou.data.Batch.__getitem__`,
@@ -128,6 +129,14 @@ class Batch(object):
         """Return self.keys()."""
         return sorted([i for i in self.__dict__ if i[0] != '_'] +
                       list(self._meta))
+
+    def to_numpy(self):
+        """Change all torch.Tensor to numpy.ndarray. This is an inplace
+        operation.
+        """
+        for k in self.__dict__:
+            if isinstance(self.__dict__[k], torch.Tensor):
+                self.__dict__[k] = self.__dict__[k].cpu().numpy()
 
     def append(self, batch):
         """Append a :class:`~tianshou.data.Batch` object to current batch."""

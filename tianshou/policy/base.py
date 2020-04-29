@@ -65,6 +65,17 @@ class BasePolicy(ABC, nn.Module):
 
             # some code
             return Batch(logits=..., act=..., state=None, dist=...)
+
+        After version >= 0.2.3, the keyword "policy" is reserverd and the
+        corresponding data will be stored into the replay buffer in numpy. For
+        instance,
+        ::
+
+            # some code
+            return Batch(..., policy=Batch(log_prob=dist.log_prob(act)))
+            # and in the sampled data batch, you can directly call
+            # batch.policy.log_prob to get your data, although it is stored in
+            # np.ndarray.
         """
         pass
 
