@@ -47,8 +47,8 @@ class Critic(nn.Module):
         self.preprocess = preprocess_net
         self.last = nn.Linear(128, 1)
 
-    def forward(self, s):
-        logits, h = self.preprocess(s, None)
+    def forward(self, s, **kwargs):
+        logits, h = self.preprocess(s, state=kwargs.get('state', None))
         logits = self.last(logits)
         return logits
 
@@ -85,7 +85,7 @@ class Recurrent(nn.Module):
             # but pytorch rnn needs [len, bsz, ...]
             s, (h, c) = self.nn(s, (state['h'].transpose(0, 1).contiguous(),
                                     state['c'].transpose(0, 1).contiguous()))
-        s = self.fc2(s)[:, -1]
+        s = self.fc2(s[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
         return s, {'h': h.transpose(0, 1).detach(),
                    'c': c.transpose(0, 1).detach()}

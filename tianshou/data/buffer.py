@@ -5,7 +5,7 @@ from tianshou.data.batch import Batch
 
 class ReplayBuffer(object):
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from
-    interaction between the policy and environment. It stores basically 6 types
+    interaction between the policy and environment. It stores basically 7 types
     of data, as mentioned in :class:`~tianshou.data.Batch`, based on
     ``numpy.ndarray``. Here is the usage:
     ::
@@ -282,6 +282,7 @@ class ReplayBuffer(object):
         return Batch(
             obs=self.get(index, 'obs'),
             act=self.act[index],
+            # act_=self.get(index, 'act'),  # stacked action, for RNN
             rew=self.rew[index],
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
@@ -405,6 +406,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         return Batch(
             obs=self.get(index, 'obs'),
             act=self.act[index],
+            # act_=self.get(index, 'act'),  # stacked action, for RNN
             rew=self.rew[index],
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
