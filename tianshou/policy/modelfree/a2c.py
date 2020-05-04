@@ -103,7 +103,9 @@ class A2CPolicy(PGPolicy):
                 loss.backward()
                 if self._grad_norm:
                     nn.utils.clip_grad_norm_(
-                        self.model.parameters(), max_norm=self._grad_norm)
+                        list(self.actor.parameters()) +
+                        list(self.critic.parameters()),
+                        max_norm=self._grad_norm)
                 self.optim.step()
                 actor_losses.append(a_loss.item())
                 vf_losses.append(vf_loss.item())
