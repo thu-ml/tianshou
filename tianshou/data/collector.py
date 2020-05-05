@@ -14,14 +14,23 @@ class Collector(object):
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
         class.
-    :param env: an environment or an instance of the
+    :param env: a ``gym.Env`` environment or an instance of the
         :class:`~tianshou.env.BaseVectorEnv` class.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer`
         class, or a list of :class:`~tianshou.data.ReplayBuffer`. If set to
         ``None``, it will automatically assign a small-size
         :class:`~tianshou.data.ReplayBuffer`.
+    :param function preprocess_fn: a function called before the data has been
+        added to the buffer, see issue #42, defaults to ``None``.
     :param int stat_size: for the moving average of recording speed, defaults
         to 100.
+
+    The ``preprocess_fn`` is a function called before the data has been added
+    to the buffer with batch format, which receives up to 7 keys as listed in
+    :class:`~tianshou.data.Batch`. It will receive with only ``obs`` when the
+    collector resets the environment. It returns either a dict or a
+    :class:`~tianshou.data.Batch` with the modified keys and values. Examples
+    are in "test/base/test_collector.py".
 
     Example:
     ::
@@ -68,15 +77,21 @@ class Collector(object):
         Please make sure the given environment has a time limitation.
     """
 
-    def __init__(self, policy, env, buffer=None, stat_size=100, **kwargs):
+    def __init__(self, policy, env, buffer=None, preprocess_fn=None,
+                 stat_size=100, **kwargs):
         super().__init__()
         self.env = env
         self.env_num = 1
+        self.collect_time = 0
         self.collect_step = 0
         self.collect_episode = 0
-        self.collect_time = 0
         self.buffer = buffer
         self.policy = policy
+        self.preprocess_fn = preprocess_fn
+        # if preprocess_fn is None:
+        #     def _prep(**kwargs):
+        #         return kwargs
+        #     self.preprocess_fn = _prep
         self.process_fn = policy.process_fn
         self._multi_env = isinstance(env, BaseVectorEnv)
         self._multi_buf = False  # True if buf is a list
@@ -119,7 +134,7 @@ class Collector(object):
                 self.buffer.reset()
 
     def get_env_num(self):
-        """Return the number of environments the collector has."""
+        """Return the number of environments the collector have."""
         return self.env_num
 
     def reset_env(self):
@@ -127,6 +142,10 @@ class Collector(object):
         buffers (if need).
         """
         self._obs = self.env.reset()
+        if not self._multi_env:
+            self._obs = self._make_batch(self._obs)
+        if self.preprocess_fn:
+            self._obs = self.preprocess_fn(obs=self._obs).get('obs', self._obs)
         self._act = self._rew = self._done = self._info = None
         if self._multi_env:
             self.reward = np.zeros(self.env_num)
@@ -231,40 +250,43 @@ class Collector(object):
                     'There are already many steps in an episode. '
                     'You should add a time limitation to your environment!',
                     Warning)
-            if self._multi_env:
-                batch_data = Batch(
-                    obs=self._obs, act=self._act, rew=self._rew,
-                    done=self._done, obs_next=None, info=self._info)
-            else:
-                batch_data = Batch(
-                    obs=self._make_batch(self._obs),
-                    act=self._make_batch(self._act),
-                    rew=self._make_batch(self._rew),
-                    done=self._make_batch(self._done),
-                    obs_next=None,
-                    info=self._make_batch(self._info))
+            batch = Batch(
+                obs=self._obs, act=self._act, rew=self._rew,
+                done=self._done, obs_next=None, info=self._info,
+                policy=None)
             with torch.no_grad():
-                result = self.policy(batch_data, self.state)
-            self.state = result.state if hasattr(result, 'state') else None
+                result = self.policy(batch, self.state)
+            self.state = result.get('state', None)
             self._policy = self._to_numpy(result.policy) \
-                if hasattr(result, 'policy') \
-                else [{}] * self.env_num if self._multi_env else {}
-            if isinstance(result.act, torch.Tensor):
-                self._act = self._to_numpy(result.act)
-            elif not isinstance(self._act, np.ndarray):
-                self._act = np.array(result.act)
-            else:
-                self._act = result.act
+                if hasattr(result, 'policy') else [{}] * self.env_num
+            self._act = self._to_numpy(result.act)
             obs_next, self._rew, self._done, self._info = self.env.step(
                 self._act if self._multi_env else self._act[0])
-            if log_fn is not None:
-                log_fn(self._info)
-            if render is not None:
+            if not self._multi_env:
+                obs_next = self._make_batch(obs_next)
+                self._rew = self._make_batch(self._rew)
+                self._done = self._make_batch(self._done)
+                self._info = self._make_batch(self._info)
+            if log_fn:
+                log_fn(self._info if self._multi_env else self._info[0])
+            if render:
                 self.env.render()
                 if render > 0:
                     time.sleep(render)
             self.length += 1
             self.reward += self._rew
+            if self.preprocess_fn:
+                result = self.preprocess_fn(
+                    obs=self._obs, act=self._act, rew=self._rew,
+                    done=self._done, obs_next=obs_next, info=self._info,
+                    policy=self._policy)
+                self._obs = result.get('obs', self._obs)
+                self._act = result.get('act', self._act)
+                self._rew = result.get('rew', self._rew)
+                self._done = result.get('done', self._done)
+                obs_next = result.get('obs_next', obs_next)
+                self._info = result.get('info', self._info)
+                self._policy = result.get('policy', self._policy)
             if self._multi_env:
                 for i in range(self.env_num):
                     data = {
@@ -300,6 +322,9 @@ class Collector(object):
                         self._reset_state(i)
                 if sum(self._done):
                     obs_next = self.env.reset(np.where(self._done)[0])
+                    if self.preprocess_fn:
+                        obs_next = self.preprocess_fn(obs=obs_next).get(
+                            'obs', obs_next)
                 if n_episode != 0:
                     if isinstance(n_episode, list) and \
                             (cur_episode >= np.array(n_episode)).all() or \
@@ -309,16 +334,20 @@ class Collector(object):
             else:
                 if self.buffer is not None:
                     self.buffer.add(
-                        self._obs, self._act[0], self._rew,
-                        self._done, obs_next, self._info, self._policy)
+                        self._obs[0], self._act[0], self._rew[0],
+                        self._done[0], obs_next[0], self._info[0],
+                        self._policy[0])
                 cur_step += 1
                 if self._done:
                     cur_episode += 1
-                    reward_sum += self.reward
+                    reward_sum += self.reward[0]
                     length_sum += self.length
                     self.reward, self.length = 0, 0
                     self.state = None
-                    obs_next = self.env.reset()
+                    obs_next = self._make_batch(self.env.reset())
+                    if self.preprocess_fn:
+                        obs_next = self.preprocess_fn(obs=obs_next).get(
+                            'obs', obs_next)
                 if n_episode != 0 and cur_episode >= n_episode:
                     break
             if n_step != 0 and cur_step >= n_step:

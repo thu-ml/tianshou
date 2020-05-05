@@ -29,13 +29,28 @@ def equal(a, b):
     return abs(np.array(a) - np.array(b)).sum() < 1e-6
 
 
+def preprocess_fn(**kwargs):
+    # modify info before adding into the buffer
+    if kwargs.get('info', None) is not None:
+        n = len(kwargs['obs'])
+        info = kwargs['info']
+        for i in range(n):
+            info[i].update(rew=kwargs['rew'][i])
+        return {'info': info}
+        # or
+        # return Batch(info=info)
+    else:
+        return {}
+
+
 class Logger(object):
     def __init__(self, writer):
         self.cnt = 0
         self.writer = writer
 
     def log(self, info):
-        self.writer.add_scalar('key', info['key'], global_step=self.cnt)
+        self.writer.add_scalar(
+            'key', np.mean(info['key']), global_step=self.cnt)
         self.cnt += 1
 
 
@@ -52,21 +67,24 @@ def test_collector():
     venv = SubprocVectorEnv(env_fns)
     policy = MyPolicy()
     env = env_fns[0]()
-    c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False))
+    c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False),
+                   preprocess_fn)
     c0.collect(n_step=3, log_fn=logger.log)
     assert equal(c0.buffer.obs[:3], [0, 1, 0])
     assert equal(c0.buffer[:3].obs_next, [1, 2, 1])
     c0.collect(n_episode=3, log_fn=logger.log)
     assert equal(c0.buffer.obs[:8], [0, 1, 0, 1, 0, 1, 0, 1])
     assert equal(c0.buffer[:8].obs_next, [1, 2, 1, 2, 1, 2, 1, 2])
-    c1 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False))
+    c1 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False),
+                   preprocess_fn)
     c1.collect(n_step=6)
     assert equal(c1.buffer.obs[:11], [0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3])
     assert equal(c1.buffer[:11].obs_next, [1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4])
     c1.collect(n_episode=2)
     assert equal(c1.buffer.obs[11:21], [0, 1, 2, 3, 4, 0, 1, 0, 1, 2])
     assert equal(c1.buffer[11:21].obs_next, [1, 2, 3, 4, 5, 1, 2, 1, 2, 3])
-    c2 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False))
+    c2 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False),
+                   preprocess_fn)
     c2.collect(n_episode=[1, 2, 2, 2])
     assert equal(c2.buffer.obs_next[:26], [
         1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5,
@@ -81,7 +99,7 @@ def test_collector():
 def test_collector_with_dict_state():
     env = MyTestEnv(size=5, sleep=0, dict_state=True)
     policy = MyPolicy(dict_state=True)
-    c0 = Collector(policy, env, ReplayBuffer(size=100))
+    c0 = Collector(policy, env, ReplayBuffer(size=100), preprocess_fn)
     c0.collect(n_step=3)
     c0.collect(n_episode=3)
     env_fns = [
@@ -91,7 +109,7 @@ def test_collector_with_dict_state():
         lambda: MyTestEnv(size=5, sleep=0, dict_state=True),
     ]
     envs = VectorEnv(env_fns)
-    c1 = Collector(policy, envs, ReplayBuffer(size=100))
+    c1 = Collector(policy, envs, ReplayBuffer(size=100), preprocess_fn)
     c1.collect(n_step=10)
     c1.collect(n_episode=[2, 1, 1, 2])
     batch = c1.sample(10)
@@ -101,7 +119,8 @@ def test_collector_with_dict_state():
         0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1.,
         0., 1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4., 0., 1., 0.,
         1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.])
-    c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4))
+    c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
+                   preprocess_fn)
     c2.collect(n_episode=[0, 0, 0, 10])
     batch = c2.sample(10)
     print(batch['obs_next']['index'])

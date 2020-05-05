@@ -10,7 +10,7 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                       batch_size,
                       train_fn=None, test_fn=None, stop_fn=None, save_fn=None,
                       log_fn=None, writer=None, log_interval=1, verbose=True,
-                      task='', **kwargs):
+                      **kwargs):
     """A wrapper for off-policy trainer procedure.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
@@ -89,8 +89,7 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                         data[k] = f'{result[k]:.2f}'
                         if writer and global_step % log_interval == 0:
                             writer.add_scalar(
-                                k + '_' + task if task else k,
-                                result[k], global_step=global_step)
+                                k, result[k], global_step=global_step)
                     for k in losses.keys():
                         if stat.get(k) is None:
                             stat[k] = MovAvg()
@@ -98,8 +97,7 @@ def offpolicy_trainer(policy, train_collector, test_collector, max_epoch,
                         data[k] = f'{stat[k].get():.6f}'
                         if writer and global_step % log_interval == 0:
                             writer.add_scalar(
-                                k + '_' + task if task else k,
-                                stat[k].get(), global_step=global_step)
+                                k, stat[k].get(), global_step=global_step)
                     t.update(1)
                     t.set_postfix(**data)
             if t.n <= t.total:

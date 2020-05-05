@@ -130,6 +130,12 @@ class Batch(object):
         return sorted([i for i in self.__dict__ if i[0] != '_'] +
                       list(self._meta))
 
+    def get(self, k, d=None):
+        """Return self[k] if k in self else d. d defaults to None."""
+        if k in self.__dict__ or k in self._meta:
+            return self.__getattr__(k)
+        return d
+
     def to_numpy(self):
         """Change all torch.Tensor to numpy.ndarray. This is an inplace
         operation.
