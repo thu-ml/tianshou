@@ -2,10 +2,11 @@ import torch
 import numpy as np
 from copy import deepcopy
 import torch.nn.functional as F
+from typing import Dict, Tuple, Union, Optional
 
-from tianshou.data import Batch
 from tianshou.policy import BasePolicy
 # from tianshou.exploration import OUNoise
+from tianshou.data import Batch, ReplayBuffer
 
 
 class DDPGPolicy(BasePolicy):
@@ -23,7 +24,7 @@ class DDPGPolicy(BasePolicy):
     :param float exploration_noise: the noise intensity, add to the action,
         defaults to 0.1.
     :param action_range: the action range (minimum, maximum).
-    :type action_range: [float, float]
+    :type action_range: (float, float)
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to ``False``.
     :param bool ignore_done: ignore the done flag while training the policy,
@@ -35,10 +36,18 @@ class DDPGPolicy(BasePolicy):
         explanation.
     """
 
-    def __init__(self, actor, actor_optim, critic, critic_optim,
-                 tau=0.005, gamma=0.99, exploration_noise=0.1,
-                 action_range=None, reward_normalization=False,
-                 ignore_done=False, **kwargs):
+    def __init__(self,
+                 actor: torch.nn.Module,
+                 actor_optim: torch.optim.Optimizer,
+                 critic: torch.nn.Module,
+                 critic_optim: torch.optim.Optimizer,
+                 tau: Optional[float] = 0.005,
+                 gamma: Optional[float] = 0.99,
+                 exploration_noise: Optional[float] = 0.1,
+                 action_range: Optional[Tuple[float, float]] = None,
+                 reward_normalization: Optional[bool] = False,
+                 ignore_done: Optional[bool] = False,
+                 **kwargs) -> None:
         super().__init__(**kwargs)
         if actor is not None:
             self.actor, self.actor_old = actor, deepcopy(actor)
@@ -64,23 +73,23 @@ class DDPGPolicy(BasePolicy):
         self._rew_norm = reward_normalization
         self.__eps = np.finfo(np.float32).eps.item()
 
-    def set_eps(self, eps):
+    def set_eps(self, eps: float) -> None:
         """Set the eps for exploration."""
         self._eps = eps
 
-    def train(self):
+    def train(self) -> None:
         """Set the module in training mode, except for the target network."""
         self.training = True
         self.actor.train()
         self.critic.train()
 
-    def eval(self):
+    def eval(self) -> None:
         """Set the module in evaluation mode, except for the target network."""
         self.training = False
         self.actor.eval()
         self.critic.eval()
 
-    def sync_weight(self):
+    def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
         for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
@@ -88,7 +97,8 @@ class DDPGPolicy(BasePolicy):
                 self.critic_old.parameters(), self.critic.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
 
-    def process_fn(self, batch, buffer, indice):
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
         if self._rew_norm:
             bfr = buffer.rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
@@ -98,8 +108,12 @@ class DDPGPolicy(BasePolicy):
             batch.done = batch.done * 0.
         return batch
 
-    def forward(self, batch, state=None,
-                model='actor', input='obs', eps=None, **kwargs):
+    def forward(self, batch: Batch,
+                state: Optional[Union[dict, Batch, np.ndarray]] = None,
+                model: Optional[str] = 'actor',
+                input: Optional[str] = 'obs',
+                eps: Optional[float] = None,
+                **kwargs) -> Batch:
         """Compute action over the given batch data.
 
         :param float eps: in [0, 1], for exploration use.
@@ -129,7 +143,7 @@ class DDPGPolicy(BasePolicy):
         logits = logits.clamp(self._range[0], self._range[1])
         return Batch(act=logits, state=h)
 
-    def learn(self, batch, **kwargs):
+    def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         with torch.no_grad():
             target_q = self.critic_old(batch.obs_next, self(
                 batch, model='actor_old', input='obs_next', eps=0).act)

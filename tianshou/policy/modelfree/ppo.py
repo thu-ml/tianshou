@@ -1,9 +1,10 @@
 import torch
 import numpy as np
 from torch import nn
+from typing import Dict, List, Tuple, Union, Optional
 
-from tianshou.data import Batch
 from tianshou.policy import PGPolicy
+from tianshou.data import Batch, ReplayBuffer
 
 
 class PPOPolicy(PGPolicy):
@@ -23,7 +24,7 @@ class PPOPolicy(PGPolicy):
     :param float vf_coef: weight for value loss, defaults to 0.5.
     :param float ent_coef: weight for entropy loss, defaults to 0.01.
     :param action_range: the action range (minimum, maximum).
-    :type action_range: [float, float]
+    :type action_range: (float, float)
     :param float gae_lambda: in [0, 1], param for Generalized Advantage
         Estimation, defaults to 0.95.
     :param float dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
@@ -40,11 +41,22 @@ class PPOPolicy(PGPolicy):
         explanation.
     """
 
-    def __init__(self, actor, critic, optim, dist_fn,
-                 discount_factor=0.99, max_grad_norm=.5, eps_clip=.2,
-                 vf_coef=.5, ent_coef=.01, action_range=None, gae_lambda=0.95,
-                 dual_clip=5., value_clip=True, reward_normalization=True,
-                 **kwargs):
+    def __init__(self,
+                 actor: torch.nn.Module,
+                 critic: torch.nn.Module,
+                 optim: torch.optim.Optimizer,
+                 dist_fn: torch.distributions.Distribution,
+                 discount_factor: Optional[float] = 0.99,
+                 max_grad_norm: Optional[float] = None,
+                 eps_clip: Optional[float] = .2,
+                 vf_coef: Optional[float] = .5,
+                 ent_coef: Optional[float] = .01,
+                 action_range: Optional[Tuple[float, float]] = None,
+                 gae_lambda: Optional[float] = 0.95,
+                 dual_clip: Optional[float] = 5.,
+                 value_clip: Optional[bool] = True,
+                 reward_normalization: Optional[bool] = True,
+                 **kwargs) -> None:
         super().__init__(None, None, dist_fn, discount_factor, **kwargs)
         self._max_grad_norm = max_grad_norm
         self._eps_clip = eps_clip
@@ -64,7 +76,8 @@ class PPOPolicy(PGPolicy):
         self._rew_norm = reward_normalization
         self.__eps = np.finfo(np.float32).eps.item()
 
-    def process_fn(self, batch, buffer, indice):
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
         if self._rew_norm:
             mean, std = batch.rew.mean(), batch.rew.std()
             if std > self.__eps:
@@ -80,7 +93,9 @@ class PPOPolicy(PGPolicy):
         return self.compute_episodic_return(
             batch, v_, gamma=self._gamma, gae_lambda=self._lambda)
 
-    def forward(self, batch, state=None, **kwargs):
+    def forward(self, batch: Batch,
+                state: Optional[Union[dict, Batch, np.ndarray]] = None,
+                **kwargs) -> Batch:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
@@ -105,7 +120,8 @@ class PPOPolicy(PGPolicy):
             act = act.clamp(self._range[0], self._range[1])
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def learn(self, batch, batch_size=None, repeat=1, **kwargs):
+    def learn(self, batch: Batch, batch_size: int, repeat: int,
+              **kwargs) -> Dict[str, List[float]]:
         self._batch = batch_size
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         v = []

@@ -1,8 +1,17 @@
 import time
 import numpy as np
+from typing import Dict, List, Union, Callable
+
+from tianshou.data import Collector
+from tianshou.policy import BasePolicy
 
 
-def test_episode(policy, collector, test_fn, epoch, n_episode):
+def test_episode(
+        policy: BasePolicy,
+        collector: Collector,
+        test_fn: Callable[[int], None],
+        epoch: int,
+        n_episode: Union[int, List[int]]) -> Dict[str, float]:
     """A simple wrapper of testing policy in collector."""
     collector.reset_env()
     collector.reset_buffer()
@@ -17,7 +26,11 @@ def test_episode(policy, collector, test_fn, epoch, n_episode):
     return collector.collect(n_episode=n_episode)
 
 
-def gather_info(start_time, train_c, test_c, best_reward):
+def gather_info(start_time: float,
+                train_c: Collector,
+                test_c: Collector,
+                best_reward: float
+                ) -> Dict[str, Union[float, str]]:
     """A simple wrapper of gathering information from collectors.
 
     :return: A dictionary with the following keys:

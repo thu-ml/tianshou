@@ -2,6 +2,7 @@ import gym
 import numpy as np
 from abc import ABC, abstractmethod
 from multiprocessing import Process, Pipe
+from typing import List, Tuple, Union, Optional, Callable
 
 try:
     import ray
@@ -36,16 +37,16 @@ class BaseVectorEnv(ABC, gym.Wrapper):
         envs.close()  # close all environments
     """
 
-    def __init__(self, env_fns):
+    def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         self._env_fns = env_fns
         self.env_num = len(env_fns)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return len(self), which is the number of environments."""
         return self.env_num
 
     @abstractmethod
-    def reset(self, id=None):
+    def reset(self, id: Optional[Union[int, List[int]]] = None):
         """Reset the state of all the environments and return initial
         observations if id is ``None``, otherwise reset the specific
         environments with given id, either an int or a list.
@@ -53,7 +54,8 @@ class BaseVectorEnv(ABC, gym.Wrapper):
         pass
 
     @abstractmethod
-    def step(self, action):
+    def step(self, action: np.ndarray
+             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Run one timestep of all the environments’ dynamics. When the end of
         episode is reached, you are responsible for calling reset(id) to reset
         this environment’s state.
@@ -76,19 +78,19 @@ class BaseVectorEnv(ABC, gym.Wrapper):
         pass
 
     @abstractmethod
-    def seed(self, seed=None):
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
         """Set the seed for all environments. Accept ``None``, an int (which
         will extend ``i`` to ``[i, i + 1, i + 2, ...]``) or a list.
         """
         pass
 
     @abstractmethod
-    def render(self, **kwargs):
+    def render(self, **kwargs) -> None:
         """Render all of the environments."""
         pass
 
     @abstractmethod
-    def close(self):
+    def close(self) -> None:
         """Close all of the environments."""
         pass
 
@@ -102,11 +104,11 @@ class VectorEnv(BaseVectorEnv):
         explanation.
     """
 
-    def __init__(self, env_fns):
+    def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         super().__init__(env_fns)
         self.envs = [_() for _ in env_fns]
 
-    def reset(self, id=None):
+    def reset(self, id: Optional[Union[int, List[int]]] = None) -> None:
         if id is None:
             self._obs = np.stack([e.reset() for e in self.envs])
         else:
@@ -116,7 +118,8 @@ class VectorEnv(BaseVectorEnv):
                 self._obs[i] = self.envs[i].reset()
         return self._obs
 
-    def step(self, action):
+    def step(self, action: np.ndarray
+             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         assert len(action) == self.env_num
         result = [e.step(a) for e, a in zip(self.envs, action)]
         self._obs, self._rew, self._done, self._info = zip(*result)
@@ -126,7 +129,7 @@ class VectorEnv(BaseVectorEnv):
         self._info = np.stack(self._info)
         return self._obs, self._rew, self._done, self._info
 
-    def seed(self, seed=None):
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
@@ -137,14 +140,14 @@ class VectorEnv(BaseVectorEnv):
                 result.append(e.seed(s))
         return result
 
-    def render(self, **kwargs):
+    def render(self, **kwargs) -> None:
         result = []
         for e in self.envs:
             if hasattr(e, 'render'):
                 result.append(e.render(**kwargs))
         return result
 
-    def close(self):
+    def close(self) -> None:
         return [e.close() for e in self.envs]
 
 
@@ -182,7 +185,7 @@ class SubprocVectorEnv(BaseVectorEnv):
         explanation.
     """
 
-    def __init__(self, env_fns):
+    def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         super().__init__(env_fns)
         self.closed = False
         self.parent_remote, self.child_remote = \
@@ -198,7 +201,8 @@ class SubprocVectorEnv(BaseVectorEnv):
         for c in self.child_remote:
             c.close()
 
-    def step(self, action):
+    def step(self, action: np.ndarray
+             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         assert len(action) == self.env_num
         for p, a in zip(self.parent_remote, action):
             p.send(['step', a])
@@ -210,7 +214,7 @@ class SubprocVectorEnv(BaseVectorEnv):
         self._info = np.stack(self._info)
         return self._obs, self._rew, self._done, self._info
 
-    def reset(self, id=None):
+    def reset(self, id: Optional[Union[int, List[int]]] = None) -> None:
         if id is None:
             for p in self.parent_remote:
                 p.send(['reset', None])
@@ -225,7 +229,7 @@ class SubprocVectorEnv(BaseVectorEnv):
                 self._obs[i] = self.parent_remote[i].recv()
             return self._obs
 
-    def seed(self, seed=None):
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
@@ -234,12 +238,12 @@ class SubprocVectorEnv(BaseVectorEnv):
             p.send(['seed', s])
         return [p.recv() for p in self.parent_remote]
 
-    def render(self, **kwargs):
+    def render(self, **kwargs) -> None:
         for p in self.parent_remote:
             p.send(['render', kwargs])
         return [p.recv() for p in self.parent_remote]
 
-    def close(self):
+    def close(self) -> None:
         if self.closed:
             return
         for p in self.parent_remote:
@@ -263,7 +267,7 @@ class RayVectorEnv(BaseVectorEnv):
         explanation.
     """
 
-    def __init__(self, env_fns):
+    def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         super().__init__(env_fns)
         try:
             if not ray.is_initialized():
@@ -275,7 +279,8 @@ class RayVectorEnv(BaseVectorEnv):
             ray.remote(gym.Wrapper).options(num_cpus=0).remote(e())
             for e in env_fns]
 
-    def step(self, action):
+    def step(self, action: np.ndarray
+             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         assert len(action) == self.env_num
         result = ray.get([e.step.remote(a) for e, a in zip(self.envs, action)])
         self._obs, self._rew, self._done, self._info = zip(*result)
@@ -285,7 +290,7 @@ class RayVectorEnv(BaseVectorEnv):
         self._info = np.stack(self._info)
         return self._obs, self._rew, self._done, self._info
 
-    def reset(self, id=None):
+    def reset(self, id: Optional[Union[int, List[int]]] = None) -> None:
         if id is None:
             result_obj = [e.reset.remote() for e in self.envs]
             self._obs = np.stack(ray.get(result_obj))
@@ -299,7 +304,7 @@ class RayVectorEnv(BaseVectorEnv):
                 self._obs[i] = ray.get(result_obj[_])
         return self._obs
 
-    def seed(self, seed=None):
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
         if not hasattr(self.envs[0], 'seed'):
             return
         if np.isscalar(seed):
@@ -308,10 +313,10 @@ class RayVectorEnv(BaseVectorEnv):
             seed = [seed] * self.env_num
         return ray.get([e.seed.remote(s) for e, s in zip(self.envs, seed)])
 
-    def render(self, **kwargs):
+    def render(self, **kwargs) -> None:
         if not hasattr(self.envs[0], 'render'):
             return
         return ray.get([e.render.remote(**kwargs) for e in self.envs])
 
-    def close(self):
+    def close(self) -> None:
         return ray.get([e.close.remote() for e in self.envs])

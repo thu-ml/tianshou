@@ -1,7 +1,9 @@
 import torch
 from copy import deepcopy
 import torch.nn.functional as F
+from typing import Dict, Tuple, Optional
 
+from tianshou.data import Batch
 from tianshou.policy import DDPGPolicy
 
 
@@ -32,7 +34,7 @@ class TD3Policy(DDPGPolicy):
     :param float noise_clip: the clipping range used in updating policy
         network, default to 0.5.
     :param action_range: the action range (minimum, maximum).
-    :type action_range: [float, float]
+    :type action_range: (float, float)
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to ``False``.
     :param bool ignore_done: ignore the done flag while training the policy,
@@ -44,11 +46,23 @@ class TD3Policy(DDPGPolicy):
         explanation.
     """
 
-    def __init__(self, actor, actor_optim, critic1, critic1_optim,
-                 critic2, critic2_optim, tau=0.005, gamma=0.99,
-                 exploration_noise=0.1, policy_noise=0.2, update_actor_freq=2,
-                 noise_clip=0.5, action_range=None,
-                 reward_normalization=False, ignore_done=False, **kwargs):
+    def __init__(self,
+                 actor: torch.nn.Module,
+                 actor_optim: torch.optim.Optimizer,
+                 critic1: torch.nn.Module,
+                 critic1_optim: torch.optim.Optimizer,
+                 critic2: torch.nn.Module,
+                 critic2_optim: torch.optim.Optimizer,
+                 tau: Optional[float] = 0.005,
+                 gamma: Optional[float] = 0.99,
+                 exploration_noise: Optional[float] = 0.1,
+                 policy_noise: Optional[float] = 0.2,
+                 update_actor_freq: Optional[int] = 2,
+                 noise_clip: Optional[float] = 0.5,
+                 action_range: Optional[Tuple[float, float]] = None,
+                 reward_normalization: Optional[bool] = False,
+                 ignore_done: Optional[bool] = False,
+                 **kwargs) -> None:
         super().__init__(actor, actor_optim, None, None, tau, gamma,
                          exploration_noise, action_range, reward_normalization,
                          ignore_done, **kwargs)
@@ -64,19 +78,19 @@ class TD3Policy(DDPGPolicy):
         self._cnt = 0
         self._last = 0
 
-    def train(self):
+    def train(self) -> None:
         self.training = True
         self.actor.train()
         self.critic1.train()
         self.critic2.train()
 
-    def eval(self):
+    def eval(self) -> None:
         self.training = False
         self.actor.eval()
         self.critic1.eval()
         self.critic2.eval()
 
-    def sync_weight(self):
+    def sync_weight(self) -> None:
         for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
         for o, n in zip(
@@ -86,7 +100,7 @@ class TD3Policy(DDPGPolicy):
                 self.critic2_old.parameters(), self.critic2.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
 
-    def learn(self, batch, **kwargs):
+    def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         with torch.no_grad():
             a_ = self(batch, model='actor_old', input='obs_next').act
             dev = a_.device

@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Union, Optional
 
 
 class OUNoise(object):
@@ -17,13 +18,18 @@ class OUNoise(object):
     Ornstein-Uhlenbeck process.
     """
 
-    def __init__(self, sigma=0.3, theta=0.15, dt=1e-2, x0=None):
+    def __init__(self,
+                 sigma: Optional[float] = 0.3,
+                 theta: Optional[float] = 0.15,
+                 dt: Optional[float] = 1e-2,
+                 x0: Optional[Union[float, np.ndarray]] = None
+                 ) -> None:
         self.alpha = theta * dt
         self.beta = sigma * np.sqrt(dt)
         self.x0 = x0
         self.reset()
 
-    def __call__(self, size, mu=.1):
+    def __call__(self, size: tuple, mu: Optional[float] = .1) -> np.ndarray:
         """Generate new noise. Return a ``numpy.ndarray`` which size is equal
         to ``size``.
         """
@@ -33,6 +39,6 @@ class OUNoise(object):
         self.x = self.x + self.alpha * (mu - self.x) + r
         return self.x
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset to the initial state."""
         self.x = None

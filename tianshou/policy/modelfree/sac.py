@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from copy import deepcopy
 import torch.nn.functional as F
+from typing import Dict, Tuple, Union, Optional
 
 from tianshou.data import Batch
 from tianshou.policy import DDPGPolicy
@@ -28,7 +29,7 @@ class SACPolicy(DDPGPolicy):
         defaults to 0.1.
     :param float alpha: entropy regularization coefficient, default to 0.2.
     :param action_range: the action range (minimum, maximum).
-    :type action_range: [float, float]
+    :type action_range: (float, float)
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to ``False``.
     :param bool ignore_done: ignore the done flag while training the policy,
@@ -40,10 +41,20 @@ class SACPolicy(DDPGPolicy):
         explanation.
     """
 
-    def __init__(self, actor, actor_optim, critic1, critic1_optim,
-                 critic2, critic2_optim, tau=0.005, gamma=0.99,
-                 alpha=0.2, action_range=None, reward_normalization=False,
-                 ignore_done=False, **kwargs):
+    def __init__(self,
+                 actor: torch.nn.Module,
+                 actor_optim: torch.optim.Optimizer,
+                 critic1: torch.nn.Module,
+                 critic1_optim: torch.optim.Optimizer,
+                 critic2: torch.nn.Module,
+                 critic2_optim: torch.optim.Optimizer,
+                 tau: Optional[float] = 0.005,
+                 gamma: Optional[float] = 0.99,
+                 alpha: Optional[float] = 0.2,
+                 action_range: Optional[Tuple[float, float]] = None,
+                 reward_normalization: Optional[bool] = False,
+                 ignore_done: Optional[bool] = False,
+                 **kwargs) -> None:
         super().__init__(None, None, None, None, tau, gamma, 0,
                          action_range, reward_normalization, ignore_done,
                          **kwargs)
@@ -57,19 +68,19 @@ class SACPolicy(DDPGPolicy):
         self._alpha = alpha
         self.__eps = np.finfo(np.float32).eps.item()
 
-    def train(self):
+    def train(self) -> None:
         self.training = True
         self.actor.train()
         self.critic1.train()
         self.critic2.train()
 
-    def eval(self):
+    def eval(self) -> None:
         self.training = False
         self.actor.eval()
         self.critic1.eval()
         self.critic2.eval()
 
-    def sync_weight(self):
+    def sync_weight(self) -> None:
         for o, n in zip(
                 self.critic1_old.parameters(), self.critic1.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
@@ -77,7 +88,9 @@ class SACPolicy(DDPGPolicy):
                 self.critic2_old.parameters(), self.critic2.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
 
-    def forward(self, batch, state=None, input='obs', **kwargs):
+    def forward(self, batch: Batch,
+                state: Optional[Union[dict, Batch, np.ndarray]] = None,
+                input: Optional[str] = 'obs', **kwargs) -> Batch:
         obs = getattr(batch, input)
         logits, h = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
@@ -92,7 +105,7 @@ class SACPolicy(DDPGPolicy):
         return Batch(
             logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
 
-    def learn(self, batch, **kwargs):
+    def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         with torch.no_grad():
             obs_next_result = self(batch, input='obs_next')
             a_ = obs_next_result.act

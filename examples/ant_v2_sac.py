@@ -1,3 +1,4 @@
+import os
 import gym
 import torch
 import pprint
@@ -32,6 +33,7 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument('--rew-norm', type=bool, default=True)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -73,14 +75,18 @@ def test_sac(args=get_args()):
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         args.tau, args.gamma, args.alpha,
         [env.action_space.low[0], env.action_space.high[0]],
-        reward_normalization=True, ignore_done=True)
+        reward_normalization=args.rew_norm, ignore_done=True)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'sac')
+    log_path = os.path.join(args.logdir, args.task, 'sac')
+    writer = SummaryWriter(log_path)
+
+    def save_fn(policy):
+        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold
@@ -89,7 +95,7 @@ def test_sac(args=get_args()):
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
-        args.batch_size, stop_fn=stop_fn, writer=writer, task=args.task)
+        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
     assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()

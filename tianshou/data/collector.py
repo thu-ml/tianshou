@@ -1,10 +1,13 @@
+import gym
 import time
 import torch
 import warnings
 import numpy as np
+from typing import Any, Dict, List, Union, Optional, Callable
 
 from tianshou.utils import MovAvg
 from tianshou.env import BaseVectorEnv
+from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer
 
 
@@ -77,8 +80,14 @@ class Collector(object):
         Please make sure the given environment has a time limitation.
     """
 
-    def __init__(self, policy, env, buffer=None, preprocess_fn=None,
-                 stat_size=100, **kwargs):
+    def __init__(self,
+                 policy: BasePolicy,
+                 env: Union[gym.Env, BaseVectorEnv],
+                 buffer: Optional[Union[ReplayBuffer, List[ReplayBuffer]]]
+                 = None,
+                 preprocess_fn: Callable[[Any], Union[dict, Batch]] = None,
+                 stat_size: Optional[int] = 100,
+                 **kwargs) -> None:
         super().__init__()
         self.env = env
         self.env_num = 1
@@ -112,7 +121,7 @@ class Collector(object):
         self.stat_size = stat_size
         self.reset()
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset all related variables in the collector."""
         self.reset_env()
         self.reset_buffer()
@@ -124,7 +133,7 @@ class Collector(object):
         self.collect_episode = 0
         self.collect_time = 0
 
-    def reset_buffer(self):
+    def reset_buffer(self) -> None:
         """Reset the main data buffer."""
         if self._multi_buf:
             for b in self.buffer:
@@ -133,11 +142,11 @@ class Collector(object):
             if self.buffer is not None:
                 self.buffer.reset()
 
-    def get_env_num(self):
+    def get_env_num(self) -> int:
         """Return the number of environments the collector have."""
         return self.env_num
 
-    def reset_env(self):
+    def reset_env(self) -> None:
         """Reset all of the environment(s)' states and reset all of the cache
         buffers (if need).
         """
@@ -155,36 +164,36 @@ class Collector(object):
         for b in self._cached_buf:
             b.reset()
 
-    def seed(self, seed=None):
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
         """Reset all the seed(s) of the given environment(s)."""
         if hasattr(self.env, 'seed'):
             return self.env.seed(seed)
 
-    def render(self, **kwargs):
+    def render(self, **kwargs) -> None:
         """Render all the environment(s)."""
         if hasattr(self.env, 'render'):
             return self.env.render(**kwargs)
 
-    def close(self):
+    def close(self) -> None:
         """Close the environment(s)."""
         if hasattr(self.env, 'close'):
             self.env.close()
 
-    def _make_batch(self, data):
+    def _make_batch(self, data: Any) -> Union[Any, np.ndarray]:
         """Return [data]."""
         if isinstance(data, np.ndarray):
             return data[None]
         else:
             return np.array([data])
 
-    def _reset_state(self, id):
+    def _reset_state(self, id: Union[int, List[int]]) -> None:
         """Reset self.state[id]."""
         if self.state is None:
             return
         if isinstance(self.state, list):
             self.state[id] = None
-        elif isinstance(self.state, dict):
-            for k in self.state:
+        elif isinstance(self.state, dict) or isinstance(self.state, Batch):
+            for k in self.state.keys():
                 if isinstance(self.state[k], list):
                     self.state[k][id] = None
                 elif isinstance(self.state[k], torch.Tensor) or \
@@ -194,7 +203,8 @@ class Collector(object):
                 isinstance(self.state, np.ndarray):
             self.state[id] = 0
 
-    def _to_numpy(self, x):
+    def _to_numpy(self, x: Union[
+            torch.Tensor, dict, Batch, np.ndarray]) -> None:
         """Return an object without torch.Tensor."""
         if isinstance(x, torch.Tensor):
             return x.cpu().numpy()
@@ -208,7 +218,12 @@ class Collector(object):
             return x
         return x
 
-    def collect(self, n_step=0, n_episode=0, render=None, log_fn=None):
+    def collect(self,
+                n_step: Optional[int] = 0,
+                n_episode: Optional[Union[int, List[int]]] = 0,
+                render: Optional[float] = None,
+                log_fn: Optional[Callable[[dict], None]] = None
+                ) -> Dict[str, float]:
         """Collect a specified number of step or episode.
 
         :param int n_step: how many steps you want to collect.
@@ -375,7 +390,7 @@ class Collector(object):
             'len': length_sum / n_episode,
         }
 
-    def sample(self, batch_size):
+    def sample(self, batch_size: int) -> Batch:
         """Sample a data batch from the internal replay buffer. It will call
         :meth:`~tianshou.policy.BasePolicy.process_fn` before returning
         the final batch data.

@@ -1,6 +1,7 @@
 import torch
 import pprint
 import numpy as np
+from typing import Any, List, Union, Iterator, Optional
 
 
 class Batch(object):
@@ -19,8 +20,8 @@ class Batch(object):
         >>> print(data)
         Batch(
             a: 4,
-            b: [3 4 5],
-            c: 2312312,
+            b: array([3, 4, 5]),
+            c: '2312312',
         )
 
     In short, you can define a :class:`Batch` with any key-value pair. The
@@ -65,7 +66,7 @@ class Batch(object):
         [11 22] [6 6]
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__()
         self._meta = {}
         for k, v in kwargs.items():
@@ -85,7 +86,7 @@ class Batch(object):
             else:
                 self.__dict__[k] = kwargs[k]
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Union[str, slice]) -> Union['Batch', dict]:
         """Return self[index]."""
         if isinstance(index, str):
             return self.__getattr__(index)
@@ -96,7 +97,7 @@ class Batch(object):
         b._meta = self._meta
         return b
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
         if key not in self._meta:
             if key not in self.__dict__:
@@ -108,7 +109,7 @@ class Batch(object):
             d[k_] = self.__dict__[k__]
         return Batch(**d)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
@@ -125,18 +126,18 @@ class Batch(object):
             s = self.__class__.__name__ + '()'
         return s
 
-    def keys(self):
+    def keys(self) -> List[str]:
         """Return self.keys()."""
-        return sorted([i for i in self.__dict__ if i[0] != '_'] +
-                      list(self._meta))
+        return sorted([
+            i for i in self.__dict__ if i[0] != '_'] + list(self._meta))
 
-    def get(self, k, d=None):
+    def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
         if k in self.__dict__ or k in self._meta:
             return self.__getattr__(k)
         return d
 
-    def to_numpy(self):
+    def to_numpy(self) -> np.ndarray:
         """Change all torch.Tensor to numpy.ndarray. This is an inplace
         operation.
         """
@@ -144,7 +145,7 @@ class Batch(object):
             if isinstance(self.__dict__[k], torch.Tensor):
                 self.__dict__[k] = self.__dict__[k].cpu().numpy()
 
-    def append(self, batch):
+    def append(self, batch: 'Batch') -> None:
         """Append a :class:`~tianshou.data.Batch` object to current batch."""
         assert isinstance(batch, Batch), 'Only append Batch is allowed!'
         for k in batch.__dict__:
@@ -169,13 +170,14 @@ class Batch(object):
                     + 'in class Batch.'
                 raise TypeError(s)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return len(self)."""
         return min([
             len(self.__dict__[k]) for k in self.__dict__
             if k != '_meta' and self.__dict__[k] is not None])
 
-    def split(self, size=None, shuffle=True):
+    def split(self, size: Optional[int] = None,
+              shuffle: Optional[bool] = True) -> Iterator['Batch']:
         """Split whole data into multiple small batch.
 
         :param int size: if it is ``None``, it does not split the data batch;

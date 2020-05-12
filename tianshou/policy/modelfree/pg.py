@@ -1,8 +1,9 @@
 import torch
 import numpy as np
+from typing import Dict, List, Union, Optional
 
-from tianshou.data import Batch
 from tianshou.policy import BasePolicy
+from tianshou.data import Batch, ReplayBuffer
 
 
 class PGPolicy(BasePolicy):
@@ -20,8 +21,14 @@ class PGPolicy(BasePolicy):
         explanation.
     """
 
-    def __init__(self, model, optim, dist_fn=torch.distributions.Categorical,
-                 discount_factor=0.99, reward_normalization=False, **kwargs):
+    def __init__(self,
+                 model: torch.nn.Module,
+                 optim: torch.optim.Optimizer,
+                 dist_fn: Optional[torch.distributions.Distribution]
+                 = torch.distributions.Categorical,
+                 discount_factor: Optional[float] = 0.99,
+                 reward_normalization: Optional[bool] = False,
+                 **kwargs) -> None:
         super().__init__(**kwargs)
         self.model = model
         self.optim = optim
@@ -31,7 +38,8 @@ class PGPolicy(BasePolicy):
         self._rew_norm = reward_normalization
         self.__eps = np.finfo(np.float32).eps.item()
 
-    def process_fn(self, batch, buffer, indice):
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
         r"""Compute the discounted returns for each frame:
 
         .. math::
@@ -46,7 +54,9 @@ class PGPolicy(BasePolicy):
         return self.compute_episodic_return(
             batch, gamma=self._gamma, gae_lambda=1.)
 
-    def forward(self, batch, state=None, **kwargs):
+    def forward(self, batch: Batch,
+                state: Optional[Union[dict, Batch, np.ndarray]] = None,
+                **kwargs) -> Batch:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
@@ -69,7 +79,8 @@ class PGPolicy(BasePolicy):
         act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def learn(self, batch, batch_size=None, repeat=1, **kwargs):
+    def learn(self, batch: Batch, batch_size: int, repeat: int,
+              **kwargs) -> Dict[str, List[float]]:
         losses = []
         r = batch.returns
         if self._rew_norm and r.std() > self.__eps:

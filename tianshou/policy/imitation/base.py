@@ -1,5 +1,7 @@
 import torch
+import numpy as np
 import torch.nn.functional as F
+from typing import Dict, Union, Optional
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy
@@ -19,7 +21,9 @@ class ImitationPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-    def __init__(self, model, optim, mode='continuous'):
+
+    def __init__(self, model: torch.nn.Module, optim: torch.optim.Optimizer,
+                 mode: Optional[str] = 'continuous', **kwargs) -> None:
         super().__init__()
         self.model = model
         self.optim = optim
@@ -27,7 +31,10 @@ class ImitationPolicy(BasePolicy):
             f'Mode {mode} is not in ["continuous", "discrete"]'
         self.mode = mode
 
-    def forward(self, batch, state=None):
+    def forward(self,
+                batch: Batch,
+                state: Optional[Union[dict, Batch, np.ndarray]] = None,
+                **kwargs) -> Batch:
         logits, h = self.model(batch.obs, state=state, info=batch.info)
         if self.mode == 'discrete':
             a = logits.max(dim=1)[1]
@@ -35,7 +42,7 @@ class ImitationPolicy(BasePolicy):
             a = logits
         return Batch(logits=logits, act=a, state=h)
 
-    def learn(self, batch, **kwargs):
+    def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         self.optim.zero_grad()
         if self.mode == 'continuous':
             a = self(batch).act

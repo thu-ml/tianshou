@@ -1,6 +1,10 @@
+import torch
 import numpy as np
 from torch import nn
 from abc import ABC, abstractmethod
+from typing import Dict, List, Union, Optional
+
+from tianshou.data import Batch, ReplayBuffer
 
 
 class BasePolicy(ABC, nn.Module):
@@ -39,17 +43,20 @@ class BasePolicy(ABC, nn.Module):
         policy.load_state_dict(torch.load('policy.pth'))
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__()
 
-    def process_fn(self, batch, buffer, indice):
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
         """Pre-process the data from the provided replay buffer. Check out
         :ref:`policy_concept` for more information.
         """
         return batch
 
     @abstractmethod
-    def forward(self, batch, state=None, **kwargs):
+    def forward(self, batch: Batch,
+                state: Optional[Union[dict, Batch, np.ndarray]] = None,
+                **kwargs) -> Batch:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which MUST have the following\
@@ -80,7 +87,8 @@ class BasePolicy(ABC, nn.Module):
         pass
 
     @abstractmethod
-    def learn(self, batch, **kwargs):
+    def learn(self, batch: Batch, **kwargs
+              ) -> Dict[str, Union[float, List[float]]]:
         """Update policy with a given batch of data.
 
         :return: A dict which includes loss and its corresponding label.
@@ -88,8 +96,11 @@ class BasePolicy(ABC, nn.Module):
         pass
 
     @staticmethod
-    def compute_episodic_return(batch, v_s_=None,
-                                gamma=0.99, gae_lambda=0.95):
+    def compute_episodic_return(
+            batch: Batch,
+            v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
+            gamma: Optional[float] = 0.99,
+            gae_lambda: Optional[float] = 0.95) -> Batch:
         """Compute returns over given full-length episodes, including the
         implementation of Generalized Advantage Estimation (arXiv:1506.02438).
 

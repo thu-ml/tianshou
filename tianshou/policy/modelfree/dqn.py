@@ -2,9 +2,10 @@ import torch
 import numpy as np
 from copy import deepcopy
 import torch.nn.functional as F
+from typing import Dict, Union, Optional
 
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, PrioritizedReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer
 
 
 class DQNPolicy(BasePolicy):
@@ -25,8 +26,13 @@ class DQNPolicy(BasePolicy):
         explanation.
     """
 
-    def __init__(self, model, optim, discount_factor=0.99,
-                 estimation_step=1, target_update_freq=0, **kwargs):
+    def __init__(self,
+                 model: torch.nn.Module,
+                 optim: torch.optim.Optimizer,
+                 discount_factor: Optional[float] = 0.99,
+                 estimation_step: Optional[int] = 1,
+                 target_update_freq: Optional[int] = 0,
+                 **kwargs) -> None:
         super().__init__(**kwargs)
         self.model = model
         self.optim = optim
@@ -42,25 +48,26 @@ class DQNPolicy(BasePolicy):
             self.model_old = deepcopy(self.model)
             self.model_old.eval()
 
-    def set_eps(self, eps):
+    def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
         self.eps = eps
 
-    def train(self):
+    def train(self) -> None:
         """Set the module in training mode, except for the target network."""
         self.training = True
         self.model.train()
 
-    def eval(self):
+    def eval(self) -> None:
         """Set the module in evaluation mode, except for the target network."""
         self.training = False
         self.model.eval()
 
-    def sync_weight(self):
+    def sync_weight(self) -> None:
         """Synchronize the weight for the target network."""
         self.model_old.load_state_dict(self.model.state_dict())
 
-    def process_fn(self, batch, buffer, indice):
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
         r"""Compute the n-step return for Q-learning targets:
 
         .. math::
@@ -115,8 +122,12 @@ class DQNPolicy(BasePolicy):
                 batch.loss += loss
         return batch
 
-    def forward(self, batch, state=None,
-                model='model', input='obs', eps=None, **kwargs):
+    def forward(self, batch: Batch,
+                state: Optional[Union[dict, Batch, np.ndarray]] = None,
+                model: Optional[str] = 'model',
+                input: Optional[str] = 'obs',
+                eps: Optional[float] = None,
+                **kwargs) -> Batch:
         """Compute action over the given batch data.
 
         :param float eps: in [0, 1], for epsilon-greedy exploration method.
@@ -144,7 +155,7 @@ class DQNPolicy(BasePolicy):
                 act[i] = np.random.randint(q.shape[1])
         return Batch(logits=q, act=act, state=h)
 
-    def learn(self, batch, **kwargs):
+    def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         if self._target and self._cnt % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

@@ -1,16 +1,34 @@
 import time
 import tqdm
+from torch.utils.tensorboard import SummaryWriter
+from typing import Dict, List, Union, Callable, Optional
 
+from tianshou.data import Collector
+from tianshou.policy import BasePolicy
 from tianshou.utils import tqdm_config, MovAvg
 from tianshou.trainer import test_episode, gather_info
 
 
-def onpolicy_trainer(policy, train_collector, test_collector, max_epoch,
-                     step_per_epoch, collect_per_step, repeat_per_collect,
-                     episode_per_test, batch_size,
-                     train_fn=None, test_fn=None, stop_fn=None, save_fn=None,
-                     log_fn=None, writer=None, log_interval=1, verbose=True,
-                     **kwargs):
+def onpolicy_trainer(
+        policy: BasePolicy,
+        train_collector: Collector,
+        test_collector: Collector,
+        max_epoch: int,
+        step_per_epoch: int,
+        collect_per_step: int,
+        repeat_per_collect: int,
+        episode_per_test: Union[int, List[int]],
+        batch_size: int,
+        train_fn: Optional[Callable[[int], None]] = None,
+        test_fn: Optional[Callable[[int], None]] = None,
+        stop_fn: Optional[Callable[[float], bool]] = None,
+        save_fn: Optional[Callable[[BasePolicy], None]] = None,
+        log_fn: Optional[Callable[[dict], None]] = None,
+        writer: Optional[SummaryWriter] = None,
+        log_interval: Optional[int] = 1,
+        verbose: Optional[bool] = True,
+        **kwargs
+) -> Dict[str, Union[float, str]]:
     """A wrapper for on-policy trainer procedure.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`

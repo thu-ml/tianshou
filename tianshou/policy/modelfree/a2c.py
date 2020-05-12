@@ -2,9 +2,10 @@ import torch
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
+from typing import Dict, List, Union, Optional
 
-from tianshou.data import Batch
 from tianshou.policy import PGPolicy
+from tianshou.data import Batch, ReplayBuffer
 
 
 class A2CPolicy(PGPolicy):
@@ -31,11 +32,19 @@ class A2CPolicy(PGPolicy):
         explanation.
     """
 
-    def __init__(self, actor, critic, optim,
-                 dist_fn=torch.distributions.Categorical,
-                 discount_factor=0.99, vf_coef=.5, ent_coef=.01,
-                 max_grad_norm=None, gae_lambda=0.95,
-                 reward_normalization=False, **kwargs):
+    def __init__(self,
+                 actor: torch.nn.Module,
+                 critic: torch.nn.Module,
+                 optim: torch.optim.Optimizer,
+                 dist_fn: Optional[torch.distributions.Distribution]
+                 = torch.distributions.Categorical,
+                 discount_factor: Optional[float] = 0.99,
+                 vf_coef: Optional[float] = .5,
+                 ent_coef: Optional[float] = .01,
+                 max_grad_norm: Optional[float] = None,
+                 gae_lambda: Optional[float] = 0.95,
+                 reward_normalization: Optional[bool] = False,
+                 **kwargs) -> None:
         super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
         self.actor = actor
         self.critic = critic
@@ -48,7 +57,8 @@ class A2CPolicy(PGPolicy):
         self._rew_norm = reward_normalization
         self.__eps = np.finfo(np.float32).eps.item()
 
-    def process_fn(self, batch, buffer, indice):
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
         if self._lambda in [0, 1]:
             return self.compute_episodic_return(
                 batch, None, gamma=self._gamma, gae_lambda=self._lambda)
@@ -60,7 +70,9 @@ class A2CPolicy(PGPolicy):
         return self.compute_episodic_return(
             batch, v_, gamma=self._gamma, gae_lambda=self._lambda)
 
-    def forward(self, batch, state=None, **kwargs):
+    def forward(self, batch: Batch,
+                state: Optional[Union[dict, Batch, np.ndarray]] = None,
+                **kwargs) -> Batch:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
@@ -83,7 +95,8 @@ class A2CPolicy(PGPolicy):
         act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def learn(self, batch, batch_size=None, repeat=1, **kwargs):
+    def learn(self, batch: Batch, batch_size: int, repeat: int,
+              **kwargs) -> Dict[str, List[float]]:
         self._batch = batch_size
         r = batch.returns
         if self._rew_norm and r.std() > self.__eps:

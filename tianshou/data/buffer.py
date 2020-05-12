@@ -1,5 +1,8 @@
 import pprint
 import numpy as np
+from copy import deepcopy
+from typing import Tuple, Union, Optional
+
 from tianshou.data.batch import Batch
 
 
@@ -92,7 +95,8 @@ class ReplayBuffer(object):
          [ 7.  7.  8.  9.]]
     """
 
-    def __init__(self, size, stack_num=0, ignore_obs_next=False, **kwargs):
+    def __init__(self, size: int, stack_num: Optional[int] = 0,
+                 ignore_obs_next: Optional[bool] = False, **kwargs) -> None:
         super().__init__()
         self._maxsize = size
         self._stack = stack_num
@@ -100,11 +104,11 @@ class ReplayBuffer(object):
         self._meta = {}
         self.reset()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return len(self)."""
         return self._size
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
@@ -121,7 +125,7 @@ class ReplayBuffer(object):
             s = self.__class__.__name__ + '()'
         return s
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Union[Batch, np.ndarray]:
         """Return self.key"""
         if key not in self._meta:
             if key not in self.__dict__:
@@ -133,7 +137,9 @@ class ReplayBuffer(object):
             d[k_] = self.__dict__[k__]
         return Batch(**d)
 
-    def _add_to_buffer(self, name, inst):
+    def _add_to_buffer(
+            self, name: str,
+            inst: Union[dict, Batch, np.ndarray, float, int, bool]) -> None:
         if inst is None:
             if getattr(self, name, None) is None:
                 self.__dict__[name] = None
@@ -164,9 +170,11 @@ class ReplayBuffer(object):
                 f"key: {name}, expect shape: {self.__dict__[name].shape[1:]}, "
                 f"given shape: {inst.shape}.")
         if name not in self._meta:
+            if name == 'info':
+                inst = deepcopy(inst)
             self.__dict__[name][self._index] = inst
 
-    def update(self, buffer):
+    def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
         i = begin = buffer._index % len(buffer)
         while True:
@@ -178,8 +186,15 @@ class ReplayBuffer(object):
             if i == begin:
                 break
 
-    def add(self, obs, act, rew, done, obs_next=None, info={}, policy={},
-            **kwargs):
+    def add(self,
+            obs: Union[dict, np.ndarray],
+            act: Union[np.ndarray, float],
+            rew: float,
+            done: bool,
+            obs_next: Optional[Union[dict, np.ndarray]] = None,
+            info: Optional[dict] = {},
+            policy: Optional[Union[dict, Batch]] = {},
+            **kwargs) -> None:
         """Add a batch of data into replay buffer."""
         assert isinstance(info, dict), \
             'You should return a dict in the last argument of env.step().'
@@ -197,11 +212,11 @@ class ReplayBuffer(object):
         else:
             self._size = self._index = self._index + 1
 
-    def reset(self):
+    def reset(self) -> None:
         """Clear all the data in replay buffer."""
         self._index = self._size = 0
 
-    def sample(self, batch_size):
+    def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         """Get a random sample from buffer with size equal to batch_size. \
         Return all the data in the buffer if batch_size is ``0``.
 
@@ -216,7 +231,8 @@ class ReplayBuffer(object):
             ])
         return self[indice], indice
 
-    def get(self, indice, key, stack_num=None):
+    def get(self, indice: Union[slice, np.ndarray], key: str,
+            stack_num: Optional[int] = None) -> Union[Batch, np.ndarray]:
         """Return the stacked result, e.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t],
         where s is self.key, t is indice. The stack_num (here equals to 4) is
         given from buffer initialization procedure.
@@ -275,7 +291,7 @@ class ReplayBuffer(object):
             stack = np.stack(stack, axis=1)
         return stack
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Union[slice, np.ndarray]) -> Batch:
         """Return a data batch: self[index]. If stack_num is set to be > 0,
         return the stacked obs and obs_next with shape [batch, len, ...].
         """
@@ -302,17 +318,21 @@ class ListReplayBuffer(ReplayBuffer):
         detailed explanation.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__(size=0, ignore_obs_next=False, **kwargs)
 
-    def _add_to_buffer(self, name, inst):
+    def _add_to_buffer(
+            self, name: str,
+            inst: Union[dict, Batch, np.ndarray, float, int, bool]) -> None:
         if inst is None:
             return
         if self.__dict__.get(name, None) is None:
             self.__dict__[name] = []
+        if name == 'info':
+            inst = deepcopy(inst)
         self.__dict__[name].append(inst)
 
-    def reset(self):
+    def reset(self) -> None:
         self._index = self._size = 0
         for k in list(self.__dict__):
             if isinstance(self.__dict__[k], list):
@@ -332,8 +352,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         detailed explanation.
     """
 
-    def __init__(self, size, alpha: float, beta: float,
-                 mode: str = 'weight', **kwargs):
+    def __init__(self, size: int, alpha: float, beta: float,
+                 mode: Optional[str] = 'weight', **kwargs) -> None:
         if mode != 'weight':
             raise NotImplementedError
         super().__init__(size, **kwargs)
@@ -344,17 +364,27 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._amortization_freq = 50
         self._amortization_counter = 0
 
-    def add(self, obs, act, rew, done, obs_next=0, info={}, policy={},
-            weight=1.0):
+    def add(self,
+            obs: Union[dict, np.ndarray],
+            act: Union[np.ndarray, float],
+            rew: float,
+            done: bool,
+            obs_next: Optional[Union[dict, np.ndarray]] = None,
+            info: Optional[dict] = {},
+            policy: Optional[Union[dict, Batch]] = {},
+            weight: Optional[float] = 1.0,
+            **kwargs) -> None:
         """Add a batch of data into replay buffer."""
-        self._weight_sum += np.abs(weight)**self._alpha - \
+        self._weight_sum += np.abs(weight) ** self._alpha - \
             self.weight[self._index]
         # we have to sacrifice some convenience for speed :(
         self._add_to_buffer('weight', np.abs(weight) ** self._alpha)
         super().add(obs, act, rew, done, obs_next, info, policy)
         self._check_weight_sum()
 
-    def sample(self, batch_size: int = 0, importance_sample: bool = True):
+    def sample(self, batch_size: Optional[int] = 0,
+               importance_sample: Optional[bool] = True
+               ) -> Tuple[Batch, np.ndarray]:
         """Get a random sample from buffer with priority probability. \
         Return all the data in the buffer if batch_size is ``0``.
 
@@ -388,11 +418,12 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._check_weight_sum()
         return batch, indice
 
-    def reset(self):
+    def reset(self) -> None:
         self._amortization_counter = 0
         super().reset()
 
-    def update_weight(self, indice, new_weight: np.ndarray):
+    def update_weight(self, indice: Union[slice, np.ndarray],
+                      new_weight: np.ndarray) -> None:
         """Update priority weight by indice in this buffer.
 
         :param np.ndarray indice: indice you want to update weight
@@ -402,7 +433,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             - self.weight[indice].sum()
         self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Union[slice, np.ndarray]) -> Batch:
         return Batch(
             obs=self.get(index, 'obs'),
             act=self.act[index],
@@ -415,7 +446,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             policy=self.get(index, 'policy'),
         )
 
-    def _check_weight_sum(self):
+    def _check_weight_sum(self) -> None:
         # keep an accurate _weight_sum
         self._amortization_counter += 1
         if self._amortization_counter % self._amortization_freq == 0:
