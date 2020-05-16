@@ -25,8 +25,8 @@ def onpolicy_trainer(
         save_fn: Optional[Callable[[BasePolicy], None]] = None,
         log_fn: Optional[Callable[[dict], None]] = None,
         writer: Optional[SummaryWriter] = None,
-        log_interval: Optional[int] = 1,
-        verbose: Optional[bool] = True,
+        log_interval: int = 1,
+        verbose: bool = True,
         **kwargs
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for on-policy trainer procedure.

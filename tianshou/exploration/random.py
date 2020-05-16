@@ -19,9 +19,9 @@ class OUNoise(object):
     """
 
     def __init__(self,
-                 sigma: Optional[float] = 0.3,
-                 theta: Optional[float] = 0.15,
-                 dt: Optional[float] = 1e-2,
+                 sigma: float = 0.3,
+                 theta: float = 0.15,
+                 dt: float = 1e-2,
                  x0: Optional[Union[float, np.ndarray]] = None
                  ) -> None:
         self.alpha = theta * dt
@@ -29,7 +29,7 @@ class OUNoise(object):
         self.x0 = x0
         self.reset()
 
-    def __call__(self, size: tuple, mu: Optional[float] = .1) -> np.ndarray:
+    def __call__(self, size: tuple, mu: float = .1) -> np.ndarray:
         """Generate new noise. Return a ``numpy.ndarray`` which size is equal
         to ``size``.
         """

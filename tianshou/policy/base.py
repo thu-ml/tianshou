@@ -99,8 +99,8 @@ class BasePolicy(ABC, nn.Module):
     def compute_episodic_return(
             batch: Batch,
             v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
-            gamma: Optional[float] = 0.99,
-            gae_lambda: Optional[float] = 0.95) -> Batch:
+            gamma: float = 0.99,
+            gae_lambda: float = 0.95) -> Batch:
         """Compute returns over given full-length episodes, including the
         implementation of Generalized Advantage Estimation (arXiv:1506.02438).
 

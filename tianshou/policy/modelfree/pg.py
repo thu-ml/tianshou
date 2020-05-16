@@ -24,10 +24,10 @@ class PGPolicy(BasePolicy):
     def __init__(self,
                  model: torch.nn.Module,
                  optim: torch.optim.Optimizer,
-                 dist_fn: Optional[torch.distributions.Distribution]
+                 dist_fn: torch.distributions.Distribution
                  = torch.distributions.Categorical,
-                 discount_factor: Optional[float] = 0.99,
-                 reward_normalization: Optional[bool] = False,
+                 discount_factor: float = 0.99,
+                 reward_normalization: bool = False,
                  **kwargs) -> None:
         super().__init__(**kwargs)
         self.model = model

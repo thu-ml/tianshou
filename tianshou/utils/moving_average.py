@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from typing import Union, Optional
+from typing import Union
 
 
 class MovAvg(object):
@@ -21,7 +21,7 @@ class MovAvg(object):
         6.50±1.12
     """
 
-    def __init__(self, size: Optional[int] = 100) -> None:
+    def __init__(self, size: int = 100) -> None:
         super().__init__()
         self.size = size
         self.cache = []

@@ -219,8 +219,8 @@ class Collector(object):
         return x
 
     def collect(self,
-                n_step: Optional[int] = 0,
-                n_episode: Optional[Union[int, List[int]]] = 0,
+                n_step: int = 0,
+                n_episode: Union[int, List[int]] = 0,
                 render: Optional[float] = None,
                 log_fn: Optional[Callable[[dict], None]] = None
                 ) -> Dict[str, float]:

@@ -96,7 +96,7 @@ class ReplayBuffer(object):
     """
 
     def __init__(self, size: int, stack_num: Optional[int] = 0,
-                 ignore_obs_next: Optional[bool] = False, **kwargs) -> None:
+                 ignore_obs_next: bool = False, **kwargs) -> None:
         super().__init__()
         self._maxsize = size
         self._stack = stack_num
@@ -192,7 +192,7 @@ class ReplayBuffer(object):
             rew: float,
             done: bool,
             obs_next: Optional[Union[dict, np.ndarray]] = None,
-            info: Optional[dict] = {},
+            info: dict = {},
             policy: Optional[Union[dict, Batch]] = {},
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
@@ -353,7 +353,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     """
 
     def __init__(self, size: int, alpha: float, beta: float,
-                 mode: Optional[str] = 'weight', **kwargs) -> None:
+                 mode: str = 'weight', **kwargs) -> None:
         if mode != 'weight':
             raise NotImplementedError
         super().__init__(size, **kwargs)
@@ -370,9 +370,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             rew: float,
             done: bool,
             obs_next: Optional[Union[dict, np.ndarray]] = None,
-            info: Optional[dict] = {},
+            info: dict = {},
             policy: Optional[Union[dict, Batch]] = {},
-            weight: Optional[float] = 1.0,
+            weight: float = 1.0,
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
         self._weight_sum += np.abs(weight) ** self._alpha - \
@@ -382,8 +382,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         super().add(obs, act, rew, done, obs_next, info, policy)
         self._check_weight_sum()
 
-    def sample(self, batch_size: Optional[int] = 0,
-               importance_sample: Optional[bool] = True
+    def sample(self, batch_size: int,
+               importance_sample: bool = True
                ) -> Tuple[Batch, np.ndarray]:
         """Get a random sample from buffer with priority probability. \
         Return all the data in the buffer if batch_size is ``0``.

@@ -29,8 +29,8 @@ class DQNPolicy(BasePolicy):
     def __init__(self,
                  model: torch.nn.Module,
                  optim: torch.optim.Optimizer,
-                 discount_factor: Optional[float] = 0.99,
-                 estimation_step: Optional[int] = 1,
+                 discount_factor: float = 0.99,
+                 estimation_step: int = 1,
                  target_update_freq: Optional[int] = 0,
                  **kwargs) -> None:
         super().__init__(**kwargs)
@@ -124,8 +124,8 @@ class DQNPolicy(BasePolicy):
 
     def forward(self, batch: Batch,
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
-                model: Optional[str] = 'model',
-                input: Optional[str] = 'obs',
+                model: str = 'model',
+                input: str = 'obs',
                 eps: Optional[float] = None,
                 **kwargs) -> Batch:
         """Compute action over the given batch data.

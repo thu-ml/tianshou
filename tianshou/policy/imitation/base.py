@@ -23,7 +23,7 @@ class ImitationPolicy(BasePolicy):
     """
 
     def __init__(self, model: torch.nn.Module, optim: torch.optim.Optimizer,
-                 mode: Optional[str] = 'continuous', **kwargs) -> None:
+                 mode: str = 'continuous', **kwargs) -> None:
         super().__init__()
         self.model = model
         self.optim = optim

@@ -177,7 +177,7 @@ class Batch(object):
             if k != '_meta' and self.__dict__[k] is not None])
 
     def split(self, size: Optional[int] = None,
-              shuffle: Optional[bool] = True) -> Iterator['Batch']:
+              shuffle: bool = True) -> Iterator['Batch']:
         """Split whole data into multiple small batch.
 
         :param int size: if it is ``None``, it does not split the data batch;

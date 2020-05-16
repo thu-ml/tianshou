@@ -41,12 +41,12 @@ class DDPGPolicy(BasePolicy):
                  actor_optim: torch.optim.Optimizer,
                  critic: torch.nn.Module,
                  critic_optim: torch.optim.Optimizer,
-                 tau: Optional[float] = 0.005,
-                 gamma: Optional[float] = 0.99,
-                 exploration_noise: Optional[float] = 0.1,
+                 tau: float = 0.005,
+                 gamma: float = 0.99,
+                 exploration_noise: float = 0.1,
                  action_range: Optional[Tuple[float, float]] = None,
-                 reward_normalization: Optional[bool] = False,
-                 ignore_done: Optional[bool] = False,
+                 reward_normalization: bool = False,
+                 ignore_done: bool = False,
                  **kwargs) -> None:
         super().__init__(**kwargs)
         if actor is not None:
@@ -110,8 +110,8 @@ class DDPGPolicy(BasePolicy):
 
     def forward(self, batch: Batch,
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
-                model: Optional[str] = 'actor',
-                input: Optional[str] = 'obs',
+                model: str = 'actor',
+                input: str = 'obs',
                 eps: Optional[float] = None,
                 **kwargs) -> Batch:
         """Compute action over the given batch data.

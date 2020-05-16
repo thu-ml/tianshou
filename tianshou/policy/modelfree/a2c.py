@@ -36,14 +36,14 @@ class A2CPolicy(PGPolicy):
                  actor: torch.nn.Module,
                  critic: torch.nn.Module,
                  optim: torch.optim.Optimizer,
-                 dist_fn: Optional[torch.distributions.Distribution]
+                 dist_fn: torch.distributions.Distribution
                  = torch.distributions.Categorical,
-                 discount_factor: Optional[float] = 0.99,
-                 vf_coef: Optional[float] = .5,
-                 ent_coef: Optional[float] = .01,
+                 discount_factor: float = 0.99,
+                 vf_coef: float = .5,
+                 ent_coef: float = .01,
                  max_grad_norm: Optional[float] = None,
-                 gae_lambda: Optional[float] = 0.95,
-                 reward_normalization: Optional[bool] = False,
+                 gae_lambda: float = 0.95,
+                 reward_normalization: bool = False,
                  **kwargs) -> None:
         super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
         self.actor = actor

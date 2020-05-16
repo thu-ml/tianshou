@@ -48,12 +48,12 @@ class SACPolicy(DDPGPolicy):
                  critic1_optim: torch.optim.Optimizer,
                  critic2: torch.nn.Module,
                  critic2_optim: torch.optim.Optimizer,
-                 tau: Optional[float] = 0.005,
-                 gamma: Optional[float] = 0.99,
-                 alpha: Optional[float] = 0.2,
+                 tau: float = 0.005,
+                 gamma: float = 0.99,
+                 alpha: float = 0.2,
                  action_range: Optional[Tuple[float, float]] = None,
-                 reward_normalization: Optional[bool] = False,
-                 ignore_done: Optional[bool] = False,
+                 reward_normalization: bool = False,
+                 ignore_done: bool = False,
                  **kwargs) -> None:
         super().__init__(None, None, None, None, tau, gamma, 0,
                          action_range, reward_normalization, ignore_done,
@@ -90,7 +90,7 @@ class SACPolicy(DDPGPolicy):
 
     def forward(self, batch: Batch,
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
-                input: Optional[str] = 'obs', **kwargs) -> Batch:
+                input: str = 'obs', **kwargs) -> Batch:
         obs = getattr(batch, input)
         logits, h = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
