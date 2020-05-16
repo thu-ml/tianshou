@@ -78,6 +78,10 @@ def test_ppo(args=get_args()):
     critic = Critic(
         args.layer_num, args.state_shape, device=args.device
     ).to(args.device)
+    # orthogonal initialization
+    for m in list(actor.modules()) + list(critic.modules()):
+        if isinstance(m, torch.nn.Linear):
+            torch.nn.init.orthogonal_(m.weight)
     optim = torch.optim.Adam(list(
         actor.parameters()) + list(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Normal
