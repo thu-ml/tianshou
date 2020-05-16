@@ -26,7 +26,7 @@ jobs:
         flake8 . --count --show-source --statistics
     - name: Test with pytest
       run: |
-        pytest test --cov tianshou --cov-report=xml
+        pytest test --cov tianshou --cov-report=xml --durations 0 -v
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:

@@ -38,7 +38,7 @@ This command will run automatic tests in the main directory
 
 .. code-block:: bash
 
-    pytest test --cov tianshou -s
+    pytest test --cov tianshou -s --durations 0 -v
 
 Test by GitHub Actions
 ----------------------
