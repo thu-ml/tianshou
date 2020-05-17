@@ -82,6 +82,7 @@ def test_ppo(args=get_args()):
     for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
+            torch.nn.init.zeros_(m.bias)
     optim = torch.optim.Adam(list(
         actor.parameters()) + list(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Normal
