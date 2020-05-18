@@ -8,6 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import VectorEnv
 from tianshou.policy import PPOPolicy
+from tianshou.policy.utils import DiagGaussian
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
@@ -44,7 +45,7 @@ def get_args():
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
     parser.add_argument('--gae-lambda', type=float, default=0.95)
     parser.add_argument('--rew-norm', type=bool, default=True)
-    parser.add_argument('--dual-clip', type=float, default=5.)
+    # parser.add_argument('--dual-clip', type=float, default=5.)
     parser.add_argument('--value-clip', type=bool, default=True)
     args = parser.parse_known_args()[0]
     return args
@@ -85,7 +86,7 @@ def test_ppo(args=get_args()):
             torch.nn.init.zeros_(m.bias)
     optim = torch.optim.Adam(list(
         actor.parameters()) + list(critic.parameters()), lr=args.lr)
-    dist = torch.distributions.Normal
+    dist = DiagGaussian
     policy = PPOPolicy(
         actor, critic, optim, dist, args.gamma,
         max_grad_norm=args.max_grad_norm,
@@ -93,7 +94,8 @@ def test_ppo(args=get_args()):
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         reward_normalization=args.rew_norm,
-        dual_clip=args.dual_clip,
+        # dual_clip=args.dual_clip,
+        # dual clip cause monotonically increasing log_std :)
         value_clip=args.value_clip,
         # action_range=[env.action_space.low[0], env.action_space.high[0]],)
         # if clip the action, ppo would not converge :)
