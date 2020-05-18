@@ -53,7 +53,7 @@ class PPOPolicy(PGPolicy):
                  ent_coef: float = .01,
                  action_range: Optional[Tuple[float, float]] = None,
                  gae_lambda: float = 0.95,
-                 dual_clip: float = 5.,
+                 dual_clip: float = None,
                  value_clip: bool = True,
                  reward_normalization: bool = True,
                  **kwargs) -> None:

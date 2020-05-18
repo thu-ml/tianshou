@@ -6,6 +6,7 @@ from typing import Dict, Tuple, Union, Optional
 
 from tianshou.data import Batch
 from tianshou.policy import DDPGPolicy
+from tianshou.policy.utils import DiagGaussian
 
 
 class SACPolicy(DDPGPolicy):
@@ -94,13 +95,12 @@ class SACPolicy(DDPGPolicy):
         obs = getattr(batch, input)
         logits, h = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
-        dist = torch.distributions.Normal(*logits)
+        dist = DiagGaussian(*logits)
         x = dist.rsample()
         y = torch.tanh(x)
         act = y * self._action_scale + self._action_bias
         log_prob = dist.log_prob(x) - torch.log(
             self._action_scale * (1 - y.pow(2)) + self.__eps)
-        log_prob = torch.unsqueeze(torch.sum(log_prob, 1), 1)
         act = act.clamp(self._range[0], self._range[1])
         return Batch(
             logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
