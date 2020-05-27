@@ -10,6 +10,7 @@ from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer
 
 class DQNPolicy(BasePolicy):
     """Implementation of Deep Q Network. arXiv:1312.5602
+    Implementation of Double Q-Learning. arXiv:1509.06461
 
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)

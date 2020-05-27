@@ -71,7 +71,6 @@ class DDPGPolicy(BasePolicy):
         # self.noise = OUNoise()
         self._rm_done = ignore_done
         self._rew_norm = reward_normalization
-        self.__eps = np.finfo(np.float32).eps.item()
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for exploration."""
@@ -102,7 +101,7 @@ class DDPGPolicy(BasePolicy):
         if self._rew_norm:
             bfr = buffer.rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
-            if std > self.__eps:
+            if not np.isclose(std, 0):
                 batch.rew = (batch.rew - mean) / std
         if self._rm_done:
             batch.done = batch.done * 0.

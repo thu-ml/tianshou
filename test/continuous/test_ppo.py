@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import VectorEnv
 from tianshou.policy import PPOPolicy
-from tianshou.policy.utils import DiagGaussian
+from tianshou.policy.dist import DiagGaussian
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 

@@ -192,15 +192,13 @@ class Collector(object):
             return
         if isinstance(self.state, list):
             self.state[id] = None
-        elif isinstance(self.state, dict) or isinstance(self.state, Batch):
+        elif isinstance(self.state, (dict, Batch)):
             for k in self.state.keys():
                 if isinstance(self.state[k], list):
                     self.state[k][id] = None
-                elif isinstance(self.state[k], torch.Tensor) or \
-                        isinstance(self.state[k], np.ndarray):
+                elif isinstance(self.state[k], (torch.Tensor, np.ndarray)):
                     self.state[k][id] = 0
-        elif isinstance(self.state, torch.Tensor) or \
-                isinstance(self.state, np.ndarray):
+        elif isinstance(self.state, (torch.Tensor, np.ndarray)):
             self.state[id] = 0
 
     def _to_numpy(self, x: Union[

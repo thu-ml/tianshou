@@ -70,7 +70,7 @@ class Batch(object):
         super().__init__()
         self._meta = {}
         for k, v in kwargs.items():
-            if (isinstance(v, list) or isinstance(v, np.ndarray)) \
+            if isinstance(v, (list, np.ndarray)) \
                     and len(v) > 0 and isinstance(v[0], dict) and k != 'info':
                 self._meta[k] = list(v[0].keys())
                 for k_ in v[0].keys():
@@ -78,7 +78,7 @@ class Batch(object):
                     self.__dict__[k__] = np.array([
                         v[i][k_] for i in range(len(v))
                     ])
-            elif isinstance(v, dict) or isinstance(v, Batch):
+            elif isinstance(v, dict):
                 self._meta[k] = list(v.keys())
                 for k_ in v.keys():
                     k__ = '_' + k + '@' + k_

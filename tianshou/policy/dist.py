@@ -2,9 +2,7 @@ import torch
 
 
 class DiagGaussian(torch.distributions.Normal):
-    """Diagonal Gaussian Distribution
-
-    """
+    """Diagonal Gaussian distribution."""
 
     def log_prob(self, actions):
         return super().log_prob(actions).sum(-1, keepdim=True)

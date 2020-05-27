@@ -102,7 +102,7 @@ class BasePolicy(ABC, nn.Module):
             gamma: float = 0.99,
             gae_lambda: float = 0.95) -> Batch:
         """Compute returns over given full-length episodes, including the
-        implementation of Generalized Advantage Estimation (arXiv:1506.02438).
+        implementation of Generalized Advantage Estimator (arXiv:1506.02438).
 
         :param batch: a data batch which contains several full-episode data
             chronologically.

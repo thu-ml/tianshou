@@ -151,7 +151,7 @@ class ReplayBuffer(object):
         if self.__dict__.get(name, None) is None:
             if isinstance(inst, np.ndarray):
                 self.__dict__[name] = np.zeros([self._maxsize, *inst.shape])
-            elif isinstance(inst, dict) or isinstance(inst, Batch):
+            elif isinstance(inst, (dict, Batch)):
                 if name == 'info':
                     self.__dict__[name] = np.array(
                         [{} for _ in range(self._maxsize)])

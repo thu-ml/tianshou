@@ -53,7 +53,7 @@ class PPOPolicy(PGPolicy):
                  ent_coef: float = .01,
                  action_range: Optional[Tuple[float, float]] = None,
                  gae_lambda: float = 0.95,
-                 dual_clip: float = None,
+                 dual_clip: Optional[float] = None,
                  value_clip: bool = True,
                  reward_normalization: bool = True,
                  **kwargs) -> None:
@@ -74,13 +74,12 @@ class PPOPolicy(PGPolicy):
         self._dual_clip = dual_clip
         self._value_clip = value_clip
         self._rew_norm = reward_normalization
-        self.__eps = np.finfo(np.float32).eps.item()
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
         if self._rew_norm:
             mean, std = batch.rew.mean(), batch.rew.std()
-            if std > self.__eps:
+            if not np.isclose(std, 0):
                 batch.rew = (batch.rew - mean) / std
         if self._lambda in [0, 1]:
             return self.compute_episodic_return(
@@ -140,12 +139,12 @@ class PPOPolicy(PGPolicy):
         ).reshape(batch.v.shape)
         if self._rew_norm:
             mean, std = batch.returns.mean(), batch.returns.std()
-            if std > self.__eps:
+            if not np.isclose(std.item(), 0):
                 batch.returns = (batch.returns - mean) / std
         batch.adv = batch.returns - batch.v
         if self._rew_norm:
             mean, std = batch.adv.mean(), batch.adv.std()
-            if std > self.__eps:
+            if not np.isclose(std.item(), 0):
                 batch.adv = (batch.adv - mean) / std
         for _ in range(repeat):
             for b in batch.split(batch_size):

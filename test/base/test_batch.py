@@ -20,5 +20,14 @@ def test_batch():
     print(batch)
 
 
+def test_batch_over_batch():
+    batch = Batch(a=[3, 4, 5], b=[4, 5, 6])
+    batch2 = Batch(b=batch, c=[6, 7, 8])
+    batch2.b.b[-1] = 0
+    print(batch2)
+    assert batch2[-1].b.b == 0
+
+
 if __name__ == '__main__':
     test_batch()
+    test_batch_over_batch()

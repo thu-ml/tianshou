@@ -6,7 +6,7 @@ from typing import Dict, Tuple, Union, Optional
 
 from tianshou.data import Batch
 from tianshou.policy import DDPGPolicy
-from tianshou.policy.utils import DiagGaussian
+from tianshou.policy.dist import DiagGaussian
 
 
 class SACPolicy(DDPGPolicy):

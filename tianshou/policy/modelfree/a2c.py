@@ -55,7 +55,6 @@ class A2CPolicy(PGPolicy):
         self._grad_norm = max_grad_norm
         self._batch = 64
         self._rew_norm = reward_normalization
-        self.__eps = np.finfo(np.float32).eps.item()
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
@@ -99,7 +98,7 @@ class A2CPolicy(PGPolicy):
               **kwargs) -> Dict[str, List[float]]:
         self._batch = batch_size
         r = batch.returns
-        if self._rew_norm and r.std() > self.__eps:
+        if self._rew_norm and not np.isclose(r.std(), 0):
             batch.returns = (r - r.mean()) / r.std()
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
