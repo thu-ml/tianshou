@@ -5,7 +5,8 @@ import torch.nn.functional as F
 from typing import Dict, Union, Optional
 
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, to_torch, to_numpy
+from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, \
+    to_torch, to_numpy
 
 
 class DQNPolicy(BasePolicy):

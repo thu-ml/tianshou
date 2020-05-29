@@ -1,12 +1,13 @@
 import torch
 import numpy as np
-from typing import List, Union, Optional
+from typing import Union, Optional
 
 from tianshou.data import Batch
 
 
 def to_numpy(x: Union[
-        torch.Tensor, dict, Batch, np.ndarray]) -> Union[dict, Batch, np.ndarray]:
+    torch.Tensor, dict, Batch, np.ndarray]) -> Union[
+        dict, Batch, np.ndarray]:
     """Return an object without torch.Tensor."""
     if isinstance(x, torch.Tensor):
         x = x.detach().cpu().numpy()
@@ -16,6 +17,7 @@ def to_numpy(x: Union[
     elif isinstance(x, Batch):
         x.to_numpy()
     return x
+
 
 def to_torch(x: Union[torch.Tensor, dict, Batch, np.ndarray],
              dtype: Optional[torch.dtype] = None,
