@@ -148,6 +148,8 @@ class Batch:
         for k, v in self.__dict__.items():
             if isinstance(v, torch.Tensor):
                 self.__dict__[k] = v.cpu().numpy()
+            elif isinstance(v, Batch):
+                v.to_numpy()
 
     def to_torch(self,
                  dtype: Optional[torch.dtype] = None,
@@ -162,6 +164,8 @@ class Batch:
                 if dtype is not None:
                     v = v.type(dtype)
                 self.__dict__[k] = v
+            elif isinstance(v, Batch):
+                v.to_torch()
 
     def append(self, batch: 'Batch') -> None:
         """Append a :class:`~tianshou.data.Batch` object to current batch."""

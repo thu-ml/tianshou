@@ -39,7 +39,7 @@ def test_batch_from_to_numpy_without_copy():
     assert isinstance(batch["b"]["c"], torch.Tensor)
     batch.to_numpy()
     a_mem_addr_new = batch["a"].__array_interface__['data'][0]
-    c_mem_addr_new = batch["a"].__array_interface__['data'][0]
+    c_mem_addr_new = batch["b"]["c"].__array_interface__['data'][0]
     assert a_mem_addr_new == a_mem_addr_orig
     assert c_mem_addr_new == c_mem_addr_orig
 
