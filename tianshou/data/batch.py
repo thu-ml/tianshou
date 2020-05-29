@@ -4,7 +4,7 @@ import numpy as np
 from typing import Any, List, Union, Iterator, Optional
 
 
-class Batch(object):
+class Batch:
     """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
     structure to pass any kind of data to other methods, for example, a
     collector gives a :class:`~tianshou.data.Batch` to policy for learning.
@@ -80,9 +80,9 @@ class Batch(object):
                     ])
             elif isinstance(v, dict):
                 self._meta[k] = list(v.keys())
-                for k_ in v.keys():
+                for k_, v_ in v.items():
                     k__ = '_' + k + '@' + k_
-                    self.__dict__[k__] = v[k_]
+                    self.__dict__[k__] = v_
             else:
                 self.__dict__[k] = kwargs[k]
 
@@ -91,15 +91,15 @@ class Batch(object):
         if isinstance(index, str):
             return self.__getattr__(index)
         b = Batch()
-        for k in self.__dict__:
-            if k != '_meta' and self.__dict__[k] is not None:
-                b.__dict__.update(**{k: self.__dict__[k][index]})
+        for k, v in self.__dict__.items():
+            if k != '_meta' and v is not None:
+                b.__dict__.update(**{k: v[index]})
         b._meta = self._meta
         return b
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
-        if key not in self._meta:
+        if key not in self._meta.keys():
             if key not in self.__dict__:
                 raise AttributeError(key)
             return self.__dict__[key]
@@ -128,8 +128,8 @@ class Batch(object):
 
     def keys(self) -> List[str]:
         """Return self.keys()."""
-        return sorted([
-            i for i in self.__dict__ if i[0] != '_'] + list(self._meta))
+        return list(self._meta.keys()) + \
+            [k for k in self.__dict__.keys() if i[0] != '_']
 
     def values(self) -> List[Any]:
         """Return self.values()."""
@@ -145,40 +145,36 @@ class Batch(object):
         """Change all torch.Tensor to numpy.ndarray. This is an inplace
         operation.
         """
-        for k in self.__dict__:
-            if isinstance(self.__dict__[k], torch.Tensor):
-                self.__dict__[k] = self.__dict__[k].cpu().numpy()
+        for k, v in self.__dict__.items():
+            if isinstance(v, torch.Tensor):
+                self.__dict__[k] = v.cpu().numpy()
 
     def append(self, batch: 'Batch') -> None:
         """Append a :class:`~tianshou.data.Batch` object to current batch."""
         assert isinstance(batch, Batch), 'Only append Batch is allowed!'
-        for k in batch.__dict__:
+        for k, v in batch.__dict__.items():
             if k == '_meta':
                 self._meta.update(batch._meta)
                 continue
-            if batch.__dict__[k] is None:
+            if v is None:
                 continue
             if not hasattr(self, k) or self.__dict__[k] is None:
-                self.__dict__[k] = batch.__dict__[k]
-            elif isinstance(batch.__dict__[k], np.ndarray):
-                self.__dict__[k] = np.concatenate([
-                    self.__dict__[k], batch.__dict__[k]])
-            elif isinstance(batch.__dict__[k], torch.Tensor):
-                self.__dict__[k] = torch.cat([
-                    self.__dict__[k], batch.__dict__[k]])
-            elif isinstance(batch.__dict__[k], list):
-                self.__dict__[k] += batch.__dict__[k]
+                self.__dict__[k] = v
+            elif isinstance(v, np.ndarray):
+                self.__dict__[k] = np.concatenate([self.__dict__[k], v])
+            elif isinstance(v, torch.Tensor):
+                self.__dict__[k] = torch.cat([self.__dict__[k], v])
+            elif isinstance(v, list):
+                self.__dict__[k] += v
             else:
-                s = 'No support for append with type' \
-                    + str(type(batch.__dict__[k])) \
-                    + 'in class Batch.'
+                s = f'No support for append with type \
+                      {type(v)} in class Batch.'
                 raise TypeError(s)
 
     def __len__(self) -> int:
         """Return len(self)."""
-        return min([
-            len(self.__dict__[k]) for k in self.__dict__
-            if k != '_meta' and self.__dict__[k] is not None])
+        return min([len(v) for k, v in self.__dict__.items()
+                    if k != '_meta' and v is not None])
 
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:
@@ -193,11 +189,9 @@ class Batch(object):
         length = len(self)
         if size is None:
             size = length
-        temp = 0
         if shuffle:
-            index = np.random.permutation(length)
+            indices = np.random.permutation(length)
         else:
-            index = np.arange(length)
-        while temp < length:
-            yield self[index[temp:temp + size]]
-            temp += size
+            indices = np.arange(length)
+        for idx in np.arange(0, length, size):
+            yield self[indices[idx:(idx + size)]]
