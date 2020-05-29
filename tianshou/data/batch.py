@@ -149,6 +149,14 @@ class Batch:
             if isinstance(v, torch.Tensor):
                 self.__dict__[k] = v.cpu().numpy()
 
+    def to_torch(self, device: Union[str, int] = 'cpu') -> torch.Tensor:
+        """Change all numpy.ndarray to torch.Tensor. This is an inplace
+        operation.
+        """
+        for k, v in self.__dict__.items():
+            if isinstance(v, np.ndarray):
+                self.__dict__[k] = torch.from_numpy(v).to(device)
+
     def append(self, batch: 'Batch') -> None:
         """Append a :class:`~tianshou.data.Batch` object to current batch."""
         assert isinstance(batch, Batch), 'Only append Batch is allowed!'
