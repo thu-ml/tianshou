@@ -22,9 +22,10 @@ def test_batch():
 
 def test_batch_over_batch():
     batch = Batch(a=[3, 4, 5], b=[4, 5, 6])
-    batch2 = Batch(b=batch, c=[6, 7, 8])
+    batch2 = Batch(c=[6, 7, 8], b=batch)
     batch2.b.b[-1] = 0
     print(batch2)
+    assert batch2.values()[-1] == batch2.c
     assert batch2[-1].b.b == 0
 
 

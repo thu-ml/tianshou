@@ -131,6 +131,10 @@ class Batch(object):
         return sorted([
             i for i in self.__dict__ if i[0] != '_'] + list(self._meta))
 
+    def values(self) -> List[Any]:
+        """Return self.values()."""
+        return [self[k] for k in self.keys()]
+
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
         if k in self.__dict__ or k in self._meta:
