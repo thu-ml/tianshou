@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Union, Optional, Callable
 from tianshou.utils import MovAvg
 from tianshou.env import BaseVectorEnv
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
 
 
 class Collector(object):
@@ -201,37 +201,6 @@ class Collector(object):
         elif isinstance(self.state, (torch.Tensor, np.ndarray)):
             self.state[id] = 0
 
-    @staticmethod
-    def _to_numpy(x: Union[
-            torch.Tensor, dict, Batch, np.ndarray]) -> Union[dict, Batch, np.ndarray]:
-        """Return an object without torch.Tensor."""
-        if isinstance(x, torch.Tensor):
-            x = x.cpu().numpy()
-        elif isinstance(x, dict):
-            for k, v in x.items():
-                x[k] = Collector._to_numpy(v)
-        elif isinstance(x, Batch):
-            x.to_numpy()
-        return x
-
-    @staticmethod
-    def _to_torch(self,
-                  x: Union[torch.Tensor, dict, Batch, np.ndarray],
-                  dtype: Optional[torch.dtype] = None,
-                  device: Union[str, int] = 'cpu'
-                  ) -> Union[dict, Batch, torch.Tensor]:
-        """Return an object without np.ndarray."""
-        if isinstance(x, np.ndarray):
-            x = torch.from_numpy(x).to(device)
-            if dtype is not None:
-                x = x.type(dtype)
-        elif isinstance(x, dict):
-            for k, v in x.items():
-                x[k] = Collector._to_torch(v, dtype, device)
-        elif isinstance(x, Batch):
-            x.to_torch()
-        return x
-
     def collect(self,
                 n_step: int = 0,
                 n_episode: Union[int, List[int]] = 0,
@@ -286,9 +255,9 @@ class Collector(object):
             with torch.no_grad():
                 result = self.policy(batch, self.state)
             self.state = result.get('state', None)
-            self._policy = self._to_numpy(result.policy) \
+            self._policy = to_numpy(result.policy) \
                 if hasattr(result, 'policy') else [{}] * self.env_num
-            self._act = self._to_numpy(result.act)
+            self._act = to_numpy(result.act)
             obs_next, self._rew, self._done, self._info = self.env.step(
                 self._act if self._multi_env else self._act[0])
             if not self._multi_env:
