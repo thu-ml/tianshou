@@ -141,7 +141,7 @@ class Batch:
             return self.__getattr__(k)
         return d
 
-    def to_numpy(self) -> np.ndarray:
+    def to_numpy(self) -> None:
         """Change all torch.Tensor to numpy.ndarray. This is an inplace
         operation.
         """
@@ -149,13 +149,19 @@ class Batch:
             if isinstance(v, torch.Tensor):
                 self.__dict__[k] = v.cpu().numpy()
 
-    def to_torch(self, device: Union[str, int] = 'cpu') -> torch.Tensor:
+    def to_torch(self,
+                 dtype: Optional[torch.dtype] = None,
+                 device: Union[str, int] = 'cpu'
+                 ) -> None:
         """Change all numpy.ndarray to torch.Tensor. This is an inplace
         operation.
         """
         for k, v in self.__dict__.items():
             if isinstance(v, np.ndarray):
-                self.__dict__[k] = torch.from_numpy(v).to(device)
+                v = torch.from_numpy(v).to(device)
+                if dtype is not None:
+                    v = v_np.type(dtype)
+                self.__dict__[k] = v
 
     def append(self, batch: 'Batch') -> None:
         """Append a :class:`~tianshou.data.Batch` object to current batch."""

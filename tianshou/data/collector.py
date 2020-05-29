@@ -201,19 +201,35 @@ class Collector(object):
         elif isinstance(self.state, (torch.Tensor, np.ndarray)):
             self.state[id] = 0
 
-    def _to_numpy(self, x: Union[
-            torch.Tensor, dict, Batch, np.ndarray]) -> None:
+    @staticmethod
+    def _to_numpy(x: Union[
+            torch.Tensor, dict, Batch, np.ndarray]) -> Union[dict, Batch, np.ndarray]:
         """Return an object without torch.Tensor."""
         if isinstance(x, torch.Tensor):
-            return x.cpu().numpy()
+            x = x.cpu().numpy()
         elif isinstance(x, dict):
-            for k in x:
-                if isinstance(x[k], torch.Tensor):
-                    x[k] = x[k].cpu().numpy()
-            return x
+            for k, v in x.items():
+                x[k] = Collector._to_numpy(v)
         elif isinstance(x, Batch):
             x.to_numpy()
-            return x
+        return x
+
+    @staticmethod
+    def _to_torch(self,
+                  x: Union[torch.Tensor, dict, Batch, np.ndarray],
+                  dtype: Optional[torch.dtype] = None,
+                  device: Union[str, int] = 'cpu'
+                  ) -> Union[dict, Batch, torch.Tensor]:
+        """Return an object without np.ndarray."""
+        if isinstance(x, np.ndarray):
+            x = torch.from_numpy(x).to(device)
+            if dtype is not None:
+                x = x.type(dtype)
+        elif isinstance(x, dict):
+            for k, v in x.items():
+                x[k] = Collector._to_torch(v, dtype, device)
+        elif isinstance(x, Batch):
+            x.to_torch()
         return x
 
     def collect(self,
