@@ -160,7 +160,7 @@ class Batch:
             if isinstance(v, np.ndarray):
                 v = torch.from_numpy(v).to(device)
                 if dtype is not None:
-                    v = v_np.type(dtype)
+                    v = v.type(dtype)
                 self.__dict__[k] = v
 
     def append(self, batch: 'Batch') -> None:
