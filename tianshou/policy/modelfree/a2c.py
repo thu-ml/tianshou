@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from typing import Dict, List, Union, Optional
 
 from tianshou.policy import PGPolicy
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, to_torch, to_numpy
 
 
 class A2CPolicy(PGPolicy):
@@ -64,7 +64,7 @@ class A2CPolicy(PGPolicy):
         v_ = []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False):
-                v_.append(self.critic(b.obs_next).detach().cpu().numpy())
+                v_.append(to_numpy(self.critic(b.obs_next)))
         v_ = np.concatenate(v_, axis=0)
         return self.compute_episodic_return(
             batch, v_, gamma=self._gamma, gae_lambda=self._lambda)
@@ -106,8 +106,8 @@ class A2CPolicy(PGPolicy):
                 self.optim.zero_grad()
                 dist = self(b).dist
                 v = self.critic(b.obs)
-                a = torch.tensor(b.act, device=v.device)
-                r = torch.tensor(b.returns, device=v.device)
+                a = to_torch(b.act, device=v.device)
+                r = to_torch(b.returns, device=v.device)
                 a_loss = -(dist.log_prob(a) * (r - v).detach()).mean()
                 vf_loss = F.mse_loss(r[:, None], v)
                 ent_loss = dist.entropy().mean()
