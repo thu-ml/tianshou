@@ -402,7 +402,7 @@ class Collector(object):
                 lens = [len(b) for b in self.buffer]
                 total = sum(lens)
                 batch_index = np.random.choice(
-                    total, batch_size, p=np.array(lens) / total)
+                    len(self.buffer), batch_size, p=np.array(lens) / total)
             else:
                 batch_index = np.array([])
             batch_data = Batch()
