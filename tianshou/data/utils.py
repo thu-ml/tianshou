@@ -9,7 +9,7 @@ def to_numpy(x: Union[
         torch.Tensor, dict, Batch, np.ndarray]) -> Union[dict, Batch, np.ndarray]:
     """Return an object without torch.Tensor."""
     if isinstance(x, torch.Tensor):
-        x = x.cpu().numpy()
+        x = x.detach().cpu().numpy()
     elif isinstance(x, dict):
         for k, v in x.items():
             x[k] = to_numpy(v)

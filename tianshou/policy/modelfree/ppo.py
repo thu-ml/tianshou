@@ -4,7 +4,7 @@ from torch import nn
 from typing import Dict, List, Tuple, Union, Optional
 
 from tianshou.policy import PGPolicy
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 
 
 class PPOPolicy(PGPolicy):
@@ -88,7 +88,7 @@ class PPOPolicy(PGPolicy):
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False):
                 v_.append(self.critic(b.obs_next))
-        v_ = torch.cat(v_, dim=0).cpu().numpy()
+        v_ = to_numpy(torch.cat(v_, dim=0))
         return self.compute_episodic_return(
             batch, v_, gamma=self._gamma, gae_lambda=self._lambda)
 
@@ -129,12 +129,12 @@ class PPOPolicy(PGPolicy):
             for b in batch.split(batch_size, shuffle=False):
                 v.append(self.critic(b.obs))
                 old_log_prob.append(self(b).dist.log_prob(
-                    torch.tensor(b.act, device=v[0].device)))
+                    to_torch(b.act, device=v[0].device)))
         batch.v = torch.cat(v, dim=0)  # old value
         dev = batch.v.device
-        batch.act = torch.tensor(batch.act, dtype=torch.float, device=dev)
+        batch.act = to_torch(batch.act, dtype=torch.float, device=dev)
         batch.logp_old = torch.cat(old_log_prob, dim=0)
-        batch.returns = torch.tensor(
+        batch.returns = to_torch(
             batch.returns, dtype=torch.float, device=dev
         ).reshape(batch.v.shape)
         if self._rew_norm:

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from typing import Dict, Union, Optional
 
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, to_torch, to_numpy
 
 
 class DQNPolicy(BasePolicy):
@@ -96,12 +96,12 @@ class DQNPolicy(BasePolicy):
             target_q = self(
                 terminal_data, model='model_old', input='obs_next').logits
             if isinstance(target_q, torch.Tensor):
-                target_q = target_q.detach().cpu().numpy()
+                target_q = to_numpy(target_q)
             target_q = target_q[np.arange(len(a)), a]
         else:
             target_q = self(terminal_data, input='obs_next').logits
             if isinstance(target_q, torch.Tensor):
-                target_q = target_q.detach().cpu().numpy()
+                target_q = to_numpy(target_q)
             target_q = target_q.max(axis=1)
         target_q[gammas != self._n_step] = 0
         returns += (self._gamma ** gammas) * target_q
@@ -111,11 +111,11 @@ class DQNPolicy(BasePolicy):
             q = q[np.arange(len(q)), batch.act]
             r = batch.returns
             if isinstance(r, np.ndarray):
-                r = torch.tensor(r, device=q.device, dtype=q.dtype)
+                r = to_torch(r, device=q.device, dtype=q.dtype)
             td = r - q
-            buffer.update_weight(indice, td.detach().cpu().numpy())
-            impt_weight = torch.tensor(batch.impt_weight,
-                                       device=q.device, dtype=torch.float)
+            buffer.update_weight(indice, to_numpy(td))
+            impt_weight = to_torch(batch.impt_weight,
+                                   device=q.device, dtype=torch.float)
             loss = (td.pow(2) * impt_weight).mean()
             if not hasattr(batch, 'loss'):
                 batch.loss = loss
@@ -147,7 +147,7 @@ class DQNPolicy(BasePolicy):
         model = getattr(self, model)
         obs = getattr(batch, input)
         q, h = model(obs, state=state, info=batch.info)
-        act = q.max(dim=1)[1].detach().cpu().numpy()
+        act = to_numpy(q.max(dim=1)[1])
         # add eps to act
         if eps is None:
             eps = self.eps
@@ -168,7 +168,7 @@ class DQNPolicy(BasePolicy):
             q = q[np.arange(len(q)), batch.act]
             r = batch.returns
             if isinstance(r, np.ndarray):
-                r = torch.tensor(r, device=q.device, dtype=q.dtype)
+                r = to_torch(r, device=q.device, dtype=q.dtype)
             loss = F.mse_loss(q, r)
         loss.backward()
         self.optim.step()

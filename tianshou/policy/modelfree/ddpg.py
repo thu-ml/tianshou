@@ -6,7 +6,7 @@ from typing import Dict, Tuple, Union, Optional
 
 from tianshou.policy import BasePolicy
 # from tianshou.exploration import OUNoise
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, to_torch
 
 
 class DDPGPolicy(BasePolicy):
@@ -135,7 +135,7 @@ class DDPGPolicy(BasePolicy):
             eps = self._eps
         if eps > 0:
             # noise = np.random.normal(0, eps, size=logits.shape)
-            # logits += torch.tensor(noise, device=logits.device)
+            # logits += to_torch(noise, device=logits.device)
             # noise = self.noise(logits.shape, eps)
             logits += torch.randn(
                 size=logits.shape, device=logits.device) * eps
@@ -147,10 +147,10 @@ class DDPGPolicy(BasePolicy):
             target_q = self.critic_old(batch.obs_next, self(
                 batch, model='actor_old', input='obs_next', eps=0).act)
             dev = target_q.device
-            rew = torch.tensor(batch.rew,
-                               dtype=torch.float, device=dev)[:, None]
-            done = torch.tensor(batch.done,
-                                dtype=torch.float, device=dev)[:, None]
+            rew = to_torch(batch.rew,
+                           dtype=torch.float, device=dev)[:, None]
+            done = to_torch(batch.done,
+                            dtype=torch.float, device=dev)[:, None]
             target_q = (rew + (1. - done) * self._gamma * target_q)
         current_q = self.critic(batch.obs, batch.act)
         critic_loss = F.mse_loss(current_q, target_q)
