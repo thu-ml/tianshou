@@ -129,7 +129,7 @@ class Batch:
     def keys(self) -> List[str]:
         """Return self.keys()."""
         return list(self._meta.keys()) + \
-            [k for k in self.__dict__.keys() if i[0] != '_']
+            [k for k in self.__dict__.keys() if k[0] != '_']
 
     def values(self) -> List[Any]:
         """Return self.values()."""
