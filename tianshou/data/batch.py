@@ -7,8 +7,9 @@ from typing import Any, List, Union, Iterator, Optional
 # Disable pickle warning related to torch, since it has been removed
 # on torch master branch. See Pull Request #39003 for details:
 # https://github.com/pytorch/pytorch/pull/39003
-warnings.filterwarnings("ignore",
-    message="pickle support for Storage will be removed in 1.5.")
+warnings.filterwarnings(
+    "ignore", message="pickle support for Storage will be removed in 1.5.")
+
 
 class Batch:
     """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
