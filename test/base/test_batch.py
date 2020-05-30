@@ -3,11 +3,12 @@ import pickle
 import torch
 import numpy as np
 
-from tianshou.data import Batch
+from tianshou.data import Batch, to_torch
 
 
 def test_batch():
     batch = Batch(obs=[0], np=np.zeros([3, 4]))
+    assert batch.obs == batch["obs"]
     batch.obs = [1]
     assert batch.obs == [1]
     batch.append(batch)
@@ -31,6 +32,45 @@ def test_batch_over_batch():
     assert batch2[-1].b.b == 0
 
 
+def test_batch_over_batch_to_torch():
+    batch = Batch(
+        a=np.ones((1,), dtype=np.float64),
+        b=Batch(
+            c=np.ones((1,), dtype=np.float64),
+            d=torch.ones((1,), dtype=torch.float64)
+        )
+    )
+    batch.to_torch()
+    assert isinstance(batch.a, torch.Tensor)
+    assert isinstance(batch.b.c, torch.Tensor)
+    assert isinstance(batch.b.d, torch.Tensor)
+    assert batch.a.dtype == torch.float64
+    assert batch.b.c.dtype == torch.float64
+    assert batch.b.d.dtype == torch.float64
+    batch.to_torch(dtype=torch.float32)
+    assert batch.a.dtype == torch.float32
+    assert batch.b.c.dtype == torch.float32
+    assert batch.b.d.dtype == torch.float32
+
+
+def test_utils_to_torch():
+    batch = Batch(
+        a=np.ones((1,), dtype=np.float64),
+        b=Batch(
+            c=np.ones((1,), dtype=np.float64),
+            d=torch.ones((1,), dtype=torch.float64)
+        )
+    )
+    a_torch_float = to_torch(batch.a, dtype=torch.float32)
+    assert a_torch_float.dtype == torch.float32
+    a_torch_double = to_torch(batch.a, dtype=torch.float64)
+    assert a_torch_double.dtype == torch.float64
+    batch_torch_float = to_torch(batch, dtype=torch.float32)
+    assert batch_torch_float.a.dtype == torch.float32
+    assert batch_torch_float.b.c.dtype == torch.float32
+    assert batch_torch_float.b.d.dtype == torch.float32
+
+
 def test_batch_pickle():
     batch = Batch(obs=Batch(a=0.0, c=torch.Tensor([1.0, 2.0])),
                   np=np.zeros([3, 4]))
@@ -42,14 +82,12 @@ def test_batch_pickle():
 
 def test_batch_from_to_numpy_without_copy():
     batch = Batch(a=np.ones((1,)), b=Batch(c=np.ones((1,))))
-    a_mem_addr_orig = batch["a"].__array_interface__['data'][0]
-    c_mem_addr_orig = batch["b"]["c"].__array_interface__['data'][0]
+    a_mem_addr_orig = batch.a.__array_interface__['data'][0]
+    c_mem_addr_orig = batch.b.c.__array_interface__['data'][0]
     batch.to_torch()
-    assert isinstance(batch["a"], torch.Tensor)
-    assert isinstance(batch["b"]["c"], torch.Tensor)
     batch.to_numpy()
-    a_mem_addr_new = batch["a"].__array_interface__['data'][0]
-    c_mem_addr_new = batch["b"]["c"].__array_interface__['data'][0]
+    a_mem_addr_new = batch.a.__array_interface__['data'][0]
+    c_mem_addr_new = batch.b.c.__array_interface__['data'][0]
     assert a_mem_addr_new == a_mem_addr_orig
     assert c_mem_addr_new == c_mem_addr_orig
 
