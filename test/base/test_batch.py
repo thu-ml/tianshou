@@ -33,9 +33,9 @@ def test_batch_over_batch():
 
 def test_batch_over_batch_to_torch():
     batch = Batch(
-        a=np.ones((1,), dtype=torch.float64),
+        a=np.ones((1,), dtype=np.float64),
         b=Batch(
-            c=np.ones((1,), dtype=torch.float64),
+            c=np.ones((1,), dtype=np.float64),
             d=torch.ones((1,), dtype=torch.float64)
         )
     )
@@ -54,9 +54,9 @@ def test_batch_over_batch_to_torch():
 
 def test_utils_to_torch():
     batch = Batch(
-        a=np.ones((1,), dtype=torch.float64),
+        a=np.ones((1,), dtype=np.float64),
         b=Batch(
-            c=np.ones((1,), dtype=torch.float64),
+            c=np.ones((1,), dtype=np.float64),
             d=torch.ones((1,), dtype=torch.float64)
         )
     )
