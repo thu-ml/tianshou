@@ -28,9 +28,13 @@ def to_torch(x: Union[torch.Tensor, dict, Batch, np.ndarray],
         x = torch.from_numpy(x).to(device)
         if dtype is not None:
             x = x.type(dtype)
+    if isinstance(x, torch.Tensor):
+        if dtype is not None:
+            x = x.type(dtype)
+        x = x.to(device)
     elif isinstance(x, dict):
         for k, v in x.items():
             x[k] = to_torch(v, dtype, device)
     elif isinstance(x, Batch):
-        x.to_torch()
+        x.to_torch(dtype, device)
     return x

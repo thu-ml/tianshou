@@ -2,7 +2,7 @@ import pytest
 import torch
 import numpy as np
 
-from tianshou.data import Batch
+from tianshou.data import Batch, to_torch
 
 
 def test_batch():
@@ -42,13 +42,32 @@ def test_batch_over_batch_to_torch():
     batch.to_torch()
     assert isinstance(batch.a, torch.Tensor)
     assert isinstance(batch.b.c, torch.Tensor)
-    assert isinstance(batch.a.dtype, torch.float64)
-    assert isinstance(batch.b.c.dtype, torch.float64)
-    assert isinstance(batch.b.d.dtype, torch.float64)
+    assert isinstance(batch.b.d, torch.Tensor)
+    assert batch.a.dtype == torch.float64
+    assert batch.b.c.dtype == torch.float64
+    assert batch.b.d.dtype == torch.float64
     batch.to_torch(dtype=torch.float32)
-    assert isinstance(batch.a.dtype, torch.float32)
-    assert isinstance(batch.b.c.dtype, torch.float32)
-    assert isinstance(batch.b.d.dtype, torch.float32)
+    assert batch.a.dtype == torch.float32
+    assert batch.b.c.dtype == torch.float32
+    assert batch.b.d.dtype == torch.float32
+
+
+def test_utils_to_torch():
+    batch = Batch(
+        a=np.ones((1,), dtype=torch.float64),
+        b=Batch(
+            c=np.ones((1,), dtype=torch.float64),
+            d=torch.ones((1,), dtype=torch.float64)
+        )
+    )
+    a_torch_float = to_torch(batch.a, dtype=torch.float32)
+    assert a_torch_float.dtype == torch.float32
+    a_torch_double = to_torch(batch.a, dtype=torch.float64)
+    assert a_torch_double.dtype == torch.float64
+    batch_torch_float = to_torch(batch, dtype=torch.float32)
+    assert batch_torch_float.a.dtype == torch.float32
+    assert batch_torch_float.b.c.dtype == torch.float32
+    assert batch_torch_float.b.d.dtype == torch.float32
 
 
 def test_batch_from_to_numpy_without_copy():
