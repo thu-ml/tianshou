@@ -1,8 +1,12 @@
 import torch
+import warnings
 import pprint
 import numpy as np
 from typing import Any, List, Union, Iterator, Optional
 
+# Disable pickle warning related to torch, since it has been removed on torch master branch.
+# See Pull Request #39003 for details: https://github.com/pytorch/pytorch/pull/39003
+warnings.filterwarnings("ignore", message="pickle support for Storage will be removed in 1.5.")
 
 class Batch:
     """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
@@ -66,9 +70,13 @@ class Batch:
         [11 22] [6 6]
     """
 
+    def __new__(cls, **kwargs) -> None:
+        self = super().__new__(cls)
+        self._meta = {}
+        return self
+
     def __init__(self, **kwargs) -> None:
         super().__init__()
-        self._meta = {}
         for k, v in kwargs.items():
             if isinstance(v, (list, np.ndarray)) \
                     and len(v) > 0 and isinstance(v[0], dict) and k != 'info':
@@ -85,6 +93,25 @@ class Batch:
                     self.__dict__[k__] = v_
             else:
                 self.__dict__[k] = kwargs[k]
+
+    def __getstate__(self):
+        """Pickling interface. Only the actual data are serialized
+        for both efficiency and simplicity.
+        """
+        state = {}
+        for k in self.keys():
+            v = self[k]
+            if isinstance(v, Batch):
+                v = v.__getstate__()
+            state[k] = v
+        return state
+
+    def __setstate__(self, state):
+        """Unpickling interface. At this point, self is an empty Batch
+        instance that has not been initialized, so it can safely be
+        initialized by the pickle state.
+        """
+        self.__init__(**state)
 
     def __getitem__(self, index: Union[str, slice]) -> Union['Batch', dict]:
         """Return self[index]."""
