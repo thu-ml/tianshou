@@ -182,7 +182,7 @@ class Batch:
                         v = v.type(dtype)
                     self.__dict__[k] = v.to(device)
             elif isinstance(v, Batch):
-                v.to_torch()
+                v.to_torch(dtype, device)
 
     def append(self, batch: 'Batch') -> None:
         """Append a :class:`~tianshou.data.Batch` object to current batch."""
