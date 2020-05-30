@@ -1,4 +1,5 @@
 import pytest
+import pickle
 import torch
 import numpy as np
 
@@ -28,6 +29,15 @@ def test_batch_over_batch():
     print(batch2)
     assert batch2.values()[-1] == batch2.c
     assert batch2[-1].b.b == 0
+
+
+def test_batch_pickle():
+    batch = Batch(obs=Batch(a=0.0, c=torch.Tensor([1.0, 2.0])),
+                  np=np.zeros([3, 4]))
+    batch_pk = pickle.loads(pickle.dumps(batch))
+    assert batch.obs.a == batch_pk.obs.a
+    assert torch.all(batch.obs.c == batch_pk.obs.c)
+    assert np.all(batch.np == batch_pk.np)
 
 
 def test_batch_from_to_numpy_without_copy():

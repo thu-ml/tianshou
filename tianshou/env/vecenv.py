@@ -12,7 +12,7 @@ except ImportError:
 from tianshou.env.utils import CloudpickleWrapper
 
 
-class BaseVectorEnv(ABC, gym.Wrapper):
+class BaseVectorEnv(ABC, gym.Env):
     """Base class for vectorized environments wrapper. Usage:
     ::
 
@@ -79,8 +79,14 @@ class BaseVectorEnv(ABC, gym.Wrapper):
 
     @abstractmethod
     def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
-        """Set the seed for all environments. Accept ``None``, an int (which
-        will extend ``i`` to ``[i, i + 1, i + 2, ...]``) or a list.
+        """Set the seed for all environments.
+
+        Accept ``None``, an int (which will extend ``i`` to
+        ``[i, i + 1, i + 2, ...]``) or a list.
+
+        :return: The list of seeds used in this env's random number generators.
+        The first value in the list should be the "main" seed, or the value
+        which a reproducer should pass to 'seed'.
         """
         pass
 
@@ -91,7 +97,11 @@ class BaseVectorEnv(ABC, gym.Wrapper):
 
     @abstractmethod
     def close(self) -> None:
-        """Close all of the environments."""
+        """Close all of the environments.
+
+        Environments will automatically close() themselves when garbage
+        collected or when the program exits.
+        """
         pass
 
 
