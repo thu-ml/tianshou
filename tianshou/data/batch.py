@@ -153,17 +153,34 @@ class Batch:
 
     def to_torch(self,
                  dtype: Optional[torch.dtype] = None,
-                 device: Union[str, int] = 'cpu'
+                 device: Union[str, int, torch.device] = 'cpu'
                  ) -> None:
         """Change all numpy.ndarray to torch.Tensor. This is an inplace
         operation.
         """
+        if not isinstance(device, torch.device):
+            device = torch.device(device)
+
         for k, v in self.__dict__.items():
             if isinstance(v, np.ndarray):
                 v = torch.from_numpy(v).to(device)
                 if dtype is not None:
                     v = v.type(dtype)
                 self.__dict__[k] = v
+            if isinstance(v, torch.Tensor):
+                if dtype is not None and v.dtype != dtype:
+                    must_update_tensor = True
+                elif v.device.type != device.type:
+                    must_update_tensor = True
+                elif device.index is not None and \
+                        device.index != v.device.index:
+                    must_update_tensor = True
+                else:
+                    must_update_tensor = False
+                if must_update_tensor:
+                    if dtype is not None:
+                        v = v.type(dtype)
+                    self.__dict__[k] = v.to(device)
             elif isinstance(v, Batch):
                 v.to_torch()
 
