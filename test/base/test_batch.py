@@ -30,13 +30,31 @@ def test_batch_over_batch():
     assert batch2[-1].b.b == 0
 
 
+def test_batch_over_batch_to_torch():
+    batch = Batch(
+        a=np.ones((1,), dtype=torch.float64),
+        b=Batch(
+            c=np.ones((1,), dtype=torch.float64),
+            d=torch.ones((1,), dtype=torch.float64)
+        )
+    )
+    batch.to_torch()
+    assert isinstance(batch.a, torch.Tensor)
+    assert isinstance(batch.b.c, torch.Tensor)
+    assert isinstance(batch.a.dtype, torch.float64)
+    assert isinstance(batch.b.c.dtype, torch.float64)
+    assert isinstance(batch.b.d.dtype, torch.float64)
+    batch.to_torch(dtype=torch.float32)
+    assert isinstance(batch.a.dtype, torch.float32)
+    assert isinstance(batch.b.c.dtype, torch.float32)
+    assert isinstance(batch.b.d.dtype, torch.float32)
+
+
 def test_batch_from_to_numpy_without_copy():
     batch = Batch(a=np.ones((1,)), b=Batch(c=np.ones((1,))))
     a_mem_addr_orig = batch["a"].__array_interface__['data'][0]
     c_mem_addr_orig = batch["b"]["c"].__array_interface__['data'][0]
     batch.to_torch()
-    assert isinstance(batch["a"], torch.Tensor)
-    assert isinstance(batch["b"]["c"], torch.Tensor)
     batch.to_numpy()
     a_mem_addr_new = batch["a"].__array_interface__['data'][0]
     c_mem_addr_new = batch["b"]["c"].__array_interface__['data'][0]
