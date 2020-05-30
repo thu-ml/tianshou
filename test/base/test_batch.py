@@ -7,6 +7,7 @@ from tianshou.data import Batch
 
 def test_batch():
     batch = Batch(obs=[0], np=np.zeros([3, 4]))
+    assert batch.obs == batch["obs"]
     batch.obs = [1]
     assert batch.obs == [1]
     batch.append(batch)
@@ -52,12 +53,12 @@ def test_batch_over_batch_to_torch():
 
 def test_batch_from_to_numpy_without_copy():
     batch = Batch(a=np.ones((1,)), b=Batch(c=np.ones((1,))))
-    a_mem_addr_orig = batch["a"].__array_interface__['data'][0]
-    c_mem_addr_orig = batch["b"]["c"].__array_interface__['data'][0]
+    a_mem_addr_orig = batch.a.__array_interface__['data'][0]
+    c_mem_addr_orig = batch.b.c.__array_interface__['data'][0]
     batch.to_torch()
     batch.to_numpy()
-    a_mem_addr_new = batch["a"].__array_interface__['data'][0]
-    c_mem_addr_new = batch["b"]["c"].__array_interface__['data'][0]
+    a_mem_addr_new = batch.a.__array_interface__['data'][0]
+    c_mem_addr_new = batch.b.c.__array_interface__['data'][0]
     assert a_mem_addr_new == a_mem_addr_orig
     assert c_mem_addr_new == c_mem_addr_orig
 
