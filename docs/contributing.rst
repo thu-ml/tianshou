@@ -1,6 +1,6 @@
-============
-Contributing
-============
+========================
+Contributing to Tianshou
+========================
 
 Install Develop Version
 =======================
