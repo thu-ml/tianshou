@@ -1,7 +1,6 @@
 import pprint
 import numpy as np
-from copy import deepcopy
-from typing import Tuple, Union, Optional
+from typing import Any, Tuple, Union, Optional
 
 from tianshou.data.batch import Batch
 
@@ -60,7 +59,7 @@ class ReplayBuffer(object):
         ReplayBuffer(
             act: array([ 9., 10., 11., 12., 13., 14., 15.,  7.,  8.]),
             done: array([0., 1., 0., 0., 0., 0., 1., 0., 0.]),
-            info: array([{}, {}, {}, {}, {}, {}, {}, {}, {}], dtype=object),
+            info: Batch(),
             obs: Batch(
                      id: array([ 9., 10., 11., 12., 13., 14., 15.,  7.,  8.]),
                  ),
@@ -137,9 +136,7 @@ class ReplayBuffer(object):
             d[k_] = self.__dict__[k__]
         return Batch(**d)
 
-    def _add_to_buffer(
-            self, name: str,
-            inst: Union[dict, Batch, np.ndarray, float, int, bool]) -> None:
+    def _add_to_buffer(self, name: str, inst: Any) -> None:
         if inst is None:
             if getattr(self, name, None) is None:
                 self.__dict__[name] = None
@@ -153,18 +150,17 @@ class ReplayBuffer(object):
                 self.__dict__[name] = np.zeros(
                     (self._maxsize, *inst.shape), dtype=inst.dtype)
             elif isinstance(inst, (dict, Batch)):
-                if name == 'info':
-                    self.__dict__[name] = np.array(
-                        [{} for _ in range(self._maxsize)])
-                else:
-                    if self._meta.get(name, None) is None:
-                        self._meta[name] = list(inst.keys())
-                    for k in inst.keys():
-                        k_ = '_' + name + '@' + k
-                        self._add_to_buffer(k_, inst[k])
-            else:  # assume `inst` is a number
+                if self._meta.get(name, None) is None:
+                    self._meta[name] = list(inst.keys())
+                for k in inst.keys():
+                    k_ = '_' + name + '@' + k
+                    self._add_to_buffer(k_, inst[k])
+            elif np.isscalar(inst):
                 self.__dict__[name] = np.zeros(
                     (self._maxsize,), dtype=np.asarray(inst).dtype)
+            else:  # fall back to np.object
+                self.__dict__[name] = np.array(
+                    [None for _ in range(self._maxsize)])
         if isinstance(inst, np.ndarray) and \
                 self.__dict__[name].shape[1:] != inst.shape:
             raise ValueError(
@@ -172,8 +168,6 @@ class ReplayBuffer(object):
                 f"key: {name}, expect shape: {self.__dict__[name].shape[1:]}, "
                 f"given shape: {inst.shape}.")
         if name not in self._meta:
-            if name == 'info':
-                inst = deepcopy(inst)
             self.__dict__[name][self._index] = inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
@@ -198,7 +192,7 @@ class ReplayBuffer(object):
             policy: Optional[Union[dict, Batch]] = {},
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
-        assert isinstance(info, dict), \
+        assert isinstance(info, (dict, Batch)), \
             'You should return a dict in the last argument of env.step().'
         self._add_to_buffer('obs', obs)
         self._add_to_buffer('act', act)
@@ -330,8 +324,6 @@ class ListReplayBuffer(ReplayBuffer):
             return
         if self.__dict__.get(name, None) is None:
             self.__dict__[name] = []
-        if name == 'info':
-            inst = deepcopy(inst)
         self.__dict__[name].append(inst)
 
     def reset(self) -> None:

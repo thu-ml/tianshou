@@ -122,8 +122,11 @@ class Batch:
             return self.__getattr__(index)
         b = Batch()
         for k, v in self.__dict__.items():
-            if k != '_meta' and v is not None:
-                b.__dict__.update(**{k: v[index]})
+            if k != '_meta' and hasattr(v, '__len__'):
+                try:
+                    b.__dict__.update(**{k: v[index]})
+                except IndexError:
+                    continue
         b._meta = self._meta
         return b
 
@@ -238,8 +241,8 @@ class Batch:
 
     def __len__(self) -> int:
         """Return len(self)."""
-        return min([len(v) for k, v in self.__dict__.items()
-                    if k != '_meta' and v is not None])
+        r = [len(v) for k, v in self.__dict__.items() if hasattr(v, '__len__')]
+        return max(r) if len(r) > 0 else 0
 
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:

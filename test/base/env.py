@@ -28,7 +28,7 @@ class MyTestEnv(gym.Env):
         if action == 0:
             self.index = max(self.index - 1, 0)
             if self.dict_state:
-                return {'index': self.index}, 0, False, {}
+                return {'index': self.index}, 0, False, {'key': 1, 'env': self}
             else:
                 return self.index, 0, False, {}
         elif action == 1:
@@ -36,6 +36,7 @@ class MyTestEnv(gym.Env):
             self.done = self.index == self.size
             if self.dict_state:
                 return {'index': self.index}, int(self.done), self.done, \
-                    {'key': 1}
+                    {'key': 1, 'env': self}
             else:
-                return self.index, int(self.done), self.done, {'key': 1}
+                return self.index, int(self.done), self.done, \
+                    {'key': 1, 'env': self}

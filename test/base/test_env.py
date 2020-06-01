@@ -39,7 +39,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
                     A = v.reset(np.where(C)[0])
                 o.append([A, B, C, D])
             for i in zip(*o):
-                for j in range(1, len(i)):
+                for j in range(1, len(i) - 1):
                     assert (i[0] == i[j]).all()
     else:
         t = [0, 0, 0]

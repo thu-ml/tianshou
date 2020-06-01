@@ -3,6 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+====================
 Welcome to Tianshou!
 ====================
 
@@ -25,9 +26,9 @@ Tianshou supports parallel workers for all algorithms as well. All of these algo
 
 
 Installation
-------------
+============
 
-Tianshou is currently hosted on `PyPI <https://pypi.org/project/tianshou/>`_. You can simply install Tianshou with the following command:
+Tianshou is currently hosted on `PyPI <https://pypi.org/project/tianshou/>`_. You can simply install Tianshou with the following command (with Python >= 3.6):
 ::
 
     pip3 install tianshou
@@ -86,7 +87,7 @@ Tianshou is still under development, you can also check out the documents in sta
 
 
 Indices and tables
-------------------
+==================
 
 * :ref:`genindex`
 * :ref:`modindex`

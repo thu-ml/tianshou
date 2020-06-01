@@ -1,3 +1,4 @@
+======================================
 Train a model-free RL agent within 30s
 ======================================
 
@@ -7,7 +8,7 @@ You can also contribute to this page with your own tricks :)
 
 
 Avoid batch-size = 1
---------------------
+====================
 
 In the traditional RL training loop, we always use the policy to interact with only one environment for collecting data. That means most of the time the network use batch-size = 1. Quite inefficient!
 Here is an example of showing how inefficient it is:
@@ -52,7 +53,7 @@ By the way, A2C is better than A3C in some cases: A3C needs to act independently
 
 
 Algorithm specific tricks
--------------------------
+=========================
 
 Here is about the experience of hyper-parameter tuning on CartPole and Pendulum:
 
@@ -66,7 +67,7 @@ Here is about the experience of hyper-parameter tuning on CartPole and Pendulum:
 
 
 Code-level optimization
------------------------
+=======================
 
 Tianshou has many short-but-efficient lines of code. For example, when we want to compute :math:`V(s)` and :math:`V(s')` by the same network, the best way is to concatenate :math:`s` and :math:`s'` together instead of computing the value function using twice of network forward.
 
@@ -74,7 +75,7 @@ Tianshou has many short-but-efficient lines of code. For example, when we want t
 
 
 Finally
--------
+=======
 
 With fast-speed sampling, we could use large batch-size and large learning rate for faster convergence.
 

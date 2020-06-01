@@ -1,3 +1,4 @@
+==========================
 Basic concepts in Tianshou
 ==========================
 
@@ -9,7 +10,7 @@ Tianshou splits a Reinforcement Learning agent training procedure into these par
 
 
 Data Batch
-----------
+==========
 
 .. automodule:: tianshou.data.Batch
    :members:
@@ -17,7 +18,7 @@ Data Batch
 
 
 Data Buffer
------------
+===========
 
 .. automodule:: tianshou.data.ReplayBuffer
    :members:
@@ -28,7 +29,7 @@ Tianshou provides other type of data buffer such as :class:`~tianshou.data.ListR
 .. _policy_concept:
 
 Policy
-------
+======
 
 Tianshou aims to modularizing RL algorithms. It comes into several classes of policies in Tianshou. All of the policy classes must inherit :class:`~tianshou.policy.BasePolicy`.
 
@@ -90,7 +91,7 @@ For other method, you can check out :doc:`/api/tianshou.policy`. We give the usa
 
 
 Collector
----------
+=========
 
 The :class:`~tianshou.data.Collector` enables the policy to interact with different types of environments conveniently.
 In short, :class:`~tianshou.data.Collector` has two main methods:
@@ -106,7 +107,7 @@ The general explanation is listed in :ref:`pseudocode`. Other usages of collecto
 
 
 Trainer
--------
+=======
 
 Once you have a collector and a policy, you can start writing the training method for your RL agent. Trainer, to be honest, is a simple wrapper. It helps you save energy for writing the training loop. You can also construct your own trainer: :ref:`customized_trainer`.
 
@@ -118,7 +119,7 @@ There will be more types of trainers, for instance, multi-agent trainer.
 .. _pseudocode:
 
 A High-level Explanation
-------------------------
+========================
 
 We give a high-level explanation through the pseudocode used in section :ref:`policy_concept`:
 ::
@@ -141,6 +142,6 @@ We give a high-level explanation through the pseudocode used in section :ref:`po
 
 
 Conclusion
-----------
+==========
 
 So far, we go through the overall framework of Tianshou. Really simple, isn't it?

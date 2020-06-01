@@ -1,6 +1,6 @@
-import pytest
-import pickle
 import torch
+import pickle
+import pytest
 import numpy as np
 
 from tianshou.data import Batch, to_torch
@@ -15,11 +15,15 @@ def test_batch():
     assert batch.obs == [1, 1]
     assert batch.np.shape == (6, 4)
     assert batch[0].obs == batch[1].obs
-    with pytest.raises(IndexError):
-        batch[2]
     batch.obs = np.arange(5)
     for i, b in enumerate(batch.split(1, shuffle=False)):
-        assert b.obs == batch[i].obs
+        if i != 5:
+            assert b.obs == batch[i].obs
+        else:
+            with pytest.raises(AttributeError):
+                batch[i].obs
+            with pytest.raises(AttributeError):
+                b.obs
     print(batch)
 
 
@@ -95,3 +99,7 @@ def test_batch_from_to_numpy_without_copy():
 if __name__ == '__main__':
     test_batch()
     test_batch_over_batch()
+    test_batch_over_batch_to_torch()
+    test_utils_to_torch()
+    test_batch_pickle()
+    test_batch_from_to_numpy_without_copy()
