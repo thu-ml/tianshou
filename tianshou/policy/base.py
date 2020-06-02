@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from torch import nn
 from abc import ABC, abstractmethod
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union, Optional, Callable
 
 from tianshou.data import Batch, ReplayBuffer
 
@@ -113,6 +113,8 @@ class BasePolicy(ABC, nn.Module):
             to 0.99.
         :param float gae_lambda: the parameter for Generalized Advantage
             Estimation, should be in [0, 1], defaults to 0.95.
+
+        :return: a Batch. The result will be stored in batch.returns.
         """
         if v_s_ is None:
             v_s_ = np.zeros_like(batch.rew)
@@ -120,12 +122,61 @@ class BasePolicy(ABC, nn.Module):
             if not isinstance(v_s_, np.ndarray):
                 v_s_ = np.array(v_s_, np.float)
             v_s_ = v_s_.reshape(batch.rew.shape)
-        batch.returns = np.roll(v_s_, 1, axis=0)
+        returns = np.roll(v_s_, 1, axis=0)
         m = (1. - batch.done) * gamma
-        delta = batch.rew + v_s_ * m - batch.returns
+        delta = batch.rew + v_s_ * m - returns
         m *= gae_lambda
         gae = 0.
         for i in range(len(batch.rew) - 1, -1, -1):
             gae = delta[i] + m[i] * gae
-            batch.returns[i] += gae
+            returns[i] += gae
+        batch.returns = returns
+        return batch
+
+    @staticmethod
+    def compute_nstep_return(
+        batch: Batch,
+        buffer: ReplayBuffer,
+        indice: np.ndarray,
+        target_q_fn: Callable[[ReplayBuffer, np.ndarray], np.ndarray],
+        gamma: float = 0.99,
+        n_step: int = 1
+    ) -> np.ndarray:
+        r"""Compute n-step return for Q-learning targets:
+
+        .. math::
+            G_t = \sum_{i = t}^{t + n - 1} \gamma^{i - t}(1 - d_i)r_i +
+            \gamma^n (1 - d_{t + n}) Q_{\mathrm{target}}(s_{t + n})
+
+        , where :math:`\gamma` is the discount factor,
+        :math:`\gamma \in [0, 1]`, :math:`d_t` is the done flag of step
+        :math:`t`.
+
+        :param batch: a data batch, which is equal to buffer[indice].
+        :type batch: :class:`~tianshou.data.Batch`
+        :param buffer: a data buffer which contains several full-episode data
+            chronologically.
+        :type buffer: :class:`~tianshou.data.ReplayBuffer`
+        :param indice: sampled timestep.
+        :type indice: numpy.ndarray
+        :param float gamma: the discount factor, should be in [0, 1], defaults
+            to 0.99.
+        :param int n_step: the number of estimation step, should be an int
+            greater than 0, defaults to 1.
+
+        :return: a Batch. The result will be stored in batch.returns.
+        """
+        returns = np.zeros_like(indice)
+        gammas = np.zeros_like(indice) + n_step
+        done, rew, buf_len = buffer.done, buffer.rew, len(buffer)
+        for n in range(n_step - 1, -1, -1):
+            now = (indice + n) % buf_len
+            gammas[done[now] > 0] = n
+            returns[done[now] > 0] = 0
+            returns = rew[now] + gamma * returns
+        terminal = (indice + n_step - 1) % buf_len
+        target_q = target_q_fn(buffer, terminal)
+        target_q[gammas != n_step] = 0
+        returns += (gamma ** gammas) * target_q
+        batch.returns = returns
         return batch

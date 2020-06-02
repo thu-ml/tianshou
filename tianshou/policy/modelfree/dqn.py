@@ -68,6 +68,21 @@ class DQNPolicy(BasePolicy):
         """Synchronize the weight for the target network."""
         self.model_old.load_state_dict(self.model.state_dict())
 
+    def _target_q(self, buffer: ReplayBuffer,
+                  indice: np.ndarray) -> np.ndarray:
+        data = buffer[indice]
+        if self._target:
+            # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
+            a = self(data, input='obs_next', eps=0).act
+            target_q = self(
+                data, model='model_old', input='obs_next').logits
+            target_q = to_numpy(target_q)
+            target_q = target_q[np.arange(len(a)), a]
+        else:
+            target_q = self(data, input='obs_next').logits
+            target_q = to_numpy(target_q).max(axis=1)
+        return target_q
+
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
         r"""Compute the n-step return for Q-learning targets:
@@ -82,46 +97,11 @@ class DQNPolicy(BasePolicy):
         :math:`t`. If there is no target network, the :math:`Q_{old}` is equal
         to :math:`Q_{new}`.
         """
-        returns = np.zeros_like(indice)
-        gammas = np.zeros_like(indice) + self._n_step
-        for n in range(self._n_step - 1, -1, -1):
-            now = (indice + n) % len(buffer)
-            gammas[buffer.done[now] > 0] = n
-            returns[buffer.done[now] > 0] = 0
-            returns = buffer.rew[now] + self._gamma * returns
-        terminal = (indice + self._n_step - 1) % len(buffer)
-        terminal_data = buffer[terminal]
-        if self._target:
-            # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-            a = self(terminal_data, input='obs_next', eps=0).act
-            target_q = self(
-                terminal_data, model='model_old', input='obs_next').logits
-            if isinstance(target_q, torch.Tensor):
-                target_q = to_numpy(target_q)
-            target_q = target_q[np.arange(len(a)), a]
-        else:
-            target_q = self(terminal_data, input='obs_next').logits
-            if isinstance(target_q, torch.Tensor):
-                target_q = to_numpy(target_q)
-            target_q = target_q.max(axis=1)
-        target_q[gammas != self._n_step] = 0
-        returns += (self._gamma ** gammas) * target_q
-        batch.returns = returns
+        batch = self.compute_nstep_return(
+            batch, buffer, indice, self._target_q, self._gamma, self._n_step)
         if isinstance(buffer, PrioritizedReplayBuffer):
-            q = self(batch).logits
-            q = q[np.arange(len(q)), batch.act]
-            r = batch.returns
-            if isinstance(r, np.ndarray):
-                r = to_torch(r, device=q.device, dtype=q.dtype)
-            td = r - q
-            buffer.update_weight(indice, to_numpy(td))
-            impt_weight = to_torch(batch.impt_weight,
-                                   device=q.device, dtype=torch.float)
-            loss = (td.pow(2) * impt_weight).mean()
-            if not hasattr(batch, 'loss'):
-                batch.loss = loss
-            else:
-                batch.loss += loss
+            batch.update_weight = buffer.update_weight
+            batch.indice = indice
         return batch
 
     def forward(self, batch: Batch,
@@ -162,14 +142,16 @@ class DQNPolicy(BasePolicy):
         if self._target and self._cnt % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
-        if hasattr(batch, 'loss'):
-            loss = batch.loss
+        q = self(batch).logits
+        q = q[np.arange(len(q)), batch.act]
+        r = to_torch(batch.returns, device=q.device, dtype=q.dtype)
+        if hasattr(batch, 'update_weight'):
+            td = r - q
+            batch.update_weight(batch.indice, to_numpy(td))
+            impt_weight = to_torch(batch.impt_weight,
+                                   device=q.device, dtype=torch.float)
+            loss = (td.pow(2) * impt_weight).mean()
         else:
-            q = self(batch).logits
-            q = q[np.arange(len(q)), batch.act]
-            r = batch.returns
-            if isinstance(r, np.ndarray):
-                r = to_torch(r, device=q.device, dtype=q.dtype)
             loss = F.mse_loss(q, r)
         loss.backward()
         self.optim.step()

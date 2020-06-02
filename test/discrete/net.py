@@ -3,6 +3,8 @@ import numpy as np
 from torch import nn
 import torch.nn.functional as F
 
+from tianshou.data import to_torch
+
 
 class Net(nn.Module):
     def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',
@@ -21,8 +23,7 @@ class Net(nn.Module):
         self.model = nn.Sequential(*self.model)
 
     def forward(self, s, state=None, info={}):
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float)
         batch = s.shape[0]
         s = s.view(batch, -1)
         logits = self.model(s)
@@ -65,8 +66,7 @@ class Recurrent(nn.Module):
         self.fc2 = nn.Linear(128, np.prod(action_shape))
 
     def forward(self, s, state=None, info={}):
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.

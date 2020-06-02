@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from torch import nn
 
+from tianshou.data import to_torch
+
 
 class Actor(nn.Module):
     def __init__(self, layer_num, state_shape, action_shape,
@@ -18,8 +20,7 @@ class Actor(nn.Module):
         self._max = max_action
 
     def forward(self, s, **kwargs):
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float)
         batch = s.shape[0]
         s = s.view(batch, -1)
         logits = self.model(s)
@@ -44,8 +45,7 @@ class ActorProb(nn.Module):
         self._max = max_action
 
     def forward(self, s, **kwargs):
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float)
         batch = s.shape[0]
         s = s.view(batch, -1)
         logits = self.model(s)
@@ -72,8 +72,7 @@ class Critic(nn.Module):
         self.model = nn.Sequential(*self.model)
 
     def forward(self, s, a=None, **kwargs):
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float)
         batch = s.shape[0]
         s = s.view(batch, -1)
         if a is not None:
@@ -96,8 +95,7 @@ class RecurrentActorProb(nn.Module):
         self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
 
     def forward(self, s, **kwargs):
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -127,8 +125,7 @@ class RecurrentCritic(nn.Module):
         self.fc2 = nn.Linear(128 + np.prod(action_shape), 1)
 
     def forward(self, s, a=None):
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
