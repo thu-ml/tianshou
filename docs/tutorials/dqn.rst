@@ -1,4 +1,3 @@
-==============
 Deep Q Network
 ==============
 
@@ -11,7 +10,7 @@ Contrary to existing Deep RL libraries such as `RLlib <https://github.com/ray-pr
 
 
 Make an Environment
-===================
+-------------------
 
 First of all, you have to make an environment for your agent to interact with. For environment interfaces, we follow the convention of `OpenAI Gym <https://github.com/openai/gym>`_. In your Python code, simply import Tianshou and make the environment:
 ::
@@ -25,7 +24,7 @@ CartPole-v0 is a simple environment with a discrete action space, for which DQN 
 
 
 Setup Multi-environment Wrapper
-===============================
+-------------------------------
 
 It is available if you want the original ``gym.Env``: 
 ::
@@ -45,7 +44,7 @@ For the demonstration, here we use the second block of codes.
 
 
 Build the Network
-=================
+-----------------
 
 Tianshou supports any user-defined PyTorch networks and optimizers but with the limitation of input and output API. Here is an example code: 
 ::
@@ -81,7 +80,7 @@ The rules of self-defined networks are:
 
 
 Setup Policy
-============
+------------
 
 We use the defined ``net`` and ``optim``, with extra policy hyper-parameters, to define a policy. Here we define a DQN policy with using a target network: 
 ::
@@ -92,7 +91,7 @@ We use the defined ``net`` and ``optim``, with extra policy hyper-parameters, to
 
 
 Setup Collector
-===============
+---------------
 
 The collector is a key concept in Tianshou. It allows the policy to interact with different types of environments conveniently. 
 In each step, the collector will let the policy perform (at least) a specified number of steps or episodes and store the data in a replay buffer.
@@ -103,7 +102,7 @@ In each step, the collector will let the policy perform (at least) a specified n
 
 
 Train Policy with a Trainer
-===========================
+---------------------------
 
 Tianshou provides :class:`~tianshou.trainer.onpolicy_trainer` and :class:`~tianshou.trainer.offpolicy_trainer`. The trainer will automatically stop training when the policy reach the stop condition ``stop_fn`` on test collector. Since DQN is an off-policy algorithm, we use the :class:`~tianshou.trainer.offpolicy_trainer` as follows:
 ::
@@ -159,7 +158,7 @@ It shows that within approximately 4 seconds, we finished training a DQN agent o
 
 
 Save/Load Policy
-================
+----------------
 
 Since the policy inherits the ``torch.nn.Module`` class, saving and loading the policy are exactly the same as a torch module:
 ::
@@ -169,7 +168,7 @@ Since the policy inherits the ``torch.nn.Module`` class, saving and loading the 
 
 
 Watch the Agent's Performance
-=============================
+-----------------------------
 
 :class:`~tianshou.data.Collector` supports rendering. Here is the example of watching the agent's performance in 35 FPS:
 ::
@@ -182,7 +181,7 @@ Watch the Agent's Performance
 .. _customized_trainer:
 
 Train a Policy with Customized Codes
-====================================
+------------------------------------
 
 "I don't want to use your provided trainer. I want to customize it!"
 

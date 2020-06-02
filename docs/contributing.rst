@@ -1,9 +1,8 @@
-========================
 Contributing to Tianshou
 ========================
 
 Install Develop Version
-=======================
+-----------------------
 
 To install Tianshou in an "editable" mode, run
 
@@ -18,7 +17,7 @@ in the main directory. This installation is removable by
     python3 setup.py develop --uninstall
 
 PEP8 Code Style Check
-=====================
+---------------------
 
 We follow PEP8 python code style. To check, in the main directory, run:
 
@@ -27,7 +26,7 @@ We follow PEP8 python code style. To check, in the main directory, run:
     flake8 . --count --show-source --statistics
 
 Test Locally
-============
+------------
 
 This command will run automatic tests in the main directory
 
@@ -36,7 +35,7 @@ This command will run automatic tests in the main directory
     pytest test --cov tianshou -s --durations 0 -v
 
 Test by GitHub Actions
-======================
+----------------------
 
 1. Click the ``Actions`` button in your own repo:
 
@@ -56,7 +55,7 @@ Test by GitHub Actions
     :align: center
 
 Documentation
-=============
+-------------
 
 Documentations are written under the ``docs/`` directory as ReStructuredText (``.rst``) files. ``index.rst`` is the main page. A Tutorial on ReStructuredText can be found `here <https://pythonhosted.org/an_example_pypi_project/sphinx.html>`_.
 
@@ -71,6 +70,6 @@ To compile documentation into webpages, run
 under the ``docs/`` directory. The generated webpages are in ``docs/_build`` and can be viewed with browsers.
 
 Chinese Documentation
-=====================
+---------------------
 
-Chinese documentation is in https://github.com/thu-ml/tianshou-docs-zh_CN.
+Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/
