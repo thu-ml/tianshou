@@ -20,8 +20,13 @@ Welcome to Tianshou!
 * :class:`~tianshou.data.PrioritizedReplayBuffer` `Prioritized Experience Replay <https://arxiv.org/pdf/1511.05952.pdf>`_
 * :meth:`~tianshou.policy.BasePolicy.compute_episodic_return` `Generalized Advantage Estimator <https://arxiv.org/pdf/1506.02438.pdf>`_
 
+Here is Tianshou's other features:
 
-Tianshou supports parallel workers for all algorithms as well since all of them are reformatted as replay-buffer based algorithms. All of the algorithms support recurrent state representation in actor network (RNN-style training in POMDP). The environment state can be any type (Dict, self-defined class, ...).
+* Elegant framework, using only ~2000 lines of code
+* Support parallel environment sampling for all algorithms
+* Support recurrent state representation in actor network and critic network (RNN-style training for POMDP)
+* Support any type of environment state (e.g. a dict, a self-defined class, ...)
+* Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` for all Q-learning based algorithms
 
 中文文档位于 https://tianshou.readthedocs.io/zh/latest/
 

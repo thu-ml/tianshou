@@ -30,7 +30,13 @@
 - [Prioritized Experience Replay (PER)](https://arxiv.org/pdf/1511.05952.pdf)
 - [Generalized Advantage Estimator (GAE)](https://arxiv.org/pdf/1506.02438.pdf)
 
-**Tianshou supports parallel workers for all algorithms as well since all of them are reformatted as replay-buffer based algorithms. All of the algorithms support recurrent state representation in actor network (RNN-style training in POMDP). The environment state can be any type (dict, self-defined class, ...). All Q-learning algorithms support n-step returns estimation.**
+Here is Tianshou's other features:
+
+- Elegant framework, using only ~2000 lines of code
+- Support parallel environment sampling for all algorithms
+- Support recurrent state representation in actor network and critic network (RNN-style training for POMDP)
+- Support any type of environment state (e.g. a dict, a self-defined class, ...)
+- Support n-step returns estimation for all Q-learning based algorithms
 
 In Chinese, Tianshou means divinely ordained and is derived to the gift of being born with. Tianshou is a reinforcement learning platform, and the RL algorithm does not learn from humans. So taking "Tianshou" means that there is no teacher to study with, but rather to learn by themselves through constant interaction with the environment.
 
