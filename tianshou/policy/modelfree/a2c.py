@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from typing import Dict, List, Union, Optional
 
 from tianshou.policy import PGPolicy
-from tianshou.data import Batch, ReplayBuffer, to_torch, to_numpy
+from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
 
 class A2CPolicy(PGPolicy):
@@ -106,14 +106,14 @@ class A2CPolicy(PGPolicy):
                 self.optim.zero_grad()
                 dist = self(b).dist
                 v = self.critic(b.obs)
-                a = to_torch(b.act, device=v.device)
-                r = to_torch(b.returns, device=v.device)
+                a = to_torch_as(b.act, v)
+                r = to_torch_as(b.returns, v)
                 a_loss = -(dist.log_prob(a) * (r - v).detach()).mean()
                 vf_loss = F.mse_loss(r[:, None], v)
                 ent_loss = dist.entropy().mean()
                 loss = a_loss + self._w_vf * vf_loss - self._w_ent * ent_loss
                 loss.backward()
-                if self._grad_norm:
+                if self._grad_norm is not None:
                     nn.utils.clip_grad_norm_(
                         list(self.actor.parameters()) +
                         list(self.critic.parameters()),

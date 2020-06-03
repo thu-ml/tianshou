@@ -6,7 +6,7 @@ from typing import Dict, Tuple, Union, Optional
 
 from tianshou.policy import BasePolicy
 # from tianshou.exploration import OUNoise
-from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
 
 class DDPGPolicy(BasePolicy):
@@ -29,6 +29,8 @@ class DDPGPolicy(BasePolicy):
         defaults to ``False``.
     :param bool ignore_done: ignore the done flag while training the policy,
         defaults to ``False``.
+    :param int estimation_step: greater than 1, the number of steps to look
+        ahead.
 
     .. seealso::
 
@@ -47,6 +49,7 @@ class DDPGPolicy(BasePolicy):
                  action_range: Optional[Tuple[float, float]] = None,
                  reward_normalization: bool = False,
                  ignore_done: bool = False,
+                 estimation_step: int = 1,
                  **kwargs) -> None:
         super().__init__(**kwargs)
         if actor is not None:
@@ -71,6 +74,8 @@ class DDPGPolicy(BasePolicy):
         # self.noise = OUNoise()
         self._rm_done = ignore_done
         self._rew_norm = reward_normalization
+        assert estimation_step > 0, 'estimation_step should greater than 0'
+        self._n_step = estimation_step
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for exploration."""
@@ -96,15 +101,21 @@ class DDPGPolicy(BasePolicy):
                 self.critic_old.parameters(), self.critic.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
 
+    def _target_q(self, buffer: ReplayBuffer,
+                  indice: np.ndarray) -> torch.Tensor:
+        batch = buffer[indice]  # batch.obs_next: s_{t+n}
+        with torch.no_grad():
+            target_q = self.critic_old(batch.obs_next, self(
+                batch, model='actor_old', input='obs_next', eps=0).act)
+        return target_q
+
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
-        if self._rew_norm:
-            bfr = buffer.rew[:min(len(buffer), 1000)]  # avoid large buffer
-            mean, std = bfr.mean(), bfr.std()
-            if not np.isclose(std, 0):
-                batch.rew = (batch.rew - mean) / std
         if self._rm_done:
             batch.done = batch.done * 0.
+        batch = self.compute_nstep_return(
+            batch, buffer, indice, self._target_q,
+            self._gamma, self._n_step, self._rew_norm)
         return batch
 
     def forward(self, batch: Batch,
@@ -143,16 +154,9 @@ class DDPGPolicy(BasePolicy):
         return Batch(act=logits, state=h)
 
     def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
-        with torch.no_grad():
-            target_q = self.critic_old(batch.obs_next, self(
-                batch, model='actor_old', input='obs_next', eps=0).act)
-            dev = target_q.device
-            rew = to_torch(batch.rew,
-                           dtype=torch.float, device=dev)[:, None]
-            done = to_torch(batch.done,
-                            dtype=torch.float, device=dev)[:, None]
-            target_q = (rew + (1. - done) * self._gamma * target_q)
         current_q = self.critic(batch.obs, batch.act)
+        target_q = to_torch_as(batch.returns, current_q)
+        target_q = target_q[:, None]
         critic_loss = F.mse_loss(current_q, target_q)
         self.critic_optim.zero_grad()
         critic_loss.backward()

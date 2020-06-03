@@ -20,7 +20,7 @@
 
 - [Policy Gradient (PG)](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
 - [Deep Q-Network (DQN)](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
-- [Double DQN (DDQN)](https://arxiv.org/pdf/1509.06461.pdf) with n-step returns
+- [Double DQN (DDQN)](https://arxiv.org/pdf/1509.06461.pdf)
 - [Advantage Actor-Critic (A2C)](https://openai.com/blog/baselines-acktr-a2c/)
 - [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf)
 - [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf)
@@ -30,7 +30,7 @@
 - [Prioritized Experience Replay (PER)](https://arxiv.org/pdf/1511.05952.pdf)
 - [Generalized Advantage Estimator (GAE)](https://arxiv.org/pdf/1506.02438.pdf)
 
-Tianshou supports parallel workers for all algorithms as well since all of them are reformatted as replay-buffer based algorithms. All of the algorithms support recurrent state representation in actor network (RNN-style training in POMDP). The environment state can be any type (Dict, self-defined class, ...).
+**Tianshou supports parallel workers for all algorithms as well since all of them are reformatted as replay-buffer based algorithms. All of the algorithms support recurrent state representation in actor network (RNN-style training in POMDP). The environment state can be any type (dict, self-defined class, ...). All Q-learning algorithms support n-step returns estimation.**
 
 In Chinese, Tianshou means divinely ordained and is derived to the gift of being born with. Tianshou is a reinforcement learning platform, and the RL algorithm does not learn from humans. So taking "Tianshou" means that there is no teacher to study with, but rather to learn by themselves through constant interaction with the environment.
 
@@ -102,7 +102,7 @@ We select some of famous reinforcement learning platforms: 2 GitHub repos with m
 | Algo - Task     | PyTorch                                                      | TensorFlow                                                   | TensorFlow                                                   | TF/PyTorch                                                   | PyTorch                                                      | PyTorch                                                      |
 | PG - CartPole   | 6.09±4.60s                                                   | None                                                         | None                                                         | 19.26±2.29s                                                  | None                                                         | ?                                                            |
 | DQN - CartPole  | 6.09±0.87s                                                   | 1046.34±291.27s                                              | 93.47±58.05s                                                 | 28.56±4.60s                                                  | 31.58±11.30s \*\*                                            | ?                                                            |
-| A2C - CartPole  | 6.36±1.63s                                                   | \*(~1612s)                                                   | 57.56±12.87s                                                 | 57.92±9.94s                                                  | \*(Not converged)                                            | ?                                                            |
+| A2C - CartPole  | 10.59±2.04s                                                   | \*(~1612s)                                                   | 57.56±12.87s                                                 | 57.92±9.94s                                                  | \*(Not converged)                                            | ?                                                            |
 | PPO - CartPole  | 31.82±7.76s                                                  | \*(~1179s)                                                   | 34.79±17.02s                                                 | 44.60±17.04s                                                 | 23.99±9.26s \*\*                                             | ?                                                            |
 | PPO - Pendulum  | 16.18±2.49s                                                  | 745.43±160.82s                                               | 259.73±27.37s                                                | 123.62±44.23s                                                | Runtime Error                                                | ?                                                            |
 | DDPG - Pendulum | 37.26±9.55s                                                  | \*(>1h)                                                      | 277.52±92.67s                                                | 314.70±7.92s                                                 | 59.05±10.03s \*\*                                            | 172.18±62.48s                                                |

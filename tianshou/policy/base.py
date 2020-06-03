@@ -4,7 +4,7 @@ from torch import nn
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union, Optional, Callable
 
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
 
 class BasePolicy(ABC, nn.Module):
@@ -138,9 +138,10 @@ class BasePolicy(ABC, nn.Module):
         batch: Batch,
         buffer: ReplayBuffer,
         indice: np.ndarray,
-        target_q_fn: Callable[[ReplayBuffer, np.ndarray], np.ndarray],
+        target_q_fn: Callable[[ReplayBuffer, np.ndarray], torch.Tensor],
         gamma: float = 0.99,
-        n_step: int = 1
+        n_step: int = 1,
+        rew_norm: bool = False
     ) -> np.ndarray:
         r"""Compute n-step return for Q-learning targets:
 
@@ -159,13 +160,25 @@ class BasePolicy(ABC, nn.Module):
         :type buffer: :class:`~tianshou.data.ReplayBuffer`
         :param indice: sampled timestep.
         :type indice: numpy.ndarray
+        :param function target_q_fn: a function receives :math:`t+n-1` step's
+            data and compute target Q value.
         :param float gamma: the discount factor, should be in [0, 1], defaults
             to 0.99.
         :param int n_step: the number of estimation step, should be an int
             greater than 0, defaults to 1.
+        :param bool rew_norm: normalize the reward to Normal(0, 1), defaults
+            to ``False``.
 
-        :return: a Batch. The result will be stored in batch.returns.
+        :return: a Batch. The result will be stored in batch.returns as a
+            torch.Tensor with shape (bsz, ).
         """
+        if rew_norm:
+            bfr = buffer.rew[:min(len(buffer), 1000)]  # avoid large buffer
+            mean, std = bfr.mean(), bfr.std()
+            if np.isclose(std, 0):
+                mean, std = 0, 1
+        else:
+            mean, std = 0, 1
         returns = np.zeros_like(indice)
         gammas = np.zeros_like(indice) + n_step
         done, rew, buf_len = buffer.done, buffer.rew, len(buffer)
@@ -173,10 +186,11 @@ class BasePolicy(ABC, nn.Module):
             now = (indice + n) % buf_len
             gammas[done[now] > 0] = n
             returns[done[now] > 0] = 0
-            returns = rew[now] + gamma * returns
+            returns = (rew[now] - mean) / std + gamma * returns
         terminal = (indice + n_step - 1) % buf_len
-        target_q = target_q_fn(buffer, terminal)
+        target_q = target_q_fn(buffer, terminal).squeeze()
         target_q[gammas != n_step] = 0
-        returns += (gamma ** gammas) * target_q
-        batch.returns = returns
+        returns = to_torch_as(returns, target_q)
+        gammas = to_torch_as(gamma ** gammas, target_q)
+        batch.returns = target_q * gammas + returns
         return batch

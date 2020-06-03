@@ -6,7 +6,7 @@ from typing import Dict, Union, Optional
 
 from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, \
-    to_torch, to_numpy
+    to_torch_as, to_numpy
 
 
 class DQNPolicy(BasePolicy):
@@ -69,18 +69,18 @@ class DQNPolicy(BasePolicy):
         self.model_old.load_state_dict(self.model.state_dict())
 
     def _target_q(self, buffer: ReplayBuffer,
-                  indice: np.ndarray) -> np.ndarray:
-        data = buffer[indice]
+                  indice: np.ndarray) -> torch.Tensor:
+        batch = buffer[indice]  # batch.obs_next: s_{t+n}
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-            a = self(data, input='obs_next', eps=0).act
-            target_q = self(
-                data, model='model_old', input='obs_next').logits
-            target_q = to_numpy(target_q)
+            a = self(batch, input='obs_next', eps=0).act
+            with torch.no_grad():
+                target_q = self(
+                    batch, model='model_old', input='obs_next').logits
             target_q = target_q[np.arange(len(a)), a]
         else:
-            target_q = self(data, input='obs_next').logits
-            target_q = to_numpy(target_q).max(axis=1)
+            with torch.no_grad():
+                target_q = self(batch, input='obs_next').logits.max(dim=1)[0]
         return target_q
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
@@ -144,12 +144,11 @@ class DQNPolicy(BasePolicy):
         self.optim.zero_grad()
         q = self(batch).logits
         q = q[np.arange(len(q)), batch.act]
-        r = to_torch(batch.returns, device=q.device, dtype=q.dtype)
+        r = to_torch_as(batch.returns, q)
         if hasattr(batch, 'update_weight'):
             td = r - q
             batch.update_weight(batch.indice, to_numpy(td))
-            impt_weight = to_torch(batch.impt_weight,
-                                   device=q.device, dtype=torch.float)
+            impt_weight = to_torch_as(batch.impt_weight, q)
             loss = (td.pow(2) * impt_weight).mean()
         else:
             loss = F.mse_loss(q, r)

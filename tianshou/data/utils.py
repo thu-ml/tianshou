@@ -38,3 +38,13 @@ def to_torch(x: Union[torch.Tensor, dict, Batch, np.ndarray],
     elif isinstance(x, Batch):
         x.to_torch(dtype, device)
     return x
+
+
+def to_torch_as(x: Union[torch.Tensor, dict, Batch, np.ndarray],
+                y: torch.Tensor
+                ) -> Union[dict, Batch, torch.Tensor]:
+    """Return an object without np.ndarray. Same as
+    ``to_torch(x, dtype=y.dtype, device=y.device)``.
+    """
+    assert isinstance(y, torch.Tensor)
+    return to_torch(x, dtype=y.dtype, device=y.device)

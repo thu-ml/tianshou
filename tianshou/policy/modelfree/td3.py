@@ -1,10 +1,11 @@
 import torch
+import numpy as np
 from copy import deepcopy
 import torch.nn.functional as F
 from typing import Dict, Tuple, Optional
 
-from tianshou.data import Batch, to_torch
 from tianshou.policy import DDPGPolicy
+from tianshou.data import Batch, ReplayBuffer
 
 
 class TD3Policy(DDPGPolicy):
@@ -62,10 +63,11 @@ class TD3Policy(DDPGPolicy):
                  action_range: Optional[Tuple[float, float]] = None,
                  reward_normalization: bool = False,
                  ignore_done: bool = False,
+                 estimation_step: int = 1,
                  **kwargs) -> None:
         super().__init__(actor, actor_optim, None, None, tau, gamma,
                          exploration_noise, action_range, reward_normalization,
-                         ignore_done, **kwargs)
+                         ignore_done, estimation_step, **kwargs)
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
         self.critic1_optim = critic1_optim
@@ -100,25 +102,26 @@ class TD3Policy(DDPGPolicy):
                 self.critic2_old.parameters(), self.critic2.parameters()):
             o.data.copy_(o.data * (1 - self._tau) + n.data * self._tau)
 
-    def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
+    def _target_q(self, buffer: ReplayBuffer,
+                  indice: np.ndarray) -> torch.Tensor:
+        batch = buffer[indice]  # batch.obs: s_{t+n}
         with torch.no_grad():
             a_ = self(batch, model='actor_old', input='obs_next').act
             dev = a_.device
             noise = torch.randn(size=a_.shape, device=dev) * self._policy_noise
-            if self._noise_clip >= 0:
+            if self._noise_clip > 0:
                 noise = noise.clamp(-self._noise_clip, self._noise_clip)
             a_ += noise
             a_ = a_.clamp(self._range[0], self._range[1])
             target_q = torch.min(
                 self.critic1_old(batch.obs_next, a_),
                 self.critic2_old(batch.obs_next, a_))
-            rew = to_torch(batch.rew,
-                           dtype=torch.float, device=dev)[:, None]
-            done = to_torch(batch.done,
-                            dtype=torch.float, device=dev)[:, None]
-            target_q = (rew + (1. - done) * self._gamma * target_q)
+        return target_q
+
+    def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         # critic 1
         current_q1 = self.critic1(batch.obs, batch.act)
+        target_q = batch.returns[:, None]
         critic1_loss = F.mse_loss(current_q1, target_q)
         self.critic1_optim.zero_grad()
         critic1_loss.backward()

@@ -44,9 +44,9 @@ def get_args():
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
     parser.add_argument('--gae-lambda', type=float, default=0.95)
-    parser.add_argument('--rew-norm', type=bool, default=True)
-    # parser.add_argument('--dual-clip', type=float, default=5.)
-    parser.add_argument('--value-clip', type=bool, default=True)
+    parser.add_argument('--rew-norm', type=int, default=1)
+    parser.add_argument('--dual-clip', type=float, default=None)
+    parser.add_argument('--value-clip', type=int, default=1)
     args = parser.parse_known_args()[0]
     return args
 

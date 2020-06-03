@@ -4,7 +4,7 @@ from torch import nn
 from typing import Dict, List, Tuple, Union, Optional
 
 from tianshou.policy import PGPolicy
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
+from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 
 
 class PPOPolicy(PGPolicy):
@@ -129,14 +129,12 @@ class PPOPolicy(PGPolicy):
             for b in batch.split(batch_size, shuffle=False):
                 v.append(self.critic(b.obs))
                 old_log_prob.append(self(b).dist.log_prob(
-                    to_torch(b.act, device=v[0].device)))
+                    to_torch_as(b.act, v[0])))
         batch.v = torch.cat(v, dim=0)  # old value
-        dev = batch.v.device
-        batch.act = to_torch(batch.act, dtype=torch.float, device=dev)
+        batch.act = to_torch_as(batch.act, v[0])
         batch.logp_old = torch.cat(old_log_prob, dim=0)
-        batch.returns = to_torch(
-            batch.returns, dtype=torch.float, device=dev
-        ).reshape(batch.v.shape)
+        batch.returns = to_torch_as(
+            batch.returns, v[0]).reshape(batch.v.shape)
         if self._rew_norm:
             mean, std = batch.returns.mean(), batch.returns.std()
             if not np.isclose(std.item(), 0):

@@ -4,9 +4,9 @@ from copy import deepcopy
 import torch.nn.functional as F
 from typing import Dict, Tuple, Union, Optional
 
-from tianshou.data import Batch, to_torch
 from tianshou.policy import DDPGPolicy
 from tianshou.policy.dist import DiagGaussian
+from tianshou.data import Batch, to_torch_as, ReplayBuffer
 
 
 class SACPolicy(DDPGPolicy):
@@ -55,10 +55,11 @@ class SACPolicy(DDPGPolicy):
                  action_range: Optional[Tuple[float, float]] = None,
                  reward_normalization: bool = False,
                  ignore_done: bool = False,
+                 estimation_step: int = 1,
                  **kwargs) -> None:
         super().__init__(None, None, None, None, tau, gamma, 0,
                          action_range, reward_normalization, ignore_done,
-                         **kwargs)
+                         estimation_step, **kwargs)
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
@@ -105,23 +106,23 @@ class SACPolicy(DDPGPolicy):
         return Batch(
             logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
 
-    def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
+    def _target_q(self, buffer: ReplayBuffer,
+                  indice: np.ndarray) -> torch.Tensor:
+        batch = buffer[indice]  # batch.obs: s_{t+n}
         with torch.no_grad():
             obs_next_result = self(batch, input='obs_next')
             a_ = obs_next_result.act
-            dev = a_.device
-            batch.act = to_torch(batch.act, dtype=torch.float, device=dev)
+            batch.act = to_torch_as(batch.act, a_)
             target_q = torch.min(
                 self.critic1_old(batch.obs_next, a_),
                 self.critic2_old(batch.obs_next, a_),
             ) - self._alpha * obs_next_result.log_prob
-            rew = to_torch(batch.rew,
-                           dtype=torch.float, device=dev)[:, None]
-            done = to_torch(batch.done,
-                            dtype=torch.float, device=dev)[:, None]
-            target_q = (rew + (1. - done) * self._gamma * target_q)
+        return target_q
+
+    def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         # critic 1
         current_q1 = self.critic1(batch.obs, batch.act)
+        target_q = to_torch_as(batch.returns, current_q1)[:, None]
         critic1_loss = F.mse_loss(current_q1, target_q)
         self.critic1_optim.zero_grad()
         critic1_loss.backward()

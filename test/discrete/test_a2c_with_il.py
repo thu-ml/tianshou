@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=2)
-    parser.add_argument('--training-num', type=int, default=32)
+    parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -40,7 +40,7 @@ def get_args():
         default='cuda' if torch.cuda.is_available() else 'cpu')
     # a2c special
     parser.add_argument('--vf-coef', type=float, default=0.5)
-    parser.add_argument('--ent-coef', type=float, default=0.001)
+    parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--max-grad-norm', type=float, default=None)
     parser.add_argument('--gae-lambda', type=float, default=1.)
     parser.add_argument('--rew-norm', type=bool, default=False)
