@@ -179,6 +179,8 @@ def worker(parent, p, env_fn_wrapper):
                 p.send(env.render(**data) if hasattr(env, 'render') else None)
             elif cmd == 'seed':
                 p.send(env.seed(data) if hasattr(env, 'seed') else None)
+            elif cmd == 'getattr':
+                p.send(getattr(env, data) if hasattr(env, data) else None)
             else:
                 p.close()
                 raise NotImplementedError
@@ -197,6 +199,10 @@ class SubprocVectorEnv(BaseVectorEnv):
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         super().__init__(env_fns)
+        self._obs = None
+        self._rew = None
+        self._done = None
+        self._info = None
         self.closed = False
         self.parent_remote, self.child_remote = \
             zip(*[Pipe() for _ in range(self.env_num)])
@@ -210,6 +216,17 @@ class SubprocVectorEnv(BaseVectorEnv):
             p.start()
         for c in self.child_remote:
             c.close()
+
+    def __getattribute__(self, key):
+        if key not in ('observation_space', 'action_space'):
+            return super().__getattribute__(key)
+        else:
+            return self.__getattr__(key)
+
+    def __getattr__(self, key):
+        for p in self.parent_remote:
+            p.send(['getattr', key])
+        return [p.recv() for p in self.parent_remote]
 
     def step(self, action: np.ndarray
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
