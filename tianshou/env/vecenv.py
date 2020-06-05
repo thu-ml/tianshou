@@ -40,10 +40,29 @@ class BaseVectorEnv(ABC, gym.Env):
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         self._env_fns = env_fns
         self.env_num = len(env_fns)
+        self._obs = None
+        self._rew = None
+        self._done = None
+        self._info = None
 
     def __len__(self) -> int:
         """Return len(self), which is the number of environments."""
         return self.env_num
+
+    def __getattribute__(self, key):
+        """Switch between the default attribute getter or one
+           looking at wrapped environment level depending on the key."""
+        if key not in ('observation_space', 'action_space'):
+            return super().__getattribute__(key)
+        else:
+            return self.__getattr__(key)
+
+    @abstractmethod
+    def __getattr__(self, key):
+        """Try to retrieve an attribute from each individual wrapped
+           environment, if it does not belong to the wrapping vector
+           environment class."""
+        pass
 
     @abstractmethod
     def reset(self, id: Optional[Union[int, List[int]]] = None):
@@ -118,6 +137,10 @@ class VectorEnv(BaseVectorEnv):
         super().__init__(env_fns)
         self.envs = [_() for _ in env_fns]
 
+    def __getattr__(self, key):
+        return [getattr(env, key) if hasattr(env, key) else None
+                for env in self.envs]
+
     def reset(self, id: Optional[Union[int, List[int]]] = None) -> None:
         if id is None:
             self._obs = np.stack([e.reset() for e in self.envs])
@@ -179,6 +202,8 @@ def worker(parent, p, env_fn_wrapper):
                 p.send(env.render(**data) if hasattr(env, 'render') else None)
             elif cmd == 'seed':
                 p.send(env.seed(data) if hasattr(env, 'seed') else None)
+            elif cmd == 'getattr':
+                p.send(getattr(env, data) if hasattr(env, data) else None)
             else:
                 p.close()
                 raise NotImplementedError
@@ -210,6 +235,11 @@ class SubprocVectorEnv(BaseVectorEnv):
             p.start()
         for c in self.child_remote:
             c.close()
+
+    def __getattr__(self, key):
+        for p in self.parent_remote:
+            p.send(['getattr', key])
+        return [p.recv() for p in self.parent_remote]
 
     def step(self, action: np.ndarray
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -288,6 +318,9 @@ class RayVectorEnv(BaseVectorEnv):
         self.envs = [
             ray.remote(gym.Wrapper).options(num_cpus=0).remote(e())
             for e in env_fns]
+
+    def __getattr__(self, key):
+        return ray.get([e.getattr.remote(key) for e in self.envs])
 
     def step(self, action: np.ndarray
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:

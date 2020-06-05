@@ -1,5 +1,6 @@
-import gym
 import time
+import gym
+from gym.spaces.discrete import Discrete
 
 
 class MyTestEnv(gym.Env):
@@ -7,6 +8,7 @@ class MyTestEnv(gym.Env):
         self.size = size
         self.sleep = sleep
         self.dict_state = dict_state
+        self.action_space = Discrete(1)
         self.reset()
 
     def reset(self, state=0):
