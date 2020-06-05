@@ -116,7 +116,21 @@ class VectorEnv(BaseVectorEnv):
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         super().__init__(env_fns)
+        self._obs = None
+        self._rew = None
+        self._done = None
+        self._info = None
         self.envs = [_() for _ in env_fns]
+
+    def __getattribute__(self, key):
+        if key not in ('observation_space', 'action_space'):
+            return super().__getattribute__(key)
+        else:
+            return self.__getattr__(key)
+
+    def __getattr__(self, key):
+        return [getattr(env, key) if hasattr(env, key) else None
+                for env in self.envs]
 
     def reset(self, id: Optional[Union[int, List[int]]] = None) -> None:
         if id is None:
