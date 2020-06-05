@@ -1,5 +1,6 @@
 import time
 import numpy as np
+from gym.spaces.discrete import Discrete
 from tianshou.env import VectorEnv, SubprocVectorEnv, RayVectorEnv
 
 if __name__ == '__main__':
@@ -50,6 +51,9 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         print(f'RayVectorEnv: {t[2]:.6f}s')
     for v in venv:
         assert v.size == list(range(size, size + num))
+        assert v.env_num == num
+        assert v.action_space == [Discrete(1)] * num
+
     for v in venv:
         v.close()
 
