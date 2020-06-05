@@ -12,7 +12,7 @@ else:  # pytest
 def test_vecenv(size=10, num=8, sleep=0.001):
     verbose = __name__ == '__main__'
     env_fns = [
-        lambda: MyTestEnv(size=i, sleep=sleep)
+        lambda i=i: MyTestEnv(size=i, sleep=sleep)
         for i in range(size, size + num)
     ]
     venv = [
