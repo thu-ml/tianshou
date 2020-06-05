@@ -50,6 +50,8 @@ class BaseVectorEnv(ABC, gym.Env):
         return self.env_num
 
     def __getattribute__(self, key):
+        """Switch between the default attribute getter or one
+           looking at wrapped environment level depending on the key."""
         if key not in ('observation_space', 'action_space'):
             return super().__getattribute__(key)
         else:
