@@ -11,14 +11,8 @@ else:  # pytest
 def test_vecenv(size=10, num=8, sleep=0.001):
     verbose = __name__ == '__main__'
     env_fns = [
-        lambda: MyTestEnv(size=size, sleep=sleep),
-        lambda: MyTestEnv(size=size + 1, sleep=sleep),
-        lambda: MyTestEnv(size=size + 2, sleep=sleep),
-        lambda: MyTestEnv(size=size + 3, sleep=sleep),
-        lambda: MyTestEnv(size=size + 4, sleep=sleep),
-        lambda: MyTestEnv(size=size + 5, sleep=sleep),
-        lambda: MyTestEnv(size=size + 6, sleep=sleep),
-        lambda: MyTestEnv(size=size + 7, sleep=sleep),
+        lambda: MyTestEnv(size=i, sleep=sleep)
+        for i in range(size, size + num)
     ]
     venv = [
         VectorEnv(env_fns),
@@ -54,6 +48,8 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         print(f'VectorEnv: {t[0]:.6f}s')
         print(f'SubprocVectorEnv: {t[1]:.6f}s')
         print(f'RayVectorEnv: {t[2]:.6f}s')
+    for v in venv:
+        assert v.size == list(range(size, size + num))
     for v in venv:
         v.close()
 
