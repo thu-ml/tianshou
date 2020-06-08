@@ -23,9 +23,10 @@ Welcome to Tianshou!
 Here is Tianshou's other features:
 
 * Elegant framework, using only ~2000 lines of code
-* Support parallel environment sampling for all algorithms
-* Support recurrent state representation in actor network and critic network (RNN-style training for POMDP)
-* Support any type of environment state (e.g. a dict, a self-defined class, ...)
+* Support parallel environment sampling for all algorithms: :ref:`parallel_sampling`
+* Support recurrent state representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
+* Support any type of environment state (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
+* Support customized training process: :ref:`customize_training`
 * Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` for all Q-learning based algorithms
 
 中文文档位于 https://tianshou.readthedocs.io/zh/latest/

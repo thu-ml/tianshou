@@ -19,12 +19,14 @@ Build New Policy
 
 See :class:`~tianshou.policy.BasePolicy`.
 
-.. _parallel_sampling:
+.. _customize_training:
 
 Customize Training Process
 --------------------------
 
 See :ref:`customized_trainer`.
+
+.. _parallel_sampling:
 
 Parallel Sampling
 -----------------

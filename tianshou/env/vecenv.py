@@ -97,15 +97,15 @@ class BaseVectorEnv(ABC, gym.Env):
         pass
 
     @abstractmethod
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
         """Set the seed for all environments.
 
         Accept ``None``, an int (which will extend ``i`` to
         ``[i, i + 1, i + 2, ...]``) or a list.
 
-        :return: The list of seeds used in this env's random number generators.
-        The first value in the list should be the "main" seed, or the value
-        which a reproducer should pass to 'seed'.
+        :return: The list of seeds used in this env's random number \
+        generators. The first value in the list should be the "main" seed, or \
+        the value which a reproducer pass to "seed".
         """
         pass
 
@@ -162,7 +162,7 @@ class VectorEnv(BaseVectorEnv):
         self._info = np.stack(self._info)
         return self._obs, self._rew, self._done, self._info
 
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
@@ -269,7 +269,7 @@ class SubprocVectorEnv(BaseVectorEnv):
                 self._obs[i] = self.parent_remote[i].recv()
             return self._obs
 
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
@@ -347,7 +347,7 @@ class RayVectorEnv(BaseVectorEnv):
                 self._obs[i] = ray.get(result_obj[_])
         return self._obs
 
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
         if not hasattr(self.envs[0], 'seed'):
             return
         if np.isscalar(seed):
