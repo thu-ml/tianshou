@@ -25,10 +25,6 @@ class MyPolicy(BasePolicy):
         pass
 
 
-def equal(a, b):
-    return abs(np.array(a) - np.array(b)).sum() < 1e-6
-
-
 def preprocess_fn(**kwargs):
     # modify info before adding into the buffer
     if kwargs.get('info', None) is not None:
@@ -70,28 +66,30 @@ def test_collector():
     c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False),
                    preprocess_fn)
     c0.collect(n_step=3, log_fn=logger.log)
-    assert equal(c0.buffer.obs[:3], [0, 1, 0])
-    assert equal(c0.buffer[:3].obs_next, [1, 2, 1])
+    assert np.allclose(c0.buffer.obs[:3], [0, 1, 0])
+    assert np.allclose(c0.buffer[:3].obs_next, [1, 2, 1])
     c0.collect(n_episode=3, log_fn=logger.log)
-    assert equal(c0.buffer.obs[:8], [0, 1, 0, 1, 0, 1, 0, 1])
-    assert equal(c0.buffer[:8].obs_next, [1, 2, 1, 2, 1, 2, 1, 2])
+    assert np.allclose(c0.buffer.obs[:8], [0, 1, 0, 1, 0, 1, 0, 1])
+    assert np.allclose(c0.buffer[:8].obs_next, [1, 2, 1, 2, 1, 2, 1, 2])
     c1 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False),
                    preprocess_fn)
     c1.collect(n_step=6)
-    assert equal(c1.buffer.obs[:11], [0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3])
-    assert equal(c1.buffer[:11].obs_next, [1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4])
+    assert np.allclose(c1.buffer.obs[:11], [0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3])
+    assert np.allclose(c1.buffer[:11].obs_next,
+                       [1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4])
     c1.collect(n_episode=2)
-    assert equal(c1.buffer.obs[11:21], [0, 1, 2, 3, 4, 0, 1, 0, 1, 2])
-    assert equal(c1.buffer[11:21].obs_next, [1, 2, 3, 4, 5, 1, 2, 1, 2, 3])
+    assert np.allclose(c1.buffer.obs[11:21], [0, 1, 2, 3, 4, 0, 1, 0, 1, 2])
+    assert np.allclose(c1.buffer[11:21].obs_next,
+                       [1, 2, 3, 4, 5, 1, 2, 1, 2, 3])
     c2 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False),
                    preprocess_fn)
     c2.collect(n_episode=[1, 2, 2, 2])
-    assert equal(c2.buffer.obs_next[:26], [
+    assert np.allclose(c2.buffer.obs_next[:26], [
         1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5,
         1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5])
     c2.reset_env()
     c2.collect(n_episode=[2, 2, 2, 2])
-    assert equal(c2.buffer.obs_next[26:54], [
+    assert np.allclose(c2.buffer.obs_next[26:54], [
         1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4, 5,
         1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5])
 
@@ -115,7 +113,7 @@ def test_collector_with_dict_state():
     batch = c1.sample(10)
     print(batch)
     c0.buffer.update(c1.buffer)
-    assert equal(c0.buffer[:len(c0.buffer)].obs.index, [
+    assert np.allclose(c0.buffer[:len(c0.buffer)].obs.index, [
         0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1.,
         0., 1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4., 0., 1., 0.,
         1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.])

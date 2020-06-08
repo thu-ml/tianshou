@@ -47,7 +47,7 @@ class ReplayBuffer(object):
     :class:`~tianshou.data.ReplayBuffer` also supports frame_stack sampling
     (typically for RNN usage, see issue#19), ignoring storing the next
     observation (save memory in atari tasks), and multi-modal observation (see
-    issue#38, need version >= 0.2.3):
+    issue#38):
     ::
 
         >>> buf = ReplayBuffer(size=9, stack_num=4, ignore_obs_next=True)
@@ -250,7 +250,7 @@ class ReplayBuffer(object):
         # set last frame done to True
         last_index = (self._index - 1 + self._size) % self._size
         last_done, self.done[last_index] = self.done[last_index], True
-        if key == 'obs_next' and not self._save_s_:
+        if key == 'obs_next' and (not self._save_s_ or self.obs_next is None):
             indice += 1 - self.done[indice].astype(np.int)
             indice[indice == self._size] = 0
             key = 'obs'

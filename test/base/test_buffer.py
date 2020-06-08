@@ -17,7 +17,7 @@ def test_replaybuffer(size=10, bufsize=20):
         obs_next, rew, done, info = env.step(a)
         buf.add(obs, a, rew, done, obs_next, info)
         obs = obs_next
-        assert len(buf) == min(bufsize, i + 1), print(len(buf), i)
+        assert len(buf) == min(bufsize, i + 1)
     data, indice = buf.sample(bufsize * 2)
     assert (indice < len(buf)).all()
     assert (data.obs < size).all()
@@ -40,10 +40,10 @@ def test_stack(size=5, bufsize=9, stack_num=4):
         if done:
             obs = env.reset(1)
     indice = np.arange(len(buf))
-    assert abs(buf.get(indice, 'obs') - np.array([
+    assert np.allclose(buf.get(indice, 'obs'), np.array([
         [1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
         [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
-        [3, 3, 3, 3], [3, 3, 3, 4], [1, 1, 1, 1]])).sum() < 1e-6
+        [3, 3, 3, 3], [3, 3, 3, 4], [1, 1, 1, 1]]))
     print(buf)
 
 
@@ -63,7 +63,7 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
             assert len(data) == len(buf)
         else:
             assert len(data) == len(buf) // 2
-        assert len(buf) == min(bufsize, i + 1), print(len(buf), i)
+        assert len(buf) == min(bufsize, i + 1)
         assert np.isclose(buf._weight_sum, (buf.weight).sum())
     data, indice = buf.sample(len(buf) // 2)
     buf.update_weight(indice, -data.weight / 2)

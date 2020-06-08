@@ -26,13 +26,19 @@ class BasePolicy(ABC, nn.Module):
     Most of the policy needs a neural network to predict the action and an
     optimizer to optimize the policy. The rules of self-defined networks are:
 
-    1. Input: observation ``obs`` (may be a ``numpy.ndarray`` or \
-        ``torch.Tensor``), hidden state ``state`` (for RNN usage), and other \
-        information ``info`` provided by the environment.
-    2. Output: some ``logits`` and the next hidden state ``state``. The logits\
-        could be a tuple instead of a ``torch.Tensor``. It depends on how the \
-        policy process the network output. For example, in PPO, the return of \
-        the network might be ``(mu, sigma), state`` for Gaussian policy.
+    1. Input: observation ``obs`` (may be a ``numpy.ndarray``, a \
+        ``torch.Tensor``, a dict or any others), hidden state ``state`` (for \
+        RNN usage), and other information ``info`` provided by the \
+        environment.
+    2. Output: some ``logits``, the next hidden state ``state``, and the \
+        intermediate result during policy forwarding procedure ``policy``. The\
+        ``logits`` could be a tuple instead of a ``torch.Tensor``. It depends \
+        on how the policy process the network output. For example, in PPO, the\
+        return of the network might be ``(mu, sigma), state`` for Gaussian \
+        policy. The ``policy`` can be a Batch of torch.Tensor or other things,\
+        which will be stored in the replay buffer, and can be accessed in the \
+        policy update process (e.g. in ``policy.learn()``, the \
+        ``batch.policy`` is what you need).
 
     Since :class:`~tianshou.policy.BasePolicy` inherits ``torch.nn.Module``,
     you can use :class:`~tianshou.policy.BasePolicy` almost the same as
