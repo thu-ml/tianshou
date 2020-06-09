@@ -51,6 +51,8 @@ class BasePolicy(ABC, nn.Module):
 
     def __init__(self, **kwargs) -> None:
         super().__init__()
+        self.observation_space = kwargs.get('observation_space')
+        self.action_space = kwargs.get('action_space')
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:

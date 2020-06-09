@@ -179,7 +179,7 @@ class Collector(object):
         if hasattr(self.env, 'close'):
             self.env.close()
 
-    def _make_batch(self, data: Any) -> Union[Any, np.ndarray]:
+    def _make_batch(self, data: Any) -> np.ndarray:
         """Return [data]."""
         if isinstance(data, np.ndarray):
             return data[None]

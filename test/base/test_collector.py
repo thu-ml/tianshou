@@ -53,12 +53,7 @@ class Logger(object):
 def test_collector():
     writer = SummaryWriter('log/collector')
     logger = Logger(writer)
-    env_fns = [
-        lambda: MyTestEnv(size=2, sleep=0),
-        lambda: MyTestEnv(size=3, sleep=0),
-        lambda: MyTestEnv(size=4, sleep=0),
-        lambda: MyTestEnv(size=5, sleep=0),
-    ]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
 
     venv = SubprocVectorEnv(env_fns)
     policy = MyPolicy()
@@ -100,12 +95,8 @@ def test_collector_with_dict_state():
     c0 = Collector(policy, env, ReplayBuffer(size=100), preprocess_fn)
     c0.collect(n_step=3)
     c0.collect(n_episode=3)
-    env_fns = [
-        lambda: MyTestEnv(size=2, sleep=0, dict_state=True),
-        lambda: MyTestEnv(size=3, sleep=0, dict_state=True),
-        lambda: MyTestEnv(size=4, sleep=0, dict_state=True),
-        lambda: MyTestEnv(size=5, sleep=0, dict_state=True),
-    ]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True)
+               for i in [2, 3, 4, 5]]
     envs = VectorEnv(env_fns)
     c1 = Collector(policy, envs, ReplayBuffer(size=100), preprocess_fn)
     c1.collect(n_step=10)

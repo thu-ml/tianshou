@@ -133,7 +133,10 @@ class ReplayBuffer(object):
         d = {}
         for k_ in self._meta[key]:
             k__ = '_' + key + '@' + k_
-            d[k_] = self.__dict__[k__]
+            if k__ in self.__dict__:
+                d[k_] = self.__dict__[k__]
+            else:
+                d[k_] = self.__getattr__(k__)
         return Batch(**d)
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
