@@ -3,7 +3,7 @@ import numpy as np
 from typing import Dict, List, Union, Optional
 
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
 
 class PGPolicy(BasePolicy):
@@ -88,8 +88,8 @@ class PGPolicy(BasePolicy):
             for b in batch.split(batch_size):
                 self.optim.zero_grad()
                 dist = self(b).dist
-                a = to_torch(b.act, device=dist.logits.device)
-                r = to_torch(b.returns, device=dist.logits.device)
+                a = to_torch_as(b.act, dist.logits)
+                r = to_torch_as(b.returns, dist.logits)
                 loss = -(dist.log_prob(a) * r).sum()
                 loss.backward()
                 self.optim.step()
