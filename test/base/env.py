@@ -8,7 +8,7 @@ class MyTestEnv(gym.Env):
         self.size = size
         self.sleep = sleep
         self.dict_state = dict_state
-        self.action_space = Discrete(1)
+        self.action_space = Discrete(2)
         self.reset()
 
     def reset(self, state=0):

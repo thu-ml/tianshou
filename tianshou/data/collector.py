@@ -204,6 +204,7 @@ class Collector(object):
     def collect(self,
                 n_step: int = 0,
                 n_episode: Union[int, List[int]] = 0,
+                random: bool = False,
                 render: Optional[float] = None,
                 log_fn: Optional[Callable[[dict], None]] = None
                 ) -> Dict[str, float]:
@@ -213,6 +214,8 @@ class Collector(object):
         :param n_episode: how many episodes you want to collect (in each
             environment).
         :type n_episode: int or list
+        :param bool random: whether to use random policy for collecting data,
+            defaults to ``False``.
         :param float render: the sleep time between rendering consecutive
             frames, defaults to ``None`` (no rendering).
         :param function log_fn: a function which receives env info, typically
@@ -252,8 +255,15 @@ class Collector(object):
                 obs=self._obs, act=self._act, rew=self._rew,
                 done=self._done, obs_next=None, info=self._info,
                 policy=None)
-            with torch.no_grad():
-                result = self.policy(batch, self.state)
+            if random:
+                action_space = self.env.action_space
+                if isinstance(action_space, list):
+                    result = Batch(act=[a.sample() for a in action_space])
+                else:
+                    result = Batch(act=self._make_batch(action_space.sample()))
+            else:
+                with torch.no_grad():
+                    result = self.policy(batch, self.state)
             self.state = result.get('state', None)
             self._policy = to_numpy(result.policy) \
                 if hasattr(result, 'policy') else [{}] * self.env_num

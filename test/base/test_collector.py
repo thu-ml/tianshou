@@ -56,6 +56,7 @@ def test_collector():
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
 
     venv = SubprocVectorEnv(env_fns)
+    dum = VectorEnv(env_fns)
     policy = MyPolicy()
     env = env_fns[0]()
     c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False),
@@ -66,6 +67,7 @@ def test_collector():
     c0.collect(n_episode=3, log_fn=logger.log)
     assert np.allclose(c0.buffer.obs[:8], [0, 1, 0, 1, 0, 1, 0, 1])
     assert np.allclose(c0.buffer[:8].obs_next, [1, 2, 1, 2, 1, 2, 1, 2])
+    c0.collect(n_step=3, random=True)
     c1 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False),
                    preprocess_fn)
     c1.collect(n_step=6)
@@ -76,7 +78,8 @@ def test_collector():
     assert np.allclose(c1.buffer.obs[11:21], [0, 1, 2, 3, 4, 0, 1, 0, 1, 2])
     assert np.allclose(c1.buffer[11:21].obs_next,
                        [1, 2, 3, 4, 5, 1, 2, 1, 2, 3])
-    c2 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False),
+    c1.collect(n_episode=3, random=True)
+    c2 = Collector(policy, dum, ReplayBuffer(size=100, ignore_obs_next=False),
                    preprocess_fn)
     c2.collect(n_episode=[1, 2, 2, 2])
     assert np.allclose(c2.buffer.obs_next[:26], [
@@ -87,6 +90,7 @@ def test_collector():
     assert np.allclose(c2.buffer.obs_next[26:54], [
         1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4, 5,
         1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5])
+    c2.collect(n_episode=[1, 1, 1, 1], random=True)
 
 
 def test_collector_with_dict_state():
