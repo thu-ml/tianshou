@@ -52,7 +52,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
     for v in venv:
         assert v.size == list(range(size, size + num))
         assert v.env_num == num
-        assert v.action_space == [Discrete(1)] * num
+        assert v.action_space == [Discrete(2)] * num
 
     for v in venv:
         v.close()
