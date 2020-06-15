@@ -10,6 +10,7 @@ from tianshou.env import VectorEnv
 from tianshou.policy import TD3Policy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
+from tianshou.exploration import GaussianNoise
 
 if __name__ == '__main__':
     from net import Actor, Critic
@@ -85,8 +86,8 @@ def test_td3(args=get_args()):
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
     policy = TD3Policy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-        args.tau, args.gamma, args.exploration_noise, args.policy_noise,
-        args.update_actor_freq, args.noise_clip,
+        args.tau, args.gamma, GaussianNoise(sigma=args.exploration_noise),
+        args.policy_noise, args.update_actor_freq, args.noise_clip,
         [env.action_space.low[0], env.action_space.high[0]],
         reward_normalization=args.rew_norm,
         ignore_done=args.ignore_done,
