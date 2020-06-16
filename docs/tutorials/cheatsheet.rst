@@ -3,7 +3,7 @@ Cheat Sheet
 
 This page shows some code snippets of how to use Tianshou to develop new algorithms / apply algorithms to new scenarios.
 
-By the way, some of these issues can be resolved by using a ``gym.wrapper``. It could be a universal solution in the policy-environment interaction.
+By the way, some of these issues can be resolved by using a ``gym.wrapper``. It could be a universal solution in the policy-environment interaction. But you can also use the batch processor :ref:`preprocess_fn`.
 
 .. _network_api:
 
