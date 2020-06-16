@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from typing import Dict, Tuple, Union, Optional
 
 from tianshou.policy import BasePolicy
-# from tianshou.exploration import OUNoise
+from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
 
@@ -21,8 +21,8 @@ class DDPGPolicy(BasePolicy):
     :param float tau: param for soft update of the target network, defaults to
         0.005.
     :param float gamma: discount factor, in [0, 1], defaults to 0.99.
-    :param float exploration_noise: the noise intensity, add to the action,
-        defaults to 0.1.
+    :param BaseNoise exploration_noise: the exploration noise,
+        add to the action, defaults to ``GaussianNoise(sigma=0.1)``.
     :param action_range: the action range (minimum, maximum).
     :type action_range: (float, float)
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
@@ -45,7 +45,8 @@ class DDPGPolicy(BasePolicy):
                  critic_optim: torch.optim.Optimizer,
                  tau: float = 0.005,
                  gamma: float = 0.99,
-                 exploration_noise: float = 0.1,
+                 exploration_noise: Optional[BaseNoise]
+                 = GaussianNoise(sigma=0.1),
                  action_range: Optional[Tuple[float, float]] = None,
                  reward_normalization: bool = False,
                  ignore_done: bool = False,
@@ -64,8 +65,7 @@ class DDPGPolicy(BasePolicy):
         self._tau = tau
         assert 0 <= gamma <= 1, 'gamma should in [0, 1]'
         self._gamma = gamma
-        assert 0 <= exploration_noise, 'noise should not be negative'
-        self._eps = exploration_noise
+        self._noise = exploration_noise
         assert action_range is not None
         self._range = action_range
         self._action_bias = (action_range[0] + action_range[1]) / 2
@@ -77,9 +77,9 @@ class DDPGPolicy(BasePolicy):
         assert estimation_step > 0, 'estimation_step should greater than 0'
         self._n_step = estimation_step
 
-    def set_eps(self, eps: float) -> None:
-        """Set the eps for exploration."""
-        self._eps = eps
+    def set_exp_noise(self, noise: Optional[BaseNoise]) -> None:
+        """Set the exploration noise."""
+        self._noise = noise
 
     def train(self) -> None:
         """Set the module in training mode, except for the target network."""
@@ -106,7 +106,8 @@ class DDPGPolicy(BasePolicy):
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         with torch.no_grad():
             target_q = self.critic_old(batch.obs_next, self(
-                batch, model='actor_old', input='obs_next', eps=0).act)
+                batch, model='actor_old', input='obs_next',
+                explorating=False).act)
         return target_q
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
@@ -122,7 +123,7 @@ class DDPGPolicy(BasePolicy):
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
                 model: str = 'actor',
                 input: str = 'obs',
-                eps: Optional[float] = None,
+                explorating: bool = True,
                 **kwargs) -> Batch:
         """Compute action over the given batch data.
 
@@ -142,14 +143,8 @@ class DDPGPolicy(BasePolicy):
         obs = getattr(batch, input)
         logits, h = model(obs, state=state, info=batch.info)
         logits += self._action_bias
-        if eps is None:
-            eps = self._eps
-        if eps > 0:
-            # noise = np.random.normal(0, eps, size=logits.shape)
-            # logits += to_torch(noise, device=logits.device)
-            # noise = self.noise(logits.shape, eps)
-            logits += torch.randn(
-                size=logits.shape, device=logits.device) * eps
+        if self.training and explorating:
+            logits += to_torch_as(self._noise(logits.shape), logits)
         logits = logits.clamp(self._range[0], self._range[1])
         return Batch(act=logits, state=h)
 
@@ -161,7 +156,8 @@ class DDPGPolicy(BasePolicy):
         self.critic_optim.zero_grad()
         critic_loss.backward()
         self.critic_optim.step()
-        actor_loss = -self.critic(batch.obs, self(batch, eps=0).act).mean()
+        action = self(batch, explorating=False).act
+        actor_loss = -self.critic(batch.obs, action).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()

@@ -6,40 +6,41 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import VectorEnv
-from tianshou.policy import DDPGPolicy
+from tianshou.policy import SACPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.exploration import GaussianNoise
+from tianshou.env import VectorEnv
+from tianshou.exploration import OUNoise
 
 if __name__ == '__main__':
-    from net import Actor, Critic
+    from net import ActorProb, Critic
 else:  # pytest
-    from test.continuous.net import Actor, Critic
+    from test.continuous.net import ActorProb, Critic
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pendulum-v0')
-    parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--actor-lr', type=float, default=1e-4)
-    parser.add_argument('--critic-lr', type=float, default=1e-3)
+    parser.add_argument('--task', type=str, default='MountainCarContinuous-v0')
+    parser.add_argument('--seed', type=int, default=1626)
+    parser.add_argument('--buffer-size', type=int, default=50000)
+    parser.add_argument('--actor-lr', type=float, default=3e-4)
+    parser.add_argument('--critic-lr', type=float, default=3e-4)
+    parser.add_argument('--alpha-lr', type=float, default=3e-4)
+    parser.add_argument('--noise_std', type=float, default=0.5)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
-    parser.add_argument('--exploration-noise', type=float, default=0.1)
+    parser.add_argument('--auto_alpha', type=bool, default=True)
+    parser.add_argument('--alpha', type=float, default=0.2)
     parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=2400)
-    parser.add_argument('--collect-per-step', type=int, default=4)
+    parser.add_argument('--collect-per-step', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--layer-num', type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--training-num', type=int, default=80)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--rew-norm', type=int, default=1)
-    parser.add_argument('--ignore-done', type=int, default=1)
-    parser.add_argument('--n-step', type=int, default=1)
+    parser.add_argument('--render', type=float, default=1.0/35.0)
+    parser.add_argument('--rew-norm', type=bool, default=False)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -47,15 +48,11 @@ def get_args():
     return args
 
 
-def test_ddpg(args=get_args()):
-    torch.set_num_threads(1)  # we just need only one thread for NN
+def test_sac(args=get_args()):
     env = gym.make(args.task)
-    if args.task == 'Pendulum-v0':
-        env.spec.reward_threshold = -250
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
-    # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
     train_envs = VectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -68,28 +65,41 @@ def test_ddpg(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    actor = Actor(
+    actor = ActorProb(
         args.layer_num, args.state_shape, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    critic = Critic(
+    critic1 = Critic(
         args.layer_num, args.state_shape, args.action_shape, args.device
     ).to(args.device)
-    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
-    policy = DDPGPolicy(
-        actor, actor_optim, critic, critic_optim,
-        args.tau, args.gamma, GaussianNoise(sigma=args.exploration_noise),
+    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    critic2 = Critic(
+        args.layer_num, args.state_shape, args.action_shape, args.device
+    ).to(args.device)
+    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+
+    if args.auto_alpha:
+        target_entropy = -np.prod(env.action_space.shape)
+        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
+        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
+        alpha = (target_entropy, log_alpha, alpha_optim)
+    else:
+        alpha = args.alpha
+
+    policy = SACPolicy(
+        actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
+        args.tau, args.gamma, alpha,
         [env.action_space.low[0], env.action_space.high[0]],
-        reward_normalization=args.rew_norm,
-        ignore_done=args.ignore_done,
-        estimation_step=args.n_step)
+        reward_normalization=args.rew_norm, ignore_done=True,
+        exploration_noise=OUNoise(0.0, args.noise_std))
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
+    # train_collector.collect(n_step=args.buffer_size)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'ddpg')
+    log_path = os.path.join(args.logdir, args.task, 'sac')
     writer = SummaryWriter(log_path)
 
     def save_fn(policy):
@@ -117,4 +127,4 @@ def test_ddpg(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_ddpg()
+    test_sac()

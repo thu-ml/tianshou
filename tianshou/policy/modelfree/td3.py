@@ -6,6 +6,7 @@ from typing import Dict, Tuple, Optional
 
 from tianshou.policy import DDPGPolicy
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.exploration import BaseNoise, GaussianNoise
 
 
 class TD3Policy(DDPGPolicy):
@@ -26,8 +27,8 @@ class TD3Policy(DDPGPolicy):
     :param float tau: param for soft update of the target network, defaults to
         0.005.
     :param float gamma: discount factor, in [0, 1], defaults to 0.99.
-    :param float exploration_noise: the noise intensity, add to the action,
-        defaults to 0.1.
+    :param float exploration_noise: the exploration noise, add to the action,
+        defaults to ``GaussianNoise(sigma=0.1)``
     :param float policy_noise: the noise used in updating policy network,
         default to 0.2.
     :param int update_actor_freq: the update frequency of actor network,
@@ -56,7 +57,8 @@ class TD3Policy(DDPGPolicy):
                  critic2_optim: torch.optim.Optimizer,
                  tau: float = 0.005,
                  gamma: float = 0.99,
-                 exploration_noise: float = 0.1,
+                 exploration_noise: Optional[BaseNoise]
+                 = GaussianNoise(sigma=0.1),
                  policy_noise: float = 0.2,
                  update_actor_freq: int = 2,
                  noise_clip: float = 0.5,
