@@ -1,5 +1,5 @@
 import numpy as np
-from tianshou.data import ReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -27,6 +27,26 @@ def test_replaybuffer(size=10, bufsize=20):
     assert len(buf) == len(buf2)
     assert buf2[0].obs == buf[5].obs
     assert buf2[-1].obs == buf[4].obs
+
+
+def test_ignore_obs_next(size=10):
+    # Issue 82
+    buf = ReplayBuffer(size, ignore_obs_net=True)
+    for i in range(size):
+        buf.add(obs={'mask1': np.array([i, 1, 1, 0, 0]),
+                     'mask2': np.array([i + 4, 0, 1, 0, 0])},
+                act={'act_id': i,
+                     'position_id': i + 3},
+                rew=i,
+                done=i % 3 == 0,
+                info={'if': i})
+    indice = np.arange(len(buf))
+    orig = np.arange(len(buf))
+    data = buf[indice]
+    data2 = buf[indice]
+    assert isinstance(data, Batch)
+    assert isinstance(data2, Batch)
+    assert np.allclose(indice, orig)
 
 
 def test_stack(size=5, bufsize=9, stack_num=4):
@@ -74,5 +94,6 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
 
 if __name__ == '__main__':
     test_replaybuffer()
+    test_ignore_obs_next()
     test_stack()
     test_priortized_replaybuffer(233333, 200000)

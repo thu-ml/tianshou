@@ -42,21 +42,21 @@ def test_fn(size=2560):
     )
     batch = fn(batch, buf, 0)
     ans = np.array([0, 1.23, 2.3, 3, 4.5, 5, 6.7, 7])
-    assert abs(batch.returns - ans).sum() <= 1e-5
+    assert np.allclose(batch.returns, ans)
     batch = Batch(
         done=np.array([0, 1, 0, 1, 0, 1, 0.]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
     )
     batch = fn(batch, buf, 0)
     ans = np.array([7.6, 6, 1.2, 2, 3.4, 4, 5])
-    assert abs(batch.returns - ans).sum() <= 1e-5
+    assert np.allclose(batch.returns, ans)
     batch = Batch(
         done=np.array([0, 1, 0, 1, 0, 0, 1.]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
     )
     batch = fn(batch, buf, 0)
     ans = np.array([7.6, 6, 1.2, 2, 3.45, 4.5, 5])
-    assert abs(batch.returns - ans).sum() <= 1e-5
+    assert np.allclose(batch.returns, ans)
     batch = Batch(
         done=np.array([0, 0, 0, 1., 0, 0, 0, 1, 0, 0, 0, 1]),
         rew=np.array([
@@ -68,7 +68,7 @@ def test_fn(size=2560):
         454.8344, 376.1143, 291.298, 200.,
         464.5610, 383.1085, 295.387, 201.,
         474.2876, 390.1027, 299.476, 202.])
-    assert abs(ret.returns - returns).sum() <= 1e-3
+    assert np.allclose(ret.returns, returns)
     if __name__ == '__main__':
         batch = Batch(
             done=np.random.randint(100, size=size) == 0,

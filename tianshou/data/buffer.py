@@ -250,6 +250,8 @@ class ReplayBuffer(object):
                     else self._size - indice.stop if indice.stop < 0
                     else indice.stop,
                     1 if indice.step is None else indice.step)
+        else:
+            indice = np.array(indice)
         # set last frame done to True
         last_index = (self._index - 1 + self._size) % self._size
         last_done, self.done[last_index] = self.done[last_index], True
