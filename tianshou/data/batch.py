@@ -1,6 +1,6 @@
 import torch
-import warnings
 import pprint
+import warnings
 import numpy as np
 from typing import Any, List, Union, Iterator, Optional
 
@@ -218,8 +218,16 @@ class Batch:
                 v.to_torch(dtype, device)
 
     def append(self, batch: 'Batch') -> None:
-        """Append a :class:`~tianshou.data.Batch` object to current batch."""
-        assert isinstance(batch, Batch), 'Only append Batch is allowed!'
+        warnings.warn('Method append will be removed soon, please use '
+                      ':meth:`~tianshou.data.Batch.cat`')
+        return self.cat(batch)
+
+    def cat(self, batch: 'Batch') -> None:
+        """Concatenate a :class:`~tianshou.data.Batch` object to current
+        batch.
+        """
+        assert isinstance(batch, Batch), \
+            'Only Batch is allowed to be concatenated!'
         for k, v in batch.__dict__.items():
             if k == '_meta':
                 self._meta.update(batch._meta)
@@ -235,9 +243,9 @@ class Batch:
             elif isinstance(v, list):
                 self.__dict__[k] += v
             elif isinstance(v, Batch):
-                self.__dict__[k].append(v)
+                self.__dict__[k].cat(v)
             else:
-                s = f'No support for append with type \
+                s = f'No support for method "cat" with type \
                       {type(v)} in class Batch.'
                 raise TypeError(s)
 
