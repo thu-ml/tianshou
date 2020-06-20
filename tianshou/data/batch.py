@@ -234,6 +234,8 @@ class Batch:
                 self.__dict__[k] = torch.cat([self.__dict__[k], v])
             elif isinstance(v, list):
                 self.__dict__[k] += v
+            elif isinstance(v, Batch):
+                self.__dict__[k].append(v)
             else:
                 s = f'No support for append with type \
                       {type(v)} in class Batch.'

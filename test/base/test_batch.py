@@ -34,6 +34,16 @@ def test_batch_over_batch():
     print(batch2)
     assert batch2.values()[-1] == batch2.c
     assert batch2[-1].b.b == 0
+    batch2.append(Batch(c=[6, 7, 8], b=batch))
+    assert batch2.c == [6, 7, 8, 6, 7, 8]
+    assert batch2.b.a == [3, 4, 5, 3, 4, 5]
+    assert batch2.b.b == [4, 5, 0, 4, 5, 0]
+    d = {'a': [3, 4, 5], 'b': [4, 5, 6]}
+    batch3 = Batch(c=[6, 7, 8], b=d)
+    batch3.append(Batch(c=[6, 7, 8], b=d))
+    assert batch3.c == [6, 7, 8, 6, 7, 8]
+    assert batch3.b.a == [3, 4, 5, 3, 4, 5]
+    assert batch3.b.b == [4, 5, 6, 4, 5, 6]
 
 
 def test_batch_over_batch_to_torch():

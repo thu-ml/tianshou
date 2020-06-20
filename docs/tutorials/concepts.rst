@@ -8,6 +8,12 @@ Tianshou splits a Reinforcement Learning agent training procedure into these par
     :height: 300
 
 
+Here is a more detailed description, where ``Env`` is the environment and ``Model`` is the neural network:
+
+.. image:: /_static/images/concepts_arch2.png
+    :align: center
+    :height: 300
+
 Data Batch
 ----------
 
