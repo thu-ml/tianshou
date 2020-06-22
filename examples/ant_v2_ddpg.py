@@ -9,6 +9,7 @@ from tianshou.policy import DDPGPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
+from tianshou.exploration import GaussianNoise
 
 from continuous_net import Actor, Critic
 
@@ -67,7 +68,7 @@ def test_ddpg(args=get_args()):
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
     policy = DDPGPolicy(
         actor, actor_optim, critic, critic_optim,
-        args.tau, args.gamma, args.exploration_noise,
+        args.tau, args.gamma, GaussianNoise(sigma=args.exploration_noise),
         [env.action_space.low[0], env.action_space.high[0]],
         reward_normalization=True, ignore_done=True)
     # collector

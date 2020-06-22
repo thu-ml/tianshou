@@ -28,6 +28,7 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--exploration-noise', type=float, default=0.1)
+    parser.add_argument('--test-noise', type=float, default=0.1)
     parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=2400)
     parser.add_argument('--collect-per-step', type=int, default=4)
@@ -87,7 +88,8 @@ def test_ddpg(args=get_args()):
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(
+        policy, test_envs, action_noise=GaussianNoise(sigma=args.test_noise))
     # log
     log_path = os.path.join(args.logdir, args.task, 'ddpg')
     writer = SummaryWriter(log_path)
