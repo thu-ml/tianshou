@@ -12,10 +12,7 @@ from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv
 from tianshou.exploration import OUNoise
 
-if __name__ == '__main__':
-    from net import ActorProb, Critic
-else:  # pytest
-    from test.continuous.net import ActorProb, Critic
+from continuous_net import ActorProb, Critic
 
 
 def get_args():
