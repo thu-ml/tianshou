@@ -9,6 +9,7 @@ from tianshou.utils import MovAvg
 from tianshou.env import BaseVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
+from tianshou.exploration import BaseNoise
 
 
 class Collector(object):
@@ -27,6 +28,9 @@ class Collector(object):
         added to the buffer, see issue #42, defaults to ``None``.
     :param int stat_size: for the moving average of recording speed, defaults
         to 100.
+    :param BaseNoise action_noise: add a noise to continuous action. Normally
+        a policy already has a noise param for exploration in training phase,
+        so this is recommended to use in test collector for some purpose.
 
     The ``preprocess_fn`` is a function called before the data has been added
     to the buffer with batch format, which receives up to 7 keys as listed in
@@ -87,6 +91,7 @@ class Collector(object):
                  = None,
                  preprocess_fn: Callable[[Any], Union[dict, Batch]] = None,
                  stat_size: Optional[int] = 100,
+                 action_noise: Optional[BaseNoise] = None,
                  **kwargs) -> None:
         super().__init__()
         self.env = env
@@ -119,6 +124,7 @@ class Collector(object):
             else:
                 raise TypeError('The buffer in data collector is invalid!')
         self.stat_size = stat_size
+        self._action_noise = action_noise
         self.reset()
 
     def reset(self) -> None:
@@ -132,6 +138,8 @@ class Collector(object):
         self.collect_step = 0
         self.collect_episode = 0
         self.collect_time = 0
+        if self._action_noise is not None:
+            self._action_noise.reset()
 
     def reset_buffer(self) -> None:
         """Reset the main data buffer."""
@@ -268,6 +276,8 @@ class Collector(object):
             self._policy = to_numpy(result.policy) \
                 if hasattr(result, 'policy') else [{}] * self.env_num
             self._act = to_numpy(result.act)
+            if self._action_noise is not None:
+                self._act += self._action_noise(self._act.shape)
             obs_next, self._rew, self._done, self._info = self.env.step(
                 self._act if self._multi_env else self._act[0])
             if not self._multi_env:
