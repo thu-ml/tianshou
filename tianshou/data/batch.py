@@ -75,13 +75,13 @@ class Batch:
     """
 
     def __init__(self,
-                 batch_dict : Optional[
+                 batch_dict: Optional[
                      Union[dict, List[dict], np.ndarray]] = None,
                  **kwargs) -> None:
         if isinstance(batch_dict, (list, np.ndarray)) \
                 and len(batch_dict) > 0 and isinstance(batch_dict[0], dict):
             for k, v in zip(batch_dict[0].keys(),
-                    zip(*[e.values() for e in batch_dict])):
+                            zip(*[e.values() for e in batch_dict])):
                 if isinstance(v, (list, np.ndarray)) \
                         and len(v) > 0 and isinstance(v[0], dict):
                     self.__dict__[k] = Batch.stack([Batch(v_) for v_ in v])
@@ -97,8 +97,8 @@ class Batch:
                     self.__dict__[k] = list(v)
         elif isinstance(batch_dict, dict):
             for k, v in batch_dict.items():
-                if isinstance(v, dict) or \
-                        (isinstance(v, (list, np.ndarray)) \
+                if isinstance(v, dict) \
+                        or (isinstance(v, (list, np.ndarray))
                             and len(v) > 0 and isinstance(v[0], dict)):
                     self.__dict__[k] = Batch(v)
                 else:
@@ -246,8 +246,8 @@ class Batch:
             elif isinstance(v, Batch):
                 self.__dict__[k].cat_(v)
             else:
-                s = f'No support for method "cat" with type '\
-                     '{type(v)} in class Batch.'
+                s = 'No support for method "cat" with type '\
+                    f'{type(v)} in class Batch.'
                 raise TypeError(s)
 
     @staticmethod
@@ -264,7 +264,7 @@ class Batch:
         return batch
 
     @staticmethod
-    def stack(batches : List['Batch']):
+    def stack(batches: List['Batch']):
         """Stack a :class:`~tianshou.data.Batch` object into a
         single new batch.
         """
