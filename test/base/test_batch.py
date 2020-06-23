@@ -34,6 +34,20 @@ def test_batch():
     assert batch_item.a.c == batch_dict['c']
     assert isinstance(batch_item.a.d, torch.Tensor)
     assert batch_item.a.d == batch_dict['d']
+    batch2 = Batch(a=[{
+        'b': np.float64(1.0),
+        'c': np.zeros(1),
+        'd': Batch(e=np.array(3.0))}])
+    with pytest.raises(IndexError):
+        batch2[-2]
+    with pytest.raises(IndexError):
+        batch2[1]
+    with pytest.raises(IndexError):
+        batch2[0][0]
+    assert len(batch2) == 1
+    assert len(batch2[-1]) == 0
+    assert isinstance(batch2[0].a.b, np.float64)
+    assert isinstance(batch2[0].a.d.e, np.float64)
 
 
 def test_batch_over_batch():
@@ -60,15 +74,18 @@ def test_batch_over_batch():
 
 
 def test_batch_cat_and_stack():
-    b1 = Batch(a=[{'b': np.array([1.0]), 'd': Batch(e=np.array([3.0]))}])
-    b2 = Batch(a=[{'b': np.array([4.0]), 'd': Batch(e=np.array([6.0]))}])
+    b1 = Batch(a=[{'b': np.float64(1.0), 'd': Batch(e=np.array(3.0))}])
+    b2 = Batch(a=[{'b': np.float64(4.0), 'd': {'e': np.array(6.0)}}])
     b_cat_out = Batch.cat((b1, b2))
     b_cat_in = copy.deepcopy(b1)
     b_cat_in.cat_(b2)
     assert np.all(b_cat_in.a.d.e == b_cat_out.a.d.e)
-    assert b_cat_in.a.d.e.ndim == 2
+    assert np.all(b_cat_in.a.d.e == b_cat_out.a.d.e)
+    assert isinstance(b_cat_in.a.d.e, np.ndarray)
+    assert b_cat_in.a.d.e.ndim == 1
     b_stack = Batch.stack((b1, b2))
-    assert b_stack.a.d.e.ndim == 3
+    assert isinstance(b_stack.a.d.e, np.ndarray)
+    assert b_stack.a.d.e.ndim == 2
 
 
 def test_batch_over_batch_to_torch():

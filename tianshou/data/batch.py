@@ -78,15 +78,23 @@ class Batch:
                  batch_dict: Optional[
                      Union[dict, Tuple[dict], List[dict], np.ndarray]] = None,
                  **kwargs) -> None:
-        if isinstance(batch_dict, (list, tuple, np.ndarray)) \
-                and len(batch_dict) > 0 and isinstance(batch_dict[0], dict):
+        def _is_batch_set(data: Any) -> bool:
+            if isinstance(data, (list, tuple)):
+                if len(data) > 0 and isinstance(data[0], dict):
+                    return True
+            elif isinstance(data, np.ndarray):
+                if isinstance(data.item(0), dict):
+                    return True
+            return False
+
+        if isinstance(batch_dict, np.ndarray) and batch_dict.ndim == 0:
+            batch_dict = batch_dict[()]
+        if _is_batch_set(batch_dict):
             for k, v in zip(batch_dict[0].keys(),
                             zip(*[e.values() for e in batch_dict])):
-                if isinstance(v[0], dict) \
-                        or (isinstance(v, (list, tuple, np.ndarray))
-                            and len(v) > 0 and isinstance(v[0], dict)):
+                if isinstance(v[0], dict) or _is_batch_set(v[0]):
                     self.__dict__[k] = Batch(v)
-                elif isinstance(v[0], np.ndarray):
+                elif isinstance(v[0], (np.generic, np.ndarray)):
                     self.__dict__[k] = np.stack(v, axis=0)
                 elif isinstance(v[0], torch.Tensor):
                     self.__dict__[k] = torch.stack(v, dim=0)
@@ -96,9 +104,7 @@ class Batch:
                     self.__dict__[k] = list(v)
         elif isinstance(batch_dict, dict):
             for k, v in batch_dict.items():
-                if isinstance(v, dict) \
-                        or (isinstance(v, (list, tuple, np.ndarray))
-                            and len(v) > 0 and isinstance(v[0], dict)):
+                if isinstance(v, dict) or _is_batch_set(v):
                     self.__dict__[k] = Batch(v)
                 else:
                     self.__dict__[k] = v
@@ -124,18 +130,36 @@ class Batch:
         """
         self.__init__(**state)
 
-    def __getitem__(self, index: Union[str, slice]) -> Union['Batch', dict]:
+    def __getitem__(self,
+                    index: Union[str, slice, int, List[int]]) -> 'Batch':
         """Return self[index]."""
+        def _valid_bounds(length: int,
+                          index: Union[str, slice, int, List[int]]):
+            if isinstance(index, (list, int)) and \
+                    (np.any(length <= index) or np.any(index < -length)):
+                return False
+            if isinstance(index, slice):
+                return _valid_bounds(length, [index.start, index.stop])
+            return True
+
         if isinstance(index, str):
             return self.__getattr__(index)
-        b = Batch()
-        for k, v in self.__dict__.items():
-            if hasattr(v, '__len__'):
-                try:
-                    b.__dict__.update(**{k: v[index]})
-                except IndexError:
-                    continue
-        return b
+        batch_len = len(self)
+        if batch_len == 0:
+            raise IndexError(
+                "Cannot get item from Batch for which len is zero.")
+        elif not _valid_bounds(batch_len, index):
+            raise IndexError(
+                f"Index out of bounds for Batch of len {batch_len}.")
+        else:
+            b = Batch()
+            for k, v in self.__dict__.items():
+                if hasattr(v, '__len__') and (not isinstance(
+                        v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
+                    v_len = len(v)
+                    if v_len > 0 and _valid_bounds(v_len, index):
+                        b.__dict__.update(**{k: v[index]})
+            return b
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
@@ -198,7 +222,7 @@ class Batch:
             device = torch.device(device)
 
         for k, v in self.__dict__.items():
-            if isinstance(v, np.ndarray):
+            if isinstance(v, (np.generic, np.ndarray)):
                 v = torch.from_numpy(v).to(device)
                 if dtype is not None:
                     v = v.type(dtype)
@@ -236,7 +260,7 @@ class Batch:
                 continue
             if not hasattr(self, k) or self.__dict__[k] is None:
                 self.__dict__[k] = copy.deepcopy(v)
-            elif isinstance(v, np.ndarray):
+            elif isinstance(v, np.ndarray) and v.ndim > 0:
                 self.__dict__[k] = np.concatenate([self.__dict__[k], v])
             elif isinstance(v, torch.Tensor):
                 self.__dict__[k] = torch.cat([self.__dict__[k], v])
@@ -274,7 +298,11 @@ class Batch:
 
     def __len__(self) -> int:
         """Return len(self)."""
-        r = [len(v) for k, v in self.__dict__.items() if hasattr(v, '__len__')]
+        r = []
+        for v in self.__dict__.values():
+            if hasattr(v, '__len__') and (not isinstance(
+                    v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
+                r.append(len(v))
         return max(r) if len(r) > 0 else 0
 
     def split(self, size: Optional[int] = None,
