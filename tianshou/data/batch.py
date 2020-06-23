@@ -1,4 +1,5 @@
 import torch
+import copy
 import pprint
 import warnings
 import numpy as np
@@ -73,29 +74,37 @@ class Batch:
         [11 22] [6 6]
     """
 
-    def __new__(cls, **kwargs) -> None:
-        self = super().__new__(cls)
-        self._meta = {}
-        return self
-
-    def __init__(self, **kwargs) -> None:
-        super().__init__()
-        for k, v in kwargs.items():
-            if isinstance(v, (list, np.ndarray)) \
-                    and len(v) > 0 and isinstance(v[0], dict) and k != 'info':
-                self._meta[k] = list(v[0].keys())
-                for k_ in v[0].keys():
-                    k__ = '_' + k + '@' + k_
-                    self.__dict__[k__] = np.array([
-                        v[i][k_] for i in range(len(v))
-                    ])
-            elif isinstance(v, dict):
-                self._meta[k] = list(v.keys())
-                for k_, v_ in v.items():
-                    k__ = '_' + k + '@' + k_
-                    self.__dict__[k__] = v_
-            else:
-                self.__dict__[k] = v
+    def __init__(self,
+                 batch_dict: Optional[
+                     Union[dict, List[dict], np.ndarray]] = None,
+                 **kwargs) -> None:
+        if isinstance(batch_dict, (list, np.ndarray)) \
+                and len(batch_dict) > 0 and isinstance(batch_dict[0], dict):
+            for k, v in zip(batch_dict[0].keys(),
+                            zip(*[e.values() for e in batch_dict])):
+                if isinstance(v, (list, np.ndarray)) \
+                        and len(v) > 0 and isinstance(v[0], dict):
+                    self.__dict__[k] = Batch.stack([Batch(v_) for v_ in v])
+                elif isinstance(v[0], np.ndarray):
+                    self.__dict__[k] = np.stack(v, axis=0)
+                elif isinstance(v[0], torch.Tensor):
+                    self.__dict__[k] = torch.stack(v, dim=0)
+                elif isinstance(v[0], Batch):
+                    self.__dict__[k] = Batch.stack(v)
+                elif isinstance(v[0], dict):
+                    self.__dict__[k] = Batch(v)
+                else:
+                    self.__dict__[k] = list(v)
+        elif isinstance(batch_dict, dict):
+            for k, v in batch_dict.items():
+                if isinstance(v, dict) \
+                        or (isinstance(v, (list, np.ndarray))
+                            and len(v) > 0 and isinstance(v[0], dict)):
+                    self.__dict__[k] = Batch(v)
+                else:
+                    self.__dict__[k] = v
+        if len(kwargs) > 0:
+            self.__init__(kwargs)
 
     def __getstate__(self):
         """Pickling interface. Only the actual data are serialized
@@ -122,33 +131,25 @@ class Batch:
             return self.__getattr__(index)
         b = Batch()
         for k, v in self.__dict__.items():
-            if k != '_meta' and hasattr(v, '__len__'):
+            if hasattr(v, '__len__'):
                 try:
                     b.__dict__.update(**{k: v[index]})
                 except IndexError:
                     continue
-        b._meta = self._meta
         return b
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
-        if key not in self._meta.keys():
-            if key not in self.__dict__:
-                raise AttributeError(key)
-            return self.__dict__[key]
-        d = {}
-        for k_ in self._meta[key]:
-            k__ = '_' + key + '@' + k_
-            d[k_] = self.__dict__[k__]
-        return Batch(**d)
+        if key not in self.__dict__:
+            raise AttributeError(key)
+        return self.__dict__[key]
 
     def __repr__(self) -> str:
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
-        for k in sorted(list(self.__dict__) + list(self._meta)):
-            if k[0] != '_' and (self.__dict__.get(k, None) is not None or
-                                k in self._meta):
+        for k in sorted(self.__dict__.keys()):
+            if self.__dict__.get(k, None) is not None:
                 rpl = '\n' + ' ' * (6 + len(k))
                 obj = pprint.pformat(self.__getattr__(k)).replace('\n', rpl)
                 s += f'    {k}: {obj},\n'
@@ -161,16 +162,19 @@ class Batch:
 
     def keys(self) -> List[str]:
         """Return self.keys()."""
-        return sorted(list(self._meta.keys()) +
-                      [k for k in self.__dict__.keys() if k[0] != '_'])
+        return self.__dict__.keys()
 
     def values(self) -> List[Any]:
         """Return self.values()."""
-        return [self[k] for k in self.keys()]
+        return self.__dict__.values()
+
+    def items(self) -> Any:
+        """Return self.items()."""
+        return self.__dict__.items()
 
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
-        if k in self.__dict__ or k in self._meta:
+        if k in self.__dict__:
             return self.__getattr__(k)
         return d
 
@@ -220,34 +224,54 @@ class Batch:
     def append(self, batch: 'Batch') -> None:
         warnings.warn('Method append will be removed soon, please use '
                       ':meth:`~tianshou.data.Batch.cat`')
-        return self.cat(batch)
+        return self.cat_(batch)
 
-    def cat(self, batch: 'Batch') -> None:
+    def cat_(self, batch: 'Batch') -> None:
         """Concatenate a :class:`~tianshou.data.Batch` object to current
         batch.
         """
         assert isinstance(batch, Batch), \
-            'Only Batch is allowed to be concatenated!'
+            'Only Batch is allowed to be concatenated in-place!'
         for k, v in batch.__dict__.items():
-            if k == '_meta':
-                self._meta.update(batch._meta)
-                continue
             if v is None:
                 continue
             if not hasattr(self, k) or self.__dict__[k] is None:
-                self.__dict__[k] = v
+                self.__dict__[k] = copy.deepcopy(v)
             elif isinstance(v, np.ndarray):
                 self.__dict__[k] = np.concatenate([self.__dict__[k], v])
             elif isinstance(v, torch.Tensor):
                 self.__dict__[k] = torch.cat([self.__dict__[k], v])
             elif isinstance(v, list):
-                self.__dict__[k] += v
+                self.__dict__[k] += copy.deepcopy(v)
             elif isinstance(v, Batch):
-                self.__dict__[k].cat(v)
+                self.__dict__[k].cat_(v)
             else:
-                s = f'No support for method "cat" with type \
-                      {type(v)} in class Batch.'
+                s = 'No support for method "cat" with type '\
+                    f'{type(v)} in class Batch.'
                 raise TypeError(s)
+
+    @staticmethod
+    def cat(batches: List['Batch']) -> None:
+        """Concatenate a :class:`~tianshou.data.Batch` object into a
+        single new batch.
+        """
+        assert isinstance(batches, (tuple, list)), \
+            'Only list of Batch instances is allowed to be '\
+            'concatenated out-of-place!'
+        batch = Batch()
+        for batch_ in batches:
+            batch.cat_(batch_)
+        return batch
+
+    @staticmethod
+    def stack(batches: List['Batch']):
+        """Stack a :class:`~tianshou.data.Batch` object into a
+        single new batch.
+        """
+        assert isinstance(batches, (tuple, list)), \
+            'Only list of Batch instances is allowed to be '\
+            'stacked out-of-place!'
+        return Batch(np.array([batch.__dict__ for batch in batches]))
 
     def __len__(self) -> int:
         """Return len(self)."""
