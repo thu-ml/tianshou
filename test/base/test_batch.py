@@ -56,6 +56,18 @@ def test_batch_over_batch():
     assert batch3.b.b == [4, 5, 6, 4, 5, 6]
 
 
+def test_batch_cat_and_stack():
+    b1 = Batch(a=[{'b': np.array([1.0]), 'd': Batch(e=np.array([3.0]))}])
+    b2 = Batch(a=[{'b': np.array([4.0]), 'd': Batch(e=np.array([6.0]))}])
+    b_cat_out = Batch.cat((b1, b2))
+    b_cat_in = copy.deepcopy(b1)
+    b_cat_in.cat_(b2)
+    assert np.all(b_cat_in.a.d.e == b_cat_out.a.d.e)
+    assert b_cat_in.a.d.e.ndim == 2
+    b_stack = Batch.stack((b1, b2))
+    assert b_stack.a.d.e.ndim == 3
+
+
 def test_batch_over_batch_to_torch():
     batch = Batch(
         a=np.ones((1,), dtype=np.float64),
