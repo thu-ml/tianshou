@@ -2,6 +2,7 @@ import torch
 import pprint
 import warnings
 import numpy as np
+from numbers import Number
 from typing import Any, List, Union, Iterator, Optional
 
 # Disable pickle warning related to torch, since it has been removed
@@ -79,16 +80,20 @@ class Batch:
         return self
 
     def __init__(self, **kwargs) -> None:
-        super().__init__()
         for k, v in kwargs.items():
             if isinstance(v, (list, np.ndarray)) \
                     and len(v) > 0 and isinstance(v[0], dict) and k != 'info':
                 self._meta[k] = list(v[0].keys())
-                for k_ in v[0].keys():
+                for k_, v_ in zip(v[0].keys(), zip(*[e.values() for e in v])):
                     k__ = '_' + k + '@' + k_
-                    self.__dict__[k__] = np.array([
-                        v[i][k_] for i in range(len(v))
-                    ])
+                    if isinstance(v_[0], np.ndarray):
+                        self.__dict__[k__] = np.stack(v_, axis=0)
+                    elif isinstance(v[0], torch.Tensor):
+                        self.__dict__[k__] = torch.stack(v_, dim=0)
+                    elif isinstance(v[0], Batch):
+                        self.__dict__[k__] = Batch.stack(v_)
+                    else:
+                        self.__dict__[k__] = list(v_)
             elif isinstance(v, dict):
                 self._meta[k] = list(v.keys())
                 for k_, v_ in v.items():
@@ -275,14 +280,26 @@ class Batch:
                 if v is None:
                     continue
                 if not hasattr(batch, k) or batch.__dict__[k] is None:
-                    batch.__dict__[k] = v[None]
-                elif isinstance(v, np.ndarray):
+                    if isinstance(v, Number):
+                        batch.__dict__[k] = np.array([v])
+                    elif isinstance(batch.__dict__[k], np.ndarray):
+                        batch.__dict__[k] = v[None]
+                    elif batch(v, torch.Tensor):
+                        batch.__dict__[k] = v[None]
+                    elif isinstance(batch.__dict__[k], list):
+                        batch.__dict__[k].append(v)
+                    else:
+                        s = f'No support for method "cat" with type \
+                            {type(v)} in class Batch.'
+                        raise TypeError(s)
+
+                elif isinstance(batch.__dict__[k], np.ndarray):
                     batch.__dict__[k] = np.concatenate([batch.__dict__[k], v[None]])
                 elif batch(v, torch.Tensor):
                     batch.__dict__[k] = torch.cat([batch.__dict__[k], v[None]])
-                elif isinstance(v, list):
+                elif isinstance(batch.__dict__[k], list):
                     batch.__dict__[k].append(v)
-                elif isinstance(v, Batch):
+                elif isinstance(batch.__dict__[k], Batch):
                     batch.__dict__[k] = Batch.stack([batch.__dict__[k], v])
                 else:
                     s = f'No support for method "cat" with type \
