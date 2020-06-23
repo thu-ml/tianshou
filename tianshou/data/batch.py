@@ -3,7 +3,6 @@ import copy
 import pprint
 import warnings
 import numpy as np
-from numbers import Number
 from typing import Any, List, Union, Iterator, Optional
 
 # Disable pickle warning related to torch, since it has been removed
