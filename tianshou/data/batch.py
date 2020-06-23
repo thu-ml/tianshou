@@ -74,29 +74,35 @@ class Batch:
         [11 22] [6 6]
     """
 
-    def __new__(cls, *args, **kwargs) -> None:
-        self = super().__new__(cls)
-        self._meta = {}
-        return self
-
     def __init__(self,
                  batch_dict : Optional[
                      Union[dict, List[dict], np.ndarray]] = None,
                  **kwargs) -> None:
         if isinstance(batch_dict, (list, np.ndarray)) \
                 and len(batch_dict) > 0 and isinstance(batch_dict[0], dict):
-            for k_, v_ in zip(batch_dict[0].keys(),
+            for k, v in zip(batch_dict[0].keys(),
                     zip(*[e.values() for e in batch_dict])):
-                if isinstance(v_[0], np.ndarray):
-                    self.__dict__[k_] = np.stack(v_, axis=0)
-                elif isinstance(v_[0], torch.Tensor):
-                    self.__dict__[k_] = torch.stack(v_, dim=0)
-                elif isinstance(v_[0], Batch):
-                    self.__dict__[k_] = Batch.stack(v_)
+                if isinstance(v, (list, np.ndarray)) \
+                        and len(v) > 0 and isinstance(v[0], dict):
+                    self.__dict__[k] = Batch.stack([Batch(v_) for v_ in v])
+                elif isinstance(v[0], np.ndarray):
+                    self.__dict__[k] = np.stack(v, axis=0)
+                elif isinstance(v[0], torch.Tensor):
+                    self.__dict__[k] = torch.stack(v, dim=0)
+                elif isinstance(v[0], Batch):
+                    self.__dict__[k] = Batch.stack(v)
+                elif isinstance(v[0], dict):
+                    self.__dict__[k] = Batch(v)
                 else:
-                    self.__dict__[k_] = list(v_)
+                    self.__dict__[k] = list(v)
         elif isinstance(batch_dict, dict):
-            self.__dict__.update(batch_dict)
+            for k, v in batch_dict.items():
+                if isinstance(v, dict) or \
+                        (isinstance(v, (list, np.ndarray)) \
+                            and len(v) > 0 and isinstance(v[0], dict)):
+                    self.__dict__[k] = Batch(v)
+                else:
+                    self.__dict__[k] = v
         if len(kwargs) > 0:
             self.__init__(kwargs)
 
@@ -125,33 +131,25 @@ class Batch:
             return self.__getattr__(index)
         b = Batch()
         for k, v in self.__dict__.items():
-            if k != '_meta' and hasattr(v, '__len__'):
+            if hasattr(v, '__len__'):
                 try:
                     b.__dict__.update(**{k: v[index]})
                 except IndexError:
                     continue
-        b._meta = self._meta
         return b
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
-        if key not in self._meta.keys():
-            if key not in self.__dict__:
-                raise AttributeError(key)
-            return self.__dict__[key]
-        d = {}
-        for k_ in self._meta[key]:
-            k__ = '_' + key + '@' + k_
-            d[k_] = self.__dict__[k__]
-        return Batch(**d)
+        if key not in self.__dict__:
+            raise AttributeError(key)
+        return self.__dict__[key]
 
     def __repr__(self) -> str:
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
-        for k in sorted(list(self.__dict__) + list(self._meta)):
-            if k[0] != '_' and (self.__dict__.get(k, None) is not None or
-                                k in self._meta):
+        for k in sorted(self.__dict__.keys()):
+            if k[0] != '_' and self.__dict__.get(k, None) is not None:
                 rpl = '\n' + ' ' * (6 + len(k))
                 obj = pprint.pformat(self.__getattr__(k)).replace('\n', rpl)
                 s += f'    {k}: {obj},\n'
@@ -164,8 +162,7 @@ class Batch:
 
     def keys(self) -> List[str]:
         """Return self.keys()."""
-        return sorted(list(self._meta.keys()) +
-                      [k for k in self.__dict__.keys() if k[0] != '_'])
+        return sorted([k for k in self.__dict__.keys() if k[0] != '_'])
 
     def values(self) -> List[Any]:
         """Return self.values()."""
@@ -173,7 +170,7 @@ class Batch:
 
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
-        if k in self.__dict__ or k in self._meta:
+        if k in self.__dict__:
             return self.__getattr__(k)
         return d
 
@@ -232,9 +229,6 @@ class Batch:
         assert isinstance(batch, Batch), \
             'Only Batch is allowed to be concatenated!'
         for k, v in batch.__dict__.items():
-            if k == '_meta':
-                self._meta.update(batch._meta)
-                continue
             if v is None:
                 continue
             if not hasattr(self, k) or self.__dict__[k] is None:
