@@ -54,6 +54,9 @@ def test_batch_over_batch():
     assert batch3.c == [6, 7, 8, 6, 7, 8]
     assert batch3.b.a == [3, 4, 5, 3, 4, 5]
     assert batch3.b.b == [4, 5, 6, 4, 5, 6]
+    batch4 = Batch(({'a': {'b': np.array([1.0])}},))
+    assert batch4.a.b.ndim == 2
+    assert batch4.a.b[0, 0] == 1.0
 
 
 def test_batch_cat_and_stack():
