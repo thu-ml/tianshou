@@ -220,14 +220,14 @@ class Batch:
     def append(self, batch: 'Batch') -> None:
         warnings.warn('Method append will be removed soon, please use '
                       ':meth:`~tianshou.data.Batch.cat`')
-        return self.cat(batch)
+        return self.cat_(batch)
 
     def cat_(self, batch: 'Batch') -> None:
         """Concatenate a :class:`~tianshou.data.Batch` object to current
         batch.
         """
         assert isinstance(batch, Batch), \
-            'Only Batch is allowed to be concatenated!'
+            'Only Batch is allowed to be concatenated in-place!'
         for k, v in batch.__dict__.items():
             if v is None:
                 continue
@@ -242,8 +242,8 @@ class Batch:
             elif isinstance(v, Batch):
                 self.__dict__[k].cat_(v)
             else:
-                s = f'No support for method "cat" with type \
-                      {type(v)} in class Batch.'
+                s = f'No support for method "cat" with type '\
+                     '{type(v)} in class Batch.'
                 raise TypeError(s)
 
     @staticmethod
@@ -251,6 +251,9 @@ class Batch:
         """Concatenate a :class:`~tianshou.data.Batch` object into a
         single new batch.
         """
+        assert isinstance(batches, (tuple, list)), \
+            'Only list of Batch instances is allowed to be '\
+            'concatenated out-of-place!'
         batch = Batch()
         for batch_ in batches:
             batch.cat_(batch_)
@@ -261,6 +264,9 @@ class Batch:
         """Stack a :class:`~tianshou.data.Batch` object into a
         single new batch.
         """
+        assert isinstance(batches, (tuple, list)), \
+            'Only list of Batch instances is allowed to be '\
+            'stacked out-of-place!'
         return Batch(np.array([
             {k:v for k, v in zip(batch.keys(), batch.values())}
             for batch in batches

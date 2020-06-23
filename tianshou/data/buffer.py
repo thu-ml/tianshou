@@ -413,7 +413,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                 impt_weight=1 / np.power(
                     self._size * (batch.weight / self._weight_sum),
                     self._beta))
-            batch.cat(impt_weight)
+            batch.cat_(impt_weight)
         self._check_weight_sum()
         return batch, indice
 
