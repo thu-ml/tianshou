@@ -1,4 +1,5 @@
 import torch
+import copy
 import pprint
 import warnings
 import numpy as np
@@ -236,13 +237,13 @@ class Batch:
             if v is None:
                 continue
             if not hasattr(self, k) or self.__dict__[k] is None:
-                self.__dict__[k] = v
+                self.__dict__[k] = copy.deepcopy(v)
             elif isinstance(v, np.ndarray):
                 self.__dict__[k] = np.concatenate([self.__dict__[k], v])
             elif isinstance(v, torch.Tensor):
                 self.__dict__[k] = torch.cat([self.__dict__[k], v])
             elif isinstance(v, list):
-                self.__dict__[k] += v
+                self.__dict__[k] += copy.deepcopy(v)
             elif isinstance(v, Batch):
                 self.__dict__[k].cat_(v)
             else:

@@ -1,4 +1,5 @@
 import torch
+import copy
 import pickle
 import pytest
 import numpy as np
