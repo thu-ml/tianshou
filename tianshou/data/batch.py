@@ -130,35 +130,31 @@ class Batch:
         """
         self.__init__(**state)
 
-    def __getitem__(self,
-                    index: Union[str, slice, int, List[int]]) -> 'Batch':
+    def __getitem__(self, index: Union[
+            str, slice, int, np.integer, np.ndarray, List[int]]) -> 'Batch':
         """Return self[index]."""
-        def _valid_bounds(length: int,
-                          index: Union[str, slice, int, List[int]]):
-            if isinstance(index, (list, int)) and \
-                    (np.any(length <= index) or np.any(index < -length)):
-                return False
-            if isinstance(index, slice):
-                return _valid_bounds(length, [index.start, index.stop])
-            return True
+        def _valid_bounds(length: int, index: Union[
+                slice, int, np.integer, np.ndarray, List[int]]) -> bool:
+            if isinstance(index, (int, np.integer)):
+                return -length <= index and index < length
+            elif isinstance(index, (list, np.ndarray)):
+                return _valid_bounds(length, min(index)) and \
+                    _valid_bounds(length, max(index))
+            elif isinstance(index, slice):
+                return _valid_bounds(length, index.start) and \
+                    _valid_bounds(length, index.stop - 1)
 
         if isinstance(index, str):
             return self.__getattr__(index)
-        batch_len = len(self)
-        if batch_len == 0:
-            raise IndexError(
-                "Cannot get item from Batch for which len is zero.")
-        elif not _valid_bounds(batch_len, index):
-            raise IndexError(
-                f"Index out of bounds for Batch of len {batch_len}.")
         else:
             b = Batch()
             for k, v in self.__dict__.items():
-                if hasattr(v, '__len__') and (not isinstance(
+                if isinstance(v, Batch):
+                    b.__dict__[k] = v[index]
+                elif hasattr(v, '__len__') and (not isinstance(
                         v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
-                    v_len = len(v)
-                    if v_len > 0 and _valid_bounds(v_len, index):
-                        b.__dict__.update(**{k: v[index]})
+                    if _valid_bounds(len(v), index):
+                        b.__dict__[k] = v[index]
             return b
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
