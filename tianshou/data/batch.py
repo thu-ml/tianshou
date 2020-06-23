@@ -149,7 +149,7 @@ class Batch:
         s = self.__class__.__name__ + '(\n'
         flag = False
         for k in sorted(self.__dict__.keys()):
-            if k[0] != '_' and self.__dict__.get(k, None) is not None:
+            if self.__dict__.get(k, None) is not None:
                 rpl = '\n' + ' ' * (6 + len(k))
                 obj = pprint.pformat(self.__getattr__(k)).replace('\n', rpl)
                 s += f'    {k}: {obj},\n'
@@ -162,11 +162,15 @@ class Batch:
 
     def keys(self) -> List[str]:
         """Return self.keys()."""
-        return sorted([k for k in self.__dict__.keys() if k[0] != '_'])
+        return self.__dict__.keys()
 
     def values(self) -> List[Any]:
         """Return self.values()."""
-        return [self[k] for k in self.keys()]
+        return self.__dict__.values()
+
+    def items(self) -> Any:
+        """Return self.items()."""
+        return self.__dict__.items()
 
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
@@ -267,10 +271,7 @@ class Batch:
         assert isinstance(batches, (tuple, list)), \
             'Only list of Batch instances is allowed to be '\
             'stacked out-of-place!'
-        return Batch(np.array([
-            {k:v for k, v in zip(batch.keys(), batch.values())}
-            for batch in batches
-        ]))
+        return Batch(np.array([batch.__dict__ for batch in batches]))
 
     def __len__(self) -> int:
         """Return len(self)."""

@@ -40,7 +40,8 @@ def test_batch_over_batch():
     batch2 = Batch({'c': [6, 7, 8], 'b': batch})
     batch2.b.b[-1] = 0
     print(batch2)
-    assert batch2.values()[-1] == batch2.c
+    for k, v in batch2.items():
+        assert batch2[k] == v
     assert batch2[-1].b.b == 0
     batch2.cat_(Batch(c=[6, 7, 8], b=batch))
     assert batch2.c == [6, 7, 8, 6, 7, 8]
