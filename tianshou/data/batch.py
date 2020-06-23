@@ -3,7 +3,7 @@ import copy
 import pprint
 import warnings
 import numpy as np
-from typing import Any, List, Union, Iterator, Optional
+from typing import Any, List, Tuple, Union, Iterator, Optional
 
 # Disable pickle warning related to torch, since it has been removed
 # on torch master branch. See Pull Request #39003 for details:
@@ -76,29 +76,28 @@ class Batch:
 
     def __init__(self,
                  batch_dict: Optional[
-                     Union[dict, List[dict], np.ndarray]] = None,
+                     Union[dict, Tuple[dict], List[dict], np.ndarray]] = None,
                  **kwargs) -> None:
-        if isinstance(batch_dict, (list, np.ndarray)) \
+        if isinstance(batch_dict, (list, tuple, np.ndarray)) \
                 and len(batch_dict) > 0 and isinstance(batch_dict[0], dict):
             for k, v in zip(batch_dict[0].keys(),
                             zip(*[e.values() for e in batch_dict])):
-                if isinstance(v, (list, np.ndarray)) \
-                        and len(v) > 0 and isinstance(v[0], dict):
-                    self.__dict__[k] = Batch.stack([Batch(v_) for v_ in v])
+                if isinstance(v[0], dict) \
+                        or (isinstance(v, (list, tuple, np.ndarray))
+                            and len(v) > 0 and isinstance(v[0], dict)):
+                    self.__dict__[k] = Batch(v)
                 elif isinstance(v[0], np.ndarray):
                     self.__dict__[k] = np.stack(v, axis=0)
                 elif isinstance(v[0], torch.Tensor):
                     self.__dict__[k] = torch.stack(v, dim=0)
                 elif isinstance(v[0], Batch):
                     self.__dict__[k] = Batch.stack(v)
-                elif isinstance(v[0], dict):
-                    self.__dict__[k] = Batch(v)
                 else:
                     self.__dict__[k] = list(v)
         elif isinstance(batch_dict, dict):
             for k, v in batch_dict.items():
                 if isinstance(v, dict) \
-                        or (isinstance(v, (list, np.ndarray))
+                        or (isinstance(v, (list, tuple, np.ndarray))
                             and len(v) > 0 and isinstance(v[0], dict)):
                     self.__dict__[k] = Batch(v)
                 else:
