@@ -74,33 +74,31 @@ class Batch:
         [11 22] [6 6]
     """
 
-    def __new__(cls, **kwargs) -> None:
+    def __new__(cls, *args, **kwargs) -> None:
         self = super().__new__(cls)
         self._meta = {}
         return self
 
-    def __init__(self, **kwargs) -> None:
-        for k, v in kwargs.items():
-            if isinstance(v, (list, np.ndarray)) \
-                    and len(v) > 0 and isinstance(v[0], dict) and k != 'info':
-                self._meta[k] = list(v[0].keys())
-                for k_, v_ in zip(v[0].keys(), zip(*[e.values() for e in v])):
-                    k__ = '_' + k + '@' + k_
-                    if isinstance(v_[0], np.ndarray):
-                        self.__dict__[k__] = np.stack(v_, axis=0)
-                    elif isinstance(v[0], torch.Tensor):
-                        self.__dict__[k__] = torch.stack(v_, dim=0)
-                    elif isinstance(v[0], Batch):
-                        self.__dict__[k__] = Batch.stack(v_)
-                    else:
-                        self.__dict__[k__] = list(v_)
-            elif isinstance(v, dict):
-                self._meta[k] = list(v.keys())
-                for k_, v_ in v.items():
-                    k__ = '_' + k + '@' + k_
-                    self.__dict__[k__] = v_
-            else:
-                self.__dict__[k] = v
+    def __init__(self,
+                 batch_dict : Optional[
+                     Union[dict, List[dict], np.ndarray]] = None,
+                 **kwargs) -> None:
+        if isinstance(batch_dict, (list, np.ndarray)) \
+                and len(batch_dict) > 0 and isinstance(batch_dict[0], dict):
+            for k_, v_ in zip(batch_dict[0].keys(),
+                    zip(*[e.values() for e in batch_dict])):
+                if isinstance(v_[0], np.ndarray):
+                    self.__dict__[k_] = np.stack(v_, axis=0)
+                elif isinstance(v_[0], torch.Tensor):
+                    self.__dict__[k_] = torch.stack(v_, dim=0)
+                elif isinstance(v_[0], Batch):
+                    self.__dict__[k_] = Batch.stack(v_)
+                else:
+                    self.__dict__[k_] = list(v_)
+        elif isinstance(batch_dict, dict):
+            self.__dict__.update(batch_dict)
+        if len(kwargs) > 0:
+            self.__init__(kwargs)
 
     def __getstate__(self):
         """Pickling interface. Only the actual data are serialized
@@ -269,43 +267,10 @@ class Batch:
         """Stack a :class:`~tianshou.data.Batch` object into a
         single new batch.
         """
-        batch = Batch()
-        for batch_ in batches:
-            assert isinstance(batch_, Batch), \
-                'Only Batch is allowed to be stacked!'
-            for k, v in batch_.__dict__.items():
-                if k == '_meta':
-                    batch._meta.update(batch._meta)
-                    continue
-                if v is None:
-                    continue
-                if not hasattr(batch, k) or batch.__dict__[k] is None:
-                    if isinstance(v, Number):
-                        batch.__dict__[k] = np.array([v])
-                    elif isinstance(batch.__dict__[k], np.ndarray):
-                        batch.__dict__[k] = v[None]
-                    elif batch(v, torch.Tensor):
-                        batch.__dict__[k] = v[None]
-                    elif isinstance(batch.__dict__[k], list):
-                        batch.__dict__[k].append(v)
-                    else:
-                        s = f'No support for method "cat" with type \
-                            {type(v)} in class Batch.'
-                        raise TypeError(s)
-
-                elif isinstance(batch.__dict__[k], np.ndarray):
-                    batch.__dict__[k] = np.concatenate([batch.__dict__[k], v[None]])
-                elif batch(v, torch.Tensor):
-                    batch.__dict__[k] = torch.cat([batch.__dict__[k], v[None]])
-                elif isinstance(batch.__dict__[k], list):
-                    batch.__dict__[k].append(v)
-                elif isinstance(batch.__dict__[k], Batch):
-                    batch.__dict__[k] = Batch.stack([batch.__dict__[k], v])
-                else:
-                    s = f'No support for method "cat" with type \
-                        {type(v)} in class Batch.'
-                    raise TypeError(s)
-        return batch
+        return Batch(np.array([
+            {k:v for k, v in zip(batch.keys(), batch.values())}
+            for batch in batches
+        ]))
 
     def __len__(self) -> int:
         """Return len(self)."""
