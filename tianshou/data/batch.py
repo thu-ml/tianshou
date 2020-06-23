@@ -222,7 +222,7 @@ class Batch:
                       ':meth:`~tianshou.data.Batch.cat`')
         return self.cat(batch)
 
-    def cat(self, batch: 'Batch') -> None:
+    def cat_(self, batch: 'Batch') -> None:
         """Concatenate a :class:`~tianshou.data.Batch` object to current
         batch.
         """
@@ -243,11 +243,52 @@ class Batch:
             elif isinstance(v, list):
                 self.__dict__[k] += v
             elif isinstance(v, Batch):
-                self.__dict__[k].cat(v)
+                self.__dict__[k].cat_(v)
             else:
                 s = f'No support for method "cat" with type \
                       {type(v)} in class Batch.'
                 raise TypeError(s)
+
+    @staticmethod
+    def cat(batches: List['Batch']) -> None:
+        """Concatenate a :class:`~tianshou.data.Batch` object into a
+        single new batch.
+        """
+        batch = Batch()
+        for batch_ in batches:
+            batch.cat_(batch_)
+        return batch
+
+    @staticmethod
+    def stack(batches : List['Batch']):
+        """Stack a :class:`~tianshou.data.Batch` object into a
+        single new batch.
+        """
+        batch = Batch()
+        for batch_ in batches:
+            assert isinstance(batch_, Batch), \
+                'Only Batch is allowed to be stacked!'
+            for k, v in batch_.__dict__.items():
+                if k == '_meta':
+                    batch._meta.update(batch._meta)
+                    continue
+                if v is None:
+                    continue
+                if not hasattr(batch, k) or batch.__dict__[k] is None:
+                    batch.__dict__[k] = v[None]
+                elif isinstance(v, np.ndarray):
+                    batch.__dict__[k] = np.concatenate([batch.__dict__[k], v[None]])
+                elif batch(v, torch.Tensor):
+                    batch.__dict__[k] = torch.cat([batch.__dict__[k], v[None]])
+                elif isinstance(v, list):
+                    batch.__dict__[k].append(v)
+                elif isinstance(v, Batch):
+                    batch.__dict__[k] = Batch.stack([batch.__dict__[k], v])
+                else:
+                    s = f'No support for method "cat" with type \
+                        {type(v)} in class Batch.'
+                    raise TypeError(s)
+        return batch
 
     def __len__(self) -> int:
         """Return len(self)."""
