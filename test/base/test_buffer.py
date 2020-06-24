@@ -53,7 +53,7 @@ def test_stack(size=5, bufsize=9, stack_num=4):
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize, stack_num)
     obs = env.reset(1)
-    for _ in range(15):
+    for i in range(15):
         obs_next, rew, done, info = env.step(1)
         buf.add(obs, 1, rew, done, None, info)
         obs = obs_next

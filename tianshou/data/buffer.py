@@ -255,12 +255,12 @@ class ReplayBuffer(Batch):
         """
         return Batch(
             obs=self.get(index, 'obs'),
-            act=self.act[index],
+            act=self.get(index, 'act', stack_num=0),
             # act_=self.get(index, 'act'),  # stacked action, for RNN
-            rew=self.rew[index],
-            done=self.done[index],
+            rew=self.get(index, 'rew', stack_num=0),
+            done=self.get(index, 'done', stack_num=0),
             obs_next=self.get(index, 'obs_next'),
-            info=self.info[index],
+            info=self.get(index, 'info', stack_num=0),
             policy=self.get(index, 'policy'),
         )
 
