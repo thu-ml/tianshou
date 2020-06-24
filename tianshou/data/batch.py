@@ -183,6 +183,12 @@ class Batch:
                             f"len {len(self)}.")
             return b
 
+    def __setitem__(self, index: Union[
+                        str, slice, int, np.integer, np.ndarray, List[int]],
+                    batch: Union[dict, 'Batch']) -> None:
+        for key, val in zip(self.keys(), batch.values()):
+            getattr(self, key)[index] = val
+
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
             for k, r, v in zip(self.keys(),

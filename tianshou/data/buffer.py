@@ -120,7 +120,7 @@ class ReplayBuffer(Batch):
                     (self._maxsize, *inst.shape), dtype=inst.dtype))
             elif isinstance(inst, (dict, Batch)):
                 setattr(self, name, Batch([
-                    copy.deepcopy(Batch(inst))
+                    Batch(inst)
                     for _ in range(self._maxsize)
                 ]))
             elif isinstance(inst, (np.generic, Number)):
@@ -217,12 +217,12 @@ class ReplayBuffer(Batch):
         # set last frame done to True
         last_index = (self._index - 1 + self._size) % self._size
         last_done, self.done[last_index] = self.done[last_index], True
-        self.done[last_index] = last_done
         if key == 'obs_next' and (not self._save_s_ or self.obs_next is None):
             indice += 1 - self.done[indice].astype(np.int)
             indice[indice == self._size] = 0
             key = 'obs'
         if stack_num == 0:
+            self.done[last_index] = last_done
             val = getattr(self, key)
             if isinstance(val, Batch) and val.size == 0:
                 return val
@@ -238,6 +238,7 @@ class ReplayBuffer(Batch):
             pre_indice[pre_indice == -1] = self._size - 1
             indice = pre_indice + self.done[pre_indice].astype(np.int)
             indice[indice == self._size] = 0
+        self.done[last_index] = last_done
         if len(stack) == 0 or isinstance(stack[0], Batch):
             stack = Batch.stack(stack, axis=1)
         else:
