@@ -5,7 +5,7 @@ from typing import Any, Tuple, Union, Optional
 from tianshou.data.batch import Batch
 
 
-class ReplayBuffer(object):
+class ReplayBuffer:
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from
     interaction between the policy and environment. It stores basically 7 types
     of data, as mentioned in :class:`~tianshou.data.Batch`, based on
@@ -96,7 +96,6 @@ class ReplayBuffer(object):
 
     def __init__(self, size: int, stack_num: Optional[int] = 0,
                  ignore_obs_next: bool = False, **kwargs) -> None:
-        super().__init__()
         self._maxsize = size
         self._stack = stack_num
         self._save_s_ = not ignore_obs_next
@@ -137,7 +136,7 @@ class ReplayBuffer(object):
                 d[k_] = self.__dict__[k__]
             else:
                 d[k_] = self.__getattr__(k__)
-        return Batch(**d)
+        return Batch(d)
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         if inst is None:
@@ -177,10 +176,7 @@ class ReplayBuffer(object):
         """Move the data from the given buffer to self."""
         i = begin = buffer._index % len(buffer)
         while True:
-            self.add(
-                buffer.obs[i], buffer.act[i], buffer.rew[i], buffer.done[i],
-                buffer.obs_next[i] if self._save_s_ else None,
-                buffer.info[i], buffer.policy[i])
+            self.add(**buffer[i])
             i = (i + 1) % len(buffer)
             if i == begin:
                 break
@@ -272,7 +268,7 @@ class ReplayBuffer(object):
         else:
             stack = []
             many_keys = None
-        for i in range(stack_num):
+        for _ in range(stack_num):
             if many_keys is not None:
                 for k_ in many_keys:
                     k__ = '_' + key + '@' + k_
@@ -287,7 +283,7 @@ class ReplayBuffer(object):
         if many_keys is not None:
             for k in stack:
                 stack[k] = np.stack(stack[k], axis=1)
-            stack = Batch(**stack)
+            stack = Batch(stack)
         else:
             stack = np.stack(stack, axis=1)
         return stack
@@ -303,7 +299,7 @@ class ReplayBuffer(object):
             rew=self.rew[index],
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
-            info=self.info[index],
+            info=self.get(index, 'info'),
             policy=self.get(index, 'policy'),
         )
 
@@ -440,7 +436,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             rew=self.rew[index],
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
-            info=self.info[index],
+            info=self.get(index, 'info'),
             weight=self.weight[index],
             policy=self.get(index, 'policy'),
         )

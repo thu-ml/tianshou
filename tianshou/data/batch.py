@@ -142,8 +142,15 @@ class Batch:
                 return _valid_bounds(length, min(index)) and \
                     _valid_bounds(length, max(index))
             elif isinstance(index, slice):
-                return _valid_bounds(length, index.start) and \
-                    _valid_bounds(length, index.stop - 1)
+                if index.start is not None:
+                    start_valid = _valid_bounds(length, index.start)
+                else:
+                    start_valid = True
+                if index.stop is not None:
+                    stop_valid = _valid_bounds(length, index.stop)
+                else:
+                    stop_valid = True
+                return start_valid and stop_valid
 
         if isinstance(index, str):
             return self.__getattr__(index)
@@ -164,7 +171,7 @@ class Batch:
                         b.__dict__[k] = v[index]
                     else:
                         raise IndexError(
-                            f"Index {index} out of bounds for {type(v)} of "\
+                            f"Index {index} out of bounds for {type(v)} of "
                             f"len {len(self)}.")
             return b
 
@@ -373,7 +380,7 @@ class Batch:
                 elif hasattr(v, '__len__') and (not isinstance(
                         v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                     r.append(len(v))
-            return max(1, min(r))
+            return max(1, min(r) if len(r) > 0 else 0)
 
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:
