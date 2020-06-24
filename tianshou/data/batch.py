@@ -159,7 +159,7 @@ class Batch:
                     b.__dict__[k] = v[index]
             return b
 
-    def __iadd__(self, val : Union['Batch', Number]):
+    def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
             for k, r, v in zip(self.__dict__.keys(),
                                self.__dict__.values(),
@@ -183,10 +183,10 @@ class Batch:
         else:
             raise TypeError("Only addition of Batch or number is supported.")
 
-    def __add__(self, val : Union['Batch', Number]):
+    def __add__(self, val: Union['Batch', Number]):
         return copy.deepcopy(self).__iadd__(val)
 
-    def __mul__(self, val : Number):
+    def __mul__(self, val: Number):
         assert isinstance(val, Number), \
             "Only multiplication by a number is supported."
         result = Batch()
@@ -194,7 +194,7 @@ class Batch:
             result.__dict__[k] = r * val
         return result
 
-    def __truediv__(self, val : Number):
+    def __truediv__(self, val: Number):
         assert isinstance(val, Number), \
             "Only division by a number is supported."
         result = Batch()
