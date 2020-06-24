@@ -135,6 +135,7 @@ class ReplayBuffer(Batch):
                 "Cannot add data to a buffer with different shape, "
                 f"key: {name}, expect shape: {getattr(self, name).shape[1:]}"
                 f", given shape: {inst.shape}.")
+        getattr(self, name)[self._index] =  inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
@@ -238,9 +239,9 @@ class ReplayBuffer(Batch):
             indice = pre_indice + self.done[pre_indice].astype(np.int)
             indice[indice == self._size] = 0
         if len(stack) == 0 or isinstance(stack[0], Batch):
-            stack = Batch.stack(stack)
+            stack = Batch.stack(stack, axis=1)
         else:
-            stack = np.stack(stack)
+            stack = np.stack(stack, axis=1)
         return stack
 
     def __getitem__(self, index: Union[slice, np.ndarray]) -> Batch:

@@ -361,14 +361,30 @@ class Batch:
         return batch
 
     @classmethod
-    def stack(cls, batches: List['Batch']) -> 'Batch':
+    def stack(cls, batches: List['Batch'], axis: int = 0) -> 'Batch':
         """Stack a :class:`~tianshou.data.Batch` object into a
         single new batch.
         """
         assert isinstance(batches, (tuple, list)), \
             'Only list of Batch instances is allowed to be '\
             'stacked out-of-place!'
-        return cls(batches)
+        if axis == 0:
+            return cls(batches)
+        else:
+            batch = Batch()
+            for k, v in zip(batches[0].keys(),
+                            zip(*[e.values() for e in batches])):
+                if isinstance(v[0], (np.generic, np.ndarray)):
+                    setattr(batch, k, np.stack(v, axis))
+                elif isinstance(v[0], torch.Tensor):
+                    setattr(batch, k, torch.stack(v, axis))
+                elif isinstance(v[0], Batch):
+                    setattr(batch, k, Batch.stack(v, axis))
+                else:
+                    s = 'No support for method "stack" with type '\
+                        f'{type(v[0])} in class Batch and axis != 0.'
+                    raise TypeError(s)
+            return batch
 
     def __len__(self) -> int:
         """Return len(self)."""
