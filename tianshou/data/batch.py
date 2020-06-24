@@ -188,8 +188,8 @@ class Batch:
     def __setitem__(self, index: Union[
                         str, slice, int, np.integer, np.ndarray, List[int]],
                     batch: Union[dict, 'Batch']) -> None:
-        for key, val in zip(self.keys(), batch.values()):
-            getattr(self, key)[index] = val
+        for key in self.keys():
+            getattr(self, key)[index] = batch[key]
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
