@@ -75,6 +75,11 @@ class Batch:
         [11 22] [6 6]
     """
 
+    def __new__(cls, *args, **kwargs) -> 'Batch':
+        self = super().__new__(cls)
+        self._data = {}
+        return self
+
     def __init__(self,
                  batch_dict: Optional[Union[
                      dict, 'Batch', Tuple[Union[dict, 'Batch']],
@@ -206,7 +211,7 @@ class Batch:
     def __mul__(self, val: Number):
         assert isinstance(val, Number), \
             "Only multiplication by a number is supported."
-        result = Batch()
+        result = self.__class__()
         for k, r in zip(self._data.keys(), self._data.values()):
             result._data[k] = r * val
         return result
@@ -214,18 +219,24 @@ class Batch:
     def __truediv__(self, val: Number):
         assert isinstance(val, Number), \
             "Only division by a number is supported."
-        result = Batch()
+        result = self.__class__()
         for k, r in zip(self._data.keys(), self._data.values()):
             result._data[k] = r / val
         return result
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
-        if key in self._data.keys():
-            return self._data[key]
         if key in self.__dict__.keys():
             return self.__dict__[key]
+        if key in self._data.keys():
+            return self._data[key]
         raise AttributeError(key)
+
+    def __setattr__(self, key, value):
+        if key != '_data':
+            self._data[key] = value
+        else:
+            self.__dict__[key] = value
 
     def __repr__(self) -> str:
         """Return str(self)."""
@@ -244,7 +255,7 @@ class Batch:
 
     def keys(self) -> List[str]:
         """Return self.keys()."""
-        return self.__data.keys()
+        return self._data.keys()
 
     def values(self) -> List[Any]:
         """Return self.values()."""
@@ -261,7 +272,7 @@ class Batch:
         return d
 
     def to_numpy(self) -> None:
-        """Change all torch.Tensor to numpy.ndarray. This is an inplace
+        """Change all torch.Tensor to numpy.ndarray. This is an in-place
         operation.
         """
         for k, v in self._data.items():
@@ -332,28 +343,28 @@ class Batch:
                     f'{type(v)} in class Batch.'
                 raise TypeError(s)
 
-    @staticmethod
-    def cat(batches: List['Batch']) -> None:
+    @classmethod
+    def cat(cls, batches: List['Batch']) -> 'Batch':
         """Concatenate a :class:`~tianshou.data.Batch` object into a
         single new batch.
         """
         assert isinstance(batches, (tuple, list)), \
             'Only list of Batch instances is allowed to be '\
             'concatenated out-of-place!'
-        batch = Batch()
+        batch = cls()
         for batch_ in batches:
             batch.cat_(batch_)
         return batch
 
-    @staticmethod
-    def stack(batches: List['Batch']):
+    @classmethod
+    def stack(cls, batches: List['Batch']) -> 'Batch':
         """Stack a :class:`~tianshou.data.Batch` object into a
         single new batch.
         """
         assert isinstance(batches, (tuple, list)), \
             'Only list of Batch instances is allowed to be '\
             'stacked out-of-place!'
-        return Batch(np.array([batch._data for batch in batches]))
+        return cls(batches)
 
     def __len__(self) -> int:
         """Return len(self)."""
