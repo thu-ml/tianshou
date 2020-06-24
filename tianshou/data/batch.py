@@ -145,8 +145,8 @@ class Batch:
             if isinstance(index, (int, np.integer)):
                 return -length <= index and index < length
             elif isinstance(index, (list, np.ndarray)):
-                return _valid_bounds(length, min(index)) and \
-                    _valid_bounds(length, max(index))
+                return _valid_bounds(length, np.min(index)) and \
+                    _valid_bounds(length, np.max(index))
             elif isinstance(index, slice):
                 if index.start is not None:
                     start_valid = _valid_bounds(length, index.start)
@@ -173,7 +173,8 @@ class Batch:
                         v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                     if _valid_bounds(len(v), index):
                         if isinstance(index, (int, np.integer)) or \
-                                not isinstance(v, list):
+                                (isinstance(index, np.ndarray) and \
+                                index.ndim == 0) or not isinstance(v, list):
                             setattr(b, k, v[index])
                         else:
                             setattr(b, k, [v[i] for i in index])
@@ -386,6 +387,8 @@ class Batch:
                     setattr(batch, k, torch.stack(v, axis))
                 elif isinstance(v[0], Batch):
                     setattr(batch, k, Batch.stack(v, axis))
+                elif isinstance(v[0], list):
+                    setattr(batch, k, np.stack(v, axis).tolist())
                 else:
                     s = 'No support for method "stack" with type '\
                         f'{type(v[0])} in class Batch and axis != 0.'

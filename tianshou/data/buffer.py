@@ -116,7 +116,7 @@ class ReplayBuffer(Batch):
             return
         if name not in self.keys():
             if isinstance(inst, np.ndarray):
-                setattr(self, name, np.zeros(
+                setattr(self, name, np.empty(
                     (self._maxsize, *inst.shape), dtype=inst.dtype))
             elif isinstance(inst, (dict, Batch)):
                 setattr(self, name, Batch([
@@ -124,7 +124,7 @@ class ReplayBuffer(Batch):
                     for _ in range(self._maxsize)
                 ]))
             elif isinstance(inst, (np.generic, Number)):
-                setattr(self, name, np.zeros(
+                setattr(self, name, np.empty(
                     (self._maxsize,), dtype=np.asarray(inst).dtype))
             else:  # fall back to np.object
                 setattr(self, name, np.array(
@@ -135,7 +135,7 @@ class ReplayBuffer(Batch):
                 "Cannot add data to a buffer with different shape, "
                 f"key: {name}, expect shape: {getattr(self, name).shape[1:]}"
                 f", given shape: {inst.shape}.")
-        getattr(self, name)[self._index] =  inst
+        getattr(self, name)[self._index] = inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
@@ -192,7 +192,7 @@ class ReplayBuffer(Batch):
             ])
         return self[indice], indice
 
-    def get(self, indice: Union[slice, np.ndarray], key: str,
+    def get(self, indice: Union[slice, int, np.integer, np.ndarray], key: str,
             stack_num: Optional[int] = None) -> Union[Batch, np.ndarray]:
         """Return the stacked result, e.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t],
         where s is self.key, t is indice. The stack_num (here equals to 4) is
@@ -200,18 +200,15 @@ class ReplayBuffer(Batch):
         """
         if stack_num is None:
             stack_num = self._stack
-        if not isinstance(indice, np.ndarray):
-            if isinstance(indice, (np.generic, Number)):
-                indice = np.array([indice])
-            elif isinstance(indice, slice):
-                indice = np.arange(
-                    0 if indice.start is None
-                    else self._size - indice.start if indice.start < 0
-                    else indice.start,
-                    self._size if indice.stop is None
-                    else self._size - indice.stop if indice.stop < 0
-                    else indice.stop,
-                    1 if indice.step is None else indice.step)
+        if not isinstance(indice, np.ndarray) and isinstance(indice, slice):
+            indice = np.arange(
+                0 if indice.start is None
+                else self._size - indice.start if indice.start < 0
+                else indice.start,
+                self._size if indice.stop is None
+                else self._size - indice.stop if indice.stop < 0
+                else indice.stop,
+                1 if indice.step is None else indice.step)
         else:
             indice = np.array(indice)
         # set last frame done to True
@@ -227,7 +224,12 @@ class ReplayBuffer(Batch):
             if isinstance(val, Batch) and val.size == 0:
                 return val
             else:
-                return val[indice]
+                if isinstance(indice, (int, np.integer)) or \
+                        (isinstance(indice, np.ndarray) and \
+                        indice.ndim == 0) or not isinstance(val, list):
+                    return val[indice]
+                else:
+                    return [val[i] for i in indice]
         stack = []
         for _ in range(stack_num):
             val = getattr(self, key)
