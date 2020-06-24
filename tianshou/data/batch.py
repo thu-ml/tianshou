@@ -148,7 +148,7 @@ class Batch:
                 else:
                     start_valid = True
                 if index.stop is not None:
-                    stop_valid = _valid_bounds(length, index.stop)
+                    stop_valid = _valid_bounds(length, index.stop - 1)
                 else:
                     stop_valid = True
                 return start_valid and stop_valid
