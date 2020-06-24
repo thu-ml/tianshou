@@ -163,9 +163,9 @@ def test_batch_numpy_compatibility():
     batch_mean = np.mean(batch)
     assert isinstance(batch_mean, Batch)
     assert sorted(batch_mean.keys()) == ['a', 'b', 'c']
-    with pytest.raises(IndexError):
+    with pytest.raises(TypeError):
         len(batch_mean)
-    assert batch_mean.a == np.mean(batch.a, axis=0)
+    assert np.all(batch_mean.a == np.mean(batch.a, axis=0))
     assert batch_mean.c == np.mean(batch.c, axis=0)
 
 
