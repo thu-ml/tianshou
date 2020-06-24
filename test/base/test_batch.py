@@ -39,13 +39,32 @@ def test_batch():
         'c': np.zeros(1),
         'd': Batch(e=np.array(3.0))}])
     assert len(batch2) == 1
-    assert list(batch2[1].keys()) == ['a']
-    assert len(batch2[-2].a.d.keys()) == 0
-    assert len(batch2[-1].keys()) > 0
-    assert batch2[0][0].a.c == 0.0
+    with pytest.raises(IndexError):
+        batch2[-2]
+    with pytest.raises(IndexError):
+        batch2[1]
+    with pytest.raises(TypeError):
+        batch2[0][0]
     assert isinstance(batch2[0].a.c, np.ndarray)
     assert isinstance(batch2[0].a.b, np.float64)
     assert isinstance(batch2[0].a.d.e, np.float64)
+    batch2_from_list = Batch(list(batch2))
+    batch2_from_comp = Batch([e for e in batch2])
+    assert batch2_from_list.a.b == batch2.a.b
+    assert batch2_from_list.a.c == batch2.a.c
+    assert batch2_from_list.a.d.e == batch2.a.d.e
+    assert batch2_from_comp.a.b == batch2.a.b
+    assert batch2_from_comp.a.c == batch2.a.c
+    assert batch2_from_comp.a.d.e == batch2.a.d.e
+    for batch_slice in [
+            batch2[slice(0, 1)], batch2[:1], batch2[0:]]:
+        assert batch_slice.a.b == batch2.a.b
+        assert batch_slice.a.c == batch2.a.c
+        assert batch_slice.a.d.e == batch2.a.d.e
+    batch2_sum = (batch2 + 1.0) * 2
+    assert batch2_sum.a.b == (batch2.a.b + 1.0) * 2
+    assert batch2_sum.a.c == (batch2.a.c + 1.0) * 2
+    assert batch2_sum.a.d.e == (batch2.a.d.e + 1.0) * 2
 
 
 def test_batch_over_batch():
@@ -144,6 +163,19 @@ def test_batch_from_to_numpy_without_copy():
     c_mem_addr_new = batch.b.c.__array_interface__['data'][0]
     assert a_mem_addr_new == a_mem_addr_orig
     assert c_mem_addr_new == c_mem_addr_orig
+
+
+def test_batch_numpy_compatibility():
+    batch = Batch(a=np.array([[1.0, 2.0], [3.0, 4.0]]),
+                  b=Batch(),
+                  c=np.array([5.0, 6.0]))
+    batch_mean = np.mean(batch)
+    assert isinstance(batch_mean, Batch)
+    assert sorted(batch_mean.keys()) == ['a', 'b', 'c']
+    with pytest.raises(TypeError):
+        len(batch_mean)
+    assert np.all(batch_mean.a == np.mean(batch.a, axis=0))
+    assert batch_mean.c == np.mean(batch.c, axis=0)
 
 
 if __name__ == '__main__':
