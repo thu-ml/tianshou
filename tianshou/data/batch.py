@@ -76,7 +76,8 @@ class Batch:
     """
 
     def __init__(self,
-                 batch_dict: Optional[Union[dict, Tuple[Union[dict, 'Batch']],
+                 batch_dict: Optional[Union[
+                     dict, 'Batch', Tuple[Union[dict, 'Batch']],
                      List[Union[dict, 'Batch']], np.ndarray]] = None,
                  **kwargs) -> None:
         def _is_batch_set(data: Any) -> bool:
@@ -103,7 +104,7 @@ class Batch:
                     self.__dict__[k] = Batch.stack(v)
                 else:
                     self.__dict__[k] = list(v)
-        elif isinstance(batch_dict, dict):
+        elif isinstance(batch_dict, (dict, Batch)):
             for k, v in batch_dict.items():
                 if isinstance(v, dict) or _is_batch_set(v):
                     self.__dict__[k] = Batch(v)
