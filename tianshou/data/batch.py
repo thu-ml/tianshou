@@ -76,15 +76,15 @@ class Batch:
     """
 
     def __init__(self,
-                 batch_dict: Optional[
-                     Union[dict, Tuple[dict], List[dict], np.ndarray]] = None,
+                 batch_dict: Optional[Union[dict, Tuple[Union[dict, 'Batch']],
+                     List[Union[dict, 'Batch']], np.ndarray]] = None,
                  **kwargs) -> None:
         def _is_batch_set(data: Any) -> bool:
             if isinstance(data, (list, tuple)):
-                if len(data) > 0 and isinstance(data[0], dict):
+                if len(data) > 0 and isinstance(data[0], (dict, Batch)):
                     return True
             elif isinstance(data, np.ndarray):
-                if isinstance(data.item(0), dict):
+                if isinstance(data.item(0), (dict, Batch)):
                     return True
             return False
 
