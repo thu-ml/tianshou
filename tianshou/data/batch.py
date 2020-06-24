@@ -364,6 +364,8 @@ class Batch:
             elif hasattr(v, '__len__') and (not isinstance(
                     v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                 r.append(len(v))
+            else:
+                raise TypeError("Object of type 'Batch' has no len()")
         if len(r) == 0:
             raise TypeError("Object of type 'Batch' has no len()")
         return min(r)
