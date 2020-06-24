@@ -1,4 +1,3 @@
-import copy
 import numpy as np
 from numbers import Number
 from typing import Any, Tuple, Union, Optional
@@ -200,7 +199,7 @@ class ReplayBuffer(Batch):
         """
         if stack_num is None:
             stack_num = self._stack
-        if not isinstance(indice, np.ndarray) and isinstance(indice, slice):
+        if isinstance(indice, slice):
             indice = np.arange(
                 0 if indice.start is None
                 else self._size - indice.start if indice.start < 0
@@ -209,8 +208,7 @@ class ReplayBuffer(Batch):
                 else self._size - indice.stop if indice.stop < 0
                 else indice.stop,
                 1 if indice.step is None else indice.step)
-        else:
-            indice = np.array(indice)
+        indice = np.array(indice, copy=True)
         # set last frame done to True
         last_index = (self._index - 1 + self._size) % self._size
         last_done, self.done[last_index] = self.done[last_index], True
@@ -225,29 +223,33 @@ class ReplayBuffer(Batch):
                 return val
             else:
                 if isinstance(indice, (int, np.integer)) or \
-                        (isinstance(indice, np.ndarray) and \
-                        indice.ndim == 0) or not isinstance(val, list):
+                        (isinstance(indice, np.ndarray) and
+                            indice.ndim == 0) or not isinstance(val, list):
                     return val[indice]
                 else:
                     return [val[i] for i in indice]
-        stack = []
-        for _ in range(stack_num):
-            val = getattr(self, key)
-            if isinstance(val, Batch) and val.size == 0:
-                break
-            stack = [val[indice]] + stack
-            pre_indice = indice - 1
-            pre_indice[pre_indice == -1] = self._size - 1
-            indice = pre_indice + self.done[pre_indice].astype(np.int)
-            indice[indice == self._size] = 0
-        self.done[last_index] = last_done
-        if len(stack) == 0 or isinstance(stack[0], Batch):
-            stack = Batch.stack(stack, axis=1)
         else:
-            stack = np.stack(stack, axis=1)
-        return stack
+            val = getattr(self, key)
+            if not isinstance(val, Batch) or val.size > 0:
+                stack = []
+                for _ in range(stack_num):
+                    stack = [val[indice]] + stack
+                    pre_indice = np.asarray(indice - 1)
+                    pre_indice[pre_indice == -1] = self._size - 1
+                    indice = np.asarray(
+                        pre_indice + self.done[pre_indice].astype(np.int))
+                    indice[indice == self._size] = 0
+                if isinstance(stack[0], Batch):
+                    stack = Batch.stack(stack, axis=indice.ndim)
+                else:
+                    stack = np.stack(stack, axis=indice.ndim)
+            else:
+                stack = Batch()
+            self.done[last_index] = last_done
+            return stack
 
-    def __getitem__(self, index: Union[slice, np.ndarray]) -> Batch:
+    def __getitem__(self, index: Union[
+            slice, int, np.integer, np.ndarray]) -> Batch:
         """Return a data batch: self[index]. If stack_num is set to be > 0,
         return the stacked obs and obs_next with shape [batch, len, ...].
         """
@@ -258,7 +260,7 @@ class ReplayBuffer(Batch):
             rew=self.rew[index],
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
-            info=self.get(index, 'info'),
+            info=self.info[index],
             policy=self.get(index, 'policy'),
         )
 

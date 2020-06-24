@@ -108,7 +108,7 @@ class Batch:
                 elif isinstance(v[0], Batch):
                     setattr(self, k, Batch.stack(v))
                 else:
-                    setattr(self, k, list(v))
+                    setattr(self, k, np.array(v))  # fall back to np.object
         elif isinstance(batch_dict, (dict, Batch)):
             for k, v in batch_dict.items():
                 if isinstance(v, dict) or _is_batch_set(v):
@@ -173,8 +173,9 @@ class Batch:
                         v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                     if _valid_bounds(len(v), index):
                         if isinstance(index, (int, np.integer)) or \
-                                (isinstance(index, np.ndarray) and \
-                                index.ndim == 0) or not isinstance(v, list):
+                                (isinstance(index, np.ndarray) and
+                                    index.ndim == 0) or \
+                                not isinstance(v, list):
                             setattr(b, k, v[index])
                         else:
                             setattr(b, k, [v[i] for i in index])
@@ -381,14 +382,12 @@ class Batch:
             batch = Batch()
             for k, v in zip(batches[0].keys(),
                             zip(*[e.values() for e in batches])):
-                if isinstance(v[0], (np.generic, np.ndarray)):
+                if isinstance(v[0], (np.generic, np.ndarray, list)):
                     setattr(batch, k, np.stack(v, axis))
                 elif isinstance(v[0], torch.Tensor):
                     setattr(batch, k, torch.stack(v, axis))
                 elif isinstance(v[0], Batch):
                     setattr(batch, k, Batch.stack(v, axis))
-                elif isinstance(v[0], list):
-                    setattr(batch, k, np.stack(v, axis).tolist())
                 else:
                     s = 'No support for method "stack" with type '\
                         f'{type(v[0])} in class Batch and axis != 0.'
