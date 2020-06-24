@@ -347,6 +347,19 @@ class Batch:
                 raise TypeError("Object of type 'Batch' has no len()")
         return min(r)
 
+    @property
+    def shape(self) -> Tuple[int]:
+        """Return self.shape."""
+        batch_shape = ()
+        batch_sub = self
+        while True:
+            try:
+                batch_shape += (len(batch_sub),)
+                batch_sub = batch_sub[0]
+            except TypeError:
+                break
+        return batch_shape
+
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:
         """Split whole data into multiple small batch.
