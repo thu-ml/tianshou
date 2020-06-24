@@ -258,7 +258,7 @@ class ReplayBuffer:
         if stack_num == 0:
             self.done[last_index] = last_done
             if key in self._meta:
-                return {k: self.__dict__['_' + key + '@' + k][indice]
+                return {k: self.get(indice, '_' + key + '@' + k)
                         for k in self._meta[key]}
             else:
                 return self.__dict__[key][indice]
