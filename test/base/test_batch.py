@@ -56,6 +56,15 @@ def test_batch():
     assert batch2_from_comp.a.b == batch2.a.b
     assert batch2_from_comp.a.c == batch2.a.c
     assert batch2_from_comp.a.d.e == batch2.a.d.e
+    for batch_slice in [
+            batch2[slice(0, 1)], batch2[:1], batch2[0:]]:
+        assert batch_slice.a.b == batch2.a.b
+        assert batch_slice.a.c == batch2.a.c
+        assert batch_slice.a.d.e == batch2.a.d.e
+    batch2_sum = (batch2 + 1.0) * 2
+    assert batch2_sum.a.b == (batch2.a.b + 1.0) * 2
+    assert batch2_sum.a.c == (batch2.a.c + 1.0) * 2
+    assert batch2_sum.a.d.e == (batch2.a.d.e + 1.0) * 2
 
 
 def test_batch_over_batch():
