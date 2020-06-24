@@ -154,9 +154,18 @@ class Batch:
         else:
             b = Batch()
             for k, v in self.__dict__.items():
-                if hasattr(v, '__len__') and (not isinstance(
+                if isinstance(v, Batch) and v.size == 0:
+                    b.__dict__[k] = Batch()
+                elif isinstance(v, list) and len(v) == 0:
+                    b.__dict__[k] = []
+                elif hasattr(v, '__len__') and (not isinstance(
                         v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
-                    b.__dict__[k] = v[index]
+                    if _valid_bounds(len(v), index):
+                        b.__dict__[k] = v[index]
+                    else:
+                        raise IndexError(
+                            f"Index {index} out of bounds for {type(v)} of "\
+                            f"len {len(self)}.")
             return b
 
     def __iadd__(self, val: Union['Batch', Number]):
@@ -340,25 +349,31 @@ class Batch:
         """Return len(self)."""
         r = []
         for v in self.__dict__.values():
-            if hasattr(v, '__len__') and (not isinstance(
+            if isinstance(v, Batch) and v.size == 0:
+                continue
+            elif isinstance(v, list) and len(v) == 0:
+                continue
+            elif hasattr(v, '__len__') and (not isinstance(
                     v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                 r.append(len(v))
-            else:
-                raise TypeError("Object of type 'Batch' has no len()")
+        if len(r) == 0:
+            raise TypeError("Object of type 'Batch' has no len()")
         return min(r)
 
     @property
-    def shape(self) -> Tuple[int]:
-        """Return self.shape."""
-        batch_shape = ()
-        batch_sub = self
-        while True:
-            try:
-                batch_shape += (len(batch_sub),)
-                batch_sub = batch_sub[0]
-            except TypeError:
-                break
-        return batch_shape
+    def size(self) -> int:
+        """Return self.size."""
+        if len(self.__dict__) == 0:
+            return 0
+        else:
+            r = []
+            for v in self.__dict__.values():
+                if isinstance(v, Batch):
+                    r.append(v.size)
+                elif hasattr(v, '__len__') and (not isinstance(
+                        v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
+                    r.append(len(v))
+            return max(1, min(r))
 
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:
