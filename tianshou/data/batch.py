@@ -148,13 +148,9 @@ class Batch:
         if isinstance(index, str):
             return self.__getattr__(index)
 
-        batch_len = len(self)
-        if batch_len == 0:
+        if not _valid_bounds(len(self), index):
             raise IndexError(
-                "Cannot get item from Batch for which len is zero.")
-        elif not _valid_bounds(batch_len, index):
-            raise IndexError(
-                f"Index {index} out of bounds for Batch of len {batch_len}.")
+                f"Index {index} out of bounds for Batch of len {len(self)}.")
         else:
             b = Batch()
             for k, v in self.__dict__.items():

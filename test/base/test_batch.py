@@ -43,7 +43,7 @@ def test_batch():
         batch2[-2]
     with pytest.raises(IndexError):
         batch2[1]
-    with pytest.raises(IndexError):
+    with pytest.raises(TypeError):
         batch2[0][0]
     assert isinstance(batch2[0].a.c, np.ndarray)
     assert isinstance(batch2[0].a.b, np.float64)
