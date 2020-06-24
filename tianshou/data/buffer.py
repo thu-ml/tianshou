@@ -1,11 +1,12 @@
-import pprint
+import copy
 import numpy as np
+from numbers import Number
 from typing import Any, Tuple, Union, Optional
 
-from tianshou.data.batch import Batch
+from .batch import Batch
 
 
-class ReplayBuffer:
+class ReplayBuffer(Batch):
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from
     interaction between the policy and environment. It stores basically 7 types
     of data, as mentioned in :class:`~tianshou.data.Batch`, based on
@@ -96,81 +97,44 @@ class ReplayBuffer:
 
     def __init__(self, size: int, stack_num: Optional[int] = 0,
                  ignore_obs_next: bool = False, **kwargs) -> None:
-        self._maxsize = size
-        self._stack = stack_num
-        self._save_s_ = not ignore_obs_next
-        self._meta = {}
+        super().__init__()
+        self.__dict__['_maxsize'] = size
+        self.__dict__['_stack'] = stack_num
+        self.__dict__['_save_s_'] = not ignore_obs_next
+        self.__dict__['_index'] = 0
+        self.__dict__['_size'] = 0
         self.reset()
 
     def __len__(self) -> int:
         """Return len(self)."""
         return self._size
 
-    def __repr__(self) -> str:
-        """Return str(self)."""
-        s = self.__class__.__name__ + '(\n'
-        flag = False
-        for k in sorted(list(self.__dict__) + list(self._meta)):
-            if k[0] != '_' and (self.__dict__.get(k, None) is not None or
-                                k in self._meta):
-                rpl = '\n' + ' ' * (6 + len(k))
-                obj = pprint.pformat(self.__getattr__(k)).replace('\n', rpl)
-                s += f'    {k}: {obj},\n'
-                flag = True
-        if flag:
-            s += ')'
-        else:
-            s = self.__class__.__name__ + '()'
-        return s
-
-    def __getattr__(self, key: str) -> Union[Batch, np.ndarray]:
-        """Return self.key"""
-        if key not in self._meta:
-            if key not in self.__dict__:
-                raise AttributeError(key)
-            return self.__dict__[key]
-        d = {}
-        for k_ in self._meta[key]:
-            k__ = '_' + key + '@' + k_
-            if k__ in self.__dict__:
-                d[k_] = self.__dict__[k__]
-            else:
-                d[k_] = self.__getattr__(k__)
-        return Batch(d)
-
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         if inst is None:
             if getattr(self, name, None) is None:
-                self.__dict__[name] = None
+                setattr(self, name, None)
             return
-        if name in self._meta:
-            for k in inst.keys():
-                self._add_to_buffer('_' + name + '@' + k, inst[k])
-            return
-        if self.__dict__.get(name, None) is None:
+        if name not in self.keys():
             if isinstance(inst, np.ndarray):
-                self.__dict__[name] = np.zeros(
-                    (self._maxsize, *inst.shape), dtype=inst.dtype)
+                setattr(self, name, np.zeros(
+                    (self._maxsize, *inst.shape), dtype=inst.dtype))
             elif isinstance(inst, (dict, Batch)):
-                if self._meta.get(name, None) is None:
-                    self._meta[name] = list(inst.keys())
-                for k in inst.keys():
-                    k_ = '_' + name + '@' + k
-                    self._add_to_buffer(k_, inst[k])
-            elif np.isscalar(inst):
-                self.__dict__[name] = np.zeros(
-                    (self._maxsize,), dtype=np.asarray(inst).dtype)
+                setattr(self, name, Batch([
+                    copy.deepcopy(Batch(inst))
+                    for _ in range(self._maxsize)
+                ]))
+            elif isinstance(inst, (np.generic, Number)):
+                setattr(self, name, np.zeros(
+                    (self._maxsize,), dtype=np.asarray(inst).dtype))
             else:  # fall back to np.object
-                self.__dict__[name] = np.array(
-                    [None for _ in range(self._maxsize)])
+                setattr(self, name, np.array(
+                    [None for _ in range(self._maxsize)]))
         if isinstance(inst, np.ndarray) and \
-                self.__dict__[name].shape[1:] != inst.shape:
+                getattr(self, name).shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, "
-                f"key: {name}, expect shape: {self.__dict__[name].shape[1:]}, "
-                f"given shape: {inst.shape}.")
-        if name not in self._meta:
-            self.__dict__[name][self._index] = inst
+                f"key: {name}, expect shape: {getattr(self, name).shape[1:]}"
+                f", given shape: {inst.shape}.")
 
     def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
@@ -209,7 +173,8 @@ class ReplayBuffer:
 
     def reset(self) -> None:
         """Clear all the data in replay buffer."""
-        self._index = self._size = 0
+        self._index = 0
+        self._size = 0
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         """Get a random sample from buffer with size equal to batch_size. \
@@ -235,8 +200,8 @@ class ReplayBuffer:
         if stack_num is None:
             stack_num = self._stack
         if not isinstance(indice, np.ndarray):
-            if np.isscalar(indice):
-                indice = np.array(indice)
+            if isinstance(indice, (np.generic, Number)):
+                indice = np.array([indice])
             elif isinstance(indice, slice):
                 indice = np.arange(
                     0 if indice.start is None
@@ -251,41 +216,31 @@ class ReplayBuffer:
         # set last frame done to True
         last_index = (self._index - 1 + self._size) % self._size
         last_done, self.done[last_index] = self.done[last_index], True
+        self.done[last_index] = last_done
         if key == 'obs_next' and (not self._save_s_ or self.obs_next is None):
             indice += 1 - self.done[indice].astype(np.int)
             indice[indice == self._size] = 0
             key = 'obs'
         if stack_num == 0:
-            self.done[last_index] = last_done
-            if key in self._meta:
-                return {k: self.get(indice, '_' + key + '@' + k)
-                        for k in self._meta[key]}
+            val = getattr(self, key)
+            if isinstance(val, Batch) and val.size == 0:
+                return val
             else:
-                return self.__dict__[key][indice]
-        if key in self._meta:
-            many_keys = self._meta[key]
-            stack = {k: [] for k in self._meta[key]}
-        else:
-            stack = []
-            many_keys = None
+                return val[indice]
+        stack = []
         for _ in range(stack_num):
-            if many_keys is not None:
-                for k_ in many_keys:
-                    k__ = '_' + key + '@' + k_
-                    stack[k_] = [self.__dict__[k__][indice]] + stack[k_]
-            else:
-                stack = [self.__dict__[key][indice]] + stack
+            val = getattr(self, key)
+            if isinstance(val, Batch) and val.size == 0:
+                break
+            stack = [val[indice]] + stack
             pre_indice = indice - 1
             pre_indice[pre_indice == -1] = self._size - 1
             indice = pre_indice + self.done[pre_indice].astype(np.int)
             indice[indice == self._size] = 0
-        self.done[last_index] = last_done
-        if many_keys is not None:
-            for k in stack:
-                stack[k] = np.stack(stack[k], axis=1)
-            stack = Batch(stack)
+        if len(stack) == 0 or isinstance(stack[0], Batch):
+            stack = Batch.stack(stack)
         else:
-            stack = np.stack(stack, axis=1)
+            stack = np.stack(stack)
         return stack
 
     def __getitem__(self, index: Union[slice, np.ndarray]) -> Batch:
@@ -323,15 +278,15 @@ class ListReplayBuffer(ReplayBuffer):
             inst: Union[dict, Batch, np.ndarray, float, int, bool]) -> None:
         if inst is None:
             return
-        if self.__dict__.get(name, None) is None:
-            self.__dict__[name] = []
-        self.__dict__[name].append(inst)
+        if self._data.get(name, None) is None:
+            self._data[name] = []
+        self._data[name].append(inst)
 
     def reset(self) -> None:
         self._index = self._size = 0
-        for k in list(self.__dict__):
-            if isinstance(self.__dict__[k], list):
-                self.__dict__[k] = []
+        for k in list(self._data):
+            if isinstance(self._data[k], list):
+                self._data[k] = []
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):

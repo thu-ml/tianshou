@@ -77,7 +77,7 @@ class Batch:
 
     def __new__(cls, *args, **kwargs) -> 'Batch':
         self = super().__new__(cls)
-        self._data = {}
+        self.__dict__['_data'] = {}
         return self
 
     def __init__(self,
@@ -100,21 +100,21 @@ class Batch:
             for k, v in zip(batch_dict[0].keys(),
                             zip(*[e.values() for e in batch_dict])):
                 if isinstance(v[0], dict) or _is_batch_set(v[0]):
-                    self._data[k] = Batch(v)
+                    setattr(self, k, Batch(v))
                 elif isinstance(v[0], (np.generic, np.ndarray)):
-                    self._data[k] = np.stack(v, axis=0)
+                    setattr(self, k, np.stack(v, axis=0))
                 elif isinstance(v[0], torch.Tensor):
-                    self._data[k] = torch.stack(v, dim=0)
+                    setattr(self, k, torch.stack(v, dim=0))
                 elif isinstance(v[0], Batch):
-                    self._data[k] = Batch.stack(v)
+                    setattr(self, k, Batch.stack(v))
                 else:
-                    self._data[k] = list(v)
+                    setattr(self, k, list(v))
         elif isinstance(batch_dict, (dict, Batch)):
             for k, v in batch_dict.items():
                 if isinstance(v, dict) or _is_batch_set(v):
-                    self._data[k] = Batch(v)
+                    setattr(self, k, Batch(v))
                 else:
-                    self._data[k] = v
+                    setattr(self, k, v)
         if len(kwargs) > 0:
             self.__init__(kwargs)
 
@@ -166,15 +166,17 @@ class Batch:
                 f"Index {index} out of bounds for Batch of len {len(self)}.")
         else:
             b = Batch()
-            for k, v in self._data.items():
+            for k, v in self.items():
                 if isinstance(v, Batch) and v.size == 0:
-                    b._data[k] = Batch()
-                elif isinstance(v, list) and len(v) == 0:
-                    b._data[k] = []
+                    setattr(b, k, Batch())
                 elif hasattr(v, '__len__') and (not isinstance(
                         v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                     if _valid_bounds(len(v), index):
-                        b._data[k] = v[index]
+                        if isinstance(index, (int, np.integer)) or \
+                                not isinstance(v, list):
+                            setattr(b, k, v[index])
+                        else:
+                            setattr(b, k, [v[i] for i in index])
                     else:
                         raise IndexError(
                             f"Index {index} out of bounds for {type(v)} of "
@@ -183,24 +185,24 @@ class Batch:
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
-            for k, r, v in zip(self._data.keys(),
-                               self._data.values(),
-                               val._data.values()):
+            for k, r, v in zip(self.keys(),
+                               self.values(),
+                               val.values()):
                 if r is None:
-                    self._data[k] = r
+                    setattr(self, k, r)
                 elif isinstance(r, list):
-                    self._data[k] = [r_ + v_ for r_, v_ in zip(r, v)]
+                    setattr(self, k, [r_ + v_ for r_, v_ in zip(r, v)])
                 else:
-                    self._data[k] = r + v
+                    setattr(self, k, r + v)
             return self
         elif isinstance(val, Number):
-            for k, r in zip(self._data.keys(), self._data.values()):
+            for k, r in zip(self.keys(), self.values()):
                 if r is None:
-                    self._data[k] = r
+                    setattr(self, k, r)
                 elif isinstance(r, list):
-                    self._data[k] = [r_ + val for r_ in r]
+                    setattr(self, k, [r_ + val for r_ in r])
                 else:
-                    self._data[k] = r + val
+                    setattr(self, k, r + val)
             return self
         else:
             raise TypeError("Only addition of Batch or number is supported.")
@@ -212,37 +214,39 @@ class Batch:
         assert isinstance(val, Number), \
             "Only multiplication by a number is supported."
         result = self.__class__()
-        for k, r in zip(self._data.keys(), self._data.values()):
-            result._data[k] = r * val
+        for k, r in zip(self.keys(), self.values()):
+            setattr(result, k, r * val)
         return result
 
     def __truediv__(self, val: Number):
         assert isinstance(val, Number), \
             "Only division by a number is supported."
         result = self.__class__()
-        for k, r in zip(self._data.keys(), self._data.values()):
-            result._data[k] = r / val
+        for k, r in zip(self.keys(), self.values()):
+            setattr(result, k, r / val)
         return result
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
         if key in self.__dict__.keys():
             return self.__dict__[key]
-        if key in self._data.keys():
+        elif key in self._data.keys():
             return self._data[key]
         raise AttributeError(key)
 
     def __setattr__(self, key, value):
-        if key != '_data':
+        if key in self._data.keys():
             self._data[key] = value
-        else:
+        elif key in self.__dict__.keys():
             self.__dict__[key] = value
+        else:
+            self._data[key] = value
 
     def __repr__(self) -> str:
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
-        for k, v in self._data.items():
+        for k, v in self.items():
             rpl = '\n' + ' ' * (6 + len(k))
             obj = pprint.pformat(v).replace('\n', rpl)
             s += f'    {k}: {obj},\n'
@@ -267,7 +271,7 @@ class Batch:
 
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
-        if k in self._data:
+        if k in self.keys():
             return self.__getattr__(k)
         return d
 
@@ -275,9 +279,9 @@ class Batch:
         """Change all torch.Tensor to numpy.ndarray. This is an in-place
         operation.
         """
-        for k, v in self._data.items():
+        for k, v in self.items():
             if isinstance(v, torch.Tensor):
-                self._data[k] = v.detach().cpu().numpy()
+                setattr(self, k, v.detach().cpu().numpy())
             elif isinstance(v, Batch):
                 v.to_numpy()
 
@@ -291,12 +295,12 @@ class Batch:
         if not isinstance(device, torch.device):
             device = torch.device(device)
 
-        for k, v in self._data.items():
+        for k, v in self.items():
             if isinstance(v, (np.generic, np.ndarray)):
                 v = torch.from_numpy(v).to(device)
                 if dtype is not None:
                     v = v.type(dtype)
-                self._data[k] = v
+                setattr(self, k, v)
             if isinstance(v, torch.Tensor):
                 if dtype is not None and v.dtype != dtype:
                     must_update_tensor = True
@@ -310,7 +314,7 @@ class Batch:
                 if must_update_tensor:
                     if dtype is not None:
                         v = v.type(dtype)
-                    self._data[k] = v.to(device)
+                    setattr(self, k, v.to(device))
             elif isinstance(v, Batch):
                 v.to_torch(dtype, device)
 
@@ -325,19 +329,19 @@ class Batch:
         """
         assert isinstance(batch, Batch), \
             'Only Batch is allowed to be concatenated in-place!'
-        for k, v in batch._data.items():
+        for k, v in batch.items():
             if v is None:
                 continue
-            if not hasattr(self, k) or self._data[k] is None:
-                self._data[k] = copy.deepcopy(v)
+            if not hasattr(self, k) or getattr(self, k) is None:
+                setattr(self, k, copy.deepcopy(v))
             elif isinstance(v, np.ndarray) and v.ndim > 0:
-                self._data[k] = np.concatenate([self._data[k], v])
+                setattr(self, k, np.concatenate([getattr(self, k), v]))
             elif isinstance(v, torch.Tensor):
-                self._data[k] = torch.cat([self._data[k], v])
+                setattr(self, k, torch.cat([getattr(self, k), v]))
             elif isinstance(v, list):
-                self._data[k] += copy.deepcopy(v)
+                setattr(self, k, getattr(self, k) + copy.deepcopy(v))
             elif isinstance(v, Batch):
-                self._data[k].cat_(v)
+                getattr(self, k).cat_(v)
             else:
                 s = 'No support for method "cat" with type '\
                     f'{type(v)} in class Batch.'
@@ -369,7 +373,7 @@ class Batch:
     def __len__(self) -> int:
         """Return len(self)."""
         r = []
-        for v in self._data.values():
+        for v in self.values():
             if isinstance(v, Batch) and v.size == 0:
                 continue
             elif isinstance(v, list) and len(v) == 0:
@@ -386,11 +390,11 @@ class Batch:
     @property
     def size(self) -> int:
         """Return self.size."""
-        if len(self._data) == 0:
+        if len(self.keys()) == 0:
             return 0
         else:
             r = []
-            for v in self._data.values():
+            for v in self.values():
                 if isinstance(v, Batch):
                     r.append(v.size)
                 elif hasattr(v, '__len__') and (not isinstance(
