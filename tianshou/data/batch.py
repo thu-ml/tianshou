@@ -3,6 +3,7 @@ import copy
 import pprint
 import warnings
 import numpy as np
+from numbers import Number
 from typing import Any, List, Tuple, Union, Iterator, Optional
 
 # Disable pickle warning related to torch, since it has been removed
@@ -146,16 +147,64 @@ class Batch:
 
         if isinstance(index, str):
             return self.__getattr__(index)
+
+        batch_len = len(self)
+        if batch_len == 0:
+            raise IndexError(
+                "Cannot get item from Batch for which len is zero.")
+        elif not _valid_bounds(batch_len, index):
+            raise IndexError(
+                f"Index {index} out of bounds for Batch of len {batch_len}.")
         else:
             b = Batch()
             for k, v in self.__dict__.items():
-                if isinstance(v, Batch):
-                    b.__dict__[k] = v[index]
-                elif hasattr(v, '__len__') and (not isinstance(
+                if hasattr(v, '__len__') and (not isinstance(
                         v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
-                    if _valid_bounds(len(v), index):
-                        b.__dict__[k] = v[index]
+                    b.__dict__[k] = v[index]
             return b
+
+    def __iadd__(self, val : Union['Batch', Number]):
+        if isinstance(val, Batch):
+            for k, r, v in zip(self.__dict__.keys(),
+                               self.__dict__.values(),
+                               val.__dict__.values()):
+                if r is None:
+                    self.__dict__[k] = r
+                elif isinstance(r, list):
+                    self.__dict__[k] = [r_ + v_ for r_, v_ in zip(r, v)]
+                else:
+                    self.__dict__[k] = r + v
+            return self
+        elif isinstance(val, Number):
+            for k, r in zip(self.__dict__.keys(), self.__dict__.values()):
+                if r is None:
+                    self.__dict__[k] = r
+                elif isinstance(r, list):
+                    self.__dict__[k] = [r_ + val for r_ in r]
+                else:
+                    self.__dict__[k] = r + val
+            return self
+        else:
+            raise TypeError("Only addition of Batch or number is supported.")
+
+    def __add__(self, val : Union['Batch', Number]):
+        return copy.deepcopy(self).__iadd__(val)
+
+    def __mul__(self, val : Number):
+        assert isinstance(val, Number), \
+            "Only multiplication by a number is supported."
+        result = Batch()
+        for k, r in zip(self.__dict__.keys(), self.__dict__.values()):
+            result.__dict__[k] = r * val
+        return result
+
+    def __truediv__(self, val : Number):
+        assert isinstance(val, Number), \
+            "Only division by a number is supported."
+        result = Batch()
+        for k, r in zip(self.__dict__.keys(), self.__dict__.values()):
+            result.__dict__[k] = r / val
+        return result
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
@@ -167,12 +216,11 @@ class Batch:
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
-        for k in sorted(self.__dict__.keys()):
-            if self.__dict__.get(k, None) is not None:
-                rpl = '\n' + ' ' * (6 + len(k))
-                obj = pprint.pformat(self.__getattr__(k)).replace('\n', rpl)
-                s += f'    {k}: {obj},\n'
-                flag = True
+        for k, v in self.__dict__.items():
+            rpl = '\n' + ' ' * (6 + len(k))
+            obj = pprint.pformat(v).replace('\n', rpl)
+            s += f'    {k}: {obj},\n'
+            flag = True
         if flag:
             s += ')'
         else:
@@ -299,7 +347,9 @@ class Batch:
             if hasattr(v, '__len__') and (not isinstance(
                     v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                 r.append(len(v))
-        return max(r) if len(r) > 0 else 0
+            else:
+                raise TypeError("Object of type 'Batch' has no len()")
+        return min(r)
 
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:
