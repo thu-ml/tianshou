@@ -195,6 +195,9 @@ class Batch:
         if not isinstance(value, (dict, Batch)):
             raise TypeError("Batch does not supported value type "
                             f"{type(value)} for item assignment.")
+        if set(self.keys()) != set(value.keys()):
+            raise ValueError(
+                "Cannot perform item assignment between inconsistent Batch.")
         for key in self.keys():
             if isinstance(self[key], Batch):
                 default = Batch()
