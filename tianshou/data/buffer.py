@@ -124,19 +124,19 @@ class ReplayBuffer(Batch):
         if inst is None:
             inst = Batch()
         if name not in self.keys():
-            self[name] = _create_value(inst)
+            self._data[name] = _create_value(inst)
         if isinstance(inst, np.ndarray) and \
-                self[name].shape[1:] != inst.shape:
+                self._data[name].shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, "
-                f"key: {name}, expect shape: {self[name].shape[1:]}"
+                f"key: {name}, expect shape: {self._data[name].shape[1:]}"
                 f", given shape: {inst.shape}.")
-        if isinstance(self[name], Batch):
-            field_keys = self[name].keys()
+        if isinstance(self._data[name], Batch):
+            field_keys = self._data[name].keys()
             for key, val in inst.items():
                 if key not in field_keys:
-                    self[name][key] = _create_value(val)
-        self[name][self._index] = inst
+                    self._data[name][key] = _create_value(val)
+        self._data[name][self._index] = inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
@@ -220,7 +220,7 @@ class ReplayBuffer(Batch):
             key = 'obs'
         if stack_num == 0:
             self.done[last_index] = last_done
-            val = self[key]
+            val = self._data[key]
             if isinstance(val, Batch) and val.size == 0:
                 return val
             else:
@@ -231,7 +231,7 @@ class ReplayBuffer(Batch):
                 else:
                     return [val[i] for i in indice]
         else:
-            val = self[key]
+            val = self._data[key]
             if not isinstance(val, Batch) or val.size > 0:
                 stack = []
                 for _ in range(stack_num):
@@ -255,14 +255,12 @@ class ReplayBuffer(Batch):
         """Return a data batch: self[index]. If stack_num is set to be > 0,
         return the stacked obs and obs_next with shape [batch, len, ...].
         """
-        if isinstance(index, str):
-            return getattr(self, index)
         return Batch(
             obs=self.get(index, 'obs'),
-            act=self.get(index, 'act', stack_num=0),
+            act=self.act[index],
             # act_=self.get(index, 'act'),  # stacked action, for RNN
-            rew=self.get(index, 'rew', stack_num=0),
-            done=self.get(index, 'done', stack_num=0),
+            rew=self.rew[index],
+            done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
             info=self.get(index, 'info', stack_num=0),
             policy=self.get(index, 'policy'),
@@ -414,18 +412,16 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             - self.weight[indice].sum()
         self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
 
-    def __getitem__(self, index: Union[str, slice, np.ndarray]) -> Batch:
-        if isinstance(index, str):
-            return getattr(self, index)
+    def __getitem__(self, index: Union[slice, np.ndarray]) -> Batch:
         return Batch(
             obs=self.get(index, 'obs'),
-            act=self.get(index, 'act', stack_num=0),
+            act=self.act[index],
             # act_=self.get(index, 'act'),  # stacked action, for RNN
-            rew=self.get(index, 'rew', stack_num=0),
-            done=self.get(index, 'done', stack_num=0),
+            rew=self.rew[index],
+            done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
             info=self.get(index, 'info'),
-            weight=self.get(index, 'weight', stack_num=0),
+            weight=self.weight[index],
             policy=self.get(index, 'policy'),
         )
 
