@@ -205,7 +205,7 @@ class Batch:
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
-            for k, r, v in zip(self.keys(), self.values(), val.values()):
+            for (k, r), v in zip(self._data.items(), val._data.values()):
                 if r is None:
                     self._data[k] = r
                 elif isinstance(r, list):
@@ -214,7 +214,7 @@ class Batch:
                     self._data[k] = r + v
             return self
         elif isinstance(val, Number):
-            for k, r in zip(self.keys(), self.values()):
+            for k, r in self._data.items():
                 if r is None:
                     self._data[k] = r
                 elif isinstance(r, list):
@@ -232,7 +232,7 @@ class Batch:
         assert isinstance(val, Number), \
             "Only multiplication by a number is supported."
         result = self.__class__()
-        for k, r in zip(self.keys(), self.values()):
+        for k, r in self._data.items():
             result[k] = r * val
         return result
 
@@ -240,7 +240,7 @@ class Batch:
         assert isinstance(val, Number), \
             "Only division by a number is supported."
         result = self.__class__()
-        for k, r in zip(self.keys(), self.values()):
+        for k, r in self._data.items():
             result[k] = r / val
         return result
 
@@ -289,7 +289,7 @@ class Batch:
 
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
-        if k in self.keys():
+        if k in self._data.keys():
             return self._data[k]
         return d
 
@@ -390,14 +390,14 @@ class Batch:
             return cls(batches)
         else:
             batch = Batch()
-            for k, v in zip(batches[0].keys(),
-                            zip(*[e.values() for e in batches])):
+            for k, v in zip(batches[0]._data.keys(),
+                            zip(*[e._data.values() for e in batches])):
                 if isinstance(v[0], (np.generic, np.ndarray, list)):
-                    batch[k] = np.stack(v, axis)
+                    batch._data[k] = np.stack(v, axis)
                 elif isinstance(v[0], torch.Tensor):
-                    batch[k] = torch.stack(v, axis)
+                    batch._data[k] = torch.stack(v, axis)
                 elif isinstance(v[0], Batch):
-                    batch[k] = Batch.stack(v, axis)
+                    batch._data[k] = Batch.stack(v, axis)
                 else:
                     s = 'No support for method "stack" with type '\
                         f'{type(v[0])} in class Batch and axis != 0.'
@@ -407,7 +407,7 @@ class Batch:
     def __len__(self) -> int:
         """Return len(self)."""
         r = []
-        for v in self.values():
+        for v in self._data.values():
             if isinstance(v, Batch) and v.size == 0:
                 continue
             elif isinstance(v, list) and len(v) == 0:
@@ -424,11 +424,11 @@ class Batch:
     @property
     def size(self) -> int:
         """Return self.size."""
-        if len(self.keys()) == 0:
+        if len(self._data.keys()) == 0:
             return 0
         else:
             r = []
-            for v in self.values():
+            for v in self._data.values():
                 if isinstance(v, Batch):
                     r.append(v.size)
                 elif hasattr(v, '__len__') and (not isinstance(

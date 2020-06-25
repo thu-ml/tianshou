@@ -123,7 +123,7 @@ class ReplayBuffer(Batch):
 
         if inst is None:
             inst = Batch()
-        if name not in self.keys():
+        if name not in self._data.keys():
             self._data[name] = _create_value(inst)
         if isinstance(inst, np.ndarray) and \
                 self._data[name].shape[1:] != inst.shape:
@@ -131,8 +131,8 @@ class ReplayBuffer(Batch):
                 "Cannot add data to a buffer with different shape, "
                 f"key: {name}, expect shape: {self._data[name].shape[1:]}"
                 f", given shape: {inst.shape}.")
-        if isinstance(self._data[name], Batch):
-            field_keys = self._data[name].keys()
+        elif isinstance(self._data[name], Batch):
+            field_keys = self._data[name]._data.keys()
             for key, val in inst.items():
                 if key not in field_keys:
                     self._data[name][key] = _create_value(val)
