@@ -65,6 +65,15 @@ def test_batch():
     assert batch2_sum.a.b == (batch2.a.b + 1.0) * 2
     assert batch2_sum.a.c == (batch2.a.c + 1.0) * 2
     assert batch2_sum.a.d.e == (batch2.a.d.e + 1.0) * 2
+    batch3 = Batch(a={
+        'c': np.zeros(1),
+        'd': Batch(e=np.array([0.0]), f=np.array([3.0]))})
+    batch3.a.d[0] = {'e': 4.0}
+    assert batch3.a.d.e[0] == 4.0
+    batch3.a.d[0] = Batch(f=5.0)
+    assert batch3.a.d.f[0] == 5.0
+    with pytest.raises(ValueError):
+        batch3.a.d[0] = Batch(f=5.0, g=0.0)
 
 
 def test_batch_over_batch():
@@ -93,16 +102,20 @@ def test_batch_over_batch():
 def test_batch_cat_and_stack():
     b1 = Batch(a=[{'b': np.float64(1.0), 'd': Batch(e=np.array(3.0))}])
     b2 = Batch(a=[{'b': np.float64(4.0), 'd': {'e': np.array(6.0)}}])
-    b_cat_out = Batch.cat((b1, b2))
-    b_cat_in = copy.deepcopy(b1)
-    b_cat_in.cat_(b2)
-    assert np.all(b_cat_in.a.d.e == b_cat_out.a.d.e)
-    assert np.all(b_cat_in.a.d.e == b_cat_out.a.d.e)
-    assert isinstance(b_cat_in.a.d.e, np.ndarray)
-    assert b_cat_in.a.d.e.ndim == 1
-    b_stack = Batch.stack((b1, b2))
-    assert isinstance(b_stack.a.d.e, np.ndarray)
-    assert b_stack.a.d.e.ndim == 2
+    b12_cat_out = Batch.cat((b1, b2))
+    b12_cat_in = copy.deepcopy(b1)
+    b12_cat_in.cat_(b2)
+    assert np.all(b12_cat_in.a.d.e == b12_cat_out.a.d.e)
+    assert np.all(b12_cat_in.a.d.e == b12_cat_out.a.d.e)
+    assert isinstance(b12_cat_in.a.d.e, np.ndarray)
+    assert b12_cat_in.a.d.e.ndim == 1
+    b12_stack = Batch.stack((b1, b2))
+    assert isinstance(b12_stack.a.d.e, np.ndarray)
+    assert b12_stack.a.d.e.ndim == 2
+    b3 = Batch(a=np.zeros((3, 4)))
+    b4 = Batch(a=np.ones((3, 4)))
+    b34_stack = Batch.stack((b3, b4), axis=1)
+    assert np.all(b34_stack.a == np.stack((b3.a, b4.a), axis=1))
 
 
 def test_batch_over_batch_to_torch():

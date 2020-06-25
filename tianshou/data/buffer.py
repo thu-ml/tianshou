@@ -1,11 +1,11 @@
-import pprint
 import numpy as np
+from numbers import Number
 from typing import Any, Tuple, Union, Optional
 
-from tianshou.data.batch import Batch
+from .batch import Batch
 
 
-class ReplayBuffer:
+class ReplayBuffer(Batch):
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from
     interaction between the policy and environment. It stores basically 7 types
     of data, as mentioned in :class:`~tianshou.data.Batch`, based on
@@ -96,81 +96,47 @@ class ReplayBuffer:
 
     def __init__(self, size: int, stack_num: Optional[int] = 0,
                  ignore_obs_next: bool = False, **kwargs) -> None:
-        self._maxsize = size
-        self._stack = stack_num
-        self._save_s_ = not ignore_obs_next
-        self._meta = {}
+        super().__init__()
+        self.__dict__['_maxsize'] = size
+        self.__dict__['_stack'] = stack_num
+        self.__dict__['_save_s_'] = not ignore_obs_next
+        self.__dict__['_index'] = 0
+        self.__dict__['_size'] = 0
         self.reset()
 
     def __len__(self) -> int:
         """Return len(self)."""
         return self._size
 
-    def __repr__(self) -> str:
-        """Return str(self)."""
-        s = self.__class__.__name__ + '(\n'
-        flag = False
-        for k in sorted(list(self.__dict__) + list(self._meta)):
-            if k[0] != '_' and (self.__dict__.get(k, None) is not None or
-                                k in self._meta):
-                rpl = '\n' + ' ' * (6 + len(k))
-                obj = pprint.pformat(self.__getattr__(k)).replace('\n', rpl)
-                s += f'    {k}: {obj},\n'
-                flag = True
-        if flag:
-            s += ')'
-        else:
-            s = self.__class__.__name__ + '()'
-        return s
-
-    def __getattr__(self, key: str) -> Union[Batch, np.ndarray]:
-        """Return self.key"""
-        if key not in self._meta:
-            if key not in self.__dict__:
-                raise AttributeError(key)
-            return self.__dict__[key]
-        d = {}
-        for k_ in self._meta[key]:
-            k__ = '_' + key + '@' + k_
-            if k__ in self.__dict__:
-                d[k_] = self.__dict__[k__]
-            else:
-                d[k_] = self.__getattr__(k__)
-        return Batch(d)
-
     def _add_to_buffer(self, name: str, inst: Any) -> None:
-        if inst is None:
-            if getattr(self, name, None) is None:
-                self.__dict__[name] = None
-            return
-        if name in self._meta:
-            for k in inst.keys():
-                self._add_to_buffer('_' + name + '@' + k, inst[k])
-            return
-        if self.__dict__.get(name, None) is None:
+        def _create_value(inst: Any) -> Union['Batch', np.ndarray]:
             if isinstance(inst, np.ndarray):
-                self.__dict__[name] = np.zeros(
+                return np.zeros(
                     (self._maxsize, *inst.shape), dtype=inst.dtype)
             elif isinstance(inst, (dict, Batch)):
-                if self._meta.get(name, None) is None:
-                    self._meta[name] = list(inst.keys())
-                for k in inst.keys():
-                    k_ = '_' + name + '@' + k
-                    self._add_to_buffer(k_, inst[k])
-            elif np.isscalar(inst):
-                self.__dict__[name] = np.zeros(
+                return Batch([Batch(inst) for _ in range(self._maxsize)])
+            elif isinstance(inst, (np.generic, Number)):
+                return np.zeros(
                     (self._maxsize,), dtype=np.asarray(inst).dtype)
             else:  # fall back to np.object
-                self.__dict__[name] = np.array(
-                    [None for _ in range(self._maxsize)])
+                return np.array([None for _ in range(self._maxsize)])
+
+        if inst is None:
+            inst = Batch()
+        if name not in self.keys():
+            self[name] = _create_value(inst)
         if isinstance(inst, np.ndarray) and \
-                self.__dict__[name].shape[1:] != inst.shape:
+                self[name].shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, "
-                f"key: {name}, expect shape: {self.__dict__[name].shape[1:]}, "
-                f"given shape: {inst.shape}.")
-        if name not in self._meta:
-            self.__dict__[name][self._index] = inst
+                f"key: {name}, expect shape: {self[name].shape[1:]}"
+                f", given shape: {inst.shape}.")
+        if isinstance(self[name], Batch):
+            field_keys = self[name].keys()
+            for key, val in inst.items():
+                if key not in field_keys:
+                    self[name][key] = _create_value(val)
+        self[name][self._index] = inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
@@ -209,7 +175,8 @@ class ReplayBuffer:
 
     def reset(self) -> None:
         """Clear all the data in replay buffer."""
-        self._index = self._size = 0
+        self._index = 0
+        self._size = 0
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         """Get a random sample from buffer with size equal to batch_size. \
@@ -226,7 +193,7 @@ class ReplayBuffer:
             ])
         return self[indice], indice
 
-    def get(self, indice: Union[slice, np.ndarray], key: str,
+    def get(self, indice: Union[slice, int, np.integer, np.ndarray], key: str,
             stack_num: Optional[int] = None) -> Union[Batch, np.ndarray]:
         """Return the stacked result, e.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t],
         where s is self.key, t is indice. The stack_num (here equals to 4) is
@@ -234,20 +201,16 @@ class ReplayBuffer:
         """
         if stack_num is None:
             stack_num = self._stack
-        if not isinstance(indice, np.ndarray):
-            if np.isscalar(indice):
-                indice = np.array(indice)
-            elif isinstance(indice, slice):
-                indice = np.arange(
-                    0 if indice.start is None
-                    else self._size - indice.start if indice.start < 0
-                    else indice.start,
-                    self._size if indice.stop is None
-                    else self._size - indice.stop if indice.stop < 0
-                    else indice.stop,
-                    1 if indice.step is None else indice.step)
-        else:
-            indice = np.array(indice)
+        if isinstance(indice, slice):
+            indice = np.arange(
+                0 if indice.start is None
+                else self._size - indice.start if indice.start < 0
+                else indice.start,
+                self._size if indice.stop is None
+                else self._size - indice.stop if indice.stop < 0
+                else indice.stop,
+                1 if indice.step is None else indice.step)
+        indice = np.array(indice, copy=True)
         # set last frame done to True
         last_index = (self._index - 1 + self._size) % self._size
         last_done, self.done[last_index] = self.done[last_index], True
@@ -257,49 +220,51 @@ class ReplayBuffer:
             key = 'obs'
         if stack_num == 0:
             self.done[last_index] = last_done
-            if key in self._meta:
-                return {k: self.__dict__['_' + key + '@' + k][indice]
-                        for k in self._meta[key]}
+            val = self[key]
+            if isinstance(val, Batch) and val.size == 0:
+                return val
             else:
-                return self.__dict__[key][indice]
-        if key in self._meta:
-            many_keys = self._meta[key]
-            stack = {k: [] for k in self._meta[key]}
+                if isinstance(indice, (int, np.integer)) or \
+                        (isinstance(indice, np.ndarray) and
+                            indice.ndim == 0) or not isinstance(val, list):
+                    return val[indice]
+                else:
+                    return [val[i] for i in indice]
         else:
-            stack = []
-            many_keys = None
-        for _ in range(stack_num):
-            if many_keys is not None:
-                for k_ in many_keys:
-                    k__ = '_' + key + '@' + k_
-                    stack[k_] = [self.__dict__[k__][indice]] + stack[k_]
+            val = self[key]
+            if not isinstance(val, Batch) or val.size > 0:
+                stack = []
+                for _ in range(stack_num):
+                    stack = [val[indice]] + stack
+                    pre_indice = np.asarray(indice - 1)
+                    pre_indice[pre_indice == -1] = self._size - 1
+                    indice = np.asarray(
+                        pre_indice + self.done[pre_indice].astype(np.int))
+                    indice[indice == self._size] = 0
+                if isinstance(stack[0], Batch):
+                    stack = Batch.stack(stack, axis=indice.ndim)
+                else:
+                    stack = np.stack(stack, axis=indice.ndim)
             else:
-                stack = [self.__dict__[key][indice]] + stack
-            pre_indice = indice - 1
-            pre_indice[pre_indice == -1] = self._size - 1
-            indice = pre_indice + self.done[pre_indice].astype(np.int)
-            indice[indice == self._size] = 0
-        self.done[last_index] = last_done
-        if many_keys is not None:
-            for k in stack:
-                stack[k] = np.stack(stack[k], axis=1)
-            stack = Batch(stack)
-        else:
-            stack = np.stack(stack, axis=1)
-        return stack
+                stack = Batch()
+            self.done[last_index] = last_done
+            return stack
 
-    def __getitem__(self, index: Union[slice, np.ndarray]) -> Batch:
+    def __getitem__(self, index: Union[
+            slice, int, np.integer, np.ndarray]) -> Batch:
         """Return a data batch: self[index]. If stack_num is set to be > 0,
         return the stacked obs and obs_next with shape [batch, len, ...].
         """
+        if isinstance(index, str):
+            return getattr(self, index)
         return Batch(
             obs=self.get(index, 'obs'),
-            act=self.act[index],
+            act=self.get(index, 'act', stack_num=0),
             # act_=self.get(index, 'act'),  # stacked action, for RNN
-            rew=self.rew[index],
-            done=self.done[index],
+            rew=self.get(index, 'rew', stack_num=0),
+            done=self.get(index, 'done', stack_num=0),
             obs_next=self.get(index, 'obs_next'),
-            info=self.get(index, 'info'),
+            info=self.get(index, 'info', stack_num=0),
             policy=self.get(index, 'policy'),
         )
 
@@ -323,15 +288,15 @@ class ListReplayBuffer(ReplayBuffer):
             inst: Union[dict, Batch, np.ndarray, float, int, bool]) -> None:
         if inst is None:
             return
-        if self.__dict__.get(name, None) is None:
-            self.__dict__[name] = []
-        self.__dict__[name].append(inst)
+        if self._data.get(name, None) is None:
+            self._data[name] = []
+        self._data[name].append(inst)
 
     def reset(self) -> None:
         self._index = self._size = 0
-        for k in list(self.__dict__):
-            if isinstance(self.__dict__[k], list):
-                self.__dict__[k] = []
+        for k in list(self._data):
+            if isinstance(self._data[k], list):
+                self._data[k] = []
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
@@ -449,16 +414,18 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             - self.weight[indice].sum()
         self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
 
-    def __getitem__(self, index: Union[slice, np.ndarray]) -> Batch:
+    def __getitem__(self, index: Union[str, slice, np.ndarray]) -> Batch:
+        if isinstance(index, str):
+            return getattr(self, index)
         return Batch(
             obs=self.get(index, 'obs'),
-            act=self.act[index],
+            act=self.get(index, 'act', stack_num=0),
             # act_=self.get(index, 'act'),  # stacked action, for RNN
-            rew=self.rew[index],
-            done=self.done[index],
+            rew=self.get(index, 'rew', stack_num=0),
+            done=self.get(index, 'done', stack_num=0),
             obs_next=self.get(index, 'obs_next'),
             info=self.get(index, 'info'),
-            weight=self.weight[index],
+            weight=self.get(index, 'weight', stack_num=0),
             policy=self.get(index, 'policy'),
         )
 
