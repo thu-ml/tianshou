@@ -195,7 +195,6 @@ class Batch:
         if not isinstance(value, (dict, Batch)):
             raise TypeError("Batch does not supported value type "
                             f"{type(value)} for item assignment.")
-        keys = set(list(self.keys()) + list(value.keys()))
         for key in self.keys():
             if isinstance(self[key], Batch):
                 default = Batch()
@@ -207,22 +206,6 @@ class Batch:
             else:
                 default = None
             self[key][index] = value.get(key, default)
-            keys.remove(key)
-        for key in keys:
-            # If self is a nested empty batch, there is no
-            # way to determine the appropriate length.
-            size = self.size
-            if isinstance(index, (int, np.integer)):
-                size = max(size, index + 1)
-            elif isinstance(index, slice):
-                if index.start is not None:
-                    size = max(size, index.start + 1)
-                if index.stop is not None:
-                    size = max(max(size, index.stop + 1), -index.stop)
-            elif isinstance(index, np.ndarray):
-                size = max(max(size, max(index + 1)), max(-index))
-            self[key] = [None] * size
-            self[key][index] = value.get(key)
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
