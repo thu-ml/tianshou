@@ -195,9 +195,9 @@ class Batch:
         if not isinstance(value, (dict, Batch)):
             raise TypeError("Batch does not supported value type "
                             f"{type(value)} for item assignment.")
-        if set(self.keys()) != set(value.keys()):
+        if not set(value.keys()).issubset(self.keys()):
             raise ValueError(
-                "Cannot perform item assignment between inconsistent Batch.")
+                "Creating keys is not supported by item assignment.")
         for key in self.keys():
             if isinstance(self[key], Batch):
                 default = Batch()
@@ -212,9 +212,7 @@ class Batch:
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
-            for k, r, v in zip(self.keys(),
-                               self.values(),
-                               val.values()):
+            for k, r, v in zip(self.keys(), self.values(), val.values()):
                 if r is None:
                     self[k] = r
                 elif isinstance(r, list):
@@ -299,7 +297,7 @@ class Batch:
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
         if k in self.keys():
-            return getattr(self, k)
+            return self[k]
         return d
 
     def to_numpy(self) -> None:
@@ -316,7 +314,7 @@ class Batch:
                  dtype: Optional[torch.dtype] = None,
                  device: Union[str, int, torch.device] = 'cpu'
                  ) -> None:
-        """Change all numpy.ndarray to torch.Tensor. This is an inplace
+        """Change all numpy.ndarray to torch.Tensor. This is an in-place
         operation.
         """
         if not isinstance(device, torch.device):

@@ -109,29 +109,33 @@ class ReplayBuffer(Batch):
         return self._size
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
-        if inst is None:
-            self[name] = Batch()
-        if name not in self.keys():
+        def _create_value(inst: Any) -> Union['Batch', np.ndarray]:
             if isinstance(inst, np.ndarray):
-                self[name] = np.empty(
+                return np.zeros(
                     (self._maxsize, *inst.shape), dtype=inst.dtype)
             elif isinstance(inst, (dict, Batch)):
-                self[name] = Batch([
-                    Batch(inst)
-                    for _ in range(self._maxsize)
-                ])
+                return Batch([Batch(inst) for _ in range(self._maxsize)])
             elif isinstance(inst, (np.generic, Number)):
-                self[name] = np.empty(
+                return np.zeros(
                     (self._maxsize,), dtype=np.asarray(inst).dtype)
             else:  # fall back to np.object
-                self[name] = np.array(
-                    [None for _ in range(self._maxsize)])
+                return np.array([None for _ in range(self._maxsize)])
+
+        if inst is None:
+            inst = Batch()
+        if name not in self.keys():
+            self[name] = _create_value(inst)
         if isinstance(inst, np.ndarray) and \
                 self[name].shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, "
                 f"key: {name}, expect shape: {self[name].shape[1:]}"
                 f", given shape: {inst.shape}.")
+        if isinstance(self[name], Batch):
+            field_keys = self[name].keys()
+            for key, val in inst.items():
+                if key not in field_keys:
+                    self[name][key] = _create_value(val)
         self[name][self._index] = inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
