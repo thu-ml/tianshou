@@ -187,9 +187,17 @@ class Batch:
 
     def __setitem__(self, index: Union[
                         str, slice, int, np.integer, np.ndarray, List[int]],
-                    batch: Union[dict, 'Batch']) -> None:
+                    batch: Any) -> None:
+        if isinstance(index, str):
+            return setattr(self, index, batch)
+        keys = set(list(self.keys()) + list(batch.keys()))
         for key in self.keys():
-            self[key][index] = batch[key]
+            default = Batch() if isinstance(self[key], Batch) else None
+            self[key][index] = batch.get(key, default)
+            keys.remove(key)
+        for key in keys:
+            self[key] = [None] * self.size
+            self[key][index]= batch.get(key)
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
