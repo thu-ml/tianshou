@@ -187,17 +187,42 @@ class Batch:
 
     def __setitem__(self, index: Union[
                         str, slice, int, np.integer, np.ndarray, List[int]],
-                    batch: Any) -> None:
+                    value: Any) -> None:
         if isinstance(index, str):
-            return setattr(self, index, batch)
-        keys = set(list(self.keys()) + list(batch.keys()))
+            return setattr(self, index, value)
+        if value is None:
+            value = Batch()
+        if not isinstance(value, (dict, Batch)):
+            raise TypeError("Batch does not supported value type "
+                            f"{type(value)} for item assignment.")
+        keys = set(list(self.keys()) + list(value.keys()))
         for key in self.keys():
-            default = Batch() if isinstance(self[key], Batch) else None
-            self[key][index] = batch.get(key, default)
+            if isinstance(self[key], Batch):
+                default = Batch()
+            elif isinstance(self[key], np.ndarray) and \
+                    self[key].dtype == np.integer:
+                # Fallback for np.array of integer,
+                # since neither None or nan is supported.
+                default = 0
+            else:
+                default = None
+            self[key][index] = value.get(key, default)
             keys.remove(key)
         for key in keys:
-            self[key] = [None] * self.size
-            self[key][index]= batch.get(key)
+            # If self is a nested empty batch, there is no
+            # way to determine the appropriate length.
+            size = self.size
+            if isinstance(index, (int, np.integer)):
+                size = max(size, index + 1)
+            elif isinstance(index, slice):
+                if index.start is not None:
+                    size = max(size, index.start + 1)
+                if index.stop is not None:
+                    size = max(max(size, index.stop + 1), -index.stop)
+            elif isinstance(index, np.ndarray):
+                size = max(max(size, max(index + 1)), max(-index))
+            self[key] = [None] * size
+            self[key][index] = value.get(key)
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):

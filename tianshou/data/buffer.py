@@ -251,6 +251,8 @@ class ReplayBuffer(Batch):
         """Return a data batch: self[index]. If stack_num is set to be > 0,
         return the stacked obs and obs_next with shape [batch, len, ...].
         """
+        if isinstance(index, str):
+            return getattr(self, index)
         return Batch(
             obs=self.get(index, 'obs'),
             act=self.get(index, 'act', stack_num=0),
@@ -408,16 +410,18 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             - self.weight[indice].sum()
         self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
 
-    def __getitem__(self, index: Union[slice, np.ndarray]) -> Batch:
+    def __getitem__(self, index: Union[str, slice, np.ndarray]) -> Batch:
+        if isinstance(index, str):
+            return getattr(self, index)
         return Batch(
             obs=self.get(index, 'obs'),
-            act=self.act[index],
+            act=self.get(index, 'act', stack_num=0),
             # act_=self.get(index, 'act'),  # stacked action, for RNN
-            rew=self.rew[index],
-            done=self.done[index],
+            rew=self.get(index, 'rew', stack_num=0),
+            done=self.get(index, 'done', stack_num=0),
             obs_next=self.get(index, 'obs_next'),
             info=self.get(index, 'info'),
-            weight=self.weight[index],
+            weight=self.get(index, 'weight', stack_num=0),
             policy=self.get(index, 'policy'),
         )
 
