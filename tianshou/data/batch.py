@@ -177,13 +177,14 @@ class Batch:
                         str, slice, int, np.integer, np.ndarray, List[int]],
                     value: Any) -> None:
         if isinstance(index, str):
-            return self.__setattr__(index, value)
+            self.__dict__[index] = value
+            return
         if value is None:
-            value = Batch()
+            return
         if not isinstance(value, (dict, Batch)):
             raise TypeError("Batch does not supported value type "
                             f"{type(value)} for item assignment.")
-        if not set(value.keys()).issubset(self.keys()):
+        if not set(value.keys()).issubset(self.__dict__.keys()):
             raise ValueError(
                 "Creating keys is not supported by item assignment.")
         for key, val in self.items():
@@ -200,7 +201,8 @@ class Batch:
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
-            for (k, r), v in zip(self.items(), val.values()):
+            for (k, r), v in zip(self.__dict__.items(),
+                                 val.__dict__.values()):
                 if r is None:
                     continue
                 elif isinstance(r, list):
@@ -226,7 +228,7 @@ class Batch:
     def __imul__(self, val: Number):
         assert isinstance(val, Number), \
             "Only multiplication by a number is supported."
-        for k in self.keys():
+        for k in self.__dict__.keys():
             self.__dict__[k] *= val
         return self
 
@@ -236,7 +238,7 @@ class Batch:
     def __itruediv__(self, val: Number):
         assert isinstance(val, Number), \
             "Only division by a number is supported."
-        for k in self.keys():
+        for k in self.__dict__.keys():
             self.__dict__[k] /= val
         return self
 
@@ -272,9 +274,7 @@ class Batch:
 
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
-        if k in self.keys():
-            return self.__dict__[k]
-        return d
+        return self.__dict__.get(k, d)
 
     def to_numpy(self) -> None:
         """Change all torch.Tensor to numpy.ndarray. This is an in-place
@@ -390,7 +390,7 @@ class Batch:
     def __len__(self) -> int:
         """Return len(self)."""
         r = []
-        for v in self.values():
+        for v in self.__dict__.values():
             if isinstance(v, Batch) and v.size == 0:
                 continue
             elif isinstance(v, list) and len(v) == 0:
@@ -407,11 +407,11 @@ class Batch:
     @property
     def size(self) -> int:
         """Return self.size."""
-        if len(self.keys()) == 0:
+        if len(self.__dict__.keys()) == 0:
             return 0
         else:
             r = []
-            for v in self.values():
+            for v in self.__dict__.values():
                 if isinstance(v, Batch):
                     r.append(v.size)
                 elif hasattr(v, '__len__') and (not isinstance(
