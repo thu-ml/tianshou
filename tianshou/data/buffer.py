@@ -132,10 +132,9 @@ class ReplayBuffer(Batch):
                 f"key: {name}, expect shape: {self._data[name].shape[1:]}"
                 f", given shape: {inst.shape}.")
         elif isinstance(self._data[name], Batch):
-            field_keys = self._data[name]._data.keys()
-            for key, val in inst.items():
-                if key not in field_keys:
-                    self._data[name][key] = _create_value(val)
+            for key in set(inst.keys()).difference(
+                    self._data[name]._data.keys()):
+                self._data[name]._data[key] = _create_value(inst[key])
         self._data[name][self._index] = inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
