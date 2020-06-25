@@ -121,7 +121,7 @@ class Batch:
                 elif isinstance(v[0], Batch):
                     self.__dict__[k] = Batch.stack(v)
                 else:
-                    self.__dict__[k] = np.array(v)  # fall back to np.object
+                    self.__dict__[k] = np.array(v)
         elif isinstance(batch_dict, (dict, Batch)):
             for k, v in batch_dict.items():
                 if isinstance(v, dict) or _is_batch_set(v):
@@ -173,8 +173,6 @@ class Batch:
         if isinstance(index, str):
             self.__dict__[index] = value
             return
-        if value is None:
-            return
         if not isinstance(value, (dict, Batch)):
             raise TypeError("Batch does not supported value type "
                             f"{type(value)} for item assignment.")
@@ -182,16 +180,18 @@ class Batch:
             raise KeyError(
                 "Creating keys is not supported by item assignment.")
         for key, val in self.items():
-            if isinstance(val, Batch):
-                default = Batch()
-            elif isinstance(val, np.ndarray) and \
-                    val.dtype == np.integer:
-                # Fallback for np.array of integer,
-                # since neither None or nan is supported.
-                default = 0
-            else:
-                default = None
-            self.__dict__[key][index] = value.get(key, default)
+            try:
+                self.__dict__[key][index] = value[key]
+            except KeyError:
+                if isinstance(val, Batch):
+                    self.__dict__[key][index] = Batch()
+                elif isinstance(val, np.ndarray) and \
+                        val.dtype == np.integer:
+                    # Fallback for np.array of integer,
+                    # since neither None or nan is supported.
+                    self.__dict__[key][index] = 0
+                else:
+                    self.__dict__[key][index] = None
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
@@ -385,12 +385,9 @@ class Batch:
         """Return len(self)."""
         r = []
         for v in self.__dict__.values():
-            if isinstance(v, Batch) and v.size == 0:
+            if isinstance(v, Batch) and len(v.__dict__) == 0:
                 continue
-            elif isinstance(v, list) and len(v) == 0:
-                continue
-            elif hasattr(v, '__len__') and (not isinstance(
-                    v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
+            elif not isinstance(v, (np.ndarray, torch.Tensor)) or v.ndim > 0:
                 r.append(len(v))
             else:
                 raise TypeError("Object of type 'Batch' has no len()")
@@ -408,8 +405,8 @@ class Batch:
             for v in self.__dict__.values():
                 if isinstance(v, Batch):
                     r.append(v.size)
-                elif hasattr(v, '__len__') and (not isinstance(
-                        v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
+                elif not isinstance(v, (np.ndarray, torch.Tensor)) or \
+                        v.ndim > 0:
                     r.append(len(v))
             return max(1, min(r) if len(r) > 0 else 0)
 

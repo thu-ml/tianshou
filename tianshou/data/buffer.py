@@ -232,10 +232,7 @@ class ReplayBuffer:
             if isinstance(val, Batch) and len(val.__dict__) == 0:
                 stack = val
             else:
-                if not isinstance(val, list) or indice.ndim == 0:
-                    stack = val[indice]
-                else:
-                    stack = [val[i] for i in indice]
+                stack = val[indice]
         else:
             if not isinstance(val, Batch) or val.size > 0:
                 stack = []
