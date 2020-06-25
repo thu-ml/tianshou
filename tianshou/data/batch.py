@@ -109,8 +109,6 @@ class Batch:
                      dict, 'Batch', Tuple[Union[dict, 'Batch']],
                      List[Union[dict, 'Batch']], np.ndarray]] = None,
                  **kwargs) -> None:
-        if isinstance(batch_dict, np.ndarray) and batch_dict.ndim == 0:
-            batch_dict = batch_dict[()]
         if _is_batch_set(batch_dict):
             for k, v in zip(batch_dict[0].keys(),
                             zip(*[e.values() for e in batch_dict])):
@@ -163,16 +161,10 @@ class Batch:
         else:
             b = Batch()
             for k, v in self.items():
-                if isinstance(v, Batch) and v.size == 0:
+                if isinstance(v, Batch) and len(v.__dict__) == 0:
                     b.__dict__[k] = Batch()
-                elif hasattr(v, '__len__') and (not isinstance(
-                        v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
-                    if isinstance(index, (int, np.integer)) or \
-                            (isinstance(index, np.ndarray) and
-                                index.ndim == 0) or not isinstance(v, list):
-                        b.__dict__[k] = v[index]
-                    else:
-                        b.__dict__[k] = [v[i] for i in index]
+                else:
+                    b.__dict__[k] = v[index]
             return b
 
     def __setitem__(self, index: Union[

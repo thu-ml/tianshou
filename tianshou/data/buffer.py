@@ -124,9 +124,7 @@ class ReplayBuffer:
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
-        if key in self._meta.__dict__.keys():
-            return self._meta.__dict__[key]
-        return self.__dict__[key]
+        return self._meta.__dict__[key]
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         if inst is None:
@@ -229,20 +227,16 @@ class ReplayBuffer:
             indice += 1 - self.done[indice].astype(np.int)
             indice[indice == self._size] = 0
             key = 'obs'
+        val = self._meta.__dict__[key]
         if stack_num == 0:
-            val = self._meta.__dict__[key]
-            if isinstance(val, Batch) and val.size == 0:
-                return val
+            if isinstance(val, Batch) and len(val.__dict__) == 0:
+                stack = val
             else:
-                if isinstance(indice, (int, np.integer)) or \
-                        (isinstance(indice, np.ndarray) and
-                            indice.ndim == 0) or not isinstance(val, list):
-                    return val[indice]
+                if not isinstance(val, list) or indice.ndim == 0:
+                    stack = val[indice]
                 else:
-                    return [val[i] for i in indice]
-            self.done[last_index] = last_done
+                    stack = [val[i] for i in indice]
         else:
-            val = self._meta.__dict__[key]
             if not isinstance(val, Batch) or val.size > 0:
                 stack = []
                 for _ in range(stack_num):
@@ -258,8 +252,8 @@ class ReplayBuffer:
                     stack = np.stack(stack, axis=indice.ndim)
             else:
                 stack = Batch()
-            self.done[last_index] = last_done
-            return stack
+        self.done[last_index] = last_done
+        return stack
 
     def __getitem__(self, index: Union[
             slice, int, np.integer, np.ndarray]) -> Batch:
