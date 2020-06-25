@@ -13,6 +13,35 @@ warnings.filterwarnings(
     "ignore", message="pickle support for Storage will be removed in 1.5.")
 
 
+def _is_batch_set(data: Any) -> bool:
+    if isinstance(data, (list, tuple)):
+        if len(data) > 0 and isinstance(data[0], (dict, Batch)):
+            return True
+    elif isinstance(data, np.ndarray):
+        if isinstance(data.item(0), (dict, Batch)):
+            return True
+    return False
+
+
+def _valid_bounds(length: int, index: Union[
+        slice, int, np.integer, np.ndarray, List[int]]) -> bool:
+    if isinstance(index, (int, np.integer)):
+        return -length <= index and index < length
+    elif isinstance(index, (list, np.ndarray)):
+        return _valid_bounds(length, np.min(index)) and \
+            _valid_bounds(length, np.max(index))
+    elif isinstance(index, slice):
+        if index.start is not None:
+            start_valid = _valid_bounds(length, index.start)
+        else:
+            start_valid = True
+        if index.stop is not None:
+            stop_valid = _valid_bounds(length, index.stop - 1)
+        else:
+            stop_valid = True
+        return start_valid and stop_valid
+
+
 class Batch:
     """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
     structure to pass any kind of data to other methods, for example, a
@@ -80,15 +109,6 @@ class Batch:
                      dict, 'Batch', Tuple[Union[dict, 'Batch']],
                      List[Union[dict, 'Batch']], np.ndarray]] = None,
                  **kwargs) -> None:
-        def _is_batch_set(data: Any) -> bool:
-            if isinstance(data, (list, tuple)):
-                if len(data) > 0 and isinstance(data[0], (dict, Batch)):
-                    return True
-            elif isinstance(data, np.ndarray):
-                if isinstance(data.item(0), (dict, Batch)):
-                    return True
-            return False
-
         if isinstance(batch_dict, np.ndarray) and batch_dict.ndim == 0:
             batch_dict = batch_dict[()]
         if _is_batch_set(batch_dict):
@@ -134,24 +154,6 @@ class Batch:
     def __getitem__(self, index: Union[
             str, slice, int, np.integer, np.ndarray, List[int]]) -> 'Batch':
         """Return self[index]."""
-        def _valid_bounds(length: int, index: Union[
-                slice, int, np.integer, np.ndarray, List[int]]) -> bool:
-            if isinstance(index, (int, np.integer)):
-                return -length <= index and index < length
-            elif isinstance(index, (list, np.ndarray)):
-                return _valid_bounds(length, np.min(index)) and \
-                    _valid_bounds(length, np.max(index))
-            elif isinstance(index, slice):
-                if index.start is not None:
-                    start_valid = _valid_bounds(length, index.start)
-                else:
-                    start_valid = True
-                if index.stop is not None:
-                    stop_valid = _valid_bounds(length, index.stop - 1)
-                else:
-                    stop_valid = True
-                return start_valid and stop_valid
-
         if isinstance(index, str):
             return self.__dict__[index]
 

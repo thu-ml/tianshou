@@ -5,6 +5,17 @@ from typing import Any, Tuple, Union, Optional
 from .batch import Batch
 
 
+def _create_value(inst: Any, size : int) -> Union['Batch', np.ndarray]:
+    if isinstance(inst, np.ndarray):
+        return np.zeros((size, *inst.shape), dtype=inst.dtype)
+    elif isinstance(inst, (dict, Batch)):
+        return Batch([Batch(inst) for _ in range(size)])
+    elif isinstance(inst, (np.generic, Number)):
+        return np.zeros((size,), dtype=np.asarray(inst).dtype)
+    else:  # fall back to np.object
+        return np.array([None for _ in range(size)])
+
+
 class ReplayBuffer:
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from
     interaction between the policy and environment. It stores basically 7 types
@@ -118,22 +129,10 @@ class ReplayBuffer:
         return self.__dict__[key]
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
-        def _create_value(inst: Any) -> Union['Batch', np.ndarray]:
-            if isinstance(inst, np.ndarray):
-                return np.zeros(
-                    (self._maxsize, *inst.shape), dtype=inst.dtype)
-            elif isinstance(inst, (dict, Batch)):
-                return Batch([Batch(inst) for _ in range(self._maxsize)])
-            elif isinstance(inst, (np.generic, Number)):
-                return np.zeros(
-                    (self._maxsize,), dtype=np.asarray(inst).dtype)
-            else:  # fall back to np.object
-                return np.array([None for _ in range(self._maxsize)])
-
         if inst is None:
             return
         if name not in self._meta.__dict__.keys():
-            self._meta.__dict__[name] = _create_value(inst)
+            self._meta.__dict__[name] = _create_value(inst, self._maxsize)
         if isinstance(inst, np.ndarray) and \
                 self._meta.__dict__[name].shape[1:] != inst.shape:
             raise ValueError(
@@ -144,7 +143,7 @@ class ReplayBuffer:
             for key in set(inst.keys()).difference(
                     self._meta.__dict__[name].__dict__.keys()):
                 self._meta.__dict__[name].__dict__[key] = \
-                    _create_value(inst[key])
+                    _create_value(inst[key], self._maxsize)
         self._meta.__dict__[name][self._index] = inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
