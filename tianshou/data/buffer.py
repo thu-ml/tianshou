@@ -1,6 +1,6 @@
 import numpy as np
 from numbers import Number
-from typing import Any, Tuple, Union, Optional
+from typing import Any, List, Tuple, Union, Optional
 
 from .batch import Batch
 
@@ -93,16 +93,46 @@ class ReplayBuffer(Batch):
          [ 7.  7.  7.  8.]
          [ 7.  7.  8.  9.]]
     """
+    def __new__(cls, *args, **kwargs) -> 'Batch':
+        self = super().__new__(cls)
+        self.__dict__['_meta'] = {}
+        return self
 
     def __init__(self, size: int, stack_num: Optional[int] = 0,
                  ignore_obs_next: bool = False, **kwargs) -> None:
         super().__init__()
-        self.__dict__['_maxsize'] = size
-        self.__dict__['_stack'] = stack_num
-        self.__dict__['_save_s_'] = not ignore_obs_next
-        self.__dict__['_index'] = 0
-        self.__dict__['_size'] = 0
+        self._meta['_maxsize'] = size
+        self._meta['_stack'] = stack_num
+        self._meta['_save_s_'] = not ignore_obs_next
+        self._meta['_index'] = 0
+        self._meta['_size'] = 0
         self.reset()
+
+    def __getattr__(self, key: str) -> Union['Batch', Any]:
+        """Return self.key"""
+        if key in self._meta.keys():
+            return self._meta[key]
+        return self.__dict__[key]
+
+    def __setattr__(self, key, value) -> None:
+        if key in self.__dict__.keys():
+            self.__dict__[key] = value
+        elif key in self._meta.keys():
+            self._meta[key] = value
+        else:
+            self.__dict__[key] = value
+
+    def keys(self) -> List[str]:
+        """Return self.keys()."""
+        return (k for k in self.__dict__.keys() if k != '_meta')
+
+    def values(self) -> List[Any]:
+        """Return self.values()."""
+        return (v for k, v in self.__dict__.items() if k != '_meta')
+
+    def items(self) -> List[Tuple[str, Any]]:
+        """Return self.items()."""
+        return ((k, v) for k, v in self.__dict__.items() if k != '_meta')
 
     def __len__(self) -> int:
         """Return len(self)."""
@@ -123,19 +153,19 @@ class ReplayBuffer(Batch):
 
         if inst is None:
             inst = Batch()
-        if name not in self._data.keys():
-            self._data[name] = _create_value(inst)
+        if name not in self.keys():
+            self.__dict__[name] = _create_value(inst)
         if isinstance(inst, np.ndarray) and \
-                self._data[name].shape[1:] != inst.shape:
+                self.__dict__[name].shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, "
-                f"key: {name}, expect shape: {self._data[name].shape[1:]}"
+                f"key: {name}, expect shape: {self.__dict__[name].shape[1:]}"
                 f", given shape: {inst.shape}.")
-        elif isinstance(self._data[name], Batch):
+        elif isinstance(self.__dict__[name], Batch):
             for key in set(inst.keys()).difference(
-                    self._data[name]._data.keys()):
-                self._data[name]._data[key] = _create_value(inst[key])
-        self._data[name][self._index] = inst
+                    self.__dict__[name].__dict__.keys()):
+                self.__dict__[name].__dict__[key] = _create_value(inst[key])
+        self.__dict__[name][self._index] = inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
@@ -218,8 +248,7 @@ class ReplayBuffer(Batch):
             indice[indice == self._size] = 0
             key = 'obs'
         if stack_num == 0:
-            self.done[last_index] = last_done
-            val = self._data[key]
+            val = self.__dict__[key]
             if isinstance(val, Batch) and val.size == 0:
                 return val
             else:
@@ -229,8 +258,9 @@ class ReplayBuffer(Batch):
                     return val[indice]
                 else:
                     return [val[i] for i in indice]
+            self.done[last_index] = last_done
         else:
-            val = self._data[key]
+            val = self.__dict__[key]
             if not isinstance(val, Batch) or val.size > 0:
                 stack = []
                 for _ in range(stack_num):
@@ -285,15 +315,15 @@ class ListReplayBuffer(ReplayBuffer):
             inst: Union[dict, Batch, np.ndarray, float, int, bool]) -> None:
         if inst is None:
             return
-        if self._data.get(name, None) is None:
-            self._data[name] = []
-        self._data[name].append(inst)
+        if self.__dict__.get(name, None) is None:
+            self.__dict__[name] = []
+        self.__dict__[name].append(inst)
 
     def reset(self) -> None:
         self._index = self._size = 0
-        for k in list(self._data):
-            if isinstance(self._data[k], list):
-                self._data[k] = []
+        for k in list(self.__dict__):
+            if isinstance(self.__dict__[k], list):
+                self.__dict__[k] = []
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
