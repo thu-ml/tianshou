@@ -65,10 +65,15 @@ def test_batch():
     assert batch2_sum.a.b == (batch2.a.b + 1.0) * 2
     assert batch2_sum.a.c == (batch2.a.c + 1.0) * 2
     assert batch2_sum.a.d.e == (batch2.a.d.e + 1.0) * 2
-    batch2.a.d[0] = {'e': 4.0}
-    assert batch2.a.d.e[0] == 4.0
-    batch2.a.d[0] = Batch(e=5.0)
-    assert batch2.a.d.e[0] == 5.0
+    batch3 = Batch(a={
+        'c': np.zeros(1),
+        'd': Batch(e=np.array([0.0]), f=np.array([3.0]))})
+    batch3.a.d[0] = {'e': 4.0}
+    assert batch3.a.d.e[0] == 4.0
+    batch3.a.d[0] = Batch(f=5.0)
+    assert batch3.a.d.f[0] == 5.0
+    with pytest.raises(ValueError):
+        batch3.a.d[0] = Batch(f=5.0, g=0.0)
 
 
 def test_batch_over_batch():
