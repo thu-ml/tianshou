@@ -171,18 +171,12 @@ class Batch:
                     b[k] = Batch()
                 elif hasattr(v, '__len__') and (not isinstance(
                         v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
-                    if _valid_bounds(len(v), index):
-                        if isinstance(index, (int, np.integer)) or \
-                                (isinstance(index, np.ndarray) and
-                                    index.ndim == 0) or \
-                                not isinstance(v, list):
-                            b[k] = v[index]
-                        else:
-                            b[k] = [v[i] for i in index]
+                    if isinstance(index, (int, np.integer)) or \
+                            (isinstance(index, np.ndarray) and
+                                index.ndim == 0) or not isinstance(v, list):
+                        b[k] = v[index]
                     else:
-                        raise IndexError(
-                            f"Index {index} out of bounds for {type(v)} of "
-                            f"len {len(self)}.")
+                        b[k] = [v[i] for i in index]
             return b
 
     def __setitem__(self, index: Union[
