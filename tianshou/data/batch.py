@@ -187,7 +187,7 @@ class Batch:
             raise TypeError("Batch does not supported value type "
                             f"{type(value)} for item assignment.")
         if not set(value.keys()).issubset(self.__dict__.keys()):
-            raise ValueError(
+            raise KeyError(
                 "Creating keys is not supported by item assignment.")
         for key, val in self.items():
             if isinstance(val, Batch):

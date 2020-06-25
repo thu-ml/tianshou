@@ -72,7 +72,7 @@ def test_batch():
     assert batch3.a.d.e[0] == 4.0
     batch3.a.d[0] = Batch(f=5.0)
     assert batch3.a.d.f[0] == 5.0
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError):
         batch3.a.d[0] = Batch(f=5.0, g=0.0)
 
 

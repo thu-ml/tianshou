@@ -5,7 +5,7 @@ from typing import Any, Tuple, Union, Optional
 from .batch import Batch
 
 
-def _create_value(inst: Any, size : int) -> Union['Batch', np.ndarray]:
+def _create_value(inst: Any, size: int) -> Union['Batch', np.ndarray]:
     if isinstance(inst, np.ndarray):
         return np.zeros((size, *inst.shape), dtype=inst.dtype)
     elif isinstance(inst, (dict, Batch)):
@@ -130,21 +130,24 @@ class ReplayBuffer:
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         if inst is None:
-            return
-        if name not in self._meta.__dict__.keys():
+            inst = Batch()
+        try:
+            value = self._meta.__dict__[name]
+        except KeyError:
             self._meta.__dict__[name] = _create_value(inst, self._maxsize)
+            value = self._meta.__dict__[name]
         if isinstance(inst, np.ndarray) and \
-                self._meta.__dict__[name].shape[1:] != inst.shape:
+                value.shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, key: "
-                f"{name}, expect shape: {self._meta.__dict__[name].shape[1:]}"
+                f"{name}, expect shape: {value.shape[1:]}"
                 f", given shape: {inst.shape}.")
-        elif isinstance(self._meta.__dict__[name], Batch):
-            for key in set(inst.keys()).difference(
-                    self._meta.__dict__[name].__dict__.keys()):
-                self._meta.__dict__[name].__dict__[key] = \
-                    _create_value(inst[key], self._maxsize)
-        self._meta.__dict__[name][self._index] = inst
+        try:
+            value[self._index] = inst
+        except KeyError:
+            for key in set(inst.keys()).difference(value.__dict__.keys()):
+                value.__dict__[key] = _create_value(inst[key], self._maxsize)
+            value[self._index] = inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
