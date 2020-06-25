@@ -100,21 +100,21 @@ class Batch:
             for k, v in zip(batch_dict[0].keys(),
                             zip(*[e.values() for e in batch_dict])):
                 if isinstance(v[0], dict) or _is_batch_set(v[0]):
-                    setattr(self, k, Batch(v))
+                    self[k] = Batch(v)
                 elif isinstance(v[0], (np.generic, np.ndarray)):
-                    setattr(self, k, np.stack(v, axis=0))
+                    self[k] = np.stack(v, axis=0)
                 elif isinstance(v[0], torch.Tensor):
-                    setattr(self, k, torch.stack(v, dim=0))
+                    self[k] = torch.stack(v, dim=0)
                 elif isinstance(v[0], Batch):
-                    setattr(self, k, Batch.stack(v))
+                    self[k] = Batch.stack(v)
                 else:
-                    setattr(self, k, np.array(v))  # fall back to np.object
+                    self[k] = np.array(v)  # fall back to np.object
         elif isinstance(batch_dict, (dict, Batch)):
             for k, v in batch_dict.items():
                 if isinstance(v, dict) or _is_batch_set(v):
-                    setattr(self, k, Batch(v))
+                    self[k] = Batch(v)
                 else:
-                    setattr(self, k, v)
+                    self[k] = v
         if len(kwargs) > 0:
             self.__init__(kwargs)
 
@@ -159,7 +159,7 @@ class Batch:
                 return start_valid and stop_valid
 
         if isinstance(index, str):
-            return self.__getattr__(index)
+            return getattr(self, index)
 
         if not _valid_bounds(len(self), index):
             raise IndexError(
@@ -168,7 +168,7 @@ class Batch:
             b = Batch()
             for k, v in self.items():
                 if isinstance(v, Batch) and v.size == 0:
-                    setattr(b, k, Batch())
+                    b[k] = Batch()
                 elif hasattr(v, '__len__') and (not isinstance(
                         v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                     if _valid_bounds(len(v), index):
@@ -176,9 +176,9 @@ class Batch:
                                 (isinstance(index, np.ndarray) and
                                     index.ndim == 0) or \
                                 not isinstance(v, list):
-                            setattr(b, k, v[index])
+                            b[k] = v[index]
                         else:
-                            setattr(b, k, [v[i] for i in index])
+                            b[k] = [v[i] for i in index]
                     else:
                         raise IndexError(
                             f"Index {index} out of bounds for {type(v)} of "
@@ -189,7 +189,7 @@ class Batch:
                         str, slice, int, np.integer, np.ndarray, List[int]],
                     batch: Union[dict, 'Batch']) -> None:
         for key in self.keys():
-            getattr(self, key)[index] = batch[key]
+            self[key][index] = batch[key]
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
@@ -197,20 +197,20 @@ class Batch:
                                self.values(),
                                val.values()):
                 if r is None:
-                    setattr(self, k, r)
+                    self[k] = r
                 elif isinstance(r, list):
-                    setattr(self, k, [r_ + v_ for r_, v_ in zip(r, v)])
+                    self[k] = [r_ + v_ for r_, v_ in zip(r, v)]
                 else:
-                    setattr(self, k, r + v)
+                    self[k] = r + v
             return self
         elif isinstance(val, Number):
             for k, r in zip(self.keys(), self.values()):
                 if r is None:
-                    setattr(self, k, r)
+                    self[k] = r
                 elif isinstance(r, list):
-                    setattr(self, k, [r_ + val for r_ in r])
+                    self[k] = [r_ + val for r_ in r]
                 else:
-                    setattr(self, k, r + val)
+                    self[k] = r + val
             return self
         else:
             raise TypeError("Only addition of Batch or number is supported.")
@@ -223,7 +223,7 @@ class Batch:
             "Only multiplication by a number is supported."
         result = self.__class__()
         for k, r in zip(self.keys(), self.values()):
-            setattr(result, k, r * val)
+            result[k] = r * val
         return result
 
     def __truediv__(self, val: Number):
@@ -231,7 +231,7 @@ class Batch:
             "Only division by a number is supported."
         result = self.__class__()
         for k, r in zip(self.keys(), self.values()):
-            setattr(result, k, r / val)
+            result[k] = r / val
         return result
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
@@ -280,7 +280,7 @@ class Batch:
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
         if k in self.keys():
-            return self.__getattr__(k)
+            return getattr(self, k)
         return d
 
     def to_numpy(self) -> None:
@@ -289,7 +289,7 @@ class Batch:
         """
         for k, v in self.items():
             if isinstance(v, torch.Tensor):
-                setattr(self, k, v.detach().cpu().numpy())
+                self[k] = v.detach().cpu().numpy()
             elif isinstance(v, Batch):
                 v.to_numpy()
 
@@ -308,7 +308,7 @@ class Batch:
                 v = torch.from_numpy(v).to(device)
                 if dtype is not None:
                     v = v.type(dtype)
-                setattr(self, k, v)
+                self[k] = v
             if isinstance(v, torch.Tensor):
                 if dtype is not None and v.dtype != dtype:
                     must_update_tensor = True
@@ -322,7 +322,7 @@ class Batch:
                 if must_update_tensor:
                     if dtype is not None:
                         v = v.type(dtype)
-                    setattr(self, k, v.to(device))
+                    self[k] = v.to(device)
             elif isinstance(v, Batch):
                 v.to_torch(dtype, device)
 
@@ -340,16 +340,16 @@ class Batch:
         for k, v in batch.items():
             if v is None:
                 continue
-            if not hasattr(self, k) or getattr(self, k) is None:
-                setattr(self, k, copy.deepcopy(v))
+            if not hasattr(self, k) or self[k] is None:
+                self[k] = copy.deepcopy(v)
             elif isinstance(v, np.ndarray) and v.ndim > 0:
-                setattr(self, k, np.concatenate([getattr(self, k), v]))
+                self[k] = np.concatenate([self[k], v])
             elif isinstance(v, torch.Tensor):
-                setattr(self, k, torch.cat([getattr(self, k), v]))
+                self[k] = torch.cat([self[k], v])
             elif isinstance(v, list):
-                setattr(self, k, getattr(self, k) + copy.deepcopy(v))
+                self[k] = self[k] + copy.deepcopy(v)
             elif isinstance(v, Batch):
-                getattr(self, k).cat_(v)
+                self[k].cat_(v)
             else:
                 s = 'No support for method "cat" with type '\
                     f'{type(v)} in class Batch.'
@@ -383,11 +383,11 @@ class Batch:
             for k, v in zip(batches[0].keys(),
                             zip(*[e.values() for e in batches])):
                 if isinstance(v[0], (np.generic, np.ndarray, list)):
-                    setattr(batch, k, np.stack(v, axis))
+                    batch[k] = np.stack(v, axis)
                 elif isinstance(v[0], torch.Tensor):
-                    setattr(batch, k, torch.stack(v, axis))
+                    batch[k] = torch.stack(v, axis)
                 elif isinstance(v[0], Batch):
-                    setattr(batch, k, Batch.stack(v, axis))
+                    batch[k] = Batch.stack(v, axis)
                 else:
                     s = 'No support for method "stack" with type '\
                         f'{type(v[0])} in class Batch and axis != 0.'

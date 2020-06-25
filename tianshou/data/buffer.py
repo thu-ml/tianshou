@@ -110,31 +110,29 @@ class ReplayBuffer(Batch):
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         if inst is None:
-            if getattr(self, name, None) is None:
-                setattr(self, name, None)
-            return
+            self[name] = Batch()
         if name not in self.keys():
             if isinstance(inst, np.ndarray):
-                setattr(self, name, np.empty(
-                    (self._maxsize, *inst.shape), dtype=inst.dtype))
+                self[name] = np.empty(
+                    (self._maxsize, *inst.shape), dtype=inst.dtype)
             elif isinstance(inst, (dict, Batch)):
-                setattr(self, name, Batch([
+                self[name] = Batch([
                     Batch(inst)
                     for _ in range(self._maxsize)
-                ]))
+                ])
             elif isinstance(inst, (np.generic, Number)):
-                setattr(self, name, np.empty(
-                    (self._maxsize,), dtype=np.asarray(inst).dtype))
+                self[name] = np.empty(
+                    (self._maxsize,), dtype=np.asarray(inst).dtype)
             else:  # fall back to np.object
-                setattr(self, name, np.array(
-                    [None for _ in range(self._maxsize)]))
+                self[name] = np.array(
+                    [None for _ in range(self._maxsize)])
         if isinstance(inst, np.ndarray) and \
-                getattr(self, name).shape[1:] != inst.shape:
+                self[name].shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, "
-                f"key: {name}, expect shape: {getattr(self, name).shape[1:]}"
+                f"key: {name}, expect shape: {self[name].shape[1:]}"
                 f", given shape: {inst.shape}.")
-        getattr(self, name)[self._index] = inst
+        self[name][self._index] = inst
 
     def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
@@ -218,7 +216,7 @@ class ReplayBuffer(Batch):
             key = 'obs'
         if stack_num == 0:
             self.done[last_index] = last_done
-            val = getattr(self, key)
+            val = self[key]
             if isinstance(val, Batch) and val.size == 0:
                 return val
             else:
@@ -229,7 +227,7 @@ class ReplayBuffer(Batch):
                 else:
                     return [val[i] for i in indice]
         else:
-            val = getattr(self, key)
+            val = self[key]
             if not isinstance(val, Batch) or val.size > 0:
                 stack = []
                 for _ in range(stack_num):
