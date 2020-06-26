@@ -39,12 +39,17 @@ def test_batch():
         'c': np.zeros(1),
         'd': Batch(e=np.array(3.0))}])
     assert len(batch2) == 1
+    assert Batch().size == 0
+    assert batch2.size == 1
     with pytest.raises(IndexError):
         batch2[-2]
     with pytest.raises(IndexError):
         batch2[1]
+    assert batch2[0].size == 1
     with pytest.raises(TypeError):
         batch2[0][0]
+    with pytest.raises(TypeError):
+        len(batch2[0])
     assert isinstance(batch2[0].a.c, np.ndarray)
     assert isinstance(batch2[0].a.b, np.float64)
     assert isinstance(batch2[0].a.d.e, np.float64)

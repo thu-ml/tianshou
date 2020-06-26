@@ -387,7 +387,8 @@ class Batch:
         for v in self.__dict__.values():
             if isinstance(v, Batch) and len(v.__dict__) == 0:
                 continue
-            elif not isinstance(v, (np.ndarray, torch.Tensor)) or v.ndim > 0:
+            elif hasattr(v, '__len__') and (not isinstance(
+                    v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                 r.append(len(v))
             else:
                 raise TypeError("Object of type 'Batch' has no len()")
@@ -405,8 +406,8 @@ class Batch:
             for v in self.__dict__.values():
                 if isinstance(v, Batch):
                     r.append(v.size)
-                elif not isinstance(v, (np.ndarray, torch.Tensor)) or \
-                        v.ndim > 0:
+                elif hasattr(v, '__len__') and (not isinstance(
+                        v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                     r.append(len(v))
             return max(1, min(r) if len(r) > 0 else 0)
 
