@@ -97,33 +97,133 @@ class Batch:
         function return 4 arguments, and the last one is ``info``);
     * ``policy`` the data computed by policy in step :math:`t`;
 
-    :class:`~tianshou.data.Batch` has other methods, including
-    :meth:`~tianshou.data.Batch.__getitem__`,
-    :meth:`~tianshou.data.Batch.__len__`,
-    :meth:`~tianshou.data.Batch.append`,
-    and :meth:`~tianshou.data.Batch.split`:
+    :class:`Batch` object can be initialized using wide variety of arguments,
+    starting with the key/value pairs or dictionary, but also list and Numpy
+    arrays of :class:`dict` or Batch instances. In which case, each element
+    is considered as an individual sample and get stacked together:
     ::
 
-        >>> data = Batch(obs=np.array([0, 11, 22]), rew=np.array([6, 6, 6]))
-        >>> # here we test __getitem__
-        >>> index = [2, 1]
-        >>> data[index].obs
-        array([22, 11])
+        >>> import numpy as np
+        >>> from tianshou.data import Batch
+        >>> data = Batch([{'a': {'b': [0.0, "info"]}}])
+        >>> print(data[0])
+        Batch(
+            a: Batch(
+                b: array(['0.0', 'info'], dtype='<U32'),
+            ),
+        )
 
-        >>> # here we test __len__
+    :class:`Batch` has the same API as a native Python :class:`dict`. In this
+    regard, one can access to stored data using string key, or iterate over
+    stored data:
+    ::
+
+        >>> from tianshou.data import Batch
+        >>> data = Batch(a=4, b=[5, 5])
+        >>> print(data["a"])
+        4
+        >>> for key, value in data.items():
+        >>>     print(f"{key}: {value}")
+        a: 4
+        b: [5, 5]
+
+
+    :class:`Batch` is also reproduce partially the Numpy API for arrays. You
+    can access or iterate over the individual samples, if any:
+    ::
+
+        >>> import numpy as np
+        >>> from tianshou.data import Batch
+        >>> data = Batch(a=np.array([[0.0, 2.0], [1.0, 3.0]]), b=[5, -5])
+        >>> print(data[0])
+        Batch(
+            a: np.array([0.0, 2.0])
+            b: 5
+        )
+        >>> for sample in data:
+        >>>     print(sample.a)
+        [0.0, 2.0]
+        [1.0, 3.0]
+
+    Similarly, one can also perform simple algebra on it, and stack, split or
+    concatenate multiple instances:
+    ::
+
+        >>> import numpy as np
+        >>> from tianshou.data import Batch
+        >>> data_1 = Batch(a=np.array([0.0, 2.0]), b=5)
+        >>> data_2 = Batch(a=np.array([1.0, 3.0]), b=-5)
+        >>> data = Batch.stack((data_1, data_2))
+        >>> print(data)
+        Batch(
+            b: array([ 5, -5]),
+            a: array([[0., 2.],
+                      [1., 3.]]),
+        )
+        >>> print(np.mean(data))
+        Batch(
+            b: 0.0,
+            a: array([0.5, 2.5]),
+        )
+        >>> data_split = list(data.split(1, False))
+        >>> print(list(data.split(1, False)))
+        [Batch(
+            b: [5],
+            a: array([[0., 2.]]),
+        ),
+        Batch(
+            b: [-5],
+            a: array([[1., 3.]]),
+        )]
+        >>> data_cat = Batch.cat(data_split)
+        >>> print(data_cat)
+        Batch(
+            b: array([ 5, -5]),
+            a: array([[0., 2.],
+                      [1., 3.]]),
+        )
+
+    Note that stacking of inconsistent data is also supported. In which case,
+    None is added in list or :class:`np.ndarray` of objects, 0 otherwise.
+    ::
+
+        >>> import numpy as np
+        >>> from tianshou.data import Batch
+        >>> data_1 = Batch(a=np.array([0.0, 2.0]))
+        >>> data_2 = Batch(a=np.array([1.0, 3.0]), b='done')
+        >>> data = Batch.stack((data_1, data_2))
+        >>> print(data)
+        Batch(
+            a: array([[0., 2.],
+                      [1., 3.]]),
+            b: array([None, 'done'], dtype=object),
+        )
+
+    :meth:`~tianshou.data.Batch.size` and :meth:`~tianshou.data.Batch.__len__`
+    methods are also provided to respectively get the length and the size of
+    a :class:`Batch` instance. It mimics the Numpy API for Numpy arrays, which
+    means that getting the length of a scalar Batch raises an exception, while
+    the size is 1. The size is only 0 if empty. Note that the size and length
+    are the identical if multiple samples are stored:
+    ::
+
+        >>> import numpy as np
+        >>> from tianshou.data import Batch
+        >>> data = Batch(a=[5., 4.], b=np.zeros((2, 3, 4)))
+        >>> data.size
+        2
         >>> len(data)
-        3
+        2
+        >>> data[0].size
+        1
+        >>> len(data[0])
+        TypeError: Object of type 'Batch' has no len()
 
-        >>> data.append(data)  # similar to list.append
-        >>> data.obs
-        array([0, 11, 22, 0, 11, 22])
+    Convenience helpers are available to convert in-place the
+    stored data into Numpy arrays or Torch tensors.
 
-        >>> # split whole data into multiple small batch
-        >>> for d in data.split(size=2, shuffle=False):
-        ...     print(d.obs, d.rew)
-        [ 0 11] [6 6]
-        [22  0] [6 6]
-        [11 22] [6 6]
+    Finally, note that Batch instance are serializable and therefore Pickle
+    compatible. This is especially important for distributed sampling.
     """
 
     def __init__(self,
@@ -185,6 +285,7 @@ class Batch:
     def __setitem__(self, index: Union[
                         str, slice, int, np.integer, np.ndarray, List[int]],
                     value: Any) -> None:
+        """Assign value to self[index]."""
         if isinstance(index, str):
             self.__dict__[index] = value
             return
@@ -208,10 +309,12 @@ class Batch:
                 else:
                     self.__dict__[key][index] = None
 
-    def __iadd__(self, val: Union['Batch', Number]):
-        if isinstance(val, Batch):
+    def __iadd__(self, other: Union['Batch', Number]):
+        """Algebraic addition with another :class:`~tianshou.data.Batch`
+        instance in-place."""
+        if isinstance(other, Batch):
             for (k, r), v in zip(self.__dict__.items(),
-                                 val.__dict__.values()):
+                                 other.__dict__.values()):
                 if r is None:
                     continue
                 elif isinstance(r, list):
@@ -219,22 +322,25 @@ class Batch:
                 else:
                     self.__dict__[k] += v
             return self
-        elif isinstance(val, Number):
+        elif isinstance(other, Number):
             for k, r in self.items():
                 if r is None:
                     continue
                 elif isinstance(r, list):
-                    self.__dict__[k] = [r_ + val for r_ in r]
+                    self.__dict__[k] = [r_ + other for r_ in r]
                 else:
-                    self.__dict__[k] += val
+                    self.__dict__[k] += other
             return self
         else:
             raise TypeError("Only addition of Batch or number is supported.")
 
-    def __add__(self, val: Union['Batch', Number]):
-        return copy.deepcopy(self).__iadd__(val)
+    def __add__(self, other: Union['Batch', Number]):
+        """Algebraic addition with another :class:`~tianshou.data.Batch`
+        instance out-of-place."""
+        return copy.deepcopy(self).__iadd__(other)
 
     def __imul__(self, val: Number):
+        """Algebraic multiplication with a scalar value in-place."""
         assert isinstance(val, Number), \
             "Only multiplication by a number is supported."
         for k in self.__dict__.keys():
@@ -242,9 +348,11 @@ class Batch:
         return self
 
     def __mul__(self, val: Number):
+        """Algebraic multiplication with a scalar value out-of-place."""
         return copy.deepcopy(self).__imul__(val)
 
     def __itruediv__(self, val: Number):
+        """Algebraic division wibyth a scalar value in-place."""
         assert isinstance(val, Number), \
             "Only division by a number is supported."
         for k in self.__dict__.keys():
@@ -252,6 +360,7 @@ class Batch:
         return self
 
     def __truediv__(self, val: Number):
+        """Algebraic division wibyth a scalar value out-of-place."""
         return copy.deepcopy(self).__itruediv__(val)
 
     def __repr__(self) -> str:

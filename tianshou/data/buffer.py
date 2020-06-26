@@ -108,6 +108,7 @@ class ReplayBuffer:
         return self._size
 
     def __repr__(self) -> str:
+        """Return str(self)."""
         return self.__class__.__name__ + self._meta.__repr__()[5:]
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
