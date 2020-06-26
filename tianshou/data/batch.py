@@ -435,7 +435,9 @@ class Batch:
                 elif hasattr(v, '__len__') and (not isinstance(
                         v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                     r.append(len(v))
-            return max(1, min(r) if len(r) > 0 else 0)
+                else:
+                    r.append(1)
+            return min(r) if len(r) > 0 else 0
 
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:
