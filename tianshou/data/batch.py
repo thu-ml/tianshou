@@ -171,11 +171,15 @@ class Batch:
                 f"Index {index} out of bounds for Batch of len {len(self)}.")
         else:
             b = Batch()
+            is_index_scalar = isinstance(index, (int, np.integer)) or \
+                (isinstance(index, np.ndarray) and index.ndim == 0)
             for k, v in self.items():
                 if isinstance(v, Batch) and len(v.__dict__) == 0:
                     b.__dict__[k] = Batch()
-                else:
+                elif is_index_scalar or not isinstance(v, list):
                     b.__dict__[k] = v[index]
+                else:
+                    b.__dict__[k] = [v[i] for i in index]
             return b
 
     def __setitem__(self, index: Union[
