@@ -7,11 +7,16 @@ from .batch import Batch
 
 def _create_value(inst: Any, size: int) -> Union['Batch', np.ndarray]:
     if isinstance(inst, np.ndarray):
-        return np.zeros((size, *inst.shape), dtype=inst.dtype)
-    elif isinstance(inst, (dict, Batch, type(None))):
-        return Batch([Batch(inst) for _ in range(size)])
+        return np.full(shape=(size, *inst.shape),
+                       fill_value=None if inst.dtype == np.inexact else 0,
+                       dtype=inst.dtype)
+    elif isinstance(inst, (dict, Batch)):
+        zero_batch = Batch()
+        for key, val in inst.items():
+            zero_batch.__dict__[key] = _create_value(val, size)
+        return zero_batch
     elif isinstance(inst, (np.generic, Number)):
-        return np.zeros((size,), dtype=np.asarray(inst).dtype)
+        return _create_value(np.asarray(inst), size)
     else:  # fall back to np.object
         return np.array([None for _ in range(size)])
 

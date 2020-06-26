@@ -27,6 +27,16 @@ def test_replaybuffer(size=10, bufsize=20):
     assert len(buf) == len(buf2)
     assert buf2[0].obs == buf[5].obs
     assert buf2[-1].obs == buf[4].obs
+    b = ReplayBuffer(size=10)
+    b.add(1, 1, 1, 'str', 1, {'a': 3, 'b': {'c': 5.0}})
+    assert b.obs[0] == 1
+    assert b.done[0] == 'str'
+    assert np.all(b.obs[1:] == 0)
+    assert np.all(b.done[1:] == np.array(None))
+    assert b.info.a[0] == 3 and b.info.a.dtype == np.integer
+    assert np.all(b.info.a[1:] == 0)
+    assert b.info.b.c[0] == 5.0 and b.info.b.c.dtype == np.inexact
+    assert np.all(np.isnan(b.info.b.c[1:]))
 
 
 def test_ignore_obs_next(size=10):
