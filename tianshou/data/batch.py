@@ -13,6 +13,35 @@ warnings.filterwarnings(
     "ignore", message="pickle support for Storage will be removed in 1.5.")
 
 
+def _is_batch_set(data: Any) -> bool:
+    if isinstance(data, (list, tuple)):
+        if len(data) > 0 and isinstance(data[0], (dict, Batch)):
+            return True
+    elif isinstance(data, np.ndarray):
+        if isinstance(data.item(0), (dict, Batch)):
+            return True
+    return False
+
+
+def _valid_bounds(length: int, index: Union[
+        slice, int, np.integer, np.ndarray, List[int]]) -> bool:
+    if isinstance(index, (int, np.integer)):
+        return -length <= index and index < length
+    elif isinstance(index, (list, np.ndarray)):
+        return _valid_bounds(length, np.min(index)) and \
+            _valid_bounds(length, np.max(index))
+    elif isinstance(index, slice):
+        if index.start is not None:
+            start_valid = _valid_bounds(length, index.start)
+        else:
+            start_valid = True
+        if index.stop is not None:
+            stop_valid = _valid_bounds(length, index.stop - 1)
+        else:
+            stop_valid = True
+        return start_valid and stop_valid
+
+
 class Batch:
     """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
     structure to pass any kind of data to other methods, for example, a
@@ -75,46 +104,30 @@ class Batch:
         [11 22] [6 6]
     """
 
-    def __new__(cls, *args, **kwargs) -> 'Batch':
-        self = super().__new__(cls)
-        self.__dict__['_data'] = {}
-        return self
-
     def __init__(self,
                  batch_dict: Optional[Union[
                      dict, 'Batch', Tuple[Union[dict, 'Batch']],
                      List[Union[dict, 'Batch']], np.ndarray]] = None,
                  **kwargs) -> None:
-        def _is_batch_set(data: Any) -> bool:
-            if isinstance(data, (list, tuple)):
-                if len(data) > 0 and isinstance(data[0], (dict, Batch)):
-                    return True
-            elif isinstance(data, np.ndarray):
-                if isinstance(data.item(0), (dict, Batch)):
-                    return True
-            return False
-
-        if isinstance(batch_dict, np.ndarray) and batch_dict.ndim == 0:
-            batch_dict = batch_dict[()]
         if _is_batch_set(batch_dict):
             for k, v in zip(batch_dict[0].keys(),
                             zip(*[e.values() for e in batch_dict])):
                 if isinstance(v[0], dict) or _is_batch_set(v[0]):
-                    self[k] = Batch(v)
+                    self.__dict__[k] = Batch(v)
                 elif isinstance(v[0], (np.generic, np.ndarray)):
-                    self[k] = np.stack(v, axis=0)
+                    self.__dict__[k] = np.stack(v, axis=0)
                 elif isinstance(v[0], torch.Tensor):
-                    self[k] = torch.stack(v, dim=0)
+                    self.__dict__[k] = torch.stack(v, dim=0)
                 elif isinstance(v[0], Batch):
-                    self[k] = Batch.stack(v)
+                    self.__dict__[k] = Batch.stack(v)
                 else:
-                    self[k] = np.array(v)  # fall back to np.object
+                    self.__dict__[k] = np.array(v)
         elif isinstance(batch_dict, (dict, Batch)):
             for k, v in batch_dict.items():
                 if isinstance(v, dict) or _is_batch_set(v):
-                    self[k] = Batch(v)
+                    self.__dict__[k] = Batch(v)
                 else:
-                    self[k] = v
+                    self.__dict__[k] = v
         if len(kwargs) > 0:
             self.__init__(kwargs)
 
@@ -123,8 +136,7 @@ class Batch:
         for both efficiency and simplicity.
         """
         state = {}
-        for k in self.keys():
-            v = self[k]
+        for k, v in self.items():
             if isinstance(v, Batch):
                 v = v.__getstate__()
             state[k] = v
@@ -140,26 +152,8 @@ class Batch:
     def __getitem__(self, index: Union[
             str, slice, int, np.integer, np.ndarray, List[int]]) -> 'Batch':
         """Return self[index]."""
-        def _valid_bounds(length: int, index: Union[
-                slice, int, np.integer, np.ndarray, List[int]]) -> bool:
-            if isinstance(index, (int, np.integer)):
-                return -length <= index and index < length
-            elif isinstance(index, (list, np.ndarray)):
-                return _valid_bounds(length, np.min(index)) and \
-                    _valid_bounds(length, np.max(index))
-            elif isinstance(index, slice):
-                if index.start is not None:
-                    start_valid = _valid_bounds(length, index.start)
-                else:
-                    start_valid = True
-                if index.stop is not None:
-                    stop_valid = _valid_bounds(length, index.stop - 1)
-                else:
-                    stop_valid = True
-                return start_valid and stop_valid
-
         if isinstance(index, str):
-            return getattr(self, index)
+            return self.__dict__[index]
 
         if not _valid_bounds(len(self), index):
             raise IndexError(
@@ -167,61 +161,57 @@ class Batch:
         else:
             b = Batch()
             for k, v in self.items():
-                if isinstance(v, Batch) and v.size == 0:
-                    b[k] = Batch()
-                elif hasattr(v, '__len__') and (not isinstance(
-                        v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
-                    if isinstance(index, (int, np.integer)) or \
-                            (isinstance(index, np.ndarray) and
-                                index.ndim == 0) or not isinstance(v, list):
-                        b[k] = v[index]
-                    else:
-                        b[k] = [v[i] for i in index]
+                if isinstance(v, Batch) and len(v.__dict__) == 0:
+                    b.__dict__[k] = Batch()
+                else:
+                    b.__dict__[k] = v[index]
             return b
 
     def __setitem__(self, index: Union[
                         str, slice, int, np.integer, np.ndarray, List[int]],
                     value: Any) -> None:
         if isinstance(index, str):
-            return setattr(self, index, value)
-        if value is None:
-            value = Batch()
+            self.__dict__[index] = value
+            return
         if not isinstance(value, (dict, Batch)):
             raise TypeError("Batch does not supported value type "
                             f"{type(value)} for item assignment.")
-        if not set(value.keys()).issubset(self.keys()):
-            raise ValueError(
+        if not set(value.keys()).issubset(self.__dict__.keys()):
+            raise KeyError(
                 "Creating keys is not supported by item assignment.")
-        for key in self.keys():
-            if isinstance(self[key], Batch):
-                default = Batch()
-            elif isinstance(self[key], np.ndarray) and \
-                    self[key].dtype == np.integer:
-                # Fallback for np.array of integer,
-                # since neither None or nan is supported.
-                default = 0
-            else:
-                default = None
-            self[key][index] = value.get(key, default)
+        for key, val in self.items():
+            try:
+                self.__dict__[key][index] = value[key]
+            except KeyError:
+                if isinstance(val, Batch):
+                    self.__dict__[key][index] = Batch()
+                elif isinstance(val, np.ndarray) and \
+                        val.dtype == np.integer:
+                    # Fallback for np.array of integer,
+                    # since neither None or nan is supported.
+                    self.__dict__[key][index] = 0
+                else:
+                    self.__dict__[key][index] = None
 
     def __iadd__(self, val: Union['Batch', Number]):
         if isinstance(val, Batch):
-            for k, r, v in zip(self.keys(), self.values(), val.values()):
+            for (k, r), v in zip(self.__dict__.items(),
+                                 val.__dict__.values()):
                 if r is None:
-                    self[k] = r
+                    continue
                 elif isinstance(r, list):
-                    self[k] = [r_ + v_ for r_, v_ in zip(r, v)]
+                    self.__dict__[k] = [r_ + v_ for r_, v_ in zip(r, v)]
                 else:
-                    self[k] = r + v
+                    self.__dict__[k] += v
             return self
         elif isinstance(val, Number):
-            for k, r in zip(self.keys(), self.values()):
+            for k, r in self.items():
                 if r is None:
-                    self[k] = r
+                    continue
                 elif isinstance(r, list):
-                    self[k] = [r_ + val for r_ in r]
+                    self.__dict__[k] = [r_ + val for r_ in r]
                 else:
-                    self[k] = r + val
+                    self.__dict__[k] += val
             return self
         else:
             raise TypeError("Only addition of Batch or number is supported.")
@@ -229,37 +219,25 @@ class Batch:
     def __add__(self, val: Union['Batch', Number]):
         return copy.deepcopy(self).__iadd__(val)
 
-    def __mul__(self, val: Number):
+    def __imul__(self, val: Number):
         assert isinstance(val, Number), \
             "Only multiplication by a number is supported."
-        result = self.__class__()
-        for k, r in zip(self.keys(), self.values()):
-            result[k] = r * val
-        return result
+        for k in self.__dict__.keys():
+            self.__dict__[k] *= val
+        return self
 
-    def __truediv__(self, val: Number):
+    def __mul__(self, val: Number):
+        return copy.deepcopy(self).__imul__(val)
+
+    def __itruediv__(self, val: Number):
         assert isinstance(val, Number), \
             "Only division by a number is supported."
-        result = self.__class__()
-        for k, r in zip(self.keys(), self.values()):
-            result[k] = r / val
-        return result
+        for k in self.__dict__.keys():
+            self.__dict__[k] /= val
+        return self
 
-    def __getattr__(self, key: str) -> Union['Batch', Any]:
-        """Return self.key"""
-        if key in self.__dict__.keys():
-            return self.__dict__[key]
-        elif key in self._data.keys():
-            return self._data[key]
-        raise AttributeError(key)
-
-    def __setattr__(self, key, value):
-        if key in self._data.keys():
-            self._data[key] = value
-        elif key in self.__dict__.keys():
-            self.__dict__[key] = value
-        else:
-            self._data[key] = value
+    def __truediv__(self, val: Number):
+        return copy.deepcopy(self).__itruediv__(val)
 
     def __repr__(self) -> str:
         """Return str(self)."""
@@ -278,21 +256,19 @@ class Batch:
 
     def keys(self) -> List[str]:
         """Return self.keys()."""
-        return self._data.keys()
+        return self.__dict__.keys()
 
     def values(self) -> List[Any]:
         """Return self.values()."""
-        return self._data.values()
+        return self.__dict__.values()
 
-    def items(self) -> Any:
+    def items(self) -> List[Tuple[str, Any]]:
         """Return self.items()."""
-        return self._data.items()
+        return self.__dict__.items()
 
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
-        if k in self.keys():
-            return self[k]
-        return d
+        return self.__dict__.get(k, d)
 
     def to_numpy(self) -> None:
         """Change all torch.Tensor to numpy.ndarray. This is an in-place
@@ -300,7 +276,7 @@ class Batch:
         """
         for k, v in self.items():
             if isinstance(v, torch.Tensor):
-                self[k] = v.detach().cpu().numpy()
+                self.__dict__[k] = v.detach().cpu().numpy()
             elif isinstance(v, Batch):
                 v.to_numpy()
 
@@ -319,7 +295,7 @@ class Batch:
                 v = torch.from_numpy(v).to(device)
                 if dtype is not None:
                     v = v.type(dtype)
-                self[k] = v
+                self.__dict__[k] = v
             if isinstance(v, torch.Tensor):
                 if dtype is not None and v.dtype != dtype:
                     must_update_tensor = True
@@ -333,7 +309,7 @@ class Batch:
                 if must_update_tensor:
                     if dtype is not None:
                         v = v.type(dtype)
-                    self[k] = v.to(device)
+                    self.__dict__[k] = v.to(device)
             elif isinstance(v, Batch):
                 v.to_torch(dtype, device)
 
@@ -351,16 +327,16 @@ class Batch:
         for k, v in batch.items():
             if v is None:
                 continue
-            if not hasattr(self, k) or self[k] is None:
-                self[k] = copy.deepcopy(v)
+            if not hasattr(self, k) or self.__dict__[k] is None:
+                self.__dict__[k] = copy.deepcopy(v)
             elif isinstance(v, np.ndarray) and v.ndim > 0:
-                self[k] = np.concatenate([self[k], v])
+                self.__dict__[k] = np.concatenate([self.__dict__[k], v])
             elif isinstance(v, torch.Tensor):
-                self[k] = torch.cat([self[k], v])
+                self.__dict__[k] = torch.cat([self.__dict__[k], v])
             elif isinstance(v, list):
-                self[k] = self[k] + copy.deepcopy(v)
+                self.__dict__[k] += copy.deepcopy(v)
             elif isinstance(v, Batch):
-                self[k].cat_(v)
+                self.__dict__[k].cat_(v)
             else:
                 s = 'No support for method "cat" with type '\
                     f'{type(v)} in class Batch.'
@@ -394,11 +370,11 @@ class Batch:
             for k, v in zip(batches[0].keys(),
                             zip(*[e.values() for e in batches])):
                 if isinstance(v[0], (np.generic, np.ndarray, list)):
-                    batch[k] = np.stack(v, axis)
+                    batch.__dict__[k] = np.stack(v, axis)
                 elif isinstance(v[0], torch.Tensor):
-                    batch[k] = torch.stack(v, axis)
+                    batch.__dict__[k] = torch.stack(v, axis)
                 elif isinstance(v[0], Batch):
-                    batch[k] = Batch.stack(v, axis)
+                    batch.__dict__[k] = Batch.stack(v, axis)
                 else:
                     s = 'No support for method "stack" with type '\
                         f'{type(v[0])} in class Batch and axis != 0.'
@@ -408,10 +384,8 @@ class Batch:
     def __len__(self) -> int:
         """Return len(self)."""
         r = []
-        for v in self.values():
-            if isinstance(v, Batch) and v.size == 0:
-                continue
-            elif isinstance(v, list) and len(v) == 0:
+        for v in self.__dict__.values():
+            if isinstance(v, Batch) and len(v.__dict__) == 0:
                 continue
             elif hasattr(v, '__len__') and (not isinstance(
                     v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
@@ -425,11 +399,11 @@ class Batch:
     @property
     def size(self) -> int:
         """Return self.size."""
-        if len(self.keys()) == 0:
+        if len(self.__dict__.keys()) == 0:
             return 0
         else:
             r = []
-            for v in self.values():
+            for v in self.__dict__.values():
                 if isinstance(v, Batch):
                     r.append(v.size)
                 elif hasattr(v, '__len__') and (not isinstance(

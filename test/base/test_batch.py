@@ -39,12 +39,17 @@ def test_batch():
         'c': np.zeros(1),
         'd': Batch(e=np.array(3.0))}])
     assert len(batch2) == 1
+    assert Batch().size == 0
+    assert batch2.size == 1
     with pytest.raises(IndexError):
         batch2[-2]
     with pytest.raises(IndexError):
         batch2[1]
+    assert batch2[0].size == 1
     with pytest.raises(TypeError):
         batch2[0][0]
+    with pytest.raises(TypeError):
+        len(batch2[0])
     assert isinstance(batch2[0].a.c, np.ndarray)
     assert isinstance(batch2[0].a.b, np.float64)
     assert isinstance(batch2[0].a.d.e, np.float64)
@@ -72,7 +77,7 @@ def test_batch():
     assert batch3.a.d.e[0] == 4.0
     batch3.a.d[0] = Batch(f=5.0)
     assert batch3.a.d.f[0] == 5.0
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError):
         batch3.a.d[0] = Batch(f=5.0, g=0.0)
 
 
@@ -112,10 +117,15 @@ def test_batch_cat_and_stack():
     b12_stack = Batch.stack((b1, b2))
     assert isinstance(b12_stack.a.d.e, np.ndarray)
     assert b12_stack.a.d.e.ndim == 2
-    b3 = Batch(a=np.zeros((3, 4)))
-    b4 = Batch(a=np.ones((3, 4)))
+    b3 = Batch(a=np.zeros((3, 4)),
+               b=torch.ones((2, 5)),
+               c=Batch(d=[[1], [2]]))
+    b4 = Batch(a=np.ones((3, 4)),
+               b=torch.ones((2, 5)),
+               c=Batch(d=[[0], [3]]))
     b34_stack = Batch.stack((b3, b4), axis=1)
     assert np.all(b34_stack.a == np.stack((b3.a, b4.a), axis=1))
+    assert np.all(b34_stack.c.d == list(map(list, zip(b3.c.d, b4.c.d))))
 
 
 def test_batch_over_batch_to_torch():
