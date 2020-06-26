@@ -8,7 +8,7 @@ from .batch import Batch
 def _create_value(inst: Any, size: int) -> Union['Batch', np.ndarray]:
     if isinstance(inst, np.ndarray):
         return np.zeros((size, *inst.shape), dtype=inst.dtype)
-    elif isinstance(inst, (dict, Batch)):
+    elif isinstance(inst, (dict, Batch, type(None))):
         return Batch([Batch(inst) for _ in range(size)])
     elif isinstance(inst, (np.generic, Number)):
         return np.zeros((size,), dtype=np.asarray(inst).dtype)
@@ -127,8 +127,6 @@ class ReplayBuffer:
         return self._meta.__dict__[key]
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
-        if inst is None:
-            inst = Batch()
         try:
             value = self._meta.__dict__[name]
         except KeyError:
@@ -157,11 +155,11 @@ class ReplayBuffer:
                 break
 
     def add(self,
-            obs: Union[dict, np.ndarray],
+            obs: Union[dict, Batch, np.ndarray],
             act: Union[np.ndarray, float],
             rew: float,
             done: bool,
-            obs_next: Optional[Union[dict, np.ndarray]] = None,
+            obs_next: Optional[Union[dict, Batch, np.ndarray]] = None,
             info: dict = {},
             policy: Optional[Union[dict, Batch]] = {},
             **kwargs) -> None:
@@ -173,6 +171,8 @@ class ReplayBuffer:
         self._add_to_buffer('rew', rew)
         self._add_to_buffer('done', done)
         if self._save_s_:
+            if obs_next is None:
+                obs_next = Batch()
             self._add_to_buffer('obs_next', obs_next)
         self._add_to_buffer('info', info)
         self._add_to_buffer('policy', policy)
@@ -219,7 +219,8 @@ class ReplayBuffer:
                 else self._size - indice.stop if indice.stop < 0
                 else indice.stop,
                 1 if indice.step is None else indice.step)
-        indice = np.array(indice, copy=True)
+        else:
+            indice = np.array(indice, copy=True)
         # set last frame done to True
         last_index = (self._index - 1 + self._size) % self._size
         last_done, self.done[last_index] = self.done[last_index], True
@@ -228,13 +229,8 @@ class ReplayBuffer:
             indice[indice == self._size] = 0
             key = 'obs'
         val = self._meta.__dict__[key]
-        if stack_num == 0:
-            if isinstance(val, Batch) and len(val.__dict__) == 0:
-                stack = val
-            else:
-                stack = val[indice]
-        else:
-            if not isinstance(val, Batch) or val.size > 0:
+        try:
+            if stack_num > 0:
                 stack = []
                 for _ in range(stack_num):
                     stack = [val[indice]] + stack
@@ -243,12 +239,14 @@ class ReplayBuffer:
                     indice = np.asarray(
                         pre_indice + self.done[pre_indice].astype(np.int))
                     indice[indice == self._size] = 0
-                if isinstance(stack[0], Batch):
+                if isinstance(val, Batch):
                     stack = Batch.stack(stack, axis=indice.ndim)
                 else:
                     stack = np.stack(stack, axis=indice.ndim)
             else:
-                stack = Batch()
+                stack = val[indice]
+        except TypeError:
+            stack = Batch()
         self.done[last_index] = last_done
         return stack
 
@@ -265,7 +263,7 @@ class ReplayBuffer:
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
             info=self.get(index, 'info', stack_num=0),
-            policy=self.get(index, 'policy'),
+            policy=self.get(index, 'policy')
         )
 
 
