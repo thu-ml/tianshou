@@ -3,6 +3,7 @@ import copy
 import pprint
 import warnings
 import numpy as np
+from functools import reduce
 from numbers import Number
 from typing import Any, List, Tuple, Union, Iterator, Optional
 
@@ -40,6 +41,27 @@ def _valid_bounds(length: int, index: Union[
         else:
             stop_valid = True
         return start_valid and stop_valid
+
+
+def _create_value(inst: Any, size: int) -> Union['Batch', np.ndarray]:
+    if isinstance(inst, np.ndarray):
+        return np.full((size, *inst.shape),
+                       fill_value=None if inst.dtype == np.object else 0,
+                       dtype=inst.dtype)
+    elif isinstance(inst, torch.Tensor):
+        return torch.full((size, *inst.shape),
+                          fill_value=None if inst.dtype == np.object else 0,
+                          device=inst.device,
+                          dtype=inst.dtype)
+    elif isinstance(inst, (dict, Batch)):
+        zero_batch = Batch()
+        for key, val in inst.items():
+            zero_batch.__dict__[key] = _create_value(val, size)
+        return zero_batch
+    elif isinstance(inst, (np.generic, Number)):
+        return _create_value(np.asarray(inst), size)
+    else:  # fall back to np.object
+        return np.array([None for _ in range(size)])
 
 
 class Batch:
@@ -110,18 +132,7 @@ class Batch:
                      List[Union[dict, 'Batch']], np.ndarray]] = None,
                  **kwargs) -> None:
         if _is_batch_set(batch_dict):
-            for k, v in zip(batch_dict[0].keys(),
-                            zip(*[e.values() for e in batch_dict])):
-                if isinstance(v[0], dict) or _is_batch_set(v[0]):
-                    self.__dict__[k] = Batch(v)
-                elif isinstance(v[0], (np.generic, np.ndarray)):
-                    self.__dict__[k] = np.stack(v, axis=0)
-                elif isinstance(v[0], torch.Tensor):
-                    self.__dict__[k] = torch.stack(v, dim=0)
-                elif isinstance(v[0], Batch):
-                    self.__dict__[k] = Batch.stack(v)
-                else:
-                    self.__dict__[k] = np.array(v)
+            self.stack_(batch_dict)
         elif isinstance(batch_dict, (dict, Batch)):
             for k, v in batch_dict.items():
                 if isinstance(v, dict) or _is_batch_set(v):
@@ -319,8 +330,8 @@ class Batch:
         return self.cat_(batch)
 
     def cat_(self, batch: 'Batch') -> None:
-        """Concatenate a :class:`~tianshou.data.Batch` object to current
-        batch.
+        """Concatenate a :class:`~tianshou.data.Batch` object into
+        current batch.
         """
         assert isinstance(batch, Batch), \
             'Only Batch is allowed to be concatenated in-place!'
@@ -347,39 +358,50 @@ class Batch:
         """Concatenate a :class:`~tianshou.data.Batch` object into a
         single new batch.
         """
-        assert isinstance(batches, (tuple, list)), \
-            'Only list of Batch instances is allowed to be '\
-            'concatenated out-of-place!'
         batch = cls()
         for batch_ in batches:
             batch.cat_(batch_)
         return batch
 
-    @classmethod
-    def stack(cls, batches: List['Batch'], axis: int = 0) -> 'Batch':
+    def stack_(self,
+               batches: List[Union[dict, 'Batch']],
+               axis: int = 0) -> None:
+        """Stack a :class:`~tianshou.data.Batch` object i into current
+        batch.
+        """
+        if len(self.__dict__) > 0:
+            batches = [self] + list(batches)
+        keys_map = list(map(lambda e: set(e.keys()), batches))
+        keys_shared = set.intersection(*keys_map)
+        values_shared = [
+            [e[k] for e in batches] for k in keys_shared]
+        for k, v in zip(keys_shared, values_shared):
+            if isinstance(v[0], (dict, Batch)):
+                self.__dict__[k] = Batch.stack(v, axis)
+            elif isinstance(v[0], torch.Tensor):
+                self.__dict__[k] = torch.stack(v, axis)
+            else:
+                self.__dict__[k] = np.stack(v, axis)
+        keys_partial = reduce(set.symmetric_difference, keys_map)
+        for k in keys_partial:
+            for i, e in enumerate(batches):
+                val = e.get(k, None)
+                if val is not None:
+                    try:
+                        self.__dict__[k][i] = val
+                    except KeyError:
+                        self.__dict__[k] = \
+                            _create_value(val, len(batches))
+                        self.__dict__[k][i] = val
+
+    @staticmethod
+    def stack(batches: List['Batch'], axis: int = 0) -> 'Batch':
         """Stack a :class:`~tianshou.data.Batch` object into a
         single new batch.
         """
-        assert isinstance(batches, (tuple, list)), \
-            'Only list of Batch instances is allowed to be '\
-            'stacked out-of-place!'
-        if axis == 0:
-            return cls(batches)
-        else:
-            batch = Batch()
-            for k, v in zip(batches[0].keys(),
-                            zip(*[e.values() for e in batches])):
-                if isinstance(v[0], (np.generic, np.ndarray, list)):
-                    batch.__dict__[k] = np.stack(v, axis)
-                elif isinstance(v[0], torch.Tensor):
-                    batch.__dict__[k] = torch.stack(v, axis)
-                elif isinstance(v[0], Batch):
-                    batch.__dict__[k] = Batch.stack(v, axis)
-                else:
-                    s = 'No support for method "stack" with type '\
-                        f'{type(v[0])} in class Batch and axis != 0.'
-                    raise TypeError(s)
-            return batch
+        batch = Batch()
+        batch.stack_(batches, axis)
+        return batch
 
     def __len__(self) -> int:
         """Return len(self)."""

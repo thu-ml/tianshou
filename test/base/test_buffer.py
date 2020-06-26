@@ -36,7 +36,7 @@ def test_replaybuffer(size=10, bufsize=20):
     assert b.info.a[0] == 3 and b.info.a.dtype == np.integer
     assert np.all(b.info.a[1:] == 0)
     assert b.info.b.c[0] == 5.0 and b.info.b.c.dtype == np.inexact
-    assert np.all(np.isnan(b.info.b.c[1:]))
+    assert np.all(b.info.b.c[1:] == 0.0)
 
 
 def test_ignore_obs_next(size=10):
