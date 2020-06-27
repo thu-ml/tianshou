@@ -18,8 +18,8 @@ class MyPolicy(BasePolicy):
 
     def forward(self, batch, state=None):
         if self.dict_state:
-            return Batch(act=np.ones(batch.obs['index'].shape[0]))
-        return Batch(act=np.ones(batch.obs.shape[0]))
+            return Batch(act=np.ones(len(batch.obs['index'])))
+        return Batch(act=np.ones(len(batch.obs)))
 
     def learn(self):
         pass

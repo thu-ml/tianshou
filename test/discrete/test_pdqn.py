@@ -74,7 +74,8 @@ def test_pdqn(args=get_args()):
     # collector
     if args.prioritized_replay > 0:
         buf = PrioritizedReplayBuffer(
-            args.buffer_size, alpha=args.alpha, beta=args.alpha)
+            args.buffer_size, alpha=args.alpha,
+            beta=args.alpha, repeat_sample=True)
     else:
         buf = ReplayBuffer(args.buffer_size)
     train_collector = Collector(
