@@ -68,7 +68,7 @@ def test_sac(args=get_args()):
     # model
     actor = ActorProb(
         args.layer_num, args.state_shape, args.action_shape,
-        args.max_action, args.device
+        args.max_action, args.device, unbounded=True
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     critic1 = Critic(
