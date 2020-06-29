@@ -268,7 +268,7 @@ class Batch:
         if isinstance(index, str):
             return self.__dict__[index]
 
-        if not _valid_bounds(len(self), index):
+        if not np.all(map(_valid_bounds, zip(self.shape, index))):
             raise IndexError(
                 f"Index {index} out of bounds for Batch of len {len(self)}.")
         else:
@@ -549,6 +549,21 @@ class Batch:
                 else:
                     r.append(1)
             return min(r) if len(r) > 0 else 0
+
+    @property
+    def shape(self) -> List[int]:
+        """Return self.shape."""
+        if len(self.__dict__.keys()) == 0:
+            return []
+        else:
+            data_shape = []
+            for v in self.__dict__.values():
+                try:
+                    data_shape.append(v.shape)
+                except AttributeError:
+                    raise TypeError("No support for 'shape' method with "
+                                    f"type {type(v)} in class Batch.")
+            return min(*data_shape) if len(data_shape) > 1 else data_shape[0]
 
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:
