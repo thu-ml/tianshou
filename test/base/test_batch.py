@@ -13,9 +13,9 @@ def test_batch():
     batch.obs = [1]
     assert batch.obs == [1]
     batch.cat_(batch)
-    assert batch.obs == [1, 1]
+    assert np.allclose(batch.obs, [1, 1])
     assert batch.np.shape == (6, 4)
-    assert batch[0].obs == batch[1].obs
+    assert np.allclose(batch[0].obs, batch[1].obs)
     batch.obs = np.arange(5)
     for i, b in enumerate(batch.split(1, shuffle=False)):
         if i != 5:
@@ -39,14 +39,14 @@ def test_batch():
         'c': np.zeros(1),
         'd': Batch(e=np.array(3.0))}])
     assert len(batch2) == 1
-    assert Batch().size == 0
-    assert batch2.size == 1
+    assert Batch().shape == []
+    assert batch2.shape[0] == 1
     with pytest.raises(IndexError):
         batch2[-2]
     with pytest.raises(IndexError):
         batch2[1]
-    assert batch2[0].size == 1
-    with pytest.raises(TypeError):
+    assert batch2[0].shape[0] == 1
+    with pytest.raises(IndexError):
         batch2[0][0]
     with pytest.raises(TypeError):
         len(batch2[0])
@@ -87,18 +87,18 @@ def test_batch_over_batch():
     batch2.b.b[-1] = 0
     print(batch2)
     for k, v in batch2.items():
-        assert batch2[k] == v
+        assert np.all(batch2[k] == v)
     assert batch2[-1].b.b == 0
     batch2.cat_(Batch(c=[6, 7, 8], b=batch))
-    assert batch2.c == [6, 7, 8, 6, 7, 8]
-    assert batch2.b.a == [3, 4, 5, 3, 4, 5]
-    assert batch2.b.b == [4, 5, 0, 4, 5, 0]
+    assert np.allclose(batch2.c, [6, 7, 8, 6, 7, 8])
+    assert np.allclose(batch2.b.a, [3, 4, 5, 3, 4, 5])
+    assert np.allclose(batch2.b.b, [4, 5, 0, 4, 5, 0])
     d = {'a': [3, 4, 5], 'b': [4, 5, 6]}
     batch3 = Batch(c=[6, 7, 8], b=d)
     batch3.cat_(Batch(c=[6, 7, 8], b=d))
-    assert batch3.c == [6, 7, 8, 6, 7, 8]
-    assert batch3.b.a == [3, 4, 5, 3, 4, 5]
-    assert batch3.b.b == [4, 5, 6, 4, 5, 6]
+    assert np.allclose(batch3.c, [6, 7, 8, 6, 7, 8])
+    assert np.allclose(batch3.b.a, [3, 4, 5, 3, 4, 5])
+    assert np.allclose(batch3.b.b, [4, 5, 6, 4, 5, 6])
     batch4 = Batch(({'a': {'b': np.array([1.0])}},))
     assert batch4.a.b.ndim == 2
     assert batch4.a.b[0, 0] == 1.0

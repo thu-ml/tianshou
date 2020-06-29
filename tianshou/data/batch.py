@@ -243,14 +243,25 @@ class Batch:
                     self.__dict__[k] = Batch(v)
                 else:
                     if isinstance(v, list):
-                        v = np.array(v, copy=True)
+                        v = np.array(v)
                     self.__dict__[k] = v
         if len(kwargs) > 0:
             self.__init__(kwargs)
 
+    def __setattr__(self, key: str, value: Any):
+        """self[key] = value"""
+        if isinstance(value, list):
+            if _is_batch_set(value):
+                value = Batch(value)
+            else:
+                value = np.array(value)
+        elif isinstance(value, dict):
+            value = Batch(value)
+        self.__dict__[key] = value
+
     def __getstate__(self):
-        """Pickling interface. Only the actual data are serialized
-        for both efficiency and simplicity.
+        """Pickling interface. Only the actual data are serialized for both
+        efficiency and simplicity.
         """
         state = {}
         for k, v in self.items():
@@ -260,9 +271,9 @@ class Batch:
         return state
 
     def __setstate__(self, state):
-        """Unpickling interface. At this point, self is an empty Batch
-        instance that has not been initialized, so it can safely be
-        initialized by the pickle state.
+        """Unpickling interface. At this point, self is an empty Batch instance
+        that has not been initialized, so it can safely be initialized by the
+        pickle state.
         """
         self.__init__(**state)
 
@@ -271,8 +282,8 @@ class Batch:
         """Return self[index]."""
         if isinstance(index, str):
             return self.__dict__[index]
-
-        if not np.all(map(_valid_bounds, zip(self.shape, index))):
+        check_index = index if isinstance(index, (list, tuple)) else [index]
+        if not np.all(map(_valid_bounds, zip(self.shape, check_index))):
             raise IndexError(
                 f"Index {index} out of bounds for Batch of len {len(self)}.")
         else:
@@ -288,9 +299,10 @@ class Batch:
                     b.__dict__[k] = [v[i] for i in index]
             return b
 
-    def __setitem__(self, index: Union[
-                        str, slice, int, np.integer, np.ndarray, List[int]],
-                    value: Any) -> None:
+    def __setitem__(
+            self,
+            index: Union[str, slice, int, np.integer, np.ndarray, List[int]],
+            value: Any) -> None:
         """Assign value to self[index]."""
         if isinstance(index, str):
             self.__dict__[index] = value
@@ -444,13 +456,14 @@ class Batch:
                 v.to_torch(dtype, device)
 
     def append(self, batch: 'Batch') -> None:
-        warnings.warn('Method append will be removed soon, please use '
+        warnings.warn('Method :meth:`~tianshou.data.Batch.append` will be '
+                      'removed soon, please use '
                       ':meth:`~tianshou.data.Batch.cat`')
         return self.cat_(batch)
 
     def cat_(self, batch: 'Batch') -> None:
-        """Concatenate a :class:`~tianshou.data.Batch` object into
-        current batch.
+        """Concatenate a :class:`~tianshou.data.Batch` object into current
+        batch.
         """
         assert isinstance(batch, Batch), \
             'Only Batch is allowed to be concatenated in-place!'
@@ -472,12 +485,12 @@ class Batch:
                     f'{type(v)} in class Batch.'
                 raise TypeError(s)
 
-    @classmethod
-    def cat(cls, batches: List['Batch']) -> 'Batch':
-        """Concatenate a :class:`~tianshou.data.Batch` object into a
-        single new batch.
+    @staticmethod
+    def cat(batches: List['Batch']) -> 'Batch':
+        """Concatenate a :class:`~tianshou.data.Batch` object into a single
+        new batch.
         """
-        batch = cls()
+        batch = Batch()
         for batch_ in batches:
             batch.cat_(batch_)
         return batch
@@ -485,8 +498,7 @@ class Batch:
     def stack_(self,
                batches: List[Union[dict, 'Batch']],
                axis: int = 0) -> None:
-        """Stack a :class:`~tianshou.data.Batch` object i into current
-        batch.
+        """Stack a :class:`~tianshou.data.Batch` object i into current batch.
         """
         if len(self.__dict__) > 0:
             batches = [self] + list(batches)
@@ -515,8 +527,8 @@ class Batch:
 
     @staticmethod
     def stack(batches: List['Batch'], axis: int = 0) -> 'Batch':
-        """Stack a :class:`~tianshou.data.Batch` object into a
-        single new batch.
+        """Stack a :class:`~tianshou.data.Batch` object into a single new
+        batch.
         """
         batch = Batch()
         batch.stack_(batches, axis)
@@ -554,7 +566,8 @@ class Batch:
                     else:
                         raise TypeError("No support for 'shape' method with "
                                         f"type {type(v)} in class Batch.")
-            return min(*data_shape) if len(data_shape) > 1 else data_shape[0]
+            return list(map(min, zip(*data_shape))) if len(data_shape) > 1 \
+                else data_shape[0] if len(data_shape) > 0 else []
 
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:
