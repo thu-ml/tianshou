@@ -200,10 +200,12 @@ class Batch:
             b: array([None, 'done'], dtype=object),
         )
 
-    :meth:`~tianshou.data.Batch.size` and :meth:`~tianshou.data.Batch.__len__`
-    methods are also provided to respectively get the length and the size of
+    :meth:`~tianshou.data.Batch.shape` and :meth:`~tianshou.data.Batch.__len__`
+    methods are also provided to respectively get the shape and the length of
     a :class:`Batch` instance. It mimics the Numpy API for Numpy arrays, which
-    means that getting the length of a scalar Batch raises an exception, while
+    means that getting the length of a scalar Batch raises an exception,
+    TODO BELOW
+    while
     the size is 1. The size is only 0 if empty. Note that the size and length
     are the identical if multiple samples are stored:
     ::
@@ -240,6 +242,8 @@ class Batch:
                 if isinstance(v, dict) or _is_batch_set(v):
                     self.__dict__[k] = Batch(v)
                 else:
+                    if isinstance(v, list):
+                        v = np.array(v, copy=True)
                     self.__dict__[k] = v
         if len(kwargs) > 0:
             self.__init__(kwargs)
@@ -534,23 +538,6 @@ class Batch:
         return min(r)
 
     @property
-    def size(self) -> int:
-        """Return self.size."""
-        if len(self.__dict__.keys()) == 0:
-            return 0
-        else:
-            r = []
-            for v in self.__dict__.values():
-                if isinstance(v, Batch):
-                    r.append(v.size)
-                elif hasattr(v, '__len__') and (not isinstance(
-                        v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
-                    r.append(len(v))
-                else:
-                    r.append(1)
-            return min(r) if len(r) > 0 else 0
-
-    @property
     def shape(self) -> List[int]:
         """Return self.shape."""
         if len(self.__dict__.keys()) == 0:
@@ -559,10 +546,14 @@ class Batch:
             data_shape = []
             for v in self.__dict__.values():
                 try:
-                    data_shape.append(v.shape)
+                    if len(v.shape) > 0:
+                        data_shape.append(v.shape)
                 except AttributeError:
-                    raise TypeError("No support for 'shape' method with "
-                                    f"type {type(v)} in class Batch.")
+                    if isinstance(v, list):
+                        data_shape.append(tuple([len(v)]))
+                    else:
+                        raise TypeError("No support for 'shape' method with "
+                                        f"type {type(v)} in class Batch.")
             return min(*data_shape) if len(data_shape) > 1 else data_shape[0]
 
     def split(self, size: Optional[int] = None,
