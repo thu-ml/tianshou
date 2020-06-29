@@ -74,8 +74,9 @@ class Batch:
         >>> import numpy as np
         >>> from tianshou.data import Batch
         >>> data = Batch(a=4, b=[5, 5], c='2312312')
+        >>> # the list will automatically be converted to numpy array
         >>> data.b
-        [5, 5]
+        array([5, 5])
         >>> data.b = np.array([3, 4, 5])
         >>> print(data)
         Batch(
@@ -104,8 +105,6 @@ class Batch:
     together:
     ::
 
-        >>> import numpy as np
-        >>> from tianshou.data import Batch
         >>> data = Batch([{'a': {'b': [0.0, "info"]}}])
         >>> print(data[0])
         Batch(
@@ -119,7 +118,6 @@ class Batch:
     key, or iterate over stored data:
     ::
 
-        >>> from tianshou.data import Batch
         >>> data = Batch(a=4, b=[5, 5])
         >>> print(data["a"])
         4
@@ -133,25 +131,22 @@ class Batch:
     arrays. You can access or iterate over the individual samples, if any:
     ::
 
-        >>> import numpy as np
-        >>> from tianshou.data import Batch
         >>> data = Batch(a=np.array([[0.0, 2.0], [1.0, 3.0]]), b=[5, -5])
         >>> print(data[0])
         Batch(
-            a: np.array([0.0, 2.0])
+            a: array([0., 2.])
             b: 5
         )
         >>> for sample in data:
         >>>     print(sample.a)
-        [0.0, 2.0]
-        [1.0, 3.0]
+        [0., 2.]
+        [1., 3.]
 
     Similarly, one can also perform simple algebra on it, and stack, split or
-    concatenate multiple instances:
+    concatenate multiple instances, also with empty method (which will set to 0
+    or ``None`` (with np.object)):
     ::
 
-        >>> import numpy as np
-        >>> from tianshou.data import Batch
         >>> data_1 = Batch(a=np.array([0.0, 2.0]), b=5)
         >>> data_2 = Batch(a=np.array([1.0, 3.0]), b=-5)
         >>> data = Batch.stack((data_1, data_2))
@@ -169,11 +164,10 @@ class Batch:
         >>> data_split = list(data.split(1, False))
         >>> print(list(data.split(1, False)))
         [Batch(
-            b: [5],
+            b: array([5]),
             a: array([[0., 2.]]),
-        ),
-        Batch(
-            b: [-5],
+        ), Batch(
+            b: array([-5]),
             a: array([[1., 3.]]),
         )]
         >>> data_cat = Batch.cat(data_split)
@@ -188,8 +182,6 @@ class Batch:
     None is added in list or :class:`np.ndarray` of objects, 0 otherwise.
     ::
 
-        >>> import numpy as np
-        >>> from tianshou.data import Batch
         >>> data_1 = Batch(a=np.array([0.0, 2.0]))
         >>> data_2 = Batch(a=np.array([1.0, 3.0]), b='done')
         >>> data = Batch.stack((data_1, data_2))
@@ -199,28 +191,39 @@ class Batch:
                       [1., 3.]]),
             b: array([None, 'done'], dtype=object),
         )
+        >>> data.empty_()
+        >>> print(data)
+        Batch(
+            a: array([[0., 0.],
+                      [0., 0.]]),
+            b: array([None, None], dtype=object),
+        )
 
     :meth:`~tianshou.data.Batch.shape` and :meth:`~tianshou.data.Batch.__len__`
     methods are also provided to respectively get the shape and the length of
     a :class:`Batch` instance. It mimics the Numpy API for Numpy arrays, which
-    means that getting the length of a scalar Batch raises an exception,
-    TODO BELOW
-    while
-    the size is 1. The size is only 0 if empty. Note that the size and length
-    are the identical if multiple samples are stored:
+    means that getting the length of a scalar Batch raises an exception. It
+    also supports the advanced slicing method, such as batch[:, i], if the
+    index is valid.
     ::
 
-        >>> import numpy as np
-        >>> from tianshou.data import Batch
         >>> data = Batch(a=[5., 4.], b=np.zeros((2, 3, 4)))
-        >>> data.size
-        2
+        >>> data.shape
+        [2]
         >>> len(data)
         2
-        >>> data[0].size
-        1
+        >>> data[0].shape  # will ignore data[0].a since it is a scalar
+        (3, 4)
         >>> len(data[0])
         TypeError: Object of type 'Batch' has no len()
+        >>> data.a = np.zeros((4, 3, 2))
+        >>> print(data.shape)
+        [2, 3, 2]
+        >>> data[:, 1] += 1
+        >>> print(data.b[0])
+        [[0. 0. 0. 0.]
+         [1. 1. 1. 1.]
+         [0. 0. 0. 0.]]
 
     Convenience helpers are available to convert in-place the stored data into
     Numpy arrays or Torch tensors.
@@ -291,7 +294,8 @@ class Batch:
             is_index_scalar = isinstance(index, (int, np.integer)) or \
                 (isinstance(index, np.ndarray) and index.ndim == 0)
             for k, v in self.items():
-                if isinstance(v, Batch) and len(v.__dict__) == 0:
+                if isinstance(v, Batch) and len(v.__dict__) == 0 \
+                        or np.isscalar(v):
                     b.__dict__[k] = Batch()
                 elif is_index_scalar or not isinstance(v, list):
                     b.__dict__[k] = v[index]
@@ -532,6 +536,28 @@ class Batch:
         """
         batch = Batch()
         batch.stack_(batches, axis)
+        return batch
+
+    def empty_(self) -> None:
+        """Empty a :class:`~tianshou.data.Batch` object with 0 or ``None``
+        filled.
+        """
+        for k, v in self.items():
+            if isinstance(v, np.ndarray) and v.dtype == np.object:
+                self.__dict__[k].fill(None)
+            elif isinstance(v, Batch):
+                self.__dict__[k].empty_()
+            else:
+                self.__dict__[k] *= 0
+
+    @staticmethod
+    def empty(batch: 'Batch') -> 'Batch':
+        """Return an empty :class:`~tianshou.data.Batch` object with 0 or
+        ``None`` filled, the shape is the same as the given
+        :class:`~tianshou.data.Batch`.
+        """
+        batch = Batch(**batch)
+        batch.empty_()
         return batch
 
     def __len__(self) -> int:

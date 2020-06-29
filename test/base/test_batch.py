@@ -46,8 +46,6 @@ def test_batch():
     with pytest.raises(IndexError):
         batch2[1]
     assert batch2[0].shape[0] == 1
-    with pytest.raises(IndexError):
-        batch2[0][0]
     with pytest.raises(TypeError):
         len(batch2[0])
     assert isinstance(batch2[0].a.c, np.ndarray)
@@ -104,7 +102,7 @@ def test_batch_over_batch():
     assert batch4.a.b[0, 0] == 1.0
 
 
-def test_batch_cat_and_stack():
+def test_batch_cat_and_stack_and_empty():
     b1 = Batch(a=[{'b': np.float64(1.0), 'd': Batch(e=np.array(3.0))}])
     b2 = Batch(a=[{'b': np.float64(4.0), 'd': {'e': np.array(6.0)}}])
     b12_cat_out = Batch.cat((b1, b2))
@@ -133,6 +131,10 @@ def test_batch_cat_and_stack():
     assert np.all(b5.b.c == np.stack([e['b']['c'] for e in b5_dict], axis=0))
     assert b5.b.d[0] == b5_dict[0]['b']['d']
     assert b5.b.d[1] == 0.0
+    b5[1] = Batch.empty(b5[0])
+    assert np.allclose(b5.a, [False, False])
+    assert np.allclose(b5.b.c, [2, 0])
+    assert np.allclose(b5.b.d, [1, 0])
 
 
 def test_batch_over_batch_to_torch():
@@ -215,3 +217,5 @@ if __name__ == '__main__':
     test_utils_to_torch()
     test_batch_pickle()
     test_batch_from_to_numpy_without_copy()
+    test_batch_numpy_compatibility()
+    test_batch_cat_and_stack_and_empty()
