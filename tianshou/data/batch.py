@@ -97,10 +97,11 @@ class Batch:
         function return 4 arguments, and the last one is ``info``);
     * ``policy`` the data computed by policy in step :math:`t`;
 
-    :class:`Batch` object can be initialized using wide variety of arguments,
-    starting with the key/value pairs or dictionary, but also list and Numpy
-    arrays of :class:`dict` or Batch instances. In which case, each element
-    is considered as an individual sample and get stacked together:
+    :class:`~tianshou.data.Batch` object can be initialized using wide variety
+    of arguments, starting with the key/value pairs or dictionary, but also
+    list and Numpy arrays of :class:`dict` or Batch instances. In which case,
+    each element is considered as an individual sample and get stacked
+    together:
     ::
 
         >>> import numpy as np
@@ -113,9 +114,9 @@ class Batch:
             ),
         )
 
-    :class:`Batch` has the same API as a native Python :class:`dict`. In this
-    regard, one can access to stored data using string key, or iterate over
-    stored data:
+    :class:`~tianshou.data.Batch` has the same API as a native Python
+    :class:`dict`. In this regard, one can access to stored data using string
+    key, or iterate over stored data:
     ::
 
         >>> from tianshou.data import Batch
@@ -128,8 +129,8 @@ class Batch:
         b: [5, 5]
 
 
-    :class:`Batch` is also reproduce partially the Numpy API for arrays. You
-    can access or iterate over the individual samples, if any:
+    :class:`~tianshou.data.Batch` is also reproduce partially the Numpy API for
+    arrays. You can access or iterate over the individual samples, if any:
     ::
 
         >>> import numpy as np
@@ -219,11 +220,12 @@ class Batch:
         >>> len(data[0])
         TypeError: Object of type 'Batch' has no len()
 
-    Convenience helpers are available to convert in-place the
-    stored data into Numpy arrays or Torch tensors.
+    Convenience helpers are available to convert in-place the stored data into
+    Numpy arrays or Torch tensors.
 
-    Finally, note that Batch instance are serializable and therefore Pickle
-    compatible. This is especially important for distributed sampling.
+    Finally, note that :class:`~tianshou.data.Batch` instance are serializable
+    and therefore Pickle compatible. This is especially important for
+    distributed sampling.
     """
 
     def __init__(self,

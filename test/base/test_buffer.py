@@ -61,11 +61,13 @@ def test_ignore_obs_next(size=10):
 
 def test_stack(size=5, bufsize=9, stack_num=4):
     env = MyTestEnv(size)
-    buf = ReplayBuffer(bufsize, stack_num)
+    buf = ReplayBuffer(bufsize, stack_num=stack_num)
+    buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
     obs = env.reset(1)
     for i in range(15):
         obs_next, rew, done, info = env.step(1)
         buf.add(obs, 1, rew, done, None, info)
+        buf2.add(obs, 1, rew, done, None, info)
         obs = obs_next
         if done:
             obs = env.reset(1)
@@ -75,6 +77,10 @@ def test_stack(size=5, bufsize=9, stack_num=4):
         [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
         [3, 3, 3, 3], [3, 3, 3, 4], [1, 1, 1, 1]]))
     print(buf)
+    _, indice = buf2.sample(0)
+    assert indice == [2]
+    _, indice = buf2.sample(1)
+    assert indice.sum() == 2
 
 
 def test_priortized_replaybuffer(size=32, bufsize=15):
