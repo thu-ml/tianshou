@@ -300,11 +300,6 @@ class Batch:
         """Return self[index]."""
         if isinstance(index, str):
             return self.__dict__[index]
-        # check_index = index if isinstance(index, (list, tuple)) else [index]
-        # if not np.all(map(_valid_bounds, zip(self.shape, check_index))):
-        #     raise IndexError(
-        #         f"Index {index} out of bounds for Batch of len {len(self)}.")
-        # else:
         b = Batch()
         for k, v in self.items():
             if isinstance(v, Batch) and len(v.__dict__) == 0:
@@ -553,8 +548,12 @@ class Batch:
                 self.__dict__[k].empty_()
             elif isinstance(v, np.ndarray) and v.dtype == np.object:
                 self.__dict__[k].fill(None)
-            else:
+            elif isinstance(v, torch.Tensor):  # cannot apply fill_ directly
+                self.__dict__[k] = torch.zeros_like(self.__dict__[k])
+            else:  # np
                 self.__dict__[k] *= 0
+                if hasattr(v, 'dtype') and v.dtype.kind in 'fc':
+                    self.__dict__[k] = np.nan_to_num(self.__dict__[k])
         return self
 
     @staticmethod

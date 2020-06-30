@@ -203,7 +203,7 @@ class Collector(object):
         elif isinstance(self.state, (torch.Tensor, np.ndarray)):
             self.state[id] *= 0
         else:  # Batch
-            self.state[id] = Batch.empty(self.state[id])
+            self.state[id].empty_()
 
     def collect(self,
                 n_step: int = 0,

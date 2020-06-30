@@ -150,14 +150,16 @@ def test_batch_cat_and_stack_and_empty():
     assert np.allclose(b5.b.c, [2, 0])
     assert np.allclose(b5.b.d, [1, 0])
     data = Batch(a=[False, True],
-                 b={'c': [2., 'st'], 'd': [1, None], 'e': [2., 1.]},
-                 c=np.array([1, 3, 4], dtype=np.int))
+                 b={'c': [2., 'st'], 'd': [1, None], 'e': [2., float('nan')]},
+                 c=np.array([1, 3, 4], dtype=np.int),
+                 t=torch.tensor([4, 5, 6, 7.]))
     data[-1] = Batch.empty(data[1])
     assert np.allclose(data.c, [1, 3, 0])
     assert np.allclose(data.a, [False, False])
     assert list(data.b.c) == ['2.0', '']
     assert list(data.b.d) == [1, None]
     assert np.allclose(data.b.e, [2, 0])
+    assert torch.allclose(data.t, torch.tensor([4, 5, 6, 0.]))
     b0 = Batch()
     b0.empty_()
     assert b0.shape == []
