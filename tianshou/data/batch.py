@@ -300,18 +300,18 @@ class Batch:
         """Return self[index]."""
         if isinstance(index, str):
             return self.__dict__[index]
-        check_index = index if isinstance(index, (list, tuple)) else [index]
-        if not np.all(map(_valid_bounds, zip(self.shape, check_index))):
-            raise IndexError(
-                f"Index {index} out of bounds for Batch of len {len(self)}.")
-        else:
-            b = Batch()
-            for k, v in self.items():
-                if isinstance(v, Batch) and len(v.__dict__) == 0:
-                    b.__dict__[k] = Batch()
-                else:
-                    b.__dict__[k] = v[index]
-            return b
+        # check_index = index if isinstance(index, (list, tuple)) else [index]
+        # if not np.all(map(_valid_bounds, zip(self.shape, check_index))):
+        #     raise IndexError(
+        #         f"Index {index} out of bounds for Batch of len {len(self)}.")
+        # else:
+        b = Batch()
+        for k, v in self.items():
+            if isinstance(v, Batch) and len(v.__dict__) == 0:
+                b.__dict__[k] = Batch()
+            else:
+                b.__dict__[k] = v[index]
+        return b
 
     def __setitem__(
             self,
@@ -542,9 +542,9 @@ class Batch:
         batch.stack_(batches, axis)
         return batch
 
-    def empty_(self) -> None:
-        """Empty a :class:`~tianshou.data.Batch` object with 0 or ``None``
-        filled.
+    def empty_(self) -> 'Batch':
+        """Return an empty a :class:`~tianshou.data.Batch` object with 0 or
+        ``None`` filled.
         """
         for k, v in self.items():
             if v is None:
@@ -555,6 +555,7 @@ class Batch:
                 self.__dict__[k].fill(None)
             else:
                 self.__dict__[k] *= 0
+        return self
 
     @staticmethod
     def empty(batch: 'Batch') -> 'Batch':
