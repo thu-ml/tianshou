@@ -45,7 +45,9 @@ def test_batch():
         batch2[-2]
     with pytest.raises(IndexError):
         batch2[1]
-    assert batch2[0].shape[0] == 1
+    assert batch2[0].shape == []
+    with pytest.raises(IndexError):
+        batch2[0][0]
     with pytest.raises(TypeError):
         len(batch2[0])
     assert isinstance(batch2[0].a.c, np.ndarray)
@@ -100,6 +102,18 @@ def test_batch_over_batch():
     batch4 = Batch(({'a': {'b': np.array([1.0])}},))
     assert batch4.a.b.ndim == 2
     assert batch4.a.b[0, 0] == 1.0
+    # advanced slicing
+    batch5 = Batch(a=[[1, 2]], b={'c': np.zeros([3, 2, 1])})
+    assert batch5.shape == [1, 2]
+    with pytest.raises(IndexError):
+        batch5[2]
+    with pytest.raises(IndexError):
+        batch5[:, 3]
+    with pytest.raises(IndexError):
+        batch5[:, :, -1]
+    batch5[:, -1] += 1
+    assert np.allclose(batch5.a, [1, 3])
+    assert np.allclose(batch5.b.c.squeeze(), [[0, 1]] * 3)
 
 
 def test_batch_cat_and_stack_and_empty():
@@ -135,6 +149,17 @@ def test_batch_cat_and_stack_and_empty():
     assert np.allclose(b5.a, [False, False])
     assert np.allclose(b5.b.c, [2, 0])
     assert np.allclose(b5.b.d, [1, 0])
+    data = Batch(a=[False, True],
+                 b={'c': [2., 'st'], 'd': [1, None]},
+                 c=np.array([1, 3, 4], dtype=np.int))
+    data[-1] = Batch.empty(data[1])
+    assert np.allclose(data.c, [1, 3, 0])
+    assert np.allclose(data.a, [False, False])
+    assert list(data.b.c) == ['2.0', '']
+    assert list(data.b.d) == [1, None]
+    b0 = Batch()
+    b0.empty_()
+    assert b0.shape == []
 
 
 def test_batch_over_batch_to_torch():

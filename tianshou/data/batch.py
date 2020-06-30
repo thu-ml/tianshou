@@ -128,23 +128,34 @@ class Batch:
 
 
     :class:`~tianshou.data.Batch` is also reproduce partially the Numpy API for
-    arrays. You can access or iterate over the individual samples, if any:
+    arrays. It also supports the advanced slicing method, such as batch[:, i],
+    if the index is valid. You can access or iterate over the individual
+    samples, if any:
     ::
 
-        >>> data = Batch(a=np.array([[0.0, 2.0], [1.0, 3.0]]), b=[5, -5])
+        >>> data = Batch(a=np.array([[0.0, 2.0], [1.0, 3.0]]), b=[[5, -5]])
         >>> print(data[0])
         Batch(
             a: array([0., 2.])
-            b: 5
+            b: array([ 5, -5]),
         )
         >>> for sample in data:
         >>>     print(sample.a)
         [0., 2.]
         [1., 3.]
 
+        >>> print(data.shape)
+        [1, 2]
+        >>> data[:, 1] += 1
+        >>> print(data)
+        Batch(
+            a: array([[0., 3.],
+                      [1., 4.]]),
+            b: array([[ 5, -4]]),
+        )
+
     Similarly, one can also perform simple algebra on it, and stack, split or
-    concatenate multiple instances, also with empty method (which will set to 0
-    or ``None`` (with np.object)):
+    concatenate multiple instances:
     ::
 
         >>> data_1 = Batch(a=np.array([0.0, 2.0]), b=5)
@@ -191,6 +202,10 @@ class Batch:
                       [1., 3.]]),
             b: array([None, 'done'], dtype=object),
         )
+
+    Also with method empty (which will set to 0 or ``None`` (with np.object))
+    ::
+
         >>> data.empty_()
         >>> print(data)
         Batch(
@@ -198,13 +213,21 @@ class Batch:
                       [0., 0.]]),
             b: array([None, None], dtype=object),
         )
+        >>> data = Batch(a=[False,  True], b={'c': [2., 'st'], 'd': [1., 0.]})
+        >>> data[0] = Batch.empty(data[1])
+        >>> data
+        Batch(
+            a: array([False,  True]),
+            b: Batch(
+                   c: array([0., 3.]),
+                   d: array([0., 0.]),
+               ),
+        )
 
     :meth:`~tianshou.data.Batch.shape` and :meth:`~tianshou.data.Batch.__len__`
     methods are also provided to respectively get the shape and the length of
     a :class:`Batch` instance. It mimics the Numpy API for Numpy arrays, which
-    means that getting the length of a scalar Batch raises an exception. It
-    also supports the advanced slicing method, such as batch[:, i], if the
-    index is valid.
+    means that getting the length of a scalar Batch raises an exception.
     ::
 
         >>> data = Batch(a=[5., 4.], b=np.zeros((2, 3, 4)))
@@ -212,18 +235,10 @@ class Batch:
         [2]
         >>> len(data)
         2
-        >>> data[0].shape  # will ignore data[0].a since it is a scalar
-        (3, 4)
+        >>> data[0].shape
+        []
         >>> len(data[0])
         TypeError: Object of type 'Batch' has no len()
-        >>> data.a = np.zeros((4, 3, 2))
-        >>> print(data.shape)
-        [2, 3, 2]
-        >>> data[:, 1] += 1
-        >>> print(data.b[0])
-        [[0. 0. 0. 0.]
-         [1. 1. 1. 1.]
-         [0. 0. 0. 0.]]
 
     Convenience helpers are available to convert in-place the stored data into
     Numpy arrays or Torch tensors.
@@ -291,16 +306,11 @@ class Batch:
                 f"Index {index} out of bounds for Batch of len {len(self)}.")
         else:
             b = Batch()
-            is_index_scalar = isinstance(index, (int, np.integer)) or \
-                (isinstance(index, np.ndarray) and index.ndim == 0)
             for k, v in self.items():
-                if isinstance(v, Batch) and len(v.__dict__) == 0 \
-                        or np.isscalar(v):
+                if isinstance(v, Batch) and len(v.__dict__) == 0:
                     b.__dict__[k] = Batch()
-                elif is_index_scalar or not isinstance(v, list):
-                    b.__dict__[k] = v[index]
                 else:
-                    b.__dict__[k] = [v[i] for i in index]
+                    b.__dict__[k] = v[index]
             return b
 
     def __setitem__(
@@ -339,8 +349,6 @@ class Batch:
                                  other.__dict__.values()):
                 if r is None:
                     continue
-                elif isinstance(r, list):
-                    self.__dict__[k] = [r_ + v_ for r_, v_ in zip(r, v)]
                 else:
                     self.__dict__[k] += v
             return self
@@ -348,8 +356,6 @@ class Batch:
             for k, r in self.items():
                 if r is None:
                     continue
-                elif isinstance(r, list):
-                    self.__dict__[k] = [r_ + other for r_ in r]
                 else:
                     self.__dict__[k] += other
             return self
@@ -480,8 +486,6 @@ class Batch:
                 self.__dict__[k] = np.concatenate([self.__dict__[k], v])
             elif isinstance(v, torch.Tensor):
                 self.__dict__[k] = torch.cat([self.__dict__[k], v])
-            elif isinstance(v, list):
-                self.__dict__[k] += copy.deepcopy(v)
             elif isinstance(v, Batch):
                 self.__dict__[k].cat_(v)
             else:
@@ -543,10 +547,12 @@ class Batch:
         filled.
         """
         for k, v in self.items():
-            if isinstance(v, np.ndarray) and v.dtype == np.object:
-                self.__dict__[k].fill(None)
-            elif isinstance(v, Batch):
+            if v is None:
+                continue
+            if isinstance(v, Batch):
                 self.__dict__[k].empty_()
+            elif isinstance(v, np.ndarray) and v.dtype == np.object:
+                self.__dict__[k].fill(None)
             else:
                 self.__dict__[k] *= 0
 
@@ -584,16 +590,12 @@ class Batch:
             data_shape = []
             for v in self.__dict__.values():
                 try:
-                    if len(v.shape) > 0:
-                        data_shape.append(v.shape)
+                    data_shape.append(v.shape)
                 except AttributeError:
-                    if isinstance(v, list):
-                        data_shape.append(tuple([len(v)]))
-                    else:
-                        raise TypeError("No support for 'shape' method with "
-                                        f"type {type(v)} in class Batch.")
+                    raise TypeError("No support for 'shape' method with "
+                                    f"type {type(v)} in class Batch.")
             return list(map(min, zip(*data_shape))) if len(data_shape) > 1 \
-                else data_shape[0] if len(data_shape) > 0 else []
+                else data_shape[0]
 
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:
