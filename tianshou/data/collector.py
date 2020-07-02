@@ -200,14 +200,10 @@ class Collector(object):
             return
         if isinstance(self.state, list):
             self.state[id] = None
-        elif isinstance(self.state, (dict, Batch)):
-            for k in self.state.keys():
-                if isinstance(self.state[k], list):
-                    self.state[k][id] = None
-                elif isinstance(self.state[k], (torch.Tensor, np.ndarray)):
-                    self.state[k][id] = 0
         elif isinstance(self.state, (torch.Tensor, np.ndarray)):
-            self.state[id] = 0
+            self.state[id] *= 0
+        else:  # Batch
+            self.state[id].empty_()
 
     def collect(self,
                 n_step: int = 0,
@@ -272,9 +268,18 @@ class Collector(object):
             else:
                 with torch.no_grad():
                     result = self.policy(batch, self.state)
+
+            # save hidden state to policy._state, in order to save into buffer
             self.state = result.get('state', None)
-            self._policy = to_numpy(result.policy) \
-                if hasattr(result, 'policy') else [{}] * self.env_num
+            if hasattr(result, 'policy'):
+                self._policy = to_numpy(result.policy)
+                if self.state is not None:
+                    self._policy._state = self.state
+            elif self.state is not None:
+                self._policy = Batch(_state=self.state)
+            else:
+                self._policy = [{}] * self.env_num
+
             self._act = to_numpy(result.act)
             if self._action_noise is not None:
                 self._act += self._action_noise(self._act.shape)

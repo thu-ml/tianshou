@@ -13,9 +13,9 @@ def test_batch():
     batch.obs = [1]
     assert batch.obs == [1]
     batch.cat_(batch)
-    assert batch.obs == [1, 1]
+    assert np.allclose(batch.obs, [1, 1])
     assert batch.np.shape == (6, 4)
-    assert batch[0].obs == batch[1].obs
+    assert np.allclose(batch[0].obs, batch[1].obs)
     batch.obs = np.arange(5)
     for i, b in enumerate(batch.split(1, shuffle=False)):
         if i != 5:
@@ -39,14 +39,14 @@ def test_batch():
         'c': np.zeros(1),
         'd': Batch(e=np.array(3.0))}])
     assert len(batch2) == 1
-    assert Batch().size == 0
-    assert batch2.size == 1
+    assert Batch().shape == []
+    assert batch2.shape[0] == 1
     with pytest.raises(IndexError):
         batch2[-2]
     with pytest.raises(IndexError):
         batch2[1]
-    assert batch2[0].size == 1
-    with pytest.raises(TypeError):
+    assert batch2[0].shape == []
+    with pytest.raises(IndexError):
         batch2[0][0]
     with pytest.raises(TypeError):
         len(batch2[0])
@@ -87,24 +87,36 @@ def test_batch_over_batch():
     batch2.b.b[-1] = 0
     print(batch2)
     for k, v in batch2.items():
-        assert batch2[k] == v
+        assert np.all(batch2[k] == v)
     assert batch2[-1].b.b == 0
     batch2.cat_(Batch(c=[6, 7, 8], b=batch))
-    assert batch2.c == [6, 7, 8, 6, 7, 8]
-    assert batch2.b.a == [3, 4, 5, 3, 4, 5]
-    assert batch2.b.b == [4, 5, 0, 4, 5, 0]
+    assert np.allclose(batch2.c, [6, 7, 8, 6, 7, 8])
+    assert np.allclose(batch2.b.a, [3, 4, 5, 3, 4, 5])
+    assert np.allclose(batch2.b.b, [4, 5, 0, 4, 5, 0])
     d = {'a': [3, 4, 5], 'b': [4, 5, 6]}
     batch3 = Batch(c=[6, 7, 8], b=d)
     batch3.cat_(Batch(c=[6, 7, 8], b=d))
-    assert batch3.c == [6, 7, 8, 6, 7, 8]
-    assert batch3.b.a == [3, 4, 5, 3, 4, 5]
-    assert batch3.b.b == [4, 5, 6, 4, 5, 6]
+    assert np.allclose(batch3.c, [6, 7, 8, 6, 7, 8])
+    assert np.allclose(batch3.b.a, [3, 4, 5, 3, 4, 5])
+    assert np.allclose(batch3.b.b, [4, 5, 6, 4, 5, 6])
     batch4 = Batch(({'a': {'b': np.array([1.0])}},))
     assert batch4.a.b.ndim == 2
     assert batch4.a.b[0, 0] == 1.0
+    # advanced slicing
+    batch5 = Batch(a=[[1, 2]], b={'c': np.zeros([3, 2, 1])})
+    assert batch5.shape == [1, 2]
+    with pytest.raises(IndexError):
+        batch5[2]
+    with pytest.raises(IndexError):
+        batch5[:, 3]
+    with pytest.raises(IndexError):
+        batch5[:, :, -1]
+    batch5[:, -1] += 1
+    assert np.allclose(batch5.a, [1, 3])
+    assert np.allclose(batch5.b.c.squeeze(), [[0, 1]] * 3)
 
 
-def test_batch_cat_and_stack():
+def test_batch_cat_and_stack_and_empty():
     b1 = Batch(a=[{'b': np.float64(1.0), 'd': Batch(e=np.array(3.0))}])
     b2 = Batch(a=[{'b': np.float64(4.0), 'd': {'e': np.array(6.0)}}])
     b12_cat_out = Batch.cat((b1, b2))
@@ -133,6 +145,24 @@ def test_batch_cat_and_stack():
     assert np.all(b5.b.c == np.stack([e['b']['c'] for e in b5_dict], axis=0))
     assert b5.b.d[0] == b5_dict[0]['b']['d']
     assert b5.b.d[1] == 0.0
+    b5[1] = Batch.empty(b5[0])
+    assert np.allclose(b5.a, [False, False])
+    assert np.allclose(b5.b.c, [2, 0])
+    assert np.allclose(b5.b.d, [1, 0])
+    data = Batch(a=[False, True],
+                 b={'c': [2., 'st'], 'd': [1, None], 'e': [2., float('nan')]},
+                 c=np.array([1, 3, 4], dtype=np.int),
+                 t=torch.tensor([4, 5, 6, 7.]))
+    data[-1] = Batch.empty(data[1])
+    assert np.allclose(data.c, [1, 3, 0])
+    assert np.allclose(data.a, [False, False])
+    assert list(data.b.c) == ['2.0', '']
+    assert list(data.b.d) == [1, None]
+    assert np.allclose(data.b.e, [2, 0])
+    assert torch.allclose(data.t, torch.tensor([4, 5, 6, 0.]))
+    b0 = Batch()
+    b0.empty_()
+    assert b0.shape == []
 
 
 def test_batch_over_batch_to_torch():
@@ -215,3 +245,5 @@ if __name__ == '__main__':
     test_utils_to_torch()
     test_batch_pickle()
     test_batch_from_to_numpy_without_copy()
+    test_batch_numpy_compatibility()
+    test_batch_cat_and_stack_and_empty()

@@ -5,3 +5,4 @@ We always welcome contributions to help make Tianshou better. Below are an incom
 
 * Jiayi Weng (`Trinkle23897 <https://github.com/Trinkle23897>`_)
 * Minghao Zhang (`Mehooz <https://github.com/Mehooz>`_)
+* Alexis Duburcq (`duburcqa <https://github.com/duburcqa>`_)

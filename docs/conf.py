@@ -77,6 +77,7 @@ html_logo = '_static/images/tianshou-logo.png'
 
 
 def setup(app):
+    app.add_javascript("js/copybutton.js")
     app.add_stylesheet("css/style.css")
 
 # -- Extension configuration -------------------------------------------------
