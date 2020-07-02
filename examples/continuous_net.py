@@ -48,8 +48,9 @@ class ActorProb(nn.Module):
         batch = s.shape[0]
         s = s.view(batch, -1)
         logits = self.model(s)
+        mu = self.mu(logits)
         if not self._unbounded:
-            mu = self._max * torch.tanh(self.mu(logits))
+            mu = self._max * torch.tanh(mu)
         sigma = torch.exp(self.sigma(logits))
         return (mu, sigma), None
 

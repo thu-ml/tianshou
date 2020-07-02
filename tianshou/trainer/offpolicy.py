@@ -102,25 +102,27 @@ def offpolicy_trainer(
                         policy.train()
                         if train_fn:
                             train_fn(epoch)
-                for i in range(update_per_step * min(
+                for i in range(min(
                         result['n/st'] // collect_per_step, t.total - t.n)):
                     global_step += 1
-                    losses = policy.learn(train_collector.sample(batch_size))
-                    for k in result.keys():
-                        data[k] = f'{result[k]:.2f}'
-                        if writer and global_step % log_interval == 0:
-                            writer.add_scalar(
-                                k, result[k], global_step=global_step)
-                    for k in losses.keys():
-                        if stat.get(k) is None:
-                            stat[k] = MovAvg()
-                        stat[k].add(losses[k])
-                        data[k] = f'{stat[k].get():.6f}'
-                        if writer and global_step % log_interval == 0:
-                            writer.add_scalar(
-                                k, stat[k].get(), global_step=global_step)
+                    for j in range(update_per_step):
+                        losses = policy.learn(
+                            train_collector.sample(batch_size))
+                        for k in result.keys():
+                            data[k] = f'{result[k]:.2f}'
+                            if writer and global_step % log_interval == 0:
+                                writer.add_scalar(
+                                    k, result[k], global_step=global_step)
+                        for k in losses.keys():
+                            if stat.get(k) is None:
+                                stat[k] = MovAvg()
+                            stat[k].add(losses[k])
+                            data[k] = f'{stat[k].get():.6f}'
+                            if writer and global_step % log_interval == 0:
+                                writer.add_scalar(
+                                    k, stat[k].get(), global_step=global_step)
+                        t.set_postfix(**data)
                     t.update(1)
-                    t.set_postfix(**data)
             if t.n <= t.total:
                 t.update()
         # test
