@@ -200,8 +200,10 @@ class Collector(object):
             return
         if isinstance(self.state, list):
             self.state[id] = None
-        elif isinstance(self.state, (torch.Tensor, np.ndarray)):
-            self.state[id] *= 0
+        elif isinstance(self.state, torch.Tensor):
+            self.state[id].fill_(0)
+        elif isinstance(self.state, np.ndarray):
+            self.state[id].fill(0)
         else:  # Batch
             self.state[id].empty_()
 
