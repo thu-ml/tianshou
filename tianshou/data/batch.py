@@ -1,5 +1,4 @@
 import torch
-import copy
 import pprint
 import warnings
 import numpy as np
@@ -253,7 +252,7 @@ class Batch:
                  batch_dict: Optional[Union[
                      dict, 'Batch', Tuple[Union[dict, 'Batch']],
                      List[Union[dict, 'Batch']], np.ndarray]] = None,
-                 copy=False,
+                 copy: bool = False,
                  **kwargs) -> None:
         if copy:
             batch_dict = deepcopy(batch_dict)
@@ -364,7 +363,7 @@ class Batch:
     def __add__(self, other: Union['Batch', Number]):
         """Algebraic addition with another :class:`~tianshou.data.Batch`
         instance out-of-place."""
-        return copy.deepcopy(self).__iadd__(other)
+        return deepcopy(self).__iadd__(other)
 
     def __imul__(self, val: Number):
         """Algebraic multiplication with a scalar value in-place."""
@@ -376,7 +375,7 @@ class Batch:
 
     def __mul__(self, val: Number):
         """Algebraic multiplication with a scalar value out-of-place."""
-        return copy.deepcopy(self).__imul__(val)
+        return deepcopy(self).__imul__(val)
 
     def __itruediv__(self, val: Number):
         """Algebraic division wibyth a scalar value in-place."""
@@ -388,7 +387,7 @@ class Batch:
 
     def __truediv__(self, val: Number):
         """Algebraic division wibyth a scalar value out-of-place."""
-        return copy.deepcopy(self).__itruediv__(val)
+        return deepcopy(self).__itruediv__(val)
 
     def __repr__(self) -> str:
         """Return str(self)."""
@@ -480,7 +479,7 @@ class Batch:
             if v is None:
                 continue
             if not hasattr(self, k) or self.__dict__[k] is None:
-                self.__dict__[k] = copy.deepcopy(v)
+                self.__dict__[k] = deepcopy(v)
             elif isinstance(v, np.ndarray) and v.ndim > 0:
                 self.__dict__[k] = np.concatenate([self.__dict__[k], v])
             elif isinstance(v, torch.Tensor):
