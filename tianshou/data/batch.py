@@ -243,6 +243,9 @@ class Batch:
     Convenience helpers are available to convert in-place the stored data into
     Numpy arrays or Torch tensors.
 
+    For Numpy arrays, only data types with ``np.object`` and numbers are supported.
+    For strings or other data types, however, they can be held in ``np.object`` arrays.
+
     Finally, note that :class:`~tianshou.data.Batch` instance are serializable
     and therefore Pickle compatible. This is especially important for
     distributed sampling.
