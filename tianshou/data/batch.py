@@ -549,11 +549,11 @@ class Batch:
             elif isinstance(v, np.ndarray) and v.dtype == np.object:
                 self.__dict__[k].fill(None)
             elif isinstance(v, torch.Tensor):  # cannot apply fill_ directly
-                self.__dict__[k] = torch.zeros_like(self.__dict__[k])
+                self.__dict__[k].zero_()
             else:  # np
                 self.__dict__[k] *= 0
                 if hasattr(v, 'dtype') and v.dtype.kind in 'fc':
-                    self.__dict__[k] = np.nan_to_num(self.__dict__[k])
+                    np.nan_to_num(self.__dict__[k], copy=False)
         return self
 
     @staticmethod
