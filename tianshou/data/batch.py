@@ -3,6 +3,7 @@ import copy
 import pprint
 import warnings
 import numpy as np
+from copy import deepcopy
 from functools import reduce
 from numbers import Number
 from typing import Any, List, Tuple, Union, Iterator, Optional
@@ -252,7 +253,10 @@ class Batch:
                  batch_dict: Optional[Union[
                      dict, 'Batch', Tuple[Union[dict, 'Batch']],
                      List[Union[dict, 'Batch']], np.ndarray]] = None,
+                 copy=False,
                  **kwargs) -> None:
+        if copy:
+            batch_dict = deepcopy(batch_dict)
         if _is_batch_set(batch_dict):
             self.stack_(batch_dict)
         elif isinstance(batch_dict, (dict, Batch)):
@@ -264,7 +268,7 @@ class Batch:
                         v = np.array(v)
                     self.__dict__[k] = v
         if len(kwargs) > 0:
-            self.__init__(kwargs)
+            self.__init__(kwargs, copy=copy)
 
     def __setattr__(self, key: str, value: Any):
         """self[key] = value"""
@@ -546,14 +550,19 @@ class Batch:
                 continue
             if isinstance(v, Batch):
                 self.__dict__[k].empty_()
-            elif isinstance(v, np.ndarray) and v.dtype == np.object:
-                self.__dict__[k].fill(None)
             elif isinstance(v, torch.Tensor):  # cannot apply fill_ directly
                 self.__dict__[k].zero_()
-            else:  # np
-                self.__dict__[k] *= 0
-                if hasattr(v, 'dtype') and v.dtype.kind in 'fc':
-                    np.nan_to_num(self.__dict__[k], copy=False)
+            elif isinstance(v, np.ndarray):
+                if v.dtype == np.object:
+                    self.__dict__[k].fill(None)
+                else:  # np
+                    self.__dict__[k].fill(0)
+            else:
+                # scalar value
+                if isinstance(v, np.number) or isinstance(v, np.bool_):
+                    self.__dict__[k] = self.__dict__[k].__class__(0)
+                else:
+                    self.__dict__[k] = None
         return self
 
     @staticmethod
@@ -562,7 +571,7 @@ class Batch:
         ``None`` filled, the shape is the same as the given
         :class:`~tianshou.data.Batch`.
         """
-        batch = Batch(**batch)
+        batch = Batch(**batch, copy=True)
         batch.empty_()
         return batch
 
