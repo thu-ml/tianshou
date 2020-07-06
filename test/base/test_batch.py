@@ -236,14 +236,14 @@ def test_batch_copy():
     assert batch2.b.a is not batch3.b.a
     assert batch2.b.b is not batch3.b.b
 
-    batch = Batch(a=np.array([Batch(), Batch()], dtype=np.object))
+    batch = Batch(a=[object(), object()])
     batch_c = Batch(batch, copy=True)
     assert batch_c.a[0] is not batch.a[0]
     assert batch_c.a[1] is not batch.a[1]
 
 
 def test_batch_empty():
-    batch = Batch(a=np.array([object(), object()], dtype=np.object))
+    batch = Batch(a=[object(), object()])
     batch_e = Batch.empty(batch)
     assert batch_e.a[0] is None
     assert batch_e.a[1] is None
