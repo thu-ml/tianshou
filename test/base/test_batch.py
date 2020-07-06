@@ -149,9 +149,9 @@ def test_batch_cat_and_stack():
 
 def test_batch_over_batch_to_torch():
     batch = Batch(
-        a=np.ones((1,), dtype=np.float64),
+        a=np.float64(1.0),
         b=Batch(
-            c=np.ones((1,), dtype=np.float64),
+            c=np.ones((1,), dtype=np.float32),
             d=torch.ones((1,), dtype=torch.float64)
         )
     )
@@ -160,7 +160,7 @@ def test_batch_over_batch_to_torch():
     assert isinstance(batch.b.c, torch.Tensor)
     assert isinstance(batch.b.d, torch.Tensor)
     assert batch.a.dtype == torch.float64
-    assert batch.b.c.dtype == torch.float64
+    assert batch.b.c.dtype == torch.float32
     assert batch.b.d.dtype == torch.float64
     batch.to_torch(dtype=torch.float32)
     assert batch.a.dtype == torch.float32
@@ -170,9 +170,9 @@ def test_batch_over_batch_to_torch():
 
 def test_utils_to_torch():
     batch = Batch(
-        a=np.ones((1,), dtype=np.float64),
+        a=np.float64(1.0),
         b=Batch(
-            c=np.ones((1,), dtype=np.float64),
+            c=np.ones((1,), dtype=np.float32),
             d=torch.ones((1,), dtype=torch.float64)
         )
     )

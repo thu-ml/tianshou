@@ -24,7 +24,9 @@ def to_torch(x: Union[torch.Tensor, dict, Batch, np.ndarray],
              device: Union[str, int, torch.device] = 'cpu'
              ) -> Union[dict, Batch, torch.Tensor]:
     """Return an object without np.ndarray."""
-    if isinstance(x, np.ndarray):
+    if isinstance(x, (np.generic, np.ndarray)):
+        if isinstance(x, np.generic):
+            x = np.asanyarray(x)
         x = torch.from_numpy(x).to(device)
         if dtype is not None:
             x = x.type(dtype)

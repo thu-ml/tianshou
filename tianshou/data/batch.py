@@ -447,6 +447,8 @@ class Batch:
 
         for k, v in self.items():
             if isinstance(v, (np.generic, np.ndarray)):
+                if isinstance(v, np.generic):
+                    v = np.asanyarray(v)
                 v = torch.from_numpy(v).to(device)
                 if dtype is not None:
                     v = v.type(dtype)
