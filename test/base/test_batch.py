@@ -116,7 +116,7 @@ def test_batch_over_batch():
     assert np.allclose(batch5.b.c.squeeze(), [[0, 1]] * 3)
 
 
-def test_batch_cat_and_stack_and_empty():
+def test_batch_cat_and_stack():
     b1 = Batch(a=[{'b': np.float64(1.0), 'd': Batch(e=np.array(3.0))}])
     b2 = Batch(a=[{'b': np.float64(4.0), 'd': {'e': np.array(6.0)}}])
     b12_cat_out = Batch.cat((b1, b2))
@@ -145,26 +145,6 @@ def test_batch_cat_and_stack_and_empty():
     assert np.all(b5.b.c == np.stack([e['b']['c'] for e in b5_dict], axis=0))
     assert b5.b.d[0] == b5_dict[0]['b']['d']
     assert b5.b.d[1] == 0.0
-    b5[1] = Batch.empty(b5[0])
-    assert np.allclose(b5.a, [False, False])
-    assert np.allclose(b5.b.c, [2, 0])
-    assert np.allclose(b5.b.d, [1, 0])
-    data = Batch(a=[False, True],
-                 b={'c': np.array([2., 'st'], dtype=np.object),
-                    'd': [1, None],
-                    'e': [2., float('nan')]},
-                 c=np.array([1, 3, 4], dtype=np.int),
-                 t=torch.tensor([4, 5, 6, 7.]))
-    data[-1] = Batch.empty(data[1])
-    assert np.allclose(data.c, [1, 3, 0])
-    assert np.allclose(data.a, [False, False])
-    assert list(data.b.c) == [2.0, None]
-    assert list(data.b.d) == [1, None]
-    assert np.allclose(data.b.e, [2, 0])
-    assert torch.allclose(data.t, torch.tensor([4, 5, 6, 0.]))
-    b0 = Batch()
-    b0.empty_()
-    assert b0.shape == []
 
 
 def test_batch_over_batch_to_torch():
@@ -228,8 +208,8 @@ def test_batch_from_to_numpy_without_copy():
 
 
 def test_batch_copy():
-    batch = Batch(a=[3, 4, 5], b=[4, 5, 6])
-    batch2 = Batch({'c': [6, 7, 8], 'b': batch})
+    batch = Batch(a=np.array([3, 4, 5]), b=np.array([4, 5, 6]))
+    batch2 = Batch({'c': np.array([6, 7, 8]), 'b': batch})
     batch3 = Batch(batch2, copy=True)
     assert batch2.c is not batch3.c
     assert batch2.b is not batch3.b
@@ -243,6 +223,29 @@ def test_batch_copy():
 
 
 def test_batch_empty():
+    b5_dict = np.array([{'a': False, 'b': {'c': 2.0, 'd': 1.0}},
+                        {'a': True, 'b': {'c': 3.0}}])
+    b5 = Batch(b5_dict)
+    b5[1] = Batch.empty(b5[0])
+    assert np.allclose(b5.a, [False, False])
+    assert np.allclose(b5.b.c, [2, 0])
+    assert np.allclose(b5.b.d, [1, 0])
+    data = Batch(a=[False, True],
+                 b={'c': np.array([2., 'st'], dtype=np.object),
+                    'd': [1, None],
+                    'e': [2., float('nan')]},
+                 c=np.array([1, 3, 4], dtype=np.int),
+                 t=torch.tensor([4, 5, 6, 7.]))
+    data[-1] = Batch.empty(data[1])
+    assert np.allclose(data.c, [1, 3, 0])
+    assert np.allclose(data.a, [False, False])
+    assert list(data.b.c) == [2.0, None]
+    assert list(data.b.d) == [1, None]
+    assert np.allclose(data.b.e, [2, 0])
+    assert torch.allclose(data.t, torch.tensor([4, 5, 6, 0.]))
+    b0 = Batch()
+    b0.empty_()
+    assert b0.shape == []
     batch = Batch(a=[object(), object()])
     batch_e = Batch.empty(batch)
     assert batch_e.a[0] is None
@@ -270,6 +273,6 @@ if __name__ == '__main__':
     test_batch_pickle()
     test_batch_from_to_numpy_without_copy()
     test_batch_numpy_compatibility()
-    test_batch_cat_and_stack_and_empty()
+    test_batch_cat_and_stack()
     test_batch_copy()
     test_batch_empty()

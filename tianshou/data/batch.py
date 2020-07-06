@@ -545,38 +545,42 @@ class Batch:
         batch.stack_(batches, axis)
         return batch
 
-    def empty_(self) -> 'Batch':
+    def empty_(self, index: Union[
+        str, slice, int, np.integer, np.ndarray, List[int]] = None
+    ) -> 'Batch':
         """Return an empty a :class:`~tianshou.data.Batch` object with 0 or
-        ``None`` filled.
+        ``None`` filled. If ``index`` is specified, it will only reset the
+        specific indexed-data.
         """
         for k, v in self.items():
             if v is None:
                 continue
             if isinstance(v, Batch):
-                self.__dict__[k].empty_()
-            elif isinstance(v, torch.Tensor):  # cannot apply fill_ directly
-                self.__dict__[k].zero_()
+                self.__dict__[k].empty_(index=index)
+            elif isinstance(v, torch.Tensor):
+                self.__dict__[k][index] = 0
             elif isinstance(v, np.ndarray):
                 if v.dtype == np.object:
-                    self.__dict__[k].fill(None)
+                    self.__dict__[k][index] = None
                 else:
-                    self.__dict__[k].fill(0)
-            else:
-                # scalar value
-                if isinstance(v, np.number) or isinstance(v, np.bool_):
-                    self.__dict__[k] = self.__dict__[k].__class__(0)
+                    self.__dict__[k][index] = 0
+            else:  # scalar value
+                if isinstance(v, (np.generic, Number)):
+                    self.__dict__[k] = 0
                 else:
                     self.__dict__[k] = None
         return self
 
     @staticmethod
-    def empty(batch: 'Batch') -> 'Batch':
+    def empty(batch: 'Batch', index: Union[
+        str, slice, int, np.integer, np.ndarray, List[int]] = None
+    ) -> 'Batch':
         """Return an empty :class:`~tianshou.data.Batch` object with 0 or
         ``None`` filled, the shape is the same as the given
         :class:`~tianshou.data.Batch`.
         """
         batch = Batch(**batch, copy=True)
-        batch.empty_()
+        batch.empty_(index=index)
         return batch
 
     def __len__(self) -> int:
