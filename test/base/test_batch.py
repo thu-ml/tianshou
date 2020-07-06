@@ -241,11 +241,13 @@ def test_batch_copy():
     assert batch_c.a[0] is not batch.a[0]
     assert batch_c.a[1] is not batch.a[1]
 
+
 def test_batch_empty():
     batch = Batch(a=np.array([object(), object()], dtype=np.object))
     batch_e = Batch.empty(batch)
     assert batch_e.a[0] is None
     assert batch_e.a[1] is None
+
 
 def test_batch_numpy_compatibility():
     batch = Batch(a=np.array([[1.0, 2.0], [3.0, 4.0]]),
