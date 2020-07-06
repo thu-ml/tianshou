@@ -225,6 +225,21 @@ def test_batch_from_to_numpy_without_copy():
     assert c_mem_addr_new == c_mem_addr_orig
 
 
+def test_batch_copy():
+    batch = Batch(a=[3, 4, 5], b=[4, 5, 6])
+    batch2 = Batch({'c': [6, 7, 8], 'b': batch})
+    batch3 = Batch(batch2, copy=True)
+    assert batch2.c is not batch3.c
+    assert batch2.b is not batch3.b
+    assert batch2.b.a is not batch3.b.a
+    assert batch2.b.b is not batch3.b.b
+
+    batch = Batch(a=np.array([Batch(), Batch()], dtype=np.object))
+    batch_c = Batch(batch, copy=True)
+    assert batch_c.a[0] is not batch.a[0]
+    assert batch_c.a[1] is not batch.a[1]
+
+
 def test_batch_numpy_compatibility():
     batch = Batch(a=np.array([[1.0, 2.0], [3.0, 4.0]]),
                   b=Batch(),
@@ -247,3 +262,4 @@ if __name__ == '__main__':
     test_batch_from_to_numpy_without_copy()
     test_batch_numpy_compatibility()
     test_batch_cat_and_stack_and_empty()
+    test_batch_copy()
