@@ -210,16 +210,33 @@ def test_batch_from_to_numpy_without_copy():
 def test_batch_copy():
     batch = Batch(a=np.array([3, 4, 5]), b=np.array([4, 5, 6]))
     batch2 = Batch({'c': np.array([6, 7, 8]), 'b': batch})
-    batch3 = Batch(batch2, copy=True)
+    orig_c_addr = batch2.c.__array_interface__['data'][0]
+    orig_b_a_addr = batch2.b.a.__array_interface__['data'][0]
+    orig_b_b_addr = batch2.b.b.__array_interface__['data'][0]
+    # test with copy=False
+    batch3 = Batch(copy=False, **batch2)
+    curr_c_addr = batch3.c.__array_interface__['data'][0]
+    curr_b_a_addr = batch3.b.a.__array_interface__['data'][0]
+    curr_b_b_addr = batch3.b.b.__array_interface__['data'][0]
+    assert batch2.c is batch3.c
+    assert batch2.b is batch3.b
+    assert batch2.b.a is batch3.b.a
+    assert batch2.b.b is batch3.b.b
+    assert orig_c_addr == curr_c_addr
+    assert orig_b_a_addr == curr_b_a_addr
+    assert orig_b_b_addr == curr_b_b_addr
+    # test with copy=True
+    batch3 = Batch(copy=True, **batch2)
+    curr_c_addr = batch3.c.__array_interface__['data'][0]
+    curr_b_a_addr = batch3.b.a.__array_interface__['data'][0]
+    curr_b_b_addr = batch3.b.b.__array_interface__['data'][0]
     assert batch2.c is not batch3.c
     assert batch2.b is not batch3.b
     assert batch2.b.a is not batch3.b.a
     assert batch2.b.b is not batch3.b.b
-
-    batch = Batch(a=[object(), object()])
-    batch_c = Batch(batch, copy=True)
-    assert batch_c.a[0] is not batch.a[0]
-    assert batch_c.a[1] is not batch.a[1]
+    assert orig_c_addr != curr_c_addr
+    assert orig_b_a_addr != curr_b_a_addr
+    assert orig_b_b_addr != curr_b_b_addr
 
 
 def test_batch_empty():
@@ -243,13 +260,16 @@ def test_batch_empty():
     assert list(data.b.d) == [1, None]
     assert np.allclose(data.b.e, [2, 0])
     assert torch.allclose(data.t, torch.tensor([4, 5, 6, 0.]))
+    data[0].empty_()  # which will fail in a, b.c, b.d, b.e, c
+    assert torch.allclose(data.t, torch.tensor([0., 5, 6, 0]))
+    data.empty_(index=0)
+    assert np.allclose(data.c, [0, 3, 0])
+    assert list(data.b.c) == [None, None]
+    assert list(data.b.d) == [None, None]
+    assert list(data.b.e) == [0, 0]
     b0 = Batch()
     b0.empty_()
     assert b0.shape == []
-    batch = Batch(a=[object(), object()])
-    batch_e = Batch.empty(batch)
-    assert batch_e.a[0] is None
-    assert batch_e.a[1] is None
 
 
 def test_batch_numpy_compatibility():
