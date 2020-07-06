@@ -83,19 +83,15 @@ class TD3Policy(DDPGPolicy):
         self._last = 0
 
     def train(self, mode=True) -> torch.nn.Module:
-        if not mode:
-            return self.eval()
-        self.training = True
-        self.actor.train()
-        self.critic1.train()
-        self.critic2.train()
-        return self
-
-    def eval(self) -> torch.nn.Module:
-        self.training = False
-        self.actor.eval()
-        self.critic1.eval()
-        self.critic2.eval()
+        self.training = mode
+        if self.training:
+            self.actor.train()
+            self.critic1.train()
+            self.critic2.train()
+        else:
+            self.actor.eval()
+            self.critic1.eval()
+            self.critic2.eval()
         return self
 
     def sync_weight(self) -> None:
