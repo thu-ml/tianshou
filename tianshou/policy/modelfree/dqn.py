@@ -57,10 +57,7 @@ class DQNPolicy(BasePolicy):
     def train(self, mode=True) -> torch.nn.Module:
         """Set the module in training mode, except for the target network."""
         self.training = mode
-        if self.training:
-            self.model.train()
-        else:
-            self.model.eval()
+        self.model.train(mode)
         return self
 
     def sync_weight(self) -> None:

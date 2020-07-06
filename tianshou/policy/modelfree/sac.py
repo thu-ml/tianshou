@@ -91,14 +91,9 @@ class SACPolicy(DDPGPolicy):
 
     def train(self, mode=True) -> torch.nn.Module:
         self.training = mode
-        if self.training:
-            self.actor.train()
-            self.critic1.train()
-            self.critic2.train()
-        else:
-            self.actor.eval()
-            self.critic1.eval()
-            self.critic2.eval()
+        self.actor.train(mode)
+        self.critic1.train(mode)
+        self.critic2.train(mode)
         return self
 
     def sync_weight(self) -> None:

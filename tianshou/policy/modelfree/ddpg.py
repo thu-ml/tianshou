@@ -84,12 +84,8 @@ class DDPGPolicy(BasePolicy):
     def train(self, mode=True) -> torch.nn.Module:
         """Set the module in training mode, except for the target network."""
         self.training = mode
-        if self.training:
-            self.actor.train()
-            self.critic.train()
-        else:
-            self.actor.eval()
-            self.critic.eval()
+        self.actor.train(mode)
+        self.critic.train(mode)
         return self
 
     def sync_weight(self) -> None:
