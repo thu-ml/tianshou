@@ -85,8 +85,13 @@ class Batch:
             c: '2312312',
         )
 
-    In short, you can define a :class:`Batch` with any key-value pair. The
-    current implementation of Tianshou typically use 7 reserved keys in
+    In short, you can define a :class:`Batch` with any key-value pair.
+
+    For Numpy arrays, only data types with ``np.object`` and numbers are
+    supported. For strings or other data types, however, they can be held
+    in ``np.object`` arrays.
+
+    The current implementation of Tianshou typically use 7 reserved keys in
     :class:`~tianshou.data.Batch`:
 
     * ``obs`` the observation of step :math:`t` ;
@@ -242,10 +247,6 @@ class Batch:
 
     Convenience helpers are available to convert in-place the stored data into
     Numpy arrays or Torch tensors.
-
-    For Numpy arrays, only data types with ``np.object`` and numbers are
-    supported. For strings or other data types, however, they can be held
-    in ``np.object`` arrays.
 
     Finally, note that :class:`~tianshou.data.Batch` instance are serializable
     and therefore Pickle compatible. This is especially important for
@@ -558,7 +559,7 @@ class Batch:
             elif isinstance(v, np.ndarray):
                 if v.dtype == np.object:
                     self.__dict__[k].fill(None)
-                else:  # np
+                else:
                     self.__dict__[k].fill(0)
             else:
                 # scalar value
