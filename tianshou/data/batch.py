@@ -565,8 +565,12 @@ class Batch:
                 else:
                     self.__dict__[k][index] = 0
             else:  # scalar value
+                warnings.warn('You are calling Batch.empty on a NumPy scalar, '
+                              'which may cause undefined behaviors.')
                 if isinstance(v, (np.generic, Number)):
-                    self.__dict__[k] = 0
+                    self.__dict__[k] *= 0
+                    if np.isnan(self.__dict__[k]):
+                        self.__dict__[k] = 0
                 else:
                     self.__dict__[k] = None
         return self
@@ -579,9 +583,7 @@ class Batch:
         ``None`` filled, the shape is the same as the given
         :class:`~tianshou.data.Batch`.
         """
-        batch = Batch(**batch, copy=True)
-        batch.empty_(index=index)
-        return batch
+        return deepcopy(batch).empty_(index)
 
     def __len__(self) -> int:
         """Return len(self)."""
