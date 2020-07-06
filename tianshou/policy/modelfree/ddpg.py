@@ -81,17 +81,21 @@ class DDPGPolicy(BasePolicy):
         """Set the exploration noise."""
         self._noise = noise
 
-    def train(self) -> None:
+    def train(self, mode=True) -> torch.nn.Module:
         """Set the module in training mode, except for the target network."""
+        if not mode:
+            return self.eval()
         self.training = True
         self.actor.train()
         self.critic.train()
+        return self
 
-    def eval(self) -> None:
+    def eval(self) -> torch.nn.Module:
         """Set the module in evaluation mode, except for the target network."""
         self.training = False
         self.actor.eval()
         self.critic.eval()
+        return self
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
@@ -127,8 +131,6 @@ class DDPGPolicy(BasePolicy):
                 **kwargs) -> Batch:
         """Compute action over the given batch data.
 
-        :param float eps: in [0, 1], for exploration use.
-
         :return: A :class:`~tianshou.data.Batch` which has 2 keys:
 
             * ``act`` the action.
@@ -141,12 +143,12 @@ class DDPGPolicy(BasePolicy):
         """
         model = getattr(self, model)
         obs = getattr(batch, input)
-        logits, h = model(obs, state=state, info=batch.info)
-        logits += self._action_bias
+        actions, h = model(obs, state=state, info=batch.info)
+        actions += self._action_bias
         if self.training and explorating:
-            logits += to_torch_as(self._noise(logits.shape), logits)
-        logits = logits.clamp(self._range[0], self._range[1])
-        return Batch(act=logits, state=h)
+            actions += to_torch_as(self._noise(actions.shape), actions)
+        actions = actions.clamp(self._range[0], self._range[1])
+        return Batch(act=actions, state=h)
 
     def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         current_q = self.critic(batch.obs, batch.act)
