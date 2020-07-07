@@ -569,10 +569,12 @@ class Batch:
             else:  # scalar value
                 warnings.warn('You are calling Batch.empty on a NumPy scalar, '
                               'which may cause undefined behaviors.')
-                if isinstance(v, (np.generic, Number)):
+                if isinstance(v, (np.number, Number)):
                     self.__dict__[k] *= 0
                     if np.isnan(self.__dict__[k]):
                         self.__dict__[k] = 0
+                elif isinstance(v, np.bool_):
+                    self.__dict__[k] &= False
                 else:
                     self.__dict__[k] = None
         return self
