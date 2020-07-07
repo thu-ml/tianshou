@@ -87,9 +87,9 @@ class Batch:
 
     In short, you can define a :class:`Batch` with any key-value pair.
 
-    For Numpy arrays, only data types with ``np.object`` and numbers are
-    supported. For strings or other data types, however, they can be held
-    in ``np.object`` arrays.
+    For Numpy arrays, only data types with ``np.object``, bool, and number
+    are supported. For strings or other data types, however, they can be
+    held in ``np.object`` arrays.
 
     The current implementation of Tianshou typically use 7 reserved keys in
     :class:`~tianshou.data.Batch`:
