@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from numbers import Number
 from typing import Union, Optional
 
 from tianshou.data import Batch
@@ -24,10 +25,6 @@ def to_torch(x: Union[torch.Tensor, dict, Batch, np.ndarray],
              device: Union[str, int, torch.device] = 'cpu'
              ) -> Union[dict, Batch, torch.Tensor]:
     """Return an object without np.ndarray."""
-    if isinstance(x, np.ndarray):
-        x = torch.from_numpy(x).to(device)
-        if dtype is not None:
-            x = x.type(dtype)
     if isinstance(x, torch.Tensor):
         if dtype is not None:
             x = x.type(dtype)
@@ -37,6 +34,16 @@ def to_torch(x: Union[torch.Tensor, dict, Batch, np.ndarray],
             x[k] = to_torch(v, dtype, device)
     elif isinstance(x, Batch):
         x.to_torch(dtype, device)
+    elif isinstance(x, (np.number, np.bool_, Number)):
+        x = to_torch(np.asanyarray(x), dtype, device)
+    elif isinstance(x, list) and len(x) > 0 and \
+            isinstance(x[0], (np.number, np.bool_, Number)):
+        x = to_torch(np.asanyarray(x), dtype, device)
+    elif isinstance(x, np.ndarray) and \
+            isinstance(x.item(0), (np.number, np.bool_, Number)):
+        x = torch.from_numpy(x).to(device)
+        if dtype is not None:
+            x = x.type(dtype)
     return x
 
 
