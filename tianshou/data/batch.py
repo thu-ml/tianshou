@@ -43,14 +43,15 @@ def _valid_bounds(length: int, index: Union[
         return start_valid and stop_valid
 
 
-def _create_value(inst: Any, size: int) -> Union['Batch', np.ndarray]:
+def _create_value(inst: Any, size: int) -> Union[
+        'Batch', np.ndarray, torch.Tensor]:
     if isinstance(inst, np.ndarray):
         return np.full((size, *inst.shape),
                        fill_value=None if inst.dtype == np.object else 0,
                        dtype=inst.dtype)
     elif isinstance(inst, torch.Tensor):
         return torch.full((size, *inst.shape),
-                          fill_value=None if inst.dtype == np.object else 0,
+                          fill_value=0,
                           device=inst.device,
                           dtype=inst.dtype)
     elif isinstance(inst, (dict, Batch)):
