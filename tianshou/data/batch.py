@@ -16,10 +16,10 @@ warnings.filterwarnings(
 
 def _is_batch_set(data: Any) -> bool:
     if isinstance(data, (list, tuple)):
-        if len(data) > 0 and isinstance(data[0], (dict, Batch)):
+        if len(data) > 0 and all(isinstance(e, (dict, Batch)) for e in data):
             return True
-    elif isinstance(data, np.ndarray):
-        if isinstance(data.item(0), (dict, Batch)):
+    elif isinstance(data, np.ndarray) and data.dtype == np.object:
+        if all(isinstance(e, (dict, Batch)) for e in data.tolist()):
             return True
     return False
 
@@ -520,9 +520,9 @@ class Batch:
         values_shared = [
             [e[k] for e in batches] for k in keys_shared]
         for k, v in zip(keys_shared, values_shared):
-            if isinstance(v[0], (dict, Batch)):
+            if all(isinstance(e, (dict, Batch)) for e in v):
                 self.__dict__[k] = Batch.stack(v, axis)
-            elif isinstance(v[0], torch.Tensor):
+            elif all(isinstance(e, torch.Tensor) for e in v):
                 self.__dict__[k] = torch.stack(v, axis)
             else:
                 self.__dict__[k] = np.stack(v, axis)
