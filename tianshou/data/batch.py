@@ -270,8 +270,7 @@ class Batch:
                 else:
                     if isinstance(v, list):
                         v = np.array(v)
-                        if not np.issubdtype(v.dtype, np.bool_) and \
-                                not np.issubdtype(v.dtype, np.number):
+                        if not issubclass(v.dtype.type, (np.bool_, np.number)):
                             v = v.astype(np.object)
                     self.__dict__[k] = v
         if len(kwargs) > 0:
@@ -529,8 +528,7 @@ class Batch:
                 self.__dict__[k] = torch.stack(v, axis)
             else:
                 v = np.stack(v, axis)
-                if not np.issubdtype(v.dtype, np.bool_) and \
-                        not np.issubdtype(v.dtype, np.number):
+                if not issubclass(v.dtype.type, (np.bool_, np.number)):
                     v = v.astype(np.object)
                 self.__dict__[k] = v
         keys_partial = reduce(set.symmetric_difference, keys_map)
