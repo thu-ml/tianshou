@@ -114,7 +114,7 @@ class Batch:
         >>> print(data[0])
         Batch(
             a: Batch(
-                b: array(['0.0', 'info'], dtype='<U32'),
+                b: array([0.0, 'info'], dtype=object),
             ),
         )
 
@@ -224,7 +224,7 @@ class Batch:
         Batch(
             a: array([False,  True]),
             b: Batch(
-                   c: array([0., 3.]),
+                   c: array([None, 'st']),
                    d: array([0., 0.]),
                ),
         )
@@ -270,6 +270,9 @@ class Batch:
                 else:
                     if isinstance(v, list):
                         v = np.array(v)
+                        if not np.issubdtype(v.dtype, np.bool_) and \
+                                not np.issubdtype(v.dtype, np.number):
+                            v = v.astype(np.object)
                     self.__dict__[k] = v
         if len(kwargs) > 0:
             self.__init__(kwargs, copy=copy)
@@ -525,7 +528,11 @@ class Batch:
             elif isinstance(v[0], torch.Tensor):
                 self.__dict__[k] = torch.stack(v, axis)
             else:
-                self.__dict__[k] = np.stack(v, axis)
+                v = np.stack(v, axis)
+                if not np.issubdtype(v.dtype, np.bool_) and \
+                        not np.issubdtype(v.dtype, np.number):
+                    v = v.astype(np.object)
+                self.__dict__[k] = v
         keys_partial = reduce(set.symmetric_difference, keys_map)
         for k in keys_partial:
             for i, e in enumerate(batches):
