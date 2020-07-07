@@ -446,14 +446,14 @@ class Batch:
             device = torch.device(device)
 
         for k, v in self.items():
-            if isinstance(v, (np.generic, np.ndarray)):
-                if isinstance(v, np.generic):
+            if isinstance(v, (np.number, np.bool_, Number, np.ndarray)):
+                if isinstance(v, (np.number, np.bool_, Number)):
                     v = np.asanyarray(v)
                 v = torch.from_numpy(v).to(device)
                 if dtype is not None:
                     v = v.type(dtype)
                 self.__dict__[k] = v
-            if isinstance(v, torch.Tensor):
+            elif isinstance(v, torch.Tensor):
                 if dtype is not None and v.dtype != dtype:
                     must_update_tensor = True
                 elif v.device.type != device.type:
