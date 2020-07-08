@@ -277,7 +277,7 @@ def test_batch_empty():
     assert b0.shape == []
 
 
-def test_batch_numpy_compatibility():
+def test_batch_standard_compatibility():
     batch = Batch(a=np.array([[1.0, 2.0], [3.0, 4.0]]),
                   b=Batch(),
                   c=np.array([5.0, 6.0]))
@@ -288,6 +288,8 @@ def test_batch_numpy_compatibility():
         len(batch_mean)
     assert np.all(batch_mean.a == np.mean(batch.a, axis=0))
     assert batch_mean.c == np.mean(batch.c, axis=0)
+    with pytest.raises(IndexError):
+        Batch()[0]
 
 
 if __name__ == '__main__':
@@ -297,7 +299,7 @@ if __name__ == '__main__':
     test_utils_to_torch()
     test_batch_pickle()
     test_batch_from_to_numpy_without_copy()
-    test_batch_numpy_compatibility()
+    test_batch_standard_compatibility()
     test_batch_cat_and_stack()
     test_batch_copy()
     test_batch_empty()
