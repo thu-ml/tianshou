@@ -356,7 +356,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._beta = beta
         self._weight_sum = 0.0
         self._amortization_freq = 50
-        self._amortization_counter = 0
         self._replace = replace
         self._meta.__dict__['weight'] = np.zeros(size, dtype=np.float64)
 
@@ -417,7 +416,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         return batch, indice
 
     def reset(self) -> None:
-        self._amortization_counter = 0
         super().reset()
 
     def update_weight(self, indice: Union[slice, np.ndarray],
