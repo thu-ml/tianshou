@@ -300,7 +300,9 @@ class ReplayBuffer:
 class ListReplayBuffer(ReplayBuffer):
     """The function of :class:`~tianshou.data.ListReplayBuffer` is almost the
     same as :class:`~tianshou.data.ReplayBuffer`. The only difference is that
-    :class:`~tianshou.data.ListReplayBuffer` is based on ``list``.
+    :class:`~tianshou.data.ListReplayBuffer` is based on ``list``. Therefore,
+    it does not support advanced indexing, which means you cannot sample a
+    batch of data out of it. It is typically used for storing data.
 
     .. seealso::
 
@@ -310,6 +312,9 @@ class ListReplayBuffer(ReplayBuffer):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(size=0, ignore_obs_next=False, **kwargs)
+
+    def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
+        raise NotImplementedError("ListReplayBuffer cannot be sampled!")
 
     def _add_to_buffer(
             self, name: str,
