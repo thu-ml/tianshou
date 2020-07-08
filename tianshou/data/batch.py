@@ -268,10 +268,15 @@ class Batch:
             if isinstance(batch_dict, (dict, Batch)):
                 for k, v in batch_dict.items():
                     if isinstance(v, (list, tuple, np.ndarray)):
-                        if not isinstance(v, np.ndarray):
-                            v_ = np.array(v)
-                        else:
+                        v_ = None
+                        if isinstance(v, np.ndarray):
                             v_ = v
+                        elif all(isinstance(e, torch.Tensor) for e in v):
+                            v_ = torch.stack(v)
+                            self.__dict__[k] = v_
+                            continue
+                        else:
+                            v_ = np.array(v)
                         if v_.dtype != np.object:
                             v = v_  # normal data list, this is the main case
                             if not issubclass(v.dtype.type,
