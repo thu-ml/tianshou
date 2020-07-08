@@ -257,24 +257,25 @@ class ReplayBuffer:
             key = 'obs'
         val = self._meta.__dict__[key]
         try:
-            if len(val) > 0:
-                if stack_num > 0:
-                    stack = []
-                    for _ in range(stack_num):
-                        stack = [val[indice]] + stack
-                        pre_indice = np.asarray(indice - 1)
-                        pre_indice[pre_indice == -1] = self._size - 1
-                        indice = np.asarray(
-                            pre_indice + self.done[pre_indice].astype(np.int))
-                        indice[indice == self._size] = 0
-                    if isinstance(val, Batch):
-                        stack = Batch.stack(stack, axis=indice.ndim)
-                    else:
-                        stack = np.stack(stack, axis=indice.ndim)
+            if stack_num > 0:
+                stack = []
+                for _ in range(stack_num):
+                    stack = [val[indice]] + stack
+                    pre_indice = np.asarray(indice - 1)
+                    pre_indice[pre_indice == -1] = self._size - 1
+                    indice = np.asarray(
+                        pre_indice + self.done[pre_indice].astype(np.int))
+                    indice[indice == self._size] = 0
+                if isinstance(val, Batch):
+                    stack = Batch.stack(stack, axis=indice.ndim)
                 else:
-                    stack = val[indice]
-        except TypeError:
+                    stack = np.stack(stack, axis=indice.ndim)
+            else:
+                stack = val[indice]
+        except IndexError as e:
             stack = Batch()
+            if not isinstance(val, Batch) or len(val.__dict__) > 0:
+                raise e
         self.done[last_index] = last_done
         return stack
 
