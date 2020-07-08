@@ -424,7 +424,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """Update priority weight by indice in this buffer.
 
         :param np.ndarray indice: indice you want to update weight
-        :param np.ndarray new_weight: new priority weight you wangt to update
+        :param np.ndarray new_weight: new priority weight you want to update
         """
         if self._replace:
             if isinstance(indice, slice):

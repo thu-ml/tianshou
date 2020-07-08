@@ -101,14 +101,13 @@ class Batch:
     * ``done`` the done flag of step :math:`t` ;
     * ``obs_next`` the observation of step :math:`t+1` ;
     * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()``\
-        function return 4 arguments, and the last one is ``info``);
+        function returns 4 arguments, and the last one is ``info``);
     * ``policy`` the data computed by policy in step :math:`t`;
 
-    :class:`~tianshou.data.Batch` object can be initialized using wide variety
-    of arguments, starting with the key/value pairs or dictionary, but also
-    list and Numpy arrays of :class:`dict` or Batch instances. In which case,
-    each element is considered as an individual sample and get stacked
-    together:
+    :class:`~tianshou.data.Batch` object can be initialized by a wide variety
+    of arguments, ranging from the key/value pairs or dictionary, to list and
+    Numpy arrays of :class:`dict` or Batch instances where each element is
+    considered as an individual sample and get stacked together:
     ::
 
         >>> data = Batch([{'a': {'b': [0.0, "info"]}}])
@@ -120,7 +119,7 @@ class Batch:
         )
 
     :class:`~tianshou.data.Batch` has the same API as a native Python
-    :class:`dict`. In this regard, one can access to stored data using string
+    :class:`dict`. In this regard, one can access stored data using string
     key, or iterate over stored data:
     ::
 
@@ -133,7 +132,7 @@ class Batch:
         b: [5, 5]
 
 
-    :class:`~tianshou.data.Batch` is also reproduce partially the Numpy API for
+    :class:`~tianshou.data.Batch` also partially reproduces the Numpy API for
     arrays. It also supports the advanced slicing method, such as batch[:, i],
     if the index is valid. You can access or iterate over the individual
     samples, if any:
@@ -148,7 +147,6 @@ class Batch:
         >>> for sample in data:
         >>>     print(sample.a)
         [0., 2.]
-        [1., 3.]
 
         >>> print(data.shape)
         [1, 2]
@@ -196,7 +194,7 @@ class Batch:
         )
 
     Note that stacking of inconsistent data is also supported. In which case,
-    None is added in list or :class:`np.ndarray` of objects, 0 otherwise.
+    ``None`` is added in list or :class:`np.ndarray` of objects, 0 otherwise.
     ::
 
         >>> data_1 = Batch(a=np.array([0.0, 2.0]))
@@ -209,7 +207,7 @@ class Batch:
             b: array([None, 'done'], dtype=object),
         )
 
-    Also with method empty (which will set to 0 or ``None`` (with np.object))
+    Method ``empty_`` sets elements to 0 or ``None`` for ``np.object``.
     ::
 
         >>> data.empty_()
@@ -249,9 +247,9 @@ class Batch:
     Convenience helpers are available to convert in-place the stored data into
     Numpy arrays or Torch tensors.
 
-    Finally, note that :class:`~tianshou.data.Batch` instance are serializable
-    and therefore Pickle compatible. This is especially important for
-    distributed sampling.
+    Finally, note that :class:`~tianshou.data.Batch` is serializable and
+    therefore Pickle compatible. This is especially important for distributed
+    sampling.
     """
 
     def __init__(self,
@@ -570,10 +568,8 @@ class Batch:
             else:  # scalar value
                 warnings.warn('You are calling Batch.empty on a NumPy scalar, '
                               'which may cause undefined behaviors.')
-                if isinstance(v, (np.generic, Number)):
-                    self.__dict__[k] *= 0
-                    if np.isnan(self.__dict__[k]):
-                        self.__dict__[k] = 0
+                if isinstance(v, (np.number, np.bool_, Number)):
+                    self.__dict__[k] = v.__class__(0)
                 else:
                     self.__dict__[k] = None
         return self
@@ -621,7 +617,7 @@ class Batch:
 
     def split(self, size: Optional[int] = None,
               shuffle: bool = True) -> Iterator['Batch']:
-        """Split whole data into multiple small batch.
+        """Split whole data into multiple small batches.
 
         :param int size: if it is ``None``, it does not split the data batch;
             otherwise it will divide the data batch with the given size.
