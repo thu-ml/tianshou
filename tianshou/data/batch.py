@@ -24,25 +24,6 @@ def _is_batch_set(data: Any) -> bool:
     return False
 
 
-def _valid_bounds(length: int, index: Union[
-        slice, int, np.integer, np.ndarray, List[int]]) -> bool:
-    if isinstance(index, (int, np.integer)):
-        return -length <= index and index < length
-    elif isinstance(index, (list, np.ndarray)):
-        return _valid_bounds(length, np.min(index)) and \
-            _valid_bounds(length, np.max(index))
-    elif isinstance(index, slice):
-        if index.start is not None:
-            start_valid = _valid_bounds(length, index.start)
-        else:
-            start_valid = True
-        if index.stop is not None:
-            stop_valid = _valid_bounds(length, index.stop - 1)
-        else:
-            stop_valid = True
-        return start_valid and stop_valid
-
-
 def _create_value(inst: Any, size: int) -> Union[
         'Batch', np.ndarray, torch.Tensor]:
     if isinstance(inst, np.ndarray):
@@ -333,13 +314,17 @@ class Batch:
         """Return self[index]."""
         if isinstance(index, str):
             return self.__dict__[index]
-        b = Batch()
-        for k, v in self.items():
-            if isinstance(v, Batch) and len(v.__dict__) == 0:
-                b.__dict__[k] = Batch()
-            else:
-                b.__dict__[k] = v[index]
-        return b
+        batch_items = self.items()
+        if len(batch_items) > 0:
+            b = Batch()
+            for k, v in batch_items:
+                if isinstance(v, Batch) and len(v.__dict__) == 0:
+                    b.__dict__[k] = Batch()
+                else:
+                    b.__dict__[k] = v[index]
+            return b
+        else:
+            raise IndexError("Cannot access item from empty Batch object.")
 
     def __setitem__(
             self,
@@ -451,14 +436,6 @@ class Batch:
     def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
         """Return self[k] if k in self else d. d defaults to None."""
         return self.__dict__.get(k, d)
-
-    def __iter__(self):
-        try:
-            length = len(self)
-        except Exception:
-            length = 0
-        for i in range(length):
-            yield self[i]
 
     def to_numpy(self) -> None:
         """Change all torch.Tensor to numpy.ndarray. This is an in-place
