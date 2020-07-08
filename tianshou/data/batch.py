@@ -275,7 +275,11 @@ class Batch:
                                               (np.bool_, np.number)):
                                 v = v.astype(np.object)
                         else:
-                            v = Batch(v)  # list of dict / Batch
+                            if _is_batch_set(v):
+                                v = Batch(v)  # list of dict / Batch
+                            else:
+                                # this is actually a data list with objects
+                                v = v_
                         self.__dict__[k] = v
                     elif isinstance(v, dict):
                         self.__dict__[k] = Batch(v)
