@@ -264,18 +264,24 @@ class Batch:
                  **kwargs) -> None:
         if copy:
             batch_dict = deepcopy(batch_dict)
-        if _is_batch_set(batch_dict):
-            self.stack_(batch_dict)
-        elif isinstance(batch_dict, (dict, Batch)):
-            for k, v in batch_dict.items():
-                if isinstance(v, dict) or _is_batch_set(v):
-                    self.__dict__[k] = Batch(v)
-                else:
-                    if isinstance(v, list):
-                        v = np.array(v)
-                        if not issubclass(v.dtype.type, (np.bool_, np.number)):
-                            v = v.astype(np.object)
-                    self.__dict__[k] = v
+        if batch_dict is not None:
+            if isinstance(batch_dict, (dict, Batch)):
+                for k, v in batch_dict.items():
+                    if isinstance(v, (list, tuple)):
+                        v_ = np.array(v)
+                        if v_.dtype != np.object:
+                            v = v_  # normal data list, this is the main case
+                            if not issubclass(v.dtype.type, (np.bool_, np.number)):
+                                v = v.astype(np.object)
+                        else:
+                            v = Batch(v)  # list of dict / Batch
+                        self.__dict__[k] = v
+                    elif isinstance(v, dict):
+                        self.__dict__[k] = Batch(v)
+                    else:
+                        self.__dict__[k] = v
+            elif _is_batch_set(batch_dict):
+                self.stack_(batch_dict)
         if len(kwargs) > 0:
             self.__init__(kwargs, copy=copy)
 
