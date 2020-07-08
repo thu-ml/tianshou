@@ -104,10 +104,9 @@ class Batch:
     * ``policy`` the data computed by policy in step :math:`t`;
 
     :class:`~tianshou.data.Batch` object can be initialized by a wide variety
-    of arguments, ranging from the key/value pairs or dictionary, to
-    list and Numpy arrays of :class:`dict` or Batch instances where
-    each element is considered as an individual sample and get stacked
-    together:
+    of arguments, ranging from the key/value pairs or dictionary, to list and
+    Numpy arrays of :class:`dict` or Batch instances where each element is
+    considered as an individual sample and get stacked together:
     ::
 
         >>> data = Batch([{'a': {'b': [0.0, "info"]}}])
@@ -247,9 +246,9 @@ class Batch:
     Convenience helpers are available to convert in-place the stored data into
     Numpy arrays or Torch tensors.
 
-    Finally, note that :class:`~tianshou.data.Batch` is serializable
-    and therefore Pickle compatible. This is especially important for
-    distributed sampling.
+    Finally, note that :class:`~tianshou.data.Batch` is serializable and
+    therefore Pickle compatible. This is especially important for distributed
+    sampling.
     """
 
     def __init__(self,
