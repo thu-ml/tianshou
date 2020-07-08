@@ -271,7 +271,8 @@ class Batch:
                         v_ = np.array(v)
                         if v_.dtype != np.object:
                             v = v_  # normal data list, this is the main case
-                            if not issubclass(v.dtype.type, (np.bool_, np.number)):
+                            if not issubclass(v.dtype.type,
+                                              (np.bool_, np.number)):
                                 v = v.astype(np.object)
                         else:
                             v = Batch(v)  # list of dict / Batch
