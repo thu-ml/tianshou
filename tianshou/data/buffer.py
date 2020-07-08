@@ -272,8 +272,10 @@ class ReplayBuffer:
                     stack = np.stack(stack, axis=indice.ndim)
             else:
                 stack = val[indice]
-        except TypeError:
+        except IndexError as e:
             stack = Batch()
+            if not isinstance(val, Batch) or len(val.__dict__) > 0:
+                raise e
         self.done[last_index] = last_done
         return stack
 
