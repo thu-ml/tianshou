@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Tuple, Optional
 
 
-class MAEnv(ABC, gym.Env):
+class MultiAgentEnv(ABC, gym.Env):
     """The interface for multi-agent environments.
     Multi-agent environments must be wrapped as :class:`~tianshou.env.MAEnv`.
     Here are some usages:

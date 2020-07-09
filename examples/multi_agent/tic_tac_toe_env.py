@@ -2,10 +2,10 @@ import gym
 import numpy as np
 from typing import Tuple, Optional
 
-from tianshou.env import MAEnv
+from tianshou.env import MultiAgentEnv
 
 
-class TicTacToeEnv(MAEnv):
+class TicTacToeEnv(MultiAgentEnv):
     """
     This is a simple implementation of the Tic-Tac-Toe game, where
     two agents play against each other.
@@ -41,7 +41,7 @@ class TicTacToeEnv(MAEnv):
         assert self.current_board.item(action) == 0
         self._move(action)
         legal_actions = {i for i, b in enumerate(
-            self.current_board.flatten().tolist()) if b == 0}
+            self.current_board.flatten()) if b == 0}
         is_win, is_opponent_win = False, False
         is_win = self._test_win()
         # the game is over when one wins or there is only one empty place
@@ -89,7 +89,7 @@ class TicTacToeEnv(MAEnv):
 
     def render(self, **kwargs) -> None:
         print('======board=====')
-        number_board = self.current_board.tolist()
+        number_board = self.current_board
 
         def f(number):
             if number == 1:
@@ -98,7 +98,7 @@ class TicTacToeEnv(MAEnv):
                 return 'O'
             return '_'
         for row in number_board:
-            print(' '.join([f(each) for each in row]))
+            print(' '.join(map(f, row)))
 
     def close(self) -> None:
         pass

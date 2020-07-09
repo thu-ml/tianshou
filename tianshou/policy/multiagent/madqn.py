@@ -7,7 +7,7 @@ from tianshou.policy import DQNPolicy
 from tianshou.data import Batch, to_numpy
 
 
-class MADQNPolicy(DQNPolicy):
+class MultiAgentDQNPolicy(DQNPolicy):
     """DQN for multi-agent RL.
 
     :param torch.nn.Module model: a model following the rules in
@@ -73,10 +73,7 @@ class MADQNPolicy(DQNPolicy):
             eps = None
         actions = []
         for a_id, legal_actions, q_values in \
-                zip(
-                    ma_obs.agent_id.tolist(),
-                    ma_obs.legal_actions.tolist(),
-                    q):
+                zip(ma_obs.agent_id, ma_obs.legal_actions, q):
             legal_actions = list(legal_actions)
             if a_id != self._agent_id or (eps and np.random.rand() < eps):
                 # the move of opponent or epsilon noisy move

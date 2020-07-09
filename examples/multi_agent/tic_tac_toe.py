@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 
 from tianshou.env import VectorEnv
-from tianshou.policy import MADQNPolicy
+from tianshou.policy import MultiAgentDQNPolicy
 from tianshou.utils.net.common import Net
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.trainer import offpolicy_trainer
@@ -57,7 +57,7 @@ def tic_tac_toe(args=get_args()):
     net = Net(args.layer_num, args.state_shape, args.action_shape, args.device)
     net = net.to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = MADQNPolicy(
+    policy = MultiAgentDQNPolicy(
         net, optim, args.gamma, args.n_step,
         use_target_network=args.target_update_freq > 0,
         target_update_freq=args.target_update_freq,
