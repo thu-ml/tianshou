@@ -50,18 +50,31 @@ Build the Network
 Tianshou supports any user-defined PyTorch networks and optimizers but with the limitation of input and output API. Here is an example code: 
 ::
 
-    from torch import nn
     import torch, numpy as np
-    from tianshou.utils.net.common import Net
+    from torch import nn
+
+    class Net(nn.Module):
+        def __init__(self, state_shape, action_shape):
+            super().__init__()
+            self.model = nn.Sequential(*[
+                nn.Linear(np.prod(state_shape), 128), nn.ReLU(inplace=True),
+                nn.Linear(128, 128), nn.ReLU(inplace=True),
+                nn.Linear(128, 128), nn.ReLU(inplace=True),
+                nn.Linear(128, np.prod(action_shape))
+            ])
+        def forward(self, obs, state=None, info={}):
+            if not isinstance(obs, torch.Tensor):
+                obs = torch.tensor(obs, dtype=torch.float)
+            batch = obs.shape[0]
+            logits = self.model(obs.view(batch, -1))
+            return logits, state
 
     state_shape = env.observation_space.shape or env.observation_space.n
     action_shape = env.action_space.shape or env.action_space.n
-    net = Net(layer_num=2, state_shape=state_shape, action_shape=action_shape)
+    net = Net(state_shape, action_shape)
     optim = torch.optim.Adam(net.parameters(), lr=1e-3)
 
-where the `Net` is a simple `torch.nn.Module` obeys the following rule.
-
-The rules of self-defined networks are:
+You can also have a try with those pre-defined networks in :mod:`~tianshou.utils.net.common`, :mod:`~tianshou.utils.net.discrete`, and :mod:`~tianshou.utils.net.continuous`. The rules of self-defined networks are:
 
 1. Input: observation ``obs`` (may be a ``numpy.ndarray``, ``torch.Tensor``, dict, or self-defined class), hidden state ``state`` (for RNN usage), and other information ``info`` provided by the environment.
 2. Output: some ``logits``, the next hidden state ``state``, and intermediate result during the policy forwarding procedure ``policy``. The logits could be a tuple instead of a ``torch.Tensor``. It depends on how the policy process the network output. For example, in PPO :cite:`PPO`, the return of the network might be ``(mu, sigma), state`` for Gaussian policy. The ``policy`` can be a Batch of torch.Tensor or other things, which will be stored in the replay buffer, and can be accessed in the policy update process (e.g. in ``policy.learn()``, the ``batch.policy`` is what you need).
