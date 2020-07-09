@@ -10,7 +10,8 @@ from tianshou.env import VectorEnv
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
-from tianshou.utils.net.discrete import Net, ActorHead, CriticHead
+from tianshou.utils.net.discrete import ActorHead, CriticHead
+from tianshou.utils.net.common import Net
 
 
 def get_args():

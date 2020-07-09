@@ -7,7 +7,7 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils.net.discrete import Net
+from tianshou.utils.net.common import Net
 from tianshou.env import VectorEnv
 from tianshou.policy import PGPolicy
 from tianshou.trainer import onpolicy_trainer

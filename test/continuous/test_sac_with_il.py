@@ -10,7 +10,8 @@ from tianshou.env import VectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import SACPolicy, ImitationPolicy
-from tianshou.utils.net.continuous import Actor, ActorProb, Critic
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import ActorHead, ActorHeadProb, CriticHead
 
 
 def get_args():
@@ -64,17 +65,19 @@ def test_sac_with_il(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    actor = ActorProb(
-        args.layer_num, args.state_shape, args.action_shape,
+    net = Net(args.layer_num, args.state_shape, device=args.device)
+    actor = ActorHeadProb(
+        net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    critic1 = Critic(
-        args.layer_num, args.state_shape, args.action_shape, args.device
+    net = Net(args.layer_num, args.state_shape, args.action_shape, concat=True)
+    critic1 = CriticHead(
+        net, args.device
     ).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = Critic(
-        args.layer_num, args.state_shape, args.action_shape, args.device
+    critic2 = CriticHead(
+         net, args.device
     ).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
     policy = SACPolicy(
@@ -118,8 +121,8 @@ def test_sac_with_il(args=get_args()):
     # here we define an imitation collector with a trivial policy
     if args.task == 'Pendulum-v0':
         env.spec.reward_threshold = -300  # lower the goal
-    net = Actor(1, args.state_shape, args.action_shape,
-                args.max_action, args.device).to(args.device)
+    net = ActorHead(Net(1, args.state_shape), args.action_shape,
+                    args.max_action, args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(net, optim, mode='continuous')
     il_test_collector = Collector(il_policy, test_envs)

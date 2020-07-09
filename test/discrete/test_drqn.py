@@ -10,7 +10,7 @@ from tianshou.env import VectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.utils.net.discrete import Recurrent
+from tianshou.utils.net.common import Recurrent
 
 
 def get_args():

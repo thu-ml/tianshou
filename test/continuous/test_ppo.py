@@ -11,7 +11,8 @@ from tianshou.policy import PPOPolicy
 from tianshou.policy.dist import DiagGaussian
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import ActorHeadProb, CriticHead
 
 
 def get_args():
@@ -68,12 +69,13 @@ def test_ppo(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    actor = ActorProb(
-        args.layer_num, args.state_shape, args.action_shape,
+    net = Net(args.layer_num, args.state_shape, device=args.device)
+    actor = ActorHeadProb(
+        net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
-    critic = Critic(
-        args.layer_num, args.state_shape, device=args.device
+    critic = CriticHead(
+        Net(args.layer_num, args.state_shape), device=args.device
     ).to(args.device)
     # orthogonal initialization
     for m in list(actor.modules()) + list(critic.modules()):

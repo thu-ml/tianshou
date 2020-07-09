@@ -1,3 +1,7 @@
+"""
+Commonly used network modules for continuous output.
+"""
+
 import torch
 import numpy as np
 from torch import nn
@@ -5,86 +9,60 @@ from torch import nn
 from tianshou.data import to_torch
 
 
-class Actor(nn.Module):
-    def __init__(self, layer_num, state_shape, action_shape,
+class ActorHead(nn.Module):
+    def __init__(self, preprocess_net, action_shape,
                  max_action, device='cpu'):
         super().__init__()
-        self.device = device
-        self.model = [
-            nn.Linear(np.prod(state_shape), 128),
-            nn.ReLU(inplace=True)]
-        for i in range(layer_num):
-            self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
-        self.model += [nn.Linear(128, np.prod(action_shape))]
-        self.model = nn.Sequential(*self.model)
+        self.preprocess = preprocess_net
+        self.last = nn.Linear(128, np.prod(action_shape))
         self._max = max_action
 
-    def forward(self, s, **kwargs):
-        s = to_torch(s, device=self.device, dtype=torch.float)
-        batch = s.shape[0]
-        s = s.view(batch, -1)
-        logits = self.model(s)
-        logits = self._max * torch.tanh(logits)
-        return logits, None
+    def forward(self, s, state=None, info={}):
+        logits, h = self.preprocess(s, state)
+        logits = self._max * torch.tanh(self.last(logits))
+        return logits, h
 
 
-class ActorProb(nn.Module):
-    def __init__(self, layer_num, state_shape, action_shape,
-                 max_action, device='cpu', unbounded=False):
+class CriticHead(nn.Module):
+    def __init__(self, preprocess_net, device='cpu'):
         super().__init__()
         self.device = device
-        self.model = [
-            nn.Linear(np.prod(state_shape), 128),
-            nn.ReLU(inplace=True)]
-        for i in range(layer_num):
-            self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
-        self.model = nn.Sequential(*self.model)
-        self.mu = nn.Linear(128, np.prod(action_shape))
-        self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
-        # self.sigma = nn.Linear(128, np.prod(action_shape))
-        self._max = max_action
-        self._unbounded = unbounded
-
-    def forward(self, s, **kwargs):
-        s = to_torch(s, device=self.device, dtype=torch.float)
-        batch = s.shape[0]
-        s = s.view(batch, -1)
-        logits = self.model(s)
-        mu = self.mu(logits)
-        if not self._unbounded:
-            mu = self._max * torch.tanh(mu)
-        shape = [1] * len(mu.shape)
-        shape[1] = -1
-        sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
-        # assert sigma.shape == mu.shape
-        # mu = self._max * torch.tanh(self.mu(logits))
-        # sigma = torch.exp(self.sigma(logits))
-        return (mu, sigma), None
-
-
-class Critic(nn.Module):
-    def __init__(self, layer_num, state_shape, action_shape=0, device='cpu'):
-        super().__init__()
-        self.device = device
-        self.model = [
-            nn.Linear(np.prod(state_shape) + np.prod(action_shape), 128),
-            nn.ReLU(inplace=True)]
-        for i in range(layer_num):
-            self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
-        self.model += [nn.Linear(128, 1)]
-        self.model = nn.Sequential(*self.model)
+        self.preprocess = preprocess_net
+        self.last = nn.Linear(128, 1)
 
     def forward(self, s, a=None, **kwargs):
         s = to_torch(s, device=self.device, dtype=torch.float)
         batch = s.shape[0]
         s = s.view(batch, -1)
         if a is not None:
-            if not isinstance(a, torch.Tensor):
-                a = torch.tensor(a, device=self.device, dtype=torch.float)
+            a = to_torch(a, device=self.device, dtype=torch.float)
             a = a.view(batch, -1)
             s = torch.cat([s, a], dim=1)
-        logits = self.model(s)
+        logits, h = self.preprocess(s)
+        logits = self.last(logits)
         return logits
+
+
+class ActorHeadProb(nn.Module):
+    def __init__(self, preprocess_net, action_shape,
+                 max_action, device='cpu', unbounded=False):
+        super().__init__()
+        self.preprocess = preprocess_net
+        self.device = device
+        self.mu = nn.Linear(128, np.prod(action_shape))
+        self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
+        self._max = max_action
+        self._unbounded = unbounded
+
+    def forward(self, s, state=None, **kwargs):
+        logits, h = self.preprocess(s, state)
+        mu = self.mu(logits)
+        if not self._unbounded:
+            mu = self._max * torch.tanh(mu)
+        shape = [1] * len(mu.shape)
+        shape[1] = -1
+        sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
+        return (mu, sigma), None
 
 
 class RecurrentActorProb(nn.Module):

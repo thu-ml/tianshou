@@ -10,7 +10,8 @@ from tianshou.env import VectorEnv
 from tianshou.policy import PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.utils.net.discrete import Net, ActorHead, CriticHead
+from tianshou.utils.net.discrete import ActorHead, CriticHead
+from tianshou.utils.net.common import Net
 
 
 def get_args():
