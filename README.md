@@ -218,8 +218,7 @@ class Net(nn.Module):
     def forward(self, s, state=None, info={}):
         if not isinstance(s, torch.Tensor):
             s = torch.tensor(s, dtype=torch.float32)
-        batch = s.shape[0]
-        logits = self.model(s.view(batch, -1))
+        logits = self.model(s.flatten(1))
         return logits, state
 
 env = gym.make(task)

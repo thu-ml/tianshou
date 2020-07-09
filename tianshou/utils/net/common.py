@@ -35,8 +35,7 @@ class Net(nn.Module):
 
     def forward(self, s, state=None, info={}):
         s = to_torch(s, device=self.device, dtype=torch.float32)
-        batch = s.shape[0]
-        s = s.view(batch, -1)
+        s = s.flatten(1)
         logits = self.model(s)
         return logits, state
 
@@ -57,13 +56,7 @@ class Recurrent(nn.Module):
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
-        if len(s.shape) == 2:
-            bsz, dim = s.shape
-            length = 1
-        else:
-            bsz, length, dim = s.shape
-        s = self.fc1(s.view([bsz * length, dim]))
-        s = s.view(bsz, length, -1)
+        s = self.fc1(s)
         self.nn.flatten_parameters()
         if state is None:
             s, (h, c) = self.nn(s)

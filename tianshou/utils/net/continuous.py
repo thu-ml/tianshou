@@ -32,11 +32,10 @@ class Critic(nn.Module):
 
     def forward(self, s, a=None, **kwargs):
         s = to_torch(s, device=self.device, dtype=torch.float32)
-        batch = s.shape[0]
-        s = s.view(batch, -1)
+        s = s.flatten(1)
         if a is not None:
             a = to_torch(a, device=self.device, dtype=torch.float32)
-            a = a.view(batch, -1)
+            a = a.flatten(1)
             s = torch.cat([s, a], dim=1)
         logits, h = self.preprocess(s)
         logits = self.last(logits)
@@ -81,11 +80,7 @@ class RecurrentActorProb(nn.Module):
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
         if len(s.shape) == 2:
-            bsz, dim = s.shape
-            length = 1
-        else:
-            bsz, length, dim = s.shape
-        s = s.view(bsz, length, -1)
+            s = s.unsqueeze(-2)
         logits, _ = self.nn(s)
         logits = logits[:, -1]
         mu = self.mu(logits)
