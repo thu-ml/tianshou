@@ -7,15 +7,11 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.utils.net.common import Net
 from tianshou.env import VectorEnv
 from tianshou.policy import PGPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Batch, Collector, ReplayBuffer
-
-if __name__ == '__main__':
-    from net import Net
-else:  # pytest
-    from test.discrete.net import Net
 
 
 def compute_return_base(batch, aa=None, bb=None, gamma=0.1):
@@ -129,8 +125,7 @@ def test_pg(args=get_args()):
     # model
     net = Net(
         args.layer_num, args.state_shape, args.action_shape,
-        device=args.device, softmax=True)
-    net = net.to(args.device)
+        device=args.device, softmax=True).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = PGPolicy(net, optim, dist, args.gamma,

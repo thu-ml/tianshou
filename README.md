@@ -206,26 +206,12 @@ test_envs = ts.env.VectorEnv([lambda: gym.make(task) for _ in range(test_num)])
 Define the network:
 
 ```python
-class Net(nn.Module):
-    def __init__(self, state_shape, action_shape):
-        super().__init__()
-        self.model = nn.Sequential(*[
-            nn.Linear(np.prod(state_shape), 128), nn.ReLU(inplace=True),
-            nn.Linear(128, 128), nn.ReLU(inplace=True),
-            nn.Linear(128, 128), nn.ReLU(inplace=True),
-            nn.Linear(128, np.prod(action_shape))
-        ])
-    def forward(self, s, state=None, info={}):
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(s, dtype=torch.float)
-        batch = s.shape[0]
-        logits = self.model(s.view(batch, -1))
-        return logits, state
+from tianshou.utils.net.common import Net
 
 env = gym.make(task)
 state_shape = env.observation_space.shape or env.observation_space.n
 action_shape = env.action_space.shape or env.action_space.n
-net = Net(state_shape, action_shape)
+net = Net(layer_num=2, state_shape=state_shape, action_shape=action_shape)
 optim = torch.optim.Adam(net.parameters(), lr=lr)
 ```
 

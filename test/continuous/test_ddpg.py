@@ -11,11 +11,8 @@ from tianshou.policy import DDPGPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.exploration import GaussianNoise
-
-if __name__ == '__main__':
-    from net import Actor, Critic
-else:  # pytest
-    from test.continuous.net import Actor, Critic
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import Actor, Critic
 
 
 def get_args():
@@ -69,14 +66,15 @@ def test_ddpg(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
+    net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = Actor(
-        args.layer_num, args.state_shape, args.action_shape,
+        net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    critic = Critic(
-        args.layer_num, args.state_shape, args.action_shape, args.device
-    ).to(args.device)
+    net = Net(args.layer_num, args.state_shape,
+              args.action_shape, concat=True, device=args.device)
+    critic = Critic(net, args.device).to(args.device)
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
     policy = DDPGPolicy(
         actor, actor_optim, critic, critic_optim,
