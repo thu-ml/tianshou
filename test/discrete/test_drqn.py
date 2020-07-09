@@ -10,11 +10,7 @@ from tianshou.env import VectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-
-if __name__ == '__main__':
-    from net import Recurrent
-else:  # pytest
-    from test.discrete.net import Recurrent
+from tianshou.utils.net.discrete import Recurrent
 
 
 def get_args():

@@ -11,11 +11,7 @@ from tianshou.policy import PPOPolicy
 from tianshou.policy.dist import DiagGaussian
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-
-if __name__ == '__main__':
-    from net import ActorProb, Critic
-else:  # pytest
-    from test.continuous.net import ActorProb, Critic
+from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():

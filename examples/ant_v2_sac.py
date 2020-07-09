@@ -10,8 +10,7 @@ from tianshou.policy import SACPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
-
-from continuous_net import ActorProb, Critic
+from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():

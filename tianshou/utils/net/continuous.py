@@ -30,7 +30,7 @@ class Actor(nn.Module):
 
 class ActorProb(nn.Module):
     def __init__(self, layer_num, state_shape, action_shape,
-                 max_action, device='cpu'):
+                 max_action, device='cpu', unbounded=False):
         super().__init__()
         self.device = device
         self.model = [
@@ -43,6 +43,7 @@ class ActorProb(nn.Module):
         self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
         # self.sigma = nn.Linear(128, np.prod(action_shape))
         self._max = max_action
+        self._unbounded = unbounded
 
     def forward(self, s, **kwargs):
         s = to_torch(s, device=self.device, dtype=torch.float)
@@ -50,6 +51,8 @@ class ActorProb(nn.Module):
         s = s.view(batch, -1)
         logits = self.model(s)
         mu = self.mu(logits)
+        if not self._unbounded:
+            mu = self._max * torch.tanh(mu)
         shape = [1] * len(mu.shape)
         shape[1] = -1
         sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()

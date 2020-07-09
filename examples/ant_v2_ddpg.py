@@ -10,8 +10,7 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
 from tianshou.exploration import GaussianNoise
-
-from continuous_net import Actor, Critic
+from tianshou.utils.net.continuous import Actor, Critic
 
 
 def get_args():

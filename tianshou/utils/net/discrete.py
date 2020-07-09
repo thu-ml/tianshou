@@ -1,3 +1,7 @@
+"""
+Commonly used network modules for discrete output.
+"""
+
 import torch
 import numpy as np
 from torch import nn
@@ -30,7 +34,7 @@ class Net(nn.Module):
         return logits, state
 
 
-class Actor(nn.Module):
+class ActorHead(nn.Module):
     def __init__(self, preprocess_net, action_shape):
         super().__init__()
         self.preprocess = preprocess_net
@@ -42,7 +46,7 @@ class Actor(nn.Module):
         return logits, h
 
 
-class Critic(nn.Module):
+class CriticHead(nn.Module):
     def __init__(self, preprocess_net):
         super().__init__()
         self.preprocess = preprocess_net
@@ -89,3 +93,36 @@ class Recurrent(nn.Module):
         # please ensure the first dim is batch size: [bsz, len, ...]
         return s, {'h': h.transpose(0, 1).detach(),
                    'c': c.transpose(0, 1).detach()}
+
+
+class DQN(nn.Module):
+
+    def __init__(self, h, w, action_shape, device='cpu'):
+        super(DQN, self).__init__()
+        self.device = device
+
+        self.conv1 = nn.Conv2d(4, 16, kernel_size=5, stride=2)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
+        self.bn2 = nn.BatchNorm2d(32)
+        self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
+        self.bn3 = nn.BatchNorm2d(32)
+
+        def conv2d_size_out(size, kernel_size=5, stride=2):
+            return (size - (kernel_size - 1) - 1) // stride + 1
+
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(w)))
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(h)))
+        linear_input_size = convw * convh * 32
+        self.fc = nn.Linear(linear_input_size, 512)
+        self.head = nn.Linear(512, action_shape)
+
+    def forward(self, x, state=None, info={}):
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, device=self.device, dtype=torch.float)
+        x = x.permute(0, 3, 1, 2)
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = self.fc(x.reshape(x.size(0), -1))
+        return self.head(x), state

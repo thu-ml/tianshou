@@ -7,15 +7,11 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.utils.net.discrete import Net
 from tianshou.env import VectorEnv
 from tianshou.policy import PGPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Batch, Collector, ReplayBuffer
-
-if __name__ == '__main__':
-    from net import Net
-else:  # pytest
-    from test.discrete.net import Net
 
 
 def compute_return_base(batch, aa=None, bb=None, gamma=0.1):

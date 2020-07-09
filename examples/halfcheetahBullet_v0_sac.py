@@ -16,7 +16,7 @@ try:
 except ImportError:
     pass
 
-from continuous_net import ActorProb, Critic
+from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():

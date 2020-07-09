@@ -10,11 +10,7 @@ from tianshou.env import VectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import SACPolicy, ImitationPolicy
-
-if __name__ == '__main__':
-    from net import Actor, ActorProb, Critic
-else:  # pytest
-    from test.continuous.net import Actor, ActorProb, Critic
+from tianshou.utils.net.continuous import Actor, ActorProb, Critic
 
 
 def get_args():

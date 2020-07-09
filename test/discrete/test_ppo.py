@@ -10,11 +10,7 @@ from tianshou.env import VectorEnv
 from tianshou.policy import PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-
-if __name__ == '__main__':
-    from net import Net, Actor, Critic
-else:  # pytest
-    from test.discrete.net import Net, Actor, Critic
+from tianshou.utils.net.discrete import Net, ActorHead, CriticHead
 
 
 def get_args():
@@ -69,8 +65,8 @@ def test_ppo(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.layer_num, args.state_shape, device=args.device)
-    actor = Actor(net, args.action_shape).to(args.device)
-    critic = Critic(net).to(args.device)
+    actor = ActorHead(net, args.action_shape).to(args.device)
+    critic = CriticHead(net).to(args.device)
     # orthogonal initialization
     for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):

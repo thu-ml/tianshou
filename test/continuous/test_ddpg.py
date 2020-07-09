@@ -11,11 +11,7 @@ from tianshou.policy import DDPGPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.exploration import GaussianNoise
-
-if __name__ == '__main__':
-    from net import Actor, Critic
-else:  # pytest
-    from test.continuous.net import Actor, Critic
+from tianshou.utils.net.continuous import Actor, Critic
 
 
 def get_args():

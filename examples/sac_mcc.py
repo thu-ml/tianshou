@@ -12,7 +12,7 @@ from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv
 from tianshou.exploration import OUNoise
 
-from continuous_net import ActorProb, Critic
+from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():
