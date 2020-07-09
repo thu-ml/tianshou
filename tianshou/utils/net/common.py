@@ -56,6 +56,8 @@ class Recurrent(nn.Module):
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
+        if len(s.shape) == 2:
+            s = s.unsqueeze(-2)
         s = self.fc1(s)
         self.nn.flatten_parameters()
         if state is None:
