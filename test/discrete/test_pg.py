@@ -125,8 +125,7 @@ def test_pg(args=get_args()):
     # model
     net = Net(
         args.layer_num, args.state_shape, args.action_shape,
-        device=args.device, softmax=True)
-    net = net.to(args.device)
+        device=args.device, softmax=True).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = PGPolicy(net, optim, dist, args.gamma,

@@ -74,9 +74,9 @@ def test_ppo(args=get_args()):
         net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
-    critic = Critic(
-        Net(args.layer_num, args.state_shape), device=args.device
-    ).to(args.device)
+    critic = Critic(Net(
+        args.layer_num, args.state_shape, device=args.device
+    ), device=args.device).to(args.device)
     # orthogonal initialization
     for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):

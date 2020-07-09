@@ -59,8 +59,7 @@ def test_drqn(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Recurrent(args.layer_num, args.state_shape,
-                    args.action_shape, args.device)
-    net = net.to(args.device)
+                    args.action_shape, args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
         net, optim, args.gamma, args.n_step,
