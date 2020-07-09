@@ -12,7 +12,7 @@ from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv
 from tianshou.exploration import OUNoise
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorHeadProb, CriticHead
+from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():
@@ -63,17 +63,17 @@ def test_sac(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.layer_num, args.state_shape, device=args.device)
-    actor = ActorHeadProb(
+    actor = ActorProb(
         net, args.action_shape,
         args.max_action, args.device, unbounded=True
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net = Net(args.layer_num, args.state_shape, args.action_shape, concat=True)
-    critic1 = CriticHead(
+    critic1 = Critic(
         net, args.device
     ).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = CriticHead(
+    critic2 = Critic(
         net, args.device
     ).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)

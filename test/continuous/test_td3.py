@@ -12,7 +12,7 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.exploration import GaussianNoise
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorHead, CriticHead
+from tianshou.utils.net.continuous import Actor, Critic
 
 
 def get_args():
@@ -69,17 +69,17 @@ def test_td3(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.layer_num, args.state_shape, device=args.device)
-    actor = ActorHead(
+    actor = Actor(
         net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net = Net(args.layer_num, args.state_shape, args.action_shape, concat=True)
-    critic1 = CriticHead(
+    critic1 = Critic(
         net, args.device
     ).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = CriticHead(
+    critic2 = Critic(
         net, args.device
     ).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)

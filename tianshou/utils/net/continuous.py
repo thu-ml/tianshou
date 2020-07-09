@@ -9,7 +9,7 @@ from torch import nn
 from tianshou.data import to_torch
 
 
-class ActorHead(nn.Module):
+class Actor(nn.Module):
     def __init__(self, preprocess_net, action_shape,
                  max_action, device='cpu'):
         super().__init__()
@@ -23,7 +23,7 @@ class ActorHead(nn.Module):
         return logits, h
 
 
-class CriticHead(nn.Module):
+class Critic(nn.Module):
     def __init__(self, preprocess_net, device='cpu'):
         super().__init__()
         self.device = device
@@ -43,7 +43,7 @@ class CriticHead(nn.Module):
         return logits
 
 
-class ActorHeadProb(nn.Module):
+class ActorProb(nn.Module):
     def __init__(self, preprocess_net, action_shape,
                  max_action, device='cpu', unbounded=False):
         super().__init__()

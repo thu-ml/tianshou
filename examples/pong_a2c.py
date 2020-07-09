@@ -10,7 +10,7 @@ from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
 
-from tianshou.utils.net.discrete import ActorHead, CriticHead
+from tianshou.utils.net.discrete import Actor, Critic
 from tianshou.utils.net.common import Net
 
 
@@ -66,8 +66,8 @@ def test_a2c(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.layer_num, args.state_shape, device=args.device)
-    actor = ActorHead(net, args.action_shape).to(args.device)
-    critic = CriticHead(net).to(args.device)
+    actor = Actor(net, args.action_shape).to(args.device)
+    critic = Critic(net).to(args.device)
     optim = torch.optim.Adam(list(
         actor.parameters()) + list(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical

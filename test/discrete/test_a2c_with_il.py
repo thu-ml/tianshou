@@ -10,7 +10,7 @@ from tianshou.env import VectorEnv
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
-from tianshou.utils.net.discrete import ActorHead, CriticHead
+from tianshou.utils.net.discrete import Actor, Critic
 from tianshou.utils.net.common import Net
 
 
@@ -64,8 +64,8 @@ def test_a2c_with_il(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.layer_num, args.state_shape, device=args.device)
-    actor = ActorHead(net, args.action_shape).to(args.device)
-    critic = CriticHead(net).to(args.device)
+    actor = Actor(net, args.action_shape).to(args.device)
+    critic = Critic(net).to(args.device)
     optim = torch.optim.Adam(list(
         actor.parameters()) + list(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical
@@ -108,7 +108,7 @@ def test_a2c_with_il(args=get_args()):
     if args.task == 'CartPole-v0':
         env.spec.reward_threshold = 190  # lower the goal
     net = Net(1, args.state_shape, device=args.device)
-    net = ActorHead(net, args.action_shape).to(args.device)
+    net = Actor(net, args.action_shape).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(net, optim, mode='discrete')
     il_test_collector = Collector(il_policy, test_envs)

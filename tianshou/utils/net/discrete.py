@@ -8,7 +8,7 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class ActorHead(nn.Module):
+class Actor(nn.Module):
     def __init__(self, preprocess_net, action_shape):
         super().__init__()
         self.preprocess = preprocess_net
@@ -20,7 +20,7 @@ class ActorHead(nn.Module):
         return logits, h
 
 
-class CriticHead(nn.Module):
+class Critic(nn.Module):
     def __init__(self, preprocess_net):
         super().__init__()
         self.preprocess = preprocess_net

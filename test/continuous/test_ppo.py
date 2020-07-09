@@ -12,7 +12,7 @@ from tianshou.policy.dist import DiagGaussian
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorHeadProb, CriticHead
+from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():
@@ -70,11 +70,11 @@ def test_ppo(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.layer_num, args.state_shape, device=args.device)
-    actor = ActorHeadProb(
+    actor = ActorProb(
         net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
-    critic = CriticHead(
+    critic = Critic(
         Net(args.layer_num, args.state_shape), device=args.device
     ).to(args.device)
     # orthogonal initialization
