@@ -40,7 +40,7 @@ def get_args():
     return args
 
 
-def tic_tac_toe(args=get_args()):
+def test_tic_tac_toe(args=get_args()):
     env = TicTacToeEnv()
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -92,7 +92,7 @@ def tic_tac_toe(args=get_args()):
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, save_fn=save_fn, writer=writer)
 
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
@@ -106,4 +106,4 @@ def tic_tac_toe(args=get_args()):
 
 
 if __name__ == '__main__':
-    tic_tac_toe(get_args())
+    test_tic_tac_toe(get_args())
