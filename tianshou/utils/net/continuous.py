@@ -6,6 +6,10 @@ from tianshou.data import to_torch
 
 
 class Actor(nn.Module):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
     def __init__(self, preprocess_net, action_shape,
                  max_action, device='cpu'):
         super().__init__()
@@ -20,6 +24,10 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
     def __init__(self, preprocess_net, device='cpu'):
         super().__init__()
         self.device = device
@@ -39,6 +47,10 @@ class Critic(nn.Module):
 
 
 class ActorProb(nn.Module):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
     def __init__(self, preprocess_net, action_shape,
                  max_action, device='cpu', unbounded=False):
         super().__init__()
@@ -61,6 +73,10 @@ class ActorProb(nn.Module):
 
 
 class RecurrentActorProb(nn.Module):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
     def __init__(self, layer_num, state_shape, action_shape,
                  max_action, device='cpu'):
         super().__init__()
@@ -87,6 +103,10 @@ class RecurrentActorProb(nn.Module):
 
 
 class RecurrentCritic(nn.Module):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
     def __init__(self, layer_num, state_shape, action_shape=0, device='cpu'):
         super().__init__()
         self.state_shape = state_shape

@@ -5,6 +5,10 @@ import torch.nn.functional as F
 
 
 class Actor(nn.Module):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
     def __init__(self, preprocess_net, action_shape):
         super().__init__()
         self.preprocess = preprocess_net
@@ -17,6 +21,10 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
     def __init__(self, preprocess_net):
         super().__init__()
         self.preprocess = preprocess_net
@@ -29,6 +37,9 @@ class Critic(nn.Module):
 
 
 class DQN(nn.Module):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
 
     def __init__(self, h, w, action_shape, device='cpu'):
         super(DQN, self).__init__()
