@@ -7,10 +7,10 @@ import numpy as np
 
 from tianshou.env import VectorEnv
 from tianshou.policy import MADQNPolicy
+from tianshou.utils.net.common import Net
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.trainer import offpolicy_trainer
 
-from MANet import Net
 from tic_tac_toe_env import TicTacToeEnv
 
 
