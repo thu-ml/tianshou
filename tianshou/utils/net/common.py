@@ -34,7 +34,7 @@ class Net(nn.Module):
         self.model = nn.Sequential(*self.model)
 
     def forward(self, s, state=None, info={}):
-        s = to_torch(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float32)
         batch = s.shape[0]
         s = s.view(batch, -1)
         logits = self.model(s)
@@ -53,7 +53,7 @@ class Recurrent(nn.Module):
         self.fc2 = nn.Linear(128, np.prod(action_shape))
 
     def forward(self, s, state=None, info={}):
-        s = to_torch(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float32)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.

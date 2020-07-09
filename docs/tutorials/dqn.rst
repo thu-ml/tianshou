@@ -64,7 +64,7 @@ Tianshou supports any user-defined PyTorch networks and optimizers but with the 
             ])
         def forward(self, obs, state=None, info={}):
             if not isinstance(obs, torch.Tensor):
-                obs = torch.tensor(obs, dtype=torch.float)
+                obs = torch.tensor(obs, dtype=torch.float32)
             batch = obs.shape[0]
             logits = self.model(obs.view(batch, -1))
             return logits, state

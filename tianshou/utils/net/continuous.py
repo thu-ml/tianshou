@@ -31,11 +31,11 @@ class Critic(nn.Module):
         self.last = nn.Linear(128, 1)
 
     def forward(self, s, a=None, **kwargs):
-        s = to_torch(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float32)
         batch = s.shape[0]
         s = s.view(batch, -1)
         if a is not None:
-            a = to_torch(a, device=self.device, dtype=torch.float)
+            a = to_torch(a, device=self.device, dtype=torch.float32)
             a = a.view(batch, -1)
             s = torch.cat([s, a], dim=1)
         logits, h = self.preprocess(s)
@@ -76,7 +76,7 @@ class RecurrentActorProb(nn.Module):
         self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
 
     def forward(self, s, **kwargs):
-        s = to_torch(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float32)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -106,7 +106,7 @@ class RecurrentCritic(nn.Module):
         self.fc2 = nn.Linear(128 + np.prod(action_shape), 1)
 
     def forward(self, s, a=None):
-        s = to_torch(s, device=self.device, dtype=torch.float)
+        s = to_torch(s, device=self.device, dtype=torch.float32)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -116,7 +116,7 @@ class RecurrentCritic(nn.Module):
         s = s[:, -1]
         if a is not None:
             if not isinstance(a, torch.Tensor):
-                a = torch.tensor(a, device=self.device, dtype=torch.float)
+                a = torch.tensor(a, device=self.device, dtype=torch.float32)
             s = torch.cat([s, a], dim=1)
         s = self.fc2(s)
         return s
