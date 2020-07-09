@@ -9,7 +9,7 @@ class MAEnv(ABC, gym.Env):
     Multi-agent environments must be wrapped as :class:`~tianshou.env.MAEnv`.
     Here are some usages:
     ::
-        env = MAEnv(gym.make(task))
+        env = MAEnv(...)
         # obs is a dict containing obs, agent_id, and legal_actions
         obs = env.reset()
         action = policy(obs)
@@ -23,14 +23,6 @@ class MAEnv(ABC, gym.Env):
         self._rew = None
         self._done = None
         self._info = None
-
-    def __getattribute__(self, key):
-        """Switch between the default attribute getter or one
-           looking at wrapped environment level depending on the key."""
-        if key not in ('observation_space', 'action_space'):
-            return super().__getattribute__(key)
-        else:
-            return self.__getattr__(key)
 
     @abstractmethod
     def reset(self) -> dict:
