@@ -28,6 +28,7 @@ Here is Tianshou's other features:
 * Support any type of environment state (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
 * Support customized training process: :ref:`customize_training`
 * Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` for all Q-learning based algorithms
+* Support multi-agent RL easily
 
 中文文档位于 https://tianshou.readthedocs.io/zh/latest/
 
