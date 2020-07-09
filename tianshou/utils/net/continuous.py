@@ -1,7 +1,3 @@
-"""
-Commonly used network modules for continuous output.
-"""
-
 import torch
 import numpy as np
 from torch import nn

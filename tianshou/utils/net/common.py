@@ -1,6 +1,3 @@
-"""
-Commonly used MLP-backbone.
-"""
 import numpy as np
 import torch
 from torch import nn
@@ -9,14 +6,16 @@ from tianshou.data import to_torch
 
 
 class Net(nn.Module):
+    """Simple MLP backbone. For advanced usage (how to customize the network),
+    please refer to :ref:`build_the_network`.
+
+    :param concat: whether the input shape is concatenated by state_shape
+     and action_shape. If it is True, ``action_shape`` is not the output
+     shape, but affects the input shape.
+    """
+
     def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',
                  softmax=False, concat=False):
-        """
-        Simple MLP backbone.
-        :param concat: whether the input shape is concatenated by state_shape
-         and action_shape. If it is True, ``action_shape`` is not the output
-         shape, but affects the input shape.
-        """
         super().__init__()
         self.device = device
         input_size = np.prod(state_shape)
@@ -41,6 +40,10 @@ class Net(nn.Module):
 
 
 class Recurrent(nn.Module):
+    """Simple Recurrent network based on LSTM. For advanced usage (how to
+    customize the network), please refer to :ref:`build_the_network`.
+    """
+
     def __init__(self, layer_num, state_shape, action_shape, device='cpu'):
         super().__init__()
         self.state_shape = state_shape

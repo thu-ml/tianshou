@@ -59,6 +59,8 @@ Tianshou supports any user-defined PyTorch networks and optimizers but with the 
     net = Net(layer_num=2, state_shape=state_shape, action_shape=action_shape)
     optim = torch.optim.Adam(net.parameters(), lr=1e-3)
 
+where the `Net` is a simple `torch.nn.Module` obeys the following rule.
+
 The rules of self-defined networks are:
 
 1. Input: observation ``obs`` (may be a ``numpy.ndarray``, ``torch.Tensor``, dict, or self-defined class), hidden state ``state`` (for RNN usage), and other information ``info`` provided by the environment.
