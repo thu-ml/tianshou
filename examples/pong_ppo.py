@@ -54,8 +54,8 @@ def test_ppo(args=get_args()):
         for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv([
-        lambda: create_atari_environment(
-            args.task) for _ in range(args.test_num)])
+        lambda: create_atari_environment(args.task)
+        for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
