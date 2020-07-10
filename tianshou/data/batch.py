@@ -518,12 +518,14 @@ class Batch:
                 raise TypeError(s)
 
     @staticmethod
-    def cat(batches: List['Batch']) -> 'Batch':
-        """Concatenate a :class:`~tianshou.data.Batch` object into a single
+    def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':
+        """Concatenate a list of :class:`~tianshou.data.Batch` object into a single
         new batch.
         """
         batch = Batch()
         for batch_ in batches:
+            if isinstance(batch_, dict):
+                batch_ = Batch(batch_)
             batch.cat_(batch_)
         return batch
 
@@ -563,7 +565,7 @@ class Batch:
                         self.__dict__[k][i] = val
 
     @staticmethod
-    def stack(batches: List['Batch'], axis: int = 0) -> 'Batch':
+    def stack(batches: List[Union[dict, 'Batch']], axis: int = 0) -> 'Batch':
         """Stack a :class:`~tianshou.data.Batch` object into a single new
         batch.
         """
