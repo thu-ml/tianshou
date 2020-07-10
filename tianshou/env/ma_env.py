@@ -10,7 +10,7 @@ class MultiAgentEnv(ABC, gym.Env):
     Here are some usages:
     ::
 
-        env = MAEnv(...)
+        env = MultiAgentEnv(...)
         # obs is a dict containing obs, agent_id, and legal_actions
         obs = env.reset()
         action = policy(obs)

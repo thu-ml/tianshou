@@ -328,7 +328,11 @@ class Batch:
                 if isinstance(v, Batch) and len(v.__dict__) == 0:
                     b.__dict__[k] = Batch()
                 else:
-                    b.__dict__[k] = v[index]
+                    try:
+                        b.__dict__[k] = v[index]
+                    except Exception as e:
+                        print(k)
+                        raise e
             return b
         else:
             raise IndexError("Cannot access item from empty Batch object.")

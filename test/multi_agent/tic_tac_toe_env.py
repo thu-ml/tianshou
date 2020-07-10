@@ -23,13 +23,13 @@ class TicTacToeEnv(MultiAgentEnv):
     def __init__(self):
         super().__init__(None)
         self.current_board = np.array(TicTacToeEnv.board)
-        self.current_player = 0
+        self.current_agent = 1
 
     def reset(self) -> dict:
         self.current_board = np.array(TicTacToeEnv.board)
-        self.current_player = 0
+        self.current_agent = 1
         return {
-            'agent_id': 0,
+            'agent_id': self.current_agent,
             'obs': np.array(self.current_board),
             'legal_actions': set(i for i in range(9))
         }
@@ -39,6 +39,7 @@ class TicTacToeEnv(MultiAgentEnv):
         action = action.item(0)
         assert 0 <= action < 9
         assert self.current_board.item(action) == 0
+        _current_agent = self.current_agent
         self._move(action)
         legal_actions = {i for i, b in enumerate(
             self.current_board.flatten()) if b == 0}
@@ -57,21 +58,24 @@ class TicTacToeEnv(MultiAgentEnv):
         else:
             reward = 0
         obs = {
-            'agent_id': self.current_player,
+            'agent_id': self.current_agent,
             'obs': np.array(self.current_board),
             'legal_actions': legal_actions
         }
-        return obs, np.array(reward), np.array(done), {}
+        rew_agent_1 = reward if _current_agent == 1 else (-reward)
+        rew_agent_2 = reward if _current_agent == 2 else (-reward)
+        vec_rew = np.array([rew_agent_1, rew_agent_2], dtype=np.float32)
+        return obs, vec_rew, np.array(done), {}
 
     def _move(self, action):
         tmp_board = self.current_board.flatten().tolist()
-        if self.current_player == 0:
+        if self.current_agent == 1:
             tmp_board[action] = 1
         else:
             tmp_board[action] = -1
         self.current_board = np.array(tmp_board).reshape(
             self.current_board.shape)
-        self.current_player = 1 - self.current_player
+        self.current_agent = 3 - self.current_agent
 
     def _test_win(self):
         """
