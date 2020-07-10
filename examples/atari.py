@@ -2,6 +2,10 @@ import cv2
 import gym
 import numpy as np
 from gym.spaces.box import Box
+from tianshou.data import Batch
+
+SIZE = 84
+FRAME = 4
 
 
 def create_atari_environment(name=None, sticky_actions=True,
@@ -12,6 +16,30 @@ def create_atari_environment(name=None, sticky_actions=True,
     env = env.env
     env = preprocessing(env, max_episode_steps=max_episode_steps)
     return env
+
+
+def preprocess_fn(obs=None, act=None, rew=None, done=None,
+                  obs_next=None, info=None, policy=None):
+    if obs_next is not None:
+        shape = np.shape(obs_next)
+        obs_next = np.reshape(
+            obs_next, (shape[0] * shape[1], shape[2], shape[3]))
+        obs_next = obs_next.transpose(1, 2, 0)
+        obs_next = cv2.resize(obs_next, (SIZE, SIZE))
+        obs_next = np.asarray(obs_next, dtype=np.uint8)
+        obs_next = np.reshape(obs_next, (-1, FRAME, SIZE, SIZE))
+        obs_next = obs_next.transpose(0, 2, 3, 1)
+    elif obs is not None:
+        shape = np.shape(obs)
+        obs = np.reshape(obs, (shape[0] * shape[1], shape[2], shape[3]))
+        obs = obs.transpose(1, 2, 0)
+        obs = cv2.resize(obs, (SIZE, SIZE))
+        obs = np.asarray(obs, dtype=np.uint8)
+        obs = np.reshape(obs, (-1, FRAME, SIZE, SIZE))
+        obs = obs.transpose(0, 2, 3, 1)
+
+    return Batch(obs=obs, act=act, rew=rew, done=done,
+                 obs_next=obs_next, info=info)
 
 
 class preprocessing(object):
@@ -57,8 +85,8 @@ class preprocessing(object):
         self._grayscale_obs(self.screen_buffer[0])
         self.screen_buffer[1].fill(0)
 
-        return np.stack([
-            self._pool_and_resize() for _ in range(self.frame_skip)], axis=-1)
+        return np.array([self._pool_and_resize()
+                         for _ in range(self.frame_skip)])
 
     def render(self, mode='human'):
         return self.env.render(mode)
@@ -85,19 +113,18 @@ class preprocessing(object):
                 self._grayscale_obs(self.screen_buffer[t_])
 
             observation.append(self._pool_and_resize())
-        while len(observation) > 0 and len(observation) < self.frame_skip:
+        if len(observation) == 0:
+            observation = [self._pool_and_resize()
+                           for _ in range(self.frame_skip)]
+        while len(observation) > 0 and \
+                len(observation) < self.frame_skip:
             observation.append(observation[-1])
-        if len(observation) > 0:
-            observation = np.stack(observation, axis=-1)
-        else:
-            observation = np.stack([
-                self._pool_and_resize() for _ in range(self.frame_skip)],
-                axis=-1)
         if self.count >= self.max_episode_steps:
             terminal = True
         else:
             terminal = False
-        return observation, total_reward, (terminal or is_terminal), info
+        return np.array(observation), total_reward, \
+            (terminal or is_terminal), info
 
     def _grayscale_obs(self, output):
         self.env.ale.getScreenGrayscale(output)
@@ -108,9 +135,4 @@ class preprocessing(object):
             np.maximum(self.screen_buffer[0], self.screen_buffer[1],
                        out=self.screen_buffer[0])
 
-        transformed_image = cv2.resize(self.screen_buffer[0],
-                                       (self.size, self.size),
-                                       interpolation=cv2.INTER_AREA)
-        int_image = np.asarray(transformed_image, dtype=np.uint8)
-        # return np.expand_dims(int_image, axis=2)
-        return int_image
+        return self.screen_buffer[0]
