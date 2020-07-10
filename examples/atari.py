@@ -21,22 +21,19 @@ def create_atari_environment(name=None, sticky_actions=True,
 def preprocess_fn(obs=None, act=None, rew=None, done=None,
                   obs_next=None, info=None, policy=None):
     if obs_next is not None:
-        shape = np.shape(obs_next)
-        obs_next = np.reshape(
-            obs_next, (shape[0] * shape[1], shape[2], shape[3]))
-        obs_next = obs_next.transpose(1, 2, 0)
+        obs_next = np.reshape(obs_next, (-1, *obs_next.shape[2:]))
+        obs_next = np.moveaxis(obs_next, 0, -1)
         obs_next = cv2.resize(obs_next, (SIZE, SIZE))
-        obs_next = np.asarray(obs_next, dtype=np.uint8)
+        obs_next = np.asanyarray(obs_next, dtype=np.uint8)
         obs_next = np.reshape(obs_next, (-1, FRAME, SIZE, SIZE))
-        obs_next = obs_next.transpose(0, 2, 3, 1)
+        obs_next = np.moveaxis(obs_next, 1, -1)
     elif obs is not None:
-        shape = np.shape(obs)
-        obs = np.reshape(obs, (shape[0] * shape[1], shape[2], shape[3]))
-        obs = obs.transpose(1, 2, 0)
+        obs = np.reshape(obs, (-1, *obs.shape[2:]))
+        obs = np.moveaxis(obs, 0, -1)
         obs = cv2.resize(obs, (SIZE, SIZE))
-        obs = np.asarray(obs, dtype=np.uint8)
+        obs = np.asanyarray(obs, dtype=np.uint8)
         obs = np.reshape(obs, (-1, FRAME, SIZE, SIZE))
-        obs = obs.transpose(0, 2, 3, 1)
+        obs = np.moveaxis(obs, 1, -1)
 
     return Batch(obs=obs, act=act, rew=rew, done=done,
                  obs_next=obs_next, info=info)
@@ -63,7 +60,8 @@ class preprocessing(object):
 
     @property
     def observation_space(self):
-        return Box(low=0, high=255, shape=(self.size, self.size, 4),
+        return Box(low=0, high=255,
+                   shape=(self.size, self.size, self.frame_skip),
                    dtype=np.uint8)
 
     def action_space(self):
@@ -119,10 +117,7 @@ class preprocessing(object):
         while len(observation) > 0 and \
                 len(observation) < self.frame_skip:
             observation.append(observation[-1])
-        if self.count >= self.max_episode_steps:
-            terminal = True
-        else:
-            terminal = False
+        terminal = self.count >= self.max_episode_steps
         return np.array(observation), total_reward, \
             (terminal or is_terminal), info
 
