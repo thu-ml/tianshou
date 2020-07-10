@@ -92,6 +92,7 @@ class Collector(object):
                  preprocess_fn: Callable[[Any], Union[dict, Batch]] = None,
                  stat_size: Optional[int] = 100,
                  action_noise: Optional[BaseNoise] = None,
+                 reward_length: int = 1,
                  **kwargs) -> None:
         super().__init__()
         self.env = env
@@ -102,6 +103,7 @@ class Collector(object):
         self.buffer = buffer
         self.policy = policy
         self.preprocess_fn = preprocess_fn
+        self.reward_length = reward_length
         # if preprocess_fn is None:
         #     def _prep(**kwargs):
         #         return kwargs
@@ -166,10 +168,10 @@ class Collector(object):
         self._act, self._rew, self._done, self._info = \
             Batch(), Batch(), Batch(), Batch()
         if self._multi_env:
-            self.reward = np.zeros(self.env_num)
+            self.reward = np.zeros((self.env_num, self.reward_length))
             self.length = np.zeros(self.env_num)
         else:
-            self.reward, self.length = 0, 0
+            self.reward, self.length = np.zeros(self.reward_length), 0
         for b in self._cached_buf:
             b.reset()
 
@@ -345,7 +347,8 @@ class Collector(object):
                                 cur_step += len(self._cached_buf[i])
                                 if self.buffer is not None:
                                     self.buffer.update(self._cached_buf[i])
-                        self.reward[i], self.length[i] = 0, 0
+                        self.reward[i] = np.zeros(self.reward_length)
+                        self.length[i] = 0
                         if self._cached_buf:
                             self._cached_buf[i].reset()
                         self._reset_state(i)
@@ -371,7 +374,7 @@ class Collector(object):
                     cur_episode += 1
                     reward_sum += self.reward[0]
                     length_sum += self.length
-                    self.reward, self.length = 0, 0
+                    self.reward, self.length = np.zeros(self.reward_length), 0
                     self.state = None
                     obs_next = self._make_batch(self.env.reset())
                     if self.preprocess_fn:
