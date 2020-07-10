@@ -8,6 +8,7 @@ from tianshou.data import Batch, to_torch
 
 
 def test_batch():
+    assert 1 == 1
     assert list(Batch()) == []
     assert Batch().is_empty()
     assert Batch(b={'c': {}}).is_empty()
