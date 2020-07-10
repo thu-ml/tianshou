@@ -556,7 +556,7 @@ class Batch:
         new batch. For keys that are not shared across all batches,
         batches that do not have these keys will be padded by zeros with
         appropriate shapes.
-        e.g.
+        e.g::
         a = Batch(a=shape(3,4), common=Batch(c=shape(3, 5)))
         b = Batch(b=shape(4,3), common=Batch(c=shape(4, 5)))
         c = Batch.cat([b, c])
