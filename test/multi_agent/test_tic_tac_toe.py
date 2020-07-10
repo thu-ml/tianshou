@@ -77,7 +77,7 @@ def test_tic_tac_toe(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(x):
-        return x >= 1.0
+        return x >= 0.95
 
     def train_fn(x):
         policy.set_eps(args.eps_train)
