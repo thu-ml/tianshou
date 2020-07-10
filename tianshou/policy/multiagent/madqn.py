@@ -23,7 +23,7 @@ class MultiAgentDQNPolicy(DQNPolicy):
     .. seealso::
 
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
+        explanation. Further usage can be found at :ref:`marl_example`.
     """
 
     def __init__(self,

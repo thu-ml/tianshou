@@ -9,12 +9,15 @@ class MultiAgentEnv(ABC, gym.Env):
     Multi-agent environments must be wrapped as :class:`~tianshou.env.MAEnv`.
     Here are some usages:
     ::
+
         env = MAEnv(...)
         # obs is a dict containing obs, agent_id, and legal_actions
         obs = env.reset()
         action = policy(obs)
         obs, rew, done, info = env.step(action)
         env.close()
+
+    Further usage can be found at :ref:`marl_example`.
     """
 
     def __init__(self, env) -> None:

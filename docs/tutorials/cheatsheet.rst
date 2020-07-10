@@ -248,7 +248,7 @@ But the state stored in the buffer may be a shallow-copy. To make sure each of y
 .. _marl_example:
 
 Multi-Agent Reinforcement Learning
------------------
+----------------------------------
 
 With the flexible core APIs, Tianshou can support multi-agent reinforcement learning with minimal efforts.
 
