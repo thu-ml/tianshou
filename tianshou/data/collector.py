@@ -163,7 +163,8 @@ class Collector(object):
             self._obs = self._make_batch(self._obs)
         if self.preprocess_fn:
             self._obs = self.preprocess_fn(obs=self._obs).get('obs', self._obs)
-        self._act = self._rew = self._done = self._info = None
+        self._act, self._rew, self._done, self._info = \
+            Batch(), Batch(), Batch(), Batch()
         if self._multi_env:
             self.reward = np.zeros(self.env_num)
             self.length = np.zeros(self.env_num)
@@ -262,8 +263,8 @@ class Collector(object):
                     Warning)
             batch = Batch(
                 obs=self._obs, act=self._act, rew=self._rew,
-                done=self._done, obs_next=None, info=self._info,
-                policy=None)
+                done=self._done, obs_next=Batch(), info=self._info,
+                policy=Batch())
             if random:
                 action_space = self.env.action_space
                 if isinstance(action_space, list):
