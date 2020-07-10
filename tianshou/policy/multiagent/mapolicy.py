@@ -92,7 +92,7 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
             act = out.act
             results.append(
                 (True, agent_index, out, act,
-                 out.state if hasattr(out, 'state') else None))
+                 out.state if (hasattr(out, 'state') and out.state is not None) else Batch()))
         holder = Batch.cat([{'act': e[3]} for e in results if e[0]])
         state_dict = {}
         out_dict = {}
