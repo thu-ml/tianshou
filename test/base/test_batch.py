@@ -9,6 +9,8 @@ from tianshou.data import Batch, to_torch
 
 def test_batch():
     assert list(Batch()) == []
+    assert Batch().is_empty()
+    assert not Batch(a=[1, 2, 3]).is_empty()
     with pytest.raises(AssertionError):
         Batch({1: 2})
     batch = Batch(a=[torch.ones(3), torch.ones(3)])

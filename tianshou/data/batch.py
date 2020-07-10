@@ -624,6 +624,9 @@ class Batch:
             raise TypeError("Object of type 'Batch' has no len()")
         return min(r)
 
+    def is_empty(self):
+        return len(self.__dict__.keys()) == 0
+
     @property
     def shape(self) -> List[int]:
         """Return self.shape."""
