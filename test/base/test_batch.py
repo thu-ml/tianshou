@@ -8,7 +8,6 @@ from tianshou.data import Batch, to_torch
 
 
 def test_batch():
-    assert 1 == 1
     assert list(Batch()) == []
     batch = Batch(a=[torch.ones(3), torch.ones(3)])
     assert torch.allclose(batch.a, torch.ones(2, 3))
