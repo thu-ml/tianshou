@@ -46,7 +46,7 @@ class ImitationPolicy(BasePolicy):
         self.optim.zero_grad()
         if self.mode == 'continuous':
             a = self(batch).act
-            a_ = to_torch(batch.act, dtype=torch.float, device=a.device)
+            a_ = to_torch(batch.act, dtype=torch.float32, device=a.device)
             loss = F.mse_loss(a, a_)
         elif self.mode == 'discrete':  # classification
             a = self(batch).logits

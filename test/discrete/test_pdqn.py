@@ -6,15 +6,11 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.utils.net.common import Net
 from tianshou.env import VectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer, PrioritizedReplayBuffer
-
-if __name__ == '__main__':
-    from net import Net
-else:  # pytest
-    from test.discrete.net import Net
 
 
 def get_args():
@@ -64,8 +60,8 @@ def test_pdqn(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, args.action_shape, args.device)
-    net = net.to(args.device)
+    net = Net(args.layer_num, args.state_shape,
+              args.action_shape, args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
         net, optim, args.gamma, args.n_step,

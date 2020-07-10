@@ -10,11 +10,8 @@ from tianshou.env import VectorEnv
 from tianshou.policy import PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-
-if __name__ == '__main__':
-    from net import Net, Actor, Critic
-else:  # pytest
-    from test.discrete.net import Net, Actor, Critic
+from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.net.common import Net
 
 
 def get_args():

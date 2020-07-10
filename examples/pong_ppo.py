@@ -9,8 +9,8 @@ from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env.atari import create_atari_environment
-
-from discrete_net import Net, Actor, Critic
+from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.net.common import Net
 
 
 def get_args():
