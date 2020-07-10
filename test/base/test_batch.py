@@ -21,7 +21,7 @@ def test_batch():
     # mimic the behavior of dict.update, where kwargs can overwrite keys
     b.update({'a': 2}, a=3)
     assert b.a == 3
-
+    assert not Batch(a=[1, 2, 3]).is_empty()
     with pytest.raises(AssertionError):
         Batch({1: 2})
     batch = Batch(a=[torch.ones(3), torch.ones(3)])
