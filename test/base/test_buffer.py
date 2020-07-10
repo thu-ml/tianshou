@@ -92,20 +92,16 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
         obs_next, rew, done, info = env.step(a)
         buf.add(obs, a, rew, done, obs_next, info, np.random.randn() - 0.5)
         obs = obs_next
-        assert np.isclose(np.sum((buf.weight / buf._weight_sum)[:buf._size]),
-                          1, rtol=1e-12)
         data, indice = buf.sample(len(buf) // 2)
         if len(buf) // 2 == 0:
             assert len(data) == len(buf)
         else:
             assert len(data) == len(buf) // 2
         assert len(buf) == min(bufsize, i + 1)
-        assert np.isclose(buf._weight_sum, (buf.weight).sum())
     data, indice = buf.sample(len(buf) // 2)
     buf.update_weight(indice, -data.weight / 2)
-    assert np.isclose(buf.weight[indice], np.power(
-        np.abs(-data.weight / 2), buf._alpha)).all()
-    assert np.isclose(buf._weight_sum, (buf.weight).sum())
+    assert np.allclose(
+        buf.weight[indice], np.abs(-data.weight / 2) ** buf._alpha)
 
 
 if __name__ == '__main__':
