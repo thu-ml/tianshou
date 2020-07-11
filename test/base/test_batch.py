@@ -13,6 +13,11 @@ def test_batch():
     assert Batch(b={'c': {}}).is_empty()
     assert len(Batch(a=[1, 2, 3], b={'c': {}})) == 3
     assert not Batch(a=[1, 2, 3]).is_empty()
+    b = Batch()
+    b.update()
+    assert b.is_empty()
+    b.update(c=[3, 5])
+    assert np.allclose(b.c, [3, 5])
     with pytest.raises(AssertionError):
         Batch({1: 2})
     batch = Batch(a=[torch.ones(3), torch.ones(3)])
@@ -114,10 +119,11 @@ def test_batch_over_batch():
     assert np.allclose(batch2.c, [6, 7, 8, 6, 7, 8])
     assert np.allclose(batch2.b.a, [3, 4, 5, 3, 4, 5])
     assert np.allclose(batch2.b.b, [4, 5, 0, 4, 5, 0])
-    batch2.update(batch2.b)
+    batch2.update(batch2.b, six=[6, 6, 6])
     assert np.allclose(batch2.c, [6, 7, 8, 6, 7, 8])
     assert np.allclose(batch2.a, [3, 4, 5, 3, 4, 5])
     assert np.allclose(batch2.b, [4, 5, 0, 4, 5, 0])
+    assert np.allclose(batch2.six, [6, 6, 6])
     d = {'a': [3, 4, 5], 'b': [4, 5, 6]}
     batch3 = Batch(c=[6, 7, 8], b=d)
     batch3.cat_(Batch(c=[6, 7, 8], b=d))

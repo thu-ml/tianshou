@@ -661,6 +661,8 @@ class Batch:
             batch = Batch(batch)
         for k, v in batch.items():
             self.__dict__[k] = v
+        if kwargs:
+            self.update(kwargs)
 
     def __len__(self) -> int:
         """Return len(self)."""
