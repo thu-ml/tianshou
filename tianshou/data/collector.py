@@ -117,9 +117,7 @@ class Collector(object):
         self._action_noise = action_noise
 
         def _rew_metric(x):
-            flag = np.isscalar(x) or \
-                isinstance(x, np.ndarray) and x.shape == (1, )
-            assert flag, 'Please specify the reward_metric ' \
+            assert np.asanyarray(x) == 1, 'Please specify the reward_metric ' \
                 'since the reward is not a scalar.'
             return x
 
