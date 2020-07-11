@@ -5,7 +5,7 @@ from typing import Union, Optional
 
 from tianshou.policy import DQNPolicy
 from tianshou.policy.multiagent.mapolicy import BaseMultiAgentPolicy
-from tianshou.data import Batch, to_numpy
+from tianshou.data import Batch, to_numpy, ReplayBuffer, PrioritizedReplayBuffer
 
 
 class MultiAgentDQNPolicy(DQNPolicy, BaseMultiAgentPolicy):
@@ -84,3 +84,13 @@ class MultiAgentDQNPolicy(DQNPolicy, BaseMultiAgentPolicy):
                 actions.append(action)
         act = to_numpy(actions)
         return Batch(logits=q, act=act, state=h)
+
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
+        batch = self.compute_nstep_return(
+            batch, buffer, indice, self._target_q, self._gamma, self._n_step,
+            agent_id=self.agent_id)
+        if isinstance(buffer, PrioritizedReplayBuffer):
+            batch.update_weight = buffer.update_weight
+            batch.indice = indice
+        return batch

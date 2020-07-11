@@ -6,7 +6,7 @@ import numpy as np
 from typing import Union, Optional, Dict, List
 
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, to_numpy
+from tianshou.data import Batch, to_numpy, ReplayBuffer
 
 
 class BaseMultiAgentPolicy(BasePolicy, ABC):
@@ -114,3 +114,41 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
             out = policy.learn(batch=batch[agent_index], **kwargs)
             results["agent_" + str(policy.agent_id)] = out
         return results
+
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
+        results = []
+        # save original multi-dimensional rew in save_rew,
+        # set rew to the reward of each agent during their ``process_fn``,
+        # and restore the original reward afterwards
+        has_rew = isinstance(buffer.rew, np.ndarray)
+        if has_rew:
+            buffer.save_rew = buffer.rew
+            buffer.rew = Batch()
+        for policy in self.policies:
+            agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
+            if len(agent_index) == 0:
+                # has_data, data, agent_index
+                results.append([False, None, None])
+                continue
+            tmp_batch = batch[agent_index]
+            tmp_indice = indice[agent_index]
+            if isinstance(tmp_batch.rew, np.ndarray):
+                # reward can be empty Batch (after initial reset) or nparray.
+                tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
+            if has_rew:
+                buffer.rew = buffer.save_rew[:, policy.agent_id - 1]
+            output = policy.process_fn(tmp_batch, buffer, tmp_indice)
+            if has_rew:
+                buffer.rew = Batch()
+            results.append([True, output, agent_index])
+        if has_rew:
+            buffer.rew = buffer.save_rew
+        # incompatible keys will be padded with zeros
+        # e.g. agent 1 batch has ``returns`` but agent 2 does not
+        holder = Batch.cat([data for (has_data, data, agent_index) in results])
+        for policy, (has_data, data, agent_index) in \
+                zip(self.policies, results):
+            if has_data:
+                holder[agent_index] = data
+        return holder

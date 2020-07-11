@@ -108,7 +108,8 @@ class BasePolicy(ABC, nn.Module):
             batch: Batch,
             v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
             gamma: float = 0.99,
-            gae_lambda: float = 0.95) -> Batch:
+            gae_lambda: float = 0.95,
+    ) -> Batch:
         """Compute returns over given full-length episodes, including the
         implementation of Generalized Advantage Estimator (arXiv:1506.02438).
 
@@ -124,18 +125,19 @@ class BasePolicy(ABC, nn.Module):
 
         :return: a Batch. The result will be stored in batch.returns.
         """
+        rew = batch.rew
         if v_s_ is None:
-            v_s_ = batch.rew * 0.
+            v_s_ = rew * 0.
         else:
             if not isinstance(v_s_, np.ndarray):
                 v_s_ = np.array(v_s_, np.float)
-            v_s_ = v_s_.reshape(batch.rew.shape)
+            v_s_ = v_s_.reshape(rew.shape)
         returns = np.roll(v_s_, 1, axis=0)
         m = (1. - batch.done) * gamma
-        delta = batch.rew + v_s_ * m - returns
+        delta = rew + v_s_ * m - returns
         m *= gae_lambda
         gae = 0.
-        for i in range(len(batch.rew) - 1, -1, -1):
+        for i in range(len(rew) - 1, -1, -1):
             gae = delta[i] + m[i] * gae
             returns[i] += gae
         batch.returns = returns
@@ -149,7 +151,7 @@ class BasePolicy(ABC, nn.Module):
         target_q_fn: Callable[[ReplayBuffer, np.ndarray], torch.Tensor],
         gamma: float = 0.99,
         n_step: int = 1,
-        rew_norm: bool = False
+        rew_norm: bool = False,
     ) -> np.ndarray:
         r"""Compute n-step return for Q-learning targets:
 
@@ -180,8 +182,9 @@ class BasePolicy(ABC, nn.Module):
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with shape (bsz, ).
         """
+        rew = buffer.rew
         if rew_norm:
-            bfr = buffer.rew[:min(len(buffer), 1000)]  # avoid large buffer
+            bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
             if np.isclose(std, 0):
                 mean, std = 0, 1
@@ -189,7 +192,7 @@ class BasePolicy(ABC, nn.Module):
             mean, std = 0, 1
         returns = np.zeros_like(indice)
         gammas = np.zeros_like(indice) + n_step
-        done, rew, buf_len = buffer.done, buffer.rew, len(buffer)
+        done, rew, buf_len = buffer.done, rew, len(buffer)
         for n in range(n_step - 1, -1, -1):
             now = (indice + n) % buf_len
             gammas[done[now] > 0] = n

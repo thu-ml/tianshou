@@ -67,8 +67,10 @@ def test_tic_tac_toe(args=get_args()):
 
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size), reward_length=2)
-    test_collector = Collector(policy, test_envs, reward_length=2)
+        policy, train_envs, ReplayBuffer(args.buffer_size), reward_length=2,
+        reward_transform=lambda x : x[0])
+    test_collector = Collector(policy, test_envs, reward_length=2,
+                               reward_transform=lambda x : x[0])
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size)
     # log
@@ -101,7 +103,8 @@ def test_tic_tac_toe(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = TicTacToeEnv()
-        collector = Collector(policy, env, reward_length=2)
+        collector = Collector(policy, env, reward_length=2,
+                              reward_transform=lambda x : x[0])
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
