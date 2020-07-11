@@ -259,8 +259,7 @@ class Batch:
                         v_ = None
                         if not isinstance(v, np.ndarray) and \
                                 all(isinstance(e, torch.Tensor) for e in v):
-                            v_ = torch.stack(v)
-                            self.__dict__[k] = v_
+                            self.__dict__[k] = torch.stack(v)
                             continue
                         else:
                             v_ = np.asanyarray(v)
@@ -333,9 +332,8 @@ class Batch:
         else:
             raise IndexError("Cannot access item from empty Batch object.")
 
-    def __setitem__(
-            self,
-            index: Union[str, slice, int, np.integer, np.ndarray, List[int]],
+    def __setitem__(self, index: Union[
+            str, slice, int, np.integer, np.ndarray, List[int]],
             value: Any) -> None:
         """Assign value to self[index]."""
         if isinstance(value, np.ndarray):
@@ -454,10 +452,8 @@ class Batch:
             elif isinstance(v, Batch):
                 v.to_numpy()
 
-    def to_torch(self,
-                 dtype: Optional[torch.dtype] = None,
-                 device: Union[str, int, torch.device] = 'cpu'
-                 ) -> None:
+    def to_torch(self, dtype: Optional[torch.dtype] = None,
+                 device: Union[str, int, torch.device] = 'cpu') -> None:
         """Change all numpy.ndarray to torch.Tensor. This is an in-place
         operation.
         """
@@ -473,27 +469,15 @@ class Batch:
                     v = v.type(dtype)
                 self.__dict__[k] = v
             elif isinstance(v, torch.Tensor):
-                if dtype is not None and v.dtype != dtype:
-                    must_update_tensor = True
-                elif v.device.type != device.type:
-                    must_update_tensor = True
-                elif device.index is not None and \
+                if dtype is not None and v.dtype != dtype or \
+                        v.device.type != device.type or \
+                        device.index is not None and \
                         device.index != v.device.index:
-                    must_update_tensor = True
-                else:
-                    must_update_tensor = False
-                if must_update_tensor:
                     if dtype is not None:
                         v = v.type(dtype)
                     self.__dict__[k] = v.to(device)
             elif isinstance(v, Batch):
                 v.to_torch(dtype, device)
-
-    def append(self, batch: 'Batch') -> None:
-        warnings.warn('Method :meth:`~tianshou.data.Batch.append` will be '
-                      'removed soon, please use '
-                      ':meth:`~tianshou.data.Batch.cat`')
-        return self.cat_(batch)
 
     def cat_(self, batch: 'Batch') -> None:
         """Concatenate a :class:`~tianshou.data.Batch` object into current
