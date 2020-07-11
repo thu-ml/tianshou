@@ -305,7 +305,7 @@ class Collector(object):
                 if render > 0:
                     time.sleep(render)
             self.length += 1
-            self.reward += self._rew
+            self.reward += self._rew.reshape(self.reward.shape)
             if self.preprocess_fn:
                 result = self.preprocess_fn(
                     obs=self._obs, act=self._act, rew=self._rew,
@@ -374,7 +374,12 @@ class Collector(object):
                     cur_episode += 1
                     reward_sum += self.reward[0]
                     length_sum += self.length
-                    self.reward, self.length = np.zeros(self.reward_length), 0
+                    if self._multi_env:
+                        self.reward = np.zeros(
+                            self.reward_length, self.env_num)
+                    else:
+                        self.reward = np.zeros(self.reward_length)
+                    self.length = 0
                     self.state = None
                     obs_next = self._make_batch(self.env.reset())
                     if self.preprocess_fn:
