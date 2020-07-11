@@ -31,6 +31,12 @@ class Collector(object):
     :param BaseNoise action_noise: add a noise to continuous action. Normally
         a policy already has a noise param for exploration in training phase,
         so this is recommended to use in test collector for some purpose.
+    :param get_final_reward_fn: to be used in multi-agent RL. The reward to
+        report is of shape [reward_length], but we need to return a single
+        scalar to monitor training. This function specifies what is the
+        desired metric, i.e. the reward of agent 1 or the average reward
+        over all agents. By default, the behavior is to select the
+        reward of agent 1.
 
     The ``preprocess_fn`` is a function called before the data has been added
     to the buffer with batch format, which receives up to 7 keys as listed in
@@ -93,6 +99,8 @@ class Collector(object):
                  stat_size: Optional[int] = 100,
                  action_noise: Optional[BaseNoise] = None,
                  reward_length: int = 1,
+                 get_final_reward_fn: Optional[Callable[[np.ndarray], float]]
+                 = None,
                  **kwargs) -> None:
         super().__init__()
         self.env = env
@@ -104,6 +112,13 @@ class Collector(object):
         self.policy = policy
         self.preprocess_fn = preprocess_fn
         self.reward_length = reward_length
+
+        def _get_final_reward_fn(x):
+            # x can be a scalar or ndarray with shape [reward_length]
+            if isinstance(x, np.ndarray):
+                return x[0]
+            return x
+        self.get_final_reward_fn = get_final_reward_fn or _get_final_reward_fn
         # if preprocess_fn is None:
         #     def _prep(**kwargs):
         #         return kwargs
@@ -403,12 +418,13 @@ class Collector(object):
             n_episode = np.sum(n_episode)
         else:
             n_episode = max(cur_episode, 1)
+        reward_sum = self.get_final_reward_fn(reward_sum / n_episode)
         return {
             'n/ep': cur_episode,
             'n/st': cur_step,
             'v/st': self.step_speed.get(),
             'v/ep': self.episode_speed.get(),
-            'rew': reward_sum / n_episode,
+            'rew': reward_sum,
             'len': length_sum / n_episode,
         }
 
