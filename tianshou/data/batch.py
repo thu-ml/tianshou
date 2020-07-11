@@ -651,7 +651,19 @@ class Batch:
     @staticmethod
     def stack(batches: List[Union[dict, 'Batch']], axis: int = 0) -> 'Batch':
         """Stack a list of :class:`~tianshou.data.Batch` object into a single
-        new batch.
+        new batch. For keys that are not shared across all batches,
+        batches that do not have these keys will be padded by zeros. E.g.
+        ::
+
+            >>> a = Batch(a=np.zeros([4, 4]), common=Batch(c=np.zeros([4, 5])))
+            >>> b = Batch(b=np.zeros([4, 6]), common=Batch(c=np.zeros([4, 5])))
+            >>> c = Batch.stack([a, b])
+            >>> c.a.shape
+            (8, 4)
+            >>> c.b.shape
+            (8, 6)
+            >>> c.common.c.shape
+            (8, 5)
         """
         batch = Batch()
         batch.stack_(batches, axis)
