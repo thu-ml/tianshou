@@ -31,8 +31,10 @@ def _create_value(inst: Any, size: int, stack=True) -> Union[
         of (10, 3, 5), otherwise (10, 5)
     """
     has_shape = isinstance(inst, (np.ndarray, torch.Tensor))
-    is_scalar = isinstance(inst, Number) or \
-                issubclass(inst.__class__, np.generic) or (has_shape and not inst.shape)
+    is_scalar = \
+        isinstance(inst, Number) or \
+        issubclass(inst.__class__, np.generic) or \
+        (has_shape and not inst.shape)
     if not stack and is_scalar:
         # here we do not consider scalar types, following the
         # behavior of numpy which does not support concatenation
