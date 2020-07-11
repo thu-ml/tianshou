@@ -654,16 +654,13 @@ class Batch:
     def update(self, batch: Optional[Union[dict, 'Batch']] = None,
                **kwargs) -> None:
         """Update this batch from another dict/Batch."""
+        if batch is None:
+            self.update(kwargs)
+            return
         if isinstance(batch, dict):
             batch = Batch(batch)
-        if batch is not None:
-            for k, v in batch.items():
-                self.__dict__[k] = v
-        if kwargs is not None:
-            batch = Batch(kwargs)
-        if batch is not None:
-            for k, v in batch.items():
-                self.__dict__[k] = v
+        for k, v in batch.items():
+            self.__dict__[k] = v
 
     def __len__(self) -> int:
         """Return len(self)."""
