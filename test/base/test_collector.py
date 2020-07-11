@@ -138,10 +138,16 @@ def test_collector_with_ma():
     batch = c1.sample(10)
     print(batch)
     c0.buffer.update(c1.buffer)
-    assert np.allclose(c0.buffer[:len(c0.buffer)].obs, [
+    obs = [
         0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1.,
         0., 1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4., 0., 1., 0.,
-        1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.])
+        1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.]
+    assert np.allclose(c0.buffer[:len(c0.buffer)].obs, obs)
+    rew = [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1,
+           0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0,
+           0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+    assert np.allclose(c0.buffer[:len(c0.buffer)].rew,
+                       [[x] * 4 for x in rew])
     c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
                    preprocess_fn, reward_metric=reward_metric)
     c2.collect(n_episode=[0, 0, 0, 10])

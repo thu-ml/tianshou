@@ -4,6 +4,9 @@ from gym.spaces.discrete import Discrete
 
 
 class MyTestEnv(gym.Env):
+    """
+    This is a "going right" task. The task is to go right ``size`` steps.
+    """
     def __init__(self, size, sleep=0, dict_state=False, ma_rew=0):
         self.size = size
         self.sleep = sleep

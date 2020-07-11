@@ -34,7 +34,7 @@ class Collector(object):
     :param function reward_metric: to be used in multi-agent RL. The reward to
         report is of shape [reward_length], but we need to return a single
         scalar to monitor training. This function specifies what is the desired
-        metric, i.e. the reward of agent 1 or the average reward over all
+        metric, e.g. the reward of agent 1 or the average reward over all
         agents. By default, the behavior is to select the reward of agent 1.
 
     The ``preprocess_fn`` is a function called before the data has been added
@@ -117,7 +117,10 @@ class Collector(object):
         self._action_noise = action_noise
 
         def _rew_metric(x):
-            assert np.asanyarray(x) == 1, 'Please specify the reward_metric ' \
+            # this internal function is designed for single-agent RL
+            # for multi-agent RL, a reward_metric must be provided
+            assert np.asanyarray(x).size == 1,\
+                'Please specify the reward_metric '\
                 'since the reward is not a scalar.'
             return x
 
