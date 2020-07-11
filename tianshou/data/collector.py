@@ -117,7 +117,9 @@ class Collector(object):
         self._action_noise = action_noise
 
         def _rew_metric(x):
-            assert np.isscalar(x), 'Please specify the reward_metric ' \
+            flag = np.isscalar(x) or \
+                isinstance(x, np.ndarray) and x.shape == (1, )
+            assert flag, 'Please specify the reward_metric ' \
                 'since the reward is not a scalar.'
             return x
 
@@ -155,7 +157,7 @@ class Collector(object):
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get('obs', obs)
         self.data.obs = obs
-        self.reward = 0  # will be specified when the first data is ready
+        self.reward = 0.  # will be specified when the first data is ready
         self.length = np.zeros(self.env_num)
         for b in self._cached_buf:
             b.reset()
@@ -361,12 +363,14 @@ class Collector(object):
             n_episode = np.sum(n_episode)
         else:
             n_episode = max(cur_episode, 1)
+        if not np.isscalar(reward_sum):
+            reward_sum = self._rew_metric(reward_sum / n_episode)
         return {
             'n/ep': cur_episode,
             'n/st': cur_step,
             'v/st': self.step_speed.get(),
             'v/ep': self.episode_speed.get(),
-            'rew': reward_sum / n_episode,
+            'rew': reward_sum,
             'len': length_sum / n_episode,
         }
 
