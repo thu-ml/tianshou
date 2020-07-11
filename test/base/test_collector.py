@@ -27,16 +27,16 @@ class MyPolicy(BasePolicy):
 
 def preprocess_fn(**kwargs):
     # modify info before adding into the buffer
-    if kwargs.get('info', None) is not None:
+    # if info is not provided from env, it will be a `Batch()`.
+    if not kwargs.get('info', Batch()).is_empty():
         n = len(kwargs['obs'])
         info = kwargs['info']
         for i in range(n):
             info[i].update(rew=kwargs['rew'][i])
         return {'info': info}
-        # or
-        # return Batch(info=info)
+        # or: return Batch(info=info)
     else:
-        return {}
+        return Batch()
 
 
 class Logger(object):
