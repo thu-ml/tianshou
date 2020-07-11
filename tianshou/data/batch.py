@@ -609,8 +609,8 @@ class Batch:
 
     @staticmethod
     def stack(batches: List[Union[dict, 'Batch']], axis: int = 0) -> 'Batch':
-        """Stack a list of :class:`~tianshou.data.Batch` object
-        into a single new batch.
+        """Stack a list of :class:`~tianshou.data.Batch` object into a single
+        new batch.
         """
         batch = Batch()
         batch.stack_(batches, axis)
