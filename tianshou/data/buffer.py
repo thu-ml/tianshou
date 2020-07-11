@@ -108,8 +108,7 @@ class ReplayBuffer:
         super().__init__()
         self._maxsize = size
         self._stack = stack_num
-        assert stack_num != 1, \
-            'stack_num should greater than 1'
+        assert stack_num != 1, 'stack_num should greater than 1'
         self._avail = sample_avail and stack_num > 1
         self._avail_index = []
         self._save_s_ = not ignore_obs_next
@@ -136,12 +135,11 @@ class ReplayBuffer:
         except KeyError:
             self._meta.__dict__[name] = _create_value(inst, self._maxsize)
             value = self._meta.__dict__[name]
-        if isinstance(inst, np.ndarray) and \
-                value.shape[1:] != inst.shape:
+        if isinstance(inst, np.ndarray) and value.shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, key: "
-                f"{name}, expect shape: {value.shape[1:]}"
-                f", given shape: {inst.shape}.")
+                f"{name}, expect shape: {value.shape[1:]}, "
+                f"given shape: {inst.shape}.")
         try:
             value[self._index] = inst
         except KeyError:
@@ -357,7 +355,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._weight_sum = 0.0
         self._amortization_freq = 50
         self._replace = replace
-        self._meta.__dict__['weight'] = np.zeros(size, dtype=np.float64)
+        self._meta.weight = np.zeros(size, dtype=np.float64)
 
     def add(self,
             obs: Union[dict, np.ndarray],
@@ -372,7 +370,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """Add a batch of data into replay buffer."""
         # we have to sacrifice some convenience for speed
         self._weight_sum += np.abs(weight) ** self._alpha - \
-            self._meta.__dict__['weight'][self._index]
+            self._meta.weight[self._index]
         self._add_to_buffer('weight', np.abs(weight) ** self._alpha)
         super().add(obs, act, rew, done, obs_next, info, policy)
 
@@ -410,13 +408,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                 f"batch_size should be less than {len(self)}, \
                     or set replace=True")
         batch = self[indice]
-        impt_weight = Batch(
-            impt_weight=(self._size * p) ** (-self._beta))
+        impt_weight = Batch(impt_weight=(self._size * p) ** (-self._beta))
         batch.cat_(impt_weight)
         return batch, indice
-
-    def reset(self) -> None:
-        super().reset()
 
     def update_weight(self, indice: Union[slice, np.ndarray],
                       new_weight: np.ndarray) -> None:
