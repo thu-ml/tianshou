@@ -19,7 +19,7 @@ def test_batch():
     assert batch.obs == batch["obs"]
     batch.obs = [1]
     assert batch.obs == [1]
-    batch.cat_([batch])
+    batch.cat_(batch)
     assert np.allclose(batch.obs, [1, 1])
     assert batch.np.shape == (6, 4)
     assert np.allclose(batch[0].obs, batch[1].obs)
@@ -96,13 +96,13 @@ def test_batch_over_batch():
     for k, v in batch2.items():
         assert np.all(batch2[k] == v)
     assert batch2[-1].b.b == 0
-    batch2.cat_([Batch(c=[6, 7, 8], b=batch)])
+    batch2.cat_(Batch(c=[6, 7, 8], b=batch))
     assert np.allclose(batch2.c, [6, 7, 8, 6, 7, 8])
     assert np.allclose(batch2.b.a, [3, 4, 5, 3, 4, 5])
     assert np.allclose(batch2.b.b, [4, 5, 0, 4, 5, 0])
     d = {'a': [3, 4, 5], 'b': [4, 5, 6]}
     batch3 = Batch(c=[6, 7, 8], b=d)
-    batch3.cat_([Batch(c=[6, 7, 8], b=d)])
+    batch3.cat_(Batch(c=[6, 7, 8], b=d))
     assert np.allclose(batch3.c, [6, 7, 8, 6, 7, 8])
     assert np.allclose(batch3.b.a, [3, 4, 5, 3, 4, 5])
     assert np.allclose(batch3.b.b, [4, 5, 6, 4, 5, 6])
@@ -129,7 +129,7 @@ def test_batch_cat_and_stack():
     b2 = Batch(a=[{'b': np.float64(4.0), 'd': {'e': np.array(6.0)}}])
     b12_cat_out = Batch.cat([b1, b2])
     b12_cat_in = copy.deepcopy(b1)
-    b12_cat_in.cat_([b2])
+    b12_cat_in.cat_(b2)
     assert np.all(b12_cat_in.a.d.e == b12_cat_out.a.d.e)
     assert np.all(b12_cat_in.a.d.e == b12_cat_out.a.d.e)
     assert isinstance(b12_cat_in.a.d.e, np.ndarray)

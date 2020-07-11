@@ -479,10 +479,13 @@ class Batch:
             elif isinstance(v, Batch):
                 v.to_torch(dtype, device)
 
-    def cat_(self, batches: List[Union[dict, 'Batch']]) -> None:
-        """Concatenate a list of :class:`~tianshou.data.Batch` objects
-        into current batch.
+    def cat_(self,
+             batches: Union['Batch', List[Union[dict, 'Batch']]]) -> None:
+        """Concatenate a list of (or one) :class:`~tianshou.data.Batch`
+        objects into current batch.
         """
+        if isinstance(batches, Batch):
+            batches = [batches]
         if len(batches) == 0:
             return
         batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
