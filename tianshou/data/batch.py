@@ -3,7 +3,6 @@ import pprint
 import warnings
 import numpy as np
 from copy import deepcopy
-from functools import reduce
 from numbers import Number
 from typing import Any, List, Tuple, Union, Iterator, Optional
 
@@ -530,20 +529,26 @@ class Batch:
                 if isinstance(value, np.ndarray):
                     arrs = []
                     for i, e in enumerate(batches):
-                        shape = [lens[i]] + list(value.shape[1:])
-                        pad = np.zeros(shape, dtype=value.dtype)
-                        arrs.append(e.get(k, pad))
+                        v = e.get(k, None)
+                        if v is None:
+                            shape = [lens[i]] + list(value.shape[1:])
+                            v = np.zeros(shape, dtype=value.dtype)
+                        arrs.append(v)
                     self.__dict__[k] = np.concatenate(arrs)
                 elif isinstance(value, torch.Tensor):
                     arrs = []
                     for i, e in enumerate(batches):
-                        shape = [lens[i]] + list(value.shape[1:])
-                        pad = torch.zeros(shape,
-                                          dtype=value.dtype,
-                                          device=value.device)
-                        arrs.append(e.get(k, pad))
+                        v = e.get(k, None)
+                        if v is None:
+                            shape = [lens[i]] + list(value.shape[1:])
+                            v = torch.zeros(
+                                shape, dtype=value.dtype, device=value.device)
+                        arrs.append(v)
                     self.__dict__[k] = torch.cat(arrs)
                 else:
+                    # here we do not consider scalar types, following the
+                    # behavior of numpy which does not support concatenation
+                    # of zero-dimensional arrays (scalars)
                     raise TypeError(
                         f"cannot cat value with type {type(value)}, we only "
                         "support dict, Batch, np.ndarray, and torch.Tensor")
@@ -576,6 +581,9 @@ class Batch:
         """Stack a list of :class:`~tianshou.data.Batch` object into current
         batch.
         """
+        if len(batches) == 0:
+            return
+        batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
         if len(self.__dict__) > 0:
             batches = [self] + list(batches)
         keys_map = list(map(lambda e: set(e.keys()), batches))
@@ -593,18 +601,52 @@ class Batch:
                 if not issubclass(v.dtype.type, (np.bool_, np.number)):
                     v = v.astype(np.object)
                 self.__dict__[k] = v
-        keys_partial = reduce(set.symmetric_difference, keys_map)
+        keys_partial = set.union(*keys_map) - keys_shared
         _assert_type_keys(keys_partial)
         for k in keys_partial:
+            is_dict = False
+            value = None
             for i, e in enumerate(batches):
                 val = e.get(k, None)
                 if val is not None:
-                    try:
-                        self.__dict__[k][i] = val
-                    except KeyError:
-                        self.__dict__[k] = \
-                            _create_value(val, len(batches))
-                        self.__dict__[k][i] = val
+                    if isinstance(val, (dict, Batch)):
+                        is_dict = True
+                    else:  # np.ndarray / scalar or torch.Tensor
+                        value = val
+                    break
+            if is_dict:
+                self.__dict__[k] = Batch.stack(
+                    [e.get(k, Batch()) for e in batches], axis)
+            else:
+                if isinstance(value, np.ndarray) \
+                        or issubclass(value.__class__, np.generic) \
+                        or isinstance(value, Number):
+                    if isinstance(value, Number):
+                        value = np.asarray(value)
+                    arrs = []
+                    for i, e in enumerate(batches):
+                        v = e.get(k, None)
+                        if v is None:
+                            v = np.zeros_like(value)
+                        arrs.append(v)
+                    v = np.stack(arrs, axis)
+                    if not issubclass(v.dtype.type, (np.bool_, np.number)):
+                        v = v.astype(np.object)
+                    self.__dict__[k] = v
+                elif isinstance(value, torch.Tensor):
+                    arrs = []
+                    for i, e in enumerate(batches):
+                        v = e.get(k, None)
+                        if v is None:
+                            v = torch.zeros_like(value)
+                        arrs.append(v)
+                    self.__dict__[k] = torch.stack(arrs, axis)
+                else:  # fallback to object
+                    arrs = []
+                    for i, e in enumerate(batches):
+                        v = e.get(k, None)
+                        arrs.append(v)
+                    self.__dict__[k] = np.array(arrs)
 
     @staticmethod
     def stack(batches: List[Union[dict, 'Batch']], axis: int = 0) -> 'Batch':
