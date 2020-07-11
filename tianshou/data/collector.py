@@ -426,7 +426,7 @@ class Collector(object):
                 if batch_size and cur_batch or batch_size <= 0:
                     batch, indice = b.sample(cur_batch)
                     batch = self.process_fn(batch, b, indice)
-                    batch_data.cat_(batch)
+                    batch_data.cat_([batch])
         else:
             batch_data, indice = self.buffer.sample(batch_size)
             batch_data = self.process_fn(batch_data, self.buffer, indice)

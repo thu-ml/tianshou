@@ -19,7 +19,7 @@ def test_batch():
     assert batch.obs == batch["obs"]
     batch.obs = [1]
     assert batch.obs == [1]
-    batch.cat_(batch)
+    batch.cat_([batch])
     assert np.allclose(batch.obs, [1, 1])
     assert batch.np.shape == (6, 4)
     assert np.allclose(batch[0].obs, batch[1].obs)
@@ -96,13 +96,13 @@ def test_batch_over_batch():
     for k, v in batch2.items():
         assert np.all(batch2[k] == v)
     assert batch2[-1].b.b == 0
-    batch2.cat_(Batch(c=[6, 7, 8], b=batch))
+    batch2.cat_([Batch(c=[6, 7, 8], b=batch)])
     assert np.allclose(batch2.c, [6, 7, 8, 6, 7, 8])
     assert np.allclose(batch2.b.a, [3, 4, 5, 3, 4, 5])
     assert np.allclose(batch2.b.b, [4, 5, 0, 4, 5, 0])
     d = {'a': [3, 4, 5], 'b': [4, 5, 6]}
     batch3 = Batch(c=[6, 7, 8], b=d)
-    batch3.cat_(Batch(c=[6, 7, 8], b=d))
+    batch3.cat_([Batch(c=[6, 7, 8], b=d)])
     assert np.allclose(batch3.c, [6, 7, 8, 6, 7, 8])
     assert np.allclose(batch3.b.a, [3, 4, 5, 3, 4, 5])
     assert np.allclose(batch3.b.b, [4, 5, 6, 4, 5, 6])
@@ -124,18 +124,32 @@ def test_batch_over_batch():
 
 
 def test_batch_cat_and_stack():
+    # test cat with compatible keys
     b1 = Batch(a=[{'b': np.float64(1.0), 'd': Batch(e=np.array(3.0))}])
     b2 = Batch(a=[{'b': np.float64(4.0), 'd': {'e': np.array(6.0)}}])
-    b12_cat_out = Batch.cat((b1, b2))
+    b12_cat_out = Batch.cat([b1, b2])
     b12_cat_in = copy.deepcopy(b1)
-    b12_cat_in.cat_(b2)
+    b12_cat_in.cat_([b2])
     assert np.all(b12_cat_in.a.d.e == b12_cat_out.a.d.e)
     assert np.all(b12_cat_in.a.d.e == b12_cat_out.a.d.e)
     assert isinstance(b12_cat_in.a.d.e, np.ndarray)
     assert b12_cat_in.a.d.e.ndim == 1
+
     b12_stack = Batch.stack((b1, b2))
     assert isinstance(b12_stack.a.d.e, np.ndarray)
     assert b12_stack.a.d.e.ndim == 2
+
+    # test batch with incompatible keys
+    b1 = Batch(a=np.random.rand(3, 4), common=Batch(c=np.random.rand(3, 5)))
+    b2 = Batch(b=torch.rand(4, 3), common=Batch(c=np.random.rand(4, 5)))
+    test = Batch.cat([b1, b2])
+    ans = Batch(a=np.concatenate([b1.a, np.zeros((4, 4))]),
+                b=torch.cat([torch.zeros(3, 3), b2.b]),
+                common=Batch(c=np.concatenate([b1.common.c, b2.common.c])))
+    assert np.allclose(test.a, ans.a)
+    assert torch.allclose(test.b, ans.b)
+    assert np.allclose(test.common.c, ans.common.c)
+
     b3 = Batch(a=np.zeros((3, 4)),
                b=torch.ones((2, 5)),
                c=Batch(d=[[1], [2]]))
