@@ -666,7 +666,7 @@ class Batch:
         """Return len(self)."""
         r = []
         for v in self.__dict__.values():
-            if isinstance(v, Batch) and len(v.__dict__) == 0:
+            if isinstance(v, Batch) and v.is_empty():
                 continue
             elif hasattr(v, '__len__') and (not isinstance(
                     v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
@@ -678,7 +678,9 @@ class Batch:
         return min(r)
 
     def is_empty(self):
-        return len(self.__dict__.keys()) == 0
+        return not any(
+            not x.is_empty() if isinstance(x, Batch)
+            else hasattr(x, '__len__') and len(x) > 0 for x in self.values())
 
     @property
     def shape(self) -> List[int]:
