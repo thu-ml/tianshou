@@ -520,8 +520,7 @@ class Batch:
                 if val is not None:
                     if isinstance(val, (dict, Batch)):
                         is_dict = True
-                    else:
-                        # np.ndarray or torch.Tensor
+                    else:  # np.ndarray or torch.Tensor
                         value = val
                     break
             if is_dict:
