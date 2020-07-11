@@ -544,10 +544,9 @@ class Batch:
                         arrs.append(e.get(k, pad))
                     self.__dict__[k] = torch.cat(arrs)
                 else:
-                    raise TypeError(f"cannot cat value with type "
-                                    f"{type(value)},we only support"
-                                    f" dict, Batch, np.ndarray, "
-                                    f"and torch.Tensor")
+                    raise TypeError(
+                        f"cannot cat value with type {type(value)}, we only "
+                        "support dict, Batch, np.ndarray, and torch.Tensor")
 
     @staticmethod
     def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':
