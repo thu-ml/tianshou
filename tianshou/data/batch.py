@@ -259,8 +259,7 @@ class Batch:
                         v_ = None
                         if not isinstance(v, np.ndarray) and \
                                 all(isinstance(e, torch.Tensor) for e in v):
-                            v_ = torch.stack(v)
-                            self.__dict__[k] = v_
+                            self.__dict__[k] = torch.stack(v)
                             continue
                         else:
                             v_ = np.asanyarray(v)
@@ -294,7 +293,8 @@ class Batch:
                 value = np.array(value)
                 if not issubclass(value.dtype.type, (np.bool_, np.number)):
                     value = value.astype(np.object)
-        elif isinstance(value, dict):
+        elif isinstance(value, dict) or isinstance(value, np.ndarray) \
+                and value.dtype == np.object and _is_batch_set(value):
             value = Batch(value)
         self.__dict__[key] = value
 
@@ -333,9 +333,8 @@ class Batch:
         else:
             raise IndexError("Cannot access item from empty Batch object.")
 
-    def __setitem__(
-            self,
-            index: Union[str, slice, int, np.integer, np.ndarray, List[int]],
+    def __setitem__(self, index: Union[
+            str, slice, int, np.integer, np.ndarray, List[int]],
             value: Any) -> None:
         """Assign value to self[index]."""
         if isinstance(value, np.ndarray):
@@ -454,10 +453,8 @@ class Batch:
             elif isinstance(v, Batch):
                 v.to_numpy()
 
-    def to_torch(self,
-                 dtype: Optional[torch.dtype] = None,
-                 device: Union[str, int, torch.device] = 'cpu'
-                 ) -> None:
+    def to_torch(self, dtype: Optional[torch.dtype] = None,
+                 device: Union[str, int, torch.device] = 'cpu') -> None:
         """Change all numpy.ndarray to torch.Tensor. This is an in-place
         operation.
         """
@@ -473,66 +470,111 @@ class Batch:
                     v = v.type(dtype)
                 self.__dict__[k] = v
             elif isinstance(v, torch.Tensor):
-                if dtype is not None and v.dtype != dtype:
-                    must_update_tensor = True
-                elif v.device.type != device.type:
-                    must_update_tensor = True
-                elif device.index is not None and \
+                if dtype is not None and v.dtype != dtype or \
+                        v.device.type != device.type or \
+                        device.index is not None and \
                         device.index != v.device.index:
-                    must_update_tensor = True
-                else:
-                    must_update_tensor = False
-                if must_update_tensor:
                     if dtype is not None:
                         v = v.type(dtype)
                     self.__dict__[k] = v.to(device)
             elif isinstance(v, Batch):
                 v.to_torch(dtype, device)
 
-    def append(self, batch: 'Batch') -> None:
-        warnings.warn('Method :meth:`~tianshou.data.Batch.append` will be '
-                      'removed soon, please use '
-                      ':meth:`~tianshou.data.Batch.cat`')
-        return self.cat_(batch)
-
-    def cat_(self, batch: 'Batch') -> None:
-        """Concatenate a :class:`~tianshou.data.Batch` object into current
-        batch.
+    def cat_(self,
+             batches: Union['Batch', List[Union[dict, 'Batch']]]) -> None:
+        """Concatenate a list of (or one) :class:`~tianshou.data.Batch` objects
+        into current batch.
         """
-        assert isinstance(batch, Batch), \
-            'Only Batch is allowed to be concatenated in-place!'
-        for k, v in batch.items():
-            if v is None:
-                continue
-            if not hasattr(self, k) or self.__dict__[k] is None:
-                self.__dict__[k] = deepcopy(v)
-            elif isinstance(v, np.ndarray) and v.ndim > 0:
-                self.__dict__[k] = np.concatenate([self.__dict__[k], v])
-            elif isinstance(v, torch.Tensor):
-                self.__dict__[k] = torch.cat([self.__dict__[k], v])
-            elif isinstance(v, Batch):
-                self.__dict__[k].cat_(v)
+        if isinstance(batches, Batch):
+            batches = [batches]
+        if len(batches) == 0:
+            return
+        batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
+        if len(self.__dict__) > 0:
+            batches = [self] + list(batches)
+        # partial keys will be padded by zeros
+        # with the shape of [len, rest_shape]
+        lens = [len(x) for x in batches]
+        keys_map = list(map(lambda e: set(e.keys()), batches))
+        keys_shared = set.intersection(*keys_map)
+        values_shared = [
+            [e[k] for e in batches] for k in keys_shared]
+        _assert_type_keys(keys_shared)
+        for k, v in zip(keys_shared, values_shared):
+            if all(isinstance(e, (dict, Batch)) for e in v):
+                self.__dict__[k] = Batch.cat(v)
+            elif all(isinstance(e, torch.Tensor) for e in v):
+                self.__dict__[k] = torch.cat(v)
             else:
-                s = 'No support for method "cat" with type '\
-                    f'{type(v)} in class Batch.'
-                raise TypeError(s)
+                v = np.concatenate(v)
+                if not issubclass(v.dtype.type, (np.bool_, np.number)):
+                    v = v.astype(np.object)
+                self.__dict__[k] = v
+        keys_partial = set.union(*keys_map) - keys_shared
+        _assert_type_keys(keys_partial)
+        for k in keys_partial:
+            is_dict = False
+            value = None
+            for i, e in enumerate(batches):
+                val = e.get(k, None)
+                if val is not None:
+                    if isinstance(val, (dict, Batch)):
+                        is_dict = True
+                    else:  # np.ndarray or torch.Tensor
+                        value = val
+                    break
+            if is_dict:
+                self.__dict__[k] = Batch.cat(
+                    [e.get(k, Batch()) for e in batches])
+            else:
+                if isinstance(value, np.ndarray):
+                    arrs = []
+                    for i, e in enumerate(batches):
+                        shape = [lens[i]] + list(value.shape[1:])
+                        pad = np.zeros(shape, dtype=value.dtype)
+                        arrs.append(e.get(k, pad))
+                    self.__dict__[k] = np.concatenate(arrs)
+                elif isinstance(value, torch.Tensor):
+                    arrs = []
+                    for i, e in enumerate(batches):
+                        shape = [lens[i]] + list(value.shape[1:])
+                        pad = torch.zeros(shape,
+                                          dtype=value.dtype,
+                                          device=value.device)
+                        arrs.append(e.get(k, pad))
+                    self.__dict__[k] = torch.cat(arrs)
+                else:
+                    raise TypeError(
+                        f"cannot cat value with type {type(value)}, we only "
+                        "support dict, Batch, np.ndarray, and torch.Tensor")
 
     @staticmethod
     def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':
-        """Concatenate a list of :class:`~tianshou.data.Batch` object into a single
-        new batch.
+        """Concatenate a list of :class:`~tianshou.data.Batch` object into a
+        single new batch. For keys that are not shared across all batches,
+        batches that do not have these keys will be padded by zeros with
+        appropriate shapes. E.g.
+        ::
+
+            >>> a = Batch(a=np.zeros([3, 4]), common=Batch(c=np.zeros([3, 5])))
+            >>> b = Batch(b=np.zeros([4, 3]), common=Batch(c=np.zeros([4, 5])))
+            >>> c = Batch.cat([a, b])
+            >>> c.a.shape
+            (7, 4)
+            >>> c.b.shape
+            (7, 3)
+            >>> c.common.c.shape
+            (7, 5)
         """
         batch = Batch()
-        for batch_ in batches:
-            if isinstance(batch_, dict):
-                batch_ = Batch(batch_)
-            batch.cat_(batch_)
+        batch.cat_(batches)
         return batch
 
     def stack_(self,
                batches: List[Union[dict, 'Batch']],
                axis: int = 0) -> None:
-        """Stack a :class:`~tianshou.data.Batch` object i into current batch.
+        """Stack a list of :class:`~tianshou.data.Batch` object into current
+        batch.
         """
         if len(self.__dict__) > 0:
             batches = [self] + list(batches)
@@ -566,8 +608,8 @@ class Batch:
 
     @staticmethod
     def stack(batches: List[Union[dict, 'Batch']], axis: int = 0) -> 'Batch':
-        """Stack a :class:`~tianshou.data.Batch` object into a single new
-        batch.
+        """Stack a list of :class:`~tianshou.data.Batch` object into a single
+        new batch.
         """
         batch = Batch()
         batch.stack_(batches, axis)
@@ -611,11 +653,24 @@ class Batch:
         """
         return deepcopy(batch).empty_(index)
 
+    def update(self, batch: Optional[Union[dict, 'Batch']] = None,
+               **kwargs) -> None:
+        """Update this batch from another dict/Batch."""
+        if batch is None:
+            self.update(kwargs)
+            return
+        if isinstance(batch, dict):
+            batch = Batch(batch)
+        for k, v in batch.items():
+            self.__dict__[k] = v
+        if kwargs:
+            self.update(kwargs)
+
     def __len__(self) -> int:
         """Return len(self)."""
         r = []
         for v in self.__dict__.values():
-            if isinstance(v, Batch) and len(v.__dict__) == 0:
+            if isinstance(v, Batch) and v.is_empty():
                 continue
             elif hasattr(v, '__len__') and (not isinstance(
                     v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
@@ -627,7 +682,9 @@ class Batch:
         return min(r)
 
     def is_empty(self):
-        return len(self.__dict__.keys()) == 0
+        return not any(
+            not x.is_empty() if isinstance(x, Batch)
+            else hasattr(x, '__len__') and len(x) > 0 for x in self.values())
 
     @property
     def shape(self) -> List[int]:

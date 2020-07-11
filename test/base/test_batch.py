@@ -10,7 +10,17 @@ from tianshou.data import Batch, to_torch
 def test_batch():
     assert list(Batch()) == []
     assert Batch().is_empty()
+    assert Batch(b={'c': {}}).is_empty()
+    assert len(Batch(a=[1, 2, 3], b={'c': {}})) == 3
     assert not Batch(a=[1, 2, 3]).is_empty()
+    b = Batch()
+    b.update()
+    assert b.is_empty()
+    b.update(c=[3, 5])
+    assert np.allclose(b.c, [3, 5])
+    # mimic the behavior of dict.update, where kwargs can overwrite keys
+    b.update({'a': 2}, a=3)
+    assert b.a == 3
     with pytest.raises(AssertionError):
         Batch({1: 2})
     batch = Batch(a=[torch.ones(3), torch.ones(3)])
@@ -86,6 +96,18 @@ def test_batch():
     assert batch3.a.d.f[0] == 5.0
     with pytest.raises(KeyError):
         batch3.a.d[0] = Batch(f=5.0, g=0.0)
+    # auto convert
+    batch4 = Batch(a=np.array(['a', 'b']))
+    assert batch4.a.dtype == np.object  # auto convert to np.object
+    batch4.update(a=np.array(['c', 'd']))
+    assert list(batch4.a) == ['c', 'd']
+    assert batch4.a.dtype == np.object  # auto convert to np.object
+    batch5 = Batch(a=np.array([{'index': 0}]))
+    assert isinstance(batch5.a, Batch)
+    assert np.allclose(batch5.a.index, [0])
+    batch5.b = np.array([{'index': 1}])
+    assert isinstance(batch5.b, Batch)
+    assert np.allclose(batch5.b.index, [1])
 
 
 def test_batch_over_batch():
@@ -100,6 +122,11 @@ def test_batch_over_batch():
     assert np.allclose(batch2.c, [6, 7, 8, 6, 7, 8])
     assert np.allclose(batch2.b.a, [3, 4, 5, 3, 4, 5])
     assert np.allclose(batch2.b.b, [4, 5, 0, 4, 5, 0])
+    batch2.update(batch2.b, six=[6, 6, 6])
+    assert np.allclose(batch2.c, [6, 7, 8, 6, 7, 8])
+    assert np.allclose(batch2.a, [3, 4, 5, 3, 4, 5])
+    assert np.allclose(batch2.b, [4, 5, 0, 4, 5, 0])
+    assert np.allclose(batch2.six, [6, 6, 6])
     d = {'a': [3, 4, 5], 'b': [4, 5, 6]}
     batch3 = Batch(c=[6, 7, 8], b=d)
     batch3.cat_(Batch(c=[6, 7, 8], b=d))
@@ -124,18 +151,32 @@ def test_batch_over_batch():
 
 
 def test_batch_cat_and_stack():
+    # test cat with compatible keys
     b1 = Batch(a=[{'b': np.float64(1.0), 'd': Batch(e=np.array(3.0))}])
     b2 = Batch(a=[{'b': np.float64(4.0), 'd': {'e': np.array(6.0)}}])
-    b12_cat_out = Batch.cat((b1, b2))
+    b12_cat_out = Batch.cat([b1, b2])
     b12_cat_in = copy.deepcopy(b1)
     b12_cat_in.cat_(b2)
     assert np.all(b12_cat_in.a.d.e == b12_cat_out.a.d.e)
     assert np.all(b12_cat_in.a.d.e == b12_cat_out.a.d.e)
     assert isinstance(b12_cat_in.a.d.e, np.ndarray)
     assert b12_cat_in.a.d.e.ndim == 1
+
     b12_stack = Batch.stack((b1, b2))
     assert isinstance(b12_stack.a.d.e, np.ndarray)
     assert b12_stack.a.d.e.ndim == 2
+
+    # test batch with incompatible keys
+    b1 = Batch(a=np.random.rand(3, 4), common=Batch(c=np.random.rand(3, 5)))
+    b2 = Batch(b=torch.rand(4, 3), common=Batch(c=np.random.rand(4, 5)))
+    test = Batch.cat([b1, b2])
+    ans = Batch(a=np.concatenate([b1.a, np.zeros((4, 4))]),
+                b=torch.cat([torch.zeros(3, 3), b2.b]),
+                common=Batch(c=np.concatenate([b1.common.c, b2.common.c])))
+    assert np.allclose(test.a, ans.a)
+    assert torch.allclose(test.b, ans.b)
+    assert np.allclose(test.common.c, ans.common.c)
+
     b3 = Batch(a=np.zeros((3, 4)),
                b=torch.ones((2, 5)),
                c=Batch(d=[[1], [2]]))
