@@ -482,8 +482,8 @@ class Batch:
 
     def cat_(self,
              batches: Union['Batch', List[Union[dict, 'Batch']]]) -> None:
-        """Concatenate a list of (or one) :class:`~tianshou.data.Batch`
-        objects into current batch.
+        """Concatenate a list of (or one) :class:`~tianshou.data.Batch` objects
+        into current batch.
         """
         if isinstance(batches, Batch):
             batches = [batches]
@@ -521,7 +521,7 @@ class Batch:
                     if isinstance(val, (dict, Batch)):
                         is_dict = True
                     else:
-                        # ndarray or torch.Tensor
+                        # np.ndarray or torch.Tensor
                         value = val
                     break
             if is_dict:
@@ -552,17 +552,21 @@ class Batch:
 
     @staticmethod
     def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':
-        """Concatenate a list of :class:`~tianshou.data.Batch` object into a single
-        new batch. For keys that are not shared across all batches,
+        """Concatenate a list of :class:`~tianshou.data.Batch` object into a
+        single new batch. For keys that are not shared across all batches,
         batches that do not have these keys will be padded by zeros with
-        appropriate shapes.
-        e.g.
-        a = Batch(a=shape(3,4), common=Batch(c=shape(3, 5)))
-        b = Batch(b=shape(4,3), common=Batch(c=shape(4, 5)))
-        c = Batch.cat([b, c])
-        c.a.shape: (7, 4)
-        c.b.shape: (7, 3)
-        c.common.c.shape: (7, 5)
+        appropriate shapes. E.g.
+        ::
+
+            >>> a = Batch(a=np.zeros([3, 4]), common=Batch(c=np.zeros([3, 5])))
+            >>> b = Batch(b=np.zeros([4, 3]), common=Batch(c=np.zeros([4, 5])))
+            >>> c = Batch.cat([a, b])
+            >>> c.a.shape
+            (7, 4)
+            >>> c.b.shape
+            (7, 3)
+            >>> c.common.c.shape
+            (7, 5)
         """
         batch = Batch()
         batch.cat_(batches)
@@ -571,8 +575,8 @@ class Batch:
     def stack_(self,
                batches: List[Union[dict, 'Batch']],
                axis: int = 0) -> None:
-        """Stack a list of :class:`~tianshou.data.Batch` object
-        into current batch.
+        """Stack a list of :class:`~tianshou.data.Batch` object into current
+        batch.
         """
         if len(self.__dict__) > 0:
             batches = [self] + list(batches)
