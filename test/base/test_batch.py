@@ -86,6 +86,18 @@ def test_batch():
     assert batch3.a.d.f[0] == 5.0
     with pytest.raises(KeyError):
         batch3.a.d[0] = Batch(f=5.0, g=0.0)
+    # auto convert
+    batch4 = Batch(a=np.array(['a', 'b']))
+    assert batch4.a.dtype == np.object  # auto convert to np.object
+    batch4.update(a=np.array(['c', 'd']))
+    assert list(batch4.a) == ['c', 'd']
+    assert batch4.a.dtype == np.object  # auto convert to np.object
+    batch5 = Batch(a=np.array([{'index': 0}]))
+    assert isinstance(batch5.a, Batch)
+    assert np.allclose(batch5.a.index, [0])
+    batch5.b = np.array([{'index': 1}])
+    assert isinstance(batch5.b, Batch)
+    assert np.allclose(batch5.b.index, [1])
 
 
 def test_batch_over_batch():
@@ -100,6 +112,10 @@ def test_batch_over_batch():
     assert np.allclose(batch2.c, [6, 7, 8, 6, 7, 8])
     assert np.allclose(batch2.b.a, [3, 4, 5, 3, 4, 5])
     assert np.allclose(batch2.b.b, [4, 5, 0, 4, 5, 0])
+    batch2.update(batch2.b)
+    assert np.allclose(batch2.c, [6, 7, 8, 6, 7, 8])
+    assert np.allclose(batch2.a, [3, 4, 5, 3, 4, 5])
+    assert np.allclose(batch2.b, [4, 5, 0, 4, 5, 0])
     d = {'a': [3, 4, 5], 'b': [4, 5, 6]}
     batch3 = Batch(c=[6, 7, 8], b=d)
     batch3.cat_(Batch(c=[6, 7, 8], b=d))

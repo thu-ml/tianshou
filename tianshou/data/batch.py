@@ -293,7 +293,8 @@ class Batch:
                 value = np.array(value)
                 if not issubclass(value.dtype.type, (np.bool_, np.number)):
                     value = value.astype(np.object)
-        elif isinstance(value, dict):
+        elif isinstance(value, dict) or isinstance(value, np.ndarray) \
+                and value.dtype == np.object and _is_batch_set(value):
             value = Batch(value)
         self.__dict__[key] = value
 
@@ -649,6 +650,20 @@ class Batch:
         :class:`~tianshou.data.Batch`.
         """
         return deepcopy(batch).empty_(index)
+
+    def update(self, batch: Optional[Union[dict, 'Batch']] = None,
+               **kwargs) -> None:
+        """Update this batch from another dict/Batch."""
+        if isinstance(batch, dict):
+            batch = Batch(batch)
+        if batch is not None:
+            for k, v in batch.items():
+                self.__dict__[k] = v
+        if kwargs is not None:
+            batch = Batch(kwargs)
+        if batch is not None:
+            for k, v in batch.items():
+                self.__dict__[k] = v
 
     def __len__(self) -> int:
         """Return len(self)."""
