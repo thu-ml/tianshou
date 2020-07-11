@@ -408,8 +408,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                 f"batch_size should be less than {len(self)}, \
                     or set replace=True")
         batch = self[indice]
-        impt_weight = Batch(impt_weight=(self._size * p) ** (-self._beta))
-        batch.cat_([impt_weight])
+        batch["impt_weight"] = (self._size * p) ** (-self._beta)
         return batch, indice
 
     def update_weight(self, indice: Union[slice, np.ndarray],
