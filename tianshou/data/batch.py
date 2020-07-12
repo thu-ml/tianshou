@@ -591,8 +591,8 @@ class Batch:
         keys_partial = set.difference(set.union(*keys_map), keys_shared)
         if keys_partial and axis != 0:
             raise ValueError(
-                f"Stack of Batch with non-shared keys {keys_partial}"
-                f" is only supported with axis=0, but got axis={axis}!")
+                f"Stack of Batch with non-shared keys {keys_partial} "
+                f"is only supported with axis=0, but got axis={axis}!")
         _assert_type_keys(keys_partial)
         for k in keys_partial:
             for i, e in enumerate(batches):
