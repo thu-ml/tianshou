@@ -34,6 +34,8 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.1)
+    parser.add_argument('--board_sie', type=int, default=3)
+    parser.add_argument('--win_size', type=int, default=3)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -42,13 +44,12 @@ def get_args():
 
 
 def test_tic_tac_toe(args=get_args()):
-    env = TicTacToeEnv()
+    env_func = lambda: TicTacToeEnv(args.board_sie, args.win_size)
+    env = env_func()
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-    train_envs = VectorEnv(
-        [lambda: TicTacToeEnv() for _ in range(args.training_num)])
-    test_envs = VectorEnv(
-        [lambda: TicTacToeEnv() for _ in range(args.test_num)])
+    train_envs = VectorEnv([env_func for _ in range(args.training_num)])
+    test_envs = VectorEnv([env_func for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -102,7 +103,7 @@ def test_tic_tac_toe(args=get_args()):
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
-        env = TicTacToeEnv()
+        env = env_func()
         collector = Collector(policy, env, reward_metric=lambda x: x[1])
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
