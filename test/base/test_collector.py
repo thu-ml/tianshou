@@ -27,7 +27,7 @@ class MyPolicy(BasePolicy):
 
 def preprocess_fn(**kwargs):
     # modify info before adding into the buffer
-    # if info is not provided from env, it will be a `Batch()`.
+    # if info is not provided from env, it will be a ``Batch()``.
     if not kwargs.get('info', Batch()).is_empty():
         n = len(kwargs['obs'])
         info = kwargs['info']

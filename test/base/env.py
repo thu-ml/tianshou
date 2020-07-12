@@ -4,8 +4,7 @@ from gym.spaces.discrete import Discrete
 
 
 class MyTestEnv(gym.Env):
-    """
-    This is a "going right" task. The task is to go right ``size`` steps.
+    """This is a "going right" task. The task is to go right ``size`` steps.
     """
     def __init__(self, size, sleep=0, dict_state=False, ma_rew=0):
         self.size = size
@@ -21,6 +20,7 @@ class MyTestEnv(gym.Env):
         return {'index': self.index} if self.dict_state else self.index
 
     def _get_reward(self, x):
+        """Generate a non-scalar reward if ma_rew is True."""
         x = int(x)
         if self.ma_rew > 0:
             return [x] * self.ma_rew

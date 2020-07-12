@@ -25,16 +25,17 @@ class Collector(object):
         ``None``, it will automatically assign a small-size
         :class:`~tianshou.data.ReplayBuffer`.
     :param function preprocess_fn: a function called before the data has been
-        added to the buffer, see issue #42, defaults to ``None``.
+        added to the buffer, see issue #42 and :ref:`preprocess_fn`, defaults
+        to ``None``.
     :param int stat_size: for the moving average of recording speed, defaults
         to 100.
     :param BaseNoise action_noise: add a noise to continuous action. Normally
         a policy already has a noise param for exploration in training phase,
         so this is recommended to use in test collector for some purpose.
     :param function reward_metric: to be used in multi-agent RL. The reward to
-        report is of shape [reward_length], but we need to return a single
-        scalar to monitor training. This function specifies what is the desired
-        metric, e.g. the reward of agent 1 or the average reward over all
+        report is of shape [agent_num], but we need to return a single scalar
+        to monitor training. This function specifies what is the desired
+        metric, e.g., the reward of agent 1 or the average reward over all
         agents. By default, the behavior is to select the reward of agent 1.
 
     The ``preprocess_fn`` is a function called before the data has been added
@@ -101,7 +102,7 @@ class Collector(object):
         super().__init__()
         self.env = env
         self.env_num = 1
-        self.collect_time, self.collect_step, self.collect_episode = 0, 0, 0
+        self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
         self.buffer = buffer
         self.policy = policy
         self.preprocess_fn = preprocess_fn
@@ -119,7 +120,7 @@ class Collector(object):
         def _rew_metric(x):
             # this internal function is designed for single-agent RL
             # for multi-agent RL, a reward_metric must be provided
-            assert np.asanyarray(x).size == 1,\
+            assert np.asanyarray(x).size == 1, \
                 'Please specify the reward_metric '\
                 'since the reward is not a scalar.'
             return x
@@ -135,7 +136,7 @@ class Collector(object):
         self.reset_buffer()
         self.step_speed = MovAvg(self.stat_size)
         self.episode_speed = MovAvg(self.stat_size)
-        self.collect_time, self.collect_step, self.collect_episode = 0, 0, 0
+        self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
         if self._action_noise is not None:
             self._action_noise.reset()
 
@@ -232,7 +233,7 @@ class Collector(object):
         assert sum([(n_step != 0), (n_episode != 0)]) == 1, \
             "One and only one collection number specification is permitted!"
         cur_step, cur_episode = 0, np.zeros(self.env_num)
-        reward_sum, length_sum = 0, 0
+        reward_sum, length_sum = 0., 0
         while True:
             if cur_step >= 100000 and cur_episode.sum() == 0:
                 warnings.warn(
@@ -257,7 +258,7 @@ class Collector(object):
                 with torch.no_grad():
                     result = self.policy(self.data, last_state)
 
-            # convert None to Batch()
+            # convert None to Batch(), since None is reserved for 0-init
             state = result.get('state', Batch())
             if state is None:
                 state = Batch()
@@ -299,7 +300,7 @@ class Collector(object):
             if self.preprocess_fn:
                 result = self.preprocess_fn(**self.data)
                 self.data.update(result)
-            if self._multi_env:  # cached_buffer branch
+            if self._multi_env:  # cache_buffer branch
                 for i in range(self.env_num):
                     self._cached_buf[i].add(**self.data[i])
                     if self.data.done[i]:
@@ -312,7 +313,7 @@ class Collector(object):
                                 cur_step += len(self._cached_buf[i])
                                 if self.buffer is not None:
                                     self.buffer.update(self._cached_buf[i])
-                        self.reward[i], self.length[i] = 0, 0
+                        self.reward[i], self.length[i] = 0., 0
                         if self._cached_buf:
                             self._cached_buf[i].reset()
                         self._reset_state(i)
@@ -329,7 +330,7 @@ class Collector(object):
                             np.isscalar(n_episode) and \
                             cur_episode.sum() >= n_episode:
                         break
-            else:
+            else:  # single buffer, without cache_buffer
                 if self.buffer is not None:
                     self.buffer.add(**self.data[0])
                 cur_step += 1
@@ -337,7 +338,7 @@ class Collector(object):
                     cur_episode += 1
                     reward_sum += self.reward
                     length_sum += self.length
-                    self.reward, self.length = 0, 0
+                    self.reward, self.length = 0., 0
                     self.data.state = Batch()
                     obs_next = self._make_batch(self.env.reset())
                     if self.preprocess_fn:
@@ -364,6 +365,7 @@ class Collector(object):
             n_episode = np.sum(n_episode)
         else:
             n_episode = max(cur_episode, 1)
+        reward_sum /= n_episode
         if not np.isscalar(reward_sum):
             reward_sum = self._rew_metric(reward_sum / n_episode)
         return {
