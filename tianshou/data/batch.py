@@ -516,8 +516,7 @@ class Batch:
             sum_lens.append(sum_lens[-1] + x)
         keys_map = list(map(lambda e: set(e.keys()), batches))
         keys_shared = set.intersection(*keys_map)
-        values_shared = [
-            [e[k] for e in batches] for k in keys_shared]
+        values_shared = [[e[k] for e in batches] for k in keys_shared]
         _assert_type_keys(keys_shared)
         for k, v in zip(keys_shared, values_shared):
             if all(isinstance(e, (dict, Batch)) for e in v):
@@ -577,8 +576,7 @@ class Batch:
             batches = [self] + list(batches)
         keys_map = list(map(lambda e: set(e.keys()), batches))
         keys_shared = set.intersection(*keys_map)
-        values_shared = [
-            [e[k] for e in batches] for k in keys_shared]
+        values_shared = [[e[k] for e in batches] for k in keys_shared]
         _assert_type_keys(keys_shared)
         for k, v in zip(keys_shared, values_shared):
             if all(isinstance(e, (dict, Batch)) for e in v):
@@ -614,11 +612,11 @@ class Batch:
             >>> b = Batch(b=np.zeros([4, 6]), common=Batch(c=np.zeros([4, 5])))
             >>> c = Batch.stack([a, b])
             >>> c.a.shape
-            (8, 4)
+            (2, 4, 4)
             >>> c.b.shape
-            (8, 6)
+            (2, 4, 6)
             >>> c.common.c.shape
-            (8, 5)
+            (2, 4, 5)
         """
         batch = Batch()
         batch.stack_(batches, axis)
