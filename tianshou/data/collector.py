@@ -320,7 +320,8 @@ class Collector(object):
                         self._reset_state(i)
                 obs_next = self.data.obs_next
                 if sum(self.data.done):
-                    obs_next = self.env.reset(np.where(self.data.done)[0])
+                    env_ind = np.where(self._done)[0]
+                    obs_next[env_ind] = self.env.reset(env_ind)
                     if self.preprocess_fn:
                         obs_next = self.preprocess_fn(obs=obs_next).get(
                             'obs', obs_next)
