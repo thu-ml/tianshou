@@ -365,7 +365,7 @@ class Collector(object):
         else:
             n_episode = max(cur_episode, 1)
         reward_sum /= n_episode
-        if np.asanyarray(reward_sum).size > 1:  # non-zero reward_sum
+        if np.asanyarray(reward_sum).size > 1:  # non-scalar reward_sum
             reward_sum = self._rew_metric(reward_sum)
         return {
             'n/ep': cur_episode,
