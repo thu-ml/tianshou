@@ -535,11 +535,11 @@ class Batch:
                 val = e.get(k, None)
                 if val is not None:
                     try:
-                        self.__dict__[k][sum_lens[i]:sum_lens[i+1]] = val
+                        self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
                     except KeyError:
                         self.__dict__[k] = \
                             _create_value(val, sum_lens[-1], stack=False)
-                        self.__dict__[k][sum_lens[i]:sum_lens[i+1]] = val
+                        self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
 
     @staticmethod
     def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':
@@ -624,9 +624,8 @@ class Batch:
 
         .. note::
 
-            If there are keys that are not shared across all batches,
-            ``stack`` with ``axis!=0`` is undefined, and will cause an
-            exception.
+            If there are keys that are not shared across all batches, ``stack``
+            with ``axis != 0`` is undefined, and will cause an exception.
         """
         batch = Batch()
         batch.stack_(batches, axis)
