@@ -146,9 +146,8 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
             buffer.rew = buffer.save_rew
         # incompatible keys will be padded with zeros
         # e.g. agent 1 batch has ``returns`` but agent 2 does not
-        holder = Batch.cat([data for (has_data, data, agent_index) in results])
-        for policy, (has_data, data, agent_index) in \
-                zip(self.policies, results):
+        holder = Batch.cat([data.condense() for (has_data, data, agent_index) in results if has_data])
+        for has_data, data, agent_index in results:
             if has_data:
                 holder[agent_index] = data
         return holder

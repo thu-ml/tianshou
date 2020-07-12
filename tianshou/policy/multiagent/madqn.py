@@ -65,7 +65,8 @@ class MultiAgentDQNPolicy(DQNPolicy, BaseMultiAgentPolicy):
         model = getattr(self, model)
         ma_obs = getattr(batch, input)
         obs = getattr(ma_obs, "obs")
-        q, h = model(obs, state=state, info=batch.info)
+        q, h = model(obs, state=state,
+                     info=batch.info if hasattr(batch, 'info') else Batch())
         if eps is None or not np.isclose(eps, 0):
             eps = self.eps
         else:
@@ -84,13 +85,3 @@ class MultiAgentDQNPolicy(DQNPolicy, BaseMultiAgentPolicy):
                 actions.append(action)
         act = to_numpy(actions)
         return Batch(logits=q, act=act, state=h)
-
-    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
-                   indice: np.ndarray) -> Batch:
-        batch = self.compute_nstep_return(
-            batch, buffer, indice, self._target_q, self._gamma, self._n_step,
-            agent_id=self.agent_id)
-        if isinstance(buffer, PrioritizedReplayBuffer):
-            batch.update_weight = buffer.update_weight
-            batch.indice = indice
-        return batch

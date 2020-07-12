@@ -375,8 +375,9 @@ class Batch:
             except KeyError:
                 if isinstance(val, Batch):
                     self.__dict__[key][index] = Batch()
-                elif isinstance(val, np.ndarray) and \
-                        issubclass(val.dtype.type, (np.bool_, np.number)):
+                elif isinstance(val, torch.Tensor) or \
+                        (isinstance(val, np.ndarray) and
+                         issubclass(val.dtype.type, (np.bool_, np.number))):
                     self.__dict__[key][index] = 0
                 else:
                     self.__dict__[key][index] = None
@@ -672,6 +673,14 @@ class Batch:
         :class:`~tianshou.data.Batch`.
         """
         return deepcopy(batch).empty_(index)
+
+    def condense(self):
+        """Remove empty Batches, return a condensed version"""
+        empty_keys = [k for k, v in self.items()
+                      if isinstance(v, Batch) and v.is_empty()]
+        for k in empty_keys:
+            del self.__dict__[k]
+        return self
 
     def update(self, batch: Optional[Union[dict, 'Batch']] = None,
                **kwargs) -> None:
