@@ -5,7 +5,7 @@ from typing import Union, Optional
 
 from tianshou.policy import DQNPolicy
 from tianshou.policy.multiagent.mapolicy import BaseMultiAgentPolicy
-from tianshou.data import Batch, to_numpy, ReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data import Batch, to_numpy
 
 
 class MultiAgentDQNPolicy(DQNPolicy, BaseMultiAgentPolicy):

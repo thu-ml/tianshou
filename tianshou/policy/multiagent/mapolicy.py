@@ -1,7 +1,6 @@
 import random
 from abc import ABC
 
-import torch
 import numpy as np
 from typing import Union, Optional, Dict, List
 
@@ -90,9 +89,10 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
                 state=state and state["agent_" + str(policy.agent_id)],
                 **kwargs)
             act = out.act
-            results.append(
-                (True, agent_index, out, act,
-                 out.state if (hasattr(out, 'state') and out.state is not None) else Batch()))
+            each_state = out.state \
+                if (hasattr(out, 'state') and out.state is not None) \
+                else Batch()
+            results.append((True, agent_index, out, act, each_state))
         holder = Batch.cat([{'act': e[3]} for e in results if e[0]])
         state_dict = {}
         out_dict = {}
@@ -112,7 +112,8 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
         for policy in self.policies:
             agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
             out = policy.learn(batch=batch[agent_index], **kwargs)
-            results["agent_" + str(policy.agent_id)] = out
+            for k, v in out.items():
+                results["agent_" + str(policy.agent_id) + '/' + k] = v
         return results
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
@@ -146,7 +147,8 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
             buffer.rew = buffer.save_rew
         # incompatible keys will be padded with zeros
         # e.g. agent 1 batch has ``returns`` but agent 2 does not
-        holder = Batch.cat([data.condense() for (has_data, data, agent_index) in results if has_data])
+        holder = Batch.cat(
+            [data.condense() for (has_data, data, _) in results if has_data])
         for has_data, data, agent_index in results:
             if has_data:
                 holder[agent_index] = data
