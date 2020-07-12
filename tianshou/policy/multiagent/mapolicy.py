@@ -43,6 +43,10 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
             # (this MultiAgentPolicyManager)
             policy.set_agent_id(i + 1)
 
+    def replace_policy(self, policy, agent_id):
+        self.policies[agent_id - 1] = policy
+        policy.set_agent_id(agent_id)
+
     def forward(self,
                 batch: Batch,
                 state: Optional[Union[dict, Batch]] = None,
