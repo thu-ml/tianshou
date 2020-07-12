@@ -126,15 +126,19 @@ def test_collector_with_ma():
     policy = MyPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100),
                    preprocess_fn, reward_metric=reward_metric)
-    c0.collect(n_step=3)
-    c0.collect(n_episode=3)
+    r = c0.collect(n_step=3)['rew']
+    assert np.asanyarray(r).size == 1 and r == 0.
+    r = c0.collect(n_episode=3)['rew']
+    assert np.asanyarray(r).size == 1 and r == 4.
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4)
                for i in [2, 3, 4, 5]]
     envs = VectorEnv(env_fns)
     c1 = Collector(policy, envs, ReplayBuffer(size=100),
                    preprocess_fn, reward_metric=reward_metric)
-    c1.collect(n_step=10)
-    c1.collect(n_episode=[2, 1, 1, 2])
+    r = c1.collect(n_step=10)['rew']
+    assert np.asanyarray(r).size == 1 and r == 4.
+    r = c1.collect(n_episode=[2, 1, 1, 2])['rew']
+    assert np.asanyarray(r).size == 1 and r == 4.
     batch = c1.sample(10)
     print(batch)
     c0.buffer.update(c1.buffer)
@@ -150,7 +154,8 @@ def test_collector_with_ma():
                        [[x] * 4 for x in rew])
     c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
                    preprocess_fn, reward_metric=reward_metric)
-    c2.collect(n_episode=[0, 0, 0, 10])
+    r = c2.collect(n_episode=[0, 0, 0, 10])['rew']
+    assert np.asanyarray(r).size == 1 and r == 4.
     batch = c2.sample(10)
     print(batch['obs_next'])
 

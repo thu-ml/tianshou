@@ -264,7 +264,7 @@ class Collector(object):
                 state = Batch()
             self.data.state = state
             if hasattr(result, 'policy'):
-                self.data.policy = to_numpy(result.policy)
+                self.data.policy = result.policy
             # save hidden state to policy._state, in order to save into buffer
             self.data.policy._state = self.data.state
 
@@ -336,9 +336,9 @@ class Collector(object):
                 cur_step += 1
                 if self.data.done[0]:
                     cur_episode += 1
-                    reward_sum += self.reward
-                    length_sum += self.length
-                    self.reward, self.length = 0., 0
+                    reward_sum += self.reward[0]
+                    length_sum += self.length[0]
+                    self.reward, self.length = 0., np.zeros(self.env_num)
                     self.data.state = Batch()
                     obs_next = self._make_batch(self.env.reset())
                     if self.preprocess_fn:
@@ -353,8 +353,7 @@ class Collector(object):
         self.data.obs = self.data.obs_next
 
         # generate the statistics
-        if self._multi_env:
-            cur_episode = sum(cur_episode)
+        cur_episode = sum(cur_episode)
         duration = max(time.time() - start_time, 1e-9)
         self.step_speed.add(cur_step / duration)
         self.episode_speed.add(cur_episode / duration)
@@ -366,8 +365,8 @@ class Collector(object):
         else:
             n_episode = max(cur_episode, 1)
         reward_sum /= n_episode
-        if not np.isscalar(reward_sum):
-            reward_sum = self._rew_metric(reward_sum / n_episode)
+        if np.asanyarray(reward_sum).size > 1:  # non-zero reward_sum
+            reward_sum = self._rew_metric(reward_sum)
         return {
             'n/ep': cur_episode,
             'n/st': cur_step,
