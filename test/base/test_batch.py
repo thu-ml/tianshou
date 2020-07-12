@@ -21,7 +21,6 @@ def test_batch():
     # mimic the behavior of dict.update, where kwargs can overwrite keys
     b.update({'a': 2}, a=3)
     assert b.a == 3
-    assert not Batch(a=[1, 2, 3]).is_empty()
     with pytest.raises(AssertionError):
         Batch({1: 2})
     batch = Batch(a=[torch.ones(3), torch.ones(3)])
@@ -167,7 +166,7 @@ def test_batch_cat_and_stack():
     assert isinstance(b12_stack.a.d.e, np.ndarray)
     assert b12_stack.a.d.e.ndim == 2
 
-    # test batch with incompatible keys
+    # test cat with incompatible keys
     b1 = Batch(a=np.random.rand(3, 4), common=Batch(c=np.random.rand(3, 5)))
     b2 = Batch(b=torch.rand(4, 3), common=Batch(c=np.random.rand(4, 5)))
     test = Batch.cat([b1, b2])
@@ -178,6 +177,7 @@ def test_batch_cat_and_stack():
     assert torch.allclose(test.b, ans.b)
     assert np.allclose(test.common.c, ans.common.c)
 
+    # test stack with compatible keys
     b3 = Batch(a=np.zeros((3, 4)),
                b=torch.ones((2, 5)),
                c=Batch(d=[[1], [2]]))
@@ -194,6 +194,26 @@ def test_batch_cat_and_stack():
     assert np.all(b5.b.c == np.stack([e['b']['c'] for e in b5_dict], axis=0))
     assert b5.b.d[0] == b5_dict[0]['b']['d']
     assert b5.b.d[1] == 0.0
+
+    # test stack with incompatible keys
+    a = Batch(a=1, b=2, c=3)
+    b = Batch(a=4, b=5, d=6)
+    c = Batch(c=7, b=6, d=9)
+    d = Batch.stack([a, b, c])
+    assert np.allclose(d.a, [1, 4, 0])
+    assert np.allclose(d.b, [2, 5, 6])
+    assert np.allclose(d.c, [3, 0, 7])
+    assert np.allclose(d.d, [0, 6, 9])
+
+    b1 = Batch(a=np.random.rand(4, 4), common=Batch(c=np.random.rand(4, 5)))
+    b2 = Batch(b=torch.rand(4, 6), common=Batch(c=np.random.rand(4, 5)))
+    test = Batch.stack([b1, b2])
+    ans = Batch(a=np.stack([b1.a, np.zeros((4, 4))]),
+                b=torch.stack([torch.zeros(4, 6), b2.b]),
+                common=Batch(c=np.stack([b1.common.c, b2.common.c])))
+    assert np.allclose(test.a, ans.a)
+    assert torch.allclose(test.b, ans.b)
+    assert np.allclose(test.common.c, ans.common.c)
 
 
 def test_batch_over_batch_to_torch():
