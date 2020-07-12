@@ -589,6 +589,10 @@ class Batch:
                     v = v.astype(np.object)
                 self.__dict__[k] = v
         keys_partial = set.difference(set.union(*keys_map), keys_shared)
+        if keys_partial and axis != 0:
+            raise ValueError(
+                f"Stack of Batch with non-shared keys {keys_partial}"
+                f" is only supported with axis=0, but got axis={axis}!")
         _assert_type_keys(keys_partial)
         for k in keys_partial:
             for i, e in enumerate(batches):
@@ -617,6 +621,12 @@ class Batch:
             (2, 4, 6)
             >>> c.common.c.shape
             (2, 4, 5)
+
+        .. note::
+
+            If there are keys that are not shared across all batches,
+            ``stack`` with ``axis!=0`` is undefined, and will cause an
+            exception.
         """
         batch = Batch()
         batch.stack_(batches, axis)
