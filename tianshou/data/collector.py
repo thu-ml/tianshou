@@ -117,16 +117,17 @@ class Collector(object):
         self.stat_size = stat_size
         self._action_noise = action_noise
 
-        def _rew_metric(x):
-            # this internal function is designed for single-agent RL
-            # for multi-agent RL, a reward_metric must be provided
-            assert np.asanyarray(x).size == 1, \
-                'Please specify the reward_metric '\
-                'since the reward is not a scalar.'
-            return x
-
-        self._rew_metric = reward_metric or _rew_metric
+        self._rew_metric = reward_metric or Collector._default_rew_metric
         self.reset()
+
+    @staticmethod
+    def _default_rew_metric(x):
+        # this internal function is designed for single-agent RL
+        # for multi-agent RL, a reward_metric must be provided
+        assert np.asanyarray(x).size == 1, \
+            'Please specify the reward_metric ' \
+            'since the reward is not a scalar.'
+        return x
 
     def reset(self) -> None:
         """Reset all related variables in the collector."""
