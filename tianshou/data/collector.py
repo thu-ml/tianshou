@@ -264,7 +264,7 @@ class Collector(object):
                 state = Batch()
             self.data.state = state
             if hasattr(result, 'policy'):
-                self.data.policy = result.policy
+                self.data.policy = to_numpy(result.policy)
             # save hidden state to policy._state, in order to save into buffer
             self.data.policy._state = self.data.state
 
