@@ -63,14 +63,14 @@ def test_tic_tac_toe(args=get_args()):
         use_target_network=args.target_update_freq > 0,
         target_update_freq=args.target_update_freq)
     agent_2 = RandomMultiAgentPolicy()
-    policy = MultiAgentPolicyManager([agent_1, agent_2])
+    policy = MultiAgentPolicyManager([agent_2, agent_1])
 
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size),
-        reward_metric=lambda x: x[0])
+        reward_metric=lambda x: x[1])
     test_collector = Collector(
-        policy, test_envs, reward_metric=lambda x: x[0])
+        policy, test_envs, reward_metric=lambda x: x[1])
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size)
     # log
@@ -81,13 +81,13 @@ def test_tic_tac_toe(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(x):
-        return x >= 0.95
+        return x >= 0.8
 
     def train_fn(x):
-        policy.policies[0].set_eps(args.eps_train)
+        policy.policies[1].set_eps(args.eps_train)
 
     def test_fn(x):
-        policy.policies[0].set_eps(args.eps_test)
+        policy.policies[1].set_eps(args.eps_test)
 
     # trainer
     result = offpolicy_trainer(
@@ -103,7 +103,7 @@ def test_tic_tac_toe(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = TicTacToeEnv()
-        collector = Collector(policy, env, reward_metric=lambda x: x[0])
+        collector = Collector(policy, env, reward_metric=lambda x: x[1])
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
