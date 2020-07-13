@@ -35,8 +35,8 @@ def get_parser():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.1)
-    parser.add_argument('--board_sie', type=int, default=5)
-    parser.add_argument('--win_size', type=int, default=3)
+    parser.add_argument('--board_size', type=int, default=6)
+    parser.add_argument('--win_size', type=int, default=4)
     parser.add_argument('--watch', default=False, action='store_true',
                         help='no training, watch the play of pre-trained models')
     parser.add_argument('--agent_id', type=int, default=2,
@@ -62,7 +62,7 @@ def get_args():
 
 def get_agents(args=get_args(), agent_learn=None, agent_opponent=None, optim=None):
     def env_func():
-        return TicTacToeEnv(args.board_sie, args.win_size)
+        return TicTacToeEnv(args.board_size, args.win_size)
     env = env_func()
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -96,7 +96,7 @@ def get_agents(args=get_args(), agent_learn=None, agent_opponent=None, optim=Non
 
 def train_agent(args=get_args(), agent_learn=None, agent_opponent=None, optim=None):
     def env_func():
-        return TicTacToeEnv(args.board_sie, args.win_size)
+        return TicTacToeEnv(args.board_size, args.win_size)
     train_envs = VectorEnv([env_func for _ in range(args.training_num)])
     test_envs = VectorEnv([env_func for _ in range(args.test_num)])
     # seed
@@ -154,7 +154,7 @@ def train_agent(args=get_args(), agent_learn=None, agent_opponent=None, optim=No
 def watch(args=get_args(), agent_learn=None, agent_opponent=None):
     policy, optim = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)
     def env_func():
-        return TicTacToeEnv(args.board_sie, args.win_size)
+        return TicTacToeEnv(args.board_size, args.win_size)
     env = env_func()
     collector = Collector(policy, env)
     result = collector.collect(n_episode=1, render=args.render)

@@ -26,7 +26,7 @@ def gomoku(args=get_args()):
     opponent_pool = [agent_opponent]
 
     def env_func():
-        return TicTacToeEnv(args.board_sie, args.win_size)
+        return TicTacToeEnv(args.board_size, args.win_size)
     test_envs = VectorEnv([env_func for _ in range(args.test_num)])
     for r in range(args.self_play_round):
         rews = []

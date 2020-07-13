@@ -80,7 +80,7 @@ class DQNPolicy(BasePolicy):
         return target_q
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
-                   indice: np.ndarray) -> Batch:
+                   indice: np.ndarray, rew_norm=True) -> Batch:
         r"""Compute the n-step return for Q-learning targets:
 
         .. math::
@@ -94,7 +94,7 @@ class DQNPolicy(BasePolicy):
         to :math:`Q_{new}`.
         """
         batch = self.compute_nstep_return(
-            batch, buffer, indice, self._target_q, self._gamma, self._n_step)
+            batch, buffer, indice, self._target_q, self._gamma, self._n_step, rew_norm=rew_norm)
         if isinstance(buffer, PrioritizedReplayBuffer):
             batch.update_weight = buffer.update_weight
             batch.indice = indice
