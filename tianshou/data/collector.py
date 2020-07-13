@@ -320,11 +320,13 @@ class Collector(object):
                         self._reset_state(i)
                 obs_next = self.data.obs_next
                 if sum(self.data.done):
-                    env_ind = np.where(self._done)[0]
-                    obs_next[env_ind] = self.env.reset(env_ind)
+                    env_ind = np.where(self.data.done)[0]
+                    obs_reset = self.env.reset(env_ind)
                     if self.preprocess_fn:
-                        obs_next = self.preprocess_fn(obs=obs_next).get(
-                            'obs', obs_next)
+                        obs_next[env_ind] = self.preprocess_fn(
+                            obs=obs_reset).get('obs', obs_reset)
+                    else:
+                        obs_next[env_ind] = obs_reset
                 self.data.obs_next = obs_next
                 if n_episode != 0:
                     if isinstance(n_episode, list) and \
