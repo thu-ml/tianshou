@@ -250,8 +250,8 @@ class SubprocVectorEnv(BaseVectorEnv):
         elif np.isscalar(id):
             id = [id]
         assert len(action) == len(id)
-        for i in id:
-            self.parent_remote[i].send(['step', action[i]])
+        for i, j in enumerate(id):
+            self.parent_remote[j].send(['step', action[i]])
         result = [self.parent_remote[i].recv() for i in id]
         obs, rew, done, info = map(np.stack, zip(*result))
         return obs, rew, done, info
@@ -328,7 +328,8 @@ class RayVectorEnv(BaseVectorEnv):
         elif np.isscalar(id):
             id = [id]
         assert len(action) == len(id)
-        result = ray.get([self.envs[i].step.remote(action[i]) for i in id])
+        result = ray.get([self.envs[j].step.remote(action[i])
+                          for i, j in enumerate(id)])
         obs, rew, done, info = map(np.stack, zip(*result))
         return obs, rew, done, info
 
