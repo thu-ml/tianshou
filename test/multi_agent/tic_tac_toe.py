@@ -6,16 +6,19 @@ import numpy as np
 from copy import deepcopy
 
 from tianshou.env import VectorEnv
-from tianshou.policy import \
-    (MultiAgentDQNPolicy, MultiAgentPolicyManager, RandomMultiAgentPolicy)
+from tianshou.policy import (MultiAgentDQNPolicy,
+                             MultiAgentPolicyManager,
+                             RandomMultiAgentPolicy,
+                             BaseMultiAgentPolicy)
 from tianshou.utils.net.common import Net
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.trainer import offpolicy_trainer
+from typing import Optional, Tuple
 
 from tic_tac_toe_env import TicTacToeEnv
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--eps-test', type=float, default=0.05)
@@ -38,7 +41,8 @@ def get_parser():
     parser.add_argument('--board_size', type=int, default=6)
     parser.add_argument('--win_size', type=int, default=4)
     parser.add_argument('--watch', default=False, action='store_true',
-                        help='no training, watch the play of pre-trained models')
+                        help='no training, '
+                             'watch the play of pre-trained models')
     parser.add_argument('--agent_id', type=int, default=2,
                         help='the learned agent plays as the'
                              ' agent_id-th player. choices are 1 and 2.')
@@ -54,13 +58,17 @@ def get_parser():
     return parser
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = get_parser()
     args = parser.parse_known_args()[0]
     return args
 
 
-def get_agents(args=get_args(), agent_learn=None, agent_opponent=None, optim=None):
+def get_agents(args: argparse.Namespace = get_args(),
+               agent_learn: Optional[BaseMultiAgentPolicy] = None,
+               agent_opponent: Optional[BaseMultiAgentPolicy] = None,
+               optim: Optional[torch.optim.optimizer.Optimizer] = None,)\
+        -> Tuple[BaseMultiAgentPolicy, torch.optim.optimizer.Optimizer]:
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
     env = env_func()
@@ -68,7 +76,8 @@ def get_agents(args=get_args(), agent_learn=None, agent_opponent=None, optim=Non
     args.action_shape = env.action_space.shape or env.action_space.n
     if agent_learn is None:
         # model
-        net = Net(args.layer_num, args.state_shape, args.action_shape, args.device)
+        net = Net(
+            args.layer_num, args.state_shape, args.action_shape, args.device)
         net = net.to(args.device)
         if optim is None:
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
@@ -94,7 +103,11 @@ def get_agents(args=get_args(), agent_learn=None, agent_opponent=None, optim=Non
     return policy, optim
 
 
-def train_agent(args=get_args(), agent_learn=None, agent_opponent=None, optim=None):
+def train_agent(args: argparse.Namespace = get_args(),
+                agent_learn: Optional[BaseMultiAgentPolicy] = None,
+                agent_opponent: Optional[BaseMultiAgentPolicy] = None,
+                optim: Optional[torch.optim.optimizer.Optimizer] = None,
+                ) -> Tuple[dict, BaseMultiAgentPolicy]:
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
     train_envs = VectorEnv([env_func for _ in range(args.training_num)])
@@ -105,7 +118,9 @@ def train_agent(args=get_args(), agent_learn=None, agent_opponent=None, optim=No
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
-    policy, optim = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent, optim=optim)
+    policy, optim = get_agents(
+        args, agent_learn=agent_learn,
+        agent_opponent=agent_opponent, optim=optim)
 
     # collector
     train_collector = Collector(
@@ -124,7 +139,8 @@ def train_agent(args=get_args(), agent_learn=None, agent_opponent=None, optim=No
         if hasattr(args, 'model_save_path'):
             model_save_path = args.model_save_path
         else:
-            model_save_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn', 'policy.pth')
+            model_save_path = os.path.join(
+                args.logdir, 'tic_tac_toe', 'dqn', 'policy.pth')
         torch.save(
             policy.policies[args.agent_id - 1].state_dict(),
             model_save_path)
@@ -151,11 +167,16 @@ def train_agent(args=get_args(), agent_learn=None, agent_opponent=None, optim=No
     return result, policy.policies[args.agent_id - 1]
 
 
-def watch(args=get_args(), agent_learn=None, agent_opponent=None):
-    policy, optim = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)
+def watch(
+        args: argparse.Namespace = get_args(),
+        agent_learn: Optional[BaseMultiAgentPolicy] = None,
+        agent_opponent: Optional[BaseMultiAgentPolicy] = None,
+        ) -> None:
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
     env = env_func()
+    policy, optim = get_agents(
+        args, agent_learn=agent_learn, agent_opponent=agent_opponent)
     collector = Collector(policy, env)
     result = collector.collect(n_episode=1, render=args.render)
     print(f'Final reward: {result["rew"]}, length: {result["len"]}')

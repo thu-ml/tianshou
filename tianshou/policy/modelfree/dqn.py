@@ -94,7 +94,8 @@ class DQNPolicy(BasePolicy):
         to :math:`Q_{new}`.
         """
         batch = self.compute_nstep_return(
-            batch, buffer, indice, self._target_q, self._gamma, self._n_step, rew_norm=rew_norm)
+            batch, buffer, indice, self._target_q,
+            self._gamma, self._n_step, rew_norm=rew_norm)
         if isinstance(buffer, PrioritizedReplayBuffer):
             batch.update_weight = buffer.update_weight
             batch.indice = indice
