@@ -67,8 +67,8 @@ def get_args() -> argparse.Namespace:
 def get_agents(args: argparse.Namespace = get_args(),
                agent_learn: Optional[BaseMultiAgentPolicy] = None,
                agent_opponent: Optional[BaseMultiAgentPolicy] = None,
-               optim: Optional[torch.optim.optimizer.Optimizer] = None,)\
-        -> Tuple[BaseMultiAgentPolicy, torch.optim.optimizer.Optimizer]:
+               optim: Optional[torch.optim.Optimizer] = None,)\
+        -> Tuple[BaseMultiAgentPolicy, torch.optim.Optimizer]:
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
     env = env_func()
@@ -106,7 +106,7 @@ def get_agents(args: argparse.Namespace = get_args(),
 def train_agent(args: argparse.Namespace = get_args(),
                 agent_learn: Optional[BaseMultiAgentPolicy] = None,
                 agent_opponent: Optional[BaseMultiAgentPolicy] = None,
-                optim: Optional[torch.optim.optimizer.Optimizer] = None,
+                optim: Optional[torch.optim.Optimizer] = None,
                 ) -> Tuple[dict, BaseMultiAgentPolicy]:
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)

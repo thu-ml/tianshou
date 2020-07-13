@@ -87,5 +87,5 @@ class MultiAgentDQNPolicy(DQNPolicy, BaseMultiAgentPolicy):
         return Batch(logits=q, act=act, state=h)
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
-                   indice: np.ndarray, rew_norm=False) -> Batch:
-        return DQNPolicy.process_fn(self, batch, buffer, indice, rew_norm)
+                   indice: np.ndarray) -> Batch:
+        return DQNPolicy.process_fn(self, batch, buffer, indice)
