@@ -98,7 +98,7 @@ class Collector(object):
                  stat_size: Optional[int] = 100,
                  action_noise: Optional[BaseNoise] = None,
                  reward_metric: Optional[Callable[[np.ndarray], float]] = None,
-                 **kwargs) -> None:
+                 ) -> None:
         super().__init__()
         self.env = env
         self.env_num = 1

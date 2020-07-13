@@ -27,7 +27,6 @@ def onpolicy_trainer(
         writer: Optional[SummaryWriter] = None,
         log_interval: int = 1,
         verbose: bool = True,
-        **kwargs
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for on-policy trainer procedure.
 
