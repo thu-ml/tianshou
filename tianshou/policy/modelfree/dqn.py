@@ -21,6 +21,8 @@ class DQNPolicy(BasePolicy):
         ahead.
     :param int target_update_freq: the target network update frequency (``0``
         if you do not use the target network).
+    :param bool reward_normalization: normalize the reward to Normal(0, 1),
+        defaults to ``False``.
 
     .. seealso::
 
@@ -34,6 +36,7 @@ class DQNPolicy(BasePolicy):
                  discount_factor: float = 0.99,
                  estimation_step: int = 1,
                  target_update_freq: Optional[int] = 0,
+                 reward_normalization: bool = False,
                  **kwargs) -> None:
         super().__init__(**kwargs)
         self.model = model
@@ -49,6 +52,7 @@ class DQNPolicy(BasePolicy):
         if self._target:
             self.model_old = deepcopy(self.model)
             self.model_old.eval()
+        self._rew_norm = reward_normalization
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
@@ -80,7 +84,7 @@ class DQNPolicy(BasePolicy):
         return target_q
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
-                   indice: np.ndarray, rew_norm=True) -> Batch:
+                   indice: np.ndarray) -> Batch:
         r"""Compute the n-step return for Q-learning targets:
 
         .. math::
@@ -95,7 +99,7 @@ class DQNPolicy(BasePolicy):
         """
         batch = self.compute_nstep_return(
             batch, buffer, indice, self._target_q,
-            self._gamma, self._n_step, rew_norm=rew_norm)
+            self._gamma, self._n_step, self._rew_norm)
         if isinstance(buffer, PrioritizedReplayBuffer):
             batch.update_weight = buffer.update_weight
             batch.indice = indice
