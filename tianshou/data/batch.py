@@ -512,6 +512,7 @@ class Batch:
         if len(batches) == 0:
             return
         batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
+        batches = [b for b in batches if not b.is_empty()]
         if len(self.__dict__) > 0:
             batches = [self] + list(batches)
         # partial keys will be padded by zeros
@@ -520,7 +521,11 @@ class Batch:
         sum_lens = [0]
         for x in lens:
             sum_lens.append(sum_lens[-1] + x)
-        keys_map = list(map(lambda e: set(e.keys()), batches))
+        # collect non-empty keys
+        keys_map = [
+            set(k for k, v in batch.items()
+                if not (isinstance(v, Batch) and v.is_empty()))
+            for batch in batches]
         keys_shared = set.intersection(*keys_map)
         values_shared = [[e[k] for e in batches] for k in keys_shared]
         _assert_type_keys(keys_shared)
@@ -534,18 +539,26 @@ class Batch:
                 if not issubclass(v.dtype.type, (np.bool_, np.number)):
                     v = v.astype(np.object)
                 self.__dict__[k] = v
-        keys_partial = set.union(*keys_map) - keys_shared
+        keys_partial = set.union(*[set(b.keys()) for b in batches])
+        keys_partial = set.difference(keys_partial, keys_shared)
         _assert_type_keys(keys_partial)
         for k in keys_partial:
+            empty_count = 0
             for i, e in enumerate(batches):
                 val = e.get(k, None)
-                if val is not None:
-                    try:
-                        self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
-                    except KeyError:
-                        self.__dict__[k] = \
-                            _create_value(val, sum_lens[-1], stack=False)
-                        self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
+                if val is None or (isinstance(val, Batch) and val.is_empty()):
+                    empty_count += 1
+                    continue
+                try:
+                    self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
+                except KeyError:
+                    self.__dict__[k] = \
+                        _create_value(val, sum_lens[-1], stack=False)
+                    self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
+            if empty_count == len(batches):
+                # keys that are empty in all batches
+                # will be merged into one Batch()
+                self.__dict__[k] = Batch()
 
     @staticmethod
     def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':

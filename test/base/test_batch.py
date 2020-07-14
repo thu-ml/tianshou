@@ -177,6 +177,32 @@ def test_batch_cat_and_stack():
     assert torch.allclose(test.b, ans.b)
     assert np.allclose(test.common.c, ans.common.c)
 
+    # test cat with reserved keys (values are Batch())
+    b1 = Batch(a=np.random.rand(3, 4), common=Batch(c=np.random.rand(3, 5)))
+    b2 = Batch(a=Batch(),
+               b=torch.rand(4, 3),
+               common=Batch(c=np.random.rand(4, 5)))
+    test = Batch.cat([b1, b2])
+    ans = Batch(a=np.concatenate([b1.a, np.zeros((4, 4))]),
+                b=torch.cat([torch.zeros(3, 3), b2.b]),
+                common=Batch(c=np.concatenate([b1.common.c, b2.common.c])))
+    assert np.allclose(test.a, ans.a)
+    assert torch.allclose(test.b, ans.b)
+    assert np.allclose(test.common.c, ans.common.c)
+
+    # test cat with all reserved keys (values are Batch())
+    b1 = Batch(a=Batch(), common=Batch(c=np.random.rand(3, 5)))
+    b2 = Batch(a=Batch(),
+               b=torch.rand(4, 3),
+               common=Batch(c=np.random.rand(4, 5)))
+    test = Batch.cat([b1, b2])
+    ans = Batch(a=Batch(),
+                b=torch.cat([torch.zeros(3, 3), b2.b]),
+                common=Batch(c=np.concatenate([b1.common.c, b2.common.c])))
+    assert ans.a.is_empty()
+    assert torch.allclose(test.b, ans.b)
+    assert np.allclose(test.common.c, ans.common.c)
+
     # test stack with compatible keys
     b3 = Batch(a=np.zeros((3, 4)),
                b=torch.ones((2, 5)),
