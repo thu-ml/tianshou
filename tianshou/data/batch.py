@@ -725,9 +725,21 @@ class Batch:
         return min(r)
 
     def is_empty(self):
-        return not any(
-            not x.is_empty() if isinstance(x, Batch)
-            else hasattr(x, '__len__') and len(x) > 0 for x in self.values())
+        """
+        Only Batches over empty Batches are considered empty.
+        ::
+
+        >>>Batch().is_empty()
+        True
+        >>>Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
+        True
+        >>>Batch(d=1).is_empty()
+        False
+        >>>Batch(a=np.float64(1.0)).is_empty()
+        False
+        """
+        return all(False if not isinstance(x, Batch)
+                   else x.is_empty() for x in self.values())
 
     @property
     def shape(self) -> List[int]:

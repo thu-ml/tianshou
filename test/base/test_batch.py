@@ -11,6 +11,9 @@ def test_batch():
     assert list(Batch()) == []
     assert Batch().is_empty()
     assert Batch(b={'c': {}}).is_empty()
+    assert Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
+    assert not Batch(d=1).is_empty()
+    assert not Batch(a=np.float64(1.0)).is_empty()
     assert len(Batch(a=[1, 2, 3], b={'c': {}})) == 3
     assert not Batch(a=[1, 2, 3]).is_empty()
     b = Batch()
