@@ -357,6 +357,8 @@ class Batch:
             str, slice, int, np.integer, np.ndarray, List[int]],
             value: Any) -> None:
         """Assign value to self[index]."""
+        if isinstance(value, (list, tuple)):
+            value = np.asanyarray(value)
         if isinstance(value, np.ndarray):
             if not issubclass(value.dtype.type, (np.bool_, np.number)):
                 value = value.astype(np.object)
@@ -364,8 +366,11 @@ class Batch:
             self.__dict__[index] = value
             return
         if not isinstance(value, (dict, Batch)):
-            raise TypeError("Batch does not supported value type "
-                            f"{type(value)} for item assignment.")
+            if _is_batch_set(value):
+                value = Batch(value)
+            else:
+                raise TypeError("Batch does not supported value type "
+                                f"{type(value)} for item assignment.")
         if not set(value.keys()).issubset(self.__dict__.keys()):
             raise KeyError(
                 "Creating keys is not supported by item assignment.")
