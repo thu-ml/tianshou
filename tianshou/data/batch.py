@@ -704,14 +704,6 @@ class Batch:
         """
         return deepcopy(batch).empty_(index)
 
-    def condense(self):
-        """Remove empty Batches, return a condensed version"""
-        empty_keys = [k for k, v in self.items()
-                      if isinstance(v, Batch) and v.is_empty()]
-        for k in empty_keys:
-            del self.__dict__[k]
-        return self
-
     def update(self, batch: Optional[Union[dict, 'Batch']] = None,
                **kwargs) -> None:
         """Update this batch from another dict/Batch."""
