@@ -2,6 +2,7 @@ import gym
 import numpy as np
 from typing import Tuple, Optional
 from scipy.signal import convolve2d
+from functools import partial
 
 from tianshou.env import MultiAgentEnv
 
@@ -33,10 +34,12 @@ class TicTacToeEnv(MultiAgentEnv):
         self.action_space = gym.spaces.Discrete(size * size)
         self.current_board = None
         self.current_agent = None
+        self._last_move = None
 
     def reset(self) -> dict:
         self.current_board = np.zeros((self.size, self.size), dtype=np.int32)
         self.current_agent = 1
+        self._last_move = (-1, -1)
         return {
             'agent_id': self.current_agent,
             'obs': np.array(self.current_board),
@@ -88,6 +91,7 @@ class TicTacToeEnv(MultiAgentEnv):
         else:
             self.current_board[row, col] = -1
         self.current_agent = 3 - self.current_agent
+        self._last_move = (row, col)
 
     def _test_win(self):
         """
@@ -120,14 +124,16 @@ class TicTacToeEnv(MultiAgentEnv):
         top = pad + '=' * (2 * self.size - 1) + pad
         print(top)
 
-        def f(number):
+        def f(i, data):
+            j, number = data
+            last_move = i == self._last_move[0] and j == self._last_move[1]
             if number == 1:
-                return 'X'
+                return 'X' if last_move else 'x'
             if number == -1:
-                return 'O'
+                return 'O' if last_move else 'o'
             return '_'
-        for row in self.current_board:
-            print(pad + ' '.join(map(f, row)) + pad)
+        for i, row in enumerate(self.current_board):
+            print(pad + ' '.join(map(partial(f, i), enumerate(row))) + pad)
         print(top)
 
     def close(self) -> None:

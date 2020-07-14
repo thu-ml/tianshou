@@ -132,6 +132,7 @@ def train_agent(args: argparse.Namespace = get_args(),
     if not hasattr(args, 'writer'):
         log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
         writer = SummaryWriter(log_path)
+        args.writer = writer
     else:
         writer = args.writer
 
