@@ -539,15 +539,20 @@ class Batch:
                 if not issubclass(v.dtype.type, (np.bool_, np.number)):
                     v = v.astype(np.object)
                 self.__dict__[k] = v
-        keys_partial = set.union(*[set(b.keys()) for b in batches])
-        keys_partial = set.difference(keys_partial, keys_shared)
-        _assert_type_keys(keys_partial)
+        keys_total = set.union(*[set(b.keys()) for b in batches])
+        keys_reserve_or_partial = set.difference(keys_total, keys_shared)
+        _assert_type_keys(keys_reserve_or_partial)
+        # keys that are empty in all batches
+        keys_reserve = set.difference(keys_total, set.union(*keys_map))
+        # keys that occur only in some batches, but not all
+        keys_partial = keys_reserve_or_partial.difference(keys_reserve)
+        for k in keys_reserve:
+            # reserved keys
+            self.__dict__[k] = Batch()
         for k in keys_partial:
-            empty_count = 0
             for i, e in enumerate(batches):
                 val = e.get(k, None)
                 if val is None or (isinstance(val, Batch) and val.is_empty()):
-                    empty_count += 1
                     continue
                 try:
                     self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
@@ -555,10 +560,6 @@ class Batch:
                     self.__dict__[k] = \
                         _create_value(val, sum_lens[-1], stack=False)
                     self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
-            if empty_count == len(batches):
-                # keys that are empty in all batches
-                # will be merged into one Batch()
-                self.__dict__[k] = Batch()
 
     @staticmethod
     def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':
@@ -616,19 +617,18 @@ class Batch:
         # keys that are empty in all batches
         keys_reserve = set.difference(keys_total, set.union(*keys_map))
         # keys that are either partial or reserved
-        keys_partial = set.difference(keys_total, keys_shared)
+        keys_reserve_or_partial = set.difference(keys_total, keys_shared)
         # keys that occur only in some batches, but not all
-        keys_really_partial = keys_partial.difference(keys_reserve)
-        if keys_really_partial and axis != 0:
+        keys_partial = keys_reserve_or_partial.difference(keys_reserve)
+        if keys_partial and axis != 0:
             raise ValueError(
-                f"Stack of Batch with non-shared keys {keys_really_partial} "
+                f"Stack of Batch with non-shared keys {keys_partial} "
                 f"is only supported with axis=0, but got axis={axis}!")
-        _assert_type_keys(keys_partial)
+        _assert_type_keys(keys_reserve_or_partial)
         for k in keys_reserve:
-            # keys that are empty in all batches
-            # will be merged into one Batch()
+            # reserved keys
             self.__dict__[k] = Batch()
-        for k in keys_really_partial:
+        for k in keys_partial:
             for i, e in enumerate(batches):
                 val = e.get(k, None)
                 if val is None or (isinstance(val, Batch) and val.is_empty()):
