@@ -593,7 +593,11 @@ class Batch:
         batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
         if len(self.__dict__) > 0:
             batches = [self] + list(batches)
-        keys_map = list(map(lambda e: set(e.keys()), batches))
+        # collect non-empty keys
+        keys_map = [
+            set(k for k, v in batch.items()
+                if not (isinstance(v, Batch) and v.is_empty()))
+            for batch in batches]
         keys_shared = set.intersection(*keys_map)
         values_shared = [[e[k] for e in batches] for k in keys_shared]
         _assert_type_keys(keys_shared)
@@ -607,22 +611,34 @@ class Batch:
                 if not issubclass(v.dtype.type, (np.bool_, np.number)):
                     v = v.astype(np.object)
                 self.__dict__[k] = v
-        keys_partial = set.difference(set.union(*keys_map), keys_shared)
-        if keys_partial and axis != 0:
+        # all the keys
+        keys_total = set.union(*[set(b.keys()) for b in batches])
+        # keys that are empty in all batches
+        keys_reserve = set.difference(keys_total, set.union(*keys_map))
+        # keys that are either partial or reserved
+        keys_partial = set.difference(keys_total, keys_shared)
+        # keys that occur only in some batches, but not all
+        keys_really_partial = keys_partial.difference(keys_reserve)
+        if keys_really_partial and axis != 0:
             raise ValueError(
-                f"Stack of Batch with non-shared keys {keys_partial} "
+                f"Stack of Batch with non-shared keys {keys_really_partial} "
                 f"is only supported with axis=0, but got axis={axis}!")
         _assert_type_keys(keys_partial)
-        for k in keys_partial:
+        for k in keys_reserve:
+            # keys that are empty in all batches
+            # will be merged into one Batch()
+            self.__dict__[k] = Batch()
+        for k in keys_really_partial:
             for i, e in enumerate(batches):
                 val = e.get(k, None)
-                if val is not None:
-                    try:
-                        self.__dict__[k][i] = val
-                    except KeyError:
-                        self.__dict__[k] = \
-                            _create_value(val, len(batches))
-                        self.__dict__[k][i] = val
+                if val is None or (isinstance(val, Batch) and val.is_empty()):
+                    continue
+                try:
+                    self.__dict__[k][i] = val
+                except KeyError:
+                    self.__dict__[k] = \
+                        _create_value(val, len(batches))
+                    self.__dict__[k][i] = val
 
     @staticmethod
     def stack(batches: List[Union[dict, 'Batch']], axis: int = 0) -> 'Batch':
