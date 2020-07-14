@@ -1,4 +1,4 @@
-Tic Tac Toe
+Multi-Agent RL
 ==============
 
 In this section, we describe how to use Tianshou to implement multi-agent reinforcement learning. Specifically, we will design an algorithm to learn how to play `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ (see the image below) against a random opponent.

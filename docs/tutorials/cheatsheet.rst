@@ -284,4 +284,4 @@ By constructing a new state ``state_ = (state, agent_id, legal_actions)``, essen
     action = policy(state_)
     next_state_, reward = env.step(action)
 
-Following this idea, we write a tiny example of playing `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ against a random player by using a Q-lerning algorithm. The code is `here <https://github.com/thu-ml/tianshou/blob/master/test/multi_agent/test_tic_tac_toe.py>`_.
+Following this idea, we write a tiny example of playing `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ against a random player by using a Q-lerning algorithm. The tutorial is at :doc:`/tutorials/tictactoe`.
