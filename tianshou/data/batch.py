@@ -546,21 +546,44 @@ class Batch:
                 v.to_torch(dtype, device)
 
     def cat_(self,
-             batches: Union['Batch', List[Union[dict, 'Batch']]]) -> None:
+             batches: Union['Batch', List[Union[dict, 'Batch']]],
+             lens: Optional[List[int]] = None
+             ) -> None:
         """Concatenate a list of (or one) :class:`~tianshou.data.Batch` objects
         into current batch.
+        If x=Batch(a=Batch(a=np.random.randn(3, 4)), b=np.random.randn(3, 4)),
+        y = Batch(a=Batch(a=Batch()), b=np.random.randn(3, 4)), if we want to
+        concatenate x and y, we want to pad y.a.a with zeros. Without ``lens``
+        as a hint, when we concatenate x.a and y.a, we would not be able to
+        know how to pad y.a. So we must have the argument ``lens`` to give us
+        a hint.
         """
         if isinstance(batches, Batch):
             batches = [batches]
         if len(batches) == 0:
             return
         batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
-        batches = [b for b in batches if not b.is_empty()]
-        if len(self.__dict__) > 0:
+        if lens is None:
+            # remove empty Batch, and infer lens
+            batches = [x for x in batches if not x.is_empty()]
+            try:
+                lens = [0 if x.is_empty(recursive=True) else len(x)
+                        for x in batches]
+            except TypeError as e:
+                e2 = Exception(
+                    f'Batch.cat_ meets an exception. Maybe because there is '
+                    f'any scalar in {batches} but Batch.cat_ does not support'
+                    f'the concatenation of scalar.')
+                raise Exception([e, e2])
+        else:
+            assert len(lens) == len(batches),\
+                f'provided lens {lens} does not match, ' \
+                f'there are {len(batches)} objects in the batches'
+        if not self.is_empty():
             batches = [self] + list(batches)
+            lens = [0 if self.is_empty(recursive=True) else len(self)] + lens
         # partial keys will be padded by zeros
         # with the shape of [len, rest_shape]
-        lens = [len(x) for x in batches]
         sum_lens = [0]
         for x in lens:
             sum_lens.append(sum_lens[-1] + x)
@@ -574,10 +597,14 @@ class Batch:
         _assert_type_keys(keys_shared)
         for k, v in zip(keys_shared, values_shared):
             if all(isinstance(e, (dict, Batch)) for e in v):
-                self.__dict__[k] = Batch.cat(v)
+                batch_holder = Batch()
+                batch_holder.cat_(v, lens=lens)
+                self.__dict__[k] = batch_holder
             elif all(isinstance(e, torch.Tensor) for e in v):
                 self.__dict__[k] = torch.cat(v)
             else:
+                # cat Batch(a=np.zeros((3, 4))) and Batch(a=Batch(b=Batch()))
+                # will fail here
                 v = np.concatenate(v)
                 if not issubclass(v.dtype.type, (np.bool_, np.number)):
                     v = v.astype(np.object)
@@ -585,7 +612,7 @@ class Batch:
         keys_total = set.union(*[set(b.keys()) for b in batches])
         keys_reserve_or_partial = set.difference(keys_total, keys_shared)
         _assert_type_keys(keys_reserve_or_partial)
-        # keys that are empty in all batches
+        # keys that are reserved in all batches
         keys_reserve = set.difference(keys_total, set.union(*keys_map))
         # keys that occur only in some batches, but not all
         keys_partial = keys_reserve_or_partial.difference(keys_reserve)

@@ -167,6 +167,20 @@ def test_batch_cat_and_stack():
     assert isinstance(b12_cat_in.a.d.e, np.ndarray)
     assert b12_cat_in.a.d.e.ndim == 1
 
+    a = Batch(a=Batch(a=np.random.randn(3, 4)))
+    assert np.allclose(
+        np.concatenate([a.a.a, a.a.a]),
+        Batch.cat([a, Batch(a=Batch(a=Batch())), a]).a.a)
+
+    # test cat with lens infer
+    a = Batch(a=Batch(a=np.random.randn(3, 4)), b=np.random.randn(3, 4))
+    b = Batch(a=Batch(a=Batch(), t=Batch()), b=np.random.randn(3, 4))
+    ans = Batch.cat([a, b, a])
+    assert np.allclose(ans.a.a,
+                       np.concatenate([a.a.a, np.zeros((3, 4)), a.a.a]))
+    assert np.allclose(ans.b, np.concatenate([a.b, b.b, a.b]))
+    assert ans.a.t.is_empty()
+
     b12_stack = Batch.stack((b1, b2))
     assert isinstance(b12_stack.a.d.e, np.ndarray)
     assert b12_stack.a.d.e.ndim == 2
