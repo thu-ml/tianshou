@@ -545,10 +545,10 @@ class Batch:
             elif isinstance(v, Batch):
                 v.to_torch(dtype, device)
 
-    def cat_(self,
-             batches: Union['Batch', List[Union[dict, 'Batch']]],
-             lens: Optional[List[int]] = None
-             ) -> None:
+    def __cat(self,
+              batches: Union['Batch', List[Union[dict, 'Batch']]],
+              lens: Optional[List[int]] = None
+              ) -> None:
         """Concatenate a list of (or one) :class:`~tianshou.data.Batch` objects
         into current batch.
         If x=Batch(a=Batch(a=np.random.randn(3, 4)), b=np.random.randn(3, 4)),
@@ -598,7 +598,7 @@ class Batch:
         for k, v in zip(keys_shared, values_shared):
             if all(isinstance(e, (dict, Batch)) for e in v):
                 batch_holder = Batch()
-                batch_holder.cat_(v, lens=lens)
+                batch_holder.__cat(v, lens=lens)
                 self.__dict__[k] = batch_holder
             elif all(isinstance(e, torch.Tensor) for e in v):
                 self.__dict__[k] = torch.cat(v)
@@ -632,6 +632,10 @@ class Batch:
                     self.__dict__[k] = \
                         _create_value(val, sum_lens[-1], stack=False)
                     self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
+
+    def cat_(self,
+             batches: Union['Batch', List[Union[dict, 'Batch']]]) -> None:
+        return self.__cat(batches)
 
     @staticmethod
     def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':
