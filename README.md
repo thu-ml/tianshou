@@ -253,7 +253,7 @@ collector.close()
 Look at the result saved in tensorboard: (with bash script in your terminal)
 
 ```bash
-tensorboard --logdir log/dqn
+tensorboard --logdir log/CartPole-v0/dqn
 ```
 
 You can check out the [documentation](https://tianshou.readthedocs.io) for advanced usage.
