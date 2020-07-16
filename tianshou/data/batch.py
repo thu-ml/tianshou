@@ -621,8 +621,10 @@ class Batch:
             self.__dict__[k] = Batch()
         for k in keys_partial:
             for i, e in enumerate(batches):
-                val = e.get(k, None)
-                if val is None or (isinstance(val, Batch) and val.is_empty()):
+                if k not in e.__dict__:
+                    continue
+                val = e.get(k)
+                if isinstance(val, Batch) and val.is_empty():
                     continue
                 try:
                     self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
@@ -700,8 +702,10 @@ class Batch:
             self.__dict__[k] = Batch()
         for k in keys_partial:
             for i, e in enumerate(batches):
-                val = e.get(k, None)
-                if val is None or (isinstance(val, Batch) and val.is_empty()):
+                if k not in e.__dict__:
+                    continue
+                val = e.get(k)
+                if isinstance(val, Batch) and val.is_empty():
                     continue
                 try:
                     self.__dict__[k][i] = val
