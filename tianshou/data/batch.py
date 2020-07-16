@@ -564,9 +564,13 @@ class Batch:
             return
         batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
         if lens is None:
-            # remove empty Batch, and infer lens
+            # x.is_empty() means that x is Batch()
+            # remove empty Batch(), and infer lens
             batches = [x for x in batches if not x.is_empty()]
             try:
+                # x.is_empty(recursive=True) here means x is a nested
+                # empty batch like Batch(a=Batch), and we have to treat it
+                # as length zero and keep it.
                 lens = [0 if x.is_empty(recursive=True) else len(x)
                         for x in batches]
             except TypeError as e:
