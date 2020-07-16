@@ -727,9 +727,9 @@ class Batch:
                     v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
                 r.append(len(v))
             else:
-                raise TypeError("Object of type 'Batch' has no len()")
+                raise TypeError(f"Object {v} in {self} has no len()")
         if len(r) == 0:
-            raise TypeError("Object of type 'Batch' has no len()")
+            raise TypeError(f"Object {self} has no len()")
         return min(r)
 
     def is_empty(self, recursive=False):
