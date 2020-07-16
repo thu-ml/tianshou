@@ -813,6 +813,8 @@ class Batch:
             else:
                 raise TypeError(f"Object {v} in {self} has no len()")
         if len(r) == 0:
+            # empty batch has the shape of any, like the tensorflow '?' shape.
+            # So it has no length.
             raise TypeError(f"Object {self} has no len()")
         return min(r)
 
