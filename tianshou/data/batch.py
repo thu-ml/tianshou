@@ -662,7 +662,7 @@ class Batch:
         if len(batches) == 0:
             return
         batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
-        if len(self.__dict__) > 0:
+        if not self.is_empty():
             batches = [self] + list(batches)
         # collect non-empty keys
         keys_map = [
@@ -684,7 +684,7 @@ class Batch:
                 self.__dict__[k] = v
         # all the keys
         keys_total = set.union(*[set(b.keys()) for b in batches])
-        # keys that are empty in all batches
+        # keys that are reserved in all batches
         keys_reserve = set.difference(keys_total, set.union(*keys_map))
         # keys that are either partial or reserved
         keys_reserve_or_partial = set.difference(keys_total, keys_shared)
@@ -837,7 +837,7 @@ class Batch:
     @property
     def shape(self) -> List[int]:
         """Return self.shape."""
-        if len(self.__dict__.keys()) == 0:
+        if self.is_empty():
             return []
         else:
             data_shape = []
