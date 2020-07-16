@@ -134,21 +134,20 @@ class Batch:
     We say that Batch objects are compatible for aggregation with three
     cases:
 
-    1. finalized Batch objects are compatible if and only if their structures
-     are exactly the same.
+    1. finalized Batch objects are compatible if and only if their exists
+     a way to extend keys so that their structures are exactly the same.
 
     2. incomplete Batch objects and other finalized objects are compatible if
-     their exists a way to extend those reserved keys so that incomplete Batch
-      objects can have the same structure as finalized objects.
+     their exists a way to extend keys so that incomplete Batch objects can
+     have the same structure as finalized objects.
 
-    3. incomplete Batch objects and other incomplete objects are compatible if
-     their exists a way to extend those reserved keys so that their structure
-      can be the same.
+    3. incomplete Batch objects themselevs are compatible if their exists
+    a way to extend keys so that their structure can be the same.
 
     In a word, incomplete Batch objects have a set of possible structures
     in the future, but finalized Batch object only have a finalized structure.
     Batch objects are compatible if and only if they share at least one
-    commonly possible structure.
+    commonly possible structure by extending keys.
 
     :class:`~tianshou.data.Batch` object can be initialized by a wide variety
     of arguments, ranging from the key/value pairs or dictionary, to list and
