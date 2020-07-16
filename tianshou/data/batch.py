@@ -548,6 +548,14 @@ class Batch:
     def __cat(self,
               batches: Union['Batch', List[Union[dict, 'Batch']]],
               lens: List[int]) -> None:
+        """
+        If x=Batch(a=Batch(a=np.random.randn(3, 4)), b=np.random.randn(3, 4)),
+        y = Batch(a=Batch(a=Batch()), b=np.random.randn(3, 4)), if we want to
+        concatenate x and y, we want to pad y.a.a with zeros. Without ``lens``
+        as a hint, when we concatenate x.a and y.a, we would not be able to
+        know how to pad y.a. So we need ``Batch.cat_`` to compute the ``lens``
+        to give ``Batch.__cat`` a hint.
+        """
         # partial keys will be padded by zeros
         # with the shape of [len, rest_shape]
         sum_lens = [0]
@@ -603,13 +611,6 @@ class Batch:
              batches: Union['Batch', List[Union[dict, 'Batch']]]) -> None:
         """Concatenate a list of (or one) :class:`~tianshou.data.Batch` objects
         into current batch.
-
-        If x=Batch(a=Batch(a=np.random.randn(3, 4)), b=np.random.randn(3, 4)),
-        y = Batch(a=Batch(a=Batch()), b=np.random.randn(3, 4)), if we want to
-        concatenate x and y, we want to pad y.a.a with zeros. Without ``lens``
-        as a hint, when we concatenate x.a and y.a, we would not be able to
-        know how to pad y.a. So we first compute the variable ``lens`` to the
-        internal method ``Batch.__cat`` a hint.
         """
         if isinstance(batches, Batch):
             batches = [batches]
