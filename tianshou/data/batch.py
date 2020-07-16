@@ -570,7 +570,7 @@ class Batch:
                 lens = [0 if x.is_empty(recursive=True) else len(x)
                         for x in batches]
             except TypeError as e:
-                e2 = Exception(
+                e2 = ValueError(
                     f'Batch.cat_ meets an exception. Maybe because there is '
                     f'any scalar in {batches} but Batch.cat_ does not support'
                     f'the concatenation of scalar.')
