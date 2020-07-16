@@ -117,6 +117,39 @@ class Batch:
         function returns 4 arguments, and the last one is ``info``);
     * ``policy`` the data computed by policy in step :math:`t`;
 
+    For convenience, :class:`~tianshou.data.Batch` supports the mechanism of
+    key reservation: one can specify a key without any value, which serves
+    as a placeholder for the Batch object. For example, you know there will be
+    a key named ``obs``, but do not know the value until the simulator runs.
+    Then you can reserve the key ``obs``. This is done by setting the value to
+    ``Batch()``.
+
+    For a ``Batch`` object, we call it "incomplete" if: (i) it is Batch();
+    (ii) it has reserved keys; (iii) any of its sub-Batch is incomplete.
+    Otherwise, the ``Batch`` object is finalized. Otherwise, the Batch
+    object is finalized.
+
+    Key reservation mechanism is convenient, but also causes some problem
+    in aggregation operators like ``stack`` or ``cat`` of Batch objects.
+    We say that Batch objects are compatible for aggregation with three
+    cases:
+
+    1. finalized Batch objects are compatible if and only if their structures
+     are exactly the same.
+
+    2. incomplete Batch objects and other finalized objects are compatible if
+     their exists a way to extend those reserved keys so that incomplete Batch
+      objects can have the same structure as finalized objects.
+
+    3. incomplete Batch objects and other incomplete objects are compatible if
+     their exists a way to extend those reserved keys so that their structure
+      can be the same.
+
+    In a word, incomplete Batch objects have a set of possible structures
+    in the future, but finalized Batch object only have a finalized structure.
+    Batch objects are compatible if and only if they share at least one
+    commonly possible structure.
+
     :class:`~tianshou.data.Batch` object can be initialized by a wide variety
     of arguments, ranging from the key/value pairs or dictionary, to list and
     Numpy arrays of :class:`dict` or Batch instances where each element is
