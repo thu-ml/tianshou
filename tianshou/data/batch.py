@@ -101,9 +101,9 @@ class Batch:
 
     In short, you can define a :class:`Batch` with any key-value pair.
 
-    For Numpy arrays, only data types with ``np.object``, bool, and number
-    are supported. For strings or other data types, however, they can be
-    held in ``np.object`` arrays.
+    For Numpy arrays, only data types with ``np.object``, bool, and number are
+    supported. For strings or other data types, however, they can be held in
+    ``np.object`` arrays.
 
     The current implementation of Tianshou typically use 7 reserved keys in
     :class:`~tianshou.data.Batch`:
@@ -114,34 +114,33 @@ class Batch:
     * ``done`` the done flag of step :math:`t` ;
     * ``obs_next`` the observation of step :math:`t+1` ;
     * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()``\
-        function returns 4 arguments, and the last one is ``info``);
+    function returns 4 arguments, and the last one is ``info``);
     * ``policy`` the data computed by policy in step :math:`t`;
 
     For convenience, :class:`~tianshou.data.Batch` supports the mechanism of
-    key reservation: one can specify a key without any value, which serves
-    as a placeholder for the Batch object. For example, you know there will be
-    a key named ``obs``, but do not know the value until the simulator runs.
-    Then you can reserve the key ``obs``. This is done by setting the value to
+    key reservation: one can specify a key without any value, which serves as
+    a placeholder for the Batch object. For example, you know there will be a
+    key named ``obs``, but do not know the value until the simulator runs. Then
+    you can reserve the key ``obs``. This is done by setting the value to
     ``Batch()``.
 
-    For a ``Batch`` object, we call it "incomplete" if: (i) it is Batch();\
-    (ii) it has reserved keys; (iii) any of its sub-Batch is incomplete.
-    Otherwise, the ``Batch`` object is finalized.
+    For a Batch object, we call it "incomplete" if: (i) it is ``Batch()``; (ii)
+    it has reserved keys; (iii) any of its sub-Batch is incomplete. Otherwise,
+    the Batch object is finalized.
 
-    Key reservation mechanism is convenient, but also causes some problem
-    in aggregation operators like ``stack`` or ``cat`` of Batch objects.
-    We say that Batch objects are compatible for aggregation with three
-    cases:
+    Key reservation mechanism is convenient, but also causes some problem in
+    aggregation operators like ``stack`` or ``cat`` of Batch objects. We say
+    that Batch objects are compatible for aggregation with three cases:
 
-    1. finalized Batch objects are compatible if and only if their exists\
-     a way to extend keys so that their structures are exactly the same.
+    1. finalized Batch objects are compatible if and only if their exists a \
+    way to extend keys so that their structures are exactly the same.
 
-    2. incomplete Batch objects and other finalized objects are compatible if\
-     their exists a way to extend keys so that incomplete Batch objects can\
-     have the same structure as finalized objects.
+    2. incomplete Batch objects and other finalized objects are compatible if \
+    their exists a way to extend keys so that incomplete Batch objects can \
+    have the same structure as finalized objects.
 
-    3. incomplete Batch objects themselevs are compatible if their exists\
-    a way to extend keys so that their structure can be the same.
+    3. incomplete Batch objects themselevs are compatible if their exists a \
+    way to extend keys so that their structure can be the same.
 
     In a word, incomplete Batch objects have a set of possible structures
     in the future, but finalized Batch object only have a finalized structure.
@@ -163,8 +162,8 @@ class Batch:
         )
 
     :class:`~tianshou.data.Batch` has the same API as a native Python
-    :class:`dict`. In this regard, one can access stored data using string
-    key, or iterate over stored data:
+    :class:`dict`. In this regard, one can access stored data using string key,
+    or iterate over stored data:
     ::
 
         >>> data = Batch(a=4, b=[5, 5])
@@ -190,7 +189,7 @@ class Batch:
         )
         >>> for sample in data:
         >>>     print(sample.a)
-        [0., 2.]
+        [0. 2.]
 
         >>> print(data.shape)
         [1, 2]
@@ -546,23 +545,22 @@ class Batch:
     def __cat(self,
               batches: Union['Batch', List[Union[dict, 'Batch']]],
               lens: List[int]) -> None:
-        """
-        ::
+        """::
 
             >>> a = Batch(a=np.random.randn(3, 4))
-            >>> x = Batch(a=a, b=np.random.randn(3, 4))
-            >>> y = Batch(a=Batch(a=Batch()), b=np.random.randn(3, 4))
+            >>> x = Batch(a=a, b=np.random.randn(4, 4))
+            >>> y = Batch(a=Batch(a=Batch()), b=np.random.randn(4, 4))
 
         If we want to concatenate x and y, we want to pad y.a.a with zeros.
         Without ``lens`` as a hint, when we concatenate x.a and y.a, we would
         not be able to know how to pad y.a. So ``Batch.cat_`` should compute
         the ``lens`` to give ``Batch.__cat`` a hint.
-
         ::
 
             >>> ans = Batch.cat([x, y])
             >>> # this is equivalent to the following line
-            >>> ans = Batch(); ans.__cat([x, y], lens=[3, 3])
+            >>> ans = Batch(); ans.__cat([x, y], lens=[3, 4])
+            >>> # this lens is equal to [len(a), len(b)]
         """
         # partial keys will be padded by zeros
         # with the shape of [len, rest_shape]
@@ -629,9 +627,9 @@ class Batch:
         # x.is_empty() means that x is Batch() and should be ignored
         batches = [x for x in batches if not x.is_empty()]
         try:
-            # x.is_empty(recurse=True) here means x is a nested
-            # empty batch like Batch(a=Batch), and we have to treat it
-            # as length zero and keep it.
+            # x.is_empty(recurse=True) here means x is a nested empty batch
+            # like Batch(a=Batch), and we have to treat it as length zero and
+            # keep it.
             lens = [0 if x.is_empty(recurse=True) else len(x)
                     for x in batches]
         except TypeError as e:
