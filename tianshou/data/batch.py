@@ -547,45 +547,7 @@ class Batch:
 
     def __cat(self,
               batches: Union['Batch', List[Union[dict, 'Batch']]],
-              lens: Optional[List[int]] = None
-              ) -> None:
-        """Concatenate a list of (or one) :class:`~tianshou.data.Batch` objects
-        into current batch.
-        If x=Batch(a=Batch(a=np.random.randn(3, 4)), b=np.random.randn(3, 4)),
-        y = Batch(a=Batch(a=Batch()), b=np.random.randn(3, 4)), if we want to
-        concatenate x and y, we want to pad y.a.a with zeros. Without ``lens``
-        as a hint, when we concatenate x.a and y.a, we would not be able to
-        know how to pad y.a. So we must have the argument ``lens`` to give us
-        a hint.
-        """
-        if isinstance(batches, Batch):
-            batches = [batches]
-        if len(batches) == 0:
-            return
-        batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
-        if lens is None:
-            # x.is_empty() means that x is Batch()
-            # remove empty Batch(), and infer lens
-            batches = [x for x in batches if not x.is_empty()]
-            try:
-                # x.is_empty(recursive=True) here means x is a nested
-                # empty batch like Batch(a=Batch), and we have to treat it
-                # as length zero and keep it.
-                lens = [0 if x.is_empty(recursive=True) else len(x)
-                        for x in batches]
-            except TypeError as e:
-                e2 = ValueError(
-                    f'Batch.cat_ meets an exception. Maybe because there is '
-                    f'any scalar in {batches} but Batch.cat_ does not support'
-                    f'the concatenation of scalar.')
-                raise Exception([e, e2])
-        else:
-            assert len(lens) == len(batches),\
-                f'provided lens {lens} does not match, ' \
-                f'there are {len(batches)} objects in the batches'
-        if not self.is_empty():
-            batches = [self] + list(batches)
-            lens = [0 if self.is_empty(recursive=True) else len(self)] + lens
+              lens: List[int]) -> None:
         # partial keys will be padded by zeros
         # with the shape of [len, rest_shape]
         sum_lens = [0]
@@ -639,7 +601,40 @@ class Batch:
 
     def cat_(self,
              batches: Union['Batch', List[Union[dict, 'Batch']]]) -> None:
-        return self.__cat(batches)
+        """Concatenate a list of (or one) :class:`~tianshou.data.Batch` objects
+        into current batch.
+
+        If x=Batch(a=Batch(a=np.random.randn(3, 4)), b=np.random.randn(3, 4)),
+        y = Batch(a=Batch(a=Batch()), b=np.random.randn(3, 4)), if we want to
+        concatenate x and y, we want to pad y.a.a with zeros. Without ``lens``
+        as a hint, when we concatenate x.a and y.a, we would not be able to
+        know how to pad y.a. So we first compute the variable ``lens`` to the
+        internal method ``Batch.__cat`` a hint.
+        """
+        if isinstance(batches, Batch):
+            batches = [batches]
+        if len(batches) == 0:
+            return
+        batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
+
+        # x.is_empty() means that x is Batch() and should be ignored
+        batches = [x for x in batches if not x.is_empty()]
+        try:
+            # x.is_empty(recursive=True) here means x is a nested
+            # empty batch like Batch(a=Batch), and we have to treat it
+            # as length zero and keep it.
+            lens = [0 if x.is_empty(recursive=True) else len(x)
+                    for x in batches]
+        except TypeError as e:
+            e2 = ValueError(
+                f'Batch.cat_ meets an exception. Maybe because there is '
+                f'any scalar in {batches} but Batch.cat_ does not support'
+                f'the concatenation of scalar.')
+            raise Exception([e, e2])
+        if not self.is_empty():
+            batches = [self] + list(batches)
+            lens = [0 if self.is_empty(recursive=True) else len(self)] + lens
+        return self.__cat(batches, lens)
 
     @staticmethod
     def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':
