@@ -380,7 +380,7 @@ class Batch:
         if len(batch_items) > 0:
             b = Batch()
             for k, v in batch_items:
-                if isinstance(v, Batch) and len(v.__dict__) == 0:
+                if isinstance(v, Batch) and v.is_empty():
                     b.__dict__[k] = Batch()
                 else:
                     b.__dict__[k] = v[index]
@@ -429,14 +429,14 @@ class Batch:
             for (k, r), v in zip(self.__dict__.items(),
                                  other.__dict__.values()):
                 # TODO are keys consistent?
-                if r is None:
+                if isinstance(r, Batch) and r.is_empty():
                     continue
                 else:
                     self.__dict__[k] += v
             return self
         elif isinstance(other, (Number, np.number)):
             for k, r in self.items():
-                if r is None:
+                if isinstance(r, Batch) and r.is_empty():
                     continue
                 else:
                     self.__dict__[k] += other
@@ -453,7 +453,9 @@ class Batch:
         """Algebraic multiplication with a scalar value in-place."""
         assert isinstance(val, (Number, np.number)), \
             "Only multiplication by a number is supported."
-        for k in self.__dict__.keys():
+        for k, r in self.__dict__.items():
+            if isinstance(r, Batch) and r.is_empty():
+                continue
             self.__dict__[k] *= val
         return self
 
@@ -465,7 +467,9 @@ class Batch:
         """Algebraic division with a scalar value in-place."""
         assert isinstance(val, (Number, np.number)), \
             "Only division by a number is supported."
-        for k in self.__dict__.keys():
+        for k, r in self.__dict__.items():
+            if isinstance(r, Batch) and r.is_empty():
+                continue
             self.__dict__[k] /= val
         return self
 
