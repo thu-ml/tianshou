@@ -721,7 +721,7 @@ class Batch:
         """Return len(self)."""
         r = []
         for v in self.__dict__.values():
-            if isinstance(v, Batch) and v.is_empty():
+            if isinstance(v, Batch) and v.is_empty(recursive=True):
                 continue
             elif hasattr(v, '__len__') and (not isinstance(
                     v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
@@ -732,22 +732,37 @@ class Batch:
             raise TypeError("Object of type 'Batch' has no len()")
         return min(r)
 
-    def is_empty(self):
+    def is_empty(self, recursive=False):
         """
-        Only Batches over empty Batches are considered empty.
+        Test if a Batch is empty. If ``recursive=True``, it further tests the
+        values of the object; else it only tests the existence of any key.
+
+        ``b.is_empty(recursive=True)`` is mainly used to distinguish
+        ``Batch(a=Batch(a=Batch()))`` and ``Batch(a=1)``. They both raise
+        exceptions when applied to ``len()``, but the former can be used in
+        ``cat``, while the latter is a scalar and cannot be used in ``cat``.
+
+        Another usage is in ``__len__``, where we have to skip checking the
+        length of recursively empty Batch.
         ::
 
         >>>Batch().is_empty()
         True
         >>>Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
+        False
+        >>>Batch(a=Batch(), b=Batch(c=Batch())).is_empty(recursive=True)
         True
         >>>Batch(d=1).is_empty()
         False
         >>>Batch(a=np.float64(1.0)).is_empty()
         False
         """
+        if len(self.__dict__) == 0:
+            return True
+        if not recursive:
+            return False
         return all(False if not isinstance(x, Batch)
-                   else x.is_empty() for x in self.values())
+                   else x.is_empty(recursive=True) for x in self.values())
 
     @property
     def shape(self) -> List[int]:

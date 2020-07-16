@@ -10,8 +10,10 @@ from tianshou.data import Batch, to_torch
 def test_batch():
     assert list(Batch()) == []
     assert Batch().is_empty()
-    assert Batch(b={'c': {}}).is_empty()
-    assert Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
+    assert not Batch(b={'c': {}}).is_empty()
+    assert Batch(b={'c': {}}).is_empty(recursive=True)
+    assert not Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
+    assert Batch(a=Batch(), b=Batch(c=Batch())).is_empty(recursive=True)
     assert not Batch(d=1).is_empty()
     assert not Batch(a=np.float64(1.0)).is_empty()
     assert len(Batch(a=[1, 2, 3], b={'c': {}})) == 3
