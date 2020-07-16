@@ -124,24 +124,23 @@ class Batch:
     Then you can reserve the key ``obs``. This is done by setting the value to
     ``Batch()``.
 
-    For a ``Batch`` object, we call it "incomplete" if: (i) it is Batch();
+    For a ``Batch`` object, we call it "incomplete" if: (i) it is Batch();\
     (ii) it has reserved keys; (iii) any of its sub-Batch is incomplete.
-    Otherwise, the ``Batch`` object is finalized. Otherwise, the Batch
-    object is finalized.
+    Otherwise, the ``Batch`` object is finalized.
 
     Key reservation mechanism is convenient, but also causes some problem
     in aggregation operators like ``stack`` or ``cat`` of Batch objects.
     We say that Batch objects are compatible for aggregation with three
     cases:
 
-    1. finalized Batch objects are compatible if and only if their exists
+    1. finalized Batch objects are compatible if and only if their exists\
      a way to extend keys so that their structures are exactly the same.
 
-    2. incomplete Batch objects and other finalized objects are compatible if
-     their exists a way to extend keys so that incomplete Batch objects can
+    2. incomplete Batch objects and other finalized objects are compatible if\
+     their exists a way to extend keys so that incomplete Batch objects can\
      have the same structure as finalized objects.
 
-    3. incomplete Batch objects themselevs are compatible if their exists
+    3. incomplete Batch objects themselevs are compatible if their exists\
     a way to extend keys so that their structure can be the same.
 
     In a word, incomplete Batch objects have a set of possible structures
@@ -548,12 +547,22 @@ class Batch:
               batches: Union['Batch', List[Union[dict, 'Batch']]],
               lens: List[int]) -> None:
         """
-        If x=Batch(a=Batch(a=np.random.randn(3, 4)), b=np.random.randn(3, 4)),
-        y = Batch(a=Batch(a=Batch()), b=np.random.randn(3, 4)), if we want to
-        concatenate x and y, we want to pad y.a.a with zeros. Without ``lens``
-        as a hint, when we concatenate x.a and y.a, we would not be able to
-        know how to pad y.a. So we need ``Batch.cat_`` to compute the ``lens``
-        to give ``Batch.__cat`` a hint.
+        ::
+
+            >>> a = Batch(a=np.random.randn(3, 4))
+            >>> x = Batch(a=a, b=np.random.randn(3, 4))
+            >>> y = Batch(a=Batch(a=Batch()), b=np.random.randn(3, 4))
+
+        If we want to concatenate x and y, we want to pad y.a.a with zeros.
+        Without ``lens`` as a hint, when we concatenate x.a and y.a, we would
+        not be able to know how to pad y.a. So ``Batch.cat_`` should compute
+        the ``lens`` to give ``Batch.__cat`` a hint.
+
+        ::
+
+            >>> ans = Batch.cat([x, y])
+            >>> # this is equivalent to the following line
+            >>> ans = Batch(); ans.__cat([x, y], lens=[3, 3])
         """
         # partial keys will be padded by zeros
         # with the shape of [len, rest_shape]
@@ -823,16 +832,16 @@ class Batch:
         length of recursely empty Batch.
         ::
 
-        >>>Batch().is_empty()
-        True
-        >>>Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
-        False
-        >>>Batch(a=Batch(), b=Batch(c=Batch())).is_empty(recurse=True)
-        True
-        >>>Batch(d=1).is_empty()
-        False
-        >>>Batch(a=np.float64(1.0)).is_empty()
-        False
+            >>> Batch().is_empty()
+            True
+            >>> Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
+            False
+            >>> Batch(a=Batch(), b=Batch(c=Batch())).is_empty(recurse=True)
+            True
+            >>> Batch(d=1).is_empty()
+            False
+            >>> Batch(a=np.float64(1.0)).is_empty()
+            False
         """
         if len(self.__dict__) == 0:
             return True
