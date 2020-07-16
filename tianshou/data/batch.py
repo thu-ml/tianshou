@@ -14,11 +14,17 @@ warnings.filterwarnings(
 
 
 def _is_batch_set(data: Any) -> bool:
+    # Batch set is a list/tuple of dict/Batch objects,
+    # or 1-D np.ndarray with np.object type,
+    # where each element is a dict/Batch object
     if isinstance(data, (list, tuple)):
         if len(data) > 0 and all(isinstance(e, (dict, Batch)) for e in data):
             return True
     elif isinstance(data, np.ndarray) and data.dtype == np.object:
-        if all(isinstance(e, (dict, Batch)) for e in data.tolist()):
+        # ``for e in data`` will just unpack the first dimension,
+        # but data.tolist() will flatten ndarray of objects
+        # so do not use data.tolist()
+        if all(isinstance(e, (dict, Batch)) for e in data):
             return True
     return False
 
@@ -39,7 +45,7 @@ def _create_value(inst: Any, size: int, stack=True) -> Union[
         # here we do not consider scalar types, following the
         # behavior of numpy which does not support concatenation
         # of zero-dimensional arrays (scalars)
-        raise TypeError(f"cannot cat {inst} with which is scalar")
+        raise TypeError(f"cannot concatenate with {inst} which is scalar")
     if has_shape:
         shape = (size, *inst.shape) if stack else (size, *inst.shape[1:])
     if isinstance(inst, np.ndarray):
