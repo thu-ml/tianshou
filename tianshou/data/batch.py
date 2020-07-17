@@ -48,7 +48,7 @@ def is_number_value(value: Any) -> bool:
     # isinstance(value, np.nummber) checks np.int32(1), np.float64(1.0), etc.
     # isinstance(value, np.bool_) checks np.bool_(True), etc.
     is_scalar = isinstance(value, Number)
-    is_scalar = is_scalar or isinstance(value, np.nummber)
+    is_scalar = is_scalar or isinstance(value, np.number)
     is_scalar = is_scalar or isinstance(value, np.bool_)
     return is_scalar
 
@@ -754,6 +754,9 @@ class Batch:
                 try:
                     data_shape.append(v.shape)
                 except AttributeError:
+                    if is_scalar_value(v):
+                        data_shape.append([])
+                        continue
                     raise TypeError("No support for 'shape' method with "
                                     f"type {type(v)} in class Batch.")
             return list(map(min, zip(*data_shape))) if len(data_shape) > 1 \
