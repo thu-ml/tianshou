@@ -32,21 +32,24 @@ def _is_batch_set(data: Any) -> bool:
 def is_scalar_value(value: Any) -> bool:
     # check if the value is a scalar
     # 1. python bool object, number object: isinstance(value, Number)
-    # 2. numpy scalar: issubclass(value.__class__, np.generic)
+    # 2. numpy scalar: isinstance(value, np.generic)
     # 3. python object rather than dict / Batch / tensor
     # the check of dict / Batch is omitted because this only checks a value.
     # a dict / Batch will eventually check their values
     is_scalar = isinstance(value, Number)
-    is_scalar = is_scalar or issubclass(value.__class__, np.generic)
+    is_scalar = is_scalar or isinstance(value, np.generic)
     is_scalar = is_scalar or (isinstance(value, (np.ndarray, torch.Tensor))
                               and not value.shape)
     return is_scalar
 
 
 def is_number_value(value: Any) -> bool:
+    # isinstance(value, Number) checks 1, 1.0, np.int(1), np.float(1.0), etc.
+    # isinstance(value, np.nummber) checks np.int32(1), np.float64(1.0), etc.
+    # isinstance(value, np.bool_) checks np.bool_(True), etc.
     is_scalar = isinstance(value, Number)
-    is_scalar = is_scalar or issubclass(value.__class__, np.nummber)
-    is_scalar = is_scalar or issubclass(value.__class__, np.bool_)
+    is_scalar = is_scalar or isinstance(value, np.nummber)
+    is_scalar = is_scalar or isinstance(value, np.bool_)
     return is_scalar
 
 

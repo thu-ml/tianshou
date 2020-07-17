@@ -90,7 +90,6 @@ def test_batch():
         assert batch_slice.a.d.e == batch2.a.d.e
     batch2_sum = (batch2 + 1.0) * 2
     assert batch2_sum.a.b == (batch2.a.b + 1.0) * 2
-    assert batch2_sum.a.b == (batch2.a.b + np.float(1.0)) * 2
     assert batch2_sum.a.c == (batch2.a.c + 1.0) * 2
     assert batch2_sum.a.d.e == (batch2.a.d.e + 1.0) * 2
     batch3 = Batch(a={
