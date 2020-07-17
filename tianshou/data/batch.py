@@ -29,7 +29,7 @@ def _is_batch_set(data: Any) -> bool:
     return False
 
 
-def is_scalar_value(value: Any) -> bool:
+def _is_scalar(value: Any) -> bool:
     # check if the value is a scalar
     # 1. python bool object, number object: isinstance(value, Number)
     # 2. numpy scalar: isinstance(value, np.generic)
@@ -47,10 +47,10 @@ def _is_number(value: Any) -> bool:
     # isinstance(value, Number) checks 1, 1.0, np.int(1), np.float(1.0), etc.
     # isinstance(value, np.nummber) checks np.int32(1), np.float64(1.0), etc.
     # isinstance(value, np.bool_) checks np.bool_(True), etc.
-    is_scalar = isinstance(value, Number)
-    is_scalar = is_scalar or isinstance(value, np.number)
-    is_scalar = is_scalar or isinstance(value, np.bool_)
-    return is_scalar
+    is_number = isinstance(value, Number)
+    is_number = is_number or isinstance(value, np.number)
+    is_number = is_number or isinstance(value, np.bool_)
+    return is_number
 
 
 def _create_value(inst: Any, size: int, stack=True) -> Union[
@@ -61,7 +61,7 @@ def _create_value(inst: Any, size: int, stack=True) -> Union[
         of (10, 3, 5), otherwise (10, 5)
     """
     has_shape = isinstance(inst, (np.ndarray, torch.Tensor))
-    is_scalar = is_scalar_value(inst)
+    is_scalar = _is_scalar(inst)
     if not stack and is_scalar:
         # here we do not consider scalar types, following the
         # behavior of numpy which does not support concatenation
@@ -654,7 +654,7 @@ class Batch:
                 try:
                     data_shape.append(v.shape)
                 except AttributeError:
-                    if is_scalar_value(v):
+                    if _is_scalar(v):
                         data_shape.append([])
                         continue
                     raise TypeError("No support for 'shape' method with "
