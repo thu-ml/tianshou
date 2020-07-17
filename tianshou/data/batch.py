@@ -29,6 +29,27 @@ def _is_batch_set(data: Any) -> bool:
     return False
 
 
+def is_scalar_value(value: Any) -> bool:
+    # check if the value is a scalar
+    # 1. python bool object, number object: isinstance(value, Number)
+    # 2. numpy scalar: issubclass(value.__class__, np.generic)
+    # 3. python object rather than dict / Batch / tensor
+    # the check of dict / Batch is omitted because this only checks a value.
+    # a dict / Batch will eventually check their values
+    is_scalar = isinstance(value, Number)
+    is_scalar = is_scalar or issubclass(value.__class__, np.generic)
+    is_scalar = is_scalar or (isinstance(value, (np.ndarray, torch.Tensor))
+                              and not value.shape)
+    return is_scalar
+
+
+def is_number_value(value: Any) -> bool:
+    is_scalar = isinstance(value, Number)
+    is_scalar = is_scalar or issubclass(value.__class__, np.nummber)
+    is_scalar = is_scalar or issubclass(value.__class__, np.bool_)
+    return is_scalar
+
+
 def _create_value(inst: Any, size: int, stack=True) -> Union[
         'Batch', np.ndarray, torch.Tensor]:
     """
@@ -37,10 +58,7 @@ def _create_value(inst: Any, size: int, stack=True) -> Union[
         of (10, 3, 5), otherwise (10, 5)
     """
     has_shape = isinstance(inst, (np.ndarray, torch.Tensor))
-    is_scalar = \
-        isinstance(inst, Number) or \
-        issubclass(inst.__class__, np.generic) or \
-        (has_shape and not inst.shape)
+    is_scalar = is_scalar_value(inst)
     if not stack and is_scalar:
         # here we do not consider scalar types, following the
         # behavior of numpy which does not support concatenation
@@ -82,40 +100,6 @@ class Batch:
     """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
     structure to pass any kind of data to other methods, for example, a
     collector gives a :class:`~tianshou.data.Batch` to policy for learning.
-    Here is the usage:
-    ::
-
-        >>> import numpy as np
-        >>> from tianshou.data import Batch
-        >>> data = Batch(a=4, b=[5, 5], c='2312312')
-        >>> # the list will automatically be converted to numpy array
-        >>> data.b
-        array([5, 5])
-        >>> data.b = np.array([3, 4, 5])
-        >>> print(data)
-        Batch(
-            a: 4,
-            b: array([3, 4, 5]),
-            c: '2312312',
-        )
-
-    In short, you can define a :class:`Batch` with any key-value pair.
-
-    For Numpy arrays, only data types with ``np.object``, bool, and number are
-    supported. For strings or other data types, however, they can be held in
-    ``np.object`` arrays.
-
-    The current implementation of Tianshou typically use 7 reserved keys in
-    :class:`~tianshou.data.Batch`:
-
-    * ``obs`` the observation of step :math:`t` ;
-    * ``act`` the action of step :math:`t` ;
-    * ``rew`` the reward of step :math:`t` ;
-    * ``done`` the done flag of step :math:`t` ;
-    * ``obs_next`` the observation of step :math:`t+1` ;
-    * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()``\
-    function returns 4 arguments, and the last one is ``info``);
-    * ``policy`` the data computed by policy in step :math:`t`;
 
     For convenience, :class:`~tianshou.data.Batch` supports the mechanism of
     key reservation: one can specify a key without any value, which serves as
@@ -146,95 +130,6 @@ class Batch:
     in the future, but finalized Batch object only have a finalized structure.
     Batch objects are compatible if and only if they share at least one
     commonly possible structure by extending keys.
-
-    :class:`~tianshou.data.Batch` object can be initialized by a wide variety
-    of arguments, ranging from the key/value pairs or dictionary, to list and
-    Numpy arrays of :class:`dict` or Batch instances where each element is
-    considered as an individual sample and get stacked together:
-    ::
-
-        >>> data = Batch([{'a': {'b': [0.0, "info"]}}])
-        >>> print(data[0])
-        Batch(
-            a: Batch(
-                b: array([0.0, 'info'], dtype=object),
-            ),
-        )
-
-    :class:`~tianshou.data.Batch` has the same API as a native Python
-    :class:`dict`. In this regard, one can access stored data using string key,
-    or iterate over stored data:
-    ::
-
-        >>> data = Batch(a=4, b=[5, 5])
-        >>> print(data["a"])
-        4
-        >>> for key, value in data.items():
-        >>>     print(f"{key}: {value}")
-        a: 4
-        b: [5, 5]
-
-
-    :class:`~tianshou.data.Batch` also partially reproduces the Numpy API for
-    arrays. It also supports the advanced slicing method, such as batch[:, i],
-    if the index is valid. You can access or iterate over the individual
-    samples, if any:
-    ::
-
-        >>> data = Batch(a=np.array([[0.0, 2.0], [1.0, 3.0]]), b=[[5, -5]])
-        >>> print(data[0])
-        Batch(
-            a: array([0., 2.])
-            b: array([ 5, -5]),
-        )
-        >>> for sample in data:
-        >>>     print(sample.a)
-        [0. 2.]
-
-        >>> print(data.shape)
-        [1, 2]
-        >>> data[:, 1] += 1
-        >>> print(data)
-        Batch(
-            a: array([[0., 3.],
-                      [1., 4.]]),
-            b: array([[ 5, -4]]),
-        )
-
-    Similarly, one can also perform simple algebra on it, and stack, split or
-    concatenate multiple instances:
-    ::
-
-        >>> data_1 = Batch(a=np.array([0.0, 2.0]), b=5)
-        >>> data_2 = Batch(a=np.array([1.0, 3.0]), b=-5)
-        >>> data = Batch.stack((data_1, data_2))
-        >>> print(data)
-        Batch(
-            b: array([ 5, -5]),
-            a: array([[0., 2.],
-                      [1., 3.]]),
-        )
-        >>> print(np.mean(data))
-        Batch(
-            b: 0.0,
-            a: array([0.5, 2.5]),
-        )
-        >>> data_split = list(data.split(1, False))
-        >>> print(list(data.split(1, False)))
-        [Batch(
-            b: array([5]),
-            a: array([[0., 2.]]),
-        ), Batch(
-            b: array([-5]),
-            a: array([[1., 3.]]),
-        )]
-        >>> data_cat = Batch.cat(data_split)
-        >>> print(data_cat)
-        Batch(
-            b: array([ 5, -5]),
-            a: array([[0., 2.],
-                      [1., 3.]]),
-        )
 
     Note that stacking of inconsistent data is also supported. In which case,
     ``None`` is added in list or :class:`np.ndarray` of objects, 0 otherwise.
@@ -287,12 +182,6 @@ class Batch:
         >>> len(data[0])
         TypeError: Object of type 'Batch' has no len()
 
-    Convenience helpers are available to convert in-place the stored data into
-    Numpy arrays or Torch tensors.
-
-    Finally, note that :class:`~tianshou.data.Batch` is serializable and
-    therefore Pickle compatible. This is especially important for distributed
-    sampling.
     """
 
     def __init__(self,
@@ -431,7 +320,7 @@ class Batch:
                 else:
                     self.__dict__[k] += v
             return self
-        elif isinstance(other, (Number, np.number)):
+        elif is_number_value(other):
             for k, r in self.items():
                 if isinstance(r, Batch) and r.is_empty():
                     continue
@@ -448,7 +337,7 @@ class Batch:
 
     def __imul__(self, val: Union[Number, np.number]):
         """Algebraic multiplication with a scalar value in-place."""
-        assert isinstance(val, (Number, np.number)), \
+        assert is_number_value(val), \
             "Only multiplication by a number is supported."
         for k, r in self.__dict__.items():
             if isinstance(r, Batch) and r.is_empty():
@@ -462,7 +351,7 @@ class Batch:
 
     def __itruediv__(self, val: Union[Number, np.number]):
         """Algebraic division with a scalar value in-place."""
-        assert isinstance(val, (Number, np.number)), \
+        assert is_number_value(val), \
             "Only division by a number is supported."
         for k, r in self.__dict__.items():
             if isinstance(r, Batch) and r.is_empty():
@@ -524,14 +413,7 @@ class Batch:
             device = torch.device(device)
 
         for k, v in self.items():
-            if isinstance(v, (np.number, np.bool_, Number, np.ndarray)):
-                if isinstance(v, (np.number, np.bool_, Number)):
-                    v = np.asanyarray(v)
-                v = torch.from_numpy(v).to(device)
-                if dtype is not None:
-                    v = v.type(dtype)
-                self.__dict__[k] = v
-            elif isinstance(v, torch.Tensor):
+            if isinstance(v, torch.Tensor):
                 if dtype is not None and v.dtype != dtype or \
                         v.device.type != device.type or \
                         device.index is not None and \
@@ -541,6 +423,14 @@ class Batch:
                     self.__dict__[k] = v.to(device)
             elif isinstance(v, Batch):
                 v.to_torch(dtype, device)
+            else:
+                # ndarray or scalar
+                if not isinstance(v, np.ndarray):
+                    v = np.asanyarray(v)
+                v = torch.from_numpy(v).to(device)
+                if dtype is not None:
+                    v = v.type(dtype)
+                self.__dict__[k] = v
 
     def __cat(self,
               batches: Union['Batch', List[Union[dict, 'Batch']]],
@@ -772,7 +662,7 @@ class Batch:
             else:  # scalar value
                 warnings.warn('You are calling Batch.empty on a NumPy scalar, '
                               'which may cause undefined behaviors.')
-                if isinstance(v, (np.number, np.bool_, Number)):
+                if is_number_value(v):
                     self.__dict__[k] = v.__class__(0)
                 else:
                     self.__dict__[k] = None
