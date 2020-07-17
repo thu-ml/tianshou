@@ -54,15 +54,11 @@ class DQNPolicy(BasePolicy):
         """Set the eps for epsilon-greedy exploration."""
         self.eps = eps
 
-    def train(self) -> None:
+    def train(self, mode=True) -> torch.nn.Module:
         """Set the module in training mode, except for the target network."""
-        self.training = True
-        self.model.train()
-
-    def eval(self) -> None:
-        """Set the module in evaluation mode, except for the target network."""
-        self.training = False
-        self.model.eval()
+        self.training = mode
+        self.model.train(mode)
+        return self
 
     def sync_weight(self) -> None:
         """Synchronize the weight for the target network."""

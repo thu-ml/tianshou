@@ -6,11 +6,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DQNPolicy
 from tianshou.env import SubprocVectorEnv
+from tianshou.utils.net.discrete import DQN
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.env.atari import create_atari_environment
 
-from discrete_net import DQN
+from atari import create_atari_environment, preprocess_fn
 
 
 def get_args():
@@ -50,8 +50,8 @@ def test_dqn(args=get_args()):
         for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv([
-        lambda: create_atari_environment(
-            args.task) for _ in range(args.test_num)])
+        lambda: create_atari_environment(args.task)
+        for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -69,8 +69,9 @@ def test_dqn(args=get_args()):
         target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
-    test_collector = Collector(policy, test_envs)
+        policy, train_envs, ReplayBuffer(args.buffer_size),
+        preprocess_fn=preprocess_fn)
+    test_collector = Collector(policy, test_envs, preprocess_fn=preprocess_fn)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * 4)
     print(len(train_collector.buffer))
@@ -102,7 +103,7 @@ def test_dqn(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = create_atari_environment(args.task)
-        collector = Collector(policy, env)
+        collector = Collector(policy, env, preprocess_fn=preprocess_fn)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()

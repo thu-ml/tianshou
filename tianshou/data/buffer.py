@@ -108,8 +108,7 @@ class ReplayBuffer:
         super().__init__()
         self._maxsize = size
         self._stack = stack_num
-        assert stack_num != 1, \
-            'stack_num should greater than 1'
+        assert stack_num != 1, 'stack_num should greater than 1'
         self._avail = sample_avail and stack_num > 1
         self._avail_index = []
         self._save_s_ = not ignore_obs_next
@@ -136,12 +135,11 @@ class ReplayBuffer:
         except KeyError:
             self._meta.__dict__[name] = _create_value(inst, self._maxsize)
             value = self._meta.__dict__[name]
-        if isinstance(inst, np.ndarray) and \
-                value.shape[1:] != inst.shape:
+        if isinstance(inst, np.ndarray) and value.shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, key: "
-                f"{name}, expect shape: {value.shape[1:]}"
-                f", given shape: {inst.shape}.")
+                f"{name}, expect shape: {value.shape[1:]}, "
+                f"given shape: {inst.shape}.")
         try:
             value[self._index] = inst
         except KeyError:
@@ -151,6 +149,8 @@ class ReplayBuffer:
 
     def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
+        if len(buffer) == 0:
+            return
         i = begin = buffer._index % len(buffer)
         while True:
             self.add(**buffer[i])
@@ -272,8 +272,10 @@ class ReplayBuffer:
                     stack = np.stack(stack, axis=indice.ndim)
             else:
                 stack = val[indice]
-        except TypeError:
+        except IndexError as e:
             stack = Batch()
+            if not isinstance(val, Batch) or len(val.__dict__) > 0:
+                raise e
         self.done[last_index] = last_done
         return stack
 
@@ -296,7 +298,9 @@ class ReplayBuffer:
 class ListReplayBuffer(ReplayBuffer):
     """The function of :class:`~tianshou.data.ListReplayBuffer` is almost the
     same as :class:`~tianshou.data.ReplayBuffer`. The only difference is that
-    :class:`~tianshou.data.ListReplayBuffer` is based on ``list``.
+    :class:`~tianshou.data.ListReplayBuffer` is based on ``list``. Therefore,
+    it does not support advanced indexing, which means you cannot sample a
+    batch of data out of it. It is typically used for storing data.
 
     .. seealso::
 
@@ -306,6 +310,9 @@ class ListReplayBuffer(ReplayBuffer):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(size=0, ignore_obs_next=False, **kwargs)
+
+    def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
+        raise NotImplementedError("ListReplayBuffer cannot be sampled!")
 
     def _add_to_buffer(
             self, name: str,
@@ -347,9 +354,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._beta = beta
         self._weight_sum = 0.0
         self._amortization_freq = 50
-        self._amortization_counter = 0
         self._replace = replace
-        self._meta.__dict__['weight'] = np.zeros(size, dtype=np.float64)
+        self._meta.weight = np.zeros(size, dtype=np.float64)
 
     def add(self,
             obs: Union[dict, np.ndarray],
@@ -364,10 +370,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """Add a batch of data into replay buffer."""
         # we have to sacrifice some convenience for speed
         self._weight_sum += np.abs(weight) ** self._alpha - \
-            self._meta.__dict__['weight'][self._index]
+            self._meta.weight[self._index]
         self._add_to_buffer('weight', np.abs(weight) ** self._alpha)
         super().add(obs, act, rew, done, obs_next, info, policy)
-        self._check_weight_sum()
 
     @property
     def replace(self):
@@ -377,54 +382,41 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def replace(self, v: bool):
         self._replace = v
 
-    def sample(self, batch_size: int,
-               importance_sample: bool = True
-               ) -> Tuple[Batch, np.ndarray]:
+    def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         """Get a random sample from buffer with priority probability. \
         Return all the data in the buffer if batch_size is ``0``.
 
         :return: Sample data and its corresponding index inside the buffer.
         """
-        if batch_size > 0 and batch_size <= self._size:
-            # Multiple sampling of the same sample
-            # will cause weight update conflict
+        assert self._size > 0, 'cannot sample a buffer with size == 0 !'
+        p = None
+        if batch_size > 0 and (self._replace or batch_size <= self._size):
+            # sampling weight
+            p = (self.weight / self.weight.sum())[:self._size]
             indice = np.random.choice(
-                self._size, batch_size,
-                p=(self.weight / self.weight.sum())[:self._size],
+                self._size, batch_size, p=p,
                 replace=self._replace)
-            # self._weight_sum is not work for the accuracy issue
-            # p=(self.weight/self._weight_sum)[:self._size], replace=False)
+            p = p[indice]  # weight of each sample
         elif batch_size == 0:
+            p = np.full(shape=self._size, fill_value=1.0/self._size)
             indice = np.concatenate([
                 np.arange(self._index, self._size),
                 np.arange(0, self._index),
             ])
         else:
-            # if batch_size larger than len(self),
-            # it will lead to a bug in update weight
             raise ValueError(
-                "batch_size should be less than len(self), \
-                    or set replace=False")
+                f"batch_size should be less than {len(self)}, \
+                    or set replace=True")
         batch = self[indice]
-        if importance_sample:
-            impt_weight = Batch(
-                impt_weight=1 / np.power(
-                    self._size * (batch.weight / self._weight_sum),
-                    self._beta))
-            batch.cat_(impt_weight)
-        self._check_weight_sum()
+        batch["impt_weight"] = (self._size * p) ** (-self._beta)
         return batch, indice
-
-    def reset(self) -> None:
-        self._amortization_counter = 0
-        super().reset()
 
     def update_weight(self, indice: Union[slice, np.ndarray],
                       new_weight: np.ndarray) -> None:
         """Update priority weight by indice in this buffer.
 
         :param np.ndarray indice: indice you want to update weight
-        :param np.ndarray new_weight: new priority weight you wangt to update
+        :param np.ndarray new_weight: new priority weight you want to update
         """
         if self._replace:
             if isinstance(indice, slice):
@@ -434,8 +426,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             indice, unique_indice = np.unique(
                 indice, return_index=True)
             new_weight = new_weight[unique_indice]
-        self._weight_sum += np.power(np.abs(new_weight), self._alpha).sum() \
-            - self.weight[indice].sum()
         self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
 
     def __getitem__(self, index: Union[
@@ -450,10 +440,3 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             weight=self.weight[index],
             policy=self.get(index, 'policy'),
         )
-
-    def _check_weight_sum(self) -> None:
-        # keep an accurate _weight_sum
-        self._amortization_counter += 1
-        if self._amortization_counter % self._amortization_freq == 0:
-            self._weight_sum = np.sum(self.weight)
-            self._amortization_counter = 0

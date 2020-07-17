@@ -8,9 +8,10 @@ from tianshou.policy import A2CPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.env.atari import create_atari_environment
+from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.net.common import Net
 
-from discrete_net import Net, Actor, Critic
+from atari import create_atari_environment, preprocess_fn
 
 
 def get_args():
@@ -44,20 +45,17 @@ def get_args():
 
 
 def test_a2c(args=get_args()):
-    env = create_atari_environment(
-        args.task, max_episode_steps=args.max_episode_steps)
+    env = create_atari_environment(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.env.action_space.shape or env.env.action_space.n
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(
-            args.task, max_episode_steps=args.max_episode_steps)
-            for _ in range(args.training_num)])
+        [lambda: create_atari_environment(args.task)
+         for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
-        [lambda: create_atari_environment(
-            args.task, max_episode_steps=args.max_episode_steps)
-            for _ in range(args.test_num)])
+        [lambda: create_atari_environment(args.task)
+         for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -75,8 +73,9 @@ def test_a2c(args=get_args()):
         ent_coef=args.ent_coef, max_grad_norm=args.max_grad_norm)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
-    test_collector = Collector(policy, test_envs)
+        policy, train_envs, ReplayBuffer(args.buffer_size),
+        preprocess_fn=preprocess_fn)
+    test_collector = Collector(policy, test_envs, preprocess_fn=preprocess_fn)
     # log
     writer = SummaryWriter(args.logdir + '/' + 'a2c')
 
@@ -98,7 +97,7 @@ def test_a2c(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = create_atari_environment(args.task)
-        collector = Collector(policy, env)
+        collector = Collector(policy, env, preprocess_fn=preprocess_fn)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
