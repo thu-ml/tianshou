@@ -103,6 +103,8 @@ class Batch:
     """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
     structure to pass any kind of data to other methods, for example, a
     collector gives a :class:`~tianshou.data.Batch` to policy for learning.
+
+    For a detailed description, please refer to :ref:`batch_concept`.
     """
     def __init__(self,
                  batch_dict: Optional[Union[

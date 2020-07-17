@@ -1,3 +1,5 @@
+.. _batch_concept:
+
 Understand Batch
 ==========================
 
@@ -380,19 +382,48 @@ First, let's check some examples to have an intuitive understanding of the behav
 
 The behavior is natual: for keys that are not shared across all batches, batches that do not have these keys will be padded by zeros (or ``None`` if the data type is ``np.object``).
 
+However, there are some cases when batches are too heterogeneous that they cannot be aggregated:
 
+.. code-block:: python
+
+    >>> a = Batch(a=np.zeros([4, 4]))
+    >>> b = Batch(a=Batch(b=Batch()))
+    >>> # this will raise an exception
+    >>> c = Batch.stack([a, b])
+
+Then how to determine if batches can be aggregated? Let's recall the purpose of reserved keys. What is the advantage of ``a1=Batch(b=Batch())`` over ``a2=Batch()``? The only difference is that ``a1.b`` returns ``Batch()`` but ``a2.b`` raises an exception. That's to say, **we reserve keys for attribute reference**.
+
+.. code-block:: shell
+
+    Key chain applicability:
+
+        For a ``Batch`` object ``b``, we say that te key chain (a list of strings) ``k`` is applicable to ``b`` if and only if:
+
+        1. ``k`` is empty,
+
+        2. or: ``k`` has a single element ``key`` and ``b.key`` is valid
+
+        3. or: ``k`` has more than one elements. The first element ``key`` of ``k`` can be used for ``b.key``, and the rest of keys in ``k`` are applicable to ``b.key``.
+
+Intuitively, this says that a key chain ``k=[key1, key2, ..., keyn]`` is applicable to ``b`` if the expression ``b.key1.key2....keyn`` is valid. The above definition just makes the intuition more formal. Let's denote the result ``b.key1.key2....keyn`` as ``b[k]`` if applicable.
+
+With the concept of key chain applicability, we can formally define which batches can be aggregated:
+
+For a set of ``Batch`` objects denoted as :math:`S`, they can be aggregated if there exists a ``Batch`` object ``b`` satisfying the following rules:
+
+1. Key chain applicability: For any object ``bi`` in :math:`S`, any key chain ``k`` that is applicable to this object is also applicable to ``b``.
+
+2. Type consistence: If ``bi[k]`` is not ``Batch()`` (the last key in the key chain is not a reserved key), then the type of ``b[k]`` should be the same as ``bi[k]``.
+
+If there exists ``b`` that satisfies these rules, it is clear that adding more reserved keys into ``b`` will not break these rules and there will be infinitely many ``b`` that can satisfy these rules. Among them, there will be an object with the least number of keys, and that is the answer of aggregation :math:`S`.
+
+The above definition precisely defines the structure of the result of stack/concatenate batches. The values are relatively easy to define: for any key chain ``k`` that is applicable to ``b``, ``b[k]`` is the stack/concatenate of ``[bi[k] for bi in S]`` (if ``k`` is not applicable to ``bi``, appropriate size of zeros or ``None`` are filled automatically). If ``bi[k]`` are all ``Batch()``, then the aggregation result is also an empty ``Batch()``.
+
+Conceptually, how to aggregate batches is well done. And it is enough to understand the behavior of ``Batch`` objects during aggregation. Implementation is another story, though. Fortunately, Tianshou users do not have to worry about it. Just have the conceptual image in mind and you are all set!
 
 .. note::
 
-    If there are keys that are not shared across all batches, ``stack`` with ``axis != 0`` is undefined, and will cause an exception.
-
-cat and stack
-
-shared keys -> Not empty for all batches
-partial keys -> Empty for at least one of the batches AND not empty for at least one of the batches
-reserved keys -> Empty for at least one of the batches
-三种keys的概念
-
+    ``Batch.stack`` and ``Batch.stack_`` also support ``axis`` argument so that one can stack batches besides the first dimension. But be cautious, if there are keys that are not shared across all batches, ``stack`` with ``axis != 0`` is undefined, and will cause an exception.
 
 Miscellaneous Notes
 --------------------
@@ -412,3 +443,7 @@ Miscellaneous Notes
     >>> # data.to_numpy is also available
     >>> data.to_numpy()
 
+Conclusion
+----------
+
+In this tutorial, we learned about the concept of ``Batch``, what it is designed to store, how to construct ``Batch`` objects, and how to manipulate them. We also discussed important features of ``Batch``: key reservation and aggregation of heterogeneous batches.
