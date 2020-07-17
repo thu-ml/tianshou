@@ -103,90 +103,7 @@ class Batch:
     """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
     structure to pass any kind of data to other methods, for example, a
     collector gives a :class:`~tianshou.data.Batch` to policy for learning.
-
-    For convenience, :class:`~tianshou.data.Batch` supports the mechanism of
-    key reservation: one can specify a key without any value, which serves as
-    a placeholder for the Batch object. For example, you know there will be a
-    key named ``obs``, but do not know the value until the simulator runs. Then
-    you can reserve the key ``obs``. This is done by setting the value to
-    ``Batch()``.
-
-    For a Batch object, we call it "incomplete" if: (i) it is ``Batch()``; (ii)
-    it has reserved keys; (iii) any of its sub-Batch is incomplete. Otherwise,
-    the Batch object is finalized.
-
-    Key reservation mechanism is convenient, but also causes some problem in
-    aggregation operators like ``stack`` or ``cat`` of Batch objects. We say
-    that Batch objects are compatible for aggregation with three cases:
-
-    1. finalized Batch objects are compatible if and only if their exists a \
-    way to extend keys so that their structures are exactly the same.
-
-    2. incomplete Batch objects and other finalized objects are compatible if \
-    their exists a way to extend keys so that incomplete Batch objects can \
-    have the same structure as finalized objects.
-
-    3. incomplete Batch objects themselevs are compatible if their exists a \
-    way to extend keys so that their structure can be the same.
-
-    In a word, incomplete Batch objects have a set of possible structures
-    in the future, but finalized Batch object only have a finalized structure.
-    Batch objects are compatible if and only if they share at least one
-    commonly possible structure by extending keys.
-
-    Note that stacking of inconsistent data is also supported. In which case,
-    ``None`` is added in list or :class:`np.ndarray` of objects, 0 otherwise.
-    ::
-
-        >>> data_1 = Batch(a=np.array([0.0, 2.0]))
-        >>> data_2 = Batch(a=np.array([1.0, 3.0]), b='done')
-        >>> data = Batch.stack((data_1, data_2))
-        >>> print(data)
-        Batch(
-            a: array([[0., 2.],
-                      [1., 3.]]),
-            b: array([None, 'done'], dtype=object),
-        )
-
-    Method ``empty_`` sets elements to 0 or ``None`` for ``np.object``.
-    ::
-
-        >>> data.empty_()
-        >>> print(data)
-        Batch(
-            a: array([[0., 0.],
-                      [0., 0.]]),
-            b: array([None, None], dtype=object),
-        )
-        >>> data = Batch(a=[False,  True], b={'c': [2., 'st'], 'd': [1., 0.]})
-        >>> data[0] = Batch.empty(data[1])
-        >>> data
-        Batch(
-            a: array([False,  True]),
-            b: Batch(
-                   c: array([None, 'st']),
-                   d: array([0., 0.]),
-               ),
-        )
-
-    :meth:`~tianshou.data.Batch.shape` and :meth:`~tianshou.data.Batch.__len__`
-    methods are also provided to respectively get the shape and the length of
-    a :class:`Batch` instance. It mimics the Numpy API for Numpy arrays, which
-    means that getting the length of a scalar Batch raises an exception.
-    ::
-
-        >>> data = Batch(a=[5., 4.], b=np.zeros((2, 3, 4)))
-        >>> data.shape
-        [2]
-        >>> len(data)
-        2
-        >>> data[0].shape
-        []
-        >>> len(data[0])
-        TypeError: Object of type 'Batch' has no len()
-
     """
-
     def __init__(self,
                  batch_dict: Optional[Union[
                      dict, 'Batch', Tuple[Union[dict, 'Batch']],
@@ -541,18 +458,7 @@ class Batch:
         """Concatenate a list of :class:`~tianshou.data.Batch` object into a
         single new batch. For keys that are not shared across all batches,
         batches that do not have these keys will be padded by zeros with
-        appropriate shapes. E.g.
-        ::
-
-            >>> a = Batch(a=np.zeros([3, 4]), common=Batch(c=np.zeros([3, 5])))
-            >>> b = Batch(b=np.zeros([4, 3]), common=Batch(c=np.zeros([4, 5])))
-            >>> c = Batch.cat([a, b])
-            >>> c.a.shape
-            (7, 4)
-            >>> c.b.shape
-            (7, 3)
-            >>> c.common.c.shape
-            (7, 5)
+        appropriate shapes.
         """
         batch = Batch()
         batch.cat_(batches)
@@ -621,23 +527,7 @@ class Batch:
     def stack(batches: List[Union[dict, 'Batch']], axis: int = 0) -> 'Batch':
         """Stack a list of :class:`~tianshou.data.Batch` object into a single
         new batch. For keys that are not shared across all batches,
-        batches that do not have these keys will be padded by zeros. E.g.
-        ::
-
-            >>> a = Batch(a=np.zeros([4, 4]), common=Batch(c=np.zeros([4, 5])))
-            >>> b = Batch(b=np.zeros([4, 6]), common=Batch(c=np.zeros([4, 5])))
-            >>> c = Batch.stack([a, b])
-            >>> c.a.shape
-            (2, 4, 4)
-            >>> c.b.shape
-            (2, 4, 6)
-            >>> c.common.c.shape
-            (2, 4, 5)
-
-        .. note::
-
-            If there are keys that are not shared across all batches, ``stack``
-            with ``axis != 0`` is undefined, and will cause an exception.
+        batches that do not have these keys will be padded by zeros.
         """
         batch = Batch()
         batch.stack_(batches, axis)
@@ -649,6 +539,26 @@ class Batch:
         """Return an empty a :class:`~tianshou.data.Batch` object with 0 or
         ``None`` filled. If ``index`` is specified, it will only reset the
         specific indexed-data.
+        ::
+
+            >>> data.empty_()
+            >>> print(data)
+            Batch(
+                a: array([[0., 0.],
+                          [0., 0.]]),
+                b: array([None, None], dtype=object),
+            )
+            >>> b={'c': [2., 'st'], 'd': [1., 0.]}
+            >>> data = Batch(a=[False,  True], b=b)
+            >>> data[0] = Batch.empty(data[1])
+            >>> data
+            Batch(
+                a: array([False,  True]),
+                b: Batch(
+                       c: array([None, 'st']),
+                       d: array([0., 0.]),
+                   ),
+            )
         """
         for k, v in self.items():
             if v is None:
@@ -722,19 +632,7 @@ class Batch:
         ``cat``, while the latter is a scalar and cannot be used in ``cat``.
 
         Another usage is in ``__len__``, where we have to skip checking the
-        length of recursely empty Batch.
-        ::
-
-            >>> Batch().is_empty()
-            True
-            >>> Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
-            False
-            >>> Batch(a=Batch(), b=Batch(c=Batch())).is_empty(recurse=True)
-            True
-            >>> Batch(d=1).is_empty()
-            False
-            >>> Batch(a=np.float64(1.0)).is_empty()
-            False
+        length of recursively empty Batch.
         """
         if len(self.__dict__) == 0:
             return True
