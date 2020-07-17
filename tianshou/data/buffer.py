@@ -6,9 +6,9 @@ from tianshou.data.batch import Batch, _create_value
 
 class ReplayBuffer:
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from
-    interaction between the policy and environment. It stores basically 7 types
-    of data, as mentioned in :class:`~tianshou.data.Batch`, based on
-    ``numpy.ndarray``. Here is the usage:
+    interaction between the policy and environment. It basically stores
+    obs, act, rew, done, obs_next, info, policy based on ``numpy.ndarray``.
+    Here is the usage:
     ::
 
         >>> import numpy as np
@@ -16,13 +16,13 @@ class ReplayBuffer:
         >>> buf = ReplayBuffer(size=20)
         >>> for i in range(3):
         ...     buf.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
-        >>> len(buf)
-        3
         >>> buf.obs
         # since we set size = 20, len(buf.obs) == 20.
         array([0., 1., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
                0., 0., 0., 0.])
-
+        >>> # but there are only three valid items, so len(buf) == 3.
+        >>> len(buf)
+        3
         >>> buf2 = ReplayBuffer(size=10)
         >>> for i in range(15):
         ...     buf2.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})

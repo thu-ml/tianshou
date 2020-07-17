@@ -43,7 +43,7 @@ def is_scalar_value(value: Any) -> bool:
     return is_scalar
 
 
-def is_number_value(value: Any) -> bool:
+def _is_number(value: Any) -> bool:
     # isinstance(value, Number) checks 1, 1.0, np.int(1), np.float(1.0), etc.
     # isinstance(value, np.nummber) checks np.int32(1), np.float64(1.0), etc.
     # isinstance(value, np.bool_) checks np.bool_(True), etc.
@@ -242,7 +242,7 @@ class Batch:
                 else:
                     self.__dict__[k] += v
             return self
-        elif is_number_value(other):
+        elif _is_number(other):
             for k, r in self.items():
                 if isinstance(r, Batch) and r.is_empty():
                     continue
@@ -259,7 +259,7 @@ class Batch:
 
     def __imul__(self, val: Union[Number, np.number]):
         """Algebraic multiplication with a scalar value in-place."""
-        assert is_number_value(val), \
+        assert _is_number(val), \
             "Only multiplication by a number is supported."
         for k, r in self.__dict__.items():
             if isinstance(r, Batch) and r.is_empty():
@@ -273,7 +273,7 @@ class Batch:
 
     def __itruediv__(self, val: Union[Number, np.number]):
         """Algebraic division with a scalar value in-place."""
-        assert is_number_value(val), \
+        assert _is_number(val), \
             "Only division by a number is supported."
         for k, r in self.__dict__.items():
             if isinstance(r, Batch) and r.is_empty():
@@ -577,7 +577,7 @@ class Batch:
             else:  # scalar value
                 warnings.warn('You are calling Batch.empty on a NumPy scalar, '
                               'which may cause undefined behaviors.')
-                if is_number_value(v):
+                if _is_number(v):
                     self.__dict__[k] = v.__class__(0)
                 else:
                     self.__dict__[k] = None
