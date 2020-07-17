@@ -33,8 +33,6 @@ What Does Batch Contain
 
 The content of ``Batch`` objects can be defined by `regular expressions <https://en.wikipedia.org/wiki/Regular_expression>`_ as the following rules.
 
-.. code-block:: bash
-
     1. Batch -> Batch() | (key, value)+
 
     2. key -> string
@@ -401,37 +399,35 @@ Then how to determine if batches can be aggregated? Let's rethink the purpose of
 
 The following definition of *key chain applicability* is required to continue the discussion.
 
-.. code-block:: shell
+Key chain applicability: for a ``Batch`` object ``b``, we say a the key chain (a list of strings) ``k`` is applicable to ``b`` if and only if:
 
-    Key chain applicability:
+    1. ``k`` is empty,
 
-        For a ``Batch`` object ``b``, we say that te key chain (a list of strings) ``k`` is applicable to ``b`` if and only if:
+    2. or: ``k`` has a single element ``key`` and ``b.key`` is valid
 
-        1. ``k`` is empty,
-
-        2. or: ``k`` has a single element ``key`` and ``b.key`` is valid
-
-        3. or: ``k`` has more than one elements. The first element ``key`` of ``k`` can be used for ``b.key``, and the rest of keys in ``k`` are applicable to ``b.key``.
+    3. or: ``k`` has more than one elements, the first element ``key`` of ``k`` can be used for ``b.key``, and the rest of keys in ``k`` are applicable to ``b.key``.
 
 Intuitively, this says that a key chain ``k=[key1, key2, ..., keyn]`` is applicable to ``b`` if the expression ``b.key1.key2....keyn`` is valid. The above definition just makes the intuition more formal. Let's denote the result ``b.key1.key2....keyn`` as ``b[k]`` if applicable.
 
-With the concept of key chain applicability, we can formally define which batches can be aggregated:
+With the concept of key chain applicability, we can formally define when batches can be aggregated: for a set of ``Batch`` objects denoted as :math:`S`, they can be aggregated if there exists a ``Batch`` object ``b`` satisfying the following rules:
 
-For a set of ``Batch`` objects denoted as :math:`S`, they can be aggregated if there exists a ``Batch`` object ``b`` satisfying the following rules:
+    1. Key chain applicability: For any object ``bi`` in :math:`S`, any key chain ``k`` that is applicable to this object is also applicable to ``b``.
 
-1. Key chain applicability: For any object ``bi`` in :math:`S`, any key chain ``k`` that is applicable to this object is also applicable to ``b``.
+    2. Type consistence: If ``bi[k]`` is not ``Batch()`` (the last key in the key chain is not a reserved key), then the type of ``b[k]`` should be the same as ``bi[k]``.
 
-2. Type consistence: If ``bi[k]`` is not ``Batch()`` (the last key in the key chain is not a reserved key), then the type of ``b[k]`` should be the same as ``bi[k]``.
+The key chain applicability rises from the motivation of reserved keys. The type consistence requirement rises from the fact that, if we have a scalar / tensor value, that position in the aggregated ``Batch`` object should also be a scalar / tensor.
 
-If there exists ``b`` that satisfies these rules, it is clear that adding more reserved keys into ``b`` will not break these rules and there will be infinitely many ``b`` that can satisfy these rules. Among them, there will be an object with the least number of keys, and that is the answer of aggregation :math:`S`.
+If there exists ``b`` that satisfies these rules, it is clear that adding more reserved keys into ``b`` will not break these rules and there will be infinitely many ``b`` that can satisfy these rules. Among them, there will be an object with the least number of keys, and that is the answer of aggregating :math:`S`.
 
-The above definition precisely defines the structure of the result of stack/concatenate batches. The values are relatively easy to define: for any key chain ``k`` that is applicable to ``b``, ``b[k]`` is the stack/concatenate of ``[bi[k] for bi in S]`` (if ``k`` is not applicable to ``bi``, appropriate size of zeros or ``None`` are filled automatically). If ``bi[k]`` are all ``Batch()``, then the aggregation result is also an empty ``Batch()``.
+The above definition precisely defines the structure of the result of stacking/concatenating batches. The values are relatively easy to define: for any key chain ``k`` that is applicable to ``b``, ``b[k]`` is the stack/concatenation of ``[bi[k] for bi in S]`` (if ``k`` is not applicable to ``bi``, appropriate size of zeros or ``None`` are filled automatically). If ``bi[k]`` are all ``Batch()``, then the aggregation result is also an empty ``Batch()``.
 
 Conceptually, how to aggregate batches is well done. And it is enough to understand the behavior of ``Batch`` objects during aggregation. Implementation is another story, though. Fortunately, Tianshou users do not have to worry about it. Just have the conceptual image in mind and you are all set!
 
 .. note::
 
-    ``Batch.stack`` and ``Batch.stack_`` also support ``axis`` argument so that one can stack batches besides the first dimension. But be cautious, if there are keys that are not shared across all batches, ``stack`` with ``axis != 0`` is undefined, and will cause an exception.
+    ``Batch.cat`` and ``Batch.cat_`` does not support ``axis`` argument as ``np.concatenate`` and ``torch.cat``.
+
+    ``Batch.stack`` and ``Batch.stack_`` support ``axis`` argument so that one can stack batches besides the first dimension. But be cautious, if there are keys that are not shared across all batches, ``stack`` with ``axis != 0`` is undefined, and will cause an exception.
 
 Miscellaneous Notes
 -------------------
