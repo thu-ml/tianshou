@@ -267,7 +267,7 @@ class Batch:
             self.__init__(kwargs)
 
     def __setattr__(self, key: str, value: Any):
-        """self[key] = value"""
+        """self.key = value"""
         if isinstance(value, list):
             if _is_batch_set(value):
                 value = Batch(value)
