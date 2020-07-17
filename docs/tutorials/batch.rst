@@ -3,26 +3,30 @@
 Understand Batch
 ==========================
 
-``tianshou.data.Batch`` is the internal data structure extensively used in Tianshou. It is designed to store and manipulate hierarchical named tensors. To make the best of Tianshou, it is important to correctly understand the concept and the behavior of ``Batch``. So we write this tutorial.
+:class:`tianshou.data.Batch` is the internal data structure extensively used in Tianshou. It is designed to store and manipulate hierarchical named tensors. This tutorial aims to help users correctly understand the concept and the behavior of ``Batch`` so that users can make the best of Tianshou.
 
 Hierarchical Named Tensors
 ---------------------------
 
-The requirement of storing and manipulating hierarchical named tensors is very intense, especially in reinforcement learning. For example, the abstraction of RL is very simple, just ``state, reward, done = environment.step(action)``, but we have to deal with the heterogeneity of the problem. ``reward`` and ``done`` are simple, they are mostly scalar values. However, the ``state`` varies with environments. ``state`` can be simply a vector, a tensor, or ``state`` can be camera input combined with sensory input. In the last case, it is natural to store them as hierarchical named tensors. This hierarchy can go beyond ``state``: we can store ``state``, ``reward``, and ``done`` together in one object.
+"Hierarchical named tensors" refers to a set of tensors where their names form a hierarchy. Suppose there are four tensors ``[t1, t2, t3, t4]`` with names ``[name1, name2, name3, name4]``, where ``name1`` and ``name2`` belong to the same namespace ``name0``, then the full name of tensor ``t1`` is ``name0.name1``. That is, the hierarchy lies in names of tensors.
 
-Therefore, we coin the name "hierarchical named tensors", to denote a set of tensors where their names form a hierarchy.
+The requirement of storing and manipulating hierarchical named tensors is very intense, especially in reinforcement learning. For example, the abstraction of RL is very simple, just ``state, reward, done = environment.step(action)``, but we have to deal with the heterogeneity of reinforcement learning problems. ``reward`` and ``done`` are simple, they are mostly scalar values. However, the ``state`` varies with environments. ``state`` can be simply a vector, a tensor, or ``state`` can be camera input combined with sensory input. In the last case, it is natural to store them as hierarchical named tensors. This hierarchy can go beyond ``state``: we can store ``state``, ``reward``, and ``done`` together as hierarchical named tensors.
 
 Note that, storing hierarchical named tensors is as easy as creating nested dictionary objects:
 
 .. code-block:: python
 
-    {'done':done,
-    'reward':reward,
-    'state':
-            {'camera':camera,
-             'sensory':sensory}}
+    {
+        'done':done,
+        'reward':reward,
+        'state':
+            {
+                'camera':camera,
+                'sensory':sensory
+            }
+    }
 
-The real problem is how to **manipulate them**, like merging multiple hierarchical named tensors, adding two hierarchical named tensors, especially when some tensors are missing. ``Batch`` is designed to easily create, store, and manipulate these hierarchical named tensors.
+The real problem is how to **manipulate them**, such as adding new transition tuples into replay buffer and dealing with teir heterogeneity. ``Batch`` is designed to easily create, store, and manipulate these hierarchical named tensors.
 
 What Does Batch Contain
 ------------------------
@@ -43,33 +47,33 @@ The content of ``Batch`` objects can be defined by `regular expressions <https:/
 
 Below we describe the detail explanation of each rule.
 
-1. A ``Batch`` object can be an empty batch (``Batch()``), or have more than one key-value pairs.
+1. A ``Batch`` object can be an empty ``Batch()``, or have at least one key-value pairs.
 
 .. note::
 
-    Later we will see that, ``Batch()`` needs special treatment because it is also used to reserve keys.
+    Besides being an empty Batch, ``Batch()`` has another important usage to reserve keys. See :ref:`key_reservation` for details.
 
 2. The keys are always strings (they are names of corresponding values).
 
-3. The values can be scalars, tensors, or Batch objects to form a hierarchy of keys.
+3. The values can be scalars, tensors, or Batch objects. The recurse definition makes it possible to form a hierarchy of batches.
 
 4. Tensors are the most important values. In short, tensors are n-dimensional arrays of the same data type. We support two types of tensors: `pytorch <https://pytorch.org/>`_ tensor type ``torch.Tensor`` and `numpy <https://numpy.org/>`_ tensor type ``np.ndarray``.
 
 .. note::
 
-    Both ``torch.Tensor`` and ``np.ndarray`` can store scalar values, too. By default we regard them as tensors, so be careful when you are using them to store scalars like ``np.array(3)``.
+    Both ``torch.Tensor`` and ``np.ndarray`` can store scalar values, too. Be careful when you are using ``torch.Tensor`` and ``np.ndarray`` to store scalars like ``np.array(3)``.
 
 .. note::
 
-    The data types of tensors are bool, number (any size of int and float as long as they are supported by numpy or pytorch). In addition, numpy supports ndarray of objects and we take advantage of this feature to store objects in ``Batch``. If one wants to store data that are neither boolean nor numbers (such as strings and sets), they can store the data in ``np.ndarray`` with ``np.object`` data type. This way, ``Batch`` can actually store any type of python objects.
+    The data types of tensors are bool and numbers (any size of int and float as long as they are supported by numpy or pytorch). In addition, numpy supports ndarray of objects and we take advantage of this feature to store non-number objects in ``Batch``. If one wants to store data that are neither boolean nor numbers (such as strings and sets), they can store the data in ``np.ndarray`` with ``np.object`` data type. This way, ``Batch`` can actually store any type of python objects.
 
-5. Scalars are also valid values. A scalar is a single boolean, number, or object. They can be python scalar (``False, 1, 2.3, None, 'hello'``) or numpy scalar (``np.bool_(True), np.int32(1), np.float64(2.3)``). They just cannot be mixed up with Batch/dict/tensors.
+5. Scalars are also valid values. A scalar is a single boolean, number, or object. They can be python scalar (``False, 1, 2.3, None, 'hello'``) or numpy scalar (``np.bool_(True), np.int32(1), np.float64(2.3)``). They just shouldn't be mixed up with Batch/dict/tensors.
 
 .. note::
 
     ``Batch`` cannot store ``dict`` objects, because internally ``Batch`` uses ``dict`` to store data. During construction, ``dict`` objects will be automatically converted to ``Batch`` objects.
 
-By expanding nested ``Batch`` objects, we can describe the structure of ``Batch`` using a tree. There is always a "virtual root" node to represent the whole ``Batch`` object; internal nodes are keys (names); and leaf nodes are scalars or tensors. Having a picture of the structure in mind helps dealing with ``Batch`` objects.
+By expanding nested ``Batch`` objects, we can describe the structure of ``Batch`` using a tree. There is always a "virtual root" node to represent the whole ``Batch`` object; internal nodes are keys (names); and leaf nodes are scalars or tensors. Having a picture of the structure in mind helps when we deal with ``Batch`` objects.
 
 .. image:: ../_static/images/batch_tree.png
     :align: center
@@ -79,12 +83,12 @@ Construction of Batch
 
 There are a variety of ways to construct a ``Batch`` object. One can construct a ``Batch`` object from a ``dict``, or using ``kwargs``. Construction from other ``Batch`` objects is deferred to later sections.
 
-1. Constructing a ``Batch`` object from a dict is as easy as passing the dict object ``batch_dict`` to ``Batch(batch_dict)``. The following code snippet shows several commonly used cases.
+1. Constructing a ``Batch`` object from a dict is as easy as passing the dict object ``batch_dict`` to ``Batch(batch_dict)``. The following code snippet shows several use cases.
 
 .. code-block:: python
 
     >>> # directly passing a dict object (possibly nested) is ok
-    >>> data = Batch({a=4, b=[5, 5], c='2312312'})
+    >>> data = Batch({'a': 4, 'b': [5, 5], 'c': '2312312'})
     >>> # the list will automatically be converted to numpy array
     >>> data.b
     array([5, 5])
@@ -129,17 +133,17 @@ There are a variety of ways to construct a ``Batch`` object. One can construct a
 
 .. note::
 
-    Some names have special meaning for the internal usage in Tianshou. For example, ``copy`` is a flag in ``Batch.__init__`` and one should not use "copy" as names.
+    Some names have special meaning for the internal usage in Tianshou. For example, ``copy`` is a flag in ``Batch.__init__`` and one should not use "copy" as a name.
 
     Below is an incomplete list of names internally used in Tianshou. Names start with "_" or "__" should also be avoided because they may have conflict with internal names.
 
-    * ``obs`` the observation of step :math:`t` ;
-    * ``act`` the action of step :math:`t` ;
-    * ``rew`` the reward of step :math:`t` ;
-    * ``done`` the done flag of step :math:`t` ;
-    * ``obs_next`` the observation of step :math:`t+1` ;
-    * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()`` function returns 4 arguments, and the last one is ``info``);
-    * ``policy`` the data computed by policy in step :math:`t`;
+    * ``obs``: the observation of step :math:`t` ;
+    * ``act``: the action of step :math:`t` ;
+    * ``rew``: the reward of step :math:`t` ;
+    * ``done``: the done flag of step :math:`t` ;
+    * ``obs_next``: the observation of step :math:`t+1` ;
+    * ``info``: the info of step :math:`t` (in ``gym.Env``, the ``env.step()`` function returns 4 items, and the last one is ``info``);
+    * ``policy``: the data computed by policy in step :math:`t`;
 
 Data Manipulation With Batch
 -----------------------------
@@ -250,8 +254,10 @@ Stack, split or concatenate multiple ``Batch`` instances are easy and intuitive 
 
     There are two versions of stack and concatenate in ``Batch``. One is the static version (static function of the ``Batch`` class) ``Batch.stack`` and ``Batch.cat``; the other is the member functions ``Batch.stack_`` and ``Batch.cat_`` which modify the object itself. In short, ``obj.stack_([a, b])`` is the same as ``Batch.stack([obj, a, b])``, and ``obj.cat_([a, b])`` is the same as ``Batch.cat([obj, a, b])``. Considering the frequent requirement of concatenating two ``Batch`` objects, Tianshou also supports ``obj.cat_(a)`` to be an alias of ``obj.cat_([a])``.
 
+.. _key_reservation:
+
 Key Reservation
-----------------
+---------------
 
 In many cases, we know at the first place what keys we have, but we do not know the shape of values until we actually run the environment. To deal with this, Tianshou supports key reservation: **reserve a key and use a placeholder value**.
 
@@ -298,7 +304,7 @@ The following code snippet is self-illustrative.
     Do not get confused with ``Batch.is_empty`` and ``Batch.empty``. ``Batch.empty`` and its in-place variant ``Batch.empty_`` are used to set some values to zeros. Check the api documentation for further details.
 
 Length and Shape
------------------
+----------------
 
 The most common usage of ``Batch`` is to store a Batch of data. The term "Batch" comes from deep learning community to denote a mini-batch of sampled data from the whole dataset. In this regard, "Batch" typically means a collection of tensors whose first dimensions are the same. Then the length of a ``Batch`` object is simply the batch-size.
 
@@ -426,7 +432,7 @@ Conceptually, how to aggregate batches is well done. And it is enough to underst
     ``Batch.stack`` and ``Batch.stack_`` also support ``axis`` argument so that one can stack batches besides the first dimension. But be cautious, if there are keys that are not shared across all batches, ``stack`` with ``axis != 0`` is undefined, and will cause an exception.
 
 Miscellaneous Notes
---------------------
+-------------------
 
 1. ``Batch`` is serializable and therefore Pickle compatible. ``Batch`` objects can be saved to disk and later restored by python ``pickle`` module. This pickle compatibility is especially important for distributed sampling from environments.
 
