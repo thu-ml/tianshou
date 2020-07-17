@@ -148,7 +148,7 @@ There are a variety of ways to construct a ``Batch`` object. One can construct a
 Data Manipulation With Batch
 -----------------------------
 
-For a ``Batch`` object ``b``, it corresponds to a tree structure as described above. Users can access the internal data by ``b.key``, where ``b.key`` finds the sub-tree with ``key`` as its root. If the result is a sub-tree with non-empty keys, the key-reference can be chained, i.e. ``b.key1.key2...key3``. When it reaches a leaf node, users get the data (scalars / tensors) stored in that ``Batch`` object.
+A ``Batch`` object ``b`` corresponds to a tree structure. Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` finds the sub-tree with ``key`` as the root node. If the result is a sub-tree with non-empty keys, the key-reference can be chained, i.e. ``b.key.key1.key2...key3``. When it reaches a leaf node, users get the data (scalars / tensors) stored in that ``Batch`` object.
 
 .. code-block:: python
 
@@ -169,7 +169,7 @@ For a ``Batch`` object ``b``, it corresponds to a tree structure as described ab
         a
         b
         >>> # obj.update() behaves like dict.update()
-        >>> # the same as data.c = 1; data.c = 2; data.e = 3;
+        >>> # this is the same as data.c = 1; data.c = 2; data.e = 3;
         >>> data.update(c=1, d=2, e=3)
         >>> print(data)
         Batch(
@@ -184,7 +184,7 @@ For a ``Batch`` object ``b``, it corresponds to a tree structure as described ab
 
     If ``data`` is a ``dict`` object, ``for x in data`` iterates over keys in the dict. However, it has a different meaning for ``Batch`` objects: ``for x in data`` iterates over ``data[0], data[1], ... data[-1]``. An example is given below.
 
-``Batch`` also partially reproduces the Numpy ndarray APIs. It supports advanced slicing, such as ``batch[:, i]`` so long as the slice is valid. Broadcast mechanism of numpy works, too.
+``Batch`` also partially reproduces the Numpy ndarray APIs. It supports advanced slicing, such as ``batch[:, i]`` so long as the slice is valid. Broadcast mechanism of numpy works for ``Batch``, too.
 
 .. code-block:: python
 
@@ -219,7 +219,7 @@ For a ``Batch`` object ``b``, it corresponds to a tree structure as described ab
         b: -0.25,
     )
 
-Stack, split or concatenate multiple ``Batch`` instances are easy and intuitive in Tianshou. For now, we stick to the aggregation (stack/concatenate) of homogeneous batches (with the same structure). Stack/concatenate of heterogeneous batches are discussed in another section.
+Stacking and concatenating multiple ``Batch`` instances, or split an instance into multiple batches, they are all easy and intuitive in Tianshou. For now, we stick to the aggregation (stack/concatenate) of homogeneous batches (with the same structure). Stack/concatenation of heterogeneous batches are discussed in :ref:`aggregation`.
 
 .. code-block:: python
 
@@ -282,7 +282,7 @@ Still, we can use a tree to show the structure of ``Batch`` objects with reserve
 
 The introduce of reserved keys gives rise to the need to check if a key is reserved. Tianshou provides ``Batch.is_empty`` to achieve this.
 
-The ``Batch.is_empty`` function has an option to whether identify direct emptiness (just a ``Batch()``) or identify recurse emptiness (a ``Batch`` object without any scalar / tensor leaf nodes).
+The ``Batch.is_empty`` function has an option to decide whether to identify direct emptiness (just a ``Batch()``) or to identify recurse emptiness (a ``Batch`` object without any scalar / tensor leaf nodes).
 
 The following code snippet is self-illustrative.
 
@@ -314,15 +314,13 @@ If all the leaf nodes in a ``Batch`` object are tensors, but they have different
 
     Following the convention of scientific computation, scalars have no length. If there is any scalar leaf node in a ``Batch`` object, an exception will occur when users call ``len(obj)``.
 
-.. note::
-
-    Values of reserved keys are actually undetermined, so they have no length, neither. Or, to be specific, values of reserved keys have lengths of **any**. When there is a mix of tensors and reserved keys, the latter will be ignored in ``len(obj)`` and the minimum length of tensors is returned. When there is not any tensor in the ``Batch`` object, Tianshou raises an exception, too.
+    In addition, values of reserved keys are actually undetermined, so they have no length, neither. Or, to be specific, values of reserved keys have lengths of **any**. When there is a mix of tensors and reserved keys, the latter will be ignored in ``len(obj)`` and the minimum length of tensors is returned. When there is not any tensor in the ``Batch`` object, Tianshou raises an exception, too.
 
 The ``obj.shape`` attribute of ``Batch`` behaves somewhat similar to ``len(obj)``:
 
 1. If all the leaf nodes in a ``Batch`` object are tensors with the same shape, that shape is returned.
 
-2. If all the leaf nodes in a ``Batch`` object are tensors with different shapes, the minimum length of each dimension is returned.
+2. If all the leaf nodes in a ``Batch`` object are tensors but they have different shapes, the minimum length of each dimension is returned.
 
 3. If there is any scalar value in a ``Batch`` object, ``obj.shape`` returns ``[]``.
 
@@ -341,6 +339,8 @@ The following code snippet illustrates the behavior of ``len`` and ``obj.shape``
     []
     >>> len(data[0])
     TypeError: Object of type 'Batch' has no len()
+
+.. _aggregation:
 
 Aggregation of Heterogeneous Batches
 ------------------------------------
@@ -365,7 +365,7 @@ First, let's check some examples to have an intuitive understanding of the behav
     (2, 4, 6)
     >>> c.common.c.shape
     (2, 4, 5)
-    >>> # ``None`` is added in list or :class:`np.ndarray` of objects, 0 otherwise.
+    >>> # None or 0 is padded with appropriate shape
     >>> data_1 = Batch(a=np.array([0.0, 2.0]))
     >>> data_2 = Batch(a=np.array([1.0, 3.0]), b='done')
     >>> data = Batch.stack((data_1, data_2))
@@ -397,7 +397,9 @@ However, there are some cases when batches are too heterogeneous that they canno
     >>> # this will raise an exception
     >>> c = Batch.stack([a, b])
 
-Then how to determine if batches can be aggregated? Let's recall the purpose of reserved keys. What is the advantage of ``a1=Batch(b=Batch())`` over ``a2=Batch()``? The only difference is that ``a1.b`` returns ``Batch()`` but ``a2.b`` raises an exception. That's to say, **we reserve keys for attribute reference**.
+Then how to determine if batches can be aggregated? Let's rethink the purpose of reserved keys. What is the advantage of ``a1=Batch(b=Batch())`` over ``a2=Batch()``? The only difference is that ``a1.b`` returns ``Batch()`` but ``a2.b`` raises an exception. That's to say, **we reserve keys for attribute reference**.
+
+The following definition of *key chain applicability* is required to continue the discussion.
 
 .. code-block:: shell
 

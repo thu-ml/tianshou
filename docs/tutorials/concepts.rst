@@ -17,10 +17,7 @@ Here is a more detailed description, where ``Env`` is the environment and ``Mode
 Data Batch
 ----------
 
-.. automodule:: tianshou.data.Batch
-   :members:
-   :noindex:
-
+:class:`~tianshou.data.Batch` is the internal data structure used inTianshou. :ref:`batch_concept` is a dedicated tutorial for ``Batch``. We strongly recommend every user to read it so as to correctly understand and use ``Batch``.
 
 Data Buffer
 -----------
