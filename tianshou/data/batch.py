@@ -36,11 +36,8 @@ def _is_scalar(value: Any) -> bool:
     # 3. python object rather than dict / Batch / tensor
     # the check of dict / Batch is omitted because this only checks a value.
     # a dict / Batch will eventually check their values
-    is_scalar = isinstance(value, Number)
-    is_scalar = is_scalar or isinstance(value, np.generic)
-    is_scalar = is_scalar or (isinstance(value, (np.ndarray, torch.Tensor))
-                              and not value.shape)
-    return is_scalar
+    value = np.asanyarray(value)
+    return value.size == 1 and not value.shape
 
 
 def _is_number(value: Any) -> bool:
@@ -51,6 +48,22 @@ def _is_number(value: Any) -> bool:
     is_number = is_number or isinstance(value, np.number)
     is_number = is_number or isinstance(value, np.bool_)
     return is_number
+
+
+def _to_array_with_correct_type(v: Any) -> np.ndarray:
+    # convert the value to np.ndarray
+    # convert to np.object data type if neither bool nor number
+    v = np.asanyarray(v)
+    if not issubclass(v.dtype.type, (np.bool_, np.number)):
+        v = v.astype(np.object)
+    if v.dtype == np.object and not v.shape:
+        # scalar ndarray with np.object data type is very annoying
+        # a=np.array([np.array({}, dtype=object), np.array({}, dtype=object)])
+        # a is not array([{}, {}], dtype=object), and a[0]={} results in
+        # something very strange:
+        # array([{}, array({}, dtype=object)], dtype=object)
+        v = v.item(0)
+    return v
 
 
 def _create_value(inst: Any, size: int, stack=True) -> Union[
@@ -119,28 +132,25 @@ class Batch:
                 _assert_type_keys(batch_dict.keys())
                 for k, v in batch_dict.items():
                     if isinstance(v, (list, tuple, np.ndarray)):
-                        v_ = None
                         if not isinstance(v, np.ndarray) and \
                                 all(isinstance(e, torch.Tensor) for e in v):
                             self.__dict__[k] = torch.stack(v)
                             continue
+                        v_ = _to_array_with_correct_type(v)
+                        if v_.dtype == np.object and _is_batch_set(v):
+                            v = Batch(v)  # list of dict / Batch
                         else:
-                            v_ = np.asanyarray(v)
-                        if v_.dtype != np.object:
-                            v = v_  # normal data list, this is the main case
-                            if not issubclass(v.dtype.type,
-                                              (np.bool_, np.number)):
-                                v = v.astype(np.object)
-                        else:
-                            if _is_batch_set(v):
-                                v = Batch(v)  # list of dict / Batch
-                            else:
-                                # this is actually a data list with objects
-                                v = v_
+                            # normal data list (main case)
+                            # or actually a data list with objects
+                            v = v_
                         self.__dict__[k] = v
                     elif isinstance(v, dict):
                         self.__dict__[k] = Batch(v)
+                    elif isinstance(v, (Batch, torch.Tensor)):
+                        self.__dict__[k] = v
                     else:
+                        # scalar case, convert to ndarray
+                        v = _to_array_with_correct_type(v)
                         self.__dict__[k] = v
             elif _is_batch_set(batch_dict):
                 self.stack_(batch_dict)
@@ -153,12 +163,12 @@ class Batch:
             if _is_batch_set(value):
                 value = Batch(value)
             else:
-                value = np.array(value)
-                if not issubclass(value.dtype.type, (np.bool_, np.number)):
-                    value = value.astype(np.object)
+                value = _to_array_with_correct_type(value)
         elif isinstance(value, dict) or isinstance(value, np.ndarray) \
                 and value.dtype == np.object and _is_batch_set(value):
             value = Batch(value)
+        elif not isinstance(value, (Batch, torch.Tensor)):
+            value = _to_array_with_correct_type(value)
         self.__dict__[key] = value
 
     def __getstate__(self):
@@ -203,8 +213,7 @@ class Batch:
         if isinstance(value, (list, tuple)):
             value = np.asanyarray(value)
         if isinstance(value, np.ndarray):
-            if not issubclass(value.dtype.type, (np.bool_, np.number)):
-                value = value.astype(np.object)
+            value = _to_array_with_correct_type(value)
         if isinstance(index, str):
             self.__dict__[index] = value
             return
@@ -398,8 +407,7 @@ class Batch:
                 # cat Batch(a=np.zeros((3, 4))) and Batch(a=Batch(b=Batch()))
                 # will fail here
                 v = np.concatenate(v)
-                if not issubclass(v.dtype.type, (np.bool_, np.number)):
-                    v = v.astype(np.object)
+                v = _to_array_with_correct_type(v)
                 self.__dict__[k] = v
         keys_total = set.union(*[set(b.keys()) for b in batches])
         keys_reserve_or_partial = set.difference(keys_total, keys_shared)
@@ -503,8 +511,7 @@ class Batch:
                 self.__dict__[k] = torch.stack(v, axis)
             else:
                 v = np.stack(v, axis)
-                if not issubclass(v.dtype.type, (np.bool_, np.number)):
-                    v = v.astype(np.object)
+                v = _to_array_with_correct_type(v)
                 self.__dict__[k] = v
         # all the keys
         keys_total = set.union(*[set(b.keys()) for b in batches])
@@ -690,7 +697,7 @@ class Batch:
             data_shape = []
             for v in self.__dict__.values():
                 try:
-                    data_shape.append(v.shape)
+                    data_shape.append(list(v.shape))
                 except AttributeError:
                     data_shape.append([])
             return list(map(min, zip(*data_shape))) if len(data_shape) > 1 \
