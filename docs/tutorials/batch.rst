@@ -1,9 +1,13 @@
 .. _batch_concept:
 
 Understand Batch
-==========================
+================
 
 :class:`~tianshou.data.Batch` is the internal data structure extensively used in Tianshou. It is designed to store and manipulate hierarchical named tensors. This tutorial aims to help users correctly understand the concept and the behavior of ``Batch`` so that users can make the best of Tianshou.
+
+The tutorial has three parts. We first explain the concept of hierarchical named tensors, and introduce basic usage of ``Batch``, followed by advanced topics of ``Batch``. It is perfectly ok for new users to skip advanced topics and come back later for reference. The basic usages are enough for most users.
+
+We have provided code snippets (by default they are collapsed. click the arrow to show code snippets) and additional notes, too. They can be skipped at first glance and serve as a later reference.
 
 Hierarchical Named Tensors
 ---------------------------
@@ -36,28 +40,21 @@ Note that, storing hierarchical named tensors is as easy as creating nested dict
 
 The real problem is how to **manipulate them**, such as adding new transition tuples into replay buffer and dealing with their heterogeneity. ``Batch`` is designed to easily create, store, and manipulate these hierarchical named tensors.
 
+Basic Usages
+------------
+
+Here we cover basic usages of ``Batch``, describing what ``Batch`` contains, how to construct ``Batch`` objects and how to manipulate them.
+
 What Does Batch Contain
------------------------
+^^^^^^^^^^^^^^^^^^^^^^^
 
-The content of ``Batch`` objects can be defined by `regular expressions <https://en.wikipedia.org/wiki/Regular_expression>`_ as the following rules.
+.. sidebar:: The structure of a Batch shown by a tree
 
-    1. Batch -> Batch() | (key, value)+
+     .. Figure:: ../_static/images/batch_tree.png
 
-    2. key -> string
+The content of ``Batch`` objects can be defined by the following rules.
 
-    3. value -> scalar | tensor | Batch
-
-    4. tensor -> np.ndarray (dtype can be np.bool, np.number, or np.object), torch.Tensor
-
-    5. scalar -> bool, number, np.number, np.bool, object (but not Batch/dict/tensor objects)
-
-We describe the detailed explanation of each rule as follows:
-
-1. A ``Batch`` object can be an empty ``Batch()``, or have at least one key-value pairs.
-
-.. note::
-
-    Besides being an empty Batch, ``Batch()`` has another important usage to reserve keys. See :ref:`key_reservations` for details.
+1. A ``Batch`` object can be an empty ``Batch()``, or have at least one key-value pairs. ``Batch()`` can be used to reserve keys, too. See :ref:`key_reservations` for this advanced usage.
 
 2. The keys are always strings (they are names of corresponding values).
 
@@ -65,32 +62,25 @@ We describe the detailed explanation of each rule as follows:
 
 4. Tensors are the most important values. In short, tensors are n-dimensional arrays of the same data type. We support two types of tensors: `PyTorch <https://pytorch.org/>`_ tensor type ``torch.Tensor`` and `NumPy <https://numpy.org/>`_ tensor type ``np.ndarray``.
 
-.. note::
-
-    Both ``torch.Tensor`` and ``np.ndarray`` can store scalar values, too. Be careful when you are using ``torch.Tensor`` and ``np.ndarray`` to store scalars like ``np.array(3)``.
-
-.. note::
-
-    The data types of tensors are bool and numbers (any size of int and float as long as they are supported by NumPy or PyTorch). Besides, NumPy supports ndarray of objects and we take advantage of this feature to store non-number objects in ``Batch``. If one wants to store data that are neither boolean nor numbers (such as strings and sets), they can store the data in ``np.ndarray`` with the ``np.object`` data type. This way, ``Batch`` can store any type of python objects.
-
 5. Scalars are also valid values. A scalar is a single boolean, number, or object. They can be python scalar (``False``, ``1``, ``2.3``, ``None``, ``'hello'``) or NumPy scalar (``np.bool_(True)``, ``np.int32(1)``, ``np.float64(2.3)``). They just shouldn't be mixed up with Batch/dict/tensors.
+
+We can describe the structure of ``Batch`` using a tree in the right. There is always a "virtual root" node to represent the whole ``Batch`` object; internal nodes are keys (names), and leaf nodes are values (scalars or tensors). Having a picture of the structure in mind helps when we deal with ``Batch`` objects.
 
 .. note::
 
     ``Batch`` cannot store ``dict`` objects, because internally ``Batch`` uses ``dict`` to store data. During construction, ``dict`` objects will be automatically converted to ``Batch`` objects.
 
-By expanding nested ``Batch`` objects, we can describe the structure of ``Batch`` using a tree. There is always a "virtual root" node to represent the whole ``Batch`` object; internal nodes are keys (names), and leaf nodes are scalars or tensors. Having a picture of the structure in mind helps when we deal with ``Batch`` objects.
-
-.. image:: ../_static/images/batch_tree.png
-    :align: center
-    :height: 400
+    The data types of tensors are bool and numbers (any size of int and float as long as they are supported by NumPy or PyTorch). Besides, NumPy supports ndarray of objects and we take advantage of this feature to store non-number objects in ``Batch``. If one wants to store data that are neither boolean nor numbers (such as strings and sets), they can store the data in ``np.ndarray`` with the ``np.object`` data type. This way, ``Batch`` can store any type of python objects.
 
 Construction of Batch
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
-There are a variety of ways to construct a ``Batch`` object. One can construct a ``Batch`` object from a ``dict``, or using ``kwargs``. Construction from other ``Batch`` objects is deferred to later sections.
+There are two ways to construct a ``Batch`` object: from a ``dict``, or using ``kwargs``. Below are some code snippets.
 
-1. Constructing a ``Batch`` object from a dict is as easy as passing the dict object ``batch_dict`` to ``Batch(batch_dict)``. The following code snippet shows several use cases.
+.. raw:: html
+
+   <details>
+   <summary>Construct Batch from dict</summary>
 
 .. code-block:: python
 
@@ -114,7 +104,14 @@ There are a variety of ways to construct a ``Batch`` object. One can construct a
         b: array(['hello', 'world'], dtype=object),
     )
 
-2. Keyword arguments are okay for ``Batch`` objects, too.
+.. raw:: html
+
+   </details>
+
+.. raw:: html
+
+   <details>
+   <summary>Construct Batch from kwargs</summary>
 
 .. code-block:: python
 
@@ -138,11 +135,13 @@ There are a variety of ways to construct a ``Batch`` object. One can construct a
     >>> # By default, Batch only keeps the reference to the data, but it also supports data copying
     >>> data = Batch(arr=arr, copy=True) # data.arr now is a copy of 'arr'
 
+.. raw:: html
+
+   </details>
+
 .. note::
 
-    Some names have special meaning for the internal usage in Tianshou. For example, ``copy`` is a flag in ``Batch.__init__`` and one should not use "copy" as a name.
-
-    Below is an incomplete list of names internally used in Tianshou. Names start with "_" should also be avoided because they may have a conflict with internal names.
+    Some names have special meanings in Tianshou. For example, ``copy`` is a flag in ``Batch.__init__`` and one should not use "copy" as a name. Below is an incomplete list of names internally used in Tianshou. Names start with "_" should also be avoided because they may have a conflict with internal names.
 
     * ``obs``: the observation of step :math:`t` ;
     * ``act``: the action of step :math:`t` ;
@@ -153,9 +152,12 @@ There are a variety of ways to construct a ``Batch`` object. One can construct a
     * ``policy``: the data computed by policy in step :math:`t`;
 
 Data Manipulation With Batch
------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A ``Batch`` object ``b`` corresponds to a tree structure. Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` finds the sub-tree with ``key`` as the root node. If the result is a sub-tree with non-empty keys, the key-reference can be chained, i.e. ``b.key.key1.key2.key3``. When it reaches a leaf node, users get the data (scalars/tensors) stored in that ``Batch`` object.
+.. raw:: html
+
+   <details>
+   <summary>Access data stored in Batch</summary>
 
 .. code-block:: python
 
@@ -187,11 +189,21 @@ A ``Batch`` object ``b`` corresponds to a tree structure. Users can access the i
             e: 3,
         )
 
+.. raw:: html
+
+   </details>
+
+A ``Batch`` object ``b`` corresponds to a tree structure. Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` finds the sub-tree with ``key`` as the root node. If the result is a sub-tree with non-empty keys, the key-reference can be chained, i.e. ``b.key.key1.key2.key3``. When it reaches a leaf node, users get the data (scalars/tensors) stored in that ``Batch`` object.
+
+
 .. note::
 
     If ``data`` is a ``dict`` object, ``for x in data`` iterates over keys in the dict. However, it has a different meaning for ``Batch`` objects: ``for x in data`` iterates over ``data[0], data[1], ..., data[-1]``. An example is given below.
 
-``Batch`` also partially reproduces the NumPy ndarray APIs. It supports advanced slicing, such as ``batch[:, i]`` so long as the slice is valid. Broadcast mechanism of NumPy works for ``Batch``, too.
+.. raw:: html
+
+   <details>
+   <summary>Index and slicing of Batch</summary>
 
 .. code-block:: python
 
@@ -237,7 +249,16 @@ A ``Batch`` object ``b`` corresponds to a tree structure. Users can access the i
          b: array([ 1, -1]),
      )]
 
-Stacking and concatenating multiple ``Batch`` instances, or split an instance into multiple batches, they are all easy and intuitive in Tianshou. For now, we stick to the aggregation (stack/concatenate) of homogeneous batches (with the same structure). Stack/Concatenation of heterogeneous batches are discussed in :ref:`aggregation`.
+.. raw:: html
+
+   </details>
+
+``Batch`` also partially reproduces the NumPy ndarray APIs. It supports advanced slicing, such as ``batch[:, i]`` so long as the slice is valid. Broadcast mechanism of NumPy works for ``Batch``, too.
+
+.. raw:: html
+
+   <details>
+   <summary>Stack / concatenate / split of Batches</summary>
 
 .. code-block:: python
 
@@ -268,14 +289,29 @@ Stacking and concatenating multiple ``Batch`` instances, or split an instance in
                   [1., 3.]]),
     )
 
+.. raw:: html
+
+   </details>
+
+Stacking and concatenating multiple ``Batch`` instances, or split an instance into multiple batches, they are all easy and intuitive in Tianshou. For now, we stick to the aggregation (stack/concatenate) of homogeneous batches (with the same structure). Stack/Concatenation of heterogeneous batches are discussed in :ref:`aggregation`.
+
 .. note::
 
     There are two versions of stack and concatenate in ``Batch``. One is the static version (static function of the ``Batch`` class) ``Batch.stack`` and ``Batch.cat``; the other is the member functions ``Batch.stack_`` and ``Batch.cat_`` which modify the object itself. In short, ``obj.stack_([a, b])`` is the same as ``Batch.stack([obj, a, b])``, and ``obj.cat_([a, b])`` is the same as ``Batch.cat([obj, a, b])``. Considering the frequent requirement of concatenating two ``Batch`` objects, Tianshou also supports ``obj.cat_(a)`` to be an alias of ``obj.cat_([a])``.
 
+Advanced Topics
+---------------
+
+From here on, this tutorial focuses on advanced topics of ``Batch``, including key reservation, length/shape and aggregation of heterogeneous batches. These are not required for most users and can be skipped for new users.
+
 .. _key_reservations:
 
 Key Reservations
-----------------
+^^^^^^^^^^^^^^^^
+
+.. sidebar:: The structure of a Batch with reserved keys
+
+     .. Figure:: ../_static/images/batch_reserve.png
 
 In many cases, we know in the first place what keys we have, but we do not know the shape of values until we run the environment. To deal with this, Tianshou supports key reservations: **reserve a key and use a placeholder value**.
 
@@ -289,11 +325,7 @@ The usage is easy: just use ``Batch()`` to be the value of reserved keys.
     >>> # the structure of this last Batch is shown below
     >>> a = Batch(key1=tensor1, key2=tensor2, key3=Batch(key4=Batch(), key5=Batch()))
 
-Still, we can use a tree to show the structure of ``Batch`` objects with reserved keys, where reserved keys are special internal nodes that do not have attached leaf nodes.
-
-.. image:: ../_static/images/batch_reserve.png
-    :align: center
-    :height: 400
+Still, we can use a tree (in the right) to show the structure of ``Batch`` objects with reserved keys, where reserved keys are special internal nodes that do not have attached leaf nodes.
 
 .. note::
 
@@ -301,9 +333,10 @@ Still, we can use a tree to show the structure of ``Batch`` objects with reserve
 
 The introduction of reserved keys gives rise to the need to check if a key is reserved. Tianshou provides ``Batch.is_empty`` to achieve this.
 
-The ``Batch.is_empty`` function has an option to decide whether to identify direct emptiness (just a ``Batch()``) or to identify recurse emptiness (a ``Batch`` object without any scalar/tensor leaf nodes).
+.. raw:: html
 
-The following code snippet is self-illustrative.
+   <details>
+   <summary>Examples of Batch.is_empty</summary>
 
 .. code-block:: python
 
@@ -318,12 +351,39 @@ The following code snippet is self-illustrative.
     >>> Batch(a=np.float64(1.0)).is_empty()
     False
 
+.. raw:: html
+
+   </details>
+
+The ``Batch.is_empty`` function has an option to decide whether to identify direct emptiness (just a ``Batch()``) or to identify recurse emptiness (a ``Batch`` object without any scalar/tensor leaf nodes).
+
 .. note::
 
     Do not get confused with ``Batch.is_empty`` and ``Batch.empty``. ``Batch.empty`` and its in-place variant ``Batch.empty_`` are used to set some values to zeros or None. Check the API documentation for further details.
 
 Length and Shape
-----------------
+^^^^^^^^^^^^^^^^
+
+.. raw:: html
+
+   <details>
+   <summary>Examples of len and obj.shape for Batch objects</summary>
+
+.. code-block:: python
+
+    >>> data = Batch(a=[5., 4.], b=np.zeros((2, 3, 4)))
+    >>> data.shape
+    [2]
+    >>> len(data)
+    2
+    >>> data[0].shape
+    []
+    >>> len(data[0])
+    TypeError: Object of type 'Batch' has no len()
+
+.. raw:: html
+
+   </details>
 
 The most common usage of ``Batch`` is to store a Batch of data. The term "Batch" comes from the deep learning community to denote a mini-batch of sampled data from the whole dataset. In this regard, "Batch" typically means a collection of tensors whose first dimensions are the same. Then the length of a ``Batch`` object is simply the batch-size.
 
@@ -345,30 +405,14 @@ The ``obj.shape`` attribute of ``Batch`` behaves somewhat similar to ``len(obj)`
 
 4. The shape of reserved keys is undetermined, too. We treat their shape as ``[]``.
 
-The following code snippet illustrates the behavior of ``len`` and ``obj.shape``.
-
-.. code-block:: python
-
-    >>> data = Batch(a=[5., 4.], b=np.zeros((2, 3, 4)))
-    >>> data.shape
-    [2]
-    >>> len(data)
-    2
-    >>> data[0].shape
-    []
-    >>> len(data[0])
-    TypeError: Object of type 'Batch' has no len()
-
 .. _aggregation:
 
 Aggregation of Heterogeneous Batches
-------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In this section, we talk about aggregation operators (stack/concatenate) on heterogeneous ``Batch`` objects.
 
-.. note::
-
-    Here we only consider the heterogeneity in the structure of ``Batch`` objects. The aggregation operators are eventually done by NumPy/PyTorch operators (``np.stack``, ``np.concatenate``, ``torch.stack``, ``torch.cat``). Heterogeneity in values can fail these operators (such as stacking ``np.ndarray`` with ``torch.Tensor``, or stacking tensors with different shapes) and an exception will be raised.
+We only consider the heterogeneity in the structure of ``Batch`` objects. The aggregation operators are eventually done by NumPy/PyTorch operators (``np.stack``, ``np.concatenate``, ``torch.stack``, ``torch.cat``). Heterogeneity in values can fail these operators (such as stacking ``np.ndarray`` with ``torch.Tensor``, or stacking tensors with different shapes) and an exception will be raised.
 
 First, let's check some examples to have an intuitive understanding of the behavior.
 
@@ -418,25 +462,15 @@ However, there are some cases when batches are too heterogeneous that they canno
 
 Then how to determine if batches can be aggregated? Let's rethink the purpose of reserved keys. What is the advantage of ``a1=Batch(b=Batch())`` over ``a2=Batch()``? The only difference is that ``a1.b`` returns ``Batch()`` but ``a2.b`` raises an exception. That's to say, **we reserve keys for attribute reference**.
 
-The following definition of *key chain applicability* is required to continue the discussion.
+We say a key chain ``k=[key1, key2, ..., keyn]`` is applicable to ``b`` if the expression ``b.key1.key2.{...}.keyn`` is valid, and the result is ``b[k]``.
 
-Key chain applicability: for a ``Batch`` object ``b``, we say the key chain (a list of strings) ``k`` applies to ``b`` if and only if:
+For a set of ``Batch`` objects denoted as :math:`S`, they can be aggregated if there exists a ``Batch`` object ``b`` satisfying the following rules:
 
-    1. ``k`` is empty,
-
-    2. or: ``k`` has a single element ``key`` and ``b.key`` is valid
-
-    3. or: ``k`` has more than one element, the first element ``key`` of ``k`` can be used for ``b.key``, and the rest of keys in ``k`` apply to ``b.key``.
-
-Intuitively, this says that a key chain ``k=[key1, key2, ..., keyn]`` applies to ``b`` if the expression ``b.key1.key2.{...}.keyn`` is valid. The above definition just makes the intuition more formal. Let's denote the result ``b.key1.key2.{...}.keyn`` as ``b[k]`` if applicable.
-
-With the concept of key chain applicability, we can formally define when batches can be aggregated: for a set of ``Batch`` objects denoted as :math:`S`, they can be aggregated if there exists a ``Batch`` object ``b`` satisfying the following rules:
-
-    1. Key chain applicability: For any object ``bi`` in :math:`S`, any key chain ``k`` that applies to this object is also applicable to ``b``.
+    1. Key chain applicability: For any object ``bi`` in :math:`S`, any key chain ``k`` that is applicable to this object is also applicable to ``b``.
 
     2. Type consistency: If ``bi[k]`` is not ``Batch()`` (the last key in the key chain is not a reserved key), then the type of ``b[k]`` should be the same as ``bi[k]``.
 
-The key chain applicability rises from the motivation of reserved keys. The type consistency requirement rises from the fact that, if we have a scalar/tensor value, that position in the aggregated ``Batch`` object should also be a scalar/tensor.
+The key chain applicability rises from the motivation of reserved keys. The type consistency requirement rises from the fact that, if we have a scalar/tensor/non-empty Batch value, that position in the aggregated ``Batch`` object should also be a scalar/tensor or a non-empty Batch.
 
 If there exists ``b`` that satisfies these rules, it is clear that adding more reserved keys into ``b`` will not break these rules and there will be infinitely many ``b`` that can satisfy these rules. Among them, there will be an object with the least number of keys, and that is the answer to aggregating :math:`S`.
 
@@ -451,7 +485,7 @@ Conceptually, how to aggregate batches is well done. And it is enough to underst
     ``Batch.stack`` and ``Batch.stack_`` support the ``axis`` argument so that one can stack batches besides the first dimension. But be cautious, if there are keys that are not shared across all batches, ``stack`` with ``axis != 0`` is undefined, and will cause an exception currently.
 
 Miscellaneous Notes
--------------------
+^^^^^^^^^^^^^^^^^^^
 
 1. ``Batch`` is serializable and therefore Pickle compatible. ``Batch`` objects can be saved to disk and later restored by the python ``pickle`` module. This pickle compatibility is especially important for distributed sampling from environments.
 
