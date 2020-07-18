@@ -63,9 +63,9 @@ def _create_value(inst: Any, size: int, stack=True) -> Union[
     has_shape = isinstance(inst, (np.ndarray, torch.Tensor))
     is_scalar = _is_scalar(inst)
     if not stack and is_scalar:
-        # here we do not consider scalar types, following the
-        # behavior of numpy which does not support concatenation
-        # of zero-dimensional arrays (scalars)
+        # here we do not consider scalar types, following the behavior of numpy
+        # which does not support concatenation of zero-dimensional arrays
+        # (scalars)
         raise TypeError(f"cannot concatenate with {inst} which is scalar")
     if has_shape:
         shape = (size, *inst.shape) if stack else (size, *inst.shape[1:])
@@ -148,7 +148,7 @@ class Batch:
             self.__init__(kwargs, copy=copy)
 
     def __setattr__(self, key: str, value: Any):
-        """self[key] = value"""
+        """self.key = value"""
         if isinstance(value, list):
             if _is_batch_set(value):
                 value = Batch(value)
@@ -462,6 +462,7 @@ class Batch:
         batches that do not have these keys will be padded by zeros with
         appropriate shapes. E.g.
         ::
+
             >>> a = Batch(a=np.zeros([3, 4]), common=Batch(c=np.zeros([3, 5])))
             >>> b = Batch(b=np.zeros([4, 3]), common=Batch(c=np.zeros([4, 5])))
             >>> c = Batch.cat([a, b])
@@ -541,6 +542,7 @@ class Batch:
         new batch. For keys that are not shared across all batches,
         batches that do not have these keys will be padded by zeros. E.g.
         ::
+
             >>> a = Batch(a=np.zeros([4, 4]), common=Batch(c=np.zeros([4, 5])))
             >>> b = Batch(b=np.zeros([4, 6]), common=Batch(c=np.zeros([4, 5])))
             >>> c = Batch.stack([a, b])
@@ -550,6 +552,7 @@ class Batch:
             (2, 4, 6)
             >>> c.common.c.shape
             (2, 4, 5)
+
         .. note::
             If there are keys that are not shared across all batches, ``stack``
             with ``axis != 0`` is undefined, and will cause an exception.
@@ -659,6 +662,7 @@ class Batch:
         Another usage is in ``__len__``, where we have to skip checking the
         length of recursively empty Batch.
         ::
+
             >>> Batch().is_empty()
             True
             >>> Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
