@@ -149,7 +149,7 @@ class Batch:
 
     def __setattr__(self, key: str, value: Any):
         """self.key = value"""
-        if isinstance(value, list):
+        if isinstance(value, (list, tuple)):
             if _is_batch_set(value):
                 value = Batch(value)
             else:

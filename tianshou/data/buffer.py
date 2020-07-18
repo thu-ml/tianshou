@@ -6,9 +6,9 @@ from tianshou.data.batch import Batch, _create_value
 
 class ReplayBuffer:
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from
-    interaction between the policy and environment. It basically stores
-    obs, act, rew, done, obs_next, info, policy based on ``numpy.ndarray``.
-    Here is the usage:
+    interaction between the policy and environment. It basically stores 7
+    reserved keys (``obs``, ``act``, ``rew``, ``done``, ``obs_next``, ``info``,
+    ``policy``) based on ``numpy.ndarray``. Here is the usage:
     ::
 
         >>> import numpy as np

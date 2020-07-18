@@ -14,13 +14,52 @@ Here is a more detailed description, where ``Env`` is the environment and ``Mode
     :align: center
     :height: 300
 
-Data Batch
-----------
+Batch
+-----
 
-:class:`~tianshou.data.Batch` is the internal data structure used inTianshou. :ref:`batch_concept` is a dedicated tutorial for ``Batch``. We strongly recommend every user to read it so as to correctly understand and use ``Batch``.
+Tianshou provides :class:`~tianshou.data.Batch` as the internal data structure to pass any kind of data to other methods, for example, a collector gives a :class:`~tianshou.data.Batch` to policy for learning. Let's take a look at this script:
+::
 
-Data Buffer
------------
+    >>> import torch, numpy as np
+    >>> from tianshou.data import Batch
+    >>> data = Batch(a=4, b=[5, 5], c='2312312', d=('a', -2, -3))
+    >>> # the list will automatically be converted to numpy array
+    >>> data.b
+    array([5, 5])
+    >>> data.b = np.array([3, 4, 5])
+    >>> print(data)
+    Batch(
+        a: 4,
+        b: array([3, 4, 5]),
+        c: '2312312',
+        d: array(['a', '-2', '-3'], dtype=object),
+    )
+    >>> data = Batch(obs={'index': np.zeros((2, 3))}, act=torch.zeros((2, 2)))
+    >>> data[:, 1] += 6
+    >>> print(data[-1])
+    Batch(
+        obs: Batch(
+                 index: array([0., 6., 0.]),
+             ),
+        act: tensor([0., 6.]),
+    )
+
+In short, you can define a :class:`~tianshou.data.Batch` with any key-value pair, and perform some common operations over it.
+
+The current implementation of Tianshou typically use 7 reserved keys in :class:`~tianshou.data.Batch`:
+
+* ``obs`` the observation of step :math:`t` ;
+* ``act`` the action of step :math:`t` ;
+* ``rew`` the reward of step :math:`t` ;
+* ``done`` the done flag of step :math:`t` ;
+* ``obs_next`` the observation of step :math:`t+1` ;
+* ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()`` function returns 4 arguments, and the last one is ``info``);
+* ``policy`` the data computed by policy in step :math:`t`;
+
+:ref:`batch_concept` is a dedicated tutorial for ``Batch``. We strongly recommend every user to read it so as to correctly understand and use ``Batch``.
+
+Buffer
+------
 
 .. automodule:: tianshou.data.ReplayBuffer
    :members:
