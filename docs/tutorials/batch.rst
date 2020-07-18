@@ -5,20 +5,18 @@ Understand Batch
 
 :class:`~tianshou.data.Batch` is the internal data structure extensively used in Tianshou. It is designed to store and manipulate hierarchical named tensors. This tutorial aims to help users correctly understand the concept and the behavior of ``Batch`` so that users can make the best of Tianshou.
 
-The tutorial has three parts. We first explain the concept of hierarchical named tensors, and introduce basic usage of ``Batch``, followed by advanced topics of ``Batch``. It is perfectly ok for new users to skip advanced topics and come back later for reference. The basic usages are enough for most users.
-
-We have provided code snippets (by default they are collapsed. click the arrow to show code snippets) and additional notes, too. They can be skipped at first glance and serve as a later reference.
+The tutorial has three parts. We first explain the concept of hierarchical named tensors, and introduce basic usage of ``Batch``, followed by advanced topics of ``Batch``.
 
 Hierarchical Named Tensors
 ---------------------------
 
 "Hierarchical named tensors" refers to a set of tensors where their names form a hierarchy. Suppose there are four tensors ``[t1, t2, t3, t4]`` with names ``[name1, name2, name3, name4]``, where ``name1`` and ``name2`` belong to the same namespace ``name0``, then the full name of tensor ``t1`` is ``name0.name1``. That is, the hierarchy lies in the names of tensors.
 
-The requirement of storing and manipulating hierarchical named tensors is very intense, especially in reinforcement learning. For example, the abstraction of RL is very simple, just::
+We have to deal with the heterogeneity of reinforcement learning problems in reinforcement learning. The abstraction of RL is very simple, just::
 
     state, reward, done = env.step(action)
 
-but we have to deal with the heterogeneity of reinforcement learning problems. ``reward`` and ``done`` are simple, they are mostly scalar values. However, the ``state`` and ``action`` varies with environments. For example, ``state`` can be simply a vector, a tensor, or a camera input combined with sensory input. In the last case, it is natural to store them as hierarchical named tensors. This hierarchy can go beyond ``state`` and ``action``: we can store ``state``, ``action``, ``reward``, and ``done`` together as hierarchical named tensors.
+``reward`` and ``done`` are simple, they are mostly scalar values. However, the ``state`` and ``action`` varies with environments. For example, ``state`` can be simply a vector, a tensor, or a camera input combined with sensory input. In the last case, it is natural to store them as hierarchical named tensors. This hierarchy can go beyond ``state`` and ``action``: we can store ``state``, ``action``, ``reward``, and ``done`` together as hierarchical named tensors.
 
 Note that, storing hierarchical named tensors is as easy as creating nested dictionary objects:
 
@@ -139,18 +137,6 @@ There are two ways to construct a ``Batch`` object: from a ``dict``, or using ``
 
    </details>
 
-.. note::
-
-    Some names have special meanings in Tianshou. For example, ``copy`` is a flag in ``Batch.__init__`` and one should not use "copy" as a name. Below is an incomplete list of names internally used in Tianshou. Names start with "_" should also be avoided because they may have a conflict with internal names.
-
-    * ``obs``: the observation of step :math:`t` ;
-    * ``act``: the action of step :math:`t` ;
-    * ``rew``: the reward of step :math:`t` ;
-    * ``done``: the done flag of step :math:`t` ;
-    * ``obs_next``: the observation of step :math:`t+1` ;
-    * ``info``: the info of step :math:`t` (in ``gym.Env``, the ``env.step()`` function returns 4 items, and the last one is ``info``);
-    * ``policy``: the data computed by policy in step :math:`t`;
-
 Data Manipulation With Batch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -193,7 +179,7 @@ Data Manipulation With Batch
 
    </details>
 
-A ``Batch`` object ``b`` corresponds to a tree structure. Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` finds the sub-tree with ``key`` as the root node. If the result is a sub-tree with non-empty keys, the key-reference can be chained, i.e. ``b.key.key1.key2.key3``. When it reaches a leaf node, users get the data (scalars/tensors) stored in that ``Batch`` object.
+Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` finds the sub-tree with ``key`` as the root node. If the result is a sub-tree with non-empty keys, the key-reference can be chained, i.e. ``b.key.key1.key2.key3``. When it reaches a leaf node, users get the data (scalars/tensors) stored in that ``Batch`` object.
 
 
 .. note::
@@ -295,14 +281,10 @@ A ``Batch`` object ``b`` corresponds to a tree structure. Users can access the i
 
 Stacking and concatenating multiple ``Batch`` instances, or split an instance into multiple batches, they are all easy and intuitive in Tianshou. For now, we stick to the aggregation (stack/concatenate) of homogeneous batches (with the same structure). Stack/Concatenation of heterogeneous batches are discussed in :ref:`aggregation`.
 
-.. note::
-
-    There are two versions of stack and concatenate in ``Batch``. One is the static version (static function of the ``Batch`` class) ``Batch.stack`` and ``Batch.cat``; the other is the member functions ``Batch.stack_`` and ``Batch.cat_`` which modify the object itself. In short, ``obj.stack_([a, b])`` is the same as ``Batch.stack([obj, a, b])``, and ``obj.cat_([a, b])`` is the same as ``Batch.cat([obj, a, b])``. Considering the frequent requirement of concatenating two ``Batch`` objects, Tianshou also supports ``obj.cat_(a)`` to be an alias of ``obj.cat_([a])``.
-
 Advanced Topics
 ---------------
 
-From here on, this tutorial focuses on advanced topics of ``Batch``, including key reservation, length/shape and aggregation of heterogeneous batches. These are not required for most users and can be skipped for new users.
+From here on, this tutorial focuses on advanced topics of ``Batch``, including key reservation, length/shape and aggregation of heterogeneous batches.
 
 .. _key_reservations:
 
@@ -478,18 +460,15 @@ The above definition precisely defines the structure of the result of stacking/c
 
 Conceptually, how to aggregate batches is well done. And it is enough to understand the behavior of ``Batch`` objects during aggregation. Implementation is another story, though. Fortunately, Tianshou users do not have to worry about it. Just have the conceptual image in mind and you are all set!
 
-.. note::
-
-    ``Batch.cat`` and ``Batch.cat_`` does not support ``axis`` argument as ``np.concatenate`` and ``torch.cat`` currently.
-
-    ``Batch.stack`` and ``Batch.stack_`` support the ``axis`` argument so that one can stack batches besides the first dimension. But be cautious, if there are keys that are not shared across all batches, ``stack`` with ``axis != 0`` is undefined, and will cause an exception currently.
-
 Miscellaneous Notes
 ^^^^^^^^^^^^^^^^^^^
 
 1. ``Batch`` is serializable and therefore Pickle compatible. ``Batch`` objects can be saved to disk and later restored by the python ``pickle`` module. This pickle compatibility is especially important for distributed sampling from environments.
 
-2. It is often the case that the observations returned from the environment are NumPy ndarrays but the policy requires ``torch.Tensor`` for prediction and learning. In this regard, Tianshou provides helper functions to convert the stored data in-place into Numpy arrays or Torch tensors.
+.. raw:: html
+
+   <details>
+   <summary>Batch.to_torch and Batch.to_numpy</summary>
 
 .. code-block:: python
 
@@ -502,7 +481,14 @@ Miscellaneous Notes
     >>> # data.to_numpy is also available
     >>> data.to_numpy()
 
-Conclusion
-----------
+.. raw:: html
 
-In this tutorial, we learned about the concept of ``Batch``, what it is designed to store, how to construct ``Batch`` objects, and how to manipulate them. We also discussed important features of ``Batch``: key reservation and aggregation of heterogeneous batches.
+   </details>
+
+2. It is often the case that the observations returned from the environment are NumPy ndarrays but the policy requires ``torch.Tensor`` for prediction and learning. In this regard, Tianshou provides helper functions to convert the stored data in-place into Numpy arrays or Torch tensors.
+
+3. ``obj.stack_([a, b])`` is the same as ``Batch.stack([obj, a, b])``, and ``obj.cat_([a, b])`` is the same as ``Batch.cat([obj, a, b])``. Considering the frequent requirement of concatenating two ``Batch`` objects, Tianshou also supports ``obj.cat_(a)`` to be an alias of ``obj.cat_([a])``.
+
+4. ``Batch.cat`` and ``Batch.cat_`` does not support ``axis`` argument as ``np.concatenate`` and ``torch.cat`` currently.
+
+5. ``Batch.stack`` and ``Batch.stack_`` support the ``axis`` argument so that one can stack batches besides the first dimension. But be cautious, if there are keys that are not shared across all batches, ``stack`` with ``axis != 0`` is undefined, and will cause an exception currently.
