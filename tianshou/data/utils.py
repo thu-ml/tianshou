@@ -17,6 +17,8 @@ def to_numpy(x: Union[
             x[k] = to_numpy(v)
     elif isinstance(x, Batch):
         x.to_numpy()
+    elif isinstance(x, (list, tuple)):
+        x = [to_numpy(x_i) for x_i in x]
     return x
 
 
@@ -36,9 +38,8 @@ def to_torch(x: Union[torch.Tensor, dict, Batch, np.ndarray],
         x.to_torch(dtype, device)
     elif isinstance(x, (np.number, np.bool_, Number)):
         x = to_torch(np.asanyarray(x), dtype, device)
-    elif isinstance(x, list) and len(x) > 0 and \
-            all(isinstance(e, (np.number, np.bool_, Number)) for e in x):
-        x = to_torch(np.asanyarray(x), dtype, device)
+    elif isinstance(x, (list, tuple)):
+        x = [to_torch(x_i, dtype, device) for x_i in x]
     elif isinstance(x, np.ndarray) and \
             isinstance(x.item(0), (np.number, np.bool_, Number)):
         x = torch.from_numpy(x).to(device)
