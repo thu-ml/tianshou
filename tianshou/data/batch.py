@@ -204,16 +204,10 @@ class Batch:
         if isinstance(index, str):
             self.__setattr__(index, value)
             return
-        if isinstance(value, (list, tuple)):
-            value = np.asanyarray(value)
-        if isinstance(value, np.ndarray):
-            value = _to_array_with_correct_type(value)
-        if not isinstance(value, (dict, Batch)):
-            if _is_batch_set(value):
-                value = Batch(value)
-            else:
-                raise TypeError("Batch does not supported value type "
-                                f"{type(value)} for item assignment.")
+        value = Batch(a=value).a
+        if isinstance(value, (np.ndarray, torch.Tensor)):
+            raise ValueError("Batch does not supported tensor assignment."
+                             " Use a compatible Batch or dict instead.")
         if not set(value.keys()).issubset(self.__dict__.keys()):
             raise KeyError(
                 "Creating keys is not supported by item assignment.")
