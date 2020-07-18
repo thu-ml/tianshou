@@ -16,7 +16,7 @@ We have to deal with the heterogeneity of reinforcement learning problems in rei
 
     state, reward, done = env.step(action)
 
-``reward`` and ``done`` are simple, they are mostly scalar values. However, the ``state`` and ``action`` varies with environments. For example, ``state`` can be simply a vector, a tensor, or a camera input combined with sensory input. In the last case, it is natural to store them as hierarchical named tensors. This hierarchy can go beyond ``state`` and ``action``: we can store ``state``, ``action``, ``reward``, and ``done`` together as hierarchical named tensors.
+``reward`` and ``done`` are simple, they are mostly scalar values. However, the ``state`` and ``action``vary with environments. For example, ``state`` can be simply a vector, a tensor, or a camera input combined with sensory input. In the last case, it is natural to store them as hierarchical named tensors. This hierarchy can go beyond ``state`` and ``action``: we can store ``state``, ``action``, ``reward``, and ``done`` together as hierarchical named tensors.
 
 Note that, storing hierarchical named tensors is as easy as creating nested dictionary objects:
 
@@ -104,7 +104,7 @@ There are two ways to construct a ``Batch`` object: from a ``dict``, or using ``
 
 .. raw:: html
 
-   </details>
+   </details><br>
 
 .. raw:: html
 
@@ -135,7 +135,7 @@ There are two ways to construct a ``Batch`` object: from a ``dict``, or using ``
 
 .. raw:: html
 
-   </details>
+   </details><br>
 
 Data Manipulation With Batch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -177,7 +177,7 @@ Data Manipulation With Batch
 
 .. raw:: html
 
-   </details>
+   </details><br>
 
 Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` finds the sub-tree with ``key`` as the root node. If the result is a sub-tree with non-empty keys, the key-reference can be chained, i.e. ``b.key.key1.key2.key3``. When it reaches a leaf node, users get the data (scalars/tensors) stored in that ``Batch`` object.
 
@@ -237,14 +237,14 @@ Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` f
 
 .. raw:: html
 
-   </details>
+   </details><br>
 
 ``Batch`` also partially reproduces the NumPy ndarray APIs. It supports advanced slicing, such as ``batch[:, i]`` so long as the slice is valid. Broadcast mechanism of NumPy works for ``Batch``, too.
 
 .. raw:: html
 
    <details>
-   <summary>Stack / concatenate / split of Batches</summary>
+   <summary>Stack / Concatenate / Split of Batches</summary>
 
 .. code-block:: python
 
@@ -277,14 +277,14 @@ Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` f
 
 .. raw:: html
 
-   </details>
+   </details><br>
 
 Stacking and concatenating multiple ``Batch`` instances, or split an instance into multiple batches, they are all easy and intuitive in Tianshou. For now, we stick to the aggregation (stack/concatenate) of homogeneous batches (with the same structure). Stack/Concatenation of heterogeneous batches are discussed in :ref:`aggregation`.
 
 Advanced Topics
 ---------------
 
-From here on, this tutorial focuses on advanced topics of ``Batch``, including key reservation, length/shape and aggregation of heterogeneous batches.
+From here on, this tutorial focuses on advanced topics of ``Batch``, including key reservation, length/shape, and aggregation of heterogeneous batches.
 
 .. _key_reservations:
 
@@ -335,7 +335,7 @@ The introduction of reserved keys gives rise to the need to check if a key is re
 
 .. raw:: html
 
-   </details>
+   </details><br>
 
 The ``Batch.is_empty`` function has an option to decide whether to identify direct emptiness (just a ``Batch()``) or to identify recurse emptiness (a ``Batch`` object without any scalar/tensor leaf nodes).
 
@@ -365,7 +365,7 @@ Length and Shape
 
 .. raw:: html
 
-   </details>
+   </details><br>
 
 The most common usage of ``Batch`` is to store a Batch of data. The term "Batch" comes from the deep learning community to denote a mini-batch of sampled data from the whole dataset. In this regard, "Batch" typically means a collection of tensors whose first dimensions are the same. Then the length of a ``Batch`` object is simply the batch-size.
 
@@ -375,7 +375,7 @@ If all the leaf nodes in a ``Batch`` object are tensors, but they have different
 
     Following the convention of scientific computation, scalars have no length. If there is any scalar leaf node in a ``Batch`` object, an exception will occur when users call ``len(obj)``.
 
-    In addition, values of reserved keys are undetermined, so they have no length, neither. Or, to be specific, values of reserved keys have lengths of **any**. When there is a mix of tensors and reserved keys, the latter will be ignored in ``len(obj)`` and the minimum length of tensors is returned. When there is not any tensor in the ``Batch`` object, Tianshou raises an exception, too.
+    Besides, values of reserved keys are undetermined, so they have no length, neither. Or, to be specific, values of reserved keys have lengths of **any**. When there is a mix of tensors and reserved keys, the latter will be ignored in ``len(obj)`` and the minimum length of tensors is returned. When there is not any tensor in the ``Batch`` object, Tianshou raises an exception, too.
 
 The ``obj.shape`` attribute of ``Batch`` behaves somewhat similar to ``len(obj)``:
 
@@ -444,11 +444,11 @@ However, there are some cases when batches are too heterogeneous that they canno
 
 Then how to determine if batches can be aggregated? Let's rethink the purpose of reserved keys. What is the advantage of ``a1=Batch(b=Batch())`` over ``a2=Batch()``? The only difference is that ``a1.b`` returns ``Batch()`` but ``a2.b`` raises an exception. That's to say, **we reserve keys for attribute reference**.
 
-We say a key chain ``k=[key1, key2, ..., keyn]`` is applicable to ``b`` if the expression ``b.key1.key2.{...}.keyn`` is valid, and the result is ``b[k]``.
+We say a key chain ``k=[key1, key2, ..., keyn]`` applies to ``b`` if the expression ``b.key1.key2.{...}.keyn`` is valid, and the result is ``b[k]``.
 
 For a set of ``Batch`` objects denoted as :math:`S`, they can be aggregated if there exists a ``Batch`` object ``b`` satisfying the following rules:
 
-    1. Key chain applicability: For any object ``bi`` in :math:`S`, any key chain ``k`` that is applicable to this object is also applicable to ``b``.
+    1. Key chain applicability: For any object ``bi`` in :math:`S`, any key chain ``k`` that applies to this object is also applicable to ``b``.
 
     2. Type consistency: If ``bi[k]`` is not ``Batch()`` (the last key in the key chain is not a reserved key), then the type of ``b[k]`` should be the same as ``bi[k]``.
 
@@ -483,7 +483,7 @@ Miscellaneous Notes
 
 .. raw:: html
 
-   </details>
+   </details><br>
 
 2. It is often the case that the observations returned from the environment are NumPy ndarrays but the policy requires ``torch.Tensor`` for prediction and learning. In this regard, Tianshou provides helper functions to convert the stored data in-place into Numpy arrays or Torch tensors.
 
