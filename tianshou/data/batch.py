@@ -159,17 +159,8 @@ class Batch:
 
     def __setattr__(self, key: str, value: Any):
         """self.key = value"""
-        if isinstance(value, (list, tuple)):
-            if _is_batch_set(value):
-                value = Batch(value)
-            else:
-                value = _to_array_with_correct_type(value)
-        elif isinstance(value, dict) or isinstance(value, np.ndarray) \
-                and value.dtype == np.object and _is_batch_set(value):
-            value = Batch(value)
-        elif not isinstance(value, (Batch, torch.Tensor)):
-            value = _to_array_with_correct_type(value)
-        self.__dict__[key] = value
+        another = Batch(key=value)
+        self.update(another)
 
     def __getstate__(self):
         """Pickling interface. Only the actual data are serialized for both
@@ -210,13 +201,13 @@ class Batch:
             str, slice, int, np.integer, np.ndarray, List[int]],
             value: Any) -> None:
         """Assign value to self[index]."""
+        if isinstance(index, str):
+            self.__setattr__(index, value)
+            return
         if isinstance(value, (list, tuple)):
             value = np.asanyarray(value)
         if isinstance(value, np.ndarray):
             value = _to_array_with_correct_type(value)
-        if isinstance(index, str):
-            self.__dict__[index] = value
-            return
         if not isinstance(value, (dict, Batch)):
             if _is_batch_set(value):
                 value = Batch(value)
