@@ -159,7 +159,7 @@ class Batch:
 
     def __setattr__(self, key: str, value: Any):
         """self.key = value"""
-        another = Batch(key=value)
+        another = Batch({key: value})
         self.update(another)
 
     def __getstate__(self):
