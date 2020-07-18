@@ -117,4 +117,4 @@ def test_stack(data):
 
 
 if __name__ == '__main__':
-    pytest.main(["-s", "-k profile_batch", "--durations=0", "-v"])
+    pytest.main(["-s", "-k batch_profile", "--durations=0", "-v"])
