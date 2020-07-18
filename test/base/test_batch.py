@@ -323,8 +323,10 @@ def test_utils_to_torch():
     assert batch_torch_float.a.dtype == torch.float32
     assert batch_torch_float.b.c.dtype == torch.float32
     assert batch_torch_float.b.d.dtype == torch.float32
-    array_list = [float('nan'), 1.0]
-    assert to_torch(array_list).dtype == torch.float64
+    data_list = [float('nan'), 1]
+    data_list_torch = to_torch(data_list)
+    assert data_list_torch[0].dtype == torch.float64
+    assert data_list_torch[1].dtype == torch.int64
 
 
 def test_batch_pickle():
