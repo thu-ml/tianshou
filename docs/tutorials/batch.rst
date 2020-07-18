@@ -189,12 +189,18 @@ Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` f
 .. raw:: html
 
    <details>
-   <summary>Index and slicing of Batch</summary>
+   <summary>Length, shape, indexing, and slicing of Batch</summary>
 
 .. code-block:: python
 
     >>> # initialize Batch with tensors
     >>> data = Batch(a=np.array([[0.0, 2.0], [1.0, 3.0]]), b=[[5, -5], [1, -2]])
+    >>> # if values have the same length/shape, that length/shape is used for this Batch
+    >>> # else, check the advanced topic for details
+    >>> print(len(data))
+    2
+    >>> print(data.shape)
+    [2, 2]
     >>> # access the first item of all the stored tensors, while keeping the structure of Batch
     >>> print(data[0])
     Batch(
