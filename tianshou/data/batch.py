@@ -460,7 +460,17 @@ class Batch:
         """Concatenate a list of :class:`~tianshou.data.Batch` object into a
         single new batch. For keys that are not shared across all batches,
         batches that do not have these keys will be padded by zeros with
-        appropriate shapes.
+        appropriate shapes. E.g.
+        ::
+            >>> a = Batch(a=np.zeros([3, 4]), common=Batch(c=np.zeros([3, 5])))
+            >>> b = Batch(b=np.zeros([4, 3]), common=Batch(c=np.zeros([4, 5])))
+            >>> c = Batch.cat([a, b])
+            >>> c.a.shape
+            (7, 4)
+            >>> c.b.shape
+            (7, 3)
+            >>> c.common.c.shape
+            (7, 5)
         """
         batch = Batch()
         batch.cat_(batches)
@@ -529,7 +539,20 @@ class Batch:
     def stack(batches: List[Union[dict, 'Batch']], axis: int = 0) -> 'Batch':
         """Stack a list of :class:`~tianshou.data.Batch` object into a single
         new batch. For keys that are not shared across all batches,
-        batches that do not have these keys will be padded by zeros.
+        batches that do not have these keys will be padded by zeros. E.g.
+        ::
+            >>> a = Batch(a=np.zeros([4, 4]), common=Batch(c=np.zeros([4, 5])))
+            >>> b = Batch(b=np.zeros([4, 6]), common=Batch(c=np.zeros([4, 5])))
+            >>> c = Batch.stack([a, b])
+            >>> c.a.shape
+            (2, 4, 4)
+            >>> c.b.shape
+            (2, 4, 6)
+            >>> c.common.c.shape
+            (2, 4, 5)
+        .. note::
+            If there are keys that are not shared across all batches, ``stack``
+            with ``axis != 0`` is undefined, and will cause an exception.
         """
         batch = Batch()
         batch.stack_(batches, axis)
@@ -635,6 +658,17 @@ class Batch:
 
         Another usage is in ``__len__``, where we have to skip checking the
         length of recursively empty Batch.
+        ::
+            >>> Batch().is_empty()
+            True
+            >>> Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
+            False
+            >>> Batch(a=Batch(), b=Batch(c=Batch())).is_empty(recurse=True)
+            True
+            >>> Batch(d=1).is_empty()
+            False
+            >>> Batch(a=np.float64(1.0)).is_empty()
+            False
         """
         if len(self.__dict__) == 0:
             return True
