@@ -654,11 +654,7 @@ class Batch:
                 try:
                     data_shape.append(v.shape)
                 except AttributeError:
-                    if _is_scalar(v):
-                        data_shape.append([])
-                        continue
-                    raise TypeError("No support for 'shape' method with "
-                                    f"type {type(v)} in class Batch.")
+                    data_shape.append([])
             return list(map(min, zip(*data_shape))) if len(data_shape) > 1 \
                 else data_shape[0]
 
