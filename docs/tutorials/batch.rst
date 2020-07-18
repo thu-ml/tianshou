@@ -10,9 +10,15 @@ The tutorial has three parts. We first explain the concept of hierarchical named
 Hierarchical Named Tensors
 ---------------------------
 
+.. sidebar:: The structure of a Batch shown by a tree
+
+     .. Figure:: ../_static/images/batch_tree.png
+
 "Hierarchical named tensors" refers to a set of tensors where their names form a hierarchy. Suppose there are four tensors ``[t1, t2, t3, t4]`` with names ``[name1, name2, name3, name4]``, where ``name1`` and ``name2`` belong to the same namespace ``name0``, then the full name of tensor ``t1`` is ``name0.name1``. That is, the hierarchy lies in the names of tensors.
 
-We have to deal with the heterogeneity of reinforcement learning problems in reinforcement learning. The abstraction of RL is very simple, just::
+We can describe the structure of hierarchical named tensors using a tree in the right. There is always a "virtual root" node to represent the whole object; internal nodes are keys (names), and leaf nodes are values (scalars or tensors).
+
+Hierarchical named tensors are needed because we have to deal with the heterogeneity of reinforcement learning problems. The abstraction of RL is very simple, just::
 
     state, reward, done = env.step(action)
 
@@ -46,10 +52,6 @@ Here we cover basic usages of ``Batch``, describing what ``Batch`` contains, how
 What Does Batch Contain
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-.. sidebar:: The structure of a Batch shown by a tree
-
-     .. Figure:: ../_static/images/batch_tree.png
-
 The content of ``Batch`` objects can be defined by the following rules.
 
 1. A ``Batch`` object can be an empty ``Batch()``, or have at least one key-value pairs. ``Batch()`` can be used to reserve keys, too. See :ref:`key_reservations` for this advanced usage.
@@ -61,8 +63,6 @@ The content of ``Batch`` objects can be defined by the following rules.
 4. Tensors are the most important values. In short, tensors are n-dimensional arrays of the same data type. We support two types of tensors: `PyTorch <https://pytorch.org/>`_ tensor type ``torch.Tensor`` and `NumPy <https://numpy.org/>`_ tensor type ``np.ndarray``.
 
 5. Scalars are also valid values. A scalar is a single boolean, number, or object. They can be python scalar (``False``, ``1``, ``2.3``, ``None``, ``'hello'``) or NumPy scalar (``np.bool_(True)``, ``np.int32(1)``, ``np.float64(2.3)``). They just shouldn't be mixed up with Batch/dict/tensors.
-
-We can describe the structure of ``Batch`` using a tree in the right. There is always a "virtual root" node to represent the whole ``Batch`` object; internal nodes are keys (names), and leaf nodes are values (scalars or tensors). Having a picture of the structure in mind helps when we deal with ``Batch`` objects.
 
 .. note::
 
@@ -454,17 +454,15 @@ We say a key chain ``k=[key1, key2, ..., keyn]`` applies to ``b`` if the express
 
 For a set of ``Batch`` objects denoted as :math:`S`, they can be aggregated if there exists a ``Batch`` object ``b`` satisfying the following rules:
 
-    1. Key chain applicability: For any object ``bi`` in :math:`S`, any key chain ``k`` that applies to this object is also applicable to ``b``.
+    1. Key chain applicability: For any object ``bi`` in :math:`S`, and any key chain ``k``, if ``bi[k]`` is valid, then ``b[k]`` is valid.
 
-    2. Type consistency: If ``bi[k]`` is not ``Batch()`` (the last key in the key chain is not a reserved key), then the type of ``b[k]`` should be the same as ``bi[k]``.
+    2. Type consistency: If ``bi[k]`` is not ``Batch()`` (the last key in the key chain is not a reserved key), then the type of ``b[k]`` should be the same as ``bi[k]`` (both should be scalar/tensor/non-empty Batch values).
 
-The key chain applicability rises from the motivation of reserved keys. The type consistency requirement rises from the fact that, if we have a scalar/tensor/non-empty Batch value, that position in the aggregated ``Batch`` object should also be a scalar/tensor or a non-empty Batch.
+The ``Batch`` object ``b`` satisfying these rules with minimum number of keys determines the structure of aggregating :math:`S`. The values are relatively easy to define: for any key chain ``k`` that applies to ``b``, ``b[k]`` is the stack/concatenation of ``[bi[k] for bi in S]`` (if ``k`` does not apply to ``bi``, the appropriate size of zeros or ``None`` are filled automatically). If ``bi[k]`` are all ``Batch()``, then the aggregation result is also an empty ``Batch()``.
 
-If there exists ``b`` that satisfies these rules, it is clear that adding more reserved keys into ``b`` will not break these rules and there will be infinitely many ``b`` that can satisfy these rules. Among them, there will be an object with the least number of keys, and that is the answer to aggregating :math:`S`.
+The following picture shows two examples of aggregation operators. The shapes of tensors are annotated in the leaf nodes.
 
-The above definition precisely defines the structure of the result of stacking/concatenating batches. The values are relatively easy to define: for any key chain ``k`` that applies to ``b``, ``b[k]`` is the stack/concatenation of ``[bi[k] for bi in S]`` (if ``k`` does not apply to ``bi``, the appropriate size of zeros or ``None`` are filled automatically). If ``bi[k]`` are all ``Batch()``, then the aggregation result is also an empty ``Batch()``.
-
-Conceptually, how to aggregate batches is well done. And it is enough to understand the behavior of ``Batch`` objects during aggregation. Implementation is another story, though. Fortunately, Tianshou users do not have to worry about it. Just have the conceptual image in mind and you are all set!
+.. image:: ../_static/images/aggregation.png
 
 Miscellaneous Notes
 ^^^^^^^^^^^^^^^^^^^
