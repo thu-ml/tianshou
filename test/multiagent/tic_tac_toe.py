@@ -67,18 +67,15 @@ def get_args() -> argparse.Namespace:
 def get_agents(args: argparse.Namespace = get_args(),
                agent_learn: Optional[BaseMultiAgentPolicy] = None,
                agent_opponent: Optional[BaseMultiAgentPolicy] = None,
-               optim: Optional[torch.optim.Optimizer] = None,)\
-        -> Tuple[BaseMultiAgentPolicy, torch.optim.Optimizer]:
-    def env_func():
-        return TicTacToeEnv(args.board_size, args.win_size)
-    env = env_func()
+               optim: Optional[torch.optim.Optimizer] = None,
+               ) -> Tuple[BaseMultiAgentPolicy, torch.optim.Optimizer]:
+    env = TicTacToeEnv(args.board_size, args.win_size)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     if agent_learn is None:
         # model
-        net = Net(
-            args.layer_num, args.state_shape, args.action_shape, args.device)
-        net = net.to(args.device)
+        net = Net(args.layer_num, args.state_shape, args.action_shape,
+                  args.device).to(args.device)
         if optim is None:
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
         agent_learn = MultiAgentDQNPolicy(
@@ -123,7 +120,7 @@ def train_agent(args: argparse.Namespace = get_args(),
 
     # collector
     train_collector = Collector(
-                        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size)
@@ -171,10 +168,8 @@ def watch(
         args: argparse.Namespace = get_args(),
         agent_learn: Optional[BaseMultiAgentPolicy] = None,
         agent_opponent: Optional[BaseMultiAgentPolicy] = None,
-        ) -> None:
-    def env_func():
-        return TicTacToeEnv(args.board_size, args.win_size)
-    env = env_func()
+) -> None:
+    env = TicTacToeEnv(args.board_size, args.win_size)
     policy, optim = get_agents(
         args, agent_learn=agent_learn, agent_opponent=agent_opponent)
     collector = Collector(policy, env)

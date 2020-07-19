@@ -1,6 +1,6 @@
 from tianshou.env.vecenv import BaseVectorEnv, VectorEnv, \
     SubprocVectorEnv, RayVectorEnv
-from tianshou.env.ma_env import MultiAgentEnv
+from tianshou.env.maenv import MultiAgentEnv
 
 __all__ = [
     'BaseVectorEnv',
