@@ -14,16 +14,42 @@ Here is a more detailed description, where ``Env`` is the environment and ``Mode
     :align: center
     :height: 300
 
-Data Batch
-----------
+Batch
+-----
 
-.. automodule:: tianshou.data.Batch
-   :members:
-   :noindex:
+Tianshou provides :class:`~tianshou.data.Batch` as the internal data structure to pass any kind of data to other methods, for example, a collector gives a :class:`~tianshou.data.Batch` to policy for learning. Let's take a look at this script:
+::
 
+    >>> import torch, numpy as np
+    >>> from tianshou.data import Batch
+    >>> data = Batch(a=4, b=[5, 5], c='2312312', d=('a', -2, -3))
+    >>> # the list will automatically be converted to numpy array
+    >>> data.b
+    array([5, 5])
+    >>> data.b = np.array([3, 4, 5])
+    >>> print(data)
+    Batch(
+        a: 4,
+        b: array([3, 4, 5]),
+        c: '2312312',
+        d: array(['a', '-2', '-3'], dtype=object),
+    )
+    >>> data = Batch(obs={'index': np.zeros((2, 3))}, act=torch.zeros((2, 2)))
+    >>> data[:, 1] += 6
+    >>> print(data[-1])
+    Batch(
+        obs: Batch(
+                 index: array([0., 6., 0.]),
+             ),
+        act: tensor([0., 6.]),
+    )
 
-Data Buffer
------------
+In short, you can define a :class:`~tianshou.data.Batch` with any key-value pair, and perform some common operations over it.
+
+:ref:`batch_concept` is a dedicated tutorial for :class:`~tianshou.data.Batch`. We strongly recommend every user to read it so as to correctly understand and use :class:`~tianshou.data.Batch`.
+
+Buffer
+------
 
 .. automodule:: tianshou.data.ReplayBuffer
    :members:

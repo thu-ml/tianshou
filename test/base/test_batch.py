@@ -62,6 +62,7 @@ def test_batch():
         'd': Batch(e=np.array(3.0))}])
     assert len(batch2) == 1
     assert Batch().shape == []
+    assert Batch(a=1).shape == []
     assert batch2.shape[0] == 1
     with pytest.raises(IndexError):
         batch2[-2]
