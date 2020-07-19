@@ -162,8 +162,7 @@ class Batch:
 
     def __setattr__(self, key: str, value: Any):
         """self.key = value"""
-        another = Batch({key: value})
-        self.update(another)
+        self.__dict__[key] = _parse_value(value)
 
     def __getstate__(self):
         """Pickling interface. Only the actual data are serialized for both
@@ -205,7 +204,7 @@ class Batch:
             value: Any) -> None:
         """Assign value to self[index]."""
         if isinstance(index, str):
-            self.__setattr__(index, value)
+            self.__dict__[index] = _parse_value(value)
             return
         value = _parse_value(value)
         if isinstance(value, (np.ndarray, torch.Tensor)):
