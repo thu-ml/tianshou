@@ -194,11 +194,7 @@ class Batch:
                 if isinstance(v, Batch) and v.is_empty():
                     b.__dict__[k] = Batch()
                 else:
-                    try:
-                        b.__dict__[k] = v[index]
-                    except Exception as e:
-                        print(k)
-                        raise e
+                    b.__dict__[k] = v[index]
             return b
         else:
             raise IndexError("Cannot access item from empty Batch object.")
@@ -616,14 +612,6 @@ class Batch:
         :class:`~tianshou.data.Batch`.
         """
         return deepcopy(batch).empty_(index)
-
-    def condense(self):
-        """Remove empty Batches, return a condensed version"""
-        empty_keys = [k for k, v in self.items()
-                      if isinstance(v, Batch) and v.is_empty()]
-        for k in empty_keys:
-            del self.__dict__[k]
-        return self
 
     def update(self, batch: Optional[Union[dict, 'Batch']] = None,
                **kwargs) -> None:
