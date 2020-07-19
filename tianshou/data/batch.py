@@ -112,6 +112,29 @@ def _assert_type_keys(keys):
         f"keys should all be string, but got {keys}"
 
 
+def _parse_value(v: Any):
+    if isinstance(v, (list, tuple, np.ndarray)):
+        if not isinstance(v, np.ndarray) and \
+                all(isinstance(e, torch.Tensor) for e in v):
+            v = torch.stack(v)
+            return v
+        v_ = _to_array_with_correct_type(v)
+        if v_.dtype == np.object and _is_batch_set(v):
+            v = Batch(v)  # list of dict / Batch
+        else:
+            # normal data list (main case)
+            # or actually a data list with objects
+            v = v_
+    elif isinstance(v, dict):
+        v = Batch(v)
+    elif isinstance(v, (Batch, torch.Tensor)):
+        pass
+    else:
+        # scalar case, convert to ndarray
+        v = _to_array_with_correct_type(v)
+    return v
+
+
 class Batch:
     """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
     structure to pass any kind of data to other methods, for example, a
@@ -131,27 +154,7 @@ class Batch:
             if isinstance(batch_dict, (dict, Batch)):
                 _assert_type_keys(batch_dict.keys())
                 for k, v in batch_dict.items():
-                    if isinstance(v, (list, tuple, np.ndarray)):
-                        if not isinstance(v, np.ndarray) and \
-                                all(isinstance(e, torch.Tensor) for e in v):
-                            self.__dict__[k] = torch.stack(v)
-                            continue
-                        v_ = _to_array_with_correct_type(v)
-                        if v_.dtype == np.object and _is_batch_set(v):
-                            v = Batch(v)  # list of dict / Batch
-                        else:
-                            # normal data list (main case)
-                            # or actually a data list with objects
-                            v = v_
-                        self.__dict__[k] = v
-                    elif isinstance(v, dict):
-                        self.__dict__[k] = Batch(v)
-                    elif isinstance(v, (Batch, torch.Tensor)):
-                        self.__dict__[k] = v
-                    else:
-                        # scalar case, convert to ndarray
-                        v = _to_array_with_correct_type(v)
-                        self.__dict__[k] = v
+                    self.__dict__[k] = _parse_value(v)
             elif _is_batch_set(batch_dict):
                 self.stack_(batch_dict)
         if len(kwargs) > 0:
@@ -204,7 +207,7 @@ class Batch:
         if isinstance(index, str):
             self.__setattr__(index, value)
             return
-        value = Batch(a=value).a
+        value = _parse_value(value)
         if isinstance(value, (np.ndarray, torch.Tensor)):
             raise ValueError("Batch does not supported tensor assignment."
                              " Use a compatible Batch or dict instead.")
