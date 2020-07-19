@@ -50,6 +50,10 @@ The observation variable ``obs`` returned from the environment is a ``dict``, wi
 
 - ``legal_actions``: the legal actions in the current timestep. In board games or card games, legal actions vary with time. The legal_actions is a set of action indices. For Tic-Tac-Toe, index ``i`` means the place of ``i/N`` th row and ``i%N`` th column is empty and the player can place an ``x`` or ``o`` at that position. Now the board is empty, so the legal_actions contains all the positions on the board.
 
+.. _note:
+
+    There is no special formulation of ``legal_actions`` either in discrete action space or in continuous action space. We suggest to use some action space like ``gym.spaces.Discrete`` or ``gym.spaces.Box`` to represent the action space. It is a need for the random agent.
+
 Let's play two steps to have an intuitive understanding of the environment.
 
 ::
@@ -96,25 +100,33 @@ One worth-noting case is that the game is over when there is only one empty posi
 
 After being familiar with the environment, let's try to play with random agents first!
 
-Multi-Agent RL Construction
----------------------------
+Two Random Agent
+----------------
 
-Tianshou already provides some builtin classes for multi-agent learning. You can checkout the API documentation for details. Here we will use :class:`~tianshou.policy.RandomMultiAgentPolicy` and :class:`~tianshou.policy.MultiAgentPolicyManager`.
+.. sidebar:: The relationship between MultiAgentPolicyManager (Manager) and MultiAgentPolicy (Agent)
+
+     .. Figure:: ../_static/images/marl.png
+
+Tianshou already provides some builtin classes for multi-agent learning. You can checkout the API documentation for details. Here we will use :class:`~tianshou.policy.RandomMultiAgentPolicy` and :class:`~tianshou.policy.MultiAgentPolicyManager`. The figure on the right gives an intuitive explaination.
 
 ::
 
     >>> from tianshou.policy import RandomMultiAgentPolicy, MultiAgentPolicyManager
     >>> from tianshou.data import Collector
     >>>
-    >>> # agents should be wrapped into one policy, which is responsible for calling the acting agent correctly
+    >>> # agents should be wrapped into one policy, 
+    >>> # which is responsible for calling the acting agent correctly
     >>> # here we use two random agents
-    >>> policy = MultiAgentPolicyManager([RandomMultiAgentPolicy(), RandomMultiAgentPolicy()])
+    >>> policy = MultiAgentPolicyManager([RandomMultiAgentPolicy(), 
+    ...                                   RandomMultiAgentPolicy()])
     >>>
     >>> # use collectors to collect a episode of trajectories
+    >>> # the reward is a vector, we need a scalar metric to monitor the training
     >>> collector = Collector(policy, env, reward_metric=lambda x: x[0])
+    >>>
     >>> # you will see a long trajectory showing the board status at each timestep
-    >>> result = collector.collect(n_episode=1, render=0.1)  # (only show the last three steps)
-    ...
+    >>> result = collector.collect(n_episode=1, render=.1)
+    (only show the last 3 steps)
     board:
     =================
     ===_ _ x o _ _===
@@ -144,9 +156,12 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
     =================
     >>> collector.close()
 
-Random agents perform badly. In the above game, although agent 2 wins at last, it is clear that a smart agent 1 would place an ``x`` at row 2 col 5 to win directly. So, let's start to train our Tic-Tac-Toe agent!
+Random agents perform badly. In the above game, although agent 2 wins at last, it is clear that a smart agent 1 would place an ``x`` at row 2 col 5 to win directly. 
 
-First, import some required modules.
+Train an MARL Agent
+-------------------
+
+So let's start to train our Tic-Tac-Toe agent! First, import some required modules.
 ::
 
     import os
@@ -167,9 +182,7 @@ First, import some required modules.
 
     from tic_tac_toe_env import TicTacToeEnv
 
-The explanation of each Tianshou class/function will be deferred to their first usages.
-
-Here we define some arguments and hyperparameters of the experiment. The meaning of arguments is clear by just looking at their names.
+The explanation of each Tianshou class/function will be deferred to their first usages. Here we define some arguments and hyperparameters of the experiment. The meaning of arguments is clear by just looking at their names.
 ::
 
     def get_args():
@@ -212,7 +225,13 @@ Here we define some arguments and hyperparameters of the experiment. The meaning
         args = parser.parse_known_args()[0]
         return args
 
-The following ``get_agents`` function returns agents and their optimizers from either constructing a new policy, or loading from disk, or using the pass-in arguments. The action model we use is an instance of :class:`~tianshou.utils.net.common.Net`, essentially a multi-layer perceptron with the ReLU activation function. The network model is passed to a :class:`~tianshou.policy.MultiAgentDQNPolicy`, the multi-agent version of DQN (actions are selected according to legal actions and their Q-values). For the opponent, it can be either a random agent :class:`~tianshou.policy.RandomMultiAgentPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.MultiAgentDQNPolicy` to allow learned agents play with themselves. Both agents are passed to :class:`~tianshou.policy.MultiAgentPolicyManager`, which is responsible to call the correct agent according to the ``agent_id`` in the observation. :class:`~tianshou.policy.MultiAgentPolicyManager` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
+The following ``get_agents`` function returns agents and their optimizers from either constructing a new policy, or loading from disk, or using the pass-in arguments. For the models:
+
+- The action model we use is an instance of :class:`~tianshou.utils.net.common.Net`, essentially a multi-layer perceptron with the ReLU activation function;
+- The network model is passed to a :class:`~tianshou.policy.MultiAgentDQNPolicy`, the multi-agent version of DQN (actions are selected according to legal actions and their Q-values);
+- The opponent can be either a random agent :class:`~tianshou.policy.RandomMultiAgentPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.MultiAgentDQNPolicy` to allow learned agents play with themselves. 
+
+Both agents are passed to :class:`~tianshou.policy.MultiAgentPolicyManager`, which is responsible to call the correct agent according to the ``agent_id`` in the observation. :class:`~tianshou.policy.MultiAgentPolicyManager` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
 ::
 
     def get_agents(args=get_args(),
@@ -220,12 +239,10 @@ The following ``get_agents`` function returns agents and their optimizers from e
                    agent_opponent=None,  # BaseMultiAgentPolicy
                    optim=None,           # torch.optim.Optimizer
                    ):  # return a tuple of (BaseMultiAgentPolicy, torch.optim.Optimizer)
-        env_func = lambda: TicTacToeEnv(args.board_size, args.win_size)
-        env = env_func()
+        env = TicTacToeEnv(args.board_size, args.win_size)
         args.state_shape = env.observation_space.shape or env.observation_space.n
         args.action_shape = env.action_space.shape or env.action_space.n
         if agent_learn is None:
-            # model
             net = Net(args.layer_num, args.state_shape, args.action_shape, args.device).to(args.device)
             if optim is None:
                 optim = torch.optim.Adam(net.parameters(), lr=args.lr)
@@ -249,24 +266,20 @@ The following ``get_agents`` function returns agents and their optimizers from e
         policy = MultiAgentPolicyManager(agents)
         return policy, optim
 
-With the above preparation, we are close to get the first learned agent. The following code is almost the same as the code of the DQN tutorial.
+With the above preparation, we are close to get the first learned agent. The following code is almost the same as the code in the DQN tutorial.
 
 ::
 
-    args = get_args() # parse arguments
+    args = get_args()
     # the reward is a vector, we need a scalar metric to monitor the training.
     # we choose the reward of the learning agent
     Collector._default_rew_metric = lambda x: x[args.agent_id - 1]
 
     # ======== a test function that tests a pre-trained agent and exit ======
-    def watch(
-            args: argparse.Namespace = get_args(),
-            agent_learn: Optional[BaseMultiAgentPolicy] = None,
-            agent_opponent: Optional[BaseMultiAgentPolicy] = None,
-            ) -> None:
-        def env_func():
-            return TicTacToeEnv(args.board_size, args.win_size)
-        env = env_func()
+    def watch(args=get_args(),
+              agent_learn=None,      # BaseMultiAgentPolicy
+              agent_opponent=None):  # BaseMultiAgentPolicy
+        env = TicTacToeEnv(args.board_size, args.win_size)
         policy, optim = get_agents(
             args, agent_learn=agent_learn, agent_opponent=agent_opponent)
         collector = Collector(policy, env)
@@ -278,8 +291,7 @@ With the above preparation, we are close to get the first learned agent. The fol
         exit(0)
 
     # ======== environment setup =========
-    def env_func():
-        return TicTacToeEnv(args.board_size, args.win_size)
+    env_func = lambda: TicTacToeEnv(args.board_size, args.win_size)
     train_envs = VectorEnv([env_func for _ in range(args.training_num)])
     test_envs = VectorEnv([env_func for _ in range(args.test_num)])
     # seed
@@ -292,8 +304,7 @@ With the above preparation, we are close to get the first learned agent. The fol
     policy, optim = get_agents()
 
     # ======== collector setup =========
-    train_collector = Collector(
-                        policy, train_envs, ReplayBuffer(args.buffer_size))
+    train_collector = Collector(policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size)
@@ -318,7 +329,7 @@ With the above preparation, we are close to get the first learned agent. The fol
             model_save_path)
 
     def stop_fn(x):
-        return x >= 0.9
+        return x >= 0.9  # 90% winning rate
 
     def train_fn(x):
         policy.policies[args.agent_id - 1].set_eps(args.eps_train)
@@ -341,6 +352,11 @@ With the above preparation, we are close to get the first learned agent. The fol
     watch(args, agent)
 
 That's it. By executing the code, you will see a progress bar indicating the progress of training. After about three minutes, the agent has finished training, and you can see how it plays against the random agent. Here is an example:
+
+.. raw:: html
+
+   <details>
+   <summary>Play with random agent</summary>
 
 ::
 
@@ -418,6 +434,10 @@ That's it. By executing the code, you will see a progress bar indicating the pro
     =================
     Final reward: 1.0, length: 8.0
 
+.. raw:: html
+
+   </details><br>
+
 Notice that, our learned agent plays the role of agent 2, placing ``o`` on the board. The agent performs pretty well against the random opponent! It learns the rule of the game by trial and error, and learns that four consecutive ``o`` means winning, so it does!
 
 The above code can be executed in a python shell or can be saved as a script file (we have saved it in ``test/multiagent/test_tic_tac_toe.py``). In the latter case, you can train an agent by
@@ -432,7 +452,12 @@ By default, the trained agent is stored in ``log/tic_tac_toe/dqn/policy.pth``. Y
 
     $ python test_tic_tac_toe.py --watch --resume_path=log/tic_tac_toe/dqn/policy.pth --opponent_path=log/tic_tac_toe/dqn/policy.pth
 
-Here is my output:
+Here is our output:
+
+.. raw:: html
+
+   <details>
+   <summary>The trained agent play against itself</summary>
 
 ::
 
@@ -625,6 +650,10 @@ Here is my output:
     ===_ x o x x o===
     ===_ _ _ _ o x===
     =================
+
+.. raw:: html
+
+   </details><br>
 
 Well, although the learned agent plays well against the random agent, it is far away from intelligence.
 
