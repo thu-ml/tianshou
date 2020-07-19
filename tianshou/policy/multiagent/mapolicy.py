@@ -98,7 +98,9 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
                 if (hasattr(out, 'state') and out.state is not None) \
                 else Batch()
             results.append((True, agent_index, out, act, each_state))
-        holder = Batch.cat([{'act': e[3]} for e in results if e[0]])
+        holder = Batch.cat([{'act': act} for
+                            (has_data, agent_index, out, act, each_state)
+                            in results if has_data])
         state_dict = {}
         out_dict = {}
         for policy, (has_data, agent_index, out, act, state) in \
