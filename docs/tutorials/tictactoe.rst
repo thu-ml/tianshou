@@ -50,7 +50,7 @@ The observation variable ``obs`` returned from the environment is a ``dict``, wi
 
 - ``legal_actions``: the legal actions in the current timestep. In board games or card games, legal actions vary with time. The legal_actions is a set of action indices. For Tic-Tac-Toe, index ``i`` means the place of ``i/N`` th row and ``i%N`` th column is empty and the player can place an ``x`` or ``o`` at that position. Now the board is empty, so the legal_actions contains all the positions on the board.
 
-.. _note:
+.. note::
 
     There is no special formulation of ``legal_actions`` either in discrete action space or in continuous action space. We suggest to use some action space like ``gym.spaces.Discrete`` or ``gym.spaces.Box`` to represent the action space. It is a need for the random agent.
 
@@ -172,13 +172,10 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
     from torch.utils.tensorboard import SummaryWriter
 
     from tianshou.env import VectorEnv
-    from tianshou.policy import (MultiAgentDQNPolicy,
-                                 MultiAgentPolicyManager,
-                                 RandomMultiAgentPolicy,
-                                 BaseMultiAgentPolicy)
     from tianshou.utils.net.common import Net
-    from tianshou.data import Collector, ReplayBuffer
     from tianshou.trainer import offpolicy_trainer
+    from tianshou.data import Collector, ReplayBuffer
+    from tianshou.policy import MultiAgentDQNPolicy, MultiAgentPolicyManager, RandomMultiAgentPolicy, BaseMultiAgentPolicy
 
     from tic_tac_toe_env import TicTacToeEnv
 
@@ -208,20 +205,15 @@ The explanation of each Tianshou class/function will be deferred to their first 
         parser.add_argument('--board_size', type=int, default=6)
         parser.add_argument('--win_size', type=int, default=4)
         parser.add_argument('--watch', default=False, action='store_true',
-                            help='no training, '
-                                 'watch the play of pre-trained models')
+                            help='no training, watch the play of pre-trained models')
         parser.add_argument('--agent_id', type=int, default=2,
-                            help='the learned agent plays as the'
-                                 ' agent_id-th player. choices are 1 and 2.')
+                            help='the learned agent plays as the agent_id-th player. choices are 1 and 2.')
         parser.add_argument('--resume_path', type=str, default='',
-                            help='the path of agent pth file '
-                                 'for resuming from a pre-trained agent')
+                            help='the path of agent pth file for resuming from a pre-trained agent')
         parser.add_argument('--opponent_path', type=str, default='',
-                            help='the path of opponent agent pth file '
-                                 'for resuming from a pre-trained agent')
-        parser.add_argument(
-            '--device', type=str,
-            default='cuda' if torch.cuda.is_available() else 'cpu')
+                            help='the path of opponent agent pth file for resuming from a pre-trained agent')
+        parser.add_argument('--device', type=str,
+                            default='cuda' if torch.cuda.is_available() else 'cpu')
         args = parser.parse_known_args()[0]
         return args
 
@@ -242,6 +234,7 @@ Both agents are passed to :class:`~tianshou.policy.MultiAgentPolicyManager`, whi
         env = TicTacToeEnv(args.board_size, args.win_size)
         args.state_shape = env.observation_space.shape or env.observation_space.n
         args.action_shape = env.action_space.shape or env.action_space.n
+
         if agent_learn is None:
             net = Net(args.layer_num, args.state_shape, args.action_shape, args.device).to(args.device)
             if optim is None:
