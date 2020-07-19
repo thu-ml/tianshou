@@ -71,6 +71,7 @@ Tianshou is still under development, you can also check out the documents in sta
 
    tutorials/dqn
    tutorials/concepts
+   tutorials/batch
    tutorials/trick
    tutorials/cheatsheet
    tutorials/tictactoe

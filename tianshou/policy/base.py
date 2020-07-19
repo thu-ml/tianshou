@@ -192,7 +192,7 @@ class BasePolicy(ABC, nn.Module):
             mean, std = 0, 1
         returns = np.zeros_like(indice)
         gammas = np.zeros_like(indice) + n_step
-        done, rew, buf_len = buffer.done, rew, len(buffer)
+        done, buf_len = buffer.done, len(buffer)
         for n in range(n_step - 1, -1, -1):
             now = (indice + n) % buf_len
             gammas[done[now] > 0] = n
