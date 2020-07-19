@@ -6,9 +6,19 @@ from tianshou.data.batch import Batch, _create_value
 
 class ReplayBuffer:
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from
-    interaction between the policy and environment. It basically stores 7
-    reserved keys (``obs``, ``act``, ``rew``, ``done``, ``obs_next``, ``info``,
-    ``policy``) based on ``numpy.ndarray``. Here is the usage:
+    interaction between the policy and environment. The current implementation
+    of Tianshou typically use 7 reserved keys in :class:`~tianshou.data.Batch`:
+
+    * ``obs`` the observation of step :math:`t` ;
+    * ``act`` the action of step :math:`t` ;
+    * ``rew`` the reward of step :math:`t` ;
+    * ``done`` the done flag of step :math:`t` ;
+    * ``obs_next`` the observation of step :math:`t+1` ;
+    * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()`` \
+    function returns 4 arguments, and the last one is ``info``);
+    * ``policy`` the data computed by policy in step :math:`t`;
+
+    The following code snippet illustrates its usage:
     ::
 
         >>> import numpy as np

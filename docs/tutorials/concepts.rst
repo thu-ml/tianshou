@@ -46,17 +46,7 @@ Tianshou provides :class:`~tianshou.data.Batch` as the internal data structure t
 
 In short, you can define a :class:`~tianshou.data.Batch` with any key-value pair, and perform some common operations over it.
 
-The current implementation of Tianshou typically use 7 reserved keys in :class:`~tianshou.data.Batch`:
-
-* ``obs`` the observation of step :math:`t` ;
-* ``act`` the action of step :math:`t` ;
-* ``rew`` the reward of step :math:`t` ;
-* ``done`` the done flag of step :math:`t` ;
-* ``obs_next`` the observation of step :math:`t+1` ;
-* ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()`` function returns 4 arguments, and the last one is ``info``);
-* ``policy`` the data computed by policy in step :math:`t`;
-
-:ref:`batch_concept` is a dedicated tutorial for ``Batch``. We strongly recommend every user to read it so as to correctly understand and use ``Batch``.
+:ref:`batch_concept` is a dedicated tutorial for :class:`~tianshou.data.Batch`. We strongly recommend every user to read it so as to correctly understand and use :class:`~tianshou.data.Batch`.
 
 Buffer
 ------

@@ -22,11 +22,10 @@ Hierarchical named tensors are needed because we have to deal with the heterogen
 
     state, reward, done = env.step(action)
 
-``reward`` and ``done`` are simple, they are mostly scalar values. However, the ``state`` and ``action``vary with environments. For example, ``state`` can be simply a vector, a tensor, or a camera input combined with sensory input. In the last case, it is natural to store them as hierarchical named tensors. This hierarchy can go beyond ``state`` and ``action``: we can store ``state``, ``action``, ``reward``, and ``done`` together as hierarchical named tensors.
+``reward`` and ``done`` are simple, they are mostly scalar values. However, the ``state`` and ``action`` vary with environments. For example, ``state`` can be simply a vector, a tensor, or a camera input combined with sensory input. In the last case, it is natural to store them as hierarchical named tensors. This hierarchy can go beyond ``state`` and ``action``: we can store ``state``, ``action``, ``reward``, and ``done`` together as hierarchical named tensors.
 
 Note that, storing hierarchical named tensors is as easy as creating nested dictionary objects:
-
-.. code-block:: python
+::
 
     {
         'done': done,
@@ -47,7 +46,7 @@ The real problem is how to **manipulate them**, such as adding new transition tu
 Basic Usages
 ------------
 
-Here we cover basic usages of ``Batch``, describing what ``Batch`` contains, how to construct ``Batch`` objects and how to manipulate them.
+Here we cover some basic usages of ``Batch``, describing what ``Batch`` contains, how to construct ``Batch`` objects and how to manipulate them.
 
 What Does Batch Contain
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -140,6 +139,8 @@ There are two ways to construct a ``Batch`` object: from a ``dict``, or using ``
 Data Manipulation With Batch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` finds the sub-tree with ``key`` as the root node. If the result is a sub-tree with non-empty keys, the key-reference can be chained, i.e. ``b.key.key1.key2.key3``. When it reaches a leaf node, users get the data (scalars/tensors) stored in that ``Batch`` object.
+
 .. raw:: html
 
    <details>
@@ -179,12 +180,11 @@ Data Manipulation With Batch
 
    </details><br>
 
-Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` finds the sub-tree with ``key`` as the root node. If the result is a sub-tree with non-empty keys, the key-reference can be chained, i.e. ``b.key.key1.key2.key3``. When it reaches a leaf node, users get the data (scalars/tensors) stored in that ``Batch`` object.
-
-
 .. note::
 
     If ``data`` is a ``dict`` object, ``for x in data`` iterates over keys in the dict. However, it has a different meaning for ``Batch`` objects: ``for x in data`` iterates over ``data[0], data[1], ..., data[-1]``. An example is given below.
+
+``Batch`` also partially reproduces the NumPy ndarray APIs. It supports advanced slicing, such as ``batch[:, i]`` so long as the slice is valid. Broadcast mechanism of NumPy works for ``Batch``, too.
 
 .. raw:: html
 
@@ -245,7 +245,7 @@ Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` f
 
    </details><br>
 
-``Batch`` also partially reproduces the NumPy ndarray APIs. It supports advanced slicing, such as ``batch[:, i]`` so long as the slice is valid. Broadcast mechanism of NumPy works for ``Batch``, too.
+Stacking and concatenating multiple ``Batch`` instances, or split an instance into multiple batches, they are all easy and intuitive in Tianshou. For now, we stick to the aggregation (stack/concatenate) of homogeneous (same structure) batches. Stack/Concatenation of heterogeneous batches are discussed in :ref:`aggregation`.
 
 .. raw:: html
 
@@ -285,8 +285,6 @@ Users can access the internal data by ``b.key`` or ``b[key]``, where ``b.key`` f
 
    </details><br>
 
-Stacking and concatenating multiple ``Batch`` instances, or split an instance into multiple batches, they are all easy and intuitive in Tianshou. For now, we stick to the aggregation (stack/concatenate) of homogeneous batches (with the same structure). Stack/Concatenation of heterogeneous batches are discussed in :ref:`aggregation`.
-
 Advanced Topics
 ---------------
 
@@ -307,11 +305,11 @@ The usage is easy: just use ``Batch()`` to be the value of reserved keys.
 
 .. code-block:: python
 
-    >>> a = Batch(b=Batch()) # 'b' is a reserved key
-    >>> # this is called hierarchical key reservation
-    >>> a = Batch(b=Batch(c=Batch()), d=Batch()) # 'c' and 'd' are reserved key
-    >>> # the structure of this last Batch is shown below
-    >>> a = Batch(key1=tensor1, key2=tensor2, key3=Batch(key4=Batch(), key5=Batch()))
+    a = Batch(b=Batch()) # 'b' is a reserved key
+    # this is called hierarchical key reservation
+    a = Batch(b=Batch(c=Batch()), d=Batch()) # 'c' and 'd' are reserved key
+    # the structure of this last Batch is shown in the right figure
+    a = Batch(key1=tensor1, key2=tensor2, key3=Batch(key4=Batch(), key5=Batch()))
 
 Still, we can use a tree (in the right) to show the structure of ``Batch`` objects with reserved keys, where reserved keys are special internal nodes that do not have attached leaf nodes.
 
@@ -352,6 +350,10 @@ The ``Batch.is_empty`` function has an option to decide whether to identify dire
 Length and Shape
 ^^^^^^^^^^^^^^^^
 
+The most common usage of ``Batch`` is to store a Batch of data. The term "Batch" comes from the deep learning community to denote a mini-batch of sampled data from the whole dataset. In this regard, "Batch" typically means a collection of tensors whose first dimensions are the same. Then the length of a ``Batch`` object is simply the batch-size.
+
+If all the leaf nodes in a ``Batch`` object are tensors, but they have different lengths, they can be readily stored in ``Batch``. However, for ``Batch`` of this kind, the ``len(obj)`` seems a bit ambiguous. Currently, Tianshou returns the length of the shortest tensor, but we strongly recommend that users do not use the ``len(obj)`` operator on ``Batch`` objects with tensors of different lengths.
+
 .. raw:: html
 
    <details>
@@ -372,10 +374,6 @@ Length and Shape
 .. raw:: html
 
    </details><br>
-
-The most common usage of ``Batch`` is to store a Batch of data. The term "Batch" comes from the deep learning community to denote a mini-batch of sampled data from the whole dataset. In this regard, "Batch" typically means a collection of tensors whose first dimensions are the same. Then the length of a ``Batch`` object is simply the batch-size.
-
-If all the leaf nodes in a ``Batch`` object are tensors, but they have different lengths, they can be readily stored in ``Batch``. However, for ``Batch`` of this kind, the ``len(obj)`` seems a bit ambiguous. Currently, Tianshou returns the length of the shortest tensor, but we strongly recommend that users do not use the ``len(obj)`` operator on ``Batch`` objects with tensors of different lengths.
 
 .. note::
 
@@ -399,12 +397,14 @@ Aggregation of Heterogeneous Batches
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In this section, we talk about aggregation operators (stack/concatenate) on heterogeneous ``Batch`` objects.
+The following picture will give you an intuitive understanding of this behavior. It shows two examples of aggregation operators with heterogeneous ``Batch``. The shapes of tensors are annotated in the leaf nodes.
+
+.. image:: ../_static/images/aggregation.png
 
 We only consider the heterogeneity in the structure of ``Batch`` objects. The aggregation operators are eventually done by NumPy/PyTorch operators (``np.stack``, ``np.concatenate``, ``torch.stack``, ``torch.cat``). Heterogeneity in values can fail these operators (such as stacking ``np.ndarray`` with ``torch.Tensor``, or stacking tensors with different shapes) and an exception will be raised.
 
-First, let's check some examples to have an intuitive understanding of the behavior.
-
-.. code-block:: python
+The behavior is natural: for keys that are not shared across all batches, batches that do not have these keys will be padded by zeros (or ``None`` if the data type is ``np.object``). It can be written in the following scripts:
+::
 
     >>> # examples of stack: a is missing key `b`, and b is missing key `a`
     >>> a = Batch(a=np.zeros([4, 4]), common=Batch(c=np.zeros([4, 5])))
@@ -437,11 +437,8 @@ First, let's check some examples to have an intuitive understanding of the behav
     >>> c.common.c.shape
     (7, 5)
 
-The behavior is natural: for keys that are not shared across all batches, batches that do not have these keys will be padded by zeros (or ``None`` if the data type is ``np.object``).
-
 However, there are some cases when batches are too heterogeneous that they cannot be aggregated:
-
-.. code-block:: python
+::
 
     >>> a = Batch(a=np.zeros([4, 4]))
     >>> b = Batch(a=Batch(b=Batch()))
@@ -458,11 +455,7 @@ For a set of ``Batch`` objects denoted as :math:`S`, they can be aggregated if t
 
     2. Type consistency: If ``bi[k]`` is not ``Batch()`` (the last key in the key chain is not a reserved key), then the type of ``b[k]`` should be the same as ``bi[k]`` (both should be scalar/tensor/non-empty Batch values).
 
-The ``Batch`` object ``b`` satisfying these rules with minimum number of keys determines the structure of aggregating :math:`S`. The values are relatively easy to define: for any key chain ``k`` that applies to ``b``, ``b[k]`` is the stack/concatenation of ``[bi[k] for bi in S]`` (if ``k`` does not apply to ``bi``, the appropriate size of zeros or ``None`` are filled automatically). If ``bi[k]`` are all ``Batch()``, then the aggregation result is also an empty ``Batch()``.
-
-The following picture shows two examples of aggregation operators. The shapes of tensors are annotated in the leaf nodes.
-
-.. image:: ../_static/images/aggregation.png
+The ``Batch`` object ``b`` satisfying these rules with the minimum number of keys determines the structure of aggregating :math:`S`. The values are relatively easy to define: for any key chain ``k`` that applies to ``b``, ``b[k]`` is the stack/concatenation of ``[bi[k] for bi in S]`` (if ``k`` does not apply to ``bi``, the appropriate size of zeros or ``None`` are filled automatically). If ``bi[k]`` are all ``Batch()``, then the aggregation result is also an empty ``Batch()``.
 
 Miscellaneous Notes
 ^^^^^^^^^^^^^^^^^^^
@@ -474,7 +467,7 @@ Miscellaneous Notes
    <details>
    <summary>Batch.to_torch and Batch.to_numpy</summary>
 
-.. code-block:: python
+::
 
     >>> data = Batch(a=np.zeros((3, 4)))
     >>> data.to_torch(dtype=torch.float32, device='cpu')
