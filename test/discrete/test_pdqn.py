@@ -65,7 +65,6 @@ def test_pdqn(args=get_args()):
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
         net, optim, args.gamma, args.n_step,
-        use_target_network=args.target_update_freq > 0,
         target_update_freq=args.target_update_freq)
     # collector
     if args.prioritized_replay > 0:

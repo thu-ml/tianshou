@@ -6,20 +6,23 @@ In this section, we describe how to use Tianshou to implement multi-agent reinfo
 .. image:: ../_static/images/tic-tac-toe.png
     :align: center
 
-The scripts are located at ``test/multiagent/`` directory. We have implemented a Tic-Tac-Toe environment which supports Tic-Tac-Toe of any scale. Let's first explore the environment. The 3x3 Tic-Tac-Toe is too easy, so we will focus on 6x6 Tic-Tac-Toe where 4 same signs in a row are considered to win.
+Tic-Tac-Toe Environment
+-----------------------
 
+The scripts are located at ``test/multiagent/``. We have implemented a Tic-Tac-Toe environment that supports Tic-Tac-Toe of any scale. Let's first explore the environment. The 3x3 Tic-Tac-Toe is too easy, so we will focus on 6x6 Tic-Tac-Toe where 4 same signs in a row are considered to win.
 ::
 
-    >>>from tic_tac_toe_env import TicTacToeEnv
-    >>># the module tic_tac_toe_env is also in test/multiagent/
-    >>>board_size = 6 # the size of board size
-    >>>win_size = 4 # how many signs in a row are considered to win
-    >>>env = TicTacToeEnv(size=board_size, win_size=win_size)
-    >>>obs = env.reset()
-    >>># This board has 6 rows and 6 cols (36 places in total)
-    >>># Players place 'x' and 'o' in turn on the board
-    >>># The player who first gets 4 consecutive 'x's or 'o's wins
-    >>>env.render() # render the empty board
+    >>> from tic_tac_toe_env import TicTacToeEnv    # the module tic_tac_toe_env is in test/multiagent/
+    >>> board_size = 6                              # the size of board size
+    >>> win_size = 4                                # how many signs in a row are considered to win
+    >>> 
+    >>> # This board has 6 rows and 6 cols (36 places in total)
+    >>> # Players place 'x' and 'o' in turn on the board
+    >>> # The player who first gets 4 consecutive 'x's or 'o's wins
+    >>> 
+    >>> env = TicTacToeEnv(size=board_size, win_size=win_size)
+    >>> obs = env.reset()
+    >>> env.render()                                # render the empty board
     board:
     =================
     ===_ _ _ _ _ _===
@@ -29,7 +32,7 @@ The scripts are located at ``test/multiagent/`` directory. We have implemented a
     ===_ _ _ _ _ _===
     ===_ _ _ _ _ _===
     =================
-    >>>print(obs) # let's see the shape of the observation
+    >>> print(obs)                                  # let's see the shape of the observation
     {'agent_id': 1,
      'obs': array([[0, 0, 0, 0, 0, 0],
            [0, 0, 0, 0, 0, 0],
@@ -37,26 +40,24 @@ The scripts are located at ``test/multiagent/`` directory. We have implemented a
            [0, 0, 0, 0, 0, 0],
            [0, 0, 0, 0, 0, 0],
            [0, 0, 0, 0, 0, 0]], dtype=int32),
-     'legal_actions': {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35}}
+     'legal_actions': {0, 1, 2, ..., 34, 35}}
 
 The observation variable ``obs`` returned from the environment is a ``dict``, with three keys ``agent_id``, ``obs``, ``legal_actions``. This is a general structure in multi-agent RL where agents take turns. The meaning of these keys are:
 
-- ``agent_id``: the id of current acting agent. The range is ``1 <= agent_id <= N``, where ``N`` is the number of agents (``N == 2`` in Tic-Tac-Toe). The ``agent_id`` starts from ``1`` because we reserve ``0`` for the environment itself. Sometimes the developer may want to control the behavior the environment, for example, to determine how to dispatch cards in Poker.
+- ``agent_id``: the id of the current acting agent, where agent_id :math:`\in [1, N]`, N is the number of agents. In our Tic-Tac-Toe case, N is 2. The agent_id starts from 1 because we reserve 0 for the environment itself. Sometimes the developer may want to control the behavior of the environment, for example, to determine how to dispatch cards in Poker.
 
-- ``obs``: the actual observation of the environment. In the Tic-Tac-Toe game above, the observation variable ``obs`` is a ``np.ndarray`` with shape of ``(6, 6)``. The values can be ``0, 1, -1``: ``0`` for empty, ``1`` for 'x', ``-1`` for 'o'. Agent 1 places 'x's on the board, while agent 2 places 'o's on the board.
+- ``obs``: the actual observation of the environment. In the Tic-Tac-Toe game above, the observation variable ``obs`` is a ``np.ndarray`` with the shape of (6, 6). The values can be "0/1/-1": 0 for empty, 1 for ``x``, -1 for ``o``. Agent 1 places ``x`` on the board, while agent 2 places ``o`` on the board.
 
-- ``legal_actions``: legal actions in the current timestep. In board games or card games, legal actions vary with time. The ``legal_actions`` variable is a set of action indices, where ``i`` means row ``i / N`` col ``i % N`` is empty and the player can place a 'x' or 'o' at that position. Now the board is empty, so ``legal_actions`` contains all the positions on the board.
+- ``legal_actions``: the legal actions in the current timestep. In board games or card games, legal actions vary with time. The legal_actions is a set of action indices. For Tic-Tac-Toe, index ``i`` means the place of ``i/N`` th row and ``i%N`` th column is empty and the player can place an ``x`` or ``o`` at that position. Now the board is empty, so the legal_actions contains all the positions on the board.
 
 Let's play two steps to have an intuitive understanding of the environment.
 
 ::
 
-    >>>import numpy as np
-    >>>action=np.array(0) # action is an np.ndarray with one element
-    >>># the env.step follows the api of OpenAI Gym
-    >>>obs, reward, done, info = env.step(action)
-    >>># notice the change in the observation
-    >>>print(obs)
+    >>> import numpy as np
+    >>> action = np.array([0])                      # action is an np.ndarray with one element
+    >>> obs, reward, done, info = env.step(action)  # the env.step follows the api of OpenAI Gym
+    >>> print(obs)                                  # notice the change in the observation
     {'agent_id': 2,
      'obs': array([[1, 0, 0, 0, 0, 0],
        [0, 0, 0, 0, 0, 0],
@@ -64,28 +65,25 @@ Let's play two steps to have an intuitive understanding of the environment.
        [0, 0, 0, 0, 0, 0],
        [0, 0, 0, 0, 0, 0],
        [0, 0, 0, 0, 0, 0]], dtype=int32),
-     'legal_actions': {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35}}
-    >>># reward has two items, one for each player. reward is 1 for win, -1 for lose, and 0 otherwise
-    >>>print(reward)
+     'legal_actions': {1, 2, 3, ..., 34, 35}}
+    >>> # reward has two items, one for each player: 1 for win, -1 for lose, and 0 otherwise
+    >>> print(reward)
     [0. 0.]
-    >>># done indicates whether the game is over
-    >>>print(done)
+    >>> print(done)                                 # done indicates whether the game is over
     False
-    >>># info is always an empty dict in Tic-Tac-Toe, but may contain some useful information in environments other than Tic-Tac-Toe.
-    >>>print(info)
+    >>> # info is always an empty dict in Tic-Tac-Toe, but may contain some useful information in environments other than Tic-Tac-Toe.
+    >>> print(info)
     {}
 
-One worth-noting case is that, the game is over when there is only one empty position, rather than when there is no position. This is because the player just has one choice (literally no choice).
-
+One worth-noting case is that the game is over when there is only one empty position, rather than when there is no position. This is because the player just has one choice (literally no choice) in this game.
 ::
 
-    >>># omitted actions: 6, 1, 7, 2, 8
-    >>>action=np.array(3); obs, reward, done, info = env.step(action)
-    >>># player 1 wins
-    >>>print((reward, done))
+    >>> # omitted actions: 6, 1, 7, 2, 8
+    >>> action = np.array([3])
+    >>> obs, reward, done, info = env.step(action)  # player 1 wins
+    >>> print((reward, done))
     (array([ 1., -1.], dtype=float32), array(True))
-    >>># 'X' and 'O' indicate the last action
-    >>>env.render()
+    >>> env.render()                                # 'X' and 'O' indicate the last action
     board:
     =================
     ===x x x X _ _===
@@ -98,20 +96,25 @@ One worth-noting case is that, the game is over when there is only one empty pos
 
 After being familiar with the environment, let's try to play with random agents first!
 
-Tianshou already provides some builtin classes for multi-agent learning. Check the api documentation for details. Here we will use ``RandomMultiAgentPolicy`` and ``MultiAgentPolicyManager``.
+Multi-Agent RL Construction
+---------------------------
+
+Tianshou already provides some builtin classes for multi-agent learning. You can checkout the API documentation for details. Here we will use :class:`~tianshou.policy.RandomMultiAgentPolicy` and :class:`~tianshou.policy.MultiAgentPolicyManager`.
 
 ::
 
-    >>>from tianshou.policy import RandomMultiAgentPolicy, MultiAgentPolicyManager
-    >>># agents should be wrapped into one policy, which is responsible for calling the acting agent correctly
-    >>>policy = MultiAgentPolicyManager([RandomMultiAgentPolicy(), RandomMultiAgentPolicy()])
-    >>># use collectors to collect a episode of trajectories
-    >>>from tianshou.data import Collector
-    >>>collector = Collector(policy, env, reward_metric=lambda x: x[0])
-    >>># set render=0.1 makes the environment render the board every 0.1 second
-    >>># you will see a long trajectory showing the board status at each timestep
-    >>>result = collector.collect(n_episode=1, render=0.1)
-    ... (only show the last three steps)
+    >>> from tianshou.policy import RandomMultiAgentPolicy, MultiAgentPolicyManager
+    >>> from tianshou.data import Collector
+    >>>
+    >>> # agents should be wrapped into one policy, which is responsible for calling the acting agent correctly
+    >>> # here we use two random agents
+    >>> policy = MultiAgentPolicyManager([RandomMultiAgentPolicy(), RandomMultiAgentPolicy()])
+    >>>
+    >>> # use collectors to collect a episode of trajectories
+    >>> collector = Collector(policy, env, reward_metric=lambda x: x[0])
+    >>> # you will see a long trajectory showing the board status at each timestep
+    >>> result = collector.collect(n_episode=1, render=0.1)  # (only show the last three steps)
+    ...
     board:
     =================
     ===_ _ x o _ _===
@@ -139,20 +142,19 @@ Tianshou already provides some builtin classes for multi-agent learning. Check t
     ===_ o o _ _ x===
     ===O _ o _ _ x===
     =================
-    >>>collector.close()
+    >>> collector.close()
 
-Random agents perform badly. In the above game, although agent 2 wins at last, it is clear that a smart agent 1 would place a 'x' at row 2 col 5 to win directly. So, let's start to learn our own Tic-Tac-Toe agent!
+Random agents perform badly. In the above game, although agent 2 wins at last, it is clear that a smart agent 1 would place an ``x`` at row 2 col 5 to win directly. So, let's start to train our Tic-Tac-Toe agent!
 
 First, import some required modules.
-
 ::
 
     import os
-    from torch.utils.tensorboard import SummaryWriter
     import torch
     import argparse
     import numpy as np
     from copy import deepcopy
+    from torch.utils.tensorboard import SummaryWriter
 
     from tianshou.env import VectorEnv
     from tianshou.policy import (MultiAgentDQNPolicy,
@@ -162,17 +164,15 @@ First, import some required modules.
     from tianshou.utils.net.common import Net
     from tianshou.data import Collector, ReplayBuffer
     from tianshou.trainer import offpolicy_trainer
-    from typing import Optional, Tuple
 
     from tic_tac_toe_env import TicTacToeEnv
 
 The explanation of each Tianshou class/function will be deferred to their first usages.
 
-Here we define some arguments of the experiment. Just in case you are not familiar with type annotation, '->' indicates the type of return value. The meaning of arguments is clear by just looking at their names.
-
+Here we define some arguments and hyperparameters of the experiment. The meaning of arguments is clear by just looking at their names.
 ::
 
-    def get_args() -> argparse.Namespace:
+    def get_args():
         parser = argparse.ArgumentParser()
         parser.add_argument('--seed', type=int, default=1626)
         parser.add_argument('--eps-test', type=float, default=0.05)
@@ -212,30 +212,25 @@ Here we define some arguments of the experiment. Just in case you are not famili
         args = parser.parse_known_args()[0]
         return args
 
-The following ``get_agents`` function returns agents and their optimizers from either constructing a new policy, or loading from disk, or using the passed in arguments. The action model we use is an instance of ``tianshou.utils.net.common.Net``, essentially a multi-layer perceptron with ReLU activation function. The network model is passed to a ``MultiAgentDQNPolicy``, the multi-agent version of DQN (actions are selected according to legal actions and their q-values). For the opponent, it can be either a random agent (``RandomMultiAgentPolicy``) that randomly chooses an action from legal actions, or it can be a pre-trained ``MultiAgentDQNPolicy`` to allow learned agents play with themselves. Both agents are passed to ``MultiAgentPolicyManager``, which is responsible to call the correct agent according to the ``agent_id`` in the observation. ``MultiAgentPolicyManager`` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
-
+The following ``get_agents`` function returns agents and their optimizers from either constructing a new policy, or loading from disk, or using the pass-in arguments. The action model we use is an instance of :class:`~tianshou.utils.net.common.Net`, essentially a multi-layer perceptron with the ReLU activation function. The network model is passed to a :class:`~tianshou.policy.MultiAgentDQNPolicy`, the multi-agent version of DQN (actions are selected according to legal actions and their Q-values). For the opponent, it can be either a random agent :class:`~tianshou.policy.RandomMultiAgentPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.MultiAgentDQNPolicy` to allow learned agents play with themselves. Both agents are passed to :class:`~tianshou.policy.MultiAgentPolicyManager`, which is responsible to call the correct agent according to the ``agent_id`` in the observation. :class:`~tianshou.policy.MultiAgentPolicyManager` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
 ::
 
-    def get_agents(args: argparse.Namespace = get_args(),
-                   agent_learn: Optional[BaseMultiAgentPolicy] = None,
-                   agent_opponent: Optional[BaseMultiAgentPolicy] = None,
-                   optim: Optional[torch.optim.Optimizer] = None,)\
-            -> Tuple[BaseMultiAgentPolicy, torch.optim.Optimizer]:
-        def env_func():
-            return TicTacToeEnv(args.board_size, args.win_size)
+    def get_agents(args=get_args(),
+                   agent_learn=None,     # BaseMultiAgentPolicy
+                   agent_opponent=None,  # BaseMultiAgentPolicy
+                   optim=None,           # torch.optim.Optimizer
+                   ):  # return a tuple of (BaseMultiAgentPolicy, torch.optim.Optimizer)
+        env_func = lambda: TicTacToeEnv(args.board_size, args.win_size)
         env = env_func()
         args.state_shape = env.observation_space.shape or env.observation_space.n
         args.action_shape = env.action_space.shape or env.action_space.n
         if agent_learn is None:
             # model
-            net = Net(
-                args.layer_num, args.state_shape, args.action_shape, args.device)
-            net = net.to(args.device)
+            net = Net(args.layer_num, args.state_shape, args.action_shape, args.device).to(args.device)
             if optim is None:
                 optim = torch.optim.Adam(net.parameters(), lr=args.lr)
             agent_learn = MultiAgentDQNPolicy(
                 net, optim, args.gamma, args.n_step,
-                use_target_network=args.target_update_freq > 0,
                 target_update_freq=args.target_update_freq)
             if args.resume_path:
                 agent_learn.load_state_dict(torch.load(args.resume_path))
@@ -254,7 +249,7 @@ The following ``get_agents`` function returns agents and their optimizers from e
         policy = MultiAgentPolicyManager(agents)
         return policy, optim
 
-With the above preparation, we are actually close to get the first learned agent. The following code is almost the same as the code of DQN tutorial.
+With the above preparation, we are close to get the first learned agent. The following code is almost the same as the code of the DQN tutorial.
 
 ::
 
@@ -345,7 +340,7 @@ With the above preparation, we are actually close to get the first learned agent
     # let's watch the match!
     watch(args, agent)
 
-That's it. By executing the code, you will see a progress bar indicating the progress of training. After about three minutes, the agent has finished training, and you can see how it plays against the random agent. Here is the example:
+That's it. By executing the code, you will see a progress bar indicating the progress of training. After about three minutes, the agent has finished training, and you can see how it plays against the random agent. Here is an example:
 
 ::
 
@@ -423,9 +418,9 @@ That's it. By executing the code, you will see a progress bar indicating the pro
     =================
     Final reward: 1.0, length: 8.0
 
-Notice that, our learned agent plays the role of agent 2, placing 'o's on the board. The agent performs pretty well against the random opponent! It learns the rule of the game by trial and error, and learns that four consecutive 'o's means winning, so it does!
+Notice that, our learned agent plays the role of agent 2, placing ``o`` on the board. The agent performs pretty well against the random opponent! It learns the rule of the game by trial and error, and learns that four consecutive ``o`` means winning, so it does!
 
-The above code can be excecuted in python shell, or can be saved as a script file (we have saved it in ``test/multiagent/test_tic_tac_toe.py``). In the latter case, you can train an agent by
+The above code can be executed in a python shell or can be saved as a script file (we have saved it in ``test/multiagent/test_tic_tac_toe.py``). In the latter case, you can train an agent by
 
 .. code-block:: console
 

@@ -83,7 +83,6 @@ def get_agents(args: argparse.Namespace = get_args(),
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
         agent_learn = MultiAgentDQNPolicy(
             net, optim, args.gamma, args.n_step,
-            use_target_network=args.target_update_freq > 0,
             target_update_freq=args.target_update_freq)
         if args.resume_path:
             agent_learn.load_state_dict(torch.load(args.resume_path))
