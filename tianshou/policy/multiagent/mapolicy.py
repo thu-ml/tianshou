@@ -90,7 +90,8 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
                 tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
             out = policy(
                 batch=tmp_batch,
-                state=state and state["agent_" + str(policy.agent_id)],
+                state=state if state is None
+                else state["agent_" + str(policy.agent_id)],
                 **kwargs)
             act = out.act
             each_state = out.state \
