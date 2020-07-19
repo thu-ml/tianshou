@@ -18,6 +18,10 @@ class BaseMultiAgentPolicy(BasePolicy, ABC):
 
 
 class RandomMultiAgentPolicy(BaseMultiAgentPolicy):
+    """
+    A random agent used in multi-agent learning.
+    It randomly chooses an action from the legal action set.
+    """
     def forward(self,
                 batch: Batch,
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
@@ -55,20 +59,24 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
         :param state: if None, it means all agents have no state.
             If not None, it should contain keys of agent_1, agent_2, ...
 
-        :return a Batch with the following contents
-        {
-        "act": actions corresponding to the input
-        "state":{
-            "agent_1": output state of agent_1's policy for the state
-            "agent_2": xxx
-            ...
-            "agent_n": xxx}
-        "out":{
-            "agent_1": output of agent_1's policy for the input
-            "agent_2": xxx
-            ...
-            "agent_n": xxx}
-        }
+        :return: a Batch with the following contents
+
+        ::
+
+            {
+            "act": actions corresponding to the input
+            "state":{
+                "agent_1": output state of agent_1's policy for the state
+                "agent_2": xxx
+                ...
+                "agent_n": xxx}
+            "out":{
+                "agent_1": output of agent_1's policy for the input
+                "agent_2": xxx
+                ...
+                "agent_n": xxx}
+            }
+
         """
         results = []
         for policy in self.policies:
@@ -115,6 +123,19 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
 
     def learn(self, batch: Batch, **kwargs)\
             -> Dict[str, Union[float, List[float]]]:
+        """
+        :return: a dict with the following contents
+
+        ::
+
+            {
+                "agent_1/item1": item 1 of agent_1's policy output for learn
+                "agent_1/item2": item 2 of agent_1's policy output for learn
+                "agent_2/xxx": xxx
+                ...
+                "agent_n/xxx": xxx
+            }
+        """
         results = {}
         for policy in self.policies:
             agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]

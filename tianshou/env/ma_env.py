@@ -6,8 +6,8 @@ from typing import Tuple, Optional
 
 class MultiAgentEnv(ABC, gym.Env):
     """The interface for multi-agent environments.
-    Multi-agent environments must be wrapped as :class:`~tianshou.env.MAEnv`.
-    Here are some usages:
+    Multi-agent environments must be wrapped as
+    :class:`~tianshou.env.MultiAgentEnv`. Here are some usages:
     ::
 
         env = MultiAgentEnv(...)
