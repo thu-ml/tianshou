@@ -18,9 +18,8 @@ class BaseMultiAgentPolicy(BasePolicy, ABC):
 
 
 class RandomMultiAgentPolicy(BaseMultiAgentPolicy):
-    """
-    A random agent used in multi-agent learning.
-    It randomly chooses an action from the legal action set.
+    """A random agent used in multi-agent learning. It randomly chooses an
+    action from the legal action set.
     """
     def forward(self,
                 batch: Batch,

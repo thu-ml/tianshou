@@ -8,26 +8,24 @@ from tianshou.env import MultiAgentEnv
 
 
 class TicTacToeEnv(MultiAgentEnv):
-    """
-    This is a simple implementation of the Tic-Tac-Toe game, where
-    two agents play against each other.
+    """This is a simple implementation of the Tic-Tac-Toe game, where two
+    agents play against each other.
 
-    The implementation is intended to show how to wrap an environment
-    to satisfy the interface of :class:`~tianshou.env.MultiAgentEnv`.
+    The implementation is intended to show how to wrap an environment to
+    satisfy the interface of :class:`~tianshou.env.MultiAgentEnv`.
+
+    :param size: the size of the board (square board)
+    :param win_size: how many units in a row is considered to win
     """
+
     def __init__(self, size: int = 3, win_size: int = 3):
-        """
-        :param size: the size of the board (square board)
-        :param win_size: how many units in a row is considered to win
-        """
         super().__init__(None)
         assert size > 0, f'board size should be positive, but got {size}'
         self.size = size
-        assert win_size > 0, f'win-size should be positive, ' \
-                             f'but got {win_size}'
+        assert win_size > 0, f'win-size should be positive, but got {win_size}'
         self.win_size = win_size
-        assert win_size <= size, f'win-size {win_size} should not' \
-                                 f' be larger than board size {size}'
+        assert win_size <= size, f'win-size {win_size} should not ' \
+            f'be larger than board size {size}'
         self.kernels = TicTacToeEnv._construct_kernels(win_size)
         self.observation_space = gym.spaces.Box(
             low=-1.0, high=1.0, shape=(size, size), dtype=np.float32)
@@ -94,9 +92,7 @@ class TicTacToeEnv(MultiAgentEnv):
         self._last_move = (row, col)
 
     def _test_win(self):
-        """
-        test if some wins
-        """
+        """test if some wins"""
         results = [convolve2d(self.current_board, k, mode='valid')
                    for k in self.kernels]
         return any([(np.abs(x) == self.win_size).any() for x in results])

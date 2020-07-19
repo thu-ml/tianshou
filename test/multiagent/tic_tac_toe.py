@@ -164,11 +164,10 @@ def train_agent(args: argparse.Namespace = get_args(),
     return result, policy.policies[args.agent_id - 1]
 
 
-def watch(
-        args: argparse.Namespace = get_args(),
-        agent_learn: Optional[BaseMultiAgentPolicy] = None,
-        agent_opponent: Optional[BaseMultiAgentPolicy] = None,
-) -> None:
+def watch(args: argparse.Namespace = get_args(),
+          agent_learn: Optional[BaseMultiAgentPolicy] = None,
+          agent_opponent: Optional[BaseMultiAgentPolicy] = None,
+          ) -> None:
     env = TicTacToeEnv(args.board_size, args.win_size)
     policy, optim = get_agents(
         args, agent_learn=agent_learn, agent_opponent=agent_opponent)
