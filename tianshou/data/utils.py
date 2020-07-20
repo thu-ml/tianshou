@@ -3,7 +3,7 @@ import numpy as np
 from numbers import Number
 from typing import Any, Union, Optional
 
-from tianshou.data.batch import _to_array_with_correct_type, Batch
+from tianshou.data.batch import _parse_value, Batch
 
 
 def to_numpy(x: Union[
@@ -18,8 +18,8 @@ def to_numpy(x: Union[
     elif isinstance(x, Batch):
         x.to_numpy()
     elif isinstance(x, (list, tuple)):
-        x = _to_array_with_correct_type(x)
-        if x.dtype == np.object:
+        x = _parse_value(x)
+        if isinstance(x, (list, tuple)) or x.dtype == np.object:
             x = [to_numpy(e) for e in x]
         else:
             x = to_numpy(x)
@@ -45,11 +45,8 @@ def to_torch(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
     elif isinstance(x, (np.number, np.bool_, Number)):
         x = to_torch(np.asanyarray(x), dtype, device)
     elif isinstance(x, (list, tuple)):
-        try:
-            x = _to_array_with_correct_type(x)
-        except ValueError:
-            pass
-        if x.dtype == np.object:
+        x = _parse_value(x)
+        if isinstance(x, (list, tuple)) or x.dtype == np.object:
             x = [to_torch(e, dtype, device) for e in x]
         else:
             x = to_torch(x, dtype, device)

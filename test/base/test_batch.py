@@ -333,10 +333,14 @@ def test_utils_to_torch():
     data_list_3_torch = to_torch(data_list_3)
     assert isinstance(data_list_3_torch, list)
     assert isinstance(data_list_3_torch[0], torch.Tensor)
-    data_list_4 = [np.zeros(2), np.zeros((3, 3))]
+    data_list_4 = [np.zeros((2, 3)), np.zeros((3, 3))]
     data_list_4_torch = to_torch(data_list_4)
     assert isinstance(data_list_4_torch, list)
     assert isinstance(data_list_4_torch[0], torch.Tensor)
+    data_list_5 = [np.zeros(2), np.zeros((3, 3))]
+    data_list_5_torch = to_torch(data_list_5)
+    assert isinstance(data_list_5_torch, list)
+    assert isinstance(data_list_5_torch[0], torch.Tensor)
     data_array = np.zeros((3, 2, 2))
     data_tensor = to_torch(data_array[[]])
     assert isinstance(data_tensor, torch.Tensor)

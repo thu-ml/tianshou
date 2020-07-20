@@ -115,15 +115,17 @@ def _parse_value(v: Any):
     if isinstance(v, (list, tuple, np.ndarray)):
         if not isinstance(v, np.ndarray) and \
                 all(isinstance(e, torch.Tensor) for e in v):
-            v = torch.stack(v)
-            return v
-        v_ = _to_array_with_correct_type(v)
-        if v_.dtype == np.object and _is_batch_set(v):
-            v = Batch(v)  # list of dict / Batch
-        else:
-            # normal data list (main case)
-            # or actually a data list with objects
-            v = v_
+            return torch.stack(v)
+        try:
+            v_ = _to_array_with_correct_type(v)
+            if v_.dtype == np.object and _is_batch_set(v):
+                v = Batch(v)  # list of dict / Batch
+            else:
+                # normal data list (main case)
+                # or actually a data list with objects
+                v = v_
+        except ValueError:
+            v = [_to_array_with_correct_type(e) for e in v]
     elif isinstance(v, dict):
         v = Batch(v)
     elif isinstance(v, (Batch, torch.Tensor)):
