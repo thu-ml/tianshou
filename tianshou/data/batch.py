@@ -125,7 +125,10 @@ def _parse_value(v: Any):
                 # or actually a data list with objects
                 v = v_
         except ValueError:
-            v = [_to_array_with_correct_type(e) for e in v]
+            v_ = np.empty(len(v), dtype=np.object)
+            for i, e in enumerate(v):
+                v_[i] = _to_array_with_correct_type(e)
+            v = v_
     elif isinstance(v, dict):
         v = Batch(v)
     elif isinstance(v, (Batch, torch.Tensor)):

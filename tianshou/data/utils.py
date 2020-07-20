@@ -19,7 +19,7 @@ def to_numpy(x: Union[
         x.to_numpy()
     elif isinstance(x, (list, tuple)):
         x = _parse_value(x)
-        if isinstance(x, (list, tuple)) or x.dtype == np.object:
+        if x.dtype == np.object:
             x = [to_numpy(e) for e in x]
         else:
             x = to_numpy(x)
@@ -46,7 +46,7 @@ def to_torch(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
         x = to_torch(np.asanyarray(x), dtype, device)
     elif isinstance(x, (list, tuple)):
         x = _parse_value(x)
-        if isinstance(x, (list, tuple)) or x.dtype == np.object:
+        if x.dtype == np.object:
             x = [to_torch(e, dtype, device) for e in x]
         else:
             x = to_torch(x, dtype, device)
