@@ -10,13 +10,12 @@ class RandomMultiAgentPolicy(BasePolicy):
     action from the legal action.
     """
 
-    def forward(self,
-                batch: Batch,
+    def forward(self, batch: Batch,
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
                 **kwargs) -> Batch:
         mask = batch.obs.mask
         logits = np.random.rand(*mask.shape)
-        logits[np.isclose(mask, 0)] = 0
+        logits[np.isclose(mask, 0)] = -np.inf
         return Batch(act=logits.argmax(axis=-1))
 
     def learn(self, batch: Batch, **kwargs
@@ -29,7 +28,7 @@ class MultiAgentPolicyManager(BasePolicy):
     :class:`~tianshou.policy.BasePolicy`. It dispatches the batch data to each
     of these policies when the "forward" is called. The same as "process_fn"
     and "learn": it splits the data and feeds them to each policy. A figure in
-    :ref:`marl_example` can help you better understand this.
+    :ref:`marl_example` can help you better understand this procedure.
     """
 
     def __init__(self, policies: List[BasePolicy]):
@@ -51,7 +50,7 @@ class MultiAgentPolicyManager(BasePolicy):
         :param state: if None, it means all agents have no state.
             If not None, it should contain keys of agent_1, agent_2, ...
 
-        :return: a Batch with the following contents
+        :return: a Batch with the following contents:
         ::
 
             {
@@ -111,7 +110,7 @@ class MultiAgentPolicyManager(BasePolicy):
     def learn(self, batch: Batch, **kwargs
               ) -> Dict[str, Union[float, List[float]]]:
         """
-        :return: a dict with the following contents
+        :return: a dict with the following contents:
         ::
 
             {

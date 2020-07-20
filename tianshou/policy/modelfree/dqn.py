@@ -101,7 +101,7 @@ class DQNPolicy(BasePolicy):
                 eps: Optional[float] = None,
                 **kwargs) -> Batch:
         """Compute action over the given batch data. If you need to mask the
-        action, please add a "mask" into batch.obs, for example, if ww have an
+        action, please add a "mask" into batch.obs, for example, if we have an
         environment that has "0/1/2" three actions:
         ::
 
@@ -110,7 +110,7 @@ class DQNPolicy(BasePolicy):
                     obs="original obs, with batch_size=1 for demonstration",
                     mask=np.array([[0, 1, 0]]),
                     # action 1 is available
-                    # action 0 and 2 is unavailable
+                    # action 0 and 2 are unavailable
                 ),
                 ...
             )
@@ -130,11 +130,12 @@ class DQNPolicy(BasePolicy):
         """
         model = getattr(self, model)
         obs = getattr(batch, input)
-        obs_ = obs.obs if hasattr(obs, 'mask') else obs
+        obs_ = obs.obs if hasattr(obs, 'obs') else obs
         q, h = model(obs_, state=state, info=batch.info)
         act = to_numpy(q.max(dim=1)[1])
-        if hasattr(obs, 'mask'):
-            # some of actions are masked, they cannot be chose
+        has_mask = hasattr(obs, 'mask')
+        if has_mask:
+            # some of actions are masked, they cannot be selected
             q_ = to_numpy(q)
             q_[np.isclose(obs.mask, 0)] = -np.inf
             act = q_.argmax(axis=1)
@@ -145,7 +146,7 @@ class DQNPolicy(BasePolicy):
             for i in range(len(q)):
                 if np.random.rand() < eps:
                     q_ = np.random.rand(*q[i].shape)
-                    if hasattr(obs, 'mask'):
+                    if has_mask:
                         q_[np.isclose(obs.mask[i], 0)] = -np.inf
                     act[i] = q_.argmax()
         return Batch(logits=q, act=act, state=h)
