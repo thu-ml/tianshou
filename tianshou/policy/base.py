@@ -53,6 +53,11 @@ class BasePolicy(ABC, nn.Module):
         super().__init__()
         self.observation_space = kwargs.get('observation_space')
         self.action_space = kwargs.get('action_space')
+        self.agent_id = 0
+
+    def set_agent_id(self, agent_id: int) -> None:
+        """set self.agent_id, for MARL."""
+        self.agent_id = agent_id
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:

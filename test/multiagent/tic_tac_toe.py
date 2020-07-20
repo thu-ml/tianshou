@@ -6,10 +6,8 @@ import numpy as np
 from copy import deepcopy
 
 from tianshou.env import VectorEnv
-from tianshou.policy import (MultiAgentDQNPolicy,
-                             MultiAgentPolicyManager,
-                             RandomMultiAgentPolicy,
-                             BaseMultiAgentPolicy)
+from tianshou.policy import BasePolicy, DQNPolicy, \
+    RandomMultiAgentPolicy, MultiAgentPolicyManager
 from tianshou.utils.net.common import Net
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.trainer import offpolicy_trainer
@@ -67,10 +65,10 @@ def get_args() -> argparse.Namespace:
 
 
 def get_agents(args: argparse.Namespace = get_args(),
-               agent_learn: Optional[BaseMultiAgentPolicy] = None,
-               agent_opponent: Optional[BaseMultiAgentPolicy] = None,
+               agent_learn: Optional[BasePolicy] = None,
+               agent_opponent: Optional[BasePolicy] = None,
                optim: Optional[torch.optim.Optimizer] = None,
-               ) -> Tuple[BaseMultiAgentPolicy, torch.optim.Optimizer]:
+               ) -> Tuple[BasePolicy, torch.optim.Optimizer]:
     env = TicTacToeEnv(args.board_size, args.win_size)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -80,7 +78,7 @@ def get_agents(args: argparse.Namespace = get_args(),
                   args.device).to(args.device)
         if optim is None:
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-        agent_learn = MultiAgentDQNPolicy(
+        agent_learn = DQNPolicy(
             net, optim, args.gamma, args.n_step,
             target_update_freq=args.target_update_freq)
         if args.resume_path:
@@ -102,10 +100,10 @@ def get_agents(args: argparse.Namespace = get_args(),
 
 
 def train_agent(args: argparse.Namespace = get_args(),
-                agent_learn: Optional[BaseMultiAgentPolicy] = None,
-                agent_opponent: Optional[BaseMultiAgentPolicy] = None,
+                agent_learn: Optional[BasePolicy] = None,
+                agent_opponent: Optional[BasePolicy] = None,
                 optim: Optional[torch.optim.Optimizer] = None,
-                ) -> Tuple[dict, BaseMultiAgentPolicy]:
+                ) -> Tuple[dict, BasePolicy]:
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
     train_envs = VectorEnv([env_func for _ in range(args.training_num)])
@@ -168,8 +166,8 @@ def train_agent(args: argparse.Namespace = get_args(),
 
 
 def watch(args: argparse.Namespace = get_args(),
-          agent_learn: Optional[BaseMultiAgentPolicy] = None,
-          agent_opponent: Optional[BaseMultiAgentPolicy] = None,
+          agent_learn: Optional[BasePolicy] = None,
+          agent_opponent: Optional[BasePolicy] = None,
           ) -> None:
     env = TicTacToeEnv(args.board_size, args.win_size)
     policy, optim = get_agents(

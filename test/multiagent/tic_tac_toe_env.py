@@ -42,7 +42,7 @@ class TicTacToeEnv(MultiAgentEnv):
         return {
             'agent_id': self.current_agent,
             'obs': np.array(self.current_board),
-            'legal_actions': set(i for i in range(self.size * self.size))
+            'legal_actions': self.current_board.flatten() == 0
         }
 
     def step(self, action: np.ndarray
@@ -55,15 +55,14 @@ class TicTacToeEnv(MultiAgentEnv):
         assert self.current_board.item(action) == 0
         _current_agent = self.current_agent
         self._move(action)
-        legal_actions = {i for i, b in enumerate(
-            self.current_board.flatten()) if b == 0}
+        legal_actions = self.current_board.flatten() == 0
         is_win, is_opponent_win = False, False
         is_win = self._test_win()
         # the game is over when one wins or there is only one empty place
         done = is_win
-        if len(legal_actions) == 1:
+        if sum(legal_actions) == 1:
             done = True
-            self._move(list(legal_actions)[0])
+            self._move(np.where(legal_actions)[0][0])
             is_opponent_win = self._test_win()
         if is_win:
             reward = 1

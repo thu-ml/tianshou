@@ -7,45 +7,34 @@ from tianshou.policy import BasePolicy
 from tianshou.data import Batch, to_numpy, ReplayBuffer
 
 
-class BaseMultiAgentPolicy(BasePolicy, ABC):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.agent_id = 0
-
-    def set_agent_id(self, agent_id: int) -> None:
-        self.agent_id = agent_id
-
-
-class RandomMultiAgentPolicy(BaseMultiAgentPolicy):
+class RandomMultiAgentPolicy(BasePolicy):
     """A random agent used in multi-agent learning. It randomly chooses an
-    action from the legal action set.
+    action from the legal action.
     """
 
     def forward(self,
                 batch: Batch,
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
                 **kwargs) -> Batch:
-        actions = []
-        for legal_actions in batch.obs.legal_actions:
-            legal_actions = list(legal_actions)
-            actions.append(random.choice(legal_actions))
-        act = to_numpy(actions)
-        return Batch(act=act)
+        mask = batch.obs.legal_actions
+        logits = np.random.rand(*mask.shape)
+        logits[np.isclose(mask, 0)] = 0
+        return Batch(act=logits.argmax(axis=-1))
 
     def learn(self, batch: Batch, **kwargs
               ) -> Dict[str, Union[float, List[float]]]:
         return {}
 
 
-class MultiAgentPolicyManager(BaseMultiAgentPolicy):
+class MultiAgentPolicyManager(BasePolicy):
     """The policy manager accepts a list of
-    :class:`~tianshou.policy.BaseMultiAgentPolicy`. It dispatches the batch
-    data to each of these policies when the "forward" is called. The same as
-    "process_fn" and "learn": it splits the data and feeds them to each policy.
-    A figure in :ref:`marl_example` can help you better understand this.
+    :class:`~tianshou.policy.BasePolicy`. It dispatches the batch data to each
+    of these policies when the "forward" is called. The same as "process_fn"
+    and "learn": it splits the data and feeds them to each policy. A figure in
+    :ref:`marl_example` can help you better understand this.
     """
 
-    def __init__(self, policies: List[BaseMultiAgentPolicy]):
+    def __init__(self, policies: List[BasePolicy]):
         super().__init__()
         self.policies = policies
         for i, policy in enumerate(policies):
