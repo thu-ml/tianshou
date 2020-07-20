@@ -347,10 +347,13 @@ def test_utils_to_torch_numpy():
     data_list_5_torch = to_torch(data_list_5)
     assert isinstance(data_list_5_torch, list)
     assert all(isinstance(e, torch.Tensor) for e in data_list_5_torch)
-    data_array = np.zeros((3, 2, 2))
-    data_tensor = to_torch(data_array[[]])
-    assert isinstance(data_tensor, torch.Tensor)
-    assert data_tensor.shape == (0, 2, 2)
+    data_array = np.random.rand(3, 2, 2)
+    data_empty_tensor = to_torch(data_array[[]])
+    assert isinstance(data_empty_tensor, torch.Tensor)
+    assert data_empty_tensor.shape == (0, 2, 2)
+    data_empty_array = to_numpy(data_empty_tensor)
+    assert isinstance(data_empty_array, np.ndarray)
+    assert data_empty_array.shape == (0, 2, 2)
     assert np.allclose(to_numpy(to_torch(data_array)), data_array)
 
 
