@@ -1,7 +1,6 @@
 import random
-from abc import ABC
-
 import numpy as np
+from abc import ABC
 from typing import Union, Optional, Dict, List
 
 from tianshou.policy import BasePolicy
@@ -21,6 +20,7 @@ class RandomMultiAgentPolicy(BaseMultiAgentPolicy):
     """A random agent used in multi-agent learning. It randomly chooses an
     action from the legal action set.
     """
+
     def forward(self,
                 batch: Batch,
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
@@ -32,8 +32,8 @@ class RandomMultiAgentPolicy(BaseMultiAgentPolicy):
         act = to_numpy(actions)
         return Batch(act=act)
 
-    def learn(self, batch: Batch, **kwargs)\
-            -> Dict[str, Union[float, List[float]]]:
+    def learn(self, batch: Batch, **kwargs
+              ) -> Dict[str, Union[float, List[float]]]:
         return {}
 
 
@@ -50,8 +50,7 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
         self.policies[agent_id - 1] = policy
         policy.set_agent_id(agent_id)
 
-    def forward(self,
-                batch: Batch,
+    def forward(self, batch: Batch,
                 state: Optional[Union[dict, Batch]] = None,
                 **kwargs) -> Batch:
         """
@@ -59,21 +58,20 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
             If not None, it should contain keys of agent_1, agent_2, ...
 
         :return: a Batch with the following contents
-
         ::
 
             {
-            "act": actions corresponding to the input
-            "state":{
-                "agent_1": output state of agent_1's policy for the state
-                "agent_2": xxx
-                ...
-                "agent_n": xxx}
-            "out":{
-                "agent_1": output of agent_1's policy for the input
-                "agent_2": xxx
-                ...
-                "agent_n": xxx}
+                "act": actions corresponding to the input
+                "state":{
+                    "agent_1": output state of agent_1's policy for the state
+                    "agent_2": xxx
+                    ...
+                    "agent_n": xxx}
+                "out":{
+                    "agent_1": output of agent_1's policy for the input
+                    "agent_2": xxx
+                    ...
+                    "agent_n": xxx}
             }
 
         """
@@ -81,7 +79,7 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
         for policy in self.policies:
             # This part of code is difficult to understand.
             # Let's follow an example with two agents
-            # batch.obs.agent_id is [1, 2, 1, 2, 1, 2]
+            # batch.obs.agent_id is [1, 2, 1, 2, 1, 2] (batch_size == 6)
             # each agent plays for three transitions
             # agent_index for agent 1 is [0, 2, 4]
             # agent_index for agent 2 is [1, 3, 5]
@@ -95,11 +93,9 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
             if isinstance(tmp_batch.rew, np.ndarray):
                 # reward can be empty Batch (after initial reset) or nparray.
                 tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
-            out = policy(
-                batch=tmp_batch,
-                state=state if state is None
-                else state["agent_" + str(policy.agent_id)],
-                **kwargs)
+            out = policy(batch=tmp_batch, state=None if state is None
+                         else state["agent_" + str(policy.agent_id)],
+                         **kwargs)
             act = out.act
             each_state = out.state \
                 if (hasattr(out, 'state') and out.state is not None) \
@@ -108,8 +104,7 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
         holder = Batch.cat([{'act': act} for
                             (has_data, agent_index, out, act, each_state)
                             in results if has_data])
-        state_dict = {}
-        out_dict = {}
+        state_dict, out_dict = {}, {}
         for policy, (has_data, agent_index, out, act, state) in \
                 zip(self.policies, results):
             if has_data:
@@ -120,11 +115,10 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
         holder["state"] = state_dict
         return holder
 
-    def learn(self, batch: Batch, **kwargs)\
-            -> Dict[str, Union[float, List[float]]]:
+    def learn(self, batch: Batch, **kwargs
+              ) -> Dict[str, Union[float, List[float]]]:
         """
         :return: a dict with the following contents
-
         ::
 
             {
@@ -138,9 +132,10 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
         results = {}
         for policy in self.policies:
             agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
-            out = policy.learn(batch=batch[agent_index], **kwargs)
-            for k, v in out.items():
-                results["agent_" + str(policy.agent_id) + '/' + k] = v
+            if len(agent_index) != 0:
+                out = policy.learn(batch=batch[agent_index], **kwargs)
+                for k, v in out.items():
+                    results["agent_" + str(policy.agent_id) + '/' + k] = v
         return results
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
@@ -150,28 +145,24 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
         # set rew to the reward of each agent during their ``process_fn``,
         # and restore the original reward afterwards
         has_rew = isinstance(buffer.rew, np.ndarray)
-        if has_rew:
-            buffer.save_rew = buffer.rew
-            buffer.rew = Batch()
+        if has_rew:  # save the original reward to save_rew
+            save_rew, buffer.rew = buffer.rew, Batch()
         for policy in self.policies:
             agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
             if len(agent_index) == 0:
                 # has_data, data, agent_index
                 results.append([False, None, None])
                 continue
-            tmp_batch = batch[agent_index]
-            tmp_indice = indice[agent_index]
+            tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
             if isinstance(tmp_batch.rew, np.ndarray):
                 # reward can be empty Batch (after initial reset) or nparray.
                 tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
             if has_rew:
-                buffer.rew = buffer.save_rew[:, policy.agent_id - 1]
+                buffer.rew = save_rew[:, policy.agent_id - 1]
             output = policy.process_fn(tmp_batch, buffer, tmp_indice)
-            if has_rew:
-                buffer.rew = Batch()
             results.append([True, output, agent_index])
-        if has_rew:
-            buffer.rew = buffer.save_rew
+        if has_rew:  # restore from save_rew
+            buffer.rew = save_rew
         # incompatible keys will be padded with zeros
         # e.g. agent 1 batch has ``returns`` but agent 2 does not
         holder = Batch.cat(
