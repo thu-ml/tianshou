@@ -103,8 +103,8 @@ def test_update():
     buf1 = ReplayBuffer(4, stack_num=2)
     buf2 = ReplayBuffer(4, stack_num=2)
     for i in range(5):
-        buf1.add(obs=np.array([i]), act=float(i), rew=i *
-                 i, done=False, info={'incident': 'found'})
+        buf1.add(obs=np.array([i]), act=float(i), rew=i * i,
+                 done=False, info={'incident': 'found'})
     assert len(buf1) > len(buf2)
     buf2.update(buf1)
     assert len(buf1) == len(buf2)
