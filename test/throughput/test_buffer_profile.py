@@ -1,6 +1,9 @@
 import numpy as np
-from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, ListReplayBuffer
 import pytest
+
+from tianshou.data import (ListReplayBuffer, PrioritizedReplayBuffer,
+                           ReplayBuffer)
+
 
 @pytest.fixture(scope="module")
 def data():
