@@ -6,9 +6,19 @@ from tianshou.data.batch import Batch, _create_value
 
 class ReplayBuffer:
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from
-    interaction between the policy and environment. It stores basically 7 types
-    of data, as mentioned in :class:`~tianshou.data.Batch`, based on
-    ``numpy.ndarray``. Here is the usage:
+    interaction between the policy and environment. The current implementation
+    of Tianshou typically use 7 reserved keys in :class:`~tianshou.data.Batch`:
+
+    * ``obs`` the observation of step :math:`t` ;
+    * ``act`` the action of step :math:`t` ;
+    * ``rew`` the reward of step :math:`t` ;
+    * ``done`` the done flag of step :math:`t` ;
+    * ``obs_next`` the observation of step :math:`t+1` ;
+    * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()`` \
+    function returns 4 arguments, and the last one is ``info``);
+    * ``policy`` the data computed by policy in step :math:`t`;
+
+    The following code snippet illustrates its usage:
     ::
 
         >>> import numpy as np
@@ -16,13 +26,13 @@ class ReplayBuffer:
         >>> buf = ReplayBuffer(size=20)
         >>> for i in range(3):
         ...     buf.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
-        >>> len(buf)
-        3
         >>> buf.obs
         # since we set size = 20, len(buf.obs) == 20.
         array([0., 1., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
                0., 0., 0., 0.])
-
+        >>> # but there are only three valid items, so len(buf) == 3.
+        >>> len(buf)
+        3
         >>> buf2 = ReplayBuffer(size=10)
         >>> for i in range(15):
         ...     buf2.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
