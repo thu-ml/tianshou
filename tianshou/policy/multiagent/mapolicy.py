@@ -38,6 +38,13 @@ class RandomMultiAgentPolicy(BaseMultiAgentPolicy):
 
 
 class MultiAgentPolicyManager(BaseMultiAgentPolicy):
+    """The policy manager accepts a list of
+    :class:`~tianshou.policy.BaseMultiAgentPolicy`. It dispatches the batch
+    data to each of these policies when the "forward" is called. The same as
+    "process_fn" and "learn": it splits the data and feeds them to each policy.
+    A figure in :ref:`marl_example` can help you better understand this.
+    """
+
     def __init__(self, policies: List[BaseMultiAgentPolicy]):
         super().__init__()
         self.policies = policies
@@ -73,17 +80,16 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
                     ...
                     "agent_n": xxx}
             }
-
         """
         results = []
         for policy in self.policies:
             # This part of code is difficult to understand.
             # Let's follow an example with two agents
-            # batch.obs.agent_id is [1, 2, 1, 2, 1, 2] (batch_size == 6)
+            # batch.obs.agent_id is [1, 2, 1, 2, 1, 2] (with batch_size == 6)
             # each agent plays for three transitions
             # agent_index for agent 1 is [0, 2, 4]
             # agent_index for agent 2 is [1, 3, 5]
-            # we separate the transition of each agent
+            # we separate the transition of each agent according to agent_id
             agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
             if len(agent_index) == 0:
                 # (has_data, agent_index, out, act, state)
@@ -158,8 +164,8 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
                 # reward can be empty Batch (after initial reset) or nparray.
                 tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
                 buffer.rew = save_rew[:, policy.agent_id - 1]
-            output = policy.process_fn(tmp_batch, buffer, tmp_indice)
-            results[f'agent_{policy.agent_id}'] = output
+            results[f'agent_{policy.agent_id}'] = \
+                policy.process_fn(tmp_batch, buffer, tmp_indice)
         if has_rew:  # restore from save_rew
             buffer.rew = save_rew
         return Batch(results)
