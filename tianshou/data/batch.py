@@ -52,6 +52,8 @@ def _is_number(value: Any) -> bool:
 
 def _to_array_with_correct_type(v: Any) -> np.ndarray:
     # convert the value to np.ndarray
+    # convert to np.object data type if neither bool nor number
+    # raises an exception if array's elements are tensors themself
     v = np.asanyarray(v)
     if not issubclass(v.dtype.type, (np.bool_, np.number)):
         v = v.astype(np.object)
