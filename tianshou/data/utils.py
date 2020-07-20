@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from numbers import Number
-from typing import Any, Union, Optional
+from typing import Union, Optional
 
 from tianshou.data.batch import _parse_value, Batch
 
