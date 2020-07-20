@@ -125,13 +125,8 @@ def _parse_value(v: Any):
                 # or actually a data list with objects
                 v = v_
         except (ValueError, RuntimeError):
-            v_ = np.empty(len(v), dtype=np.object)
-            for i, e in enumerate(v):
-                if not isinstance(e, torch.Tensor):
-                    v_[i] = _to_array_with_correct_type(e)
-                else:
-                    v_[i] = e
-            v = v_
+            raise TypeError("Batch does not support non-stackable list/tuple of "\
+                            "tensors as value yet.")
     elif isinstance(v, dict):
         v = Batch(v)
     elif isinstance(v, (Batch, torch.Tensor)):
