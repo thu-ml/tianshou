@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 from itertools import starmap
 
-from tianshou.data import Batch, to_torch
+from tianshou.data import Batch, to_torch, to_numpy
 
 
 def test_batch():
