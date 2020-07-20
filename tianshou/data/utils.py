@@ -45,7 +45,10 @@ def to_torch(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
     elif isinstance(x, (np.number, np.bool_, Number)):
         x = to_torch(np.asanyarray(x), dtype, device)
     elif isinstance(x, (list, tuple)):
-        x = _to_array_with_correct_type(x)
+        try:
+            x = _to_array_with_correct_type(x)
+        except ValueError:
+            pass
         if x.dtype == np.object:
             x = [to_torch(e, dtype, device) for e in x]
         else:
