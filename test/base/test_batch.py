@@ -32,6 +32,8 @@ def test_batch():
     with pytest.raises(TypeError):
         Batch(a=[np.zeros((2, 3)), np.zeros((3, 3))])
     with pytest.raises(TypeError):
+        Batch(a=[np.zeros((3, 2)), np.zeros((3, 3))])
+    with pytest.raises(TypeError):
         Batch(a=[torch.zeros((2, 3)), torch.zeros((3, 3))])
     batch = Batch(a=[torch.ones(3), torch.ones(3)])
     assert torch.allclose(batch.a, torch.ones(2, 3))

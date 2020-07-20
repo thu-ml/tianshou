@@ -55,13 +55,16 @@ def _to_array_with_correct_type(v: Any) -> np.ndarray:
     v = np.asanyarray(v)
     if not issubclass(v.dtype.type, (np.bool_, np.number)):
         v = v.astype(np.object)
-    if v.dtype == np.object and not v.shape:
+    if v.dtype == np.object:
         # scalar ndarray with np.object data type is very annoying
         # a=np.array([np.array({}, dtype=object), np.array({}, dtype=object)])
         # a is not array([{}, {}], dtype=object), and a[0]={} results in
         # something very strange:
         # array([{}, array({}, dtype=object)], dtype=object)
-        v = v.item(0)
+        if not v.shape:
+            v = v.item(0)
+        elif isinstance(v.item(0), (np.ndarray, torch.Tensor)):
+            raise ValueError("Numpy arrays of tensors are not supported yet.")
     return v
 
 
