@@ -128,8 +128,8 @@ def _parse_value(v: Any):
                 # or actually a data list with objects
                 v = v_
         except (ValueError, RuntimeError):
-            raise TypeError("Batch does not support non-stackable list/tuple of "\
-                            "tensors as value yet.")
+            raise TypeError("Batch does not support non-stackable list/tuple "
+                            "of tensors as value yet.")
     elif isinstance(v, dict):
         v = Batch(v)
     elif isinstance(v, (Batch, torch.Tensor)):
