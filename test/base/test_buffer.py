@@ -1,5 +1,6 @@
 import numpy as np
-from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer
+
+from tianshou.data import Batch, PrioritizedReplayBuffer, ReplayBuffer
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -76,6 +77,7 @@ def test_stack(size=5, bufsize=9, stack_num=4):
     _, indice = buf2.sample(1)
     assert indice.sum() == 2
 
+
 def test_priortized_replaybuffer(size=32, bufsize=15):
     env = MyTestEnv(size)
     buf = PrioritizedReplayBuffer(bufsize, 0.5, 0.5)
@@ -96,16 +98,19 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
     assert np.allclose(
         buf.weight[indice], np.abs(-data.weight / 2) ** buf._alpha)
 
+
 def test_update():
     buf1 = ReplayBuffer(4, stack_num=2)
     buf2 = ReplayBuffer(4, stack_num=2)
     for i in range(5):
-        buf1.add(obs=np.array([i]), act=float(i), rew=i*i, done= False, info= {'incident':'found'})
-    assert len(buf1) > len(buf2) 
+        buf1.add(obs=np.array([i]), act=float(i), rew=i *
+                 i, done=False, info={'incident': 'found'})
+    assert len(buf1) > len(buf2)
     buf2.update(buf1)
-    assert len(buf1) == len(buf2) 
+    assert len(buf1) == len(buf2)
     assert (buf2[0].obs == buf1[1].obs).all()
     assert (buf2[-1].obs == buf1[0].obs).all()
+
 
 if __name__ == '__main__':
     test_replaybuffer()
