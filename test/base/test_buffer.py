@@ -1,5 +1,6 @@
 import numpy as np
-from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer
+
+from tianshou.data import Batch, PrioritizedReplayBuffer, ReplayBuffer
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -10,7 +11,6 @@ else:  # pytest
 def test_replaybuffer(size=10, bufsize=20):
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize)
-    buf2 = ReplayBuffer(bufsize)
     obs = env.reset()
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, a in enumerate(action_list):
@@ -22,11 +22,6 @@ def test_replaybuffer(size=10, bufsize=20):
     assert (indice < len(buf)).all()
     assert (data.obs < size).all()
     assert (0 <= data.done).all() and (data.done <= 1).all()
-    assert len(buf) > len(buf2)
-    buf2.update(buf)
-    assert len(buf) == len(buf2)
-    assert buf2[0].obs == buf[5].obs
-    assert buf2[-1].obs == buf[4].obs
     b = ReplayBuffer(size=10)
     b.add(1, 1, 1, 'str', 1, {'a': 3, 'b': {'c': 5.0}})
     assert b.obs[0] == 1
@@ -104,8 +99,22 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
         buf.weight[indice], np.abs(-data.weight / 2) ** buf._alpha)
 
 
+def test_update():
+    buf1 = ReplayBuffer(4, stack_num=2)
+    buf2 = ReplayBuffer(4, stack_num=2)
+    for i in range(5):
+        buf1.add(obs=np.array([i]), act=float(i), rew=i *
+                 i, done=False, info={'incident': 'found'})
+    assert len(buf1) > len(buf2)
+    buf2.update(buf1)
+    assert len(buf1) == len(buf2)
+    assert (buf2[0].obs == buf1[1].obs).all()
+    assert (buf2[-1].obs == buf1[0].obs).all()
+
+
 if __name__ == '__main__':
     test_replaybuffer()
     test_ignore_obs_next()
     test_stack()
     test_priortized_replaybuffer(233333, 200000)
+    test_update()

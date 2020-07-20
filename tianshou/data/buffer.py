@@ -153,7 +153,19 @@ class ReplayBuffer:
             return
         i = begin = buffer._index % len(buffer)
         while True:
-            self.add(**buffer[i])
+            obs_next = None if isinstance(
+                buffer.obs_next, Batch) and buffer.obs_next.is_empty() else \
+                buffer.obs_next[i]
+            info = {} if isinstance(
+                buffer.obs_next, Batch) and buffer.info.is_empty() else \
+                buffer.info[i]
+            policy = {} if isinstance(
+                buffer.obs_next, Batch) and buffer.policy.is_empty() else \
+                buffer.policy[i]
+            self.add(
+                buffer.obs[i], buffer.act[i], buffer.rew[i], buffer.done[i],
+                obs_next if self._save_s_ else None,
+                info, policy)
             i = (i + 1) % len(buffer)
             if i == begin:
                 break
