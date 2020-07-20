@@ -128,11 +128,11 @@ def _parse_value(v: Any):
                     all(isinstance(e, torch.Tensor) for e in v):
                 return torch.stack(v)
             v_ = _to_array_with_correct_type(v)
-            if v_.dtype == np.object and _is_batch_set(v):
+            if _is_batch_set(v):
                 v = Batch(v)  # list of dict / Batch
             else:
-                # scalar case, normal data list (main case)
-                # or actually a data list with objects
+                # None, scalar, normal data list (main case)
+                # or an actual list of objects
                 v = v_
         except (ValueError, RuntimeError):
             raise TypeError("Batch does not support non-stackable list/tuple "
