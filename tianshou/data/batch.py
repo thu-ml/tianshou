@@ -4,6 +4,7 @@ import warnings
 import numpy as np
 from copy import deepcopy
 from numbers import Number
+from collections.abc import Iterable
 from typing import Any, List, Tuple, Union, Iterator, Optional
 
 # Disable pickle warning related to torch, since it has been removed
@@ -117,28 +118,25 @@ def _assert_type_keys(keys):
 
 
 def _parse_value(v: Any):
-    if isinstance(v, (list, tuple, np.ndarray)):
+    if isinstance(v, dict):
+        v = Batch(v)
+    elif isinstance(v, (Batch, torch.Tensor)):
+        pass
+    else:
         try:
-            if not isinstance(v, np.ndarray) and \
+            if not isinstance(v, np.ndarray) and isinstance(v, Iterable) and \
                     all(isinstance(e, torch.Tensor) for e in v):
                 return torch.stack(v)
             v_ = _to_array_with_correct_type(v)
             if v_.dtype == np.object and _is_batch_set(v):
                 v = Batch(v)  # list of dict / Batch
             else:
-                # normal data list (main case)
+                # scalar case, normal data list (main case)
                 # or actually a data list with objects
                 v = v_
         except (ValueError, RuntimeError):
             raise TypeError("Batch does not support non-stackable list/tuple "
                             "of tensors as value yet.")
-    elif isinstance(v, dict):
-        v = Batch(v)
-    elif isinstance(v, (Batch, torch.Tensor)):
-        pass
-    else:
-        # scalar case, convert to ndarray
-        v = _to_array_with_correct_type(v)
     return v
 
 
