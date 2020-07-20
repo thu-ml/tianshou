@@ -154,10 +154,9 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
                 results.append([False, None, None])
                 continue
             tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
-            if isinstance(tmp_batch.rew, np.ndarray):
+            if has_rew:
                 # reward can be empty Batch (after initial reset) or nparray.
                 tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
-            if has_rew:
                 buffer.rew = save_rew[:, policy.agent_id - 1]
             output = policy.process_fn(tmp_batch, buffer, tmp_indice)
             results.append([True, output, agent_index])
