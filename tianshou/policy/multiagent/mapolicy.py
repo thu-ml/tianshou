@@ -1,10 +1,8 @@
-import random
 import numpy as np
-from abc import ABC
 from typing import Union, Optional, Dict, List
 
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, to_numpy, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer
 
 
 class RandomMultiAgentPolicy(BasePolicy):
