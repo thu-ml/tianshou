@@ -1,4 +1,4 @@
-name: Batch&Buffer Profile
+name: Data Profile
 
 on: [push, pull_request]
 
