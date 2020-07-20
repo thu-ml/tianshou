@@ -131,16 +131,16 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
         """
         results = {}
         for policy in self.policies:
-            agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
-            if len(agent_index) != 0:
-                out = policy.learn(batch=batch[agent_index], **kwargs)
+            data = batch[f'agent_{policy.agent_id}']
+            if not data.is_empty():
+                out = policy.learn(batch=data, **kwargs)
                 for k, v in out.items():
                     results["agent_" + str(policy.agent_id) + '/' + k] = v
         return results
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
-        results = []
+        results = {}
         # save original multi-dimensional rew in save_rew,
         # set rew to the reward of each agent during their ``process_fn``,
         # and restore the original reward afterwards
@@ -151,7 +151,7 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
             agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
             if len(agent_index) == 0:
                 # has_data, data, agent_index
-                results.append([False, None, None])
+                results[f'agent_{policy.agent_id}'] = {}
                 continue
             tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
             if has_rew:
@@ -159,14 +159,7 @@ class MultiAgentPolicyManager(BaseMultiAgentPolicy):
                 tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
                 buffer.rew = save_rew[:, policy.agent_id - 1]
             output = policy.process_fn(tmp_batch, buffer, tmp_indice)
-            results.append([True, output, agent_index])
+            results[f'agent_{policy.agent_id}'] = output
         if has_rew:  # restore from save_rew
             buffer.rew = save_rew
-        # incompatible keys will be padded with zeros
-        # e.g. agent 1 batch has ``returns`` but agent 2 does not
-        holder = Batch.cat(
-            [data for (has_data, data, _) in results if has_data])
-        for has_data, data, agent_index in results:
-            if has_data:
-                holder[agent_index] = data
-        return holder
+        return Batch(results)
