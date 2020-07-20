@@ -29,7 +29,7 @@ def get_parser() -> argparse.ArgumentParser:
                         help='a smaller gamma favors earlier win')
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=320)
-    parser.add_argument('--epoch', type=int, default=5)
+    parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=64)
@@ -156,7 +156,8 @@ def train_agent(args: argparse.Namespace = get_args(),
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, save_fn=save_fn, writer=writer)
+        stop_fn=stop_fn, save_fn=save_fn, writer=writer,
+        test_in_train=False)
 
     train_collector.close()
     test_collector.close()
