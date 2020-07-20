@@ -153,7 +153,11 @@ class ReplayBuffer:
             return
         i = begin = buffer._index % len(buffer)
         while True:
-            self.add(**buffer[i])
+            self.add(
+                buffer.obs[i], buffer.act[i], buffer.rew[i], buffer.done[i],
+                (buffer.obs_next[i] if not buffer.obs_next.is_empty() else None) if self._save_s_ else None,
+                buffer.info[i] if not buffer.info.is_empty() else {},
+                buffer.policy[i] if not buffer.policy.is_empty() else {})       
             i = (i + 1) % len(buffer)
             if i == begin:
                 break
@@ -440,3 +444,4 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             weight=self.weight[index],
             policy=self.get(index, 'policy'),
         )
+
