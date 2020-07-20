@@ -157,16 +157,25 @@ class ReplayBuffer:
                 value.__dict__[key] = _create_value(inst[key], self._maxsize)
             value[self._index] = inst
 
+    def _get_stack_num(self):
+        return self._stack
+
+    def _set_stack_num(self, num):
+        self._stack = num
+
     def update(self, buffer: 'ReplayBuffer') -> None:
         """Move the data from the given buffer to self."""
         if len(buffer) == 0:
             return
         i = begin = buffer._index % len(buffer)
+        origin = buffer._get_stack_num()
+        buffer._set_stack_num(0)
         while True:
             self.add(**buffer[i])
             i = (i + 1) % len(buffer)
             if i == begin:
                 break
+        buffer._set_stack_num(origin)
 
     def add(self,
             obs: Union[dict, Batch, np.ndarray],
@@ -408,7 +417,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                 replace=self._replace)
             p = p[indice]  # weight of each sample
         elif batch_size == 0:
-            p = np.full(shape=self._size, fill_value=1.0/self._size)
+            p = np.full(shape=self._size, fill_value=1.0 / self._size)
             indice = np.concatenate([
                 np.arange(self._index, self._size),
                 np.arange(0, self._index),
