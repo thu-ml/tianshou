@@ -40,6 +40,8 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--render', type=float, default=0.1)
     parser.add_argument('--board_size', type=int, default=6)
     parser.add_argument('--win_size', type=int, default=4)
+    parser.add_argument('--win-rate', type=float, default=0.8,
+                        help='the expected winning rate')
     parser.add_argument('--watch', default=False, action='store_true',
                         help='no training, '
                              'watch the play of pre-trained models')
@@ -143,7 +145,7 @@ def train_agent(args: argparse.Namespace = get_args(),
             model_save_path)
 
     def stop_fn(x):
-        return x >= 0.9
+        return x >= args.win_rate
 
     def train_fn(x):
         policy.policies[args.agent_id - 1].set_eps(args.eps_train)
