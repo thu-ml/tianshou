@@ -325,9 +325,22 @@ def test_utils_to_torch():
     assert batch_torch_float.b.d.dtype == torch.float32
     data_list = [float('nan'), 1]
     data_list_torch = to_torch(data_list)
-    assert data_list_torch[0].dtype == torch.float64
-    assert data_list_torch[1].dtype == torch.int64
-
+    assert data_list_torch.dtype == torch.float64
+    data_list_2 = [np.zeros((3, 3)), np.zeros((3, 3))]
+    data_list_2_torch = to_torch(data_list_2)
+    assert data_list_2_torch.shape == (2, 3, 3)
+    data_list_3 = [np.zeros((3, 2)), np.zeros((3, 3))]
+    data_list_3_torch = to_torch(data_list_3)
+    assert isinstance(data_list_3_torch, list)
+    assert isinstance(data_list_3_torch[0], torch.Tensor)
+    data_list_4 = [np.zeros(2), np.zeros((3, 3))]
+    data_list_4_torch = to_torch(data_list_4)
+    assert isinstance(data_list_4_torch, list)
+    assert isinstance(data_list_4_torch[0], torch.Tensor)
+    data_array = np.zeros((3, 2, 2))
+    data_tensor = to_torch(data_array[[]])
+    assert isinstance(data_tensor, torch.Tensor)
+    assert data_tensor.shape == (0, 2, 2)
 
 def test_batch_pickle():
     batch = Batch(obs=Batch(a=0.0, c=torch.Tensor([1.0, 2.0])),
