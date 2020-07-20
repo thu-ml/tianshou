@@ -18,7 +18,7 @@ class TicTacToeEnv(MultiAgentEnv):
     """
 
     def __init__(self, size: int = 3, win_size: int = 3):
-        super().__init__(None)
+        super().__init__()
         assert size > 0, f'board size should be positive, but got {size}'
         self.size = size
         assert win_size > 0, f'win-size should be positive, but got {win_size}'

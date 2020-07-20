@@ -85,18 +85,7 @@ class DQNPolicy(BasePolicy):
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
-        r"""Compute the n-step return for Q-learning targets:
-
-        .. math::
-            G_t = \sum_{i = t}^{t + n - 1} \gamma^{i - t}(1 - d_i)r_i +
-            \gamma^n (1 - d_{t + n}) \max_a Q_{old}(s_{t + n}, \arg\max_a
-            (Q_{new}(s_{t + n}, a)))
-
-        , where :math:`\gamma` is the discount factor,
-        :math:`\gamma \in [0, 1]`, :math:`d_t` is the done flag of step
-        :math:`t`. If there is no target network, the :math:`Q_{old}` is equal
-        to :math:`Q_{new}`.
-        """
+        """Compute the n-step return for Q-learning targets."""
         batch = self.compute_nstep_return(
             batch, buffer, indice, self._target_q,
             self._gamma, self._n_step, self._rew_norm)
