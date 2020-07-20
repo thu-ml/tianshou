@@ -11,7 +11,7 @@ class MultiAgentEnv(ABC, gym.Env):
     ::
 
         env = MultiAgentEnv(...)
-        # obs is a dict containing obs, agent_id, and legal_actions
+        # obs is a dict containing obs, agent_id, and mask
         obs = env.reset()
         action = policy(obs)
         obs, rew, done, info = env.step(action)
@@ -47,9 +47,9 @@ class MultiAgentEnv(ABC, gym.Env):
 
         :return: A tuple including four items:
 
-            * ``obs`` a dict containing obs, agent_id, and legal_actions, \
+            * ``obs`` a dict containing obs, agent_id, and mask, \
                 which means that it is the ``agent_id`` player's turn to \
-                play with ``obs`` observation and ``legal_actions``.
+                play with ``obs`` observation and ``mask``.
             * ``rew`` a numpy.ndarray, the amount of rewards returned after \
                 previous actions. Depending on the specific environment, \
                 this can be either a scalar reward for current agent or a \

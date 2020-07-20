@@ -14,7 +14,7 @@ class RandomMultiAgentPolicy(BasePolicy):
                 batch: Batch,
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
                 **kwargs) -> Batch:
-        mask = batch.obs.legal_actions
+        mask = batch.obs.mask
         logits = np.random.rand(*mask.shape)
         logits[np.isclose(mask, 0)] = 0
         return Batch(act=logits.argmax(axis=-1))

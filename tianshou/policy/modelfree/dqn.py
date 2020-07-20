@@ -112,14 +112,14 @@ class DQNPolicy(BasePolicy):
                 eps: Optional[float] = None,
                 **kwargs) -> Batch:
         """Compute action over the given batch data. If you need to mask the
-        action, please add a "legal_actions" into batch.obs, for example, if we
-        have an environment that has "0/1/2" three actions:
+        action, please add a "mask" into batch.obs, for example, if ww have an
+        environment that has "0/1/2" three actions:
         ::
 
             batch == Batch(
                 obs=Batch(
                     obs="original obs, with batch_size=1 for demonstration",
-                    legal_actions=np.array([[0, 1, 0]]),
+                    mask=np.array([[0, 1, 0]]),
                     # action 1 is available
                     # action 0 and 2 is unavailable
                 ),
@@ -141,13 +141,13 @@ class DQNPolicy(BasePolicy):
         """
         model = getattr(self, model)
         obs = getattr(batch, input)
-        obs_ = obs.obs if hasattr(obs, 'legal_actions') else obs
+        obs_ = obs.obs if hasattr(obs, 'mask') else obs
         q, h = model(obs_, state=state, info=batch.info)
         act = to_numpy(q.max(dim=1)[1])
-        if hasattr(obs, 'legal_actions'):
+        if hasattr(obs, 'mask'):
             # some of actions are masked, they cannot be chose
             q_ = to_numpy(q)
-            q_[np.isclose(obs.legal_actions, 0)] = -np.inf
+            q_[np.isclose(obs.mask, 0)] = -np.inf
             act = q_.argmax(axis=1)
         # add eps to act
         if eps is None:
@@ -156,8 +156,8 @@ class DQNPolicy(BasePolicy):
             for i in range(len(q)):
                 if np.random.rand() < eps:
                     q_ = np.random.rand(*q[i].shape)
-                    if hasattr(obs, 'legal_actions'):
-                        q_[np.isclose(obs.legal_actions[i], 0)] = -np.inf
+                    if hasattr(obs, 'mask'):
+                        q_[np.isclose(obs.mask[i], 0)] = -np.inf
                     act[i] = q_.argmax()
         return Batch(logits=q, act=act, state=h)
 
