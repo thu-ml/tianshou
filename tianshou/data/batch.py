@@ -134,9 +134,9 @@ def _parse_value(v: Any):
                 # None, scalar, normal data list (main case)
                 # or an actual list of objects
                 v = v_
-        except (ValueError, RuntimeError):
+        except (ValueError, RuntimeError) as e:
             raise TypeError("Batch does not support non-stackable list/tuple "
-                            "of tensors as value yet.")
+                            "of tensors as value yet: \n" + str(e))
     return v
 
 
