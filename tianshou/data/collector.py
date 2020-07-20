@@ -98,7 +98,7 @@ class Collector(object):
                  stat_size: Optional[int] = 100,
                  action_noise: Optional[BaseNoise] = None,
                  reward_metric: Optional[Callable[[np.ndarray], float]] = None,
-                 **kwargs) -> None:
+                 ) -> None:
         super().__init__()
         self.env = env
         self.env_num = 1
@@ -320,10 +320,13 @@ class Collector(object):
                         self._reset_state(i)
                 obs_next = self.data.obs_next
                 if sum(self.data.done):
-                    obs_next = self.env.reset(np.where(self.data.done)[0])
+                    env_ind = np.where(self.data.done)[0]
+                    obs_reset = self.env.reset(env_ind)
                     if self.preprocess_fn:
-                        obs_next = self.preprocess_fn(obs=obs_next).get(
-                            'obs', obs_next)
+                        obs_next[env_ind] = self.preprocess_fn(
+                            obs=obs_reset).get('obs', obs_reset)
+                    else:
+                        obs_next[env_ind] = obs_reset
                 self.data.obs_next = obs_next
                 if n_episode != 0:
                     if isinstance(n_episode, list) and \

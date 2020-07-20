@@ -10,7 +10,12 @@ from tianshou.data import Batch, to_torch
 def test_batch():
     assert list(Batch()) == []
     assert Batch().is_empty()
-    assert Batch(b={'c': {}}).is_empty()
+    assert not Batch(b={'c': {}}).is_empty()
+    assert Batch(b={'c': {}}).is_empty(recurse=True)
+    assert not Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
+    assert Batch(a=Batch(), b=Batch(c=Batch())).is_empty(recurse=True)
+    assert not Batch(d=1).is_empty()
+    assert not Batch(a=np.float64(1.0)).is_empty()
     assert len(Batch(a=[1, 2, 3], b={'c': {}})) == 3
     assert not Batch(a=[1, 2, 3]).is_empty()
     b = Batch()
@@ -57,6 +62,7 @@ def test_batch():
         'd': Batch(e=np.array(3.0))}])
     assert len(batch2) == 1
     assert Batch().shape == []
+    assert Batch(a=1).shape == []
     assert batch2.shape[0] == 1
     with pytest.raises(IndexError):
         batch2[-2]
@@ -108,6 +114,11 @@ def test_batch():
     batch5.b = np.array([{'index': 1}])
     assert isinstance(batch5.b, Batch)
     assert np.allclose(batch5.b.index, [1])
+
+    # None is a valid object and can be stored in Batch
+    a = Batch.stack([Batch(a=None), Batch(b=None)])
+    assert a.a[0] is None and a.a[1] is None
+    assert a.b[0] is None and a.b[1] is None
 
 
 def test_batch_over_batch():
@@ -162,6 +173,20 @@ def test_batch_cat_and_stack():
     assert isinstance(b12_cat_in.a.d.e, np.ndarray)
     assert b12_cat_in.a.d.e.ndim == 1
 
+    a = Batch(a=Batch(a=np.random.randn(3, 4)))
+    assert np.allclose(
+        np.concatenate([a.a.a, a.a.a]),
+        Batch.cat([a, Batch(a=Batch(a=Batch())), a]).a.a)
+
+    # test cat with lens infer
+    a = Batch(a=Batch(a=np.random.randn(3, 4)), b=np.random.randn(3, 4))
+    b = Batch(a=Batch(a=Batch(), t=Batch()), b=np.random.randn(3, 4))
+    ans = Batch.cat([a, b, a])
+    assert np.allclose(ans.a.a,
+                       np.concatenate([a.a.a, np.zeros((3, 4)), a.a.a]))
+    assert np.allclose(ans.b, np.concatenate([a.b, b.b, a.b]))
+    assert ans.a.t.is_empty()
+
     b12_stack = Batch.stack((b1, b2))
     assert isinstance(b12_stack.a.d.e, np.ndarray)
     assert b12_stack.a.d.e.ndim == 2
@@ -174,6 +199,32 @@ def test_batch_cat_and_stack():
                 b=torch.cat([torch.zeros(3, 3), b2.b]),
                 common=Batch(c=np.concatenate([b1.common.c, b2.common.c])))
     assert np.allclose(test.a, ans.a)
+    assert torch.allclose(test.b, ans.b)
+    assert np.allclose(test.common.c, ans.common.c)
+
+    # test cat with reserved keys (values are Batch())
+    b1 = Batch(a=np.random.rand(3, 4), common=Batch(c=np.random.rand(3, 5)))
+    b2 = Batch(a=Batch(),
+               b=torch.rand(4, 3),
+               common=Batch(c=np.random.rand(4, 5)))
+    test = Batch.cat([b1, b2])
+    ans = Batch(a=np.concatenate([b1.a, np.zeros((4, 4))]),
+                b=torch.cat([torch.zeros(3, 3), b2.b]),
+                common=Batch(c=np.concatenate([b1.common.c, b2.common.c])))
+    assert np.allclose(test.a, ans.a)
+    assert torch.allclose(test.b, ans.b)
+    assert np.allclose(test.common.c, ans.common.c)
+
+    # test cat with all reserved keys (values are Batch())
+    b1 = Batch(a=Batch(), common=Batch(c=np.random.rand(3, 5)))
+    b2 = Batch(a=Batch(),
+               b=torch.rand(4, 3),
+               common=Batch(c=np.random.rand(4, 5)))
+    test = Batch.cat([b1, b2])
+    ans = Batch(a=Batch(),
+                b=torch.cat([torch.zeros(3, 3), b2.b]),
+                common=Batch(c=np.concatenate([b1.common.c, b2.common.c])))
+    assert ans.a.is_empty()
     assert torch.allclose(test.b, ans.b)
     assert np.allclose(test.common.c, ans.common.c)
 
@@ -204,6 +255,25 @@ def test_batch_cat_and_stack():
     assert np.allclose(d.b, [2, 5, 6])
     assert np.allclose(d.c, [3, 0, 7])
     assert np.allclose(d.d, [0, 6, 9])
+
+    # test stack with empty Batch()
+    assert Batch.stack([Batch(), Batch(), Batch()]).is_empty()
+    a = Batch(a=1, b=2, c=3, d=Batch(), e=Batch())
+    b = Batch(a=4, b=5, d=6, e=Batch())
+    c = Batch(c=7, b=6, d=9, e=Batch())
+    d = Batch.stack([a, b, c])
+    assert np.allclose(d.a, [1, 4, 0])
+    assert np.allclose(d.b, [2, 5, 6])
+    assert np.allclose(d.c, [3, 0, 7])
+    assert np.allclose(d.d, [0, 6, 9])
+    assert d.e.is_empty()
+    b1 = Batch(a=Batch(), common=Batch(c=np.random.rand(4, 5)))
+    b2 = Batch(b=Batch(), common=Batch(c=np.random.rand(4, 5)))
+    test = Batch.stack([b1, b2], axis=-1)
+    assert test.a.is_empty()
+    assert test.b.is_empty()
+    assert np.allclose(test.common.c,
+                       np.stack([b1.common.c, b2.common.c], axis=-1))
 
     b1 = Batch(a=np.random.rand(4, 4), common=Batch(c=np.random.rand(4, 5)))
     b2 = Batch(b=torch.rand(4, 6), common=Batch(c=np.random.rand(4, 5)))
