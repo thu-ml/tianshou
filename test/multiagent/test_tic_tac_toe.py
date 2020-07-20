@@ -10,7 +10,7 @@ def test_tic_tac_toe(args=get_args()):
         return
 
     result, agent = train_agent(args)
-    assert result["best_reward"] >= 0.9
+    assert result["best_reward"] >= 0.8
 
     if __name__ == '__main__':
         pprint.pprint(result)
