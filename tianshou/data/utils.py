@@ -1,9 +1,9 @@
 import torch
 import numpy as np
 from numbers import Number
-from typing import Union, Optional
+from typing import Any, Union, Optional
 
-from tianshou.data import Batch
+from tianshou.data.batch import _to_array_with_correct_type, Batch
 
 
 def to_numpy(x: Union[
@@ -18,7 +18,7 @@ def to_numpy(x: Union[
     elif isinstance(x, Batch):
         x.to_numpy()
     elif isinstance(x, (list, tuple)):
-        x = np.asanyarray(x)
+        x = _to_array_with_correct_type(x)
         if x.dtype == np.object:
             x = [to_numpy(e) for e in x]
         else:
@@ -45,7 +45,7 @@ def to_torch(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
     elif isinstance(x, (np.number, np.bool_, Number)):
         x = to_torch(np.asanyarray(x), dtype, device)
     elif isinstance(x, (list, tuple)):
-        x = np.asanyarray(x)
+        x = _to_array_with_correct_type(x)
         if x.dtype == np.object:
             x = [to_torch(e, dtype, device) for e in x]
         else:

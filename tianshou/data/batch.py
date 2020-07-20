@@ -53,16 +53,19 @@ def _is_number(value: Any) -> bool:
 def _to_array_with_correct_type(v: Any) -> np.ndarray:
     # convert the value to np.ndarray
     # convert to np.object data type if neither bool nor number
-    v = np.asanyarray(v)
-    if not issubclass(v.dtype.type, (np.bool_, np.number)):
-        v = v.astype(np.object)
-    if v.dtype == np.object and not v.shape:
-        # scalar ndarray with np.object data type is very annoying
-        # a=np.array([np.array({}, dtype=object), np.array({}, dtype=object)])
-        # a is not array([{}, {}], dtype=object), and a[0]={} results in
-        # something very strange:
-        # array([{}, array({}, dtype=object)], dtype=object)
-        v = v.item(0)
+    try:
+        v = np.asanyarray(v)
+        if not issubclass(v.dtype.type, (np.bool_, np.number)):
+            v = v.astype(np.object)
+        if v.dtype == np.object and not v.shape:
+            # scalar ndarray with np.object data type is very annoying
+            # a=np.array([np.array({}, dtype=object), np.array({}, dtype=object)])
+            # a is not array([{}, {}], dtype=object), and a[0]={} results in
+            # something very strange:
+            # array([{}, array({}, dtype=object)], dtype=object)
+            v = v.item(0)
+    except ValueError:
+        pass
     return v
 
 
