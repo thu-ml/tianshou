@@ -1,7 +1,6 @@
 import gym
 import numpy as np
 from typing import Tuple, Optional
-from scipy.signal import convolve2d
 from functools import partial
 
 from tianshou.env import MultiAgentEnv
@@ -26,7 +25,7 @@ class TicTacToeEnv(MultiAgentEnv):
         self.win_size = win_size
         assert win_size <= size, f'win-size {win_size} should not ' \
             f'be larger than board size {size}'
-        self.kernels = TicTacToeEnv._construct_kernels(win_size)
+        self.convolve_kernel = np.ones(win_size)
         self.observation_space = gym.spaces.Box(
             low=-1.0, high=1.0, shape=(size, size), dtype=np.float32)
         self.action_space = gym.spaces.Discrete(size * size)
@@ -92,24 +91,24 @@ class TicTacToeEnv(MultiAgentEnv):
         self._last_move = (row, col)
 
     def _test_win(self):
-        """test if some wins"""
-        results = [convolve2d(self.current_board, k, mode='valid')
-                   for k in self.kernels]
+        """test if someone wins by checking the situation around last move"""
+        row, col = self._last_move
+        rboard = self.current_board[row, :]
+        cboard = self.current_board[:, col]
+        current = self.current_board[row, col]
+        rightup = [self.current_board[row - i, col + i]
+                   for i in range(1, self.size - col) if row - i >= 0]
+        leftdown = [self.current_board[row + i, col - i]
+                    for i in range(1, col + 1) if row + i < self.size]
+        rdiag = np.array(leftdown[::-1] + [current] + rightup)
+        rightdown = [self.current_board[row + i, col + i]
+                     for i in range(1, self.size - col) if row + i < self.size]
+        leftup = [self.current_board[row - i, col - i]
+                  for i in range(1, col + 1) if row - i >= 0]
+        diag = np.array(leftup[::-1] + [current] + rightdown)
+        results = [np.convolve(k, self.convolve_kernel, mode='valid')
+                   for k in (rboard, cboard, rdiag, diag)]
         return any([(np.abs(x) == self.win_size).any() for x in results])
-
-    @staticmethod
-    def _construct_kernels(win_size):
-        kernels = []
-        holder = np.zeros((win_size, win_size))
-        for i in range(win_size):
-            row = holder.copy()
-            row[i, :] = 1
-            col = holder.copy()
-            col[:, i] = 1
-            kernels += [row, col]
-        diag = np.eye(win_size)
-        kernels += [diag, np.rot90(diag)]
-        return kernels
 
     def seed(self, seed: Optional[int] = None) -> int:
         pass
