@@ -32,11 +32,13 @@ class TicTacToeEnv(MultiAgentEnv):
         self.current_board = None
         self.current_agent = None
         self._last_move = None
+        self.step_num = None
 
     def reset(self) -> dict:
         self.current_board = np.zeros((self.size, self.size), dtype=np.int32)
         self.current_agent = 1
         self._last_move = (-1, -1)
+        self.step_num = 0
         return {
             'agent_id': self.current_agent,
             'obs': np.array(self.current_board),
@@ -89,6 +91,7 @@ class TicTacToeEnv(MultiAgentEnv):
             self.current_board[row, col] = -1
         self.current_agent = 3 - self.current_agent
         self._last_move = (row, col)
+        self.step_num += 1
 
     def _test_win(self):
         """test if someone wins by checking the situation around last move"""
@@ -114,7 +117,7 @@ class TicTacToeEnv(MultiAgentEnv):
         pass
 
     def render(self, **kwargs) -> None:
-        print('board:')
+        print(f'board (step {self.step_num}):')
         pad = '==='
         top = pad + '=' * (2 * self.size - 1) + pad
         print(top)
