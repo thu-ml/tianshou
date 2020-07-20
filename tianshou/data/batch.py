@@ -113,10 +113,10 @@ def _assert_type_keys(keys):
 
 def _parse_value(v: Any):
     if isinstance(v, (list, tuple, np.ndarray)):
-        if not isinstance(v, np.ndarray) and \
-                all(isinstance(e, torch.Tensor) for e in v):
-            return torch.stack(v)
         try:
+            if not isinstance(v, np.ndarray) and \
+                    all(isinstance(e, torch.Tensor) for e in v):
+                return torch.stack(v)
             v_ = _to_array_with_correct_type(v)
             if v_.dtype == np.object and _is_batch_set(v):
                 v = Batch(v)  # list of dict / Batch
@@ -124,7 +124,7 @@ def _parse_value(v: Any):
                 # normal data list (main case)
                 # or actually a data list with objects
                 v = v_
-        except ValueError:
+        except (ValueError, RuntimeError):
             v_ = np.empty(len(v), dtype=np.object)
             for i, e in enumerate(v):
                 v_[i] = _to_array_with_correct_type(e)
