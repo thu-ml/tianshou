@@ -85,17 +85,8 @@ class DQNPolicy(BasePolicy):
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
-        r"""Compute the n-step return for Q-learning targets:
-
-        .. math::
-            G_t = \sum_{i = t}^{t + n - 1} \gamma^{i - t}(1 - d_i)r_i +
-            \gamma^n (1 - d_{t + n}) \max_a Q_{old}(s_{t + n}, \arg\max_a
-            (Q_{new}(s_{t + n}, a)))
-
-        , where :math:`\gamma` is the discount factor,
-        :math:`\gamma \in [0, 1]`, :math:`d_t` is the done flag of step
-        :math:`t`. If there is no target network, the :math:`Q_{old}` is equal
-        to :math:`Q_{new}`.
+        """Compute the n-step return for Q-learning targets. More details can
+        be found at :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
         """
         batch = self.compute_nstep_return(
             batch, buffer, indice, self._target_q,
@@ -111,7 +102,20 @@ class DQNPolicy(BasePolicy):
                 input: str = 'obs',
                 eps: Optional[float] = None,
                 **kwargs) -> Batch:
-        """Compute action over the given batch data.
+        """Compute action over the given batch data. If you need to mask the
+        action, please add a "mask" into batch.obs, for example, if we have an
+        environment that has "0/1/2" three actions:
+        ::
+
+            batch == Batch(
+                obs=Batch(
+                    obs="original obs, with batch_size=1 for demonstration",
+                    mask=np.array([[False, True, False]]),
+                    # action 1 is available
+                    # action 0 and 2 are unavailable
+                ),
+                ...
+            )
 
         :param float eps: in [0, 1], for epsilon-greedy exploration method.
 
@@ -128,15 +132,25 @@ class DQNPolicy(BasePolicy):
         """
         model = getattr(self, model)
         obs = getattr(batch, input)
-        q, h = model(obs, state=state, info=batch.info)
+        obs_ = obs.obs if hasattr(obs, 'obs') else obs
+        q, h = model(obs_, state=state, info=batch.info)
         act = to_numpy(q.max(dim=1)[1])
+        has_mask = hasattr(obs, 'mask')
+        if has_mask:
+            # some of actions are masked, they cannot be selected
+            q_ = to_numpy(q)
+            q_[~obs.mask] = -np.inf
+            act = q_.argmax(axis=1)
         # add eps to act
         if eps is None:
             eps = self.eps
         if not np.isclose(eps, 0):
             for i in range(len(q)):
                 if np.random.rand() < eps:
-                    act[i] = np.random.randint(q.shape[1])
+                    q_ = np.random.rand(*q[i].shape)
+                    if has_mask:
+                        q_[~obs.mask[i]] = -np.inf
+                    act[i] = q_.argmax()
         return Batch(logits=q, act=act, state=h)
 
     def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
