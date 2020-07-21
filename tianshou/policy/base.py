@@ -105,15 +105,24 @@ class BasePolicy(ABC, nn.Module):
         """Update policy with a given batch of data.
 
         :return: A dict which includes loss and its corresponding label.
+
+        .. warning::
+
+            If you use ``torch.distributions.Normal`` and
+            ``torch.distributions.Categorical`` to calculate the log_prob,
+            please be careful about the shape: Categorical distribution gives
+            "[batch_size]" shape while Normal distribution gives "[batch_size,
+            1]" shape. The auto-broadcasting of numerical operation with torch
+            tensors will amplify this error.
         """
         pass
 
     @staticmethod
     def compute_episodic_return(
-            batch: Batch,
-            v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
-            gamma: float = 0.99,
-            gae_lambda: float = 0.95,
+        batch: Batch,
+        v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        gamma: float = 0.99,
+        gae_lambda: float = 0.95,
     ) -> Batch:
         """Compute returns over given full-length episodes, including the
         implementation of Generalized Advantage Estimator (arXiv:1506.02438).
@@ -128,7 +137,8 @@ class BasePolicy(ABC, nn.Module):
         :param float gae_lambda: the parameter for Generalized Advantage
             Estimation, should be in [0, 1], defaults to 0.95.
 
-        :return: a Batch. The result will be stored in batch.returns.
+        :return: a Batch. The result will be stored in batch.returns as a numpy
+            array.
         """
         rew = batch.rew
         if v_s_ is None:
@@ -157,7 +167,7 @@ class BasePolicy(ABC, nn.Module):
         gamma: float = 0.99,
         n_step: int = 1,
         rew_norm: bool = False,
-    ) -> np.ndarray:
+    ) -> Batch:
         r"""Compute n-step return for Q-learning targets:
 
         .. math::
@@ -204,7 +214,7 @@ class BasePolicy(ABC, nn.Module):
             returns[done[now] > 0] = 0
             returns = (rew[now] - mean) / std + gamma * returns
         terminal = (indice + n_step - 1) % buf_len
-        target_q = target_q_fn(buffer, terminal).squeeze()
+        target_q = target_q_fn(buffer, terminal).flatten()  # shape: [bsz, ]
         target_q[gammas != n_step] = 0
         returns = to_torch_as(returns, target_q)
         gammas = to_torch_as(gamma ** gammas, target_q)
