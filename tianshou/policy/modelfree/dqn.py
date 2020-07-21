@@ -85,7 +85,9 @@ class DQNPolicy(BasePolicy):
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
-        """Compute the n-step return for Q-learning targets."""
+        """Compute the n-step return for Q-learning targets. More details can
+        be found at :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
+        """
         batch = self.compute_nstep_return(
             batch, buffer, indice, self._target_q,
             self._gamma, self._n_step, self._rew_norm)

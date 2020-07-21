@@ -1,12 +1,12 @@
 import os
 import pprint
-from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from copy import deepcopy
+from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import VectorEnv
-from tianshou.policy import RandomPolicy
 from tianshou.data import Collector
+from tianshou.policy import RandomPolicy
 
 from tic_tac_toe_env import TicTacToeEnv
 from tic_tac_toe import get_parser, get_agents, train_agent, watch

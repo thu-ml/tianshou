@@ -1,7 +1,7 @@
 import gym
 import numpy as np
-from typing import Tuple, Optional
 from functools import partial
+from typing import Tuple, Optional
 
 from tianshou.env import MultiAgentEnv
 
@@ -45,12 +45,11 @@ class TicTacToeEnv(MultiAgentEnv):
             'mask': self.current_board.flatten() == 0
         }
 
-    def step(self, action: np.ndarray
+    def step(self, action: [int, np.ndarray]
              ) -> Tuple[dict, np.ndarray, np.ndarray, dict]:
         if self.current_agent is None:
             raise ValueError(
                 "calling step() of unreset environment is prohibited!")
-        action = action.item(0)
         assert 0 <= action < self.size * self.size
         assert self.current_board.item(action) == 0
         _current_agent = self.current_agent
