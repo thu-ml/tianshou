@@ -205,7 +205,7 @@ class BasePolicy(ABC, nn.Module):
             returns[done[now] > 0] = 0
             returns = (rew[now] - mean) / std + gamma * returns
         terminal = (indice + n_step - 1) % buf_len
-        target_q = target_q_fn(buffer, terminal).squeeze()
+        target_q = target_q_fn(buffer, terminal).flatten()  # shape: [bsz, ]
         target_q[gammas != n_step] = 0
         returns = to_torch_as(returns, target_q)
         gammas = to_torch_as(gamma ** gammas, target_q)

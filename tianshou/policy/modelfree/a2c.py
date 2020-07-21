@@ -108,7 +108,7 @@ class A2CPolicy(PGPolicy):
                 v = self.critic(b.obs).squeeze(-1)
                 a = to_torch_as(b.act, v)
                 r = to_torch_as(b.returns, v)
-                a_loss = -(dist.log_prob(a).squeeze() * (r - v).detach()
+                a_loss = -(dist.log_prob(a).reshape(v.shape) * (r - v).detach()
                            ).mean()
                 vf_loss = F.mse_loss(r, v)
                 ent_loss = dist.entropy().mean()

@@ -156,8 +156,8 @@ class SACPolicy(DDPGPolicy):
         a = obs_result.act
         current_q1a = self.critic1(batch.obs, a).squeeze(-1)
         current_q2a = self.critic2(batch.obs, a).squeeze(-1)
-        actor_loss = (self._alpha * obs_result.log_prob.squeeze() - torch.min(
-            current_q1a, current_q2a)).mean()
+        actor_loss = (self._alpha * obs_result.log_prob.reshape(
+            target_q.shape) - torch.min(current_q1a, current_q2a)).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
