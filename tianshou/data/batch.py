@@ -131,15 +131,13 @@ def _parse_value(v: Any):
             try:
                 return torch.stack(v)
             except RuntimeError as e:
-                raise Exception([
-                    TypeError("Batch does not support non-stackable list/tuple "
-                              "of torch.Tensor as unique value yet."), e])
+                raise TypeError("Batch does not support non-stackable list/tuple "
+                                "of torch.Tensor as unique value yet.") from e
         try:
             v_ = _to_array_with_correct_type(v)
         except ValueError as e:
-            raise Exception([
-                TypeError("Batch does not support heterogeneous list/tuple "
-                          "of tensors as unique value yet."), e])
+            raise TypeError("Batch does not support heterogeneous list/tuple "
+                             "of tensors as unique value yet.") from e
         if _is_batch_set(v):
             v = Batch(v)  # list of dict / Batch
         else:
