@@ -139,7 +139,7 @@ class DQNPolicy(BasePolicy):
         if has_mask:
             # some of actions are masked, they cannot be selected
             q_ = to_numpy(q)
-            q_[np.isclose(obs.mask, 0)] = -np.inf
+            q_[~obs.mask] = -np.inf
             act = q_.argmax(axis=1)
         # add eps to act
         if eps is None:
@@ -149,7 +149,7 @@ class DQNPolicy(BasePolicy):
                 if np.random.rand() < eps:
                     q_ = np.random.rand(*q[i].shape)
                     if has_mask:
-                        q_[np.isclose(obs.mask[i], 0)] = -np.inf
+                        q_[~obs.mask[i]] = -np.inf
                     act[i] = q_.argmax()
         return Batch(logits=q, act=act, state=h)
 

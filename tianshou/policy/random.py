@@ -29,7 +29,7 @@ class RandomPolicy(BasePolicy):
         """
         mask = batch.obs.mask
         logits = np.random.rand(*mask.shape)
-        logits[np.isclose(mask, 0)] = -np.inf
+        logits[~mask] = -np.inf
         return Batch(act=logits.argmax(axis=-1))
 
     def learn(self, batch: Batch, **kwargs
