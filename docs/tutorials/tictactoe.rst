@@ -51,11 +51,11 @@ The observation variable ``obs`` returned from the environment is a ``dict``, wi
 
 - ``obs``: the actual observation of the environment. In the Tic-Tac-Toe game above, the observation variable ``obs`` is a ``np.ndarray`` with the shape of (6, 6). The values can be "0/1/-1": 0 for empty, 1 for ``x``, -1 for ``o``. Agent 1 places ``x`` on the board, while agent 2 places ``o`` on the board.
 
-- ``mask``: the action mask in the current timestep. In board games or card games, the legal action set varies with time. The mask is a 0-1 array. For Tic-Tac-Toe, index ``i`` means the place of ``i/N`` th row and ``i%N`` th column. If ``mask[i] == True``, the player can place an ``x`` or ``o`` at that position. Now the board is empty, so the mask is all the true, contains all the positions on the board.
+- ``mask``: the action mask in the current timestep. In board games or card games, the legal action set varies with time. The mask is a boolean array. For Tic-Tac-Toe, index ``i`` means the place of ``i/N`` th row and ``i%N`` th column. If ``mask[i] == True``, the player can place an ``x`` or ``o`` at that position. Now the board is empty, so the mask is all the true, contains all the positions on the board.
 
 .. note::
 
-    There is no special formulation of ``mask`` either in discrete action space or in continuous action space. You can also use some action spaces like ``gym.spaces.Discrete`` or ``gym.spaces.Box`` to represent the available action space. It is only a need for the random agent. Currently, we use a boolean array.
+    There is no special formulation of ``mask`` either in discrete action space or in continuous action space. You can also use some action spaces like ``gym.spaces.Discrete`` or ``gym.spaces.Box`` to represent the available action space. Currently, we use a boolean array.
 
 Let's play two steps to have an intuitive understanding of the environment.
 

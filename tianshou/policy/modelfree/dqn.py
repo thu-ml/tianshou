@@ -110,7 +110,7 @@ class DQNPolicy(BasePolicy):
             batch == Batch(
                 obs=Batch(
                     obs="original obs, with batch_size=1 for demonstration",
-                    mask=np.array([[0, 1, 0]]),
+                    mask=np.array([[False, True, False]]),
                     # action 1 is available
                     # action 0 and 2 are unavailable
                 ),

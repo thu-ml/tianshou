@@ -268,7 +268,7 @@ For simultaneous move, the solution is simple: we can just add a ``num_agent`` d
 
 For 2 & 3 (cyclic move and conditional move), they can be unified into a single framework: at each timestep, the environment selects an agent with id ``agent_id`` to play. Since multi-agents are usually wrapped into one object (which we call "abstract agent"), we can pass the ``agent_id`` to the "abstract agent", leaving it to further call the specific agent.
 
-In addition, legal actions in multi-agent RL often vary with timestep (just like Go games), so the environment should also passes the legal action mask to the "abstract agent", where the mask is a 0-1 array that "1" for available actions and "0" for illegal actions at the current step. Below is a figure that explains the abstract agent.
+In addition, legal actions in multi-agent RL often vary with timestep (just like Go games), so the environment should also passes the legal action mask to the "abstract agent", where the mask is a boolean array that "True" for available actions and "False" for illegal actions at the current step. Below is a figure that explains the abstract agent.
 
 .. image:: /_static/images/marl.png
     :align: center
