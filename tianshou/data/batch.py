@@ -126,20 +126,26 @@ def _parse_value(v: Any):
     elif isinstance(v, (Batch, torch.Tensor)):
         pass
     else:
-        try:
-            if not isinstance(v, np.ndarray) and isinstance(v, Iterable) and \
-                    all(isinstance(e, torch.Tensor) for e in v):
+        if not isinstance(v, np.ndarray) and isinstance(v, Iterable) and \
+                all(isinstance(e, torch.Tensor) for e in v):
+            try:
                 return torch.stack(v)
+            except RuntimeError as e:
+                raise Exception([
+                    TypeError("Batch does not support non-stackable list/tuple "
+                              "of torch.Tensor as unique value yet."), e])
+        try:
             v_ = _to_array_with_correct_type(v)
-            if _is_batch_set(v):
-                v = Batch(v)  # list of dict / Batch
-            else:
-                # None, scalar, normal data list (main case)
-                # or an actual list of objects
-                v = v_
-        except (ValueError, RuntimeError) as e:
-            raise TypeError("Batch does not support non-stackable list/tuple "
-                            "of tensors as value yet: \n" + str(e))
+        except ValueError as e:
+            raise Exception([
+                TypeError("Batch does not support heterogeneous list/tuple "
+                          "of tensors as unique value yet."), e])
+        if _is_batch_set(v):
+            v = Batch(v)  # list of dict / Batch
+        else:
+            # None, scalar, normal data list (main case)
+            # or an actual list of objects
+            v = v_
     return v
 
 
