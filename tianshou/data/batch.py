@@ -37,11 +37,11 @@ def _is_scalar(value: Any) -> bool:
     # 3. python object rather than dict / Batch / tensor
     # the check of dict / Batch is omitted because this only checks a value.
     # a dict / Batch will eventually check their values
-    if isinstance(value, (np.ndarray, torch.Tensor)):
-        return value.size == 1 and not value.shape
+    if isinstance(value, torch.Tensor):
+        return value.numel() == 1 and not value.shape
     else:
         value = np.asanyarray(value)
-        return _is_scalar(value)
+        return value.size == 1 and not value.shape
 
 
 def _is_number(value: Any) -> bool:
