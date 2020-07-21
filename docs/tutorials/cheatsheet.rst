@@ -250,6 +250,8 @@ But the state stored in the buffer may be a shallow-copy. To make sure each of y
 Multi-Agent Reinforcement Learning
 ----------------------------------
 
+This is related to `Issue 121 <https://github.com/thu-ml/tianshou/issues/121>`_. The discussion is still goes on.
+
 With the flexible core APIs, Tianshou can support multi-agent reinforcement learning with minimal efforts.
 
 Currently, we support three types of multi-agent reinforcement learning paradigms:
@@ -259,8 +261,6 @@ Currently, we support three types of multi-agent reinforcement learning paradigm
 2. Cyclic move: players take action in turn (example: Go game)
 
 3. Conditional move, at each timestep, the environment conditionally selects an agent to take action. (example: `Pig Game <https://en.wikipedia.org/wiki/Pig_(dice_game)>`_)
-
-The discussion is recorded in `Issue 121 <https://github.com/thu-ml/tianshou/issues/121>`_ and still goes on.
 
 We mainly address these multi-agent RL problems by converting them into traditional RL formulations.
 
