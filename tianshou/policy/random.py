@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Union, Optional, Dict, List
 
+from tianshou.data import Batch
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, ReplayBuffer
 
 
 class RandomPolicy(BasePolicy):
