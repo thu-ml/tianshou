@@ -132,7 +132,7 @@ class PPOPolicy(PGPolicy):
                     to_torch_as(b.act, v[0])))
         batch.v = torch.cat(v, dim=0).squeeze()  # old value
         batch.act = to_torch_as(batch.act, v[0])
-        batch.logp_old = torch.cat(old_log_prob, dim=0)
+        batch.logp_old = torch.cat(old_log_prob, dim=0).squeeze()
         batch.returns = to_torch_as(batch.returns, v[0])
         if self._rew_norm:
             mean, std = batch.returns.mean(), batch.returns.std()
@@ -147,7 +147,8 @@ class PPOPolicy(PGPolicy):
             for b in batch.split(batch_size):
                 dist = self(b).dist
                 value = self.critic(b.obs).squeeze()
-                ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
+                ratio = (dist.log_prob(b.act).squeeze() - b.logp_old
+                         ).exp().float()
                 surr1 = ratio * b.adv
                 surr2 = ratio.clamp(
                     1. - self._eps_clip, 1. + self._eps_clip) * b.adv
