@@ -548,6 +548,7 @@ class Batch:
             (2, 4, 5)
 
         .. note::
+
             If there are keys that are not shared across all batches, ``stack``
             with ``axis != 0`` is undefined, and will cause an exception.
         """

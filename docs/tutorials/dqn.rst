@@ -88,7 +88,7 @@ We use the defined ``net`` and ``optim``, with extra policy hyper-parameters, to
 
     policy = ts.policy.DQNPolicy(net, optim,
         discount_factor=0.9, estimation_step=3,
-        use_target_network=True, target_update_freq=320)
+        target_update_freq=320)
 
 
 Setup Collector
