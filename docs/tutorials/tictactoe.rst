@@ -47,15 +47,15 @@ The scripts are located at ``test/multiagent/``. We have implemented a Tic-Tac-T
 
 The observation variable ``obs`` returned from the environment is a ``dict``, with three keys ``agent_id``, ``obs``, ``mask``. This is a general structure in multi-agent RL where agents take turns. The meaning of these keys are:
 
-- ``agent_id``: the id of the current acting agent, where agent_id :math:`\in [1, N]`, N is the number of agents. In our Tic-Tac-Toe case, N is 2. The agent_id starts from 1 because we reserve 0 for the environment itself. Sometimes the developer may want to control the behavior of the environment, for example, to determine how to dispatch cards in Poker.
+- ``agent_id``: the id of the current acting agent, where agent_id :math:`\in [1, N]`, N is the number of agents. In our Tic-Tac-Toe case, N is 2. The agent_id starts at 1 because we reserve 0 for the environment itself. Sometimes the developer may want to control the behavior of the environment, for example, to determine how to dispatch cards in Poker.
 
 - ``obs``: the actual observation of the environment. In the Tic-Tac-Toe game above, the observation variable ``obs`` is a ``np.ndarray`` with the shape of (6, 6). The values can be "0/1/-1": 0 for empty, 1 for ``x``, -1 for ``o``. Agent 1 places ``x`` on the board, while agent 2 places ``o`` on the board.
 
-- ``mask``: the action mask in the current timestep. In board games or card games, the legal action set vary with time. The mask is a 0-1 array. For Tic-Tac-Toe, index ``i`` means the place of ``i/N`` th row and ``i%N`` th column. If ``mask[i] == True``, the player can place an ``x`` or ``o`` at that position. Now the board is empty, so the mask is all the true, contains all the positions on the board.
+- ``mask``: the action mask in the current timestep. In board games or card games, the legal action set varies with time. The mask is a 0-1 array. For Tic-Tac-Toe, index ``i`` means the place of ``i/N`` th row and ``i%N`` th column. If ``mask[i] == True``, the player can place an ``x`` or ``o`` at that position. Now the board is empty, so the mask is all the true, contains all the positions on the board.
 
 .. note::
 
-    There is no special formulation of ``mask`` either in discrete action space or in continuous action space. You can also use some action space like ``gym.spaces.Discrete`` or ``gym.spaces.Box`` to represent the available action space. It is only a need for the random agent. Currently we use boolean array.
+    There is no special formulation of ``mask`` either in discrete action space or in continuous action space. You can also use some action spaces like ``gym.spaces.Discrete`` or ``gym.spaces.Box`` to represent the available action space. It is only a need for the random agent. Currently, we use a boolean array.
 
 Let's play two steps to have an intuitive understanding of the environment.
 
@@ -112,7 +112,7 @@ Two Random Agent
 
      .. Figure:: ../_static/images/marl.png
 
-Tianshou already provides some builtin classes for multi-agent learning. You can checkout the API documentation for details. Here we will use :class:`~tianshou.policy.RandomPolicy` and :class:`~tianshou.policy.MultiAgentPolicyManager`. The figure on the right gives an intuitive explaination.
+Tianshou already provides some builtin classes for multi-agent learning. You can check out the API documentation for details. Here we use :class:`~tianshou.policy.RandomPolicy` and :class:`~tianshou.policy.MultiAgentPolicyManager`. The figure on the right gives an intuitive explanation.
 
 ::
 
@@ -160,10 +160,10 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
     =================
     >>> collector.close()
 
-Random agents perform badly. In the above game, although agent 2 wins at last, it is clear that a smart agent 1 would place an ``x`` at row 4 col 4 to win directly. 
+Random agents perform badly. In the above game, although agent 2 wins finally, it is clear that a smart agent 1 would place an ``x`` at row 4 col 4 to win directly. 
 
-Train an MARL Agent
--------------------
+Train a MARL Agent
+------------------
 
 So let's start to train our Tic-Tac-Toe agent! First, import some required modules.
 ::
@@ -231,7 +231,7 @@ The following ``get_agents`` function returns agents and their optimizers from e
 
 - The action model we use is an instance of :class:`~tianshou.utils.net.common.Net`, essentially a multi-layer perceptron with the ReLU activation function;
 - The network model is passed to a :class:`~tianshou.policy.DQNPolicy`, where actions are selected according to both the action mask and their Q-values;
-- The opponent can be either a random agent :class:`~tianshou.policy.RandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.DQNPolicy` to allow learned agents play with themselves. 
+- The opponent can be either a random agent :class:`~tianshou.policy.RandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.DQNPolicy` allowing learned agents to play with themselves. 
 
 Both agents are passed to :class:`~tianshou.policy.MultiAgentPolicyManager`, which is responsible to call the correct agent according to the ``agent_id`` in the observation. :class:`~tianshou.policy.MultiAgentPolicyManager` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
 
@@ -271,7 +271,7 @@ Here it is:
         policy = MultiAgentPolicyManager(agents)
         return policy, optim
 
-With the above preparation, we are close to get the first learned agent. The following code is almost the same as the code in the DQN tutorial.
+With the above preparation, we are close to the first learned agent. The following code is almost the same as the code in the DQN tutorial.
 
 ::
 
