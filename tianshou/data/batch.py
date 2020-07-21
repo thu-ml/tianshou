@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 from copy import deepcopy
 from numbers import Number
-from collections.abc import Iterable
+from collections.abc import Collection
 from typing import Any, List, Tuple, Union, Iterator, Optional
 
 # Disable pickle warning related to torch, since it has been removed
@@ -126,8 +126,8 @@ def _parse_value(v: Any):
     elif isinstance(v, (Batch, torch.Tensor)):
         pass
     else:
-        if not isinstance(v, np.ndarray) and isinstance(v, Iterable) and \
-                all(isinstance(e, torch.Tensor) for e in v):
+        if not isinstance(v, np.ndarray) and isinstance(v, Collection) and \
+                len(v) > 0 and all(isinstance(e, torch.Tensor) for e in v):
             try:
                 return torch.stack(v)
             except RuntimeError as e:
