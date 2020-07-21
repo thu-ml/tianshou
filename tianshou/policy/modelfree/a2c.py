@@ -97,16 +97,15 @@ class A2CPolicy(PGPolicy):
     def learn(self, batch: Batch, batch_size: int, repeat: int,
               **kwargs) -> Dict[str, List[float]]:
         self._batch = batch_size
-        r = batch.returns[:, np.newaxis]
+        r = batch.returns
         if self._rew_norm and not np.isclose(r.std(), 0):
-            r = (r - r.mean()) / r.std()
-        batch.returns = r
+            batch.returns = (r - r.mean()) / r.std()
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for b in batch.split(batch_size):
                 self.optim.zero_grad()
                 dist = self(b).dist
-                v = self.critic(b.obs)
+                v = self.critic(b.obs).squeeze(-1)
                 a = to_torch_as(b.act, v)
                 r = to_torch_as(b.returns, v)
                 a_loss = -(dist.log_prob(a) * (r - v).detach()).mean()
