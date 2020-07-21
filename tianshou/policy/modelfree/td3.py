@@ -117,14 +117,14 @@ class TD3Policy(DDPGPolicy):
 
     def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         # critic 1
-        current_q1 = self.critic1(batch.obs, batch.act).squeeze()
+        current_q1 = self.critic1(batch.obs, batch.act).squeeze(-1)
         target_q = batch.returns
         critic1_loss = F.mse_loss(current_q1, target_q)
         self.critic1_optim.zero_grad()
         critic1_loss.backward()
         self.critic1_optim.step()
         # critic 2
-        current_q2 = self.critic2(batch.obs, batch.act).squeeze()
+        current_q2 = self.critic2(batch.obs, batch.act).squeeze(-1)
         critic2_loss = F.mse_loss(current_q2, target_q)
         self.critic2_optim.zero_grad()
         critic2_loss.backward()

@@ -105,7 +105,7 @@ class A2CPolicy(PGPolicy):
             for b in batch.split(batch_size):
                 self.optim.zero_grad()
                 dist = self(b).dist
-                v = self.critic(b.obs).squeeze()
+                v = self.critic(b.obs).squeeze(-1)
                 a = to_torch_as(b.act, v)
                 r = to_torch_as(b.returns, v)
                 a_loss = -(dist.log_prob(a).squeeze() * (r - v).detach()
