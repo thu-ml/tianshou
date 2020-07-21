@@ -3,8 +3,9 @@ import copy
 import pickle
 import pytest
 import numpy as np
+from itertools import starmap
 
-from tianshou.data import Batch, to_torch
+from tianshou.data import Batch, to_torch, to_numpy
 
 
 def test_batch():
@@ -28,8 +29,19 @@ def test_batch():
     assert b.a == 3
     with pytest.raises(AssertionError):
         Batch({1: 2})
+    with pytest.raises(TypeError):
+        Batch(a=[np.zeros((2, 3)), np.zeros((3, 3))])
+    with pytest.raises(TypeError):
+        Batch(a=[np.zeros((3, 2)), np.zeros((3, 3))])
+    with pytest.raises(TypeError):
+        Batch(a=[torch.zeros((2, 3)), torch.zeros((3, 3))])
+    with pytest.raises(TypeError):
+        Batch(a=[torch.zeros((3, 3)), np.zeros((3, 3))])
+    with pytest.raises(TypeError):
+        Batch(a=[1, np.zeros((3, 3)), torch.zeros((3, 3))])
     batch = Batch(a=[torch.ones(3), torch.ones(3)])
     assert torch.allclose(batch.a, torch.ones(2, 3))
+    Batch(a=[])
     batch = Batch(obs=[0], np=np.zeros([3, 4]))
     assert batch.obs == batch["obs"]
     batch.obs = [1]
@@ -307,7 +319,7 @@ def test_batch_over_batch_to_torch():
     assert batch.b.d.dtype == torch.float32
 
 
-def test_utils_to_torch():
+def test_utils_to_torch_numpy():
     batch = Batch(
         a=np.float64(1.0),
         b=Batch(
@@ -323,8 +335,37 @@ def test_utils_to_torch():
     assert batch_torch_float.a.dtype == torch.float32
     assert batch_torch_float.b.c.dtype == torch.float32
     assert batch_torch_float.b.d.dtype == torch.float32
-    array_list = [float('nan'), 1.0]
-    assert to_torch(array_list).dtype == torch.float64
+    data_list = [float('nan'), 1]
+    data_list_torch = to_torch(data_list)
+    assert data_list_torch.dtype == torch.float64
+    data_list_2 = [np.random.rand(3, 3), np.random.rand(3, 3)]
+    data_list_2_torch = to_torch(data_list_2)
+    assert data_list_2_torch.shape == (2, 3, 3)
+    assert np.allclose(to_numpy(to_torch(data_list_2)), data_list_2)
+    data_list_3 = [np.zeros((3, 2)), np.zeros((3, 3))]
+    data_list_3_torch = to_torch(data_list_3)
+    assert isinstance(data_list_3_torch, list)
+    assert all(isinstance(e, torch.Tensor) for e in data_list_3_torch)
+    assert all(starmap(np.allclose,
+               zip(to_numpy(to_torch(data_list_3)), data_list_3)))
+    data_list_4 = [np.zeros((2, 3)), np.zeros((3, 3))]
+    data_list_4_torch = to_torch(data_list_4)
+    assert isinstance(data_list_4_torch, list)
+    assert all(isinstance(e, torch.Tensor) for e in data_list_4_torch)
+    assert all(starmap(np.allclose,
+               zip(to_numpy(to_torch(data_list_4)), data_list_4)))
+    data_list_5 = [np.zeros(2), np.zeros((3, 3))]
+    data_list_5_torch = to_torch(data_list_5)
+    assert isinstance(data_list_5_torch, list)
+    assert all(isinstance(e, torch.Tensor) for e in data_list_5_torch)
+    data_array = np.random.rand(3, 2, 2)
+    data_empty_tensor = to_torch(data_array[[]])
+    assert isinstance(data_empty_tensor, torch.Tensor)
+    assert data_empty_tensor.shape == (0, 2, 2)
+    data_empty_array = to_numpy(data_empty_tensor)
+    assert isinstance(data_empty_array, np.ndarray)
+    assert data_empty_array.shape == (0, 2, 2)
+    assert np.allclose(to_numpy(to_torch(data_array)), data_array)
 
 
 def test_batch_pickle():
@@ -432,7 +473,7 @@ if __name__ == '__main__':
     test_batch()
     test_batch_over_batch()
     test_batch_over_batch_to_torch()
-    test_utils_to_torch()
+    test_utils_to_torch_numpy()
     test_batch_pickle()
     test_batch_from_to_numpy_without_copy()
     test_batch_standard_compatibility()
