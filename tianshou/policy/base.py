@@ -105,6 +105,15 @@ class BasePolicy(ABC, nn.Module):
         """Update policy with a given batch of data.
 
         :return: A dict which includes loss and its corresponding label.
+
+        .. warning::
+
+            If you use ``torch.distributions.Normal`` and
+            ``torch.distributions.Categorical`` to calculate the log_prob,
+            please be careful about the shape: Categorical distribution gives
+            "[batch_size]" shape while Normal distribution gives "[batch_size,
+            1]" shape. The auto-broadcasting of numerical operation with torch
+            tensors will amplify this error.
         """
         pass
 
