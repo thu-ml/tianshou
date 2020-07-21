@@ -143,8 +143,7 @@ class DDPGPolicy(BasePolicy):
 
     def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         current_q = self.critic(batch.obs, batch.act)
-        target_q = to_torch_as(batch.returns, current_q)
-        target_q = target_q[:, None]
+        target_q = to_torch_as(batch.returns[:, None], current_q)
         critic_loss = F.mse_loss(current_q, target_q)
         self.critic_optim.zero_grad()
         critic_loss.backward()

@@ -133,8 +133,7 @@ class PPOPolicy(PGPolicy):
         batch.v = torch.cat(v, dim=0)  # old value
         batch.act = to_torch_as(batch.act, v[0])
         batch.logp_old = torch.cat(old_log_prob, dim=0)
-        batch.returns = to_torch_as(
-            batch.returns, v[0]).reshape(batch.v.shape)
+        batch.returns = to_torch_as(batch.returns, v[0])[:, None]
         if self._rew_norm:
             mean, std = batch.returns.mean(), batch.returns.std()
             if not np.isclose(std.item(), 0):
