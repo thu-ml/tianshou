@@ -4,6 +4,7 @@ import warnings
 import numpy as np
 from copy import deepcopy
 from numbers import Number
+from collections.abc import Collection
 from typing import Any, List, Tuple, Union, Iterator, Optional
 
 # Disable pickle warning related to torch, since it has been removed
@@ -36,8 +37,11 @@ def _is_scalar(value: Any) -> bool:
     # 3. python object rather than dict / Batch / tensor
     # the check of dict / Batch is omitted because this only checks a value.
     # a dict / Batch will eventually check their values
-    value = np.asanyarray(value)
-    return value.size == 1 and not value.shape
+    if isinstance(value, torch.Tensor):
+        return value.numel() == 1 and not value.shape
+    else:
+        value = np.asanyarray(value)
+        return value.size == 1 and not value.shape
 
 
 def _is_number(value: Any) -> bool:
@@ -53,16 +57,21 @@ def _is_number(value: Any) -> bool:
 def _to_array_with_correct_type(v: Any) -> np.ndarray:
     # convert the value to np.ndarray
     # convert to np.object data type if neither bool nor number
+    # raises an exception if array's elements are tensors themself
     v = np.asanyarray(v)
     if not issubclass(v.dtype.type, (np.bool_, np.number)):
         v = v.astype(np.object)
-    if v.dtype == np.object and not v.shape:
+    if v.dtype == np.object:
         # scalar ndarray with np.object data type is very annoying
         # a=np.array([np.array({}, dtype=object), np.array({}, dtype=object)])
         # a is not array([{}, {}], dtype=object), and a[0]={} results in
         # something very strange:
         # array([{}, array({}, dtype=object)], dtype=object)
-        v = v.item(0)
+        if not v.shape:
+            v = v.item(0)
+        elif any(isinstance(e, (np.ndarray, torch.Tensor))
+                 for e in v.reshape(-1)):
+            raise ValueError("Numpy arrays of tensors are not supported yet.")
     return v
 
 
@@ -113,25 +122,29 @@ def _assert_type_keys(keys):
 
 
 def _parse_value(v: Any):
-    if isinstance(v, (list, tuple, np.ndarray)):
-        if not isinstance(v, np.ndarray) and \
-                all(isinstance(e, torch.Tensor) for e in v):
-            v = torch.stack(v)
-            return v
-        v_ = _to_array_with_correct_type(v)
-        if v_.dtype == np.object and _is_batch_set(v):
-            v = Batch(v)  # list of dict / Batch
-        else:
-            # normal data list (main case)
-            # or actually a data list with objects
-            v = v_
-    elif isinstance(v, dict):
+    if isinstance(v, dict):
         v = Batch(v)
     elif isinstance(v, (Batch, torch.Tensor)):
         pass
     else:
-        # scalar case, convert to ndarray
-        v = _to_array_with_correct_type(v)
+        if not isinstance(v, np.ndarray) and isinstance(v, Collection) and \
+                len(v) > 0 and all(isinstance(e, torch.Tensor) for e in v):
+            try:
+                return torch.stack(v)
+            except RuntimeError as e:
+                raise TypeError("Batch does not support non-stackable iterable"
+                                " of torch.Tensor as unique value yet.") from e
+        try:
+            v_ = _to_array_with_correct_type(v)
+        except ValueError as e:
+            raise TypeError("Batch does not support heterogeneous list/tuple"
+                            " of tensors as unique value yet.") from e
+        if _is_batch_set(v):
+            v = Batch(v)  # list of dict / Batch
+        else:
+            # None, scalar, normal data list (main case)
+            # or an actual list of objects
+            v = v_
     return v
 
 
