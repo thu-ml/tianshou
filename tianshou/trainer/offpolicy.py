@@ -27,6 +27,7 @@ def offpolicy_trainer(
         writer: Optional[SummaryWriter] = None,
         log_interval: int = 1,
         verbose: bool = True,
+        test_in_train: bool = True,
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for off-policy trainer procedure.
 
@@ -65,6 +66,7 @@ def offpolicy_trainer(
         SummaryWriter.
     :param int log_interval: the log interval of the writer.
     :param bool verbose: whether to print the information.
+    :param bool test_in_train: whether to test in the training phase.
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
@@ -72,7 +74,7 @@ def offpolicy_trainer(
     best_epoch, best_reward = -1, -1
     stat = {}
     start_time = time.time()
-    test_in_train = train_collector.policy == policy
+    test_in_train = test_in_train and train_collector.policy == policy
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()

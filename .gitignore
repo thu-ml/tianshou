@@ -143,3 +143,5 @@ MUJOCO_LOG.TXT
 *.pth
 .vscode/
 .DS_Store
+*.zip
+*.pstats
