@@ -69,7 +69,8 @@ def _to_array_with_correct_type(v: Any) -> np.ndarray:
         # array([{}, array({}, dtype=object)], dtype=object)
         if not v.shape:
             v = v.item(0)
-        elif any(isinstance(e, (np.ndarray, torch.Tensor)) for e in v):
+        elif any(isinstance(e, (np.ndarray, torch.Tensor))
+                 for e in v.reshape(-1)):
             raise ValueError("Numpy arrays of tensors are not supported yet.")
     return v
 
