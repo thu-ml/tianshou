@@ -5,26 +5,8 @@ from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer
 
 
-class RandomMultiAgentPolicy(BasePolicy):
-    """A random agent used in multi-agent learning. It randomly chooses an
-    action from the legal action.
-    """
-
-    def forward(self, batch: Batch,
-                state: Optional[Union[dict, Batch, np.ndarray]] = None,
-                **kwargs) -> Batch:
-        mask = batch.obs.mask
-        logits = np.random.rand(*mask.shape)
-        logits[np.isclose(mask, 0)] = -np.inf
-        return Batch(act=logits.argmax(axis=-1))
-
-    def learn(self, batch: Batch, **kwargs
-              ) -> Dict[str, Union[float, List[float]]]:
-        return {}
-
-
 class MultiAgentPolicyManager(BasePolicy):
-    """The policy manager accepts a list of
+    """This multi-agent policy manager accepts a list of
     :class:`~tianshou.policy.BasePolicy`. It dispatches the batch data to each
     of these policies when the "forward" is called. The same as "process_fn"
     and "learn": it splits the data and feeds them to each policy. A figure in
@@ -40,17 +22,44 @@ class MultiAgentPolicyManager(BasePolicy):
             policy.set_agent_id(i + 1)
 
     def replace_policy(self, policy, agent_id):
+        """Replace the "agent_id"th policy in this manager."""
         self.policies[agent_id - 1] = policy
         policy.set_agent_id(agent_id)
+
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
+        """Save original multi-dimensional rew in "save_rew", set rew to the
+        reward of each agent during their ``process_fn``, and restore the
+        original reward afterwards.
+        """
+        results = {}
+        # reward can be empty Batch (after initial reset) or nparray.
+        has_rew = isinstance(buffer.rew, np.ndarray)
+        if has_rew:  # save the original reward in save_rew
+            save_rew, buffer.rew = buffer.rew, Batch()
+        for policy in self.policies:
+            agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
+            if len(agent_index) == 0:
+                results[f'agent_{policy.agent_id}'] = Batch()
+                continue
+            tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
+            if has_rew:
+                tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
+                buffer.rew = save_rew[:, policy.agent_id - 1]
+            results[f'agent_{policy.agent_id}'] = \
+                policy.process_fn(tmp_batch, buffer, tmp_indice)
+        if has_rew:  # restore from save_rew
+            buffer.rew = save_rew
+        return Batch(results)
 
     def forward(self, batch: Batch,
                 state: Optional[Union[dict, Batch]] = None,
                 **kwargs) -> Batch:
-        """
-        :param state: if None, it means all agents have no state.
-            If not None, it should contain keys of agent_1, agent_2, ...
+        """:param state: if None, it means all agents have no state. If not
+            None, it should contain keys of "agent_1", "agent_2", ...
 
         :return: a Batch with the following contents:
+
         ::
 
             {
@@ -109,13 +118,13 @@ class MultiAgentPolicyManager(BasePolicy):
 
     def learn(self, batch: Batch, **kwargs
               ) -> Dict[str, Union[float, List[float]]]:
-        """
-        :return: a dict with the following contents:
+        """:return: a dict with the following contents:
+
         ::
 
             {
-                "agent_1/item1": item 1 of agent_1's policy output for learn
-                "agent_1/item2": item 2 of agent_1's policy output for learn
+                "agent_1/item1": item 1 of agent_1's policy.learn output
+                "agent_1/item2": item 2 of agent_1's policy.learn output
                 "agent_2/xxx": xxx
                 ...
                 "agent_n/xxx": xxx
@@ -129,29 +138,3 @@ class MultiAgentPolicyManager(BasePolicy):
                 for k, v in out.items():
                     results["agent_" + str(policy.agent_id) + '/' + k] = v
         return results
-
-    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
-                   indice: np.ndarray) -> Batch:
-        results = {}
-        # save original multi-dimensional rew in save_rew,
-        # set rew to the reward of each agent during their ``process_fn``,
-        # and restore the original reward afterwards
-        has_rew = isinstance(buffer.rew, np.ndarray)
-        if has_rew:  # save the original reward to save_rew
-            save_rew, buffer.rew = buffer.rew, Batch()
-        for policy in self.policies:
-            agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
-            if len(agent_index) == 0:
-                # has_data, data, agent_index
-                results[f'agent_{policy.agent_id}'] = {}
-                continue
-            tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
-            if has_rew:
-                # reward can be empty Batch (after initial reset) or nparray.
-                tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
-                buffer.rew = save_rew[:, policy.agent_id - 1]
-            results[f'agent_{policy.agent_id}'] = \
-                policy.process_fn(tmp_batch, buffer, tmp_indice)
-        if has_rew:  # restore from save_rew
-            buffer.rew = save_rew
-        return Batch(results)

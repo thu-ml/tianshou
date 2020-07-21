@@ -56,7 +56,7 @@ class BasePolicy(ABC, nn.Module):
         self.agent_id = 0
 
     def set_agent_id(self, agent_id: int) -> None:
-        """set self.agent_id, for MARL."""
+        """set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,

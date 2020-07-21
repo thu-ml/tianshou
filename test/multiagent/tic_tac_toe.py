@@ -1,17 +1,17 @@
 import os
-from torch.utils.tensorboard import SummaryWriter
 import torch
 import argparse
 import numpy as np
 from copy import deepcopy
+from typing import Optional, Tuple
+from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import VectorEnv
-from tianshou.policy import BasePolicy, DQNPolicy, \
-    RandomMultiAgentPolicy, MultiAgentPolicyManager
 from tianshou.utils.net.common import Net
-from tianshou.data import Collector, ReplayBuffer
 from tianshou.trainer import offpolicy_trainer
-from typing import Optional, Tuple
+from tianshou.data import Collector, ReplayBuffer
+from tianshou.policy import BasePolicy, DQNPolicy, RandomPolicy, \
+    MultiAgentPolicyManager
 
 from tic_tac_toe_env import TicTacToeEnv
 
@@ -89,7 +89,7 @@ def get_agents(args: argparse.Namespace = get_args(),
             agent_opponent = deepcopy(agent_learn)
             agent_opponent.load_state_dict(torch.load(args.opponent_path))
         else:
-            agent_opponent = RandomMultiAgentPolicy()
+            agent_opponent = RandomPolicy()
 
     if args.agent_id == 1:
         agents = [agent_learn, agent_opponent]

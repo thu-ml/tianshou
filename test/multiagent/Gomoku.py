@@ -5,7 +5,7 @@ import numpy as np
 from copy import deepcopy
 
 from tianshou.env import VectorEnv
-from tianshou.policy import RandomMultiAgentPolicy
+from tianshou.policy import RandomPolicy
 from tianshou.data import Collector
 
 from tic_tac_toe_env import TicTacToeEnv
@@ -59,7 +59,7 @@ def gomoku(args=get_args()):
             print(f'selection probability {rews.tolist()}')
             print(f'selected opponent {opp_id}')
             opponent = opponent_pool[opp_id.item(0)]
-            agent = RandomMultiAgentPolicy()
+            agent = RandomPolicy()
             # previous learner can only be used for forward
             agent.forward = opponent.forward
             args.model_save_path = os.path.join(
