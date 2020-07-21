@@ -97,7 +97,7 @@ class A2CPolicy(PGPolicy):
     def learn(self, batch: Batch, batch_size: int, repeat: int,
               **kwargs) -> Dict[str, List[float]]:
         self._batch = batch_size
-        r = batch.returns[:, None]
+        r = batch.returns[:, np.newaxis]
         if self._rew_norm and not np.isclose(r.std(), 0):
             r = (r - r.mean()) / r.std()
         batch.returns = r

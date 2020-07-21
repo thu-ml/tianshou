@@ -110,10 +110,10 @@ class BasePolicy(ABC, nn.Module):
 
     @staticmethod
     def compute_episodic_return(
-            batch: Batch,
-            v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
-            gamma: float = 0.99,
-            gae_lambda: float = 0.95,
+        batch: Batch,
+        v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        gamma: float = 0.99,
+        gae_lambda: float = 0.95,
     ) -> Batch:
         """Compute returns over given full-length episodes, including the
         implementation of Generalized Advantage Estimator (arXiv:1506.02438).
@@ -128,7 +128,8 @@ class BasePolicy(ABC, nn.Module):
         :param float gae_lambda: the parameter for Generalized Advantage
             Estimation, should be in [0, 1], defaults to 0.95.
 
-        :return: a Batch. The result will be stored in batch.returns.
+        :return: a Batch. The result will be stored in batch.returns as a numpy
+            array.
         """
         rew = batch.rew
         if v_s_ is None:
@@ -157,7 +158,7 @@ class BasePolicy(ABC, nn.Module):
         gamma: float = 0.99,
         n_step: int = 1,
         rew_norm: bool = False,
-    ) -> np.ndarray:
+    ) -> Batch:
         r"""Compute n-step return for Q-learning targets:
 
         .. math::
