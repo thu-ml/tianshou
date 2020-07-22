@@ -10,8 +10,8 @@ class Net(nn.Module):
     please refer to :ref:`build_the_network`.
 
     :param concat: whether the input shape is concatenated by state_shape
-     and action_shape. If it is True, ``action_shape`` is not the output
-     shape, but affects the input shape.
+        and action_shape. If it is True, ``action_shape`` is not the output
+        shape, but affects the input shape.
     """
 
     def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',

@@ -167,7 +167,6 @@ Train an MARL Agent
 
 So let's start to train our Tic-Tac-Toe agent! First, import some required modules.
 ::
-
     import os
     import torch
     import argparse
