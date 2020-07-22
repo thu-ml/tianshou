@@ -162,8 +162,8 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
 
 Random agents perform badly. In the above game, although agent 2 wins finally, it is clear that a smart agent 1 would place an ``x`` at row 4 col 4 to win directly. 
 
-Train a MARL Agent
-------------------
+Train an MARL Agent
+-------------------
 
 So let's start to train our Tic-Tac-Toe agent! First, import some required modules.
 ::

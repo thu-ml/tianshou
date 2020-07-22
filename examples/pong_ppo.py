@@ -93,8 +93,7 @@ def test_ppo(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
-        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer,
-        task=args.task)
+        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer)
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':

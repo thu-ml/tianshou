@@ -19,7 +19,7 @@ def create_atari_environment(name=None, sticky_actions=True,
 
 
 def preprocess_fn(obs=None, act=None, rew=None, done=None,
-                  obs_next=None, info=None, policy=None):
+                  obs_next=None, info=None, policy=None, **kwargs):
     if obs_next is not None:
         obs_next = np.reshape(obs_next, (-1, *obs_next.shape[2:]))
         obs_next = np.moveaxis(obs_next, 0, -1)

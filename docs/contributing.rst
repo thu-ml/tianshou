@@ -8,13 +8,14 @@ To install Tianshou in an "editable" mode, run
 
 .. code-block:: bash
 
-    pip3 install -e ".[dev]"
+    $ git checkout dev
+    $ pip install -e ".[dev]"
 
 in the main directory. This installation is removable by
 
 .. code-block:: bash
 
-    python3 setup.py develop --uninstall
+    $ python setup.py develop --uninstall
 
 PEP8 Code Style Check
 ---------------------
@@ -23,7 +24,7 @@ We follow PEP8 python code style. To check, in the main directory, run:
 
 .. code-block:: bash
 
-    flake8 . --count --show-source --statistics
+    $ flake8 . --count --show-source --statistics
 
 Test Locally
 ------------
@@ -32,7 +33,7 @@ This command will run automatic tests in the main directory
 
 .. code-block:: bash
 
-    pytest test --cov tianshou -s --durations 0 -v
+    $ pytest test --cov tianshou -s --durations 0 -v
 
 Test by GitHub Actions
 ----------------------
@@ -65,11 +66,13 @@ To compile documentation into webpages, run
 
 .. code-block:: bash
 
-    make html
+    $ make html
 
 under the ``docs/`` directory. The generated webpages are in ``docs/_build`` and can be viewed with browsers.
 
-Chinese Documentation
----------------------
+Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/, and the develop version of documentation is in https://tianshou.readthedocs.io/en/dev/.
 
-Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/
+Pull Request
+------------
+
+All of the commits should merge through the pull request to the ``dev`` branch. The pull request must have 2 approvals before merging.
