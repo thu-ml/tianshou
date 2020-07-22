@@ -94,7 +94,7 @@ def test_dqn(args=get_args()):
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, writer=writer, task=args.task)
+        stop_fn=stop_fn, writer=writer)
 
     train_collector.close()
     test_collector.close()
