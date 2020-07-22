@@ -26,5 +26,5 @@ jobs:
     - name: Documentation test
       run: |
         cd docs
-        python test_docs.py
+        make html SPHINXOPTS="-W"
         cd ..
