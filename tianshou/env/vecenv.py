@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-from multiprocessing import Process, Pipe
+from multiprocessing import Process, Pipe, connection
 from typing import List, Tuple, Union, Optional, Callable, Any
 
 try:
@@ -178,6 +178,92 @@ class SubprocVectorEnv(BaseVectorEnv):
         for p in self.processes:
             p.join()
         return result
+
+
+class AsyncVectorEnv(SubprocVectorEnv):
+    """Vectorized asynchronous environment wrapper based on subprocess.
+    .. seealso::
+        Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
+        explanation.
+    """
+    def __init__(self, env_fns: List[Callable[[], gym.Env]],
+                 wait_num: Optional[int] = None) -> None:
+        """
+        :param wait_num: used in asynchronous simulation if the time cost of
+            ``env.step`` varies with time and synchronously waiting for all
+            environments to finish a step is time-wasting. In that case, we
+            can return when ``wait_num`` environments finish a step and keep
+            on simulation in these environments. If ``None``, asynchronous
+            simulation is disabled; else, ``1 <= wait_num <= env_num``.
+        """
+        super().__init__(env_fns)
+        self.wait_num = wait_num or len(env_fns)
+        assert 1 <= self.wait_num <= len(env_fns), \
+            f'wait_num should be in [1, {len(env_fns)}], but got {wait_num}'
+        self.waiting_conn = []
+        self.waiting_id = []
+
+    def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+        if id is None:
+            id = range(self.env_num)
+        elif np.isscalar(id):
+            id = [id]
+        # reset envs are not waiting anymore
+        rest_envs = [(i, conn) for i, conn in
+                     zip(self.waiting_id, self.waiting_conn) if i not in id]
+        if not rest_envs:
+            self.waiting_id, self.waiting_conn = [], []
+        else:
+            self.waiting_id, self.waiting_conn = zip(*rest_envs)
+        return super().reset(id)
+
+    def render(self, **kwargs) -> List[Any]:
+        if len(self.waiting_id) > 0:
+            raise RuntimeError(
+                f"environments {self.waiting_id} are still "
+                f"stepping, cannot render now")
+        return super().render(**kwargs)
+
+    def close(self) -> List[Any]:
+        if self.closed:
+            return []
+        # finish remaining steps, and close
+        self.step(None)
+        return super().close()
+
+    def step(self,
+             action: Optional[np.ndarray],
+             id: Optional[Union[int, List[int]]] = None
+             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Provide the given action to the environments specified by the id.
+        If action is None, fetch unfinished step() calls instead.
+        """
+        if id is not None:
+            raise ValueError("cannot specify the id of environments"
+                             " during step() for AsyncVectorEnv")
+        if action is not None:
+            assert len(action) + len(self.waiting_id) <= self.env_num
+            available_env_ids = [i for i in range(self.env_num)
+                                 if i not in self.waiting_id]
+            for i, act in enumerate(action):
+                i = available_env_ids[i]
+                self.parent_remote[i].send(['step', act])
+                self.waiting_conn.append(self.parent_remote[i])
+                self.waiting_id.append(i)
+        result = []
+        while len(self.waiting_conn) > 0 and len(result) < self.wait_num:
+            ready_conns = connection.wait(self.waiting_conn)
+            for conn in ready_conns:
+                waiting_index = self.waiting_conn.index(conn)
+                self.waiting_conn.pop(waiting_index)
+                env_id = self.waiting_id.pop(waiting_index)
+                ans = conn.recv()
+                obs, rew, done, info = ans
+                info["env_id"] = env_id
+                result.append((obs, rew, done, info))
+        obs, rew, done, info = map(np.stack, zip(*result))
+        return obs, rew, done, info
 
 
 class RayVectorEnv(BaseVectorEnv):
