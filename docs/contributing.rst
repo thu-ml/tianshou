@@ -71,3 +71,8 @@ To compile documentation into webpages, run
 under the ``docs/`` directory. The generated webpages are in ``docs/_build`` and can be viewed with browsers.
 
 Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/
+
+Pull Request
+------------
+
+All of the commits should merge through the pull request to the ``dev`` branch. The pull request must have 2 approvals before merging.
