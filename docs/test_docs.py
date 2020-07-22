@@ -4,8 +4,8 @@ import os
 import shutil
 from subprocess import Popen, PIPE
 
-filter_warnings = ["WARNING: LaTeX command 'latex' cannot be run (needed "
-                   "for math display), check the imgmath_latex setting"]
+latex_warning = "WARNING: LaTeX command 'latex' cannot be run (needed for \
+math display), check the imgmath_latex setting"
 
 
 def main():
@@ -14,7 +14,7 @@ def main():
     p = Popen(['make', 'html'], stderr=PIPE)
     _, err = p.communicate()
     err = [i for i in err.decode().splitlines()
-           if 'WARNING' in i and i not in filter_warnings]
+           if 'WARNING' in i and latex_warning not in i]
     assert len(err) == 0, '\n'.join(err)
 
 

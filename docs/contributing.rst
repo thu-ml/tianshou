@@ -70,7 +70,7 @@ To compile documentation into webpages, run
 
 under the ``docs/`` directory. The generated webpages are in ``docs/_build`` and can be viewed with browsers.
 
-Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/
+Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/, and the develop version of documentation is in https://tianshou.readthedocs.io/en/dev/.
 
 Pull Request
 ------------
