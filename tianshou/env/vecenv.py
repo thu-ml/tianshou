@@ -183,6 +183,7 @@ class SubprocVectorEnv(BaseVectorEnv):
 class AsyncVectorEnv(SubprocVectorEnv):
     """Vectorized asynchronous environment wrapper based on subprocess.
     .. seealso::
+
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
         explanation.
     """
