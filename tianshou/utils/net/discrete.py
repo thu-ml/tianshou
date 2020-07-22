@@ -9,12 +9,13 @@ class Actor(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, action_shape):
+    def __init__(self, preprocess_net, action_shape, size=128):
         super().__init__()
         self.preprocess = preprocess_net
-        self.last = nn.Linear(128, np.prod(action_shape))
+        self.last = nn.Linear(size, np.prod(action_shape))
 
     def forward(self, s, state=None, info={}):
+        r"""s -> Q(s, \*)"""
         logits, h = self.preprocess(s, state)
         logits = F.softmax(self.last(logits), dim=-1)
         return logits, h
@@ -25,12 +26,13 @@ class Critic(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net):
+    def __init__(self, preprocess_net, size=128):
         super().__init__()
         self.preprocess = preprocess_net
-        self.last = nn.Linear(128, 1)
+        self.last = nn.Linear(size, 1)
 
     def forward(self, s, **kwargs):
+        """s -> V(s)"""
         logits, h = self.preprocess(s, state=kwargs.get('state', None))
         logits = self.last(logits)
         return logits
@@ -62,6 +64,7 @@ class DQN(nn.Module):
         self.head = nn.Linear(512, action_shape)
 
     def forward(self, x, state=None, info={}):
+        r"""x -> Q(x, \*)"""
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device, dtype=torch.float32)
         x = x.permute(0, 3, 1, 2)

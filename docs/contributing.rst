@@ -8,13 +8,14 @@ To install Tianshou in an "editable" mode, run
 
 .. code-block:: bash
 
-    pip3 install -e ".[dev]"
+    git checkout dev
+    pip install -e ".[dev]"
 
 in the main directory. This installation is removable by
 
 .. code-block:: bash
 
-    python3 setup.py develop --uninstall
+    python setup.py develop --uninstall
 
 PEP8 Code Style Check
 ---------------------
@@ -68,8 +69,5 @@ To compile documentation into webpages, run
     make html
 
 under the ``docs/`` directory. The generated webpages are in ``docs/_build`` and can be viewed with browsers.
-
-Chinese Documentation
----------------------
 
 Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/

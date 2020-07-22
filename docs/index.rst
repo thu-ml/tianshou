@@ -10,7 +10,7 @@ Welcome to Tianshou!
 
 * :class:`~tianshou.policy.PGPolicy` `Policy Gradient <https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf>`_
 * :class:`~tianshou.policy.DQNPolicy` `Deep Q-Network <https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf>`_
-* :class:`~tianshou.policy.DQNPolicy` `Double DQN <https://arxiv.org/pdf/1509.06461.pdf>`_ with n-step returns
+* :class:`~tianshou.policy.DQNPolicy` `Double DQN <https://arxiv.org/pdf/1509.06461.pdf>`_
 * :class:`~tianshou.policy.A2CPolicy` `Advantage Actor-Critic <https://openai.com/blog/baselines-acktr-a2c/>`_
 * :class:`~tianshou.policy.DDPGPolicy` `Deep Deterministic Policy Gradient <https://arxiv.org/pdf/1509.02971.pdf>`_
 * :class:`~tianshou.policy.PPOPolicy` `Proximal Policy Optimization <https://arxiv.org/pdf/1707.06347.pdf>`_
@@ -28,25 +28,31 @@ Here is Tianshou's other features:
 * Support any type of environment state (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
 * Support customized training process: :ref:`customize_training`
 * Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` for all Q-learning based algorithms
-* Support multi-agent RL easily (a tutorial is available at :doc:`/tutorials/tictactoe`)
+* Support multi-agent RL: :doc:`/tutorials/tictactoe`
 
-中文文档位于 https://tianshou.readthedocs.io/zh/latest/
+中文文档位于 `https://tianshou.readthedocs.io/zh/latest/ <https://tianshou.readthedocs.io/zh/latest/>`_
 
 Installation
 ------------
 
 Tianshou is currently hosted on `PyPI <https://pypi.org/project/tianshou/>`_. You can simply install Tianshou with the following command (with Python >= 3.6):
-::
 
-    pip3 install tianshou
+.. code-block:: bash
+
+    pip install tianshou
 
 You can also install with the newest version through GitHub:
-::
 
-    pip3 install git+https://github.com/thu-ml/tianshou.git@master
+.. code-block:: bash
+
+    # latest release
+    pip install git+https://github.com/thu-ml/tianshou.git@master
+    # develop version
+    pip install git+https://github.com/thu-ml/tianshou.git@dev
 
 If you use Anaconda or Miniconda, you can install Tianshou through the following command lines:
-::
+
+.. code-block:: bash
 
     # create a new virtualenv and install pip, change the env name if you like
     conda create -n myenv pip

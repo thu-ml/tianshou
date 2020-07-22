@@ -38,7 +38,7 @@ Here is Tianshou's other features:
 - Support any type of environment state (e.g. a dict, a self-defined class, ...) [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#user-defined-environment-and-different-state-representation)
 - Support customized training process [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#customize-training-process)
 - Support n-step returns estimation for all Q-learning based algorithms
-- Support multi-agent RL easily [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html##multi-agent-reinforcement-learning)
+- Support multi-agent RL [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html##multi-agent-reinforcement-learning)
 
 In Chinese, Tianshou means divinely ordained and is derived to the gift of being born with. Tianshou is a reinforcement learning platform, and the RL algorithm does not learn from humans. So taking "Tianshou" means that there is no teacher to study with, but rather to learn by themselves through constant interaction with the environment.
 
@@ -49,13 +49,16 @@ In Chinese, Tianshou means divinely ordained and is derived to the gift of being
 Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/). It requires Python >= 3.6. You can simply install Tianshou with the following command:
 
 ```bash
-pip3 install tianshou
+pip install tianshou
 ```
 
 You can also install with the newest version through GitHub:
 
 ```bash
-pip3 install git+https://github.com/thu-ml/tianshou.git@master
+# latest release
+pip install git+https://github.com/thu-ml/tianshou.git@master
+# develop version
+pip install git+https://github.com/thu-ml/tianshou.git@dev
 ```
 
 If you use Anaconda or Miniconda, you can install Tianshou through the following command lines:
@@ -82,9 +85,9 @@ If no error occurs, you have successfully installed Tianshou.
 
 The tutorials and API documentation are hosted on [tianshou.readthedocs.io](https://tianshou.readthedocs.io/).
 
-The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/master/test) folder and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folder. It may fail to run with PyPI installation, so please re-install the github version through `pip3 install git+https://github.com/thu-ml/tianshou.git@master`.
+The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/master/test) folder and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folder.
 
-中文文档位于 [https://tianshou.readthedocs.io/zh/latest/](https://tianshou.readthedocs.io/zh/latest/)
+中文文档位于 [https://tianshou.readthedocs.io/zh/latest/](https://tianshou.readthedocs.io/zh/latest/)。
 
 <!-- 这里有一份天授平台简短的中文简介：https://www.zhihu.com/question/377263715 -->
 
@@ -108,10 +111,10 @@ We select some of famous reinforcement learning platforms: 2 GitHub repos with m
 | --------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | GitHub Stars    | [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/openai/baselines)](https://github.com/openai/baselines/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/hill-a/stable-baselines)](https://github.com/hill-a/stable-baselines/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/ray-project/ray)](https://github.com/ray-project/ray/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch)](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/astooke/rlpyt)](https://github.com/astooke/rlpyt/stargazers) |
 | Algo - Task     | PyTorch                                                      | TensorFlow                                                   | TensorFlow                                                   | TF/PyTorch                                                   | PyTorch                                                      | PyTorch                                                      |
-| PG - CartPole   | 6.09±4.60s                                                   | None                                                         | None                                                         | 19.26±2.29s                                                  | None                                                         | ?                                                            |
-| DQN - CartPole  | 6.09±0.87s                                                   | 1046.34±291.27s                                              | 93.47±58.05s                                                 | 28.56±4.60s                                                  | 31.58±11.30s \*\*                                            | ?                                                            |
-| A2C - CartPole  | 10.59±2.04s                                                   | \*(~1612s)                                                   | 57.56±12.87s                                                 | 57.92±9.94s                                                  | \*(Not converged)                                            | ?                                                            |
-| PPO - CartPole  | 31.82±7.76s                                                  | \*(~1179s)                                                   | 34.79±17.02s                                                 | 44.60±17.04s                                                 | 23.99±9.26s \*\*                                             | ?                                                            |
+| PG - CartPole   | 9.02±6.79s                                                   | None                                                         | None                                                         | 19.26±2.29s                                                  | None                                                         | ?                                                            |
+| DQN - CartPole  | 6.72±1.28s                                                   | 1046.34±291.27s                                              | 93.47±58.05s                                                 | 28.56±4.60s                                                  | 31.58±11.30s \*\*                                            | ?                                                            |
+| A2C - CartPole  | 15.33±4.48s                                                  | \*(~1612s)                                                   | 57.56±12.87s                                                 | 57.92±9.94s                                                  | \*(Not converged)                                            | ?                                                            |
+| PPO - CartPole  | 6.01±1.14s                                                   | \*(~1179s)                                                   | 34.79±17.02s                                                 | 44.60±17.04s                                                 | 23.99±9.26s \*\*                                             | ?                                                            |
 | PPO - Pendulum  | 16.18±2.49s                                                  | 745.43±160.82s                                               | 259.73±27.37s                                                | 123.62±44.23s                                                | Runtime Error                                                | ?                                                            |
 | DDPG - Pendulum | 37.26±9.55s                                                  | \*(>1h)                                                      | 277.52±92.67s                                                | 314.70±7.92s                                                 | 59.05±10.03s \*\*                                            | 172.18±62.48s                                                |
 | TD3 - Pendulum  | 44.04±6.37s                                                  | None                                                         | 99.75±21.63s                                                 | 149.90±7.54s                                                 | 57.52±17.71s \*\*                                            | 210.31±76.30s                                                |
@@ -142,7 +145,7 @@ We decouple all of the algorithms into 4 parts:
 - `process_fn`: to preprocess data from replay buffer (since we have reformulated all algorithms to replay-buffer based algorithms);
 - `learn`: to learn from a given batch data.
 
-Within these API, we can interact with different policies conveniently.
+Within this API, we can interact with different policies conveniently.
 
 ### Elegant and Flexible
 
@@ -182,17 +185,12 @@ Define some hyper-parameters:
 
 ```python
 task = 'CartPole-v0'
-lr = 1e-3
-gamma = 0.9
-n_step = 3
-eps_train, eps_test = 0.1, 0.05
-epoch = 10
-step_per_epoch = 1000
-collect_per_step = 10
-target_freq = 320
-batch_size = 64
+lr, epoch, batch_size = 1e-3, 10, 64
 train_num, test_num = 8, 100
+gamma, n_step, target_freq = 0.9, 3, 320
 buffer_size = 20000
+eps_train, eps_test = 0.1, 0.05
+step_per_epoch, collect_per_step = 1000, 10
 writer = SummaryWriter('log/dqn')  # tensorboard is also supported!
 ```
 
@@ -208,7 +206,8 @@ Define the network:
 
 ```python
 from tianshou.utils.net.common import Net
-
+# you can define other net by following the API:
+# https://tianshou.readthedocs.io/en/latest/tutorials/dqn.html#build-the-network
 env = gym.make(task)
 state_shape = env.observation_space.shape or env.observation_space.n
 action_shape = env.action_space.shape or env.action_space.n
@@ -219,8 +218,7 @@ optim = torch.optim.Adam(net.parameters(), lr=lr)
 Setup policy and collectors:
 
 ```python
-policy = ts.policy.DQNPolicy(net, optim, gamma, n_step,
-                             target_update_freq=target_freq)
+policy = ts.policy.DQNPolicy(net, optim, gamma, n_step, target_update_freq=target_freq)
 train_collector = ts.data.Collector(policy, train_envs, ts.data.ReplayBuffer(buffer_size))
 test_collector = ts.data.Collector(policy, test_envs)
 ```
@@ -236,7 +234,7 @@ result = ts.trainer.offpolicy_trainer(
 print(f'Finished training! Use {result["duration"]}')
 ```
 
-Save / load the trained policy (it's exactly the same as PyTorch nn.module):
+Save / load the trained policy (it's exactly the same as PyTorch `nn.module`):
 
 ```python
 torch.save(policy.state_dict(), 'dqn.pth')
@@ -261,11 +259,11 @@ You can check out the [documentation](https://tianshou.readthedocs.io) for advan
 
 ## Contributing
 
-Tianshou is still under development. More algorithms and features are going to be added and we always welcome contributions to help make Tianshou better. If you would like to contribute, please check out [docs/contributing.rst](https://github.com/thu-ml/tianshou/blob/master/docs/contributing.rst).
+Tianshou is still under development. More algorithms and features are going to be added and we always welcome contributions to help make Tianshou better. If you would like to contribute, please check out [this link](https://tianshou.readthedocs.io/en/latest/contributing.html).
 
 ## TODO
 
-Check out the [Issue/PR Categories](https://github.com/thu-ml/tianshou/projects/2) and [Support Status](https://github.com/thu-ml/tianshou/projects/3) page for more detail.
+Check out the [Project](https://github.com/thu-ml/tianshou/projects) page for more detail.
 
 ## Citing Tianshou
 
@@ -273,7 +271,7 @@ If you find Tianshou useful, please cite it in your publications.
 
 ```latex
 @misc{tianshou,
-  author = {Jiayi Weng, Minghao Zhang, Dong Yan, Hang Su, Jun Zhu},
+  author = {Jiayi Weng, Minghao Zhang, Alexis Duburcq, Kaichao You, Dong Yan, Hang Su, Jun Zhu},
   title = {Tianshou},
   year = {2020},
   publisher = {GitHub},
