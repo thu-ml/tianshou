@@ -49,27 +49,27 @@ In Chinese, Tianshou means divinely ordained and is derived to the gift of being
 Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/). It requires Python >= 3.6. You can simply install Tianshou with the following command:
 
 ```bash
-pip install tianshou
+$ pip install tianshou
 ```
 
 You can also install with the newest version through GitHub:
 
 ```bash
 # latest release
-pip install git+https://github.com/thu-ml/tianshou.git@master
+$ pip install git+https://github.com/thu-ml/tianshou.git@master
 # develop version
-pip install git+https://github.com/thu-ml/tianshou.git@dev
+$ pip install git+https://github.com/thu-ml/tianshou.git@dev
 ```
 
 If you use Anaconda or Miniconda, you can install Tianshou through the following command lines:
 
 ```bash
 # create a new virtualenv and install pip, change the env name if you like
-conda create -n myenv pip
+$ conda create -n myenv pip
 # activate the environment
-conda activate myenv
+$ conda activate myenv
 # install tianshou
-pip install tianshou
+$ pip install tianshou
 ```
 
 After installation, open your python console and type
@@ -98,7 +98,7 @@ The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/ma
 Tianshou is a lightweight but high-speed reinforcement learning platform. For example, here is a test on a laptop (i7-8750H + GTX1060). It only uses 3 seconds for training an agent based on vanilla policy gradient on the CartPole-v0 task: (seed may be different across different platform and device)
 
 ```bash
-python3 test/discrete/test_pg.py --seed 0 --render 0.03
+$ python3 test/discrete/test_pg.py --seed 0 --render 0.03
 ```
 
 <div align="center">
@@ -252,7 +252,7 @@ collector.close()
 Look at the result saved in tensorboard: (with bash script in your terminal)
 
 ```bash
-tensorboard --logdir log/dqn
+$ tensorboard --logdir log/dqn
 ```
 
 You can check out the [documentation](https://tianshou.readthedocs.io) for advanced usage.
