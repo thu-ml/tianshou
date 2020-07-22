@@ -9,10 +9,10 @@ class Actor(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, action_shape, size=128):
+    def __init__(self, preprocess_net, action_shape, hidden_layer_size=128):
         super().__init__()
         self.preprocess = preprocess_net
-        self.last = nn.Linear(size, np.prod(action_shape))
+        self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
 
     def forward(self, s, state=None, info={}):
         r"""s -> Q(s, \*)"""
@@ -26,10 +26,10 @@ class Critic(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, size=128):
+    def __init__(self, preprocess_net, hidden_layer_size=128):
         super().__init__()
         self.preprocess = preprocess_net
-        self.last = nn.Linear(size, 1)
+        self.last = nn.Linear(hidden_layer_size, 1)
 
     def forward(self, s, **kwargs):
         """s -> V(s)"""

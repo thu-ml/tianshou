@@ -15,19 +15,20 @@ class Net(nn.Module):
     """
 
     def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',
-                 softmax=False, concat=False, size=128):
+                 softmax=False, concat=False, hidden_layer_size=128):
         super().__init__()
         self.device = device
         input_size = np.prod(state_shape)
         if concat:
             input_size += np.prod(action_shape)
         self.model = [
-            nn.Linear(input_size, size),
+            nn.Linear(input_size, hidden_layer_size),
             nn.ReLU(inplace=True)]
         for i in range(layer_num):
-            self.model += [nn.Linear(size, size), nn.ReLU(inplace=True)]
+            self.model += [nn.Linear(hidden_layer_size, hidden_layer_size),
+                           nn.ReLU(inplace=True)]
         if action_shape and not concat:
-            self.model += [nn.Linear(size, np.prod(action_shape))]
+            self.model += [nn.Linear(hidden_layer_size, np.prod(action_shape))]
         if softmax:
             self.model += [nn.Softmax(dim=-1)]
         self.model = nn.Sequential(*self.model)
@@ -46,15 +47,16 @@ class Recurrent(nn.Module):
     """
 
     def __init__(self, layer_num, state_shape, action_shape,
-                 device='cpu', size=128):
+                 device='cpu', hidden_layer_size=128):
         super().__init__()
         self.state_shape = state_shape
         self.action_shape = action_shape
         self.device = device
-        self.nn = nn.LSTM(input_size=size, hidden_size=size,
+        self.nn = nn.LSTM(input_size=hidden_layer_size,
+                          hidden_size=hidden_layer_size,
                           num_layers=layer_num, batch_first=True)
-        self.fc1 = nn.Linear(np.prod(state_shape), size)
-        self.fc2 = nn.Linear(size, np.prod(action_shape))
+        self.fc1 = nn.Linear(np.prod(state_shape), hidden_layer_size)
+        self.fc2 = nn.Linear(hidden_layer_size, np.prod(action_shape))
 
     def forward(self, s, state=None, info={}):
         """In the evaluation mode, s should be with shape ``[bsz, dim]``; in

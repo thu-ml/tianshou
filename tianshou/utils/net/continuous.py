@@ -11,10 +11,10 @@ class Actor(nn.Module):
     """
 
     def __init__(self, preprocess_net, action_shape,
-                 max_action, device='cpu', size=128):
+                 max_action, device='cpu', hidden_layer_size=128):
         super().__init__()
         self.preprocess = preprocess_net
-        self.last = nn.Linear(size, np.prod(action_shape))
+        self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self._max = max_action
 
     def forward(self, s, state=None, info={}):
@@ -29,11 +29,11 @@ class Critic(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, device='cpu', size=128):
+    def __init__(self, preprocess_net, device='cpu', hidden_layer_size=128):
         super().__init__()
         self.device = device
         self.preprocess = preprocess_net
-        self.last = nn.Linear(size, 1)
+        self.last = nn.Linear(hidden_layer_size, 1)
 
     def forward(self, s, a=None, **kwargs):
         """(s, a) -> logits -> Q(s, a)"""
@@ -53,12 +53,12 @@ class ActorProb(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, action_shape,
-                 max_action, device='cpu', unbounded=False, size=128):
+    def __init__(self, preprocess_net, action_shape, max_action,
+                 device='cpu', unbounded=False, hidden_layer_size=128):
         super().__init__()
         self.preprocess = preprocess_net
         self.device = device
-        self.mu = nn.Linear(size, np.prod(action_shape))
+        self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
         self._max = max_action
         self._unbounded = unbounded
@@ -81,12 +81,13 @@ class RecurrentActorProb(nn.Module):
     """
 
     def __init__(self, layer_num, state_shape, action_shape,
-                 max_action, device='cpu', size=128):
+                 max_action, device='cpu', hidden_layer_size=128):
         super().__init__()
         self.device = device
-        self.nn = nn.LSTM(input_size=np.prod(state_shape), hidden_size=size,
+        self.nn = nn.LSTM(input_size=np.prod(state_shape),
+                          hidden_size=hidden_layer_size,
                           num_layers=layer_num, batch_first=True)
-        self.mu = nn.Linear(size, np.prod(action_shape))
+        self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
 
     def forward(self, s, **kwargs):
@@ -112,14 +113,15 @@ class RecurrentCritic(nn.Module):
     """
 
     def __init__(self, layer_num, state_shape,
-                 action_shape=0, device='cpu', size=128):
+                 action_shape=0, device='cpu', hidden_layer_size=128):
         super().__init__()
         self.state_shape = state_shape
         self.action_shape = action_shape
         self.device = device
-        self.nn = nn.LSTM(input_size=np.prod(state_shape), hidden_size=size,
+        self.nn = nn.LSTM(input_size=np.prod(state_shape),
+                          hidden_size=hidden_layer_size,
                           num_layers=layer_num, batch_first=True)
-        self.fc2 = nn.Linear(size + np.prod(action_shape), 1)
+        self.fc2 = nn.Linear(hidden_layer_size + np.prod(action_shape), 1)
 
     def forward(self, s, a=None):
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
