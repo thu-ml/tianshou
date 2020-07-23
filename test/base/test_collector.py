@@ -46,6 +46,19 @@ class Logger:
         else:
             return Batch()
 
+    @staticmethod
+    def single_preprocess_fn(**kwargs):
+        # same as above, without tfb
+        if not kwargs.get('info', Batch()).is_empty():
+            n = len(kwargs['obs'])
+            info = kwargs['info']
+            for i in range(n):
+                info[i].update(rew=kwargs['rew'][i])
+            return Batch(info=info)
+            # or: return {'info': info}
+        else:
+            return Batch()
+
 
 def test_collector():
     writer = SummaryWriter('log/collector')
@@ -91,17 +104,17 @@ def test_collector():
 
 
 def test_collector_with_dict_state():
-    writer = SummaryWriter('log/ds_collector')
-    logger = Logger(writer)
     env = MyTestEnv(size=5, sleep=0, dict_state=True)
     policy = MyPolicy(dict_state=True)
-    c0 = Collector(policy, env, ReplayBuffer(size=100), logger.preprocess_fn)
+    c0 = Collector(policy, env, ReplayBuffer(size=100),
+                   Logger.single_preprocess_fn)
     c0.collect(n_step=3)
     c0.collect(n_episode=2)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True)
                for i in [2, 3, 4, 5]]
     envs = VectorEnv(env_fns)
-    c1 = Collector(policy, envs, ReplayBuffer(size=100), logger.preprocess_fn)
+    c1 = Collector(policy, envs, ReplayBuffer(size=100),
+                   Logger.single_preprocess_fn)
     c1.collect(n_step=10)
     c1.collect(n_episode=[2, 1, 1, 2])
     batch = c1.sample(10)
@@ -112,7 +125,7 @@ def test_collector_with_dict_state():
         0., 1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4., 0., 1., 0.,
         1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.])
     c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
-                   logger.preprocess_fn)
+                   Logger.single_preprocess_fn)
     c2.collect(n_episode=[0, 0, 0, 10])
     batch = c2.sample(10)
     print(batch['obs_next']['index'])
@@ -121,12 +134,10 @@ def test_collector_with_dict_state():
 def test_collector_with_ma():
     def reward_metric(x):
         return x.sum()
-    writer = SummaryWriter('log/ma_collector')
-    logger = Logger(writer)
     env = MyTestEnv(size=5, sleep=0, ma_rew=4)
     policy = MyPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100),
-                   logger.preprocess_fn, reward_metric=reward_metric)
+                   Logger.single_preprocess_fn, reward_metric=reward_metric)
     # n_step=3 will collect a full episode
     r = c0.collect(n_step=3)['rew']
     assert np.asanyarray(r).size == 1 and r == 4.
@@ -136,7 +147,7 @@ def test_collector_with_ma():
                for i in [2, 3, 4, 5]]
     envs = VectorEnv(env_fns)
     c1 = Collector(policy, envs, ReplayBuffer(size=100),
-                   logger.preprocess_fn, reward_metric=reward_metric)
+                   Logger.single_preprocess_fn, reward_metric=reward_metric)
     r = c1.collect(n_step=10)['rew']
     assert np.asanyarray(r).size == 1 and r == 4.
     r = c1.collect(n_episode=[2, 1, 1, 2])['rew']
@@ -155,7 +166,7 @@ def test_collector_with_ma():
     assert np.allclose(c0.buffer[:len(c0.buffer)].rew,
                        [[x] * 4 for x in rew])
     c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
-                   logger.preprocess_fn, reward_metric=reward_metric)
+                   Logger.single_preprocess_fn, reward_metric=reward_metric)
     r = c2.collect(n_episode=[0, 0, 0, 10])['rew']
     assert np.asanyarray(r).size == 1 and r == 4.
     batch = c2.sample(10)
