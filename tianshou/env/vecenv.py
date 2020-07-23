@@ -245,7 +245,7 @@ class AsyncVectorEnv(SubprocVectorEnv):
         """
         Provide the given action to the environments. For the first call,
         action should be the action for each environment; for the consecutive
-        call, the action sequence should correspond to the ``env_id`` filed
+        call, the action sequence should correspond to the ``env_id`` filled
         in the last returned ``info``
         If action is None, fetch unfinished step() calls instead.
         """
