@@ -105,8 +105,7 @@ class Collector(object):
         self.env = env
         self.env_num = len(env)
         # need cache buffers before storing in the main buffer
-        self._cached_buf = [ListReplayBuffer()
-                            for _ in range(self.env_num)]
+        self._cached_buf = [ListReplayBuffer() for _ in range(self.env_num)]
         self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
         self.buffer = buffer
         self.policy = policy
@@ -260,10 +259,7 @@ class Collector(object):
             obs_next, rew, done, info = self.env.step(self.data.act)
 
             # move data to self.data
-            self.data.obs_next = obs_next
-            self.data.rew = rew
-            self.data.done = done
-            self.data.info = info
+            self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
 
             if log_fn:
                 log_fn(self.data.info)
