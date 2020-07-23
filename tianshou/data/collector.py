@@ -5,7 +5,6 @@ import warnings
 import numpy as np
 from typing import Any, Dict, List, Union, Optional, Callable
 
-from tianshou.utils import MovAvg
 from tianshou.env import BaseVectorEnv, VectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.exploration import BaseNoise
@@ -25,8 +24,6 @@ class Collector(object):
     :param function preprocess_fn: a function called before the data has been
         added to the buffer, see issue #42 and :ref:`preprocess_fn`, defaults
         to ``None``.
-    :param int stat_size: for the moving average of recording speed, defaults
-        to 100.
     :param BaseNoise action_noise: add a noise to continuous action. Normally
         a policy already has a noise param for exploration in training phase,
         so this is recommended to use in test collector for some purpose.
@@ -90,7 +87,6 @@ class Collector(object):
                  env: Union[gym.Env, BaseVectorEnv],
                  buffer: Optional[ReplayBuffer] = None,
                  preprocess_fn: Callable[[Any], Union[dict, Batch]] = None,
-                 stat_size: Optional[int] = 100,
                  action_noise: Optional[BaseNoise] = None,
                  reward_metric: Optional[Callable[[np.ndarray], float]] = None,
                  ) -> None:
@@ -101,12 +97,10 @@ class Collector(object):
         self.env_num = len(env)
         # need cache buffers before storing in the main buffer
         self._cached_buf = [ListReplayBuffer() for _ in range(self.env_num)]
-        self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
         self.buffer = buffer
         self.policy = policy
         self.preprocess_fn = preprocess_fn
         self.process_fn = policy.process_fn
-        self.stat_size = stat_size
         self._action_noise = action_noise
         self._rew_metric = reward_metric or Collector._default_rew_metric
         self.reset()
@@ -126,9 +120,6 @@ class Collector(object):
                           obs_next={}, policy={})
         self.reset_env()
         self.reset_buffer()
-        self.step_speed = MovAvg(self.stat_size)
-        self.episode_speed = MovAvg(self.stat_size)
-        self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
         if self._action_noise is not None:
             self._action_noise.reset()
 
@@ -307,11 +298,6 @@ class Collector(object):
         # generate the statistics
         cur_episode = sum(cur_episode)
         duration = max(time.time() - start_time, 1e-9)
-        self.step_speed.add(cur_step / duration)
-        self.episode_speed.add(cur_episode / duration)
-        self.collect_step += cur_step
-        self.collect_episode += cur_episode
-        self.collect_time += duration
         if isinstance(n_episode, list):
             n_episode = np.sum(n_episode)
         else:
@@ -322,8 +308,8 @@ class Collector(object):
         return {
             'n/ep': cur_episode,
             'n/st': cur_step,
-            'v/st': self.step_speed.get(),
-            'v/ep': self.episode_speed.get(),
+            'v/st': cur_step / duration,
+            'v/ep': cur_episode / duration,
             'rew': reward_sum,
             'len': length_sum / n_episode,
         }
