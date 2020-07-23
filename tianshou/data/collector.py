@@ -172,7 +172,6 @@ class Collector(object):
                 n_episode: Optional[Union[int, List[int]]] = None,
                 random: bool = False,
                 render: Optional[float] = None,
-                log_fn: Optional[Callable[[dict], None]] = None
                 ) -> Dict[str, float]:
         """Collect a specified number of step or episode.
 
@@ -185,8 +184,6 @@ class Collector(object):
             defaults to ``False``.
         :param float render: the sleep time between rendering consecutive
             frames, defaults to ``None`` (no rendering).
-        :param function log_fn: a function which receives env info, typically
-            for tensorboard logging.
 
         .. note::
 
@@ -250,8 +247,6 @@ class Collector(object):
             # move data to self.data
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
 
-            if log_fn:
-                log_fn(self.data.info)
             if render:
                 self.render()
                 time.sleep(render)
