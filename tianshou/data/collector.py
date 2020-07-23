@@ -21,8 +21,7 @@ class Collector(object):
     :param env: a ``gym.Env`` environment or an instance of the
         :class:`~tianshou.env.BaseVectorEnv` class.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer`
-        class. If set to ``None``, it will automatically assign a small-size
-        :class:`~tianshou.data.ReplayBuffer`.
+        class. If set to ``None`` (testing phase), it will not store the data.
     :param function preprocess_fn: a function called before the data has been
         added to the buffer, see issue #42 and :ref:`preprocess_fn`, defaults
         to ``None``.
@@ -57,7 +56,7 @@ class Collector(object):
         envs = VectorEnv([lambda: gym.make('CartPole-v0') for _ in range(3)])
         collector = Collector(policy, envs, buffer=replay_buffer)
 
-        # collect at least 3 episodes
+        # collect 3 episodes
         collector.collect(n_episode=3)
         # collect 1 episode for the first env, 3 for the third env
         collector.collect(n_episode=[1, 0, 3])
