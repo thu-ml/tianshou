@@ -172,13 +172,6 @@ class Collector(object):
         """Close the environment(s)."""
         self.env.close()
 
-    def _make_batch(self, data: Any) -> np.ndarray:
-        """Return [data]."""
-        if isinstance(data, np.ndarray):
-            return data[None]
-        else:
-            return np.array([data])
-
     def _reset_state(self, id: Union[int, List[int]]) -> None:
         """Reset self.data.state[id]."""
         state = self.data.state  # it is a reference
@@ -243,11 +236,8 @@ class Collector(object):
 
             # calculate the next action
             if random:
-                action_space = self.env.action_space
-                if isinstance(action_space, list):
-                    result = Batch(act=[a.sample() for a in action_space])
-                else:
-                    result = Batch(act=self._make_batch(action_space.sample()))
+                result = Batch(
+                    act=[a.sample() for a in self.env.action_space])
             else:
                 with torch.no_grad():
                     result = self.policy(self.data, last_state)
