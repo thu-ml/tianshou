@@ -21,8 +21,7 @@ class Collector(object):
     :param env: a ``gym.Env`` environment or an instance of the
         :class:`~tianshou.env.BaseVectorEnv` class.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer`
-        class, or a list of :class:`~tianshou.data.ReplayBuffer`. If set to
-        ``None``, it will automatically assign a small-size
+        class. If set to ``None``, it will automatically assign a small-size
         :class:`~tianshou.data.ReplayBuffer`.
     :param function preprocess_fn: a function called before the data has been
         added to the buffer, see issue #42 and :ref:`preprocess_fn`, defaults
@@ -56,9 +55,6 @@ class Collector(object):
 
         # the collector supports vectorized environments as well
         envs = VectorEnv([lambda: gym.make('CartPole-v0') for _ in range(3)])
-        buffers = [ReplayBuffer(size=5000) for _ in range(3)]
-        # you can also pass a list of replay buffer to collector, for multi-env
-        # collector = Collector(policy, envs, buffer=buffers)
         collector = Collector(policy, envs, buffer=replay_buffer)
 
         # collect at least 3 episodes
@@ -81,9 +77,9 @@ class Collector(object):
         #   clear the buffer
         collector.reset_buffer()
 
-    For the scenario of collecting data from multiple environments to a single
-    buffer, the cache buffers will turn on automatically. It may return the
-    data more than the given limitation.
+    Collected data always consist of full episodes. So if only ``n_step``
+    argument is give, the collector may return the data more than the
+    ``n_step`` limitation.
 
     .. note::
 
