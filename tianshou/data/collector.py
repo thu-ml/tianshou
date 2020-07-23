@@ -5,7 +5,7 @@ import warnings
 import numpy as np
 from typing import Any, Dict, List, Union, Optional, Callable
 
-from tianshou.env import BaseVectorEnv, VectorEnv
+from tianshou.env import BaseVectorEnv, VectorEnv, AsyncVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.exploration import BaseNoise
 from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
@@ -96,6 +96,13 @@ class Collector(object):
             env = VectorEnv([lambda: env])
         self.env = env
         self.env_num = len(env)
+        # environments that are available in step()
+        # this means all environments in synchronous simulation
+        # but only a subset of environments in asynchronous simulation
+        self._ready_env_ids = np.array(range(self.env_num))
+        # self.async is a flag to indicate whether this collector works
+        # with asynchronous simulation
+        self.is_async = isinstance(env, AsyncVectorEnv)
         # need cache buffers before storing in the main buffer
         self._cached_buf = [ListReplayBuffer() for _ in range(self.env_num)]
         self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
@@ -105,6 +112,9 @@ class Collector(object):
         self.process_fn = policy.process_fn
         self._action_noise = action_noise
         self._rew_metric = reward_metric or Collector._default_rew_metric
+        # avoid creating attribute outside __init__
+        self.data = Batch(state={}, obs={}, act={}, rew={}, done={}, info={},
+                          obs_next={}, policy={})
         self.reset()
 
     @staticmethod
@@ -139,6 +149,7 @@ class Collector(object):
         """Reset all of the environment(s)' states and reset all of the cache
         buffers (if need).
         """
+        self._ready_env_ids = np.array(range(self.env_num))
         obs = self.env.reset()
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get('obs', obs)
@@ -214,6 +225,15 @@ class Collector(object):
                     'You should add a time limitation to your environment!',
                     Warning)
 
+            if self.is_async:
+                # self.data are the data for all environments
+                # in async simulation, only a subset of data are disposed
+                # so we store the whole data in ``whole_data``, let self.data
+                # to be all the data available in ready environments, and
+                # finally set these back into all the data
+                whole_data = self.data
+                self.data = self.data[self._ready_env_ids]
+
             # restore the state and the input data
             last_state = self.data.state
             if last_state.is_empty():
@@ -222,8 +242,9 @@ class Collector(object):
 
             # calculate the next action
             if random:
+                spaces = self.env.action_space
                 result = Batch(
-                    act=[a.sample() for a in self.env.action_space])
+                    act=[spaces[i].sample() for i in self._ready_env_ids])
             else:
                 with torch.no_grad():
                     result = self.policy(self.data, last_state)
@@ -243,8 +264,17 @@ class Collector(object):
                 self.data.act += self._action_noise(self.data.act.shape)
 
             # step in env
-            obs_next, rew, done, info = self.env.step(self.data.act)
-
+            if not self.is_async:
+                obs_next, rew, done, info = self.env.step(self.data.act)
+            else:
+                # store computed actions, states, etc
+                whole_data[self._ready_env_ids] = self.data
+                # fetch finished data
+                obs_next, rew, done, info = self.env.step(
+                    action=self.data.act, id=self._ready_env_ids)
+                self._ready_env_ids = np.array([i['env_id'] for i in info])
+                # get the stepped data
+                self.data = whole_data[self._ready_env_ids]
             # move data to self.data
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
 
@@ -256,9 +286,11 @@ class Collector(object):
             if self.preprocess_fn:
                 result = self.preprocess_fn(**self.data)
                 self.data.update(result)
-            for i in range(self.env_num):
+            for j, i in enumerate(self._ready_env_ids):
+                # j is the index in current ready_env_ids
+                # i is the index in all environments
                 self._cached_buf[i].add(**self.data[i])
-                if self.data.done[i]:
+                if self.data.done[j]:
                     if n_step or np.isscalar(n_episode) or \
                             episode_count[i] < n_episode[i]:
                         episode_count[i] += 1
@@ -267,17 +299,22 @@ class Collector(object):
                         if self.buffer is not None:
                             self.buffer.update(self._cached_buf[i])
                     self._cached_buf[i].reset()
-                    self._reset_state(i)
+                    self._reset_state(j)
             obs_next = self.data.obs_next
             if sum(self.data.done):
-                env_ind = np.where(self.data.done)[0]
-                obs_reset = self.env.reset(env_ind)
+                env_ind_local = np.where(self.data.done)[0]
+                env_ind_global = self._ready_env_ids[env_ind_local]
+                obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
-                    obs_next[env_ind] = self.preprocess_fn(
+                    obs_next[env_ind_local] = self.preprocess_fn(
                         obs=obs_reset).get('obs', obs_reset)
                 else:
-                    obs_next[env_ind] = obs_reset
+                    obs_next[env_ind_local] = obs_reset
             self.data.obs = obs_next
+            if self.is_async:
+                # set data back
+                whole_data[self._ready_env_ids] = self.data
+                self.data = whole_data
             if n_step:
                 if step_count >= n_step:
                     break
