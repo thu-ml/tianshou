@@ -178,9 +178,9 @@ class Collector(object):
 
         :param int n_step: how many steps you want to collect.
         :param n_episode: how many episodes you want to collect. If it is
-            an int, it means to collect totally ``n_episode`` episodes; if
-            it is a list, it means to collect ``n_episode[i]`` episodes in
-            the i-th environment
+            an int, it means to collect at lease ``n_episode`` episodes; if
+            it is list, it means to collect exactly ``n_episode[i]`` episodes
+            in the i-th environment
         :param bool random: whether to use random policy for collecting data,
             defaults to ``False``.
         :param float render: the sleep time between rendering consecutive
@@ -254,8 +254,7 @@ class Collector(object):
                 log_fn(self.data.info)
             if render:
                 self.render()
-                if render > 0:
-                    time.sleep(render)
+                time.sleep(render)
 
             # add data into the buffer
             if self.preprocess_fn:
@@ -283,17 +282,17 @@ class Collector(object):
                         obs=obs_reset).get('obs', obs_reset)
                 else:
                     obs_next[env_ind] = obs_reset
-            self.data.obs_next = obs_next
-            if n_episode:
-                if isinstance(n_episode, list) and \
-                        (episode_count >= np.array(n_episode)).all() or \
-                        np.isscalar(n_episode) and \
+            self.data.obs = obs_next
+            if n_step:
+                if step_count >= n_step:
+                    break
+            else:
+                if isinstance(n_episode, int) and \
                         episode_count.sum() >= n_episode:
                     break
-            if n_step and step_count >= n_step:
-                break
-            self.data.obs = self.data.obs_next
-        self.data.obs = self.data.obs_next
+                if isinstance(n_episode, list) and \
+                        (episode_count >= n_episode).all():
+                    break
 
         # generate the statistics
         episode_count = sum(episode_count)
