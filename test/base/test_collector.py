@@ -98,7 +98,7 @@ def test_collector_with_dict_state():
     policy = MyPolicy(dict_state=True)
     c0 = Collector(policy, env, ReplayBuffer(size=100), preprocess_fn)
     c0.collect(n_step=3)
-    c0.collect(n_episode=3)
+    c0.collect(n_episode=2)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True)
                for i in [2, 3, 4, 5]]
     envs = VectorEnv(env_fns)
@@ -126,9 +126,10 @@ def test_collector_with_ma():
     policy = MyPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100),
                    preprocess_fn, reward_metric=reward_metric)
+    # n_step=3 will collect a full episode
     r = c0.collect(n_step=3)['rew']
-    assert np.asanyarray(r).size == 1 and r == 0.
-    r = c0.collect(n_episode=3)['rew']
+    assert np.asanyarray(r).size == 1 and r == 4.
+    r = c0.collect(n_episode=2)['rew']
     assert np.asanyarray(r).size == 1 and r == 4.
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4)
                for i in [2, 3, 4, 5]]
