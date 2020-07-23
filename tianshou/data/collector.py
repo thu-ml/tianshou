@@ -286,13 +286,11 @@ class Collector(object):
                         cur_episode[i] += 1
                         reward_sum += self.reward[i]
                         length_sum += self.length[i]
-                        if self._cached_buf:
-                            cur_step += len(self._cached_buf[i])
-                            if self.buffer is not None:
-                                self.buffer.update(self._cached_buf[i])
+                        cur_step += len(self._cached_buf[i])
+                        if self.buffer is not None:
+                            self.buffer.update(self._cached_buf[i])
                     self.reward[i], self.length[i] = 0., 0
-                    if self._cached_buf:
-                        self._cached_buf[i].reset()
+                    self._cached_buf[i].reset()
                     self._reset_state(i)
             obs_next = self.data.obs_next
             if sum(self.data.done):
