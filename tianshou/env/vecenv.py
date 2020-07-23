@@ -216,12 +216,12 @@ class AsyncVectorEnv(SubprocVectorEnv):
             # reset all environments
             self.ready_id = list(range(self.env_num))
         elif np.isscalar(id):
-            assert id in self.ready_id, f'can only reset ' \
-                                        f'ready environments {self.ready_id}'
             id = [id]
         for i in id:
             assert i not in self.waiting_id, f'cannot reset environment {i}' \
                                              f' which is stepping now!'
+            assert i in self.ready_id, f'can only reset ' \
+                                       f'ready environments {self.ready_id}'
         return super().reset(id)
 
     def render(self, **kwargs) -> List[Any]:
