@@ -179,7 +179,7 @@ Train a Policy with Customized Codes
 Tianshou supports user-defined training code. Here is the code snippet:
 ::
 
-    # pre-collect 5000 frames with random action before training
+    # pre-collect at least 5000 frames with random action before training
     policy.set_eps(1)
     train_collector.collect(n_step=5000)
 
