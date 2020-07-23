@@ -139,14 +139,14 @@ class SACPolicy(DDPGPolicy):
 
     def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
         # critic 1
-        current_q1 = self.critic1(batch.obs, batch.act)
-        target_q = to_torch_as(batch.returns, current_q1)[:, None]
+        current_q1 = self.critic1(batch.obs, batch.act).squeeze(-1)
+        target_q = batch.returns
         critic1_loss = F.mse_loss(current_q1, target_q)
         self.critic1_optim.zero_grad()
         critic1_loss.backward()
         self.critic1_optim.step()
         # critic 2
-        current_q2 = self.critic2(batch.obs, batch.act)
+        current_q2 = self.critic2(batch.obs, batch.act).squeeze(-1)
         critic2_loss = F.mse_loss(current_q2, target_q)
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
@@ -154,10 +154,10 @@ class SACPolicy(DDPGPolicy):
         # actor
         obs_result = self(batch, explorating=False)
         a = obs_result.act
-        current_q1a = self.critic1(batch.obs, a)
-        current_q2a = self.critic2(batch.obs, a)
-        actor_loss = (self._alpha * obs_result.log_prob - torch.min(
-            current_q1a, current_q2a)).mean()
+        current_q1a = self.critic1(batch.obs, a).squeeze(-1)
+        current_q2a = self.critic2(batch.obs, a).squeeze(-1)
+        actor_loss = (self._alpha * obs_result.log_prob.reshape(
+            target_q.shape) - torch.min(current_q1a, current_q2a)).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
