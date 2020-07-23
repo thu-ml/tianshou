@@ -23,7 +23,6 @@ def offpolicy_trainer(
         test_fn: Optional[Callable[[int], None]] = None,
         stop_fn: Optional[Callable[[float], bool]] = None,
         save_fn: Optional[Callable[[BasePolicy], None]] = None,
-        log_fn: Optional[Callable[[dict], None]] = None,
         writer: Optional[SummaryWriter] = None,
         log_interval: int = 1,
         verbose: bool = True,
@@ -61,7 +60,6 @@ def offpolicy_trainer(
     :param function stop_fn: a function receives the average undiscounted
         returns of the testing result, return a boolean which indicates whether
         reaching the goal.
-    :param function log_fn: a function receives env info for logging.
     :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard
         SummaryWriter.
     :param int log_interval: the log interval of the writer.
@@ -83,8 +81,7 @@ def offpolicy_trainer(
         with tqdm.tqdm(total=step_per_epoch, desc=f'Epoch #{epoch}',
                        **tqdm_config) as t:
             while t.n < t.total:
-                result = train_collector.collect(n_step=collect_per_step,
-                                                 log_fn=log_fn)
+                result = train_collector.collect(n_step=collect_per_step)
                 data = {}
                 if test_in_train and stop_fn and stop_fn(result['rew']):
                     test_result = test_episode(
