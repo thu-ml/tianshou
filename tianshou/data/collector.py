@@ -97,6 +97,7 @@ class Collector(object):
         self.env_num = len(env)
         # need cache buffers before storing in the main buffer
         self._cached_buf = [ListReplayBuffer() for _ in range(self.env_num)]
+        self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
         self.buffer = buffer
         self.policy = policy
         self.preprocess_fn = preprocess_fn
@@ -120,6 +121,7 @@ class Collector(object):
                           obs_next={}, policy={})
         self.reset_env()
         self.reset_buffer()
+        self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
         if self._action_noise is not None:
             self._action_noise.reset()
 
@@ -298,6 +300,9 @@ class Collector(object):
         # generate the statistics
         cur_episode = sum(cur_episode)
         duration = max(time.time() - start_time, 1e-9)
+        self.collect_step += cur_step
+        self.collect_episode += cur_episode
+        self.collect_time += duration
         if isinstance(n_episode, list):
             n_episode = np.sum(n_episode)
         else:
