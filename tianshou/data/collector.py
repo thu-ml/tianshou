@@ -142,8 +142,6 @@ class Collector(object):
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get('obs', obs)
         self.data.obs = obs
-        self.reward = 0.  # will be specified when the first data is ready
-        self.length = np.zeros(self.env_num)
         for b in self._cached_buf:
             b.reset()
 
@@ -170,8 +168,8 @@ class Collector(object):
             state.empty_(id)
 
     def collect(self,
-                n_step: int = 0,
-                n_episode: Union[int, List[int]] = 0,
+                n_step: Optional[int] = None,
+                n_episode: Optional[Union[int, List[int]]] = None,
                 random: bool = False,
                 render: Optional[float] = None,
                 log_fn: Optional[Callable[[dict], None]] = None
@@ -203,11 +201,11 @@ class Collector(object):
             * ``rew`` the mean reward over collected episodes.
             * ``len`` the mean length over collected episodes.
         """
-        start_time = time.time()
-        assert sum([(n_step != 0), (n_episode != 0)]) == 1, \
+        assert (n_step and not n_episode) or (not n_step and n_episode), \
             "One and only one collection number specification is permitted!"
+        start_time = time.time()
         cur_step, cur_episode = 0, np.zeros(self.env_num)
-        reward_sum, length_sum = 0., 0
+        reward_sum = [0.0] * self.env_num
         while True:
             if cur_step >= 100000 and cur_episode.sum() == 0:
                 warnings.warn(
@@ -257,23 +255,20 @@ class Collector(object):
                     time.sleep(render)
 
             # add data into the buffer
-            self.length += 1
-            self.reward += self.data.rew
             if self.preprocess_fn:
                 result = self.preprocess_fn(**self.data)
                 self.data.update(result)
             for i in range(self.env_num):
                 self._cached_buf[i].add(**self.data[i])
                 if self.data.done[i]:
-                    if n_step != 0 or np.isscalar(n_episode) or \
+                    if n_step or np.isscalar(n_episode) or \
                             cur_episode[i] < n_episode[i]:
                         cur_episode[i] += 1
-                        reward_sum += self.reward[i]
-                        length_sum += self.length[i]
+                        reward_sum[i] += np.asarray(
+                            self._cached_buf[i].rew).sum(axis=0)
                         cur_step += len(self._cached_buf[i])
                         if self.buffer is not None:
                             self.buffer.update(self._cached_buf[i])
-                    self.reward[i], self.length[i] = 0., 0
                     self._cached_buf[i].reset()
                     self._reset_state(i)
             obs_next = self.data.obs_next
@@ -286,13 +281,13 @@ class Collector(object):
                 else:
                     obs_next[env_ind] = obs_reset
             self.data.obs_next = obs_next
-            if n_episode != 0:
+            if n_episode:
                 if isinstance(n_episode, list) and \
                         (cur_episode >= np.array(n_episode)).all() or \
                         np.isscalar(n_episode) and \
                         cur_episode.sum() >= n_episode:
                     break
-            if n_step != 0 and cur_step >= n_step:
+            if n_step and cur_step >= n_step:
                 break
             self.data.obs = self.data.obs_next
         self.data.obs = self.data.obs_next
@@ -307,7 +302,7 @@ class Collector(object):
             n_episode = np.sum(n_episode)
         else:
             n_episode = max(cur_episode, 1)
-        reward_sum /= n_episode
+        reward_sum = np.asarray(reward_sum).sum(axis=0) / n_episode
         if np.asanyarray(reward_sum).size > 1:  # non-scalar reward_sum
             reward_sum = self._rew_metric(reward_sum)
         return {
@@ -316,7 +311,7 @@ class Collector(object):
             'v/st': cur_step / duration,
             'v/ep': cur_episode / duration,
             'rew': reward_sum,
-            'len': length_sum / n_episode,
+            'len': cur_step / n_episode,
         }
 
     def sample(self, batch_size: int) -> Batch:
