@@ -75,7 +75,8 @@ class Collector(object):
 
     Collected data always consist of full episodes. So if only ``n_step``
     argument is give, the collector may return the data more than the
-    ``n_step`` limitation.
+    ``n_step`` limitation. Same as ``n_episode`` for the multiple environment
+    case.
 
     .. note::
 
@@ -176,10 +177,10 @@ class Collector(object):
         """Collect a specified number of step or episode.
 
         :param int n_step: how many steps you want to collect.
-        :param n_episode: how many episodes you want to collect. If it is
-            an int, it means to collect at lease ``n_episode`` episodes; if
-            it is list, it means to collect exactly ``n_episode[i]`` episodes
-            in the i-th environment
+        :param n_episode: how many episodes you want to collect. If it is an
+            int, it means to collect at lease ``n_episode`` episodes; if it is
+            a list, it means to collect exactly ``n_episode[i]`` episodes in
+            the i-th environment
         :param bool random: whether to use random policy for collecting data,
             defaults to ``False``.
         :param float render: the sleep time between rendering consecutive
@@ -261,8 +262,7 @@ class Collector(object):
                     if n_step or np.isscalar(n_episode) or \
                             episode_count[i] < n_episode[i]:
                         episode_count[i] += 1
-                        reward_total += np.asarray(
-                            self._cached_buf[i].rew).sum(axis=0)
+                        reward_total += np.sum(self._cached_buf[i].rew, axis=0)
                         step_count += len(self._cached_buf[i])
                         if self.buffer is not None:
                             self.buffer.update(self._cached_buf[i])

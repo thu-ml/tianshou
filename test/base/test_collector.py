@@ -72,11 +72,11 @@ def test_collector():
     c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False),
                    logger.preprocess_fn)
     c0.collect(n_step=3)
-    assert np.allclose(c0.buffer.obs[:3], [0, 1, 0])
-    assert np.allclose(c0.buffer[:3].obs_next, [1, 2, 1])
+    assert np.allclose(c0.buffer.obs[:4], [0, 1, 0, 1])
+    assert np.allclose(c0.buffer[:4].obs_next, [1, 2, 1, 2])
     c0.collect(n_episode=3)
-    assert np.allclose(c0.buffer.obs[:8], [0, 1, 0, 1, 0, 1, 0, 1])
-    assert np.allclose(c0.buffer[:8].obs_next, [1, 2, 1, 2, 1, 2, 1, 2])
+    assert np.allclose(c0.buffer.obs[:10], [0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+    assert np.allclose(c0.buffer[:10].obs_next, [1, 2, 1, 2, 1, 2, 1, 2, 1, 2])
     c0.collect(n_step=3, random=True)
     c1 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False),
                    logger.preprocess_fn)
