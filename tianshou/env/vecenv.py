@@ -202,20 +202,26 @@ class AsyncVectorEnv(SubprocVectorEnv):
         assert 1 <= self.wait_num <= len(env_fns), \
             f'wait_num should be in [1, {len(env_fns)}], but got {wait_num}'
         self.waiting_conn = []
+        # environments in self.ready_id is actually ready
+        # but environments in self.waiting_id are just waiting when checked,
+        # and they may be ready now, but this is not known until we check it
+        # in the step() function
         self.waiting_id = []
+        # all environments are ready in the beginning
+        self.ready_id = list(range(self.env_num))
 
     def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
         if id is None:
             id = range(self.env_num)
+            # reset all environments
+            self.ready_id = list(range(self.env_num))
         elif np.isscalar(id):
+            assert id in self.ready_id, f'can only reset ' \
+                                        f'ready environments {self.ready_id}'
             id = [id]
-        # reset envs are not waiting anymore
-        rest_envs = [(i, conn) for i, conn in
-                     zip(self.waiting_id, self.waiting_conn) if i not in id]
-        if not rest_envs:
-            self.waiting_id, self.waiting_conn = [], []
-        else:
-            self.waiting_id, self.waiting_conn = zip(*rest_envs)
+        for i in id:
+            assert i not in self.waiting_id, f'cannot reset environment {i}' \
+                                             f' which is stepping now!'
         return super().reset(id)
 
     def render(self, **kwargs) -> List[Any]:
@@ -237,21 +243,22 @@ class AsyncVectorEnv(SubprocVectorEnv):
              id: Optional[Union[int, List[int]]] = None
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Provide the given action to the environments specified by the id.
+        Provide the given action to the environments. For the first call,
+        action should be the action for each environment; for the consecutive
+        call, the action sequence should correspond to the ``env_id`` filed
+        in the last returned ``info``
         If action is None, fetch unfinished step() calls instead.
         """
         if id is not None:
             raise ValueError("cannot specify the id of environments"
                              " during step() for AsyncVectorEnv")
         if action is not None:
-            assert len(action) + len(self.waiting_id) <= self.env_num
-            available_env_ids = [i for i in range(self.env_num)
-                                 if i not in self.waiting_id]
-            for i, act in enumerate(action):
-                i = available_env_ids[i]
-                self.parent_remote[i].send(['step', act])
-                self.waiting_conn.append(self.parent_remote[i])
-                self.waiting_id.append(i)
+            assert len(action) == len(self.ready_id)
+            for i, (act, ready_id) in enumerate(zip(action, self.ready_id)):
+                self.parent_remote[ready_id].send(['step', act])
+                self.waiting_conn.append(self.parent_remote[ready_id])
+                self.waiting_id.append(ready_id)
+            self.ready_id = []
         result = []
         while len(self.waiting_conn) > 0 and len(result) < self.wait_num:
             ready_conns = connection.wait(self.waiting_conn)
@@ -263,6 +270,7 @@ class AsyncVectorEnv(SubprocVectorEnv):
                 obs, rew, done, info = ans
                 info["env_id"] = env_id
                 result.append((obs, rew, done, info))
+                self.ready_id.append(env_id)
         obs, rew, done, info = map(np.stack, zip(*result))
         return obs, rew, done, info
 
