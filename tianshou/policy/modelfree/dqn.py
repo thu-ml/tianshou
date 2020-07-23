@@ -159,7 +159,7 @@ class DQNPolicy(BasePolicy):
         self.optim.zero_grad()
         q = self(batch).logits
         q = q[np.arange(len(q)), batch.act]
-        r = to_torch_as(batch.returns, q)
+        r = to_torch_as(batch.returns, q).flatten()
         if hasattr(batch, 'update_weight'):
             td = r - q
             batch.update_weight(batch.indice, to_numpy(td))
