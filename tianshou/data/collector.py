@@ -101,7 +101,7 @@ class Collector(object):
                  ) -> None:
         super().__init__()
         if not isinstance(env, BaseVectorEnv):
-            env = VectorEnv([lambda : env])
+            env = VectorEnv([lambda: env])
         self.env = env
         self.env_num = len(env)
         # need cache buffers before storing in the main buffer
