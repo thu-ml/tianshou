@@ -90,7 +90,7 @@ class PGPolicy(BasePolicy):
                 dist = self(b).dist
                 a = to_torch_as(b.act, dist.logits)
                 r = to_torch_as(b.returns, dist.logits)
-                loss = -(dist.log_prob(a) * r).sum()
+                loss = -(dist.log_prob(a).flatten() * r).sum()
                 loss.backward()
                 self.optim.step()
                 losses.append(loss.item())
