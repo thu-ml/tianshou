@@ -210,11 +210,11 @@ class AsyncVectorEnv(SubprocVectorEnv):
         # all environments are ready in the beginning
         self.ready_id = list(range(self.env_num))
 
-    def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+    def _assert_and_transform_id(self,
+                                 id: Optional[Union[int, List[int]]] = None
+                                 ) -> List[int]:
         if id is None:
-            id = range(self.env_num)
-            # reset all environments
-            self.ready_id = list(range(self.env_num))
+            id = list(range(self.env_num))
         elif np.isscalar(id):
             id = [id]
         for i in id:
@@ -222,6 +222,10 @@ class AsyncVectorEnv(SubprocVectorEnv):
                                              f' which is stepping now!'
             assert i in self.ready_id, f'can only reset ' \
                                        f'ready environments {self.ready_id}'
+        return id
+
+    def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+        id = self._assert_and_transform_id(id)
         return super().reset(id)
 
     def render(self, **kwargs) -> List[Any]:
@@ -243,22 +247,20 @@ class AsyncVectorEnv(SubprocVectorEnv):
              id: Optional[Union[int, List[int]]] = None
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Provide the given action to the environments. For the first call,
-        action should be the action for each environment; for the consecutive
-        call, the action sequence should correspond to the ``env_id`` filled
-        in the last returned ``info``
-        If action is None, fetch unfinished step() calls instead.
+        Provide the given action to the environments. The action sequence
+        should correspond to the ``id`` argument, and the ``id`` argument
+        should be a subset of the ``env_id`` in the last returned ``info``
+        (initially they are env_ids of all the environments).
+        If action is ``None``, fetch unfinished step() calls instead.
         """
-        if id is not None:
-            raise ValueError("cannot specify the id of environments"
-                             " during step() for AsyncVectorEnv")
         if action is not None:
-            assert len(action) == len(self.ready_id)
-            for i, (act, ready_id) in enumerate(zip(action, self.ready_id)):
-                self.parent_remote[ready_id].send(['step', act])
-                self.waiting_conn.append(self.parent_remote[ready_id])
-                self.waiting_id.append(ready_id)
-            self.ready_id = []
+            id = self._assert_and_transform_id(id)
+            assert len(action) == len(id)
+            for i, (act, env_id) in enumerate(zip(action, id)):
+                self.parent_remote[env_id].send(['step', act])
+                self.waiting_conn.append(self.parent_remote[env_id])
+                self.waiting_id.append(env_id)
+            self.ready_id = [x for x in self.ready_id if x not in id]
         result = []
         while len(self.waiting_conn) > 0 and len(result) < self.wait_num:
             ready_conns = connection.wait(self.waiting_conn)

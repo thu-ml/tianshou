@@ -31,11 +31,14 @@ def test_async_env(num=8, sleep=0.1):
     action_list = [1] * num + [0] * (num * 2) + [1] * (num * 4)
     current_index_start = 0
     action = action_list[:num]
+    env_ids = list(range(num))
     o = []
     spent_time = time.time()
     while current_index_start < len(action_list):
-        A, B, C, D = v.step(action)
-        o.append(Batch({'obs': A, 'rew': B, 'done': C, 'info': D}))
+        A, B, C, D = v.step(action=action, id=env_ids)
+        b = Batch({'obs': A, 'rew': B, 'done': C, 'info': D})
+        env_ids = b.info.env_id
+        o.append(b)
         current_index_start += len(action)
         action = action_list[current_index_start: current_index_start + len(A)]
     spent_time = time.time() - spent_time
