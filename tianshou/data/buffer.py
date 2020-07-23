@@ -372,7 +372,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._alpha = alpha
         self._beta = beta
         self._weight_sum = 0.0
-        self._amortization_freq = 50
         self._replace = replace
         self._meta.weight = np.zeros(size, dtype=np.float64)
 
@@ -413,8 +412,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             # sampling weight
             p = (self.weight / self.weight.sum())[:self._size]
             indice = np.random.choice(
-                self._size, batch_size, p=p,
-                replace=self._replace)
+                self._size, batch_size, p=p, replace=self._replace)
             p = p[indice]  # weight of each sample
         elif batch_size == 0:
             p = np.full(shape=self._size, fill_value=1.0 / self._size)
@@ -427,7 +425,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                 f"batch_size should be less than {len(self)}, \
                     or set replace=True")
         batch = self[indice]
-        batch["impt_weight"] = (self._size * p) ** (-self._beta)
+        batch.impt_weight = (self._size * p) ** (-self._beta)
         return batch, indice
 
     def update_weight(self, indice: Union[slice, np.ndarray],
