@@ -268,7 +268,8 @@ class Collector(object):
                 obs_next, rew, done, info = self.env.step(self.data.act)
             else:
                 # store computed actions, states, etc
-                whole_data[self._ready_env_ids] = self.data
+                whole_data._set_data(self._ready_env_ids,
+                                     self.data, self.env_num)
                 # fetch finished data
                 obs_next, rew, done, info = self.env.step(
                     action=self.data.act, id=self._ready_env_ids)
@@ -289,7 +290,7 @@ class Collector(object):
             for j, i in enumerate(self._ready_env_ids):
                 # j is the index in current ready_env_ids
                 # i is the index in all environments
-                self._cached_buf[i].add(**self.data[i])
+                self._cached_buf[i].add(**self.data[j])
                 if self.data.done[j]:
                     if n_step or np.isscalar(n_episode) or \
                             episode_count[i] < n_episode[i]:
@@ -313,7 +314,9 @@ class Collector(object):
             self.data.obs = obs_next
             if self.is_async:
                 # set data back
-                whole_data[self._ready_env_ids] = self.data
+                whole_data._set_data(self._ready_env_ids,
+                                     self.data, self.env_num)
+                # let self.data be the data in all environments again
                 self.data = whole_data
             if n_step:
                 if step_count >= n_step:
