@@ -90,7 +90,11 @@ class PGPolicy(BasePolicy):
                 dist = self(b).dist
                 a = to_torch_as(b.act, dist.logits)
                 r = to_torch_as(b.returns, dist.logits)
-                loss = -(dist.log_prob(a).flatten() * r).sum()
+                # TODO: torch.movedim in version > 1.5.1
+                log_prob = dist.log_prob(a)
+                log_prob = log_prob.permute(
+                    *np.roll(range(len(log_prob.shape)), -1))
+                loss = -(log_prob * r).sum()
                 loss.backward()
                 self.optim.step()
                 losses.append(loss.item())

@@ -1,18 +1,24 @@
 import gym
 import time
-from gym.spaces.discrete import Discrete
+from gym.spaces import Discrete, MultiDiscrete, Box
 
 
 class MyTestEnv(gym.Env):
     """This is a "going right" task. The task is to go right ``size`` steps.
     """
 
-    def __init__(self, size, sleep=0, dict_state=False, ma_rew=0):
+    def __init__(self, size, sleep=0, dict_state=False, ma_rew=0,
+                 multidiscrete_action=False):
         self.size = size
         self.sleep = sleep
         self.dict_state = dict_state
         self.ma_rew = ma_rew
-        self.action_space = Discrete(2)
+        self._md_action = multidiscrete_action
+        self.observation_space = Box(shape=(1, ), low=0, high=size - 1)
+        if multidiscrete_action:
+            self.action_space = MultiDiscrete([2, 2])
+        else:
+            self.action_space = Discrete(2)
         self.reset()
 
     def reset(self, state=0):
@@ -32,6 +38,8 @@ class MyTestEnv(gym.Env):
         return {'index': self.index} if self.dict_state else self.index
 
     def step(self, action):
+        if self._md_action:
+            action = action[0]
         if self.done:
             raise ValueError('step after done !!!')
         if self.sleep > 0:
