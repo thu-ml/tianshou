@@ -1,6 +1,8 @@
+import pytest
 import numpy as np
 
-from tianshou.data import Batch, PrioritizedReplayBuffer, ReplayBuffer
+from tianshou.data import Batch, PrioritizedReplayBuffer, \
+    ReplayBuffer, SegmentTree
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -112,9 +114,69 @@ def test_update():
     assert (buf2[-1].obs == buf1[0].obs).all()
 
 
+def test_segtree():
+    for op, init in zip(['sum', 'max', 'min'], [0., -np.inf, np.inf]):
+        realop = getattr(np, op)
+        # small test
+        tree = SegmentTree(6, op)  # 1-15. 8-15 are leaf nodes
+        actual_len = 8
+        assert np.all([tree[i] == init for i in range(actual_len)])
+        with pytest.raises(AssertionError):
+            tree[-1]
+        with pytest.raises(AssertionError):
+            tree[actual_len]
+        naive = np.zeros([actual_len]) + init
+        for _ in range(1000):
+            # random choose a place to perform single update
+            index = np.random.randint(actual_len)
+            value = np.random.rand()
+            naive[index] = value
+            tree[index] = value
+            for i in range(actual_len):
+                for j in range(i, actual_len):
+                    try:
+                        ref = realop(naive[i:j])
+                    except ValueError:
+                        continue
+                    out = tree.reduce(i, j)
+                    assert np.allclose(ref, out), (i, j, ref, out)
+        # batch setitem
+        for _ in range(1000):
+            index = np.random.choice(actual_len, size=4)
+            value = np.random.rand(4)
+            naive[index] = value
+            tree[index] = value
+            assert np.allclose(realop(naive), tree.reduce())
+            for i in range(10):
+                left = right = 0
+                while left >= right:
+                    left = np.random.randint(actual_len)
+                    right = np.random.randint(actual_len)
+                assert np.allclose(realop(naive[left:right]),
+                                   tree.reduce(left, right))
+        # large test
+        tree = SegmentTree(10000, op)
+        actual_len = 16384
+        naive = np.zeros([actual_len]) + init
+        for _ in range(1000):
+            index = np.random.choice(actual_len, size=64)
+            value = np.random.rand(64)
+            naive[index] = value
+            tree[index] = value
+            assert np.allclose(realop(naive), tree.reduce())
+            for i in range(10):
+                left = right = 0
+                while left >= right:
+                    left = np.random.randint(actual_len)
+                    right = np.random.randint(actual_len)
+                assert np.allclose(realop(naive[left:right]),
+                                   tree.reduce(left, right))
+
+
 if __name__ == '__main__':
     test_replaybuffer()
     test_ignore_obs_next()
     test_stack()
+    test_segtree()
     test_priortized_replaybuffer(233333, 200000)
     test_update()
