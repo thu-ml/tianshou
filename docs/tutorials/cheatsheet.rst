@@ -48,6 +48,17 @@ where ``env_fns`` is a list of callable env hooker. The above code can be writte
     env_fns = [lambda x=i: MyTestEnv(size=x) for i in [2, 3, 4, 5]]
     venv = SubprocVectorEnv(env_fns)
 
+.. warning::
+
+    If you use your own environment, please make sure the ``seed`` method is set up properly, e.g.,
+
+    ::
+
+        def seed(self, seed):
+            np.random.seed(seed)
+
+    Otherwise, the outputs of these envs will be the same with each other.
+
 .. _preprocess_fn:
 
 Handle Batched Data Stream in Collector
