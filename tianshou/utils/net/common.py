@@ -36,10 +36,7 @@ class Net(nn.Module):
     def forward(self, s, state=None, info={}):
         """s -> flatten -> logits"""
         s = to_torch(s, device=self.device, dtype=torch.float32)
-        if len(s.shape) > 1:
-            s = s.flatten(1)
-        else:
-            s = s.unsqueeze(-1)
+        s = s.reshape(s.size(0), -1)
         logits = self.model(s)
         return logits, state
 
