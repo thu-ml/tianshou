@@ -157,7 +157,7 @@ class DQNPolicy(BasePolicy):
         if self._target and self._cnt % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
-        q = self(batch).logits
+        q = self(batch, eps=0.).logits
         q = q[np.arange(len(q)), batch.act]
         r = to_torch_as(batch.returns, q).flatten()
         if hasattr(batch, 'update_weight'):
