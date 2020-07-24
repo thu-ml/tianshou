@@ -148,8 +148,7 @@ class PPOPolicy(PGPolicy):
                 dist = self(b).dist
                 value = self.critic(b.obs).flatten()
                 ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
-                # TODO: torch.movedim in version > 1.5.1
-                ratio = ratio.permute(*np.roll(range(len(ratio.shape)), -1))
+                ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 surr1 = ratio * b.adv
                 surr2 = ratio.clamp(1. - self._eps_clip,
                                     1. + self._eps_clip) * b.adv

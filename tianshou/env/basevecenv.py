@@ -37,7 +37,7 @@ class BaseVectorEnv(ABC, gym.Env):
             def seed(self, seed):
                 np.random.seed(seed)
 
-        Otherwise, the outputs of these envs will be the same with each other.
+        Otherwise, the outputs of these envs may be the same with each other.
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:

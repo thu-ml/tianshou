@@ -57,7 +57,7 @@ where ``env_fns`` is a list of callable env hooker. The above code can be writte
         def seed(self, seed):
             np.random.seed(seed)
 
-    Otherwise, the outputs of these envs will be the same with each other.
+    Otherwise, the outputs of these envs may be the same with each other.
 
 .. _preprocess_fn:
 
