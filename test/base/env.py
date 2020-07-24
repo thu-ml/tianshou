@@ -1,5 +1,6 @@
 import gym
 import time
+import numpy as np
 from gym.spaces import Discrete, MultiDiscrete, Box
 
 
@@ -21,6 +22,9 @@ class MyTestEnv(gym.Env):
             self.action_space = Discrete(2)
         self.reset()
 
+    def seed(self, seed=0):
+        np.random.seed(seed)
+
     def reset(self, state=0):
         self.done = False
         self.index = state
@@ -35,7 +39,8 @@ class MyTestEnv(gym.Env):
 
     def _get_dict_state(self):
         """Generate a dict_state if dict_state is True."""
-        return {'index': self.index} if self.dict_state else self.index
+        return {'index': self.index, 'rand': np.random.rand()} \
+            if self.dict_state else self.index
 
     def step(self, action):
         if self._md_action:
