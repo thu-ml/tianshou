@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from timeit import timeit
 
 from tianshou.data import Batch, PrioritizedReplayBuffer, \
     ReplayBuffer, SegmentTree
@@ -171,6 +172,35 @@ def test_segtree():
                     right = np.random.randint(actual_len)
                 assert np.allclose(realop(naive[left:right]),
                                    tree.reduce(left, right))
+
+    # test prefix-sum-idx
+    tree = SegmentTree(6)
+    actual_len = 8
+    naive = np.random.rand(actual_len)
+    tree[np.arange(actual_len)] = naive
+    for _ in range(1000):
+        scalar = np.random.rand() * naive.sum()
+        index = tree.get_prefix_sum_idx(scalar)
+        assert naive[:index].sum() <= scalar < naive[:index + 1].sum()
+    # corner case here
+    naive = np.ones(actual_len, np.int)
+    tree[np.arange(actual_len)] = naive
+    for scalar in range(actual_len):
+        index = tree.get_prefix_sum_idx(scalar * 1.)
+        assert naive[:index].sum() <= scalar < naive[:index + 1].sum()
+    # test large prefix-sum-idx
+    tree = SegmentTree(10000)
+    actual_len = 16384
+    naive = np.random.rand(actual_len)
+    tree[np.arange(actual_len)] = naive
+    for _ in range(1000):
+        scalar = np.random.rand() * naive.sum()
+        index = tree.get_prefix_sum_idx(scalar)
+        assert naive[:index].sum() <= scalar < naive[:index + 1].sum()
+    # profile
+    if __name__ == '__main__':
+        naive = np.zeros(10000)
+        tree = SegmentTree(10000)
 
 
 if __name__ == '__main__':

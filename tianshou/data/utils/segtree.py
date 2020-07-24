@@ -78,7 +78,7 @@ class SegmentTree:
         """Return the index ``i`` which satisfies
         ``sum(value[:i]) <= value < sum(value[:i + 1])``.
         """
-        assert self._op == np.sum
+        assert self._op is np.sum
         single = False
         if not isinstance(value, np.ndarray):
             value = np.array([value])
@@ -87,7 +87,8 @@ class SegmentTree:
         index = np.ones(value.shape, dtype=np.int)
         while index[0] < self._bound:
             index <<= 1
-            direct = self._value[index] < value
+            direct = self._value[index] <= value
             value -= self._value[index] * direct
             index += direct
+        index -= self._bound
         return index.item() if single else index
