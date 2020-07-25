@@ -43,7 +43,6 @@ class SimplePolicy(BasePolicy):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._fake_return = Batch(act=np.array([30]), state=None)
 
     def learn(self, batch, **kwargs):
         return super().learn(batch, **kwargs)

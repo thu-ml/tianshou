@@ -37,7 +37,7 @@ class Collector(object):
     to the buffer with batch format, which receives up to 7 keys as listed in
     :class:`~tianshou.data.Batch`. It will receive with only ``obs`` when the
     collector resets the environment. It returns either a dict or a
-    :class:`~tiavnshou.data.Batch` with the modified keys and values. Examples
+    :class:`~tianshou.data.Batch` with the modified keys and values. Examples
     are in "test/base/test_collector.py".
 
     Example:
