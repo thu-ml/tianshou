@@ -121,16 +121,30 @@ def test_collector_with_async():
     # returned by the same environment
     env_id = c1.buffer.info['env_id']
     size = len(c1.buffer)
+    obs = c1.buffer.obs[:size]
+    done = c1.buffer.done[:size]
+    print(env_id[:size])
+    print(obs)
     obs_ground_truth = []
     i = 0
     while i < size:
-        j = i + 1
-        while j < size and env_id[j] == env_id[i]:
+        # i is the start of an episode
+        if done[i]:
+            # this episode has one transition
+            assert env_lens[env_id[i]] == 1
+            i += 1
+            continue
+        j = i
+        while True:
             j += 1
+            # in one episode, the environment id is the same
+            assert env_id[j] == env_id[i]
+            if done[j]:
+                break
+        j = j + 1  # j is the start of the next episode
         assert j - i == env_lens[env_id[i]]
         obs_ground_truth += list(range(j - i))
         i = j
-    obs = c1.buffer.obs[:size]
     assert np.allclose(obs, obs_ground_truth)
 
 

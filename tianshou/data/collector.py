@@ -244,6 +244,13 @@ class Collector(object):
 
             # calculate the next action
             if random:
+                if self.is_async:
+                    # TODO self.env.action_space will invoke remote call for
+                    #  all environments, which may hang in async simulation.
+                    #  This can be avoided by using a random policy, but not
+                    #  in the collector level. Leave it as a future work.
+                    raise RuntimeError("cannot use random "
+                                       "sampling in async simulation!")
                 spaces = self.env.action_space
                 result = Batch(
                     act=[spaces[i].sample() for i in self._ready_env_ids])
@@ -376,9 +383,10 @@ def _batch_set_item(source: Batch, indices: np.ndarray,
             vs = source.get(k, Batch())
             if isinstance(vs, Batch) and vs.is_empty():
                 # case 2
-                source[k] = _create_value(v[0], size)
+                # use __dict__ to avoid many type checks
+                source.__dict__[k] = _create_value(v[0], size)
         else:
             # target[k] is reserved
             # case 1
             continue
-        source[k][indices] = v
+        source.__dict__[k][indices] = v
