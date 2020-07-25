@@ -100,7 +100,7 @@ class Collector(object):
         # environments that are available in step()
         # this means all environments in synchronous simulation
         # but only a subset of environments in asynchronous simulation
-        self._ready_env_ids = np.array(range(self.env_num))
+        self._ready_env_ids = np.arange(self.env_num)
         # self.async is a flag to indicate whether this collector works
         # with asynchronous simulation
         self.is_async = isinstance(env, AsyncVectorEnv)
