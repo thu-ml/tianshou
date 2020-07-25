@@ -113,7 +113,7 @@ def test_stack(data):
     """Test stack"""
     for _ in np.arange(1e4):
         Batch.stack((data['batch0'], data['batch0']))
-        data['batch2'].stack(data['batch0'])
+        data['batch2'].stack_(data['batch0'])
 
 
 if __name__ == '__main__':

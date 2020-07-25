@@ -5,7 +5,7 @@ from gym.spaces.discrete import Discrete
 from gym.utils import seeding
 
 from tianshou.data import Batch, Collector, ReplayBuffer
-from tianshou.env import VectorEnv
+from tianshou.env import VectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
 
 
@@ -56,74 +56,105 @@ def data():
     np.random.seed(0)
     env = SimpleEnv()
     env.seed(0)
-    envs = VectorEnv(
+    env_vec = VectorEnv(
         [lambda: SimpleEnv() for _ in range(100)])
-    envs.seed(np.random.randint(1000, size=100).tolist())
+    env_vec.seed(np.random.randint(1000, size=100).tolist())
+    env_subproc = SubprocVectorEnv(
+        [lambda: SimpleEnv() for _ in range(4)])
+    env_subproc.seed(np.random.randint(1000, size=100).tolist())    
     buffer = ReplayBuffer(50000)
     policy = SimplePolicy()
     collector = Collector(policy, env, ReplayBuffer(50000))
-    collector_multi = Collector(policy, envs, ReplayBuffer(50000))
+    collector_vec = Collector(policy, env_vec, ReplayBuffer(50000))
+    collector_subproc = Collector(policy, env_subproc, ReplayBuffer(50000))
     return{
         "env": env,
+        "env_vec": env_vec,
+        "env_subproc": env_subproc,
         "policy": policy,
-        "envs": envs,
         "buffer": buffer,
         "collector": collector,
-        "collector_multi": collector_multi
+        "collector_vec": collector_vec,
+        "collector_subproc": collector_subproc
     }
 
 
 def test_init(data):
-    for _ in range(5000):
+    for _ in range(2000):
         c = Collector(data["policy"], data["env"], data["buffer"])
         c.close()
 
 
 def test_reset(data):
-    for _ in range(5000):
+    for _ in range(2000):
         data["collector"].reset()
 
 
 def test_collect_st(data):
-    for _ in range(50):
+    for _ in range(20):
         data["collector"].collect(n_step=1000)
 
 
 def test_collect_ep(data):
-    for _ in range(50):
+    for _ in range(20):
         data["collector"].collect(n_episode=10)
 
 
 def test_sample(data):
-    for _ in range(5000):
+    for _ in range(2000):
         data["collector"].sample(256)
 
 
-def test_init_multi_env(data):
-    for _ in range(5000):
-        c = Collector(data["policy"], data["envs"], data["buffer"])
+def test_init_vec_env(data):
+    for _ in range(2000):
+        c = Collector(data["policy"], data["env_vec"], data["buffer"])
         c.close()
 
 
-def test_reset_multi_env(data):
-    for _ in range(5000):
-        data["collector_multi"].reset()
+def test_reset_vec_env(data):
+    for _ in range(2000):
+        data["collector_vec"].reset()
 
 
-def test_collect_multi_env_st(data):
-    for _ in range(50):
-        data["collector_multi"].collect(n_step=1000)
+def test_collect_vec_env_st(data):
+    for _ in range(20):
+        data["collector_vec"].collect(n_step=1000)
 
 
-def test_collect_multi_env_ep(data):
-    for _ in range(50):
-        data["collector_multi"].collect(n_episode=10)
+def test_collect_vec_env_ep(data):
+    for _ in range(20):
+        data["collector_vec"].collect(n_episode=10)
 
 
-def test_sample_multi_env(data):
-    for _ in range(5000):
-        data["collector_multi"].sample(256)
+def test_sample_vec_env(data):
+    for _ in range(2000):
+        data["collector_vec"].sample(256)
 
+
+def test_init_subproc_env(data):
+    for _ in range(2000):
+        c = Collector(data["policy"], data["env_subproc"], data["buffer"])
+        c.close()
+
+
+def test_reset_subproc_env(data):
+    for _ in range(2000):
+        data["collector_subproc"].reset()
+
+
+def test_collect_subproc_env_st(data):
+    for _ in range(20):
+        data["collector_subproc"].collect(n_step=1000)
+
+
+def test_collect_subproc_env_ep(data):
+    for _ in range(20):
+        data["collector_subproc"].collect(n_episode=10)
+
+
+def test_sample_subproc_env(data):
+    for _ in range(2000):
+        data["collector_subproc"].sample(256)
 
 if __name__ == '__main__':
     pytest.main(["-s", "-k collector_profile", "--durations=0", "-v"])
