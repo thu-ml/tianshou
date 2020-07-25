@@ -117,14 +117,14 @@ class ReplayBuffer:
                  sample_avail: bool = False, **kwargs) -> None:
         super().__init__()
         self._maxsize = size
-        self._stack_num = None
+        self._stack = None
+        self.stack_num = stack_num
         self._avail = sample_avail and stack_num > 1
         self._avail_index = []
         self._save_s_ = not ignore_obs_next
         self._index = 0
         self._size = 0
         self._meta = Batch()
-        self._set_stack_num(stack_num)
         self.reset()
 
     def __len__(self) -> int:
@@ -157,10 +157,12 @@ class ReplayBuffer:
                 value.__dict__[key] = _create_value(inst[key], self._maxsize)
             value[self._index] = inst
 
-    def _get_stack_num(self):
+    @property
+    def stack_num(self):
         return self._stack
 
-    def _set_stack_num(self, num):
+    @stack_num.setter
+    def stack_num(self, num):
         assert num > 0, 'stack_num should greater than 0'
         self._stack = num
 
@@ -169,14 +171,14 @@ class ReplayBuffer:
         if len(buffer) == 0:
             return
         i = begin = buffer._index % len(buffer)
-        origin = buffer._get_stack_num()
-        buffer._set_stack_num(1)
+        stack_num_orig = buffer.stack_num
+        buffer.stack_num = 1
         while True:
             self.add(**buffer[i])
             i = (i + 1) % len(buffer)
             if i == begin:
                 break
-        buffer._set_stack_num(origin)
+        buffer.stack_num = stack_num_orig
 
     def add(self,
             obs: Union[dict, Batch, np.ndarray],
@@ -205,15 +207,15 @@ class ReplayBuffer:
         if self._avail:
             # update current frame
             avail = sum(self.done[i] for i in range(
-                self._index - self._stack + 1, self._index)) == 0
-            if self._size < self._stack - 1:
+                self._index - self.stack_num + 1, self._index)) == 0
+            if self._size < self.stack_num - 1:
                 avail = False
             if avail and self._index not in self._avail_index:
                 self._avail_index.append(self._index)
             elif not avail and self._index in self._avail_index:
                 self._avail_index.remove(self._index)
             # remove the later available frame because of broken storage
-            t = (self._index + self._stack - 1) % self._maxsize
+            t = (self._index + self.stack_num - 1) % self._maxsize
             if t in self._avail_index:
                 self._avail_index.remove(t)
 
@@ -256,7 +258,7 @@ class ReplayBuffer:
         given from buffer initialization procedure.
         """
         if stack_num is None:
-            stack_num = self._stack
+            stack_num = self.stack_num
         if isinstance(indice, slice):
             indice = np.arange(
                 0 if indice.start is None
