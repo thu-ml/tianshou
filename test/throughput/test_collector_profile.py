@@ -12,6 +12,7 @@ from tianshou.policy import BasePolicy
 class SimpleEnv(gym.Env):
     """A simplest example of self-defined env, used to minimize
     data collect time and profile collector."""
+
     def __init__(self):
         self.action_space = Discrete(200)
         self._fake_data = np.ones((10, 10, 1))
@@ -28,8 +29,8 @@ class SimpleEnv(gym.Env):
         if self._index == self.done:
             raise ValueError('step after done !!!')
         self._index += 1
-        return {'observable': self._fake_data, 'hidden': self._index},
-        -1, self._index == self.done, {}
+        return {'observable': self._fake_data, 'hidden': self._index}, -1, \
+            self._index == self.done, {}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -39,6 +40,7 @@ class SimpleEnv(gym.Env):
 class SimplePolicy(BasePolicy):
     """A simplest example of self-defined policy, used
     to minimize data collect time."""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._fake_return = Batch(act=np.array([30]), state=None)
@@ -73,54 +75,54 @@ def data():
 
 
 def test_init(data):
-    for _ in range(1000):
+    for _ in range(5000):
         c = Collector(data["policy"], data["env"], data["buffer"])
         c.close()
 
 
 def test_reset(data):
-    for _ in range(1000):
+    for _ in range(5000):
         data["collector"].reset()
 
 
 def test_collect_st(data):
-    for _ in range(10):
+    for _ in range(50):
         data["collector"].collect(n_step=1000)
 
 
 def test_collect_ep(data):
-    for _ in range(10):
+    for _ in range(50):
         data["collector"].collect(n_episode=10)
 
 
 def test_sample(data):
-    for _ in range(1000):
+    for _ in range(5000):
         data["collector"].sample(256)
 
 
 def test_init_multi_env(data):
-    for _ in range(1000):
+    for _ in range(5000):
         c = Collector(data["policy"], data["envs"], data["buffer"])
         c.close()
 
 
 def test_reset_multi_env(data):
-    for _ in range(1000):
+    for _ in range(5000):
         data["collector_multi"].reset()
 
 
 def test_collect_multi_env_st(data):
-    for _ in range(10):
+    for _ in range(50):
         data["collector_multi"].collect(n_step=1000)
 
 
 def test_collect_multi_env_ep(data):
-    for _ in range(10):
+    for _ in range(50):
         data["collector_multi"].collect(n_episode=10)
 
 
 def test_sample_multi_env(data):
-    for _ in range(1000):
+    for _ in range(5000):
         data["collector_multi"].sample(256)
 
 
