@@ -723,31 +723,3 @@ class Batch:
             indices = np.arange(length)
         for idx in np.arange(0, length, size):
             yield self[indices[idx:(idx + size)]]
-
-    def _copy_non_reserved(self: 'Batch', src: 'Batch'):
-        for k, v in src.items():
-            vt = self.get(k, Batch())
-            if isinstance(vt, Batch):
-                if vt.is_empty():
-                    self[k] = v
-                else:
-                    vt._copy_non_reserved(v)
-
-    def _setitem(self, index: np.ndarray, value: 'Batch') -> None:
-        for key, val in value.items():
-            if isinstance(val, Batch):
-                if val.is_empty():
-                    continue
-                self.__dict__[key]._setitem(index, value[key])
-            else:
-                self.__dict__[key][index] = value[key]
-
-    def _set_data(self, indices, data, size):
-        """
-        basically do self[indices] = data, but if a key is missing or reserved
-        in self, values with the same structure of data and length of size
-        would be created.
-        """
-        holder = _create_value(data[0], size)
-        self._copy_non_reserved(holder)
-        self._setitem(indices, data)

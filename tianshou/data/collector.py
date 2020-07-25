@@ -9,6 +9,7 @@ from tianshou.env import BaseVectorEnv, VectorEnv, AsyncVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.exploration import BaseNoise
 from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
+from tianshou.data.batch import _create_value
 
 
 class Collector(object):
@@ -218,6 +219,7 @@ class Collector(object):
         # episode of each environment
         episode_count = np.zeros(self.env_num)
         reward_total = 0.0
+        whole_data = Batch()
         while True:
             if step_count >= 100000 and episode_count.sum() == 0:
                 warnings.warn(
@@ -268,8 +270,8 @@ class Collector(object):
                 obs_next, rew, done, info = self.env.step(self.data.act)
             else:
                 # store computed actions, states, etc
-                whole_data._set_data(self._ready_env_ids,
-                                     self.data, self.env_num)
+                _batch_set_item(whole_data, self._ready_env_ids,
+                                self.data, self.env_num)
                 # fetch finished data
                 obs_next, rew, done, info = self.env.step(
                     action=self.data.act, id=self._ready_env_ids)
@@ -314,8 +316,8 @@ class Collector(object):
             self.data.obs = obs_next
             if self.is_async:
                 # set data back
-                whole_data._set_data(self._ready_env_ids,
-                                     self.data, self.env_num)
+                _batch_set_item(whole_data, self._ready_env_ids,
+                                self.data, self.env_num)
                 # let self.data be the data in all environments again
                 self.data = whole_data
             if n_step:
@@ -360,3 +362,23 @@ class Collector(object):
         batch_data, indice = self.buffer.sample(batch_size)
         batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data
+
+
+def _batch_set_item(source: Batch, indices: np.ndarray,
+                    target: Batch, size: int):
+    # for any key chain k, there are three cases
+    # 1. source[k] is non-reserved, but target[k] does not exist or is reserved
+    # 2. source[k] does not exist or is reserved, but target[k] is non-reserved
+    # 3. both source[k] and target[k] is non-reserved
+    for k, v in target.items():
+        if not isinstance(v, Batch) or not v.is_empty():
+            # target[k] is non-reserved
+            vs = source.get(k, Batch())
+            if isinstance(vs, Batch) and vs.is_empty():
+                # case 2
+                source[k] = _create_value(v[0], size)
+        else:
+            # target[k] is reserved
+            # case 1
+            continue
+        source[k][indices] = v
