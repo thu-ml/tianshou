@@ -40,6 +40,17 @@ Here, we set up 8 environments in ``train_envs`` and 100 environments in ``test_
 
 For the demonstration, here we use the second block of codes.
 
+.. warning::
+
+    If you use your own environment, please make sure the ``seed`` method is set up properly, e.g.,
+
+    ::
+
+        def seed(self, seed):
+            np.random.seed(seed)
+
+    Otherwise, the outputs of these envs may be the same with each other.
+
 .. _build_the_network:
 
 Build the Network

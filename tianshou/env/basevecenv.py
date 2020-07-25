@@ -27,6 +27,17 @@ class BaseVectorEnv(ABC, gym.Env):
         obs, rew, done, info = envs.step([1] * 8)  # step synchronously
         envs.render()  # render all environments
         envs.close()  # close all environments
+
+    .. warning::
+
+        If you use your own environment, please make sure the ``seed`` method
+        is set up properly, e.g.,
+        ::
+
+            def seed(self, seed):
+                np.random.seed(seed)
+
+        Otherwise, the outputs of these envs may be the same with each other.
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
