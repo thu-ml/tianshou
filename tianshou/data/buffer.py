@@ -104,7 +104,7 @@ class ReplayBuffer:
 
     :param int size: the size of replay buffer.
     :param int stack_num: the frame-stack sampling argument, should be greater
-        than 1, defaults to 0 (no stacking).
+        than or equal to 1, defaults to 1 (no stacking).
     :param bool ignore_obs_next: whether to store obs_next, defaults to
         ``False``.
     :param bool sample_avail: the parameter indicating sampling only available
@@ -112,19 +112,19 @@ class ReplayBuffer:
         This feature is not supported in Prioritized Replay Buffer currently.
     """
 
-    def __init__(self, size: int, stack_num: Optional[int] = 0,
+    def __init__(self, size: int, stack_num: int = 1,
                  ignore_obs_next: bool = False,
                  sample_avail: bool = False, **kwargs) -> None:
         super().__init__()
         self._maxsize = size
-        self._stack = stack_num
-        assert stack_num != 1, 'stack_num should greater than 1'
+        self._stack_num = None
         self._avail = sample_avail and stack_num > 1
         self._avail_index = []
         self._save_s_ = not ignore_obs_next
         self._index = 0
         self._size = 0
         self._meta = Batch()
+        self._set_stack_num(stack_num)
         self.reset()
 
     def __len__(self) -> int:
@@ -161,6 +161,7 @@ class ReplayBuffer:
         return self._stack
 
     def _set_stack_num(self, num):
+        assert num > 0, 'stack_num should greater than 0'
         self._stack = num
 
     def update(self, buffer: 'ReplayBuffer') -> None:
@@ -169,7 +170,7 @@ class ReplayBuffer:
             return
         i = begin = buffer._index % len(buffer)
         origin = buffer._get_stack_num()
-        buffer._set_stack_num(0)
+        buffer._set_stack_num(1)
         while True:
             self.add(**buffer[i])
             i = (i + 1) % len(buffer)
@@ -276,7 +277,7 @@ class ReplayBuffer:
             key = 'obs'
         val = self._meta.__dict__[key]
         try:
-            if stack_num > 0:
+            if stack_num > 1:
                 stack = []
                 for _ in range(stack_num):
                     stack = [val[indice]] + stack
@@ -300,7 +301,7 @@ class ReplayBuffer:
 
     def __getitem__(self, index: Union[
             slice, int, np.integer, np.ndarray]) -> Batch:
-        """Return a data batch: self[index]. If stack_num is set to be > 0,
+        """Return a data batch: self[index]. If stack_num is larger than 1,
         return the stacked obs and obs_next with shape [batch, len, ...].
         """
         return Batch(
