@@ -113,8 +113,12 @@ def test_collector_with_dict_state():
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True)
                for i in [2, 3, 4, 5]]
     envs = VectorEnv(env_fns)
+    envs.seed(666)
+    obs = envs.reset()
+    assert not np.isclose(obs[0]['rand'], obs[1]['rand'])
     c1 = Collector(policy, envs, ReplayBuffer(size=100),
                    Logger.single_preprocess_fn)
+    c1.seed(0)
     c1.collect(n_step=10)
     c1.collect(n_episode=[2, 1, 1, 2])
     batch = c1.sample(10)
