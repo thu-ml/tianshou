@@ -23,8 +23,8 @@ def data():
             e=list(range(3))
         )
     )
-    batch1 = copy.deepcopy(batch0)
-    batch2 = copy.deepcopy(batch0)
+    batchs1 = [copy.deepcopy(batch0) for _ in np.arange(1e4)]
+    batchs2 = [copy.deepcopy(batch0) for _ in np.arange(1e4)]
     batch_len = int(1e4)
     batch3 = Batch(obs=[np.arange(20) for _ in np.arange(batch_len)],
                    reward=np.arange(batch_len))
@@ -47,8 +47,8 @@ def data():
     print("Initialised")
     return {'batch_set': batch_set,
             'batch0': batch0,
-            'batch1': batch1,
-            'batch2': batch2,
+            'batchs1': batchs1,
+            'batchs2': batchs2,
             'batch3': batch3,
             'indexs': indexs,
             'dict_set': dict_set,
@@ -104,16 +104,16 @@ def test_pickle(data):
 
 def test_cat(data):
     """Test cat"""
-    for _ in np.arange(1e4):
+    for i in range(10000):
         Batch.cat((data['batch0'], data['batch0']))
-        data['batch1'].cat_(data['batch0'])
+        data['batchs1'][i].cat_(data['batch0'])
 
 
 def test_stack(data):
     """Test stack"""
-    for _ in np.arange(1e4):
+    for i in range(10000):
         Batch.stack((data['batch0'], data['batch0']))
-        data['batch2'].stack_(data['batch0'])
+        data['batchs2'][i].stack_([data['batch0']])
 
 
 if __name__ == '__main__':
