@@ -150,7 +150,7 @@ class Collector(object):
         """Reset all of the environment(s)' states and reset all of the cache
         buffers (if need).
         """
-        self._ready_env_ids = np.array(range(self.env_num))
+        self._ready_env_ids = np.arange(self.env_num)
         obs = self.env.reset()
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get('obs', obs)
@@ -171,7 +171,7 @@ class Collector(object):
         self.env.close()
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
-        """Reset self.data.state[id]."""
+        """Reset the hidden state: self.data.state[id]."""
         state = self.data.state  # it is a reference
         if isinstance(state, torch.Tensor):
             state[id].zero_()

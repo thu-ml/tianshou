@@ -8,21 +8,22 @@ from tianshou.env import SubprocVectorEnv
 
 class AsyncVectorEnv(SubprocVectorEnv):
     """Vectorized asynchronous environment wrapper based on subprocess.
+
+    :param wait_num: used in asynchronous simulation if the time cost of
+        ``env.step`` varies with time and synchronously waiting for all
+        environments to finish a step is time-wasting. In that case, we can
+        return when ``wait_num`` environments finish a step and keep on
+        simulation in these environments. If ``None``, asynchronous simulation
+        is disabled; else, ``1 <= wait_num <= env_num``.
+
     .. seealso::
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
         explanation.
     """
+
     def __init__(self, env_fns: List[Callable[[], gym.Env]],
                  wait_num: Optional[int] = None) -> None:
-        """
-        :param wait_num: used in asynchronous simulation if the time cost of
-            ``env.step`` varies with time and synchronously waiting for all
-            environments to finish a step is time-wasting. In that case, we
-            can return when ``wait_num`` environments finish a step and keep
-            on simulation in these environments. If ``None``, asynchronous
-            simulation is disabled; else, ``1 <= wait_num <= env_num``.
-        """
         super().__init__(env_fns)
         self.wait_num = wait_num or len(env_fns)
         assert 1 <= self.wait_num <= len(env_fns), \
@@ -44,10 +45,10 @@ class AsyncVectorEnv(SubprocVectorEnv):
         elif np.isscalar(id):
             id = [id]
         for i in id:
-            assert i not in self.waiting_id, f'cannot reset environment {i}' \
-                                             f' which is stepping now!'
-            assert i in self.ready_id, f'can only reset ' \
-                                       f'ready environments {self.ready_id}'
+            assert i not in self.waiting_id, \
+                f'Cannot reset environment {i} which is stepping now!'
+            assert i in self.ready_id, \
+                f'Can only reset ready environments {self.ready_id}.'
         return id
 
     def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
@@ -57,8 +58,8 @@ class AsyncVectorEnv(SubprocVectorEnv):
     def render(self, **kwargs) -> List[Any]:
         if len(self.waiting_id) > 0:
             raise RuntimeError(
-                f"environments {self.waiting_id} are still "
-                f"stepping, cannot render now")
+                f"Environments {self.waiting_id} are still "
+                f"stepping, cannot render them now.")
         return super().render(**kwargs)
 
     def close(self) -> List[Any]:
@@ -76,8 +77,8 @@ class AsyncVectorEnv(SubprocVectorEnv):
         Provide the given action to the environments. The action sequence
         should correspond to the ``id`` argument, and the ``id`` argument
         should be a subset of the ``env_id`` in the last returned ``info``
-        (initially they are env_ids of all the environments).
-        If action is ``None``, fetch unfinished step() calls instead.
+        (initially they are env_ids of all the environments). If action is
+        ``None``, fetch unfinished step() calls instead.
         """
         if action is not None:
             id = self._assert_and_transform_id(id)
