@@ -2,7 +2,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import BasePolicy
-from tianshou.env import VectorEnv, SubprocVectorEnv
+from tianshou.env import VectorEnv, SubprocVectorEnv, AsyncVectorEnv
 from tianshou.data import Collector, Batch, ReplayBuffer
 
 if __name__ == '__main__':
@@ -103,6 +103,51 @@ def test_collector():
     c2.collect(n_episode=[1, 1, 1, 1], random=True)
 
 
+def test_collector_with_async():
+    env_lens = [2, 3, 4, 5]
+    writer = SummaryWriter('log/async_collector')
+    logger = Logger(writer)
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.1, random_sleep=True)
+               for i in env_lens]
+
+    venv = AsyncVectorEnv(env_fns)
+    policy = MyPolicy()
+    c1 = Collector(policy, venv,
+                   ReplayBuffer(size=1000, ignore_obs_next=False),
+                   logger.preprocess_fn)
+    c1.collect(n_episode=10)
+    # check if the data in the buffer is chronological
+    # i.e. data in the buffer are full episodes, and each episode is
+    # returned by the same environment
+    env_id = c1.buffer.info['env_id']
+    size = len(c1.buffer)
+    obs = c1.buffer.obs[:size]
+    done = c1.buffer.done[:size]
+    print(env_id[:size])
+    print(obs)
+    obs_ground_truth = []
+    i = 0
+    while i < size:
+        # i is the start of an episode
+        if done[i]:
+            # this episode has one transition
+            assert env_lens[env_id[i]] == 1
+            i += 1
+            continue
+        j = i
+        while True:
+            j += 1
+            # in one episode, the environment id is the same
+            assert env_id[j] == env_id[i]
+            if done[j]:
+                break
+        j = j + 1  # j is the start of the next episode
+        assert j - i == env_lens[env_id[i]]
+        obs_ground_truth += list(range(j - i))
+        i = j
+    assert np.allclose(obs, obs_ground_truth)
+
+
 def test_collector_with_dict_state():
     env = MyTestEnv(size=5, sleep=0, dict_state=True)
     policy = MyPolicy(dict_state=True)
@@ -181,3 +226,4 @@ if __name__ == '__main__':
     test_collector()
     test_collector_with_dict_state()
     test_collector_with_ma()
+    test_collector_with_async()

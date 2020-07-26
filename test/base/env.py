@@ -1,5 +1,6 @@
 import gym
 import time
+import random
 import numpy as np
 from gym.spaces import Discrete, MultiDiscrete, Box
 
@@ -9,9 +10,10 @@ class MyTestEnv(gym.Env):
     """
 
     def __init__(self, size, sleep=0, dict_state=False, ma_rew=0,
-                 multidiscrete_action=False):
+                 multidiscrete_action=False, random_sleep=False):
         self.size = size
         self.sleep = sleep
+        self.random_sleep = random_sleep
         self.dict_state = dict_state
         self.ma_rew = ma_rew
         self._md_action = multidiscrete_action
@@ -48,7 +50,9 @@ class MyTestEnv(gym.Env):
         if self.done:
             raise ValueError('step after done !!!')
         if self.sleep > 0:
-            time.sleep(self.sleep)
+            sleep_time = random.random() if self.random_sleep else 1
+            sleep_time *= self.sleep
+            time.sleep(sleep_time)
         if self.index == self.size:
             self.done = True
             return self._get_dict_state(), self._get_reward(), self.done, {}

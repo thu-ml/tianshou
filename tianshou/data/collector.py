@@ -5,10 +5,11 @@ import warnings
 import numpy as np
 from typing import Any, Dict, List, Union, Optional, Callable
 
-from tianshou.env import BaseVectorEnv, VectorEnv
+from tianshou.env import BaseVectorEnv, VectorEnv, AsyncVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.exploration import BaseNoise
 from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
+from tianshou.data.batch import _create_value
 
 
 class Collector(object):
@@ -96,6 +97,13 @@ class Collector(object):
             env = VectorEnv([lambda: env])
         self.env = env
         self.env_num = len(env)
+        # environments that are available in step()
+        # this means all environments in synchronous simulation
+        # but only a subset of environments in asynchronous simulation
+        self._ready_env_ids = np.arange(self.env_num)
+        # self.async is a flag to indicate whether this collector works
+        # with asynchronous simulation
+        self.is_async = isinstance(env, AsyncVectorEnv)
         # need cache buffers before storing in the main buffer
         self._cached_buf = [ListReplayBuffer() for _ in range(self.env_num)]
         self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
@@ -105,6 +113,9 @@ class Collector(object):
         self.process_fn = policy.process_fn
         self._action_noise = action_noise
         self._rew_metric = reward_metric or Collector._default_rew_metric
+        # avoid creating attribute outside __init__
+        self.data = Batch(state={}, obs={}, act={}, rew={}, done={}, info={},
+                          obs_next={}, policy={})
         self.reset()
 
     @staticmethod
@@ -139,6 +150,7 @@ class Collector(object):
         """Reset all of the environment(s)' states and reset all of the cache
         buffers (if need).
         """
+        self._ready_env_ids = np.arange(self.env_num)
         obs = self.env.reset()
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get('obs', obs)
@@ -159,7 +171,7 @@ class Collector(object):
         self.env.close()
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
-        """Reset self.data.state[id]."""
+        """Reset the hidden state: self.data.state[id]."""
         state = self.data.state  # it is a reference
         if isinstance(state, torch.Tensor):
             state[id].zero_()
@@ -207,12 +219,22 @@ class Collector(object):
         # episode of each environment
         episode_count = np.zeros(self.env_num)
         reward_total = 0.0
+        whole_data = Batch()
         while True:
             if step_count >= 100000 and episode_count.sum() == 0:
                 warnings.warn(
                     'There are already many steps in an episode. '
                     'You should add a time limitation to your environment!',
                     Warning)
+
+            if self.is_async:
+                # self.data are the data for all environments
+                # in async simulation, only a subset of data are disposed
+                # so we store the whole data in ``whole_data``, let self.data
+                # to be all the data available in ready environments, and
+                # finally set these back into all the data
+                whole_data = self.data
+                self.data = self.data[self._ready_env_ids]
 
             # restore the state and the input data
             last_state = self.data.state
@@ -222,8 +244,16 @@ class Collector(object):
 
             # calculate the next action
             if random:
+                if self.is_async:
+                    # TODO self.env.action_space will invoke remote call for
+                    #  all environments, which may hang in async simulation.
+                    #  This can be avoided by using a random policy, but not
+                    #  in the collector level. Leave it as a future work.
+                    raise RuntimeError("cannot use random "
+                                       "sampling in async simulation!")
+                spaces = self.env.action_space
                 result = Batch(
-                    act=[a.sample() for a in self.env.action_space])
+                    act=[spaces[i].sample() for i in self._ready_env_ids])
             else:
                 with torch.no_grad():
                     result = self.policy(self.data, last_state)
@@ -243,8 +273,18 @@ class Collector(object):
                 self.data.act += self._action_noise(self.data.act.shape)
 
             # step in env
-            obs_next, rew, done, info = self.env.step(self.data.act)
-
+            if not self.is_async:
+                obs_next, rew, done, info = self.env.step(self.data.act)
+            else:
+                # store computed actions, states, etc
+                _batch_set_item(whole_data, self._ready_env_ids,
+                                self.data, self.env_num)
+                # fetch finished data
+                obs_next, rew, done, info = self.env.step(
+                    action=self.data.act, id=self._ready_env_ids)
+                self._ready_env_ids = np.array([i['env_id'] for i in info])
+                # get the stepped data
+                self.data = whole_data[self._ready_env_ids]
             # move data to self.data
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
 
@@ -256,9 +296,11 @@ class Collector(object):
             if self.preprocess_fn:
                 result = self.preprocess_fn(**self.data)
                 self.data.update(result)
-            for i in range(self.env_num):
-                self._cached_buf[i].add(**self.data[i])
-                if self.data.done[i]:
+            for j, i in enumerate(self._ready_env_ids):
+                # j is the index in current ready_env_ids
+                # i is the index in all environments
+                self._cached_buf[i].add(**self.data[j])
+                if self.data.done[j]:
                     if n_step or np.isscalar(n_episode) or \
                             episode_count[i] < n_episode[i]:
                         episode_count[i] += 1
@@ -267,17 +309,24 @@ class Collector(object):
                         if self.buffer is not None:
                             self.buffer.update(self._cached_buf[i])
                     self._cached_buf[i].reset()
-                    self._reset_state(i)
+                    self._reset_state(j)
             obs_next = self.data.obs_next
             if sum(self.data.done):
-                env_ind = np.where(self.data.done)[0]
-                obs_reset = self.env.reset(env_ind)
+                env_ind_local = np.where(self.data.done)[0]
+                env_ind_global = self._ready_env_ids[env_ind_local]
+                obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
-                    obs_next[env_ind] = self.preprocess_fn(
+                    obs_next[env_ind_local] = self.preprocess_fn(
                         obs=obs_reset).get('obs', obs_reset)
                 else:
-                    obs_next[env_ind] = obs_reset
+                    obs_next[env_ind_local] = obs_reset
             self.data.obs = obs_next
+            if self.is_async:
+                # set data back
+                _batch_set_item(whole_data, self._ready_env_ids,
+                                self.data, self.env_num)
+                # let self.data be the data in all environments again
+                self.data = whole_data
             if n_step:
                 if step_count >= n_step:
                     break
@@ -320,3 +369,24 @@ class Collector(object):
         batch_data, indice = self.buffer.sample(batch_size)
         batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data
+
+
+def _batch_set_item(source: Batch, indices: np.ndarray,
+                    target: Batch, size: int):
+    # for any key chain k, there are three cases
+    # 1. source[k] is non-reserved, but target[k] does not exist or is reserved
+    # 2. source[k] does not exist or is reserved, but target[k] is non-reserved
+    # 3. both source[k] and target[k] is non-reserved
+    for k, v in target.items():
+        if not isinstance(v, Batch) or not v.is_empty():
+            # target[k] is non-reserved
+            vs = source.get(k, Batch())
+            if isinstance(vs, Batch) and vs.is_empty():
+                # case 2
+                # use __dict__ to avoid many type checks
+                source.__dict__[k] = _create_value(v[0], size)
+        else:
+            # target[k] is reserved
+            # case 1
+            continue
+        source.__dict__[k][indices] = v
