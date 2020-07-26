@@ -60,8 +60,11 @@ def data():
         [lambda: SimpleEnv() for _ in range(100)])
     env_vec.seed(np.random.randint(1000, size=100).tolist())
     env_subproc = SubprocVectorEnv(
-        [lambda: SimpleEnv() for _ in range(4)])
-    env_subproc.seed(np.random.randint(1000, size=100).tolist())    
+        [lambda: SimpleEnv() for _ in range(8)])
+    env_subproc.seed(np.random.randint(1000, size=100).tolist())
+    env_subproc_init = SubprocVectorEnv(
+        [lambda: SimpleEnv() for _ in range(8)])
+    env_subproc_init.seed(np.random.randint(1000, size=100).tolist())
     buffer = ReplayBuffer(50000)
     policy = SimplePolicy()
     collector = Collector(policy, env, ReplayBuffer(50000))
@@ -71,12 +74,13 @@ def data():
         "env": env,
         "env_vec": env_vec,
         "env_subproc": env_subproc,
+        "env_subproc_init": env_subproc_init,
         "policy": policy,
         "buffer": buffer,
         "collector": collector,
         "collector_vec": collector_vec,
         "collector_subproc": collector_subproc
-    }
+        }
 
 
 def test_init(data):
@@ -133,8 +137,9 @@ def test_sample_vec_env(data):
 
 def test_init_subproc_env(data):
     for _ in range(2000):
-        c = Collector(data["policy"], data["env_subproc"], data["buffer"])
-        c.close()
+        c = Collector(data["policy"], data["env_subproc_init"], data["buffer"])
+        # TODO: This should be changed to c.close() in theory, but currently subproc_env doesn't support that.
+        c.reset()
 
 
 def test_reset_subproc_env(data):
@@ -155,6 +160,7 @@ def test_collect_subproc_env_ep(data):
 def test_sample_subproc_env(data):
     for _ in range(2000):
         data["collector_subproc"].sample(256)
+
 
 if __name__ == '__main__':
     pytest.main(["-s", "-k collector_profile", "--durations=0", "-v"])
