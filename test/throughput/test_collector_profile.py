@@ -84,81 +84,82 @@ def data():
 
 
 def test_init(data):
-    for _ in range(2000):
+    for _ in range(5000):
         c = Collector(data["policy"], data["env"], data["buffer"])
         c.close()
 
 
 def test_reset(data):
-    for _ in range(2000):
+    for _ in range(5000):
         data["collector"].reset()
 
 
 def test_collect_st(data):
-    for _ in range(20):
+    for _ in range(50):
         data["collector"].collect(n_step=1000)
 
 
 def test_collect_ep(data):
-    for _ in range(20):
+    for _ in range(50):
         data["collector"].collect(n_episode=10)
 
 
 def test_sample(data):
-    for _ in range(2000):
+    for _ in range(5000):
         data["collector"].sample(256)
 
 
 def test_init_vec_env(data):
-    for _ in range(2000):
+    for _ in range(5000):
         c = Collector(data["policy"], data["env_vec"], data["buffer"])
         c.close()
 
 
 def test_reset_vec_env(data):
-    for _ in range(2000):
+    for _ in range(5000):
         data["collector_vec"].reset()
 
 
 def test_collect_vec_env_st(data):
-    for _ in range(20):
+    for _ in range(50):
         data["collector_vec"].collect(n_step=1000)
 
 
 def test_collect_vec_env_ep(data):
-    for _ in range(20):
+    for _ in range(50):
         data["collector_vec"].collect(n_episode=10)
 
 
 def test_sample_vec_env(data):
-    for _ in range(2000):
+    for _ in range(5000):
         data["collector_vec"].sample(256)
 
 
 def test_init_subproc_env(data):
-    for _ in range(2000):
+    for _ in range(5000):
         c = Collector(data["policy"], data["env_subproc_init"], data["buffer"])
-        # TODO: This should be changed to c.close() in theory, but currently subproc_env doesn't support that.
+        """TODO: This should be changed to c.close() in theory,
+        but currently subproc_env doesn't support that."""
         c.reset()
 
 
 def test_reset_subproc_env(data):
-    for _ in range(2000):
+    for _ in range(5000):
         data["collector_subproc"].reset()
 
 
 def test_collect_subproc_env_st(data):
-    for _ in range(20):
+    for _ in range(50):
         data["collector_subproc"].collect(n_step=1000)
 
 
 def test_collect_subproc_env_ep(data):
-    for _ in range(20):
+    for _ in range(50):
         data["collector_subproc"].collect(n_episode=10)
 
 
 def test_sample_subproc_env(data):
-    for _ in range(2000):
+    for _ in range(5000):
         data["collector_subproc"].sample(256)
 
 
