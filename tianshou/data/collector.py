@@ -262,7 +262,7 @@ class Collector(object):
             # convert None to Batch(), since None is reserved for 0-init
             if state is None:
                 state = Batch()
-            self.data.update(state=state, policy=result.policy)
+            self.data.update(state=state, policy=result.get('policy', Batch()))
             # save hidden state to policy._state, in order to save into buffer
             self.data.policy._state = self.data.state
 
