@@ -86,9 +86,8 @@ class BasePolicy(ABC, nn.Module):
             # some code
             return Batch(logits=..., act=..., state=None, dist=...)
 
-        After version >= 0.2.3, the keyword "policy" is reserverd and the
-        corresponding data will be stored into the replay buffer in numpy. For
-        instance,
+        The keyword ``policy`` is reserved and the corresponding data will be
+        stored into the replay buffer in numpy. For instance,
         ::
 
             # some code

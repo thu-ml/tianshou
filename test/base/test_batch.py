@@ -1,5 +1,5 @@
-import torch
 import copy
+import torch
 import pickle
 import pytest
 import numpy as np
