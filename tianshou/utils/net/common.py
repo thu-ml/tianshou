@@ -9,30 +9,35 @@ class Net(nn.Module):
     """Simple MLP backbone. For advanced usage (how to customize the network),
     please refer to :ref:`build_the_network`.
 
-    :param concat: whether the input shape is concatenated by state_shape
+    :param bool concat: whether the input shape is concatenated by state_shape
         and action_shape. If it is True, ``action_shape`` is not the output
         shape, but affects the input shape.
+    :param bool dueling: whether to use dueling network to calculate Q values
+        (for Dueling DQN), defaults to False.
+    :param bool layer_norm: whether to use layer norm before ReLU, defaults to
+        False.
     """
+
     def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',
                  softmax=False, concat=False, hidden_layer_size=128,
-                 dueling=None, layernorm=False):
+                 dueling=None, layer_norm=False):
         super().__init__()
         self.device = device
         self.dueling = dueling
-        self.layernorm = layernorm
+        self.layer_norm = layer_norm
         input_size = np.prod(state_shape)
         if concat:
             input_size += np.prod(action_shape)
 
         self.model = [
             nn.Linear(input_size, hidden_layer_size)]
-        if self.layernorm:
+        if self.layer_norm:
             self.model += [nn.LayerNorm(hidden_layer_size)]
         self.model += [nn.ReLU(inplace=True)]
 
         for i in range(layer_num):
             self.model += [nn.Linear(hidden_layer_size, hidden_layer_size)]
-            if self.layernorm:
+            if self.layer_norm:
                 self.model += [nn.LayerNorm(hidden_layer_size)]
             self.model += [nn.ReLU(inplace=True)]
 
@@ -51,7 +56,7 @@ class Net(nn.Module):
             for i in range(q_layer_num):
                 self.qvalue += [nn.Linear(hidden_layer_size,
                                           hidden_layer_size)]
-                if self.layernorm:
+                if self.layer_norm:
                     self.qvalue += [nn.LayerNorm(hidden_layer_size)]
                 self.qvalue += [nn.ReLU(inplace=True)]
             if action_shape and not concat:
@@ -66,7 +71,7 @@ class Net(nn.Module):
             for i in range(s_layer_num):
                 self.svalue += [nn.Linear(hidden_layer_size,
                                           hidden_layer_size)]
-                if self.layernorm:
+                if self.layer_norm:
                     self.svalue += [nn.LayerNorm(hidden_layer_size)]
                 self.svalue += [nn.ReLU(inplace=True)]
             if action_shape and not concat:
@@ -77,14 +82,12 @@ class Net(nn.Module):
         """s -> flatten -> logits"""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.reshape(s.size(0), -1)
+        logits = self.model(s)
         if self.dueling is not None:
-            logits = self.model(s)
-            qvalue = self.qvalue(logits)
-            advantage = qvalue - qvalue.mean(dim=1).reshape(-1, 1)
-            svalue = self.svalue(logits)
-            return advantage + svalue, state
-        else:
-            logits = self.model(s)
+            # Dueling DQN
+            q = self.qvalue(logits)
+            v = self.svalue(logits)
+            logits = q - q.mean(dim=1).reshape(-1, 1) + v
         return logits, state
 
 
@@ -92,6 +95,7 @@ class Recurrent(nn.Module):
     """Simple Recurrent network based on LSTM. For advanced usage (how to
     customize the network), please refer to :ref:`build_the_network`.
     """
+
     def __init__(self, layer_num, state_shape, action_shape,
                  device='cpu', hidden_layer_size=128):
         super().__init__()
