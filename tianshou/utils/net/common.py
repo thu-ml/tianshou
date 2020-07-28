@@ -9,9 +9,11 @@ class Net(nn.Module):
     """Simple MLP backbone. For advanced usage (how to customize the network),
     please refer to :ref:`build_the_network`.
 
-    :param concat: whether the input shape is concatenated by state_shape
+    :param bool concat: whether the input shape is concatenated by state_shape
         and action_shape. If it is True, ``action_shape`` is not the output
-        shape, but affects the input shape.
+        shape, but affects the input shape; defaults to False.
+    :param bool dueling: whether to use dueling network to calculate Q values
+        (for Dueling DQN), defaults to False.
     """
     def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',
                  softmax=False, concat=False, hidden_layer_size=128,
