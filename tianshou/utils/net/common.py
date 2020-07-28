@@ -9,18 +9,16 @@ class Net(nn.Module):
     """Simple MLP backbone. For advanced usage (how to customize the network),
     please refer to :ref:`build_the_network`.
 
-    :param bool concat: whether the input shape is concatenated by state_shape
+    :param concat: whether the input shape is concatenated by state_shape
         and action_shape. If it is True, ``action_shape`` is not the output
-        shape, but affects the input shape; defaults to False.
-    :param bool dueling: whether to use dueling network to calculate Q values
-        (for Dueling DQN), defaults to False.
+        shape, but affects the input shape.
     """
     def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',
                  softmax=False, concat=False, hidden_layer_size=128,
-                 dualing=None, layernorm=False):
+                 dueling=None, layernorm=False):
         super().__init__()
         self.device = device
-        self.dualing = dualing
+        self.dueling = dueling
         self.layernorm = layernorm
         input_size = np.prod(state_shape)
         if concat:
@@ -38,7 +36,7 @@ class Net(nn.Module):
                 self.model += [nn.LayerNorm(hidden_layer_size)]
             self.model += [nn.ReLU(inplace=True)]
 
-        if self.dualing is None:
+        if self.dueling is None:
             if action_shape and not concat:
                 self.model += [nn.Linear(hidden_layer_size,
                                          np.prod(action_shape))]
@@ -47,8 +45,8 @@ class Net(nn.Module):
             self.model = nn.Sequential(*self.model)
         else:
             self.model = nn.Sequential(*self.model)
-            assert isinstance(self.dualing, tuple)
-            q_layer_num = self.dualing[0]
+            assert isinstance(self.dueling, tuple)
+            q_layer_num = self.dueling[0]
             self.qvalue = []
             for i in range(q_layer_num):
                 self.qvalue += [nn.Linear(hidden_layer_size,
@@ -63,7 +61,7 @@ class Net(nn.Module):
                 self.qvalue += [nn.Softmax(dim=-1)]
             self.qvalue = nn.Sequential(*self.qvalue)
 
-            s_layer_num = self.dualing[1]
+            s_layer_num = self.dueling[1]
             self.svalue = []
             for i in range(s_layer_num):
                 self.svalue += [nn.Linear(hidden_layer_size,
@@ -79,7 +77,7 @@ class Net(nn.Module):
         """s -> flatten -> logits"""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.reshape(s.size(0), -1)
-        if self.dualing is not None:
+        if self.dueling is not None:
             logits = self.model(s)
             qvalue = self.qvalue(logits)
             advantage = qvalue - qvalue.mean(dim=1).reshape(-1, 1)
