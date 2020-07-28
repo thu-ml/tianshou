@@ -1,6 +1,7 @@
-import numpy as np
 import torch
+import numpy as np
 from torch import nn
+from typing import Tuple, Union, Optional
 
 from tianshou.data import to_torch
 
@@ -18,12 +19,16 @@ class Net(nn.Module):
         False.
     """
 
-    def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',
-                 softmax=False, concat=False, hidden_layer_size=128,
-                 dueling=None, layer_norm=False):
+    def __init__(self, layer_num: int, state_shape: tuple,
+                 action_shape: Optional[tuple] = 0,
+                 device: Union[str, torch.device] = 'cpu',
+                 softmax: bool = False, concat: bool = False,
+                 hidden_layer_size: int = 128,
+                 dueling: Tuple[int, int] = None, layer_norm: bool = False):
         super().__init__()
         self.device = device
         self.dueling = dueling
+        self.softmax = softmax
         self.layer_norm = layer_norm
         input_size = np.prod(state_shape)
         if concat:
@@ -45,8 +50,6 @@ class Net(nn.Module):
             if action_shape and not concat:
                 self.model += [nn.Linear(hidden_layer_size,
                                          np.prod(action_shape))]
-            if softmax:
-                self.model += [nn.Softmax(dim=-1)]
         else:  # dueling DQN
             assert isinstance(self.dueling, tuple) and len(self.dueling) == 2
 
@@ -61,8 +64,6 @@ class Net(nn.Module):
             if action_shape and not concat:
                 self.Q += [nn.Linear(hidden_layer_size, np.prod(action_shape))]
                 self.V += [nn.Linear(hidden_layer_size, 1)]
-            if softmax:
-                self.Q += [nn.Softmax(dim=-1)]
 
             self.Q = nn.Sequential(*self.Q)
             self.V = nn.Sequential(*self.V)
@@ -76,6 +77,8 @@ class Net(nn.Module):
         if self.dueling is not None:  # Dueling DQN
             q, v = self.Q(logits), self.V(logits)
             logits = q - q.mean(dim=1).reshape(-1, 1) + v
+        if self.softmax:
+            logits = torch.softmax(logits, dim=-1)
         return logits, state
 
 
