@@ -15,30 +15,121 @@ class Net(nn.Module):
     """
 
     def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',
-                 softmax=False, concat=False, hidden_layer_size=128):
+                 softmax=False, concat=False, hidden_layer_size=128,
+                 dueling=False):
         super().__init__()
         self.device = device
+        self.dueling = dueling
         input_size = np.prod(state_shape)
         if concat:
             input_size += np.prod(action_shape)
         self.model = [
             nn.Linear(input_size, hidden_layer_size),
             nn.ReLU(inplace=True)]
+
+        self.qvalue = []
         for i in range(layer_num):
-            self.model += [nn.Linear(hidden_layer_size, hidden_layer_size),
-                           nn.ReLU(inplace=True)]
+            self.qvalue += [nn.Linear(hidden_layer_size, hidden_layer_size),
+                            nn.ReLU(inplace=True)]
         if action_shape and not concat:
-            self.model += [nn.Linear(hidden_layer_size, np.prod(action_shape))]
+            self.qvalue += [nn.Linear(hidden_layer_size,
+                                      np.prod(action_shape))]
         if softmax:
-            self.model += [nn.Softmax(dim=-1)]
+            self.qvalue += [nn.Softmax(dim=-1)]
+
         self.model = nn.Sequential(*self.model)
+        self.qvalue = nn.Sequential(*self.qvalue)
+
+        if self.dueling:
+            self.svalue = []
+            for i in range(layer_num):
+                self.svalue += [nn.Linear(hidden_layer_size,
+                                          hidden_layer_size),
+                                nn.ReLU(inplace=True)]
+            if action_shape and not concat:
+                self.svalue += [nn.Linear(hidden_layer_size, 1)]
+            self.svalue = nn.Sequential(*self.svalue)
 
     def forward(self, s, state=None, info={}):
         """s -> flatten -> logits"""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.reshape(s.size(0), -1)
-        logits = self.model(s)
-        return logits, state
+        if self.dueling:
+            logits = self.model(s)
+            qvalue = self.qvalue(logits)
+            advantage = qvalue - qvalue.mean(dim=1).reshape(-1, 1)
+            svalue = self.svalue(logits)
+            return advantage + svalue, state
+        else:
+            logits = self.model(s)
+            value = self.qvalue(logits)
+        return value, state
+
+
+class LnNet(nn.Module):
+    """Simple MLP backbone. For advanced usage (how to customize the network),
+    please refer to :ref:`build_the_network`.
+    Add LayerNorm in Net
+
+    :param concat: whether the input shape is concatenated by state_shape
+        and action_shape. If it is True, ``action_shape`` is not the output
+        shape, but affects the input shape.
+    """
+
+    def __init__(self, layer_num, state_shape, action_shape=0, device='cpu',
+                 softmax=False, concat=False, hidden_layer_size=128,
+                 dueling=False):
+        super().__init__()
+        self.device = device
+        self.dueling = dueling
+        input_size = np.prod(state_shape)
+        if concat:
+            input_size += np.prod(action_shape)
+        self.model = [
+            nn.Linear(input_size, hidden_layer_size),
+            nn.LayerNorm(hidden_layer_size),
+            nn.ReLU(inplace=True)]
+
+        self.qvalue = []
+        for i in range(layer_num):
+            self.qvalue += [nn.Linear(hidden_layer_size,
+                                      hidden_layer_size),
+                            nn.LayerNorm(hidden_layer_size),
+                            nn.ReLU(inplace=True)]
+        if action_shape and not concat:
+            self.qvalue += [nn.Linear(hidden_layer_size,
+                                      np.prod(action_shape))]
+        if softmax:
+            self.qvalue += [nn.Softmax(dim=-1)]
+
+        self.model = nn.Sequential(*self.model)
+        self.qvalue = nn.Sequential(*self.qvalue)
+
+        if self.dueling:
+            self.svalue = []
+            for i in range(layer_num):
+                self.svalue += [nn.Linear(hidden_layer_size,
+                                          hidden_layer_size),
+                                nn.LayerNorm(hidden_layer_size),
+                                nn.ReLU(inplace=True)]
+            if action_shape and not concat:
+                self.svalue += [nn.Linear(hidden_layer_size, 1)]
+            self.svalue = nn.Sequential(*self.svalue)
+
+    def forward(self, s, state=None, info={}):
+        """s -> flatten -> logits"""
+        s = to_torch(s, device=self.device, dtype=torch.float32)
+        s = s.reshape(s.size(0), -1)
+        if self.dueling:
+            logits = self.model(s)
+            qvalue = self.qvalue(logits)
+            advantage = qvalue - qvalue.mean(dim=1).reshape(-1, 1)
+            svalue = self.svalue(logits)
+            return advantage + svalue, state
+        else:
+            logits = self.model(s)
+            value = self.qvalue(logits)
+        return value, state
 
 
 class Recurrent(nn.Module):
