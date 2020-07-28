@@ -38,7 +38,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--render', type=float, default=0.1)
     parser.add_argument('--board_size', type=int, default=6)
     parser.add_argument('--win_size', type=int, default=4)
-    parser.add_argument('--win_rate', type=float, default=0.8,
+    parser.add_argument('--win_rate', type=float, default=0.9,
                         help='the expected winning rate')
     parser.add_argument('--watch', default=False, action='store_true',
                         help='no training, '
