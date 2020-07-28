@@ -18,17 +18,17 @@ def get_args():
     parser.add_argument('--task', type=str, default='Acrobot-v1')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--eps-test', type=float, default=0.05)
-    parser.add_argument('--eps-train', type=float, default=0.5) #0.1
+    parser.add_argument('--eps-train', type=float, default=0.5)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3) #1e-3
-    parser.add_argument('--gamma', type=float, default=0.95) #0.9
+    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--gamma', type=float, default=0.95)
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=320)
     parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--step-per-epoch', type=int, default=1000) #1000
-    parser.add_argument('--collect-per-step', type=int, default=100) #10
-    parser.add_argument('--batch-size', type=int, default=64) #64
-    parser.add_argument('--layer-num', type=int, default=0)#3
+    parser.add_argument('--step-per-epoch', type=int, default=1000)
+    parser.add_argument('--collect-per-step', type=int, default=100)
+    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--layer-num', type=int, default=0)
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -58,7 +58,7 @@ def test_dqn(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.layer_num, args.state_shape,
-              args.action_shape, args.device, dualing=(2,2)).to(args.device)
+              args.action_shape, args.device, dueling=(2, 2)).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
         net, optim, args.gamma, args.n_step,
@@ -82,8 +82,9 @@ def test_dqn(args=get_args()):
     def train_fn(x):
         if x <= int(0.1 * args.epoch):
             policy.set_eps(args.eps_train)
-        elif x <=  int(0.5 * args.epoch):
-            eps = args.eps_train - (x - 0.1 * args.epoch) / (0.4 * args.epoch) * (0.5 * args.eps_train)
+        elif x <= int(0.5 * args.epoch):
+            eps = args.eps_train - (x - 0.1 * args.epoch) / \
+                  (0.4 * args.epoch) * (0.5 * args.eps_train)
             policy.set_eps(eps)
         else:
             policy.set_eps(0.5 * args.eps_train)

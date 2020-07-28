@@ -58,7 +58,8 @@ def test_dqn(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.layer_num, args.state_shape,
-              args.action_shape, args.device, dueling=True).to(args.device)
+              args.action_shape, args.device,
+              dueling=(2, 2)).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
         net, optim, args.gamma, args.n_step,
@@ -80,12 +81,11 @@ def test_dqn(args=get_args()):
         return x >= env.spec.reward_threshold
 
     def train_fn(x):
-        # eps annealing, just a demo
         if x <= int(0.1 * args.epoch):
             policy.set_eps(args.eps_train)
         elif x <= int(0.5 * args.epoch):
             eps = args.eps_train - (x - 0.1 * args.epoch) / \
-                (0.4 * args.epoch) * (0.9 * args.eps_train)
+                  (0.4 * args.epoch) * (0.9 * args.eps_train)
             policy.set_eps(eps)
         else:
             policy.set_eps(0.1 * args.eps_train)
