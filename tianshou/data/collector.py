@@ -258,13 +258,11 @@ class Collector(object):
                 with torch.no_grad():
                     result = self.policy(self.data, last_state)
 
-            # convert None to Batch(), since None is reserved for 0-init
             state = result.get('state', Batch())
+            # convert None to Batch(), since None is reserved for 0-init
             if state is None:
                 state = Batch()
-            self.data.state = state
-            if hasattr(result, 'policy'):
-                self.data.policy = to_numpy(result.policy)
+            self.data.update(state=state, policy=result.get('policy', Batch()))
             # save hidden state to policy._state, in order to save into buffer
             self.data.policy._state = self.data.state
 
