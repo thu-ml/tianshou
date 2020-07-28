@@ -81,6 +81,7 @@ def test_dqn(args=get_args()):
         return x >= env.spec.reward_threshold
 
     def train_fn(x):
+        # eps annnealing, just a demo
         if x <= int(0.1 * args.epoch):
             policy.set_eps(args.eps_train)
         elif x <= int(0.5 * args.epoch):
