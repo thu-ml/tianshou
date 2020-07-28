@@ -29,17 +29,17 @@ class Net(nn.Module):
         if concat:
             input_size += np.prod(action_shape)
 
-        self.model = [
-            nn.Linear(input_size, hidden_layer_size)]
-        if self.layer_norm:
-            self.model += [nn.LayerNorm(hidden_layer_size)]
-        self.model += [nn.ReLU(inplace=True)]
+        def miniblock(inp, oup):
+            ret = [nn.Linear(inp, oup)]
+            if self.layer_norm:
+                ret += [nn.LayerNorm(oup)]
+            ret += [nn.ReLU(inplace=True)]
+            return ret
+
+        self.model = miniblock(input_size, hidden_layer_size)
 
         for i in range(layer_num):
-            self.model += [nn.Linear(hidden_layer_size, hidden_layer_size)]
-            if self.layer_norm:
-                self.model += [nn.LayerNorm(hidden_layer_size)]
-            self.model += [nn.ReLU(inplace=True)]
+            self.model += miniblock(hidden_layer_size, hidden_layer_size)
 
         if self.dueling is None:
             if action_shape and not concat:
@@ -47,46 +47,34 @@ class Net(nn.Module):
                                          np.prod(action_shape))]
             if softmax:
                 self.model += [nn.Softmax(dim=-1)]
-            self.model = nn.Sequential(*self.model)
-        else:
-            self.model = nn.Sequential(*self.model)
-            assert isinstance(self.dueling, tuple)
-            q_layer_num = self.dueling[0]
-            self.qvalue = []
-            for i in range(q_layer_num):
-                self.qvalue += [nn.Linear(hidden_layer_size,
-                                          hidden_layer_size)]
-                if self.layer_norm:
-                    self.qvalue += [nn.LayerNorm(hidden_layer_size)]
-                self.qvalue += [nn.ReLU(inplace=True)]
-            if action_shape and not concat:
-                self.qvalue += [nn.Linear(hidden_layer_size,
-                                          np.prod(action_shape))]
-            if softmax:
-                self.qvalue += [nn.Softmax(dim=-1)]
-            self.qvalue = nn.Sequential(*self.qvalue)
+        else:  # dueling DQN
+            assert isinstance(self.dueling, tuple) and len(self.dueling) == 2
 
-            s_layer_num = self.dueling[1]
-            self.svalue = []
-            for i in range(s_layer_num):
-                self.svalue += [nn.Linear(hidden_layer_size,
-                                          hidden_layer_size)]
-                if self.layer_norm:
-                    self.svalue += [nn.LayerNorm(hidden_layer_size)]
-                self.svalue += [nn.ReLU(inplace=True)]
+            q_layer_num, v_layer_num = self.dueling
+            self.Q, self.V = [], []
+
+            for i in range(q_layer_num):
+                self.Q += miniblock(hidden_layer_size, hidden_layer_size)
+            for i in range(v_layer_num):
+                self.V += miniblock(hidden_layer_size, hidden_layer_size)
+
             if action_shape and not concat:
-                self.svalue += [nn.Linear(hidden_layer_size, 1)]
-            self.svalue = nn.Sequential(*self.svalue)
+                self.Q += [nn.Linear(hidden_layer_size, np.prod(action_shape))]
+                self.V += [nn.Linear(hidden_layer_size, 1)]
+            if softmax:
+                self.Q += [nn.Softmax(dim=-1)]
+
+            self.Q = nn.Sequential(*self.Q)
+            self.V = nn.Sequential(*self.V)
+        self.model = nn.Sequential(*self.model)
 
     def forward(self, s, state=None, info={}):
         """s -> flatten -> logits"""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.reshape(s.size(0), -1)
         logits = self.model(s)
-        if self.dueling is not None:
-            # Dueling DQN
-            q = self.qvalue(logits)
-            v = self.svalue(logits)
+        if self.dueling is not None:  # Dueling DQN
+            q, v = self.Q(logits), self.V(logits)
             logits = q - q.mean(dim=1).reshape(-1, 1) + v
         return logits, state
 
