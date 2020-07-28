@@ -10,7 +10,7 @@ from tianshou.env import VectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.utils.net.common import LnNet
+from tianshou.utils.net.common import Net
 
 
 def get_args():
@@ -40,7 +40,7 @@ def get_args():
     return args
 
 
-def test_dqn(args=get_args()):
+def test_dualdqn(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -57,8 +57,9 @@ def test_dqn(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = LnNet(args.layer_num, args.state_shape,
-                args.action_shape, args.device, dueling=True).to(args.device)
+    net = Net(args.layer_num, args.state_shape,
+              args.action_shape, args.device,
+              dualing=(2, 2), layernorm=False).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
         net, optim, args.gamma, args.n_step,
@@ -113,4 +114,4 @@ def test_dqn(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_dqn(get_args())
+    test_dualdqn(get_args())
