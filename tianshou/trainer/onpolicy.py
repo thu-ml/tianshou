@@ -40,9 +40,9 @@ def onpolicy_trainer(
         process might be finished before reaching the ``max_epoch``.
     :param int step_per_epoch: the number of step for updating policy network
         in one epoch.
-    :param int collect_per_step: the number of frames the collector would
-        collect before the network update. In other words, collect some frames
-        and do one policy network update.
+    :param int collect_per_step: the number of episodes the collector would
+        collect before the network update. In other words, collect some
+        episodes and do one policy network update.
     :param int repeat_per_collect: the number of repeat time for policy
         learning, for example, set it to 2 means the policy needs to learn each
         given batch data twice.
