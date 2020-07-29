@@ -29,14 +29,13 @@ class Net(nn.Module):
         self.device = device
         self.dueling = dueling
         self.softmax = softmax
-        self.layer_norm = layer_norm
         input_size = np.prod(state_shape)
         if concat:
             input_size += np.prod(action_shape)
 
         def miniblock(inp, oup):
             ret = [nn.Linear(inp, oup)]
-            if self.layer_norm:
+            if layer_norm:
                 ret += [nn.LayerNorm(oup)]
             ret += [nn.ReLU(inplace=True)]
             return ret
