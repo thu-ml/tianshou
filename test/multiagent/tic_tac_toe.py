@@ -23,7 +23,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.1,
+    parser.add_argument('--gamma', type=float, default=0.9,
                         help='a smaller gamma favors earlier win')
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=320)
@@ -38,7 +38,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--render', type=float, default=0.1)
     parser.add_argument('--board_size', type=int, default=6)
     parser.add_argument('--win_size', type=int, default=4)
-    parser.add_argument('--win-rate', type=float, default=0.8,
+    parser.add_argument('--win_rate', type=float, default=0.9,
                         help='the expected winning rate')
     parser.add_argument('--watch', default=False, action='store_true',
                         help='no training, '
