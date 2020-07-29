@@ -6,6 +6,14 @@ from typing import Tuple, Union, Optional
 from tianshou.data import to_torch
 
 
+def miniblock(inp: int, oup: int, norm_layer: nn.modules.Module):
+    ret = [nn.Linear(inp, oup)]
+    if norm_layer is not None:
+        ret += [norm_layer(oup)]
+    ret += [nn.ReLU(inplace=True)]
+    return ret
+
+
 class Net(nn.Module):
     """Simple MLP backbone. For advanced usage (how to customize the network),
     please refer to :ref:`build_the_network`.
@@ -15,8 +23,8 @@ class Net(nn.Module):
         shape, but affects the input shape.
     :param bool dueling: whether to use dueling network to calculate Q values
         (for Dueling DQN), defaults to False.
-    :param bool layer_norm: whether to use layer norm before ReLU, defaults to
-        False.
+    :param nn.modules.Module norm_layer: use which normalization before ReLU,
+        e.g., ``nn.LayerNorm`` and ``nn.BatchNorm1d``, defaults to None.
     """
 
     def __init__(self, layer_num: int, state_shape: tuple,
@@ -24,7 +32,8 @@ class Net(nn.Module):
                  device: Union[str, torch.device] = 'cpu',
                  softmax: bool = False, concat: bool = False,
                  hidden_layer_size: int = 128,
-                 dueling: Tuple[int, int] = None, layer_norm: bool = False):
+                 dueling: Tuple[int, int] = None,
+                 norm_layer: nn.modules.Module = None):
         super().__init__()
         self.device = device
         self.dueling = dueling
@@ -33,17 +42,11 @@ class Net(nn.Module):
         if concat:
             input_size += np.prod(action_shape)
 
-        def miniblock(inp, oup):
-            ret = [nn.Linear(inp, oup)]
-            if layer_norm:
-                ret += [nn.LayerNorm(oup)]
-            ret += [nn.ReLU(inplace=True)]
-            return ret
-
-        self.model = miniblock(input_size, hidden_layer_size)
+        self.model = miniblock(input_size, hidden_layer_size, norm_layer)
 
         for i in range(layer_num):
-            self.model += miniblock(hidden_layer_size, hidden_layer_size)
+            self.model += miniblock(hidden_layer_size,
+                                    hidden_layer_size, norm_layer)
 
         if self.dueling is None:
             if action_shape and not concat:
@@ -56,9 +59,11 @@ class Net(nn.Module):
             self.Q, self.V = [], []
 
             for i in range(q_layer_num):
-                self.Q += miniblock(hidden_layer_size, hidden_layer_size)
+                self.Q += miniblock(hidden_layer_size,
+                                    hidden_layer_size, norm_layer)
             for i in range(v_layer_num):
-                self.V += miniblock(hidden_layer_size, hidden_layer_size)
+                self.V += miniblock(hidden_layer_size,
+                                    hidden_layer_size, norm_layer)
 
             if action_shape and not concat:
                 self.Q += [nn.Linear(hidden_layer_size, np.prod(action_shape))]
