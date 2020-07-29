@@ -75,7 +75,7 @@ class Net(nn.Module):
         logits = self.model(s)
         if self.dueling is not None:  # Dueling DQN
             q, v = self.Q(logits), self.V(logits)
-            logits = q - q.mean(dim=1).reshape(-1, 1) + v
+            logits = q - q.mean(dim=1, keepdim=True) + v
         if self.softmax:
             logits = torch.softmax(logits, dim=-1)
         return logits, state
