@@ -42,21 +42,7 @@ class DQN(nn.Module):
     """For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
 
-    In paper "Human-level control through deep reinforcement learning"
-    url: https://www.nature.com/articles/nature14236
-    researchers use DQN to play Atari games
-    In this paper, researches contribute the network as below:
-    input size: 84*84, deal with m most recent frames and stacks them to
-                produce the input to the (m = 4)
-    First hidden convolution Layer: 32 filters with kernel size 8
-                                    and stride 4, then a rectifier nonlinearity
-    Second hidden convolution Layer: 64 filters of with kernel size 4
-                                    and stride 2, then a rectifier nonlinearity
-    Third hidden convolutional Layer: 64 filters of with kernel size 3
-                                    and stride 1, then a rectifier nonlinearity
-    Fourth hidden Fully-connected Layer: 512 rectifier units
-    Output Fully-connected Layer: linear layer with a single output for
-                                   each valid action
+    Reference paper: "Human-level control through deep reinforcement learning".
     """
 
     def __init__(self, h, w, action_shape, device='cpu'):
