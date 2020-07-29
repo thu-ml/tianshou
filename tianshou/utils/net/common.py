@@ -30,10 +30,11 @@ class Net(nn.Module):
     def __init__(self, layer_num: int, state_shape: tuple,
                  action_shape: Optional[tuple] = 0,
                  device: Union[str, torch.device] = 'cpu',
-                 softmax: bool = False, concat: bool = False,
+                 softmax: bool = False,
+                 concat: bool = False,
                  hidden_layer_size: int = 128,
-                 dueling: Tuple[int, int] = None,
-                 norm_layer: nn.modules.Module = None):
+                 dueling: Optional[Tuple[int, int]] = None,
+                 norm_layer: Optional[nn.modules.Module] = None):
         super().__init__()
         self.device = device
         self.dueling = dueling
