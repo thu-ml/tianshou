@@ -67,11 +67,11 @@ class ShmemVectorEnv(SubprocVectorEnv):
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
         explanation.
-    """
-    """I borrowed heavily from openai baseline to implement ShmemVectorEnv Class.
+
+    I borrowed heavily from openai baseline to implement ShmemVectorEnv Class.
     Please refer to 'https://github.com/openai/baselines/blob/master/baselines/
     common/vec_env/shmem_vec_env.py' for more info if you are interested.
-                                Huayu Chen(chenhuay17@mails.tsinghua.edu.cn)
+                    Huayu Chen(chenhuay17@mails.tsinghua.edu.cn)  2020/08/01
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
