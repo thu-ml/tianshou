@@ -2,7 +2,7 @@ import gym
 import time
 import random
 import numpy as np
-from gym.spaces import Discrete, MultiDiscrete, Box
+from gym.spaces import Discrete, MultiDiscrete, Box, Dict
 
 
 class MyTestEnv(gym.Env):
@@ -17,7 +17,12 @@ class MyTestEnv(gym.Env):
         self.dict_state = dict_state
         self.ma_rew = ma_rew
         self._md_action = multidiscrete_action
-        self.observation_space = Box(shape=(1, ), low=0, high=size - 1)
+        if not dict_state:
+            self.observation_space = Box(shape=(1, ), low=0, high=size - 1)
+        else:
+            self.observation_space = Dict(
+                {"index": Box(shape=(1, ), low=0, high=size - 1), 
+                "rand": Box(shape = (1,), low=0,high=1)})
         if multidiscrete_action:
             self.action_space = MultiDiscrete([2, 2])
         else:
@@ -41,8 +46,8 @@ class MyTestEnv(gym.Env):
 
     def _get_dict_state(self):
         """Generate a dict_state if dict_state is True."""
-        return {'index': self.index, 'rand': np.random.rand()} \
-            if self.dict_state else self.index
+        return {'index': np.array([self.index]), 'rand': np.random.rand()} \
+            if self.dict_state else np.array([self.index])
 
     def step(self, action):
         if self._md_action:

@@ -3,7 +3,7 @@ import numpy as np
 from gym.spaces.discrete import Discrete
 from tianshou.data import Batch
 from tianshou.env import VectorEnv, SubprocVectorEnv, \
-    RayVectorEnv, AsyncVectorEnv
+    RayVectorEnv, AsyncVectorEnv, ShmemVectorEnv
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -62,6 +62,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
     venv = [
         VectorEnv(env_fns),
         SubprocVectorEnv(env_fns),
+        ShmemVectorEnv(env_fns)
     ]
     if verbose:
         venv.append(RayVectorEnv(env_fns))
@@ -77,9 +78,11 @@ def test_vecenv(size=10, num=8, sleep=0.001):
                 if sum(C):
                     A = v.reset(np.where(C)[0])
                 o.append([A, B, C, D])
-            for i in zip(*o):
-                for j in range(1, len(i) - 1):
-                    assert (i[0] == i[j]).all()
+            for index, infos in enumerate(zip(*o)):
+                if index == 3:
+                    continue
+                for info in infos:
+                    assert (infos[0] == info).all()
     else:
         t = [0, 0, 0]
         for i, e in enumerate(venv):
