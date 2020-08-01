@@ -327,8 +327,8 @@ class ListReplayBuffer(ReplayBuffer):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` for more
-        detailed explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for more detailed
+        explanation.
     """
 
     def __init__(self, **kwargs) -> None:
@@ -361,8 +361,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` for more
-        detailed explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for more detailed
+        explanation.
     """
 
     def __init__(self, size: int, alpha: float, beta: float, **kwargs) -> None:
@@ -370,9 +370,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         assert alpha > 0. and beta >= 0.
         self._alpha, self._beta = alpha, beta
         self._max_prio = 1.
+        self._min_prio = 1.
         # bypass the check
         self._meta.__dict__['weight'] = SegmentTree(size, 'sum')
-        self._meta.__dict__['weight_min'] = SegmentTree(size, 'min')
 
     def add(self,
             obs: Union[dict, np.ndarray],
@@ -388,7 +388,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         if weight is None:
             weight = self._max_prio
         weight = np.abs(weight) ** self._alpha
-        self.weight[self._index] = self.weight_min[self._index] = weight
+        self.weight[self._index] = weight
         super().add(obs, act, rew, done, obs_next, info, policy)
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
@@ -410,8 +410,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         # impt_weight
         # original formula: ((p_j/p_sum*N)**(-beta))/((p_min/p_sum*N)**(-beta))
         # simplified formula: (p_j/p_min)**(-beta)
-        batch.impt_weight = (
-            batch.weight / self.weight_min.reduce()) ** (-self._beta)
+        batch.impt_weight = (batch.weight / self._min_prio) ** (-self._beta)
         return batch, indice
 
     def update_weight(self, indice: Union[np.ndarray],
@@ -423,8 +422,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """
         weight = np.abs(new_weight) ** self._alpha
         self.weight[indice] = weight
-        self.weight_min[indice] = weight
         self._max_prio = max(self._max_prio, np.abs(new_weight).max())
+        self._min_prio = min(self._min_prio, np.abs(new_weight).min())
 
     def __getitem__(self, index: Union[
             slice, int, np.integer, np.ndarray]) -> Batch:
