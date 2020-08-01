@@ -199,8 +199,21 @@ def test_segtree():
         assert naive[:index].sum() <= scalar < naive[:index + 1].sum()
     # profile
     if __name__ == '__main__':
-        naive = np.zeros(10000)
-        tree = SegmentTree(10000)
+        size = 100000
+        bsz = 64
+        naive = np.random.rand(size)
+        tree = SegmentTree(size)
+        tree[np.arange(size)] = naive
+
+        def sample_npbuf():
+            return np.random.choice(size, bsz, p=naive / naive.sum())
+
+        def sample_tree():
+            scalar = np.random.rand() * tree.reduce()
+            return tree.get_prefix_sum_idx(scalar)
+
+        print('npbuf', timeit(sample_npbuf, setup=sample_npbuf, number=1000))
+        print('tree', timeit(sample_tree, setup=sample_tree, number=1000))
 
 
 if __name__ == '__main__':

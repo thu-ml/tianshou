@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Union, Optional
+# from numba import njit
 
 
 class SegmentTree:
@@ -90,5 +91,27 @@ class SegmentTree:
             direct = self._value[index] <= value
             value -= self._value[index] * direct
             index += direct
+        # index = self.__class__._get_prefix_sum_idx(
+        #     index, value, self._bound, self._value)
         index -= self._bound
         return index.item() if single else index
+
+    # numba version, 10x speed up
+    # @njit
+    # def _get_prefix_sum_idx(index, scalar, bound, weight):
+    #     # while index[0] < bound:
+    #     #     index <<= 1
+    #     #     direct = weight[index] <= scalar
+    #     #     scalar -= weight[index] * direct
+    #     #     index += direct
+    #     for _, s in enumerate(scalar):
+    #         i = 1
+    #         while i < bound:
+    #             l = i * 2
+    #             if weight[l] > s:
+    #                 i = l
+    #             else:
+    #                 s = s - weight[l]
+    #                 i = l + 1
+    #         index[_] = i
+    #     return index
