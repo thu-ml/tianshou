@@ -1,10 +1,10 @@
+import gym
 import ctypes
+import numpy as np
 from collections import OrderedDict
 from multiprocessing import Pipe, Process, Array
 from typing import Callable, List, Optional, Tuple, Union
 
-import gym
-import numpy as np
 
 from tianshou.env import BaseVectorEnv, SubprocVectorEnv
 from tianshou.env.utils import CloudpickleWrapper
@@ -19,16 +19,14 @@ _NP_TO_CT = {np.float64: ctypes.c_double,
 
 def _shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
                   obs_shapes, obs_dtypes, keys):
-    """Control a single environment instance using IPC and
-    shared memory.
-    """
+    """Control a single environment instance using IPC and shared memory."""
     def _encode_obs(maybe_dict):
         flatdict = maybe_dict if isinstance(maybe_dict, dict) else {
             None: maybe_dict}
         for k in keys:
             dst = obs_bufs[k].get_obj()
-            dst_np = np.frombuffer(dst, dtype=obs_dtypes[k]).reshape(
-                obs_shapes[k])
+            dst_np = np.frombuffer(
+                dst, dtype=obs_dtypes[k]).reshape(obs_shapes[k])
             np.copyto(dst_np, flatdict[k])
         return None
 
@@ -60,8 +58,8 @@ def _shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
 
 
 class ShmemVectorEnv(SubprocVectorEnv):
-    """Optimized version of SubprocVectorEnv that uses shared
-    variables to communicate observations.
+    """Optimized version of SubprocVectorEnv that uses shared variables to
+    communicate observations.
 
     .. seealso::
 
@@ -69,14 +67,14 @@ class ShmemVectorEnv(SubprocVectorEnv):
         explanation.
 
     I borrowed heavily from openai baseline to implement ShmemVectorEnv Class.
-    Please refer to 'https://github.com/openai/baselines/blob/master/baselines/
-    common/vec_env/shmem_vec_env.py' for more info if you are interested.
+    Please refer to "https://github.com/openai/baselines/blob/master/baselines/
+    common/vec_env/shmem_vec_env.py" for more info if you are interested.
+
                     Huayu Chen(chenhuay17@mails.tsinghua.edu.cn)  2020/08/01
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         BaseVectorEnv.__init__(self, env_fns)
-        self.closed = False
         self._setup_obs_space(env_fns[0])
         self.obs_bufs = [
             {k: Array(_NP_TO_CT[self.obs_dtypes[k].type], int(
