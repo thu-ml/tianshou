@@ -122,9 +122,7 @@ def test_segtree():
         tree = SegmentTree(6, op)  # 1-15. 8-15 are leaf nodes
         actual_len = 8
         assert np.all([tree[i] == init for i in range(actual_len)])
-        with pytest.raises(AssertionError):
-            tree[-1]
-        with pytest.raises(AssertionError):
+        with pytest.raises(IndexError):
             tree[actual_len]
         naive = np.zeros([actual_len]) + init
         for _ in range(1000):
