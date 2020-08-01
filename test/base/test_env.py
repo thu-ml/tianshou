@@ -84,7 +84,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
                 for info in infos:
                     assert (infos[0] == info).all()
     else:
-        t = [0, 0, 0]
+        t = [0]*len(venv)
         for i, e in enumerate(venv):
             t[i] = time.time()
             e.reset()
@@ -93,9 +93,8 @@ def test_vecenv(size=10, num=8, sleep=0.001):
                 if sum(done) > 0:
                     e.reset(np.where(done)[0])
             t[i] = time.time() - t[i]
-        print(f'VectorEnv: {t[0]:.6f}s')
-        print(f'SubprocVectorEnv: {t[1]:.6f}s')
-        print(f'RayVectorEnv: {t[2]:.6f}s')
+        for i, v in enumerate(venv):
+            print(str(type(v))+f': {t[i]:.6f}s')
     for v in venv:
         assert v.size == list(range(size, size + num))
         assert v.env_num == num
