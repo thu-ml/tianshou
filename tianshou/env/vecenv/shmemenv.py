@@ -75,6 +75,7 @@ class ShmemVectorEnv(SubprocVectorEnv):
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         BaseVectorEnv.__init__(self, env_fns)
+        self.closed = False
         self._setup_obs_space(env_fns[0])
         self.obs_bufs = [
             {k: Array(_NP_TO_CT[self.obs_dtypes[k].type], int(
