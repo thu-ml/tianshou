@@ -86,32 +86,29 @@ class SegmentTree:
             single = True
         assert (value <= self._value[1]).all()
         index = np.ones(value.shape, dtype=np.int)
-        while index[0] < self._bound:
-            index <<= 1
-            direct = self._value[index] <= value
-            value -= self._value[index] * direct
-            index += direct
-        # index = self.__class__._get_prefix_sum_idx(
-        #     index, value, self._bound, self._value)
-        index -= self._bound
+        index = self.__class__._get_prefix_sum_idx(
+            index, value, self._bound, self._value)
         return index.item() if single else index
 
-    # numba version, 10x speed up
+    # numba version, 5x speed up
+    # with size=100000 and bsz=64
+    # first block (vectorized np): 0.0923 (now) -> 0.0251
+    # second block (for-loop): 0.2914 -> 0.0192 (future)
     # @njit
-    # def _get_prefix_sum_idx(index, scalar, bound, weight):
-    #     # while index[0] < bound:
-    #     #     index <<= 1
-    #     #     direct = weight[index] <= scalar
-    #     #     scalar -= weight[index] * direct
-    #     #     index += direct
-    #     for _, s in enumerate(scalar):
-    #         i = 1
-    #         while i < bound:
-    #             l = i * 2
-    #             if weight[l] > s:
-    #                 i = l
-    #             else:
-    #                 s = s - weight[l]
-    #                 i = l + 1
-    #         index[_] = i
-    #     return index
+    def _get_prefix_sum_idx(index, scalar, bound, weight):
+        while index[0] < bound:
+            index <<= 1
+            direct = weight[index] <= scalar
+            scalar -= weight[index] * direct
+            index += direct
+        # for _, s in enumerate(scalar):
+        #     i = 1
+        #     while i < bound:
+        #         l = i * 2
+        #         if weight[l] > s:
+        #             i = l
+        #         else:
+        #             s = s - weight[l]
+        #             i = l + 1
+        #     index[_] = i
+        return index - bound

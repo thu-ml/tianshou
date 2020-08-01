@@ -209,7 +209,7 @@ def test_segtree():
             return np.random.choice(size, bsz, p=naive / naive.sum())
 
         def sample_tree():
-            scalar = np.random.rand() * tree.reduce()
+            scalar = np.random.rand(bsz) * tree.reduce()
             return tree.get_prefix_sum_idx(scalar)
 
         print('npbuf', timeit(sample_npbuf, setup=sample_npbuf, number=1000))
