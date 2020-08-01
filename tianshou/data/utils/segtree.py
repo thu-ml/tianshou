@@ -36,9 +36,12 @@ class SegmentTree:
         }[operation]
         self._value = np.zeros([bound << 1]) + self._init_value
 
-    def __getitem__(self, index: int) -> float:
+    def __len__(self):
+        return self._bound
+
+    def __getitem__(self, index: Union[int, np.ndarray]
+                    ) -> Union[float, np.ndarray]:
         """Return self[index]"""
-        assert isinstance(index, int) and 0 <= index < self._bound
         return self._value[index + self._bound]
 
     def __setitem__(self, index: Union[int, np.ndarray],
