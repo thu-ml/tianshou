@@ -18,7 +18,7 @@ _NP_TO_CT = {np.float64: ctypes.c_double,
 
 
 def _shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
-                 obs_shapes, obs_dtypes, keys):
+                  obs_shapes, obs_dtypes, keys):
     """Control a single environment instance using IPC and
     shared memory.
     """
