@@ -17,7 +17,7 @@ _NP_TO_CT = {np.float64: ctypes.c_double,
              np.bool: ctypes.c_bool}
 
 
-def shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
+def _shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
                  obs_shapes, obs_dtypes, keys):
     """Control a single environment instance using IPC and
     shared memory.
@@ -85,7 +85,7 @@ class ShmemVectorEnv(SubprocVectorEnv):
         self.parent_remote, self.child_remote = \
             zip(*[Pipe() for _ in range(self.env_num)])
         self.processes = [
-            Process(target=shmem_worker, args=(
+            Process(target=_shmem_worker, args=(
                 parent, child, CloudpickleWrapper(env_fn),
                 obs_buf, self.obs_shapes,
                 self.obs_dtypes, self.obs_keys), daemon=True)
