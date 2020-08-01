@@ -1,7 +1,7 @@
 import ctypes
 from collections import OrderedDict
 from multiprocessing import Pipe, Process, Array
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
@@ -17,7 +17,8 @@ _NP_TO_CT = {np.float64: ctypes.c_double,
              np.bool: ctypes.c_bool}
 
 
-def shmem_worker(parent, p, env_fn_wrapper, obs_bufs, obs_shapes, obs_dtypes, keys):
+def shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
+                 obs_shapes, obs_dtypes, keys):
     """
     Control a single environment instance using IPC and
     shared memory.
@@ -58,11 +59,9 @@ def shmem_worker(parent, p, env_fn_wrapper, obs_bufs, obs_shapes, obs_dtypes, ke
     except KeyboardInterrupt:
         p.close()
 
-# init set up
-
 
 class ShmemVectorEnv(SubprocVectorEnv):
-    """Optimized version of SubprocVectorEnv that uses shared 
+    """Optimized version of SubprocVectorEnv that uses shared
     variables to communicate observations.
 
     .. seealso::

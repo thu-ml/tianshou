@@ -21,8 +21,8 @@ class MyTestEnv(gym.Env):
             self.observation_space = Box(shape=(1, ), low=0, high=size - 1)
         else:
             self.observation_space = Dict(
-                {"index": Box(shape=(1, ), low=0, high=size - 1), 
-                "rand": Box(shape = (1,), low=0,high=1)})
+                {"index": Box(shape=(1, ), low=0, high=size - 1),
+                 "rand": Box(shape=(1,), low=0, high=1)})
         if multidiscrete_action:
             self.action_space = MultiDiscrete([2, 2])
         else:
