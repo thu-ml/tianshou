@@ -15,14 +15,13 @@ def data():
                 'done': False, 'obs_next': obs, 'info': info}
     buffer = ReplayBuffer(int(1e3), stack_num=100)
     buffer2 = ReplayBuffer(int(1e4), stack_num=100)
-    Slice = slice(-3000, -1000, 2)
-    indexs = np.random.choice(int(1e3), size=3, replace=False)
+    indexes = np.random.choice(int(1e3), size=3, replace=False)
     return{
         'add_data': add_data,
         'buffer': buffer,
         'buffer2': buffer2,
-        'Slice': Slice,
-        'indexs': indexs
+        'slice': slice(-3000, -1000, 2),
+        'indexes': indexes
     }
 
 
@@ -55,21 +54,21 @@ def test_getitem_slice(data):
         _ = buffer[Slice]
 
 
-def test_getitem_indexs(data):
-    indexs = data['indexs']
+def test_getitem_indexes(data):
+    indexes = data['indexes']
     buffer = data['buffer']
     for _ in np.arange(1e2):
-        _ = buffer[indexs]
+        _ = buffer[indexes]
 
 
 def test_get(data):
-    indexs = data['indexs']
+    indexes = data['indexes']
     buffer = data['buffer']
     for _ in np.arange(3e2):
-        buffer.get(indexs, 'obs')
-        buffer.get(indexs, 'rew')
-        buffer.get(indexs, 'done')
-        buffer.get(indexs, 'info')
+        buffer.get(indexes, 'obs')
+        buffer.get(indexes, 'rew')
+        buffer.get(indexes, 'done')
+        buffer.get(indexes, 'info')
 
 
 def test_sample(data):
