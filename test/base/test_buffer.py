@@ -215,6 +215,7 @@ def test_segtree():
 
 
 if __name__ == '__main__':
+    test_priortized_replaybuffer()
     test_replaybuffer()
     test_ignore_obs_next()
     test_stack()

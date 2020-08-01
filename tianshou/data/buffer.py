@@ -392,8 +392,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         super().add(obs, act, rew, done, obs_next, info, policy)
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
-        """Get a random sample from buffer with priority probability. \
-        Return all the data in the buffer if batch_size is ``0``.
+        """Get a random sample from buffer with priority probability. Return
+        all the data in the buffer if batch_size is ``0``.
 
         :return: Sample data and its corresponding index inside the buffer.
         """
@@ -418,11 +418,12 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                       new_weight: np.ndarray) -> None:
         """Update priority weight by indice in this buffer.
 
-        :param np.ndarray indice: indice you want to update weight
-        :param np.ndarray new_weight: new priority weight you want to update
+        :param np.ndarray indice: indice you want to update weight.
+        :param np.ndarray new_weight: new priority weight you want to update.
         """
-        self.weight[indice] = self.weight_min[indice] = np.abs(
-            new_weight) ** self._alpha
+        weight = np.abs(new_weight) ** self._alpha
+        self.weight[indice] = weight
+        self.weight_min[indice] = weight
         self._max_prio = max(self._max_prio, np.abs(new_weight).max())
 
     def __getitem__(self, index: Union[
