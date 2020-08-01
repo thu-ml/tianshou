@@ -19,8 +19,7 @@ _NP_TO_CT = {np.float64: ctypes.c_double,
 
 def shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
                  obs_shapes, obs_dtypes, keys):
-    """
-    Control a single environment instance using IPC and
+    """Control a single environment instance using IPC and
     shared memory.
     """
     def _encode_obs(maybe_dict):
@@ -29,9 +28,9 @@ def shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
         for k in keys:
             dst = obs_bufs[k].get_obj()
             dst_np = np.frombuffer(dst, dtype=obs_dtypes[k]).reshape(
-                obs_shapes[k])  # pylint: disable=W0212
+                obs_shapes[k])
             np.copyto(dst_np, flatdict[k])
-        # return None
+        return None
 
     parent.close()
     env = env_fn_wrapper.data()
@@ -69,12 +68,16 @@ class ShmemVectorEnv(SubprocVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
         explanation.
     """
+    """I borrowed heavily from openai baseline to implement ShmemVectorEnv Class.
+    Please refer to 'https://github.com/openai/baselines/blob/master/baselines/
+    common/vec_env/shmem_vec_env.py' for more info if you are interested.
+                                Huayu Chen(chenhuay17@mails.tsinghua.edu.cn)
+    """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
-        BaseVectorEnv.__init__(self, env_fns)  # to be checked
+        BaseVectorEnv.__init__(self, env_fns)
         self.closed = False
         self._setup_obs_space(env_fns[0])
-        # t b c
         self.obs_bufs = [
             {k: Array(_NP_TO_CT[self.obs_dtypes[k].type], int(
                 np.prod(self.obs_shapes[k]))) for k in self.obs_keys}
@@ -110,7 +113,6 @@ class ShmemVectorEnv(SubprocVectorEnv):
             obs, rew, done, info = self.parent_remote[i].recv()
             obs = self._decode_obs(obs, i)
             result.append((obs, rew, done, info))
-        # t b c dict
         obs, rew, done, info = map(np.stack, zip(*result))
         return obs, rew, done, info
 
@@ -126,7 +128,6 @@ class ShmemVectorEnv(SubprocVectorEnv):
         return obs
 
     def _setup_obs_space(self, env):
-        """Get dict-structured information about a gym.Space."""
         dummy = env()
         obs_space = dummy.observation_space
         dummy.close()
@@ -149,7 +150,6 @@ class ShmemVectorEnv(SubprocVectorEnv):
             self.obs_dtypes[key] = box.dtype
 
     def _decode_obs(self, isNone, index):
-        # suppose there is simply no dict of obs
         assert isNone is None
         result = {}
         for k in self.obs_keys:
