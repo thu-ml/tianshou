@@ -8,23 +8,25 @@ from typing import Union, Optional
 # first block (vectorized np): 0.0923 (now) -> 0.0251
 # second block (for-loop): 0.2914 -> 0.0192 (future)
 # @njit
-def _get_prefix_sum_idx(index, scalar, bound, weight):
+def _get_prefix_sum_idx(value, bound, sums):
+    index = np.ones(value.shape, dtype=np.int64)
     while index[0] < bound:
         index *= 2
-        direct = weight[index] < scalar
-        scalar -= weight[index] * direct
+        direct = sums[index] < value
+        value -= sums[index] * direct
         index += direct
-    # for _, s in enumerate(scalar):
+    # for _, s in enumerate(value):
     #     i = 1
     #     while i < bound:
     #         l = i * 2
-    #         if weight[l] >= s:
+    #         if sums[l] >= s:
     #             i = l
     #         else:
-    #             s = s - weight[l]
+    #             s = s - sums[l]
     #             i = l + 1
     #     index[_] = i
-    return index - bound
+    index -= bound
+    return index
 
 
 class SegmentTree:
@@ -116,8 +118,7 @@ class SegmentTree:
 
     def get_prefix_sum_idx(
             self, value: Union[float, np.ndarray]) -> Union[int, np.ndarray]:
-        """Return the minimum index ``i`` which satisfies
-        ``sum(value[:i]) <= value <= sum(value[:i + 1])``.
+        """Return the minimum index for each value so that ``value <= sum[i]``
         """
         assert self._op is np.add
         assert np.all(value >= 0.) and np.all(value < self._value[1])
@@ -125,8 +126,5 @@ class SegmentTree:
         if not isinstance(value, np.ndarray):
             value = np.array([value])
             single = True
-        assert (value <= self._value[1]).all()
-        index = np.ones(value.shape, dtype=np.int)
-        index = _get_prefix_sum_idx(
-            index, value, self._bound, self._value)
+        index = _get_prefix_sum_idx(value, self._bound, self._value)
         return index.item() if single else index
