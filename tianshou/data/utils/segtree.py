@@ -51,10 +51,10 @@ class SegmentTree:
                     value: Union[float, np.ndarray]) -> None:
         """Insert or overwrite a (or some) value(s) in this segment tree. The
         duplicate values are handled as numpy array, in other words, we only
-        keep the last value and ignore the previous same value.
+        keep the last index-value pair and ignore the previous same indexes.
         """
-        if isinstance(index, int) and isinstance(value, float):
-            index, value = np.array([index]), np.array([value])
+        if isinstance(index, int):
+            index = np.array([index])
         assert ((0 <= index) & (index < self._size)).all()
         index = index + self._bound
         self._value[index] = value
