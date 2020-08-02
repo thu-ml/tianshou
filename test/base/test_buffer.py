@@ -119,8 +119,8 @@ def test_segtree():
     for op, init in zip(['sum', 'max', 'min'], [0., -np.inf, np.inf]):
         realop = getattr(np, op)
         # small test
-        tree = SegmentTree(6, op)  # 1-15. 8-15 are leaf nodes
         actual_len = 8
+        tree = SegmentTree(actual_len, op)  # 1-15. 8-15 are leaf nodes
         assert np.all([tree[i] == init for i in range(actual_len)])
         with pytest.raises(IndexError):
             tree[actual_len]
@@ -154,8 +154,8 @@ def test_segtree():
                 assert np.allclose(realop(naive[left:right]),
                                    tree.reduce(left, right))
         # large test
-        tree = SegmentTree(10000, op)
         actual_len = 16384
+        tree = SegmentTree(actual_len, op)
         naive = np.zeros([actual_len]) + init
         for _ in range(1000):
             index = np.random.choice(actual_len, size=64)
@@ -172,8 +172,8 @@ def test_segtree():
                                    tree.reduce(left, right))
 
     # test prefix-sum-idx
-    tree = SegmentTree(6)
     actual_len = 8
+    tree = SegmentTree(actual_len)
     naive = np.random.rand(actual_len)
     tree[np.arange(actual_len)] = naive
     for _ in range(1000):
@@ -187,8 +187,8 @@ def test_segtree():
         index = tree.get_prefix_sum_idx(scalar * 1.)
         assert naive[:index].sum() <= scalar < naive[:index + 1].sum()
     # test large prefix-sum-idx
-    tree = SegmentTree(10000)
     actual_len = 16384
+    tree = SegmentTree(actual_len)
     naive = np.random.rand(actual_len)
     tree[np.arange(actual_len)] = naive
     for _ in range(1000):

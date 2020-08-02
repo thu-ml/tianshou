@@ -55,7 +55,7 @@ class SegmentTree:
         """
         if isinstance(index, int) and isinstance(value, float):
             index, value = np.array([index]), np.array([value])
-        assert ((0 <= index) & (index < self._bound)).all()
+        assert ((0 <= index) & (index < self._size)).all()
         index = index + self._bound
         self._value[index] = value
         while index[0] > 1:
