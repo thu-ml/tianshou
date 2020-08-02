@@ -179,7 +179,7 @@ def test_segtree():
     for _ in range(1000):
         scalar = np.random.rand() * naive.sum()
         index = tree.get_prefix_sum_idx(scalar)
-        assert naive[:index].sum() <= scalar < naive[:index + 1].sum()
+        assert naive[:index].sum() <= scalar <= naive[:index + 1].sum()
     # corner case here
     naive = np.ones(actual_len, np.int)
     tree[np.arange(actual_len)] = naive
@@ -200,7 +200,7 @@ def test_segtree():
     for _ in range(1000):
         scalar = np.random.rand() * naive.sum()
         index = tree.get_prefix_sum_idx(scalar)
-        assert naive[:index].sum() <= scalar < naive[:index + 1].sum()
+        assert naive[:index].sum() <= scalar <= naive[:index + 1].sum()
     # profile
     if __name__ == '__main__':
         size = 100000
