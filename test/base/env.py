@@ -2,27 +2,36 @@ import gym
 import time
 import random
 import numpy as np
-from gym.spaces import Discrete, MultiDiscrete, Box, Dict
+from gym.spaces import Discrete, MultiDiscrete, Box, Dict, Tuple
 
 
 class MyTestEnv(gym.Env):
     """This is a "going right" task. The task is to go right ``size`` steps.
     """
 
-    def __init__(self, size, sleep=0, dict_state=False, ma_rew=0,
-                 multidiscrete_action=False, random_sleep=False):
+    def __init__(self, size, sleep=0, dict_state=False, recurse_state=False,
+                 ma_rew=0, multidiscrete_action=False, random_sleep=False):
+        assert not (dict_state and recurse_state), "dict_state and recurse_state cannot both be true"
         self.size = size
         self.sleep = sleep
         self.random_sleep = random_sleep
         self.dict_state = dict_state
+        self.recurse_state = recurse_state
         self.ma_rew = ma_rew
         self._md_action = multidiscrete_action
-        if not dict_state:
-            self.observation_space = Box(shape=(1, ), low=0, high=size - 1)
-        else:
+        if  dict_state:
             self.observation_space = Dict(
                 {"index": Box(shape=(1, ), low=0, high=size - 1),
                  "rand": Box(shape=(1,), low=0, high=1)})
+        elif recurse_state:
+            self.observation_space = Dict(
+                {"index": Box(shape=(1, ), low=0, high=size - 1),
+                 "dict": Dict({
+                     "tuple": Tuple((Discrete(2), Box(shape=(2,), low=0, high=1))),
+                     "rand": Box(shape=(1,2), low=0, high=1)})
+                })
+        else:
+            self.observation_space = Box(shape=(1, ), low=0, high=size - 1)
         if multidiscrete_action:
             self.action_space = MultiDiscrete([2, 2])
         else:
@@ -46,8 +55,14 @@ class MyTestEnv(gym.Env):
 
     def _get_dict_state(self):
         """Generate a dict_state if dict_state is True."""
-        return {'index': np.array([self.index]), 'rand': np.random.rand()} \
-            if self.dict_state else np.array([self.index])
+        if self.dict_state:
+            return {'index': np.array([self.index]), 'rand': np.random.rand()}
+        elif self.recurse_state:
+            return {'index': np.array([self.index]),
+                    'dict': {"tuple": (1, np.random.rand(2)),
+                             "rand": np.random.rand(1, 2)}}
+        else:
+            return np.array([self.index])
 
     def step(self, action):
         if self._md_action:
