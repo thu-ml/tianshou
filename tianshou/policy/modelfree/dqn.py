@@ -1,12 +1,10 @@
 import torch
 import numpy as np
 from copy import deepcopy
-import torch.nn.functional as F
 from typing import Dict, Union, Optional
 
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, \
-    to_torch_as, to_numpy
+from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
 
 class DQNPolicy(BasePolicy):
@@ -163,9 +161,8 @@ class DQNPolicy(BasePolicy):
         r = to_torch_as(batch.returns, q).flatten()
         td = r - q
         if hasattr(batch, 'update_weight'):  # prio-buffer
-            batch.update_weight(batch.indice, to_numpy(td))
-        weight = to_torch_as(batch.weight, q)
-        loss = (td.pow(2) * weight).mean()
+            batch.update_weight(batch.indice, td)
+        loss = (td.pow(2) * batch.weight).mean()
         # loss = F.mse_loss(q, r)
         loss.backward()
         self.optim.step()

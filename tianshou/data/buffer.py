@@ -1,7 +1,8 @@
+import torch
 import numpy as np
 from typing import Any, Tuple, Union, Optional
 
-from tianshou.data import Batch, SegmentTree
+from tianshou.data import Batch, SegmentTree, to_numpy
 from tianshou.data.batch import _create_value
 
 
@@ -415,16 +416,16 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         return batch, indice
 
     def update_weight(self, indice: Union[np.ndarray],
-                      new_weight: np.ndarray) -> None:
+                      new_weight: Union[np.ndarray, torch.Tensor]) -> None:
         """Update priority weight by indice in this buffer.
 
         :param np.ndarray indice: indice you want to update weight.
         :param np.ndarray new_weight: new priority weight you want to update.
         """
-        weight = np.abs(new_weight) + self.__eps
+        weight = np.abs(to_numpy(new_weight)) + self.__eps
         self.weight[indice] = weight ** self._alpha
-        self._max_prio = max(self._max_prio, np.abs(new_weight).max())
-        self._min_prio = min(self._min_prio, np.abs(new_weight).min())
+        self._max_prio = max(self._max_prio, weight.max())
+        self._min_prio = min(self._min_prio, weight.min())
 
     def __getitem__(self, index: Union[
             slice, int, np.integer, np.ndarray]) -> Batch:

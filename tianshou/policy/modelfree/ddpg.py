@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 from copy import deepcopy
-import torch.nn.functional as F
 from typing import Dict, Tuple, Union, Optional
 
 from tianshou.policy import BasePolicy
@@ -146,9 +145,8 @@ class DDPGPolicy(BasePolicy):
         target_q = batch.returns.flatten()
         td = current_q - target_q
         if hasattr(batch, 'update_weight'):  # prio-buffer
-            batch.update_weight(batch.indice, to_numpy(td))
-        weight = to_torch_as(batch.weight, target_q)
-        critic_loss = (td.pow(2) * weight).mean()
+            batch.update_weight(batch.indice, td)
+        critic_loss = (td.pow(2) * batch.weight).mean()
         # critic_loss = F.mse_loss(current_q, target_q)
         self.critic_optim.zero_grad()
         critic_loss.backward()

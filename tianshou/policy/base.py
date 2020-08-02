@@ -218,6 +218,7 @@ class BasePolicy(ABC, nn.Module):
         if isinstance(buffer, PrioritizedReplayBuffer):
             batch.update_weight = buffer.update_weight
             batch.indice = indice
+            batch.weight = to_torch_as(batch.weight, target_q)
         else:
-            batch.weight = 1.
+            batch.weight = to_torch_as(1., target_q)
         return batch
