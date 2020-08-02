@@ -186,6 +186,10 @@ def test_segtree():
     for scalar in range(actual_len):
         index = tree.get_prefix_sum_idx(scalar * 1.)
         assert naive[:index].sum() <= scalar < naive[:index + 1].sum()
+    tree = SegmentTree(10)
+    tree[np.arange(3)] = np.array([0.1, 0, 0.1])
+    assert np.allclose(tree.get_prefix_sum_idx(
+        np.array([0, .1, .2])), [0, 2, 9])
     # test large prefix-sum-idx
     actual_len = 16384
     tree = SegmentTree(actual_len)
