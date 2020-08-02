@@ -28,8 +28,9 @@ jobs:
       run: |
         pip install ".[dev]" --upgrade
     - name: Test with pytest
+      # ignore test/throughput which only profiles the code
       run: |
-        pytest test --cov tianshou --cov-report=xml --durations 0 -v
+        pytest test --ignore-glob='*profile.py' --cov=tianshou --cov-report=xml --durations=0 -v
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
