@@ -13,7 +13,7 @@ class SegmentTree:
     the union of elementary to internal nodes in ``[1:bound]``. The internal \
     node follows the rule: \
     ``value[i] = operation(value[i * 2], value[i * 2 + 1])``.
-    3. Update a node takes O(log(bound)) time complexity.
+    3. Update a (or some) node(s) takes O(log(bound)) time complexity.
     4. Query an interval [l, r] with the default operation takes O(log(bound))
 
     :param int size: the size of segment tree.
@@ -25,19 +25,17 @@ class SegmentTree:
                  operation: str = "sum") -> None:
         bound = 1
         while bound < size:
-            bound <<= 1
+            bound *= 2
+        self._size = size
         self._bound = bound
         assert operation in ["sum", "min", "max"], \
             f"Unknown operation {operation}."
-        (self._op, self._init_value) = {
-            "sum": (np.sum, 0.),
-            "min": (np.min, np.inf),
-            "max": (np.max, -np.inf),
-        }[operation]
-        self._value = np.zeros([bound << 1]) + self._init_value
+        self._op = getattr(np, operation)
+        self._init_value = {'sum': 0, 'min': np.inf, 'max': -np.inf}[operation]
+        self._value = np.full([bound * 2], self._init_value, dtype=np.float64)
 
     def __len__(self):
-        return self._bound
+        return self._size
 
     def __getitem__(self, index: Union[int, np.ndarray]
                     ) -> Union[float, np.ndarray]:
@@ -46,17 +44,19 @@ class SegmentTree:
 
     def __setitem__(self, index: Union[int, np.ndarray],
                     value: Union[float, np.ndarray]) -> None:
-        """Insert or overwrite a (or some) value(s) in this segment tree."""
+        """Insert or overwrite a (or some) value(s) in this segment tree. The
+        duplicate values are handled as numpy array, in other words, we only
+        keep the last value and ignore the previous same value.
+        """
         if isinstance(index, int) and isinstance(value, float):
             index, value = np.array([index]), np.array([value])
-        assert isinstance(index, np.ndarray) and isinstance(value, np.ndarray)
         assert ((0 <= index) & (index < self._bound)).all()
         index = index + self._bound
         self._value[index] = value
         while index[0] > 1:
-            index >>= 1
+            index //= 2
             self._value[index] = self._op(
-                [self._value[index << 1], self._value[index << 1 | 1]], axis=0)
+                [self._value[index * 2], self._value[index * 2 + 1]], axis=0)
 
     def reduce(self, start: Optional[int] = 0,
                end: Optional[int] = None) -> float:
@@ -74,7 +74,7 @@ class SegmentTree:
                 result = self._op([result, self._value[start ^ 1]])
             if end % 2 == 1:
                 result = self._op([result, self._value[end ^ 1]])
-            start, end = start >> 1, end >> 1
+            start, end = start // 2, end // 2
         return result
 
     def get_prefix_sum_idx(
@@ -100,7 +100,7 @@ class SegmentTree:
     # @njit
     def _get_prefix_sum_idx(index, scalar, bound, weight):
         while index[0] < bound:
-            index <<= 1
+            index *= 2
             direct = weight[index] <= scalar
             scalar -= weight[index] * direct
             index += direct
