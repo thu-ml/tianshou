@@ -120,7 +120,7 @@ class SegmentTree:
         #     i = 1
         #     while i < bound:
         #         l = i * 2
-        #         if weight[l] > s:
+        #         if weight[l] >= s:
         #             i = l
         #         else:
         #             s = s - weight[l]
