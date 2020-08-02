@@ -61,7 +61,7 @@ class SegmentTree:
             index = np.array([index])
         assert np.all(0 <= index) and np.all(index < self._size)
         if self._op is np.add:
-            assert np.all(0 <= value)
+            assert np.all(0. <= value)
         index = index + self._bound
         self._value[index] = value
         while index[0] > 1:
@@ -90,12 +90,11 @@ class SegmentTree:
 
     def get_prefix_sum_idx(
             self, value: Union[float, np.ndarray]) -> Union[int, np.ndarray]:
-        """Return the index ``i`` which satisfies
-        ``sum(value[:i]) <= value < sum(value[:i + 1])``. If multiple indexes
-        meet this condition, return the biggest one.
+        """Return the minimum index ``i`` which satisfies
+        ``sum(value[:i]) <= value <= sum(value[:i + 1])``.
         """
         assert self._op is np.add
-        assert np.all(value >= 0)
+        assert np.all(value >= 0.) and np.all(value < self._value[1])
         single = False
         if not isinstance(value, np.ndarray):
             value = np.array([value])
@@ -104,7 +103,6 @@ class SegmentTree:
         index = np.ones(value.shape, dtype=np.int)
         index = self.__class__._get_prefix_sum_idx(
             index, value, self._bound, self._value)
-        index[index >= self._size] = self._size - 1
         return index.item() if single else index
 
     # numba version, 5x speed up
@@ -115,7 +113,7 @@ class SegmentTree:
     def _get_prefix_sum_idx(index, scalar, bound, weight):
         while index[0] < bound:
             index *= 2
-            direct = weight[index] <= scalar
+            direct = weight[index] < scalar
             scalar -= weight[index] * direct
             index += direct
         # for _, s in enumerate(scalar):

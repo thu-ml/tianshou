@@ -185,11 +185,13 @@ def test_segtree():
     tree[np.arange(actual_len)] = naive
     for scalar in range(actual_len):
         index = tree.get_prefix_sum_idx(scalar * 1.)
-        assert naive[:index].sum() <= scalar < naive[:index + 1].sum()
+        assert naive[:index].sum() <= scalar <= naive[:index + 1].sum()
     tree = SegmentTree(10)
     tree[np.arange(3)] = np.array([0.1, 0, 0.1])
     assert np.allclose(tree.get_prefix_sum_idx(
-        np.array([0, .1, .2])), [0, 2, 9])
+        np.array([0, .1, .1 + 1e-6, .2 - 1e-6])), [0, 0, 2, 2])
+    with pytest.raises(AssertionError):
+        tree.get_prefix_sum_idx(.2)
     # test large prefix-sum-idx
     actual_len = 16384
     tree = SegmentTree(actual_len)
