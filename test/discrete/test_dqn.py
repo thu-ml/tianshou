@@ -61,7 +61,8 @@ def test_dqn(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.layer_num, args.state_shape,
-              args.action_shape, args.device, dueling=(1, 1)).to(args.device)
+              args.action_shape, args.device,  # dueling=(1, 1)
+              ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
         net, optim, args.gamma, args.n_step,
@@ -123,8 +124,9 @@ def test_dqn(args=get_args()):
 
 def test_pdqn(args=get_args()):
     args.prioritized_replay = 1
+    args.gamma = .95
     test_dqn(args)
 
 
 if __name__ == '__main__':
-    test_dqn(get_args())
+    test_pdqn(get_args())
