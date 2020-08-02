@@ -22,17 +22,22 @@ class SegmentTree:
     """
 
     def __init__(self, size: int,
-                 operation: str = "sum") -> None:
+                 operation: str = 'sum') -> None:
         bound = 1
         while bound < size:
             bound *= 2
         self._size = size
         self._bound = bound
-        assert operation in ["sum", "min", "max"], \
-            f"Unknown operation {operation}."
-        self._op = getattr(np, operation)
-        self._init_value = {'sum': 0, 'min': np.inf, 'max': -np.inf}[operation]
-        self._value = np.full([bound * 2], self._init_value, dtype=np.float64)
+        assert operation in ['sum', 'min', 'max'], \
+            f'Unknown operation {operation}.'
+        if operation == 'sum':
+            self._op, self._init_value = np.add, 0.
+        elif operation == 'min':
+            self._op, self._init_value = np.minimum, np.inf
+        else:
+            self._op, self._init_value = np.maximum, -np.inf
+        # assert isinstance(self._op, np.ufunc)
+        self._value = np.full([bound * 2], self._init_value)
 
     def __len__(self):
         return self._size
@@ -56,7 +61,7 @@ class SegmentTree:
         while index[0] > 1:
             index //= 2
             self._value[index] = self._op(
-                [self._value[index * 2], self._value[index * 2 + 1]], axis=0)
+                self._value[index * 2], self._value[index * 2 + 1])
 
     def reduce(self, start: Optional[int] = 0,
                end: Optional[int] = None) -> float:
@@ -71,9 +76,9 @@ class SegmentTree:
         result = self._init_value
         while start ^ end ^ 1 != 0:
             if start % 2 == 0:
-                result = self._op([result, self._value[start ^ 1]])
+                result = self._op(result, self._value[start ^ 1])
             if end % 2 == 1:
-                result = self._op([result, self._value[end ^ 1]])
+                result = self._op(result, self._value[end ^ 1])
             start, end = start // 2, end // 2
         return result
 
@@ -82,7 +87,7 @@ class SegmentTree:
         """Return the index ``i`` which satisfies
         ``sum(value[:i]) <= value < sum(value[:i + 1])``.
         """
-        assert self._op is np.sum
+        assert self._op is np.add
         single = False
         if not isinstance(value, np.ndarray):
             value = np.array([value])
