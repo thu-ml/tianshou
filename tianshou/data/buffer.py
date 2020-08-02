@@ -314,7 +314,7 @@ class ReplayBuffer:
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
             info=self.get(index, 'info'),
-            policy=self.get(index, 'policy')
+            policy=self.get(index, 'policy'),
         )
 
 
@@ -373,6 +373,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._min_prio = 1.
         # bypass the check
         self._meta.__dict__['weight'] = SegmentTree(size, 'sum')
+        self.__eps = np.finfo(np.float32).eps.item()
 
     def add(self,
             obs: Union[dict, np.ndarray],
@@ -410,7 +411,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         # impt_weight
         # original formula: ((p_j/p_sum*N)**(-beta))/((p_min/p_sum*N)**(-beta))
         # simplified formula: (p_j/p_min)**(-beta)
-        batch.impt_weight = (batch.weight / self._min_prio) ** (-self._beta)
+        batch.weight = (batch.weight / self._min_prio) ** (-self._beta)
         return batch, indice
 
     def update_weight(self, indice: Union[np.ndarray],
@@ -420,8 +421,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         :param np.ndarray indice: indice you want to update weight.
         :param np.ndarray new_weight: new priority weight you want to update.
         """
-        weight = np.abs(new_weight) ** self._alpha
-        self.weight[indice] = weight
+        weight = np.abs(new_weight) + self.__eps
+        self.weight[indice] = weight ** self._alpha
         self._max_prio = max(self._max_prio, np.abs(new_weight).max())
         self._min_prio = min(self._min_prio, np.abs(new_weight).min())
 

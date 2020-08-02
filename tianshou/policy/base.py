@@ -4,7 +4,8 @@ from torch import nn
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union, Optional, Callable
 
-from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
+from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, \
+    to_torch_as, to_numpy
 
 
 class BasePolicy(ABC, nn.Module):
@@ -213,4 +214,10 @@ class BasePolicy(ABC, nn.Module):
         returns = to_torch_as(returns, target_q)
         gammas = to_torch_as(gamma ** gammas, target_q)
         batch.returns = target_q * gammas + returns
+        # prio buffer update
+        if isinstance(buffer, PrioritizedReplayBuffer):
+            batch.update_weight = buffer.update_weight
+            batch.indice = indice
+        else:
+            batch.weight = 1.
         return batch
