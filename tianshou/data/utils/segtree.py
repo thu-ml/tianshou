@@ -3,26 +3,44 @@ from typing import Union, Optional
 # from numba import njit
 
 
+# numba version, 5x speed up
+# with size=100000 and bsz=64
+# first block (vectorized np): 0.0923 (now) -> 0.0251
+# second block (for-loop): 0.2914 -> 0.0192 (future)
+# @njit
+def _get_prefix_sum_idx(index, scalar, bound, weight):
+    while index[0] < bound:
+        index *= 2
+        direct = weight[index] < scalar
+        scalar -= weight[index] * direct
+        index += direct
+    # for _, s in enumerate(scalar):
+    #     i = 1
+    #     while i < bound:
+    #         l = i * 2
+    #         if weight[l] >= s:
+    #             i = l
+    #         else:
+    #             s = s - weight[l]
+    #             i = l + 1
+    #     index[_] = i
+    return index - bound
+
+
 class SegmentTree:
     """Implementation of Segment Tree: store an array ``arr`` with size ``n``
     in a segment tree, support value update and fast query of ``min/max/sum``
-    ``arr[left:right]`` in O(log n) time.
+    for the interval ``[left, right)`` in O(log n) time.
 
     The detailed procedure is as follows:
 
-    1. Find out the smallest n which safisfies ``size <= 2^n``, and let \
-    ``bound = 2^n``. This is to ensure that all leaf nodes are in the same \
-    depth inside the segment tree.
-    2. Store the original value to leaf nodes in ``[bound:bound * 2]``, and \
-    the union of elementary to internal nodes in ``[1:bound]``. The internal \
-    node follows the rule: \
-    ``value[i] = operation(value[i * 2], value[i * 2 + 1])``.
-    3. Update a (or some) node(s) takes O(log(bound)) time complexity.
-    4. Query an interval [l, r] with the default operation takes O(log(bound))
+    1. Pad the array to have length of power of 2, so that leaf nodes in the\
+    segment tree have the same depth.
+    2. Store the segment tree in a binary heap.
 
     :param int size: the size of segment tree.
-    :param str operation: the operation of segment tree. Choose one of "sum",
-        "min" and "max", defaults to "sum".
+    :param str operation: the operation of segment tree. Choices are "sum",
+        "min" and "max". Default: "sum".
     """
 
     def __init__(self, size: int,
@@ -53,9 +71,16 @@ class SegmentTree:
 
     def __setitem__(self, index: Union[int, np.ndarray],
                     value: Union[float, np.ndarray]) -> None:
-        """Insert or overwrite a (or some) value(s) in this segment tree. The
-        duplicate values are handled as numpy array, in other words, we only
-        keep the last index-value pair and ignore the previous same indexes.
+        """Duplicate values in ``index`` are handled by numpy: later index
+        overwrites previous ones.
+
+        ::
+
+            >>> a = np.array([1, 2, 3, 4])
+            >>> a[[0, 1, 0, 1]] = [4, 5, 6, 7]
+            >>> print(a)
+            [6 7 3 4]
+
         """
         if isinstance(index, int):
             index = np.array([index])
@@ -75,16 +100,17 @@ class SegmentTree:
         if start == 0 and end is None:
             return self._value[1]
         if end is None:
-            end = self._bound
+            end = self._size
         if end < 0:
-            end += self._bound
+            end += self._size
+        # nodes in (start, end) should be aggregated
         start, end = start + self._bound - 1, end + self._bound
         result = self._init_value
-        while start ^ end ^ 1 != 0:
+        while end - start > 1:  # (start, end) interval is not empty
             if start % 2 == 0:
-                result = self._op(result, self._value[start ^ 1])
+                result = self._op(result, self._value[start + 1])
             if end % 2 == 1:
-                result = self._op(result, self._value[end ^ 1])
+                result = self._op(result, self._value[end - 1])
             start, end = start // 2, end // 2
         return result
 
@@ -101,29 +127,6 @@ class SegmentTree:
             single = True
         assert (value <= self._value[1]).all()
         index = np.ones(value.shape, dtype=np.int)
-        index = self.__class__._get_prefix_sum_idx(
+        index = _get_prefix_sum_idx(
             index, value, self._bound, self._value)
         return index.item() if single else index
-
-    # numba version, 5x speed up
-    # with size=100000 and bsz=64
-    # first block (vectorized np): 0.0923 (now) -> 0.0251
-    # second block (for-loop): 0.2914 -> 0.0192 (future)
-    # @njit
-    def _get_prefix_sum_idx(index, scalar, bound, weight):
-        while index[0] < bound:
-            index *= 2
-            direct = weight[index] < scalar
-            scalar -= weight[index] * direct
-            index += direct
-        # for _, s in enumerate(scalar):
-        #     i = 1
-        #     while i < bound:
-        #         l = i * 2
-        #         if weight[l] >= s:
-        #             i = l
-        #         else:
-        #             s = s - weight[l]
-        #             i = l + 1
-        #     index[_] = i
-        return index - bound
