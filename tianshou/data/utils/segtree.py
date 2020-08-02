@@ -4,7 +4,11 @@ from typing import Union, Optional
 
 
 class SegmentTree:
-    """Implementation of Segment Tree. The procedure is as follows:
+    """Implementation of Segment Tree: store an array ``arr`` with size ``n``
+    in a segment tree, support value update and fast query of ``min/max/sum``
+    ``arr[left:right]`` in O(log n) time.
+
+    The detailed procedure is as follows:
 
     1. Find out the smallest n which safisfies ``size <= 2^n``, and let \
     ``bound = 2^n``. This is to ensure that all leaf nodes are in the same \
