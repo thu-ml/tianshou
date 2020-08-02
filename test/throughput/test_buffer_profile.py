@@ -48,7 +48,7 @@ def test_update(data):
 
 
 def test_getitem_slice(data):
-    Slice = data['Slice']
+    Slice = data['slice']
     buffer = data['buffer']
     for _ in np.arange(1e3):
         _ = buffer[Slice]
