@@ -8,9 +8,9 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import VectorEnv
 from tianshou.policy import DQNPolicy
-from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.common import Net
+from tianshou.trainer import offpolicy_trainer
+from tianshou.data import Collector, ReplayBuffer, PrioritizedReplayBuffer
 
 
 def get_args():
@@ -33,6 +33,9 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument('--prioritized-replay', type=int, default=0)
+    parser.add_argument('--alpha', type=float, default=0.6)
+    parser.add_argument('--beta', type=float, default=0.4)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -58,15 +61,19 @@ def test_dqn(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.layer_num, args.state_shape,
-              args.action_shape, args.device,
-              dueling=(2, 2)).to(args.device)
+              args.action_shape, args.device, dueling=(1, 1)).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
         net, optim, args.gamma, args.n_step,
         target_update_freq=args.target_update_freq)
+    # buffer
+    if args.prioritized_replay > 0:
+        buf = PrioritizedReplayBuffer(
+            args.buffer_size, alpha=args.alpha, beta=args.beta)
+    else:
+        buf = ReplayBuffer(args.buffer_size)
     # collector
-    train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+    train_collector = Collector(policy, train_envs, buf)
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size)
@@ -112,6 +119,11 @@ def test_dqn(args=get_args()):
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()
+
+
+def test_pdqn(args=get_args()):
+    args.prioritized_replay = 1
+    test_dqn(args)
 
 
 if __name__ == '__main__':
