@@ -10,6 +10,22 @@ if __name__ == '__main__':
 else:  # pytest
     from test.base.env import MyTestEnv
 
+def recurse_comp(a, b):
+    try:
+        if isinstance(a, np.ndarray):
+            if a.dtype == np.object:
+                return np.array(
+                    [recurse_comp(m, n) for m, n in zip(a, b)]).all()                
+            else:
+                return (a==b).all()
+        elif isinstance(a, (list, tuple)):
+            return np.array(
+                [recurse_comp(m, n) for m, n in zip(a, b)]).all()
+        elif isinstance(a, dict):
+            return np.array(
+                [recurse_comp(a[k], b[k]) for k in a.keys()]).all()
+    except:
+        return False
 
 def test_async_env(num=8, sleep=0.1):
     # simplify the test case, just keep stepping
@@ -83,8 +99,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
                 if index == 3:  # do not check info here
                     continue
                 for info in infos:
-                    print(index)
-                    assert (infos[0] == info).all()
+                    assert recurse_comp(infos[0], info)
     else:
         t = [0] * len(venv)
         for i, e in enumerate(venv):
