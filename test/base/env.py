@@ -22,13 +22,13 @@ class MyTestEnv(gym.Env):
         if  dict_state:
             self.observation_space = Dict(
                 {"index": Box(shape=(1, ), low=0, high=size - 1),
-                 "rand": Box(shape=(1,), low=0, high=1)})
+                 "rand": Box(shape=(1,), low=0, high=1, dtype=np.float64)})
         elif recurse_state:
             self.observation_space = Dict(
                 {"index": Box(shape=(1, ), low=0, high=size - 1),
                  "dict": Dict({
-                     "tuple": Tuple((Discrete(2), Box(shape=(2,), low=0, high=1))),
-                     "rand": Box(shape=(1,2), low=0, high=1)})
+                     "tuple": Tuple((Discrete(2), Box(shape=(2,), low=0, high=1, dtype=np.float64))),
+                     "rand": Box(shape=(1,2), low=0, high=1, dtype=np.float64)})
                 })
         else:
             self.observation_space = Box(shape=(1, ), low=0, high=size - 1)
@@ -36,10 +36,11 @@ class MyTestEnv(gym.Env):
             self.action_space = MultiDiscrete([2, 2])
         else:
             self.action_space = Discrete(2)
-        self.reset()
+        self.done = False
+        self.index = 0
 
     def seed(self, seed=0):
-        np.random.seed(seed)
+        self.rng = np.random.RandomState(seed)
 
     def reset(self, state=0):
         self.done = False
@@ -56,13 +57,13 @@ class MyTestEnv(gym.Env):
     def _get_dict_state(self):
         """Generate a dict_state if dict_state is True."""
         if self.dict_state:
-            return {'index': np.array([self.index]), 'rand': np.random.rand()}
+            return {'index': np.array([self.index], dtype=np.float32), 'rand': self.rng.rand(1)}
         elif self.recurse_state:
-            return {'index': np.array([self.index]),
-                    'dict': {"tuple": (1, np.random.rand(2)),
-                             "rand": np.random.rand(1, 2)}}
+            return {'index': np.array([self.index], dtype=np.float32),
+                    'dict': {"tuple": (np.array([1], dtype=np.int64), self.rng.rand(2)),
+                             "rand": self.rng.rand(1, 2)}}
         else:
-            return np.array([self.index])
+            return np.array([self.index], dtype=np.float32)
 
     def step(self, action):
         if self._md_action:

@@ -55,8 +55,9 @@ def test_async_env(num=8, sleep=0.1):
 
 def test_vecenv(size=10, num=8, sleep=0.001):
     verbose = __name__ == '__main__'
+    verbose = False
     env_fns = [
-        lambda i=i: MyTestEnv(size=i, sleep=sleep)
+        lambda i=i: MyTestEnv(size=i, sleep=sleep, recurse_state=True)
         for i in range(size, size + num)
     ]
     venv = [
@@ -67,7 +68,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
     if verbose:
         venv.append(RayVectorEnv(env_fns))
     for v in venv:
-        v.seed()
+        v.seed(0)
     action_list = [1] * 5 + [0] * 10 + [1] * 20
     if not verbose:
         o = [v.reset() for v in venv]
@@ -82,6 +83,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
                 if index == 3:  # do not check info here
                     continue
                 for info in infos:
+                    print(index)
                     assert (infos[0] == info).all()
     else:
         t = [0] * len(venv)

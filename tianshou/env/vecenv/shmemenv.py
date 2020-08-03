@@ -11,25 +11,29 @@ from tianshou.env.utils import CloudpickleWrapper
 
 _NP_TO_CT = {np.float64: ctypes.c_double,
              np.float32: ctypes.c_float,
+             np.int64: ctypes.c_int64,
              np.int32: ctypes.c_int32,
+             np.int16: ctypes.c_int16,
              np.int8: ctypes.c_int8,
              np.uint8: ctypes.c_char,
+             np.uint16: ctypes.c_uint16,
+             np.uint32: ctypes.c_uint32,
+             np.uint64: ctypes.c_uint64,
              np.bool: ctypes.c_bool}
 
 
-def _shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
-                  obs_shapes, obs_dtypes, keys):
+def _shmem_worker(parent, p, env_fn_wrapper, obs_bufs):
     """Control a single environment instance using IPC and shared memory."""
-    def _encode_obs(maybe_dict):
-        flatdict = maybe_dict if isinstance(maybe_dict, dict) else {
-            None: maybe_dict}
-        for k in keys:
-            dst = obs_bufs[k].get_obj()
-            dst_np = np.frombuffer(
-                dst, dtype=obs_dtypes[k]).reshape(obs_shapes[k])
-            np.copyto(dst_np, flatdict[k])
+    def _encode_obs(obs, buffer):
+        if isinstance(obs, np.ndarray):
+            buffer.save(obs)
+        elif isinstance(obs, tuple):
+            for o, b in zip(obs, buffer):
+                _encode_obs(o, b)
+        elif isinstance(obs, dict):
+            for k in obs.keys():
+                _encode_obs(obs[k], buffer[k])
         return None
-
     parent.close()
     env = env_fn_wrapper.data()
     try:
@@ -37,9 +41,9 @@ def _shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
             cmd, data = p.recv()
             if cmd == 'step':
                 obs, reward, done, info = env.step(data)
-                p.send((_encode_obs(obs), reward, done, info))
+                p.send((_encode_obs(obs, obs_bufs), reward, done, info))
             elif cmd == 'reset':
-                p.send(_encode_obs(env.reset()))
+                p.send(_encode_obs(env.reset(), obs_bufs))
             elif cmd == 'close':
                 p.send(env.close())
                 p.close()
@@ -56,6 +60,20 @@ def _shmem_worker(parent, p, env_fn_wrapper, obs_bufs,
     except KeyboardInterrupt:
         p.close()
 
+class ShArray:
+    """Wrapper of multiprocessing Array"""
+    def __init__(self, dtype, shape):
+        self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))
+        self.dtype = dtype
+        self.shape = shape
+    def save(self, ndarray):
+        assert isinstance(ndarray, np.ndarray)
+        dst = self.arr.get_obj()
+        dst_np = np.frombuffer(dst, dtype = self.dtype).reshape(self.shape)
+        np.copyto(dst_np, ndarray)
+    def get(self):
+        return np.frombuffer(self.arr.get_obj(),
+                             dtype=self.dtype).reshape(self.shape)
 
 class ShmemVectorEnv(SubprocVectorEnv):
     """Optimized version of SubprocVectorEnv that uses shared variables to
@@ -66,26 +84,27 @@ class ShmemVectorEnv(SubprocVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
         explanation.
 
-    I borrow heavily from openai baseline to implement ShmemVectorEnv Class.
+    I was inspired by openai baseline to implement ShmemVectorEnv Class.
     Please refer to 'https://github.com/openai/baselines/blob/master/baselines/
     common/vec_env/shmem_vec_env.py' for more info if you are interested.
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         BaseVectorEnv.__init__(self, env_fns)
+        #Mind that SubprocVectorEnv is not initialised.
         self.closed = False
-        self._setup_obs_space(env_fns[0])
-        self.obs_bufs = [
-            {k: Array(_NP_TO_CT[self.obs_dtypes[k].type], int(
-                np.prod(self.obs_shapes[k]))) for k in self.obs_keys}
-            for _ in range(self.env_num)]
+        dummy = env_fns[0]()
+        obs_space = dummy.observation_space
+        dummy.close()
+        del dummy
+        #will copy be quicker?
+        self.obs_bufs = [self._setup_buf(obs_space) for _ in range(self.env_num)]
         self.parent_remote, self.child_remote = \
             zip(*[Pipe() for _ in range(self.env_num)])
         self.processes = [
             Process(target=_shmem_worker, args=(
                 parent, child, CloudpickleWrapper(env_fn),
-                obs_buf, self.obs_shapes,
-                self.obs_dtypes, self.obs_keys), daemon=True)
+                obs_buf), daemon=True)
             for (parent, child, env_fn, obs_buf) in zip(
                 self.parent_remote, self.child_remote, env_fns, self.obs_bufs)
         ]
@@ -124,33 +143,32 @@ class ShmemVectorEnv(SubprocVectorEnv):
             [self._decode_obs(self.parent_remote[i].recv(), i) for i in id])
         return obs
 
-    def _setup_obs_space(self, env):
-        dummy = env()
-        obs_space = dummy.observation_space
-        dummy.close()
-        del dummy
-        if isinstance(obs_space, gym.spaces.Dict):
-            assert isinstance(obs_space.spaces, OrderedDict)
-            subspaces = obs_space.spaces
-        elif isinstance(obs_space, gym.spaces.Tuple):
-            assert isinstance(obs_space.spaces, tuple)
-            subspaces = {i: obs_space.spaces[i]
-                         for i in range(len(obs_space.spaces))}
+    def _setup_buf(self, space):
+        if isinstance(space, gym.spaces.Dict):
+            assert isinstance(space.spaces, OrderedDict)
+            buffer = {k: self._setup_buf(v) for k, v in space.spaces.items()}
+        elif isinstance(space, gym.spaces.Tuple):
+            assert isinstance(space.spaces, tuple)
+            buffer = tuple([self._setup_buf(t) for t in space.spaces])
         else:
-            subspaces = {None: obs_space}
-        self.obs_keys = []
-        self.obs_shapes = {}
-        self.obs_dtypes = {}
-        for key, box in subspaces.items():
-            self.obs_keys.append(key)
-            self.obs_shapes[key] = box.shape
-            self.obs_dtypes[key] = box.dtype
+            buffer = ShArray(space.dtype, space.shape)
+        return buffer
 
     def _decode_obs(self, isNone, index):
+        def decode_obs(buffer):
+            if isinstance(buffer, ShArray):
+                return buffer.get()
+            elif isinstance(buffer, tuple):
+                return tuple([decode_obs(b) for b in buffer])
+            elif isinstance(buffer, dict):
+                return {k: decode_obs(v) for k, v in buffer.items()}
+            else:
+                raise NotImplementedError
         assert isNone is None
-        result = {}
-        for k in self.obs_keys:
-            result[k] = np.frombuffer(
-                self.obs_bufs[index][k].get_obj(),
-                dtype=self.obs_dtypes[k]).reshape(self.obs_shapes[k])
-        return result if not result.keys() == {None} else result[None]
+        return decode_obs(self.obs_bufs[index])
+
+        
+        
+
+
+
