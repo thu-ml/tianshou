@@ -11,7 +11,9 @@ class MyTestEnv(gym.Env):
 
     def __init__(self, size, sleep=0, dict_state=False, recurse_state=False,
                  ma_rew=0, multidiscrete_action=False, random_sleep=False):
-        assert not (dict_state and recurse_state), "dict_state and recurse_state cannot both be true"
+        assert not (
+            dict_state and recurse_state), \
+            "dict_state and recurse_state cannot both be true"
         self.size = size
         self.sleep = sleep
         self.random_sleep = random_sleep
@@ -19,7 +21,7 @@ class MyTestEnv(gym.Env):
         self.recurse_state = recurse_state
         self.ma_rew = ma_rew
         self._md_action = multidiscrete_action
-        if  dict_state:
+        if dict_state:
             self.observation_space = Dict(
                 {"index": Box(shape=(1, ), low=0, high=size - 1),
                  "rand": Box(shape=(1,), low=0, high=1, dtype=np.float64)})
@@ -27,9 +29,11 @@ class MyTestEnv(gym.Env):
             self.observation_space = Dict(
                 {"index": Box(shape=(1, ), low=0, high=size - 1),
                  "dict": Dict({
-                     "tuple": Tuple((Discrete(2), Box(shape=(2,), low=0, high=1, dtype=np.float64))),
-                     "rand": Box(shape=(1,2), low=0, high=1, dtype=np.float64)})
-                })
+                     "tuple": Tuple((Discrete(2), Box(shape=(2,),
+                                     low=0, high=1, dtype=np.float64))),
+                     "rand": Box(shape=(1, 2), low=0, high=1,
+                                 dtype=np.float64)})
+                 })
         else:
             self.observation_space = Box(shape=(1, ), low=0, high=size - 1)
         if multidiscrete_action:
@@ -38,6 +42,7 @@ class MyTestEnv(gym.Env):
             self.action_space = Discrete(2)
         self.done = False
         self.index = 0
+        self.seed()
 
     def seed(self, seed=0):
         self.rng = np.random.RandomState(seed)
@@ -57,10 +62,12 @@ class MyTestEnv(gym.Env):
     def _get_dict_state(self):
         """Generate a dict_state if dict_state is True."""
         if self.dict_state:
-            return {'index': np.array([self.index], dtype=np.float32), 'rand': self.rng.rand(1)}
+            return {'index': np.array([self.index], dtype=np.float32),
+                    'rand': self.rng.rand(1)}
         elif self.recurse_state:
             return {'index': np.array([self.index], dtype=np.float32),
-                    'dict': {"tuple": (np.array([1], dtype=np.int64), self.rng.rand(2)),
+                    'dict': {"tuple": (np.array([1],
+                                       dtype=np.int64), self.rng.rand(2)),
                              "rand": self.rng.rand(1, 2)}}
         else:
             return np.array([self.index], dtype=np.float32)

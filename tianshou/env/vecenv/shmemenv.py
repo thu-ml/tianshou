@@ -60,20 +60,25 @@ def _shmem_worker(parent, p, env_fn_wrapper, obs_bufs):
     except KeyboardInterrupt:
         p.close()
 
+
 class ShArray:
     """Wrapper of multiprocessing Array"""
+
     def __init__(self, dtype, shape):
         self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))
         self.dtype = dtype
         self.shape = shape
+
     def save(self, ndarray):
         assert isinstance(ndarray, np.ndarray)
         dst = self.arr.get_obj()
-        dst_np = np.frombuffer(dst, dtype = self.dtype).reshape(self.shape)
+        dst_np = np.frombuffer(dst, dtype=self.dtype).reshape(self.shape)
         np.copyto(dst_np, ndarray)
+
     def get(self):
         return np.frombuffer(self.arr.get_obj(),
                              dtype=self.dtype).reshape(self.shape)
+
 
 class ShmemVectorEnv(SubprocVectorEnv):
     """Optimized version of SubprocVectorEnv that uses shared variables to
@@ -91,14 +96,15 @@ class ShmemVectorEnv(SubprocVectorEnv):
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
         BaseVectorEnv.__init__(self, env_fns)
-        #Mind that SubprocVectorEnv is not initialised.
+        # Mind that SubprocVectorEnv is not initialised.
         self.closed = False
         dummy = env_fns[0]()
         obs_space = dummy.observation_space
         dummy.close()
         del dummy
-        #will copy be quicker?
-        self.obs_bufs = [self._setup_buf(obs_space) for _ in range(self.env_num)]
+        # will copy be quicker?
+        self.obs_bufs = [self._setup_buf(obs_space)
+                         for _ in range(self.env_num)]
         self.parent_remote, self.child_remote = \
             zip(*[Pipe() for _ in range(self.env_num)])
         self.processes = [
@@ -166,9 +172,3 @@ class ShmemVectorEnv(SubprocVectorEnv):
                 raise NotImplementedError
         assert isNone is None
         return decode_obs(self.obs_bufs[index])
-
-        
-        
-
-
-

@@ -10,22 +10,24 @@ if __name__ == '__main__':
 else:  # pytest
     from test.base.env import MyTestEnv
 
+
 def recurse_comp(a, b):
     try:
         if isinstance(a, np.ndarray):
             if a.dtype == np.object:
                 return np.array(
-                    [recurse_comp(m, n) for m, n in zip(a, b)]).all()                
+                    [recurse_comp(m, n) for m, n in zip(a, b)]).all()
             else:
-                return (a==b).all()
+                return (a == b).all()
         elif isinstance(a, (list, tuple)):
             return np.array(
                 [recurse_comp(m, n) for m, n in zip(a, b)]).all()
         elif isinstance(a, dict):
             return np.array(
                 [recurse_comp(a[k], b[k]) for k in a.keys()]).all()
-    except:
+    except(Exception):
         return False
+
 
 def test_async_env(num=8, sleep=0.1):
     # simplify the test case, just keep stepping
