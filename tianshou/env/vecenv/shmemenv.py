@@ -82,14 +82,15 @@ class ShArray:
 
 class ShmemVectorEnv(SubprocVectorEnv):
     """Optimized version of SubprocVectorEnv that uses shared variables to
-    communicate observations.
+    communicate observations. SubprocVectorEnv has exactly the same API as 
+    SubprocVectorEnv.
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
+        Please refer to :class:`~tianshou.env.SubprocVectorEnv` for more detailed
         explanation.
 
-    I was inspired by openai baseline to implement ShmemVectorEnv Class.
+    ShmemVectorEnv Class was inspired by openai baseline's implementation.
     Please refer to 'https://github.com/openai/baselines/blob/master/baselines/
     common/vec_env/shmem_vec_env.py' for more info if you are interested.
     """

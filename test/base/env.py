@@ -50,7 +50,7 @@ class MyTestEnv(gym.Env):
     def reset(self, state=0):
         self.done = False
         self.index = state
-        return self._get_dict_state()
+        return self._get_state()
 
     def _get_reward(self):
         """Generate a non-scalar reward if ma_rew is True."""
@@ -59,8 +59,8 @@ class MyTestEnv(gym.Env):
             return [x] * self.ma_rew
         return x
 
-    def _get_dict_state(self):
-        """Generate a dict_state if dict_state is True."""
+    def _get_state(self):
+        """Generate state(observation) of MyTestEnv"""
         if self.dict_state:
             return {'index': np.array([self.index], dtype=np.float32),
                     'rand': self.rng.rand(1)}
@@ -83,13 +83,13 @@ class MyTestEnv(gym.Env):
             time.sleep(sleep_time)
         if self.index == self.size:
             self.done = True
-            return self._get_dict_state(), self._get_reward(), self.done, {}
+            return self._get_state(), self._get_reward(), self.done, {}
         if action == 0:
             self.index = max(self.index - 1, 0)
-            return self._get_dict_state(), self._get_reward(), self.done, \
+            return self._get_state(), self._get_reward(), self.done, \
                 {'key': 1, 'env': self} if self.dict_state else {}
         elif action == 1:
             self.index += 1
             self.done = self.index == self.size
-            return self._get_dict_state(), self._get_reward(), \
+            return self._get_state(), self._get_reward(), \
                 self.done, {'key': 1, 'env': self}
