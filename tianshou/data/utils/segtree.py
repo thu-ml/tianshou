@@ -84,6 +84,7 @@ class SegmentTree:
             [6 7 3 4]
 
         """
+        # TODO numba njit version
         if isinstance(index, int):
             index = np.array([index])
         assert np.all(0 <= index) and np.all(index < self._size)
@@ -99,6 +100,7 @@ class SegmentTree:
     def reduce(self, start: Optional[int] = 0,
                end: Optional[int] = None) -> float:
         """Return operation(value[start:end])."""
+        # TODO numba njit version
         if start == 0 and end is None:
             return self._value[1]
         if end is None:
@@ -118,7 +120,8 @@ class SegmentTree:
 
     def get_prefix_sum_idx(
             self, value: Union[float, np.ndarray]) -> Union[int, np.ndarray]:
-        """Return the minimum index for each value so that ``value <= sum[i]``
+        """Return the minimum index for each ``v`` in ``value`` so that
+        ``v <= sums[i]``, where sums[i] = \\sum_{j=0}^{i} arr[j].
         """
         assert self._op is np.add
         assert np.all(value >= 0.) and np.all(value < self._value[1])
