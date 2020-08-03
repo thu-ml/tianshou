@@ -9,17 +9,17 @@ from typing import Callable, List, Optional, Tuple, Union
 from tianshou.env import BaseVectorEnv, SubprocVectorEnv
 from tianshou.env.utils import CloudpickleWrapper
 
-_NP_TO_CT = {np.float64: ctypes.c_double,
-             np.float32: ctypes.c_float,
-             np.int64: ctypes.c_int64,
-             np.int32: ctypes.c_int32,
-             np.int16: ctypes.c_int16,
-             np.int8: ctypes.c_int8,
-             np.uint8: ctypes.c_char,
+_NP_TO_CT = {np.bool: ctypes.c_bool,
+             np.uint8: ctypes.c_uint8,
              np.uint16: ctypes.c_uint16,
              np.uint32: ctypes.c_uint32,
              np.uint64: ctypes.c_uint64,
-             np.bool: ctypes.c_bool}
+             np.int8: ctypes.c_int8,
+             np.int16: ctypes.c_int16,
+             np.int32: ctypes.c_int32,
+             np.int64: ctypes.c_int64,
+             np.float32: ctypes.c_float,
+             np.float64: ctypes.c_double}
 
 
 def _shmem_worker(parent, p, env_fn_wrapper, obs_bufs):
