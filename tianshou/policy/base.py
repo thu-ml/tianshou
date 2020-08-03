@@ -220,5 +220,5 @@ class BasePolicy(ABC, nn.Module):
             batch.indice = indice
             batch.weight = to_torch_as(batch.weight, target_q)
         else:
-            batch.weight = to_torch_as(1., target_q)
+            batch.weight = torch.ones_like(target_q)
         return batch
