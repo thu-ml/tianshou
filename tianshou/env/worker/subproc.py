@@ -106,7 +106,6 @@ class SubProcEnvWorker(EnvWorker):
         self.process = Process(target=_worker, args=args, daemon=True)
         self.process.start()
         self.child_remote.close()
-        self.closed = False
 
     @staticmethod
     def _setup_buf(space):
@@ -139,11 +138,8 @@ class SubProcEnvWorker(EnvWorker):
         return self.parent_remote.recv()
 
     def close(self) -> Any:
-        if self.closed:
-            return []
         self.parent_remote.send(['close', None])
         result = self.parent_remote.recv()
-        self.closed = True
         self.process.join()
         return result
 
@@ -157,13 +153,15 @@ class SubProcEnvWorker(EnvWorker):
         self.parent_remote.send(['getattr', key])
         return self.parent_remote.recv()
 
-    def step(self, action: np.ndarray
-             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        self.parent_remote.send(['step', action])
+    def get_result(self
+                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         obs, rew, done, info = self.parent_remote.recv()
         if self.share_memory:
             obs = self._decode_obs(obs)
         return obs, rew, done, info
+
+    def send_action(self, action: np.ndarray):
+        self.parent_remote.send(['step', action])
 
     def reset(self):
         self.parent_remote.send(['reset', None])

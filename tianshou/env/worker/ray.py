@@ -26,9 +26,13 @@ class RayEnvWorker(EnvWorker):
     def reset(self):
         return ray.get(self.env.reset.remote())
 
-    def step(self, action: np.ndarray
-             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        return ray.get(self.env.step.remote(action))
+    def get_result(self
+                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        return ray.get(self.action)
+
+    def send_action(self, action: np.ndarray):
+        # self.action is actually a handle
+        self.action = self.env.step.remote(action)
 
     def seed(self, seed: Optional[int] = None):
         if hasattr(self.env, 'seed'):

@@ -3,7 +3,7 @@ import numpy as np
 from gym.spaces.discrete import Discrete
 from tianshou.data import Batch
 from tianshou.env import VectorEnv, SubprocVectorEnv, \
-    RayVectorEnv, AsyncVectorEnv, ShmemVectorEnv
+    RayVectorEnv, ShmemVectorEnv
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -36,7 +36,7 @@ def test_async_env(num=8, sleep=0.1):
         lambda i=i: MyTestEnv(size=i, sleep=sleep, random_sleep=True)
         for i in range(size, size + num)
     ]
-    v = AsyncVectorEnv(env_fns, wait_num=num // 2)
+    v = SubprocVectorEnv(env_fns, wait_num=num // 2)
     v.seed()
     v.reset()
     # for a random variable u ~ U[0, 1], let v = max{u1, u2, ..., un}
@@ -44,7 +44,7 @@ def test_async_env(num=8, sleep=0.1):
     # expectation of v is n / (n + 1)
     # for a synchronous environment, the following actions should take
     # about 7 * sleep * num / (num + 1) seconds
-    # for AsyncVectorEnv, the analysis is complicated, but the time cost
+    # for async simulation, the analysis is complicated, but the time cost
     # should be smaller
     action_list = [1] * num + [0] * (num * 2) + [1] * (num * 4)
     current_index_start = 0

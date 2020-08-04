@@ -25,10 +25,24 @@ class EnvWorker(ABC, gym.Env):
     def reset(self):
         pass
 
+    def send_action(self, action: np.ndarray):
+        self.action = action
+
     @abstractmethod
+    def get_result(self
+                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        pass
+
     def step(self, action: np.ndarray
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        pass
+        """
+        ``send_action`` and ``get_result`` are coupled in sync simulation,
+        so typically users only call ``step`` function. But they can be called
+        separately in async simulation, i.e. someone calls ``send_action``
+        first, and calls ``get_result`` later.
+        """
+        self.send_action(action)
+        return self.get_result()
 
     @abstractmethod
     def seed(self, seed: Optional[int] = None):
