@@ -7,7 +7,7 @@ from tianshou.env import BaseVectorEnv
 from tianshou.env.utils import CloudpickleWrapper
 
 
-def worker(parent, p, env_fn_wrapper):
+def _worker(parent, p, env_fn_wrapper):
     parent.close()
     env = env_fn_wrapper.data()
     try:
@@ -49,7 +49,7 @@ class SubprocVectorEnv(BaseVectorEnv):
         self.parent_remote, self.child_remote = \
             zip(*[Pipe() for _ in range(self.env_num)])
         self.processes = [
-            Process(target=worker, args=(
+            Process(target=_worker, args=(
                 parent, child, CloudpickleWrapper(env_fn)), daemon=True)
             for (parent, child, env_fn) in zip(
                 self.parent_remote, self.child_remote, env_fns)
