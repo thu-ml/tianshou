@@ -26,7 +26,12 @@ def _worker(parent, p, env_fn_wrapper, obs_bufs=None):
     env = env_fn_wrapper.data()
     try:
         while True:
-            cmd, data = p.recv()
+            try:
+                cmd, data = p.recv()
+            except EOFError:
+                # the pipe has been closed
+                p.close()
+                break
             if cmd == 'step':
                 obs, reward, done, info = env.step(data)
                 if obs_bufs is not None:
