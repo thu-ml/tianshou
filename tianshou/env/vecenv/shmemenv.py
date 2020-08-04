@@ -10,6 +10,7 @@ from tianshou.env import BaseVectorEnv, SubprocVectorEnv
 from tianshou.env.utils import CloudpickleWrapper
 
 _NP_TO_CT = {np.bool: ctypes.c_bool,
+             np.bool_: ctypes.c_bool,
              np.uint8: ctypes.c_uint8,
              np.uint16: ctypes.c_uint16,
              np.uint32: ctypes.c_uint32,
@@ -103,8 +104,7 @@ class ShmemVectorEnv(SubprocVectorEnv):
         obs_space = dummy.observation_space
         dummy.close()
         del dummy
-        # will copy be quicker?
-        self.obs_bufs = [self._setup_buf(obs_space)
+        self.obs_bufs = [ShmemVectorEnv._setup_buf(obs_space)
                          for _ in range(self.env_num)]
         self.parent_remote, self.child_remote = \
             zip(*[Pipe() for _ in range(self.env_num)])
@@ -150,13 +150,16 @@ class ShmemVectorEnv(SubprocVectorEnv):
             [self._decode_obs(self.parent_remote[i].recv(), i) for i in id])
         return obs
 
-    def _setup_buf(self, space):
+    @staticmethod
+    def _setup_buf(space):
         if isinstance(space, gym.spaces.Dict):
             assert isinstance(space.spaces, OrderedDict)
-            buffer = {k: self._setup_buf(v) for k, v in space.spaces.items()}
+            buffer = {k: ShmemVectorEnv._setup_buf(v)
+                      for k, v in space.spaces.items()}
         elif isinstance(space, gym.spaces.Tuple):
             assert isinstance(space.spaces, tuple)
-            buffer = tuple([self._setup_buf(t) for t in space.spaces])
+            buffer = tuple([ShmemVectorEnv._setup_buf(t)
+                            for t in space.spaces])
         else:
             buffer = ShArray(space.dtype, space.shape)
         return buffer

@@ -13,5 +13,5 @@ __all__ = [
     'AsyncVectorEnv',
     'RayVectorEnv',
     'ShmemVectorEnv',
-    'MultiAgentEnv'
+    'MultiAgentEnv',
 ]
