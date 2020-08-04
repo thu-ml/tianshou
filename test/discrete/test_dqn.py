@@ -129,4 +129,4 @@ def test_pdqn(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_pdqn(get_args())
+    test_dqn(get_args())
