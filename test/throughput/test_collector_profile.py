@@ -86,7 +86,7 @@ def data():
 def test_init(data):
     for _ in range(5000):
         c = Collector(data["policy"], data["env"], data["buffer"])
-        c.close()
+    c.close()
 
 
 def test_reset(data):
@@ -112,7 +112,7 @@ def test_sample(data):
 def test_init_vec_env(data):
     for _ in range(5000):
         c = Collector(data["policy"], data["env_vec"], data["buffer"])
-        c.close()
+    c.close()
 
 
 def test_reset_vec_env(data):
@@ -138,9 +138,7 @@ def test_sample_vec_env(data):
 def test_init_subproc_env(data):
     for _ in range(5000):
         c = Collector(data["policy"], data["env_subproc_init"], data["buffer"])
-        """TODO: This should be changed to c.close() in theory,
-        but currently subproc_env doesn't support that."""
-        c.reset()
+    c.close()
 
 
 def test_reset_subproc_env(data):

@@ -4,7 +4,30 @@ from typing import List, Tuple, Union, Optional, Callable, Any
 from tianshou.env.worker.base import EnvWorker
 from tianshou.env.worker.subproc import SubProcEnvWorker
 from tianshou.env.worker.dummy import SequentialEnvWorker
-from tianshou.utils import run_once
+
+
+def run_once(f):
+    """
+    Run once decorator for a method in a class. Each instance can run
+    the method at most once.
+    """
+    f.has_run_objects = set()
+
+    def wrapper(self, *args, **kwargs):
+        if self.unique_id in f.has_run_objects:
+            raise RuntimeError(
+                f'{f} can be called only once for object {self}')
+        f.has_run_objects.add(self.unique_id)
+        return f(self, *args, **kwargs)
+    return wrapper
+
+
+def generate_id():
+    generate_id.i += 1
+    return generate_id.i
+
+
+generate_id.i = 0
 
 
 class BaseVectorEnv(gym.Env):
@@ -74,6 +97,7 @@ class BaseVectorEnv(gym.Env):
         self.waiting_id = []
         # all environments are ready in the beginning
         self.ready_id = list(range(self.env_num))
+        self.unique_id = generate_id()
 
     def __len__(self) -> int:
         """Return len(self), which is the number of environments."""
