@@ -48,6 +48,10 @@ class BaseVectorEnv(ABC, gym.Env):
         """Return len(self), which is the number of environments."""
         return self.env_num
 
+    def __del__(self):
+        """Close the environment before garbage collected"""
+        self.close()
+
     def __getattribute__(self, key: str):
         """Switch between the default attribute getter or one
            looking at wrapped environment level depending on the key."""

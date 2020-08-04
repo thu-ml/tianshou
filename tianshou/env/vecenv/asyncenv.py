@@ -52,10 +52,12 @@ class AsyncVectorEnv(SubprocVectorEnv):
         return id
 
     def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+        self._assert_is_closed()
         id = self._assert_and_transform_id(id)
         return super().reset(id)
 
     def render(self, **kwargs) -> List[Any]:
+        self._assert_is_closed()
         if len(self.waiting_id) > 0:
             raise RuntimeError(
                 f"Environments {self.waiting_id} are still "
@@ -80,6 +82,7 @@ class AsyncVectorEnv(SubprocVectorEnv):
         (initially they are env_ids of all the environments). If action is
         ``None``, fetch unfinished step() calls instead.
         """
+        self._assert_is_closed()
         if action is not None:
             id = self._assert_and_transform_id(id)
             assert len(action) == len(id)

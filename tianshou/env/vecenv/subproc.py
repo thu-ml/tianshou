@@ -60,6 +60,7 @@ class SubprocVectorEnv(BaseVectorEnv):
             c.close()
 
     def __getattr__(self, key):
+        self._assert_is_closed()
         for p in self.parent_remote:
             p.send(['getattr', key])
         return [p.recv() for p in self.parent_remote]
@@ -68,6 +69,7 @@ class SubprocVectorEnv(BaseVectorEnv):
              action: np.ndarray,
              id: Optional[Union[int, List[int]]] = None
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        self._assert_is_closed()
         if id is None:
             id = range(self.env_num)
         elif np.isscalar(id):
@@ -80,6 +82,7 @@ class SubprocVectorEnv(BaseVectorEnv):
         return obs, rew, done, info
 
     def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+        self._assert_is_closed()
         if id is None:
             id = range(self.env_num)
         elif np.isscalar(id):
@@ -90,6 +93,7 @@ class SubprocVectorEnv(BaseVectorEnv):
         return obs
 
     def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
+        self._assert_is_closed()
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
@@ -99,11 +103,13 @@ class SubprocVectorEnv(BaseVectorEnv):
         return [p.recv() for p in self.parent_remote]
 
     def render(self, **kwargs) -> List[Any]:
+        self._assert_is_closed()
         for p in self.parent_remote:
             p.send(['render', kwargs])
         return [p.recv() for p in self.parent_remote]
 
     def close(self) -> List[Any]:
+        "Instances of SubprocVectorEnv should not called again once"
         if self.closed:
             return []
         for p in self.parent_remote:
@@ -113,3 +119,7 @@ class SubprocVectorEnv(BaseVectorEnv):
         for p in self.processes:
             p.join()
         return result
+
+    def _assert_is_closed(self):
+        assert not self.closed, \
+             f"Methods of {type(self)} should not be called after closed."

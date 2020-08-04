@@ -124,6 +124,7 @@ class ShmemVectorEnv(SubprocVectorEnv):
              action: np.ndarray,
              id: Optional[Union[int, List[int]]] = None
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        self._assert_is_closed()
         if id is None:
             id = range(self.env_num)
         elif np.isscalar(id):
@@ -140,6 +141,7 @@ class ShmemVectorEnv(SubprocVectorEnv):
         return obs, rew, done, info
 
     def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+        self._assert_is_closed()
         if id is None:
             id = range(self.env_num)
         elif np.isscalar(id):
