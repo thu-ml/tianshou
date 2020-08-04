@@ -144,10 +144,8 @@ def test_segtree():
             tree[index] = value
             assert np.allclose(realop(naive), tree.reduce())
             for i in range(10):
-                left = right = 0
-                while left >= right:
-                    left = np.random.randint(actual_len)
-                    right = np.random.randint(actual_len)
+                left = np.random.randint(actual_len)
+                right = np.random.randint(left + 1, actual_len + 1)
                 assert np.allclose(realop(naive[left:right]),
                                    tree.reduce(left, right))
         # large test
@@ -161,10 +159,8 @@ def test_segtree():
             tree[index] = value
             assert np.allclose(realop(naive), tree.reduce())
             for i in range(10):
-                left = right = 0
-                while left >= right:
-                    left = np.random.randint(actual_len)
-                    right = np.random.randint(actual_len)
+                left = np.random.randint(actual_len)
+                right = np.random.randint(left + 1, actual_len + 1)
                 assert np.allclose(realop(naive[left:right]),
                                    tree.reduce(left, right))
 
@@ -219,10 +215,10 @@ def test_segtree():
 
 
 if __name__ == '__main__':
-    test_priortized_replaybuffer()
     test_replaybuffer()
     test_ignore_obs_next()
     test_stack()
     test_segtree()
+    test_priortized_replaybuffer()
     test_priortized_replaybuffer(233333, 200000)
     test_update()
