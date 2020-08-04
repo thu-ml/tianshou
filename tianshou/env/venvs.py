@@ -4,7 +4,6 @@ from typing import List, Tuple, Union, Optional, Callable, Any
 from tianshou.env.worker.base import EnvWorker
 from tianshou.env.worker.subproc import SubProcEnvWorker
 from tianshou.env.worker.dummy import SequentialEnvWorker
-from tianshou.env.worker.ray import RayEnvWorker
 from tianshou.utils import run_once
 
 
@@ -312,6 +311,7 @@ class RayVectorEnv(BaseVectorEnv):
 
         if not ray.is_initialized():
             ray.init()
+        from tianshou.env.worker.ray import RayEnvWorker
         super().__init__(
             env_fns,
             lambda fn: RayEnvWorker(fn),
