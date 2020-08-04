@@ -88,7 +88,7 @@ class BaseVectorEnv(gym.Env):
         self.wait_num = wait_num or len(env_fns)
         assert 1 <= self.wait_num <= len(env_fns), \
             f'wait_num should be in [1, {len(env_fns)}], but got {wait_num}'
-        self.is_async = not wait_num
+        self.is_async = wait_num is not None
         self.waiting_conn = []
         # environments in self.ready_id is actually ready
         # but environments in self.waiting_id are just waiting when checked,

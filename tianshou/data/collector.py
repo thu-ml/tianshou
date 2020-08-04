@@ -371,10 +371,13 @@ class Collector(object):
 
 def _batch_set_item(source: Batch, indices: np.ndarray,
                     target: Batch, size: int):
-    # for any key chain k, there are three cases
+    # for any key chain k, there are four cases
     # 1. source[k] is non-reserved, but target[k] does not exist or is reserved
     # 2. source[k] does not exist or is reserved, but target[k] is non-reserved
-    # 3. both source[k] and target[k] is non-reserved
+    # 3. both source[k] and target[k] are non-reserved
+    # 4. both source[k] and target[k] do not exist or are reserved, do nothing.
+    # A special case in case 4, if target[k] is reserved but source[k] does
+    # not exist, make source[k] reserved, too.
     for k, v in target.items():
         if not isinstance(v, Batch) or not v.is_empty():
             # target[k] is non-reserved
@@ -385,6 +388,8 @@ def _batch_set_item(source: Batch, indices: np.ndarray,
                 source.__dict__[k] = _create_value(v[0], size)
         else:
             # target[k] is reserved
-            # case 1
+            # case 1 or special case of case 4
+            if k not in source.__dict__:
+                source.__dict__[k] = Batch()
             continue
         source.__dict__[k][indices] = v

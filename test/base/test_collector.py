@@ -116,7 +116,7 @@ def test_collector_with_async():
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.1, random_sleep=True)
                for i in env_lens]
 
-    venv = SubprocVectorEnv(env_fns)
+    venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns))
     policy = MyPolicy()
     c1 = Collector(policy, venv,
                    ReplayBuffer(size=1000, ignore_obs_next=False),
