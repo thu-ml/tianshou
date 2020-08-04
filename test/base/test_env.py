@@ -18,7 +18,7 @@ def recurse_comp(a, b):
                 return np.array(
                     [recurse_comp(m, n) for m, n in zip(a, b)]).all()
             else:
-                return (a == b).all()
+                return np.allclose(a, b)
         elif isinstance(a, (list, tuple)):
             return np.array(
                 [recurse_comp(m, n) for m, n in zip(a, b)]).all()
