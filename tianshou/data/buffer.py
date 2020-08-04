@@ -373,8 +373,14 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._max_prio = 1.
         self._min_prio = 1.
         # bypass the check
-        self._meta.__dict__['weight'] = SegmentTree(size, 'sum')
+        self._weight = SegmentTree(size)
         self.__eps = np.finfo(np.float32).eps.item()
+
+    def __getattr__(self, key: str) -> Union['Batch', Any]:
+        """Return self.key"""
+        if key == 'weight':
+            return self._weight
+        return self._meta.__dict__[key]
 
     def add(self,
             obs: Union[dict, np.ndarray],

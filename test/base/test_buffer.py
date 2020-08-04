@@ -124,7 +124,7 @@ def test_segtree():
         assert np.all([tree[i] == init for i in range(actual_len)])
         with pytest.raises(IndexError):
             tree[actual_len]
-        naive = np.zeros([actual_len]) + init
+        naive = np.full([actual_len], init)
         for _ in range(1000):
             # random choose a place to perform single update
             index = np.random.randint(actual_len)
@@ -132,13 +132,10 @@ def test_segtree():
             naive[index] = value
             tree[index] = value
             for i in range(actual_len):
-                for j in range(i, actual_len):
-                    try:
-                        ref = realop(naive[i:j])
-                    except ValueError:
-                        continue
+                for j in range(i + 1, actual_len):
+                    ref = realop(naive[i:j])
                     out = tree.reduce(i, j)
-                    assert np.allclose(ref, out), (i, j, ref, out)
+                    assert np.allclose(ref, out)
         # batch setitem
         for _ in range(1000):
             index = np.random.choice(actual_len, size=4)
@@ -156,7 +153,7 @@ def test_segtree():
         # large test
         actual_len = 16384
         tree = SegmentTree(actual_len, op)
-        naive = np.zeros([actual_len]) + init
+        naive = np.full([actual_len], init)
         for _ in range(1000):
             index = np.random.choice(actual_len, size=64)
             value = np.random.rand(64)
@@ -201,6 +198,7 @@ def test_segtree():
         scalar = np.random.rand() * naive.sum()
         index = tree.get_prefix_sum_idx(scalar)
         assert naive[:index].sum() <= scalar <= naive[:index + 1].sum()
+
     # profile
     if __name__ == '__main__':
         size = 100000
