@@ -122,4 +122,4 @@ class SubprocVectorEnv(BaseVectorEnv):
 
     def _assert_is_closed(self):
         assert not self.closed, \
-             f"Methods of {type(self)} should not be called after closed."
+             f"Methods of {self.__class__.__name__} should not be called after closed."
