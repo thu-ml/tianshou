@@ -174,5 +174,4 @@ class ShmemVectorEnv(SubprocVectorEnv):
                 return {k: decode_obs(v) for k, v in buffer.items()}
             else:
                 raise NotImplementedError
-        assert isNone is None
         return decode_obs(self.obs_bufs[index])
