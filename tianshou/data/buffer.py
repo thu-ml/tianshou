@@ -404,6 +404,10 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         all the data in the buffer if batch_size is ``0``.
 
         :return: Sample data and its corresponding index inside the buffer.
+
+        The ``weight`` in the returned Batch is the weight on loss function
+        to de-bias the sampling process (some transition tuples are sampled
+        more often so their losses are weighted less).
         """
         assert self._size > 0, 'Cannot sample a buffer with 0 size!'
         if batch_size == 0:
