@@ -4,7 +4,7 @@ from torch import nn
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union, Optional, Callable
 
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
 
 class BasePolicy(ABC, nn.Module):
@@ -86,9 +86,8 @@ class BasePolicy(ABC, nn.Module):
             # some code
             return Batch(logits=..., act=..., state=None, dist=...)
 
-        After version >= 0.2.3, the keyword "policy" is reserverd and the
-        corresponding data will be stored into the replay buffer in numpy. For
-        instance,
+        The keyword ``policy`` is reserved and the corresponding data will be
+        stored into the replay buffer in numpy. For instance,
         ::
 
             # some code
@@ -138,15 +137,10 @@ class BasePolicy(ABC, nn.Module):
             Estimation, should be in [0, 1], defaults to 0.95.
 
         :return: a Batch. The result will be stored in batch.returns as a numpy
-            array.
+            array with shape (bsz, ).
         """
         rew = batch.rew
-        if v_s_ is None:
-            v_s_ = rew * 0.
-        else:
-            if not isinstance(v_s_, np.ndarray):
-                v_s_ = np.array(v_s_, np.float)
-            v_s_ = v_s_.reshape(rew.shape)
+        v_s_ = rew * 0. if v_s_ is None else to_numpy(v_s_).flatten()
         returns = np.roll(v_s_, 1, axis=0)
         m = (1. - batch.done) * gamma
         delta = rew + v_s_ * m - returns

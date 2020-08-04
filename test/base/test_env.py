@@ -1,12 +1,56 @@
 import time
 import numpy as np
 from gym.spaces.discrete import Discrete
-from tianshou.env import VectorEnv, SubprocVectorEnv, RayVectorEnv
+from tianshou.data import Batch
+from tianshou.env import VectorEnv, SubprocVectorEnv, \
+    RayVectorEnv, AsyncVectorEnv
 
 if __name__ == '__main__':
     from env import MyTestEnv
 else:  # pytest
     from test.base.env import MyTestEnv
+
+
+def test_async_env(num=8, sleep=0.1):
+    # simplify the test case, just keep stepping
+    size = 10000
+    env_fns = [
+        lambda i=i: MyTestEnv(size=i, sleep=sleep, random_sleep=True)
+        for i in range(size, size + num)
+    ]
+    v = AsyncVectorEnv(env_fns, wait_num=num // 2)
+    v.seed()
+    v.reset()
+    # for a random variable u ~ U[0, 1], let v = max{u1, u2, ..., un}
+    # P(v <= x) = x^n (0 <= x <= 1), pdf of v is nx^{n-1}
+    # expectation of v is n / (n + 1)
+    # for a synchronous environment, the following actions should take
+    # about 7 * sleep * num / (num + 1) seconds
+    # for AsyncVectorEnv, the analysis is complicated, but the time cost
+    # should be smaller
+    action_list = [1] * num + [0] * (num * 2) + [1] * (num * 4)
+    current_index_start = 0
+    action = action_list[:num]
+    env_ids = list(range(num))
+    o = []
+    spent_time = time.time()
+    while current_index_start < len(action_list):
+        A, B, C, D = v.step(action=action, id=env_ids)
+        b = Batch({'obs': A, 'rew': B, 'done': C, 'info': D})
+        env_ids = b.info.env_id
+        o.append(b)
+        current_index_start += len(action)
+        # len of action may be smaller than len(A) in the end
+        action = action_list[current_index_start: current_index_start + len(A)]
+        # truncate env_ids with the first terms
+        # typically len(env_ids) == len(A) == len(action), except for the
+        # last batch when actions are not enough
+        env_ids = env_ids[: len(action)]
+    spent_time = time.time() - spent_time
+    data = Batch.cat(o)
+    # assure 1/7 improvement
+    assert spent_time < 6.0 * sleep * num / (num + 1)
+    return spent_time, data
 
 
 def test_vecenv(size=10, num=8, sleep=0.001):
@@ -60,3 +104,4 @@ def test_vecenv(size=10, num=8, sleep=0.001):
 
 if __name__ == '__main__':
     test_vecenv()
+    test_async_env()

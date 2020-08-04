@@ -2,7 +2,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import BasePolicy
-from tianshou.env import VectorEnv, SubprocVectorEnv
+from tianshou.env import VectorEnv, SubprocVectorEnv, AsyncVectorEnv
 from tianshou.data import Collector, Batch, ReplayBuffer
 
 if __name__ == '__main__':
@@ -25,29 +25,39 @@ class MyPolicy(BasePolicy):
         pass
 
 
-def preprocess_fn(**kwargs):
-    # modify info before adding into the buffer
-    # if info is not provided from env, it will be a ``Batch()``.
-    if not kwargs.get('info', Batch()).is_empty():
-        n = len(kwargs['obs'])
-        info = kwargs['info']
-        for i in range(n):
-            info[i].update(rew=kwargs['rew'][i])
-        return {'info': info}
-        # or: return Batch(info=info)
-    else:
-        return Batch()
-
-
-class Logger(object):
+class Logger:
     def __init__(self, writer):
         self.cnt = 0
         self.writer = writer
 
-    def log(self, info):
-        self.writer.add_scalar(
-            'key', np.mean(info['key']), global_step=self.cnt)
-        self.cnt += 1
+    def preprocess_fn(self, **kwargs):
+        # modify info before adding into the buffer, and recorded into tfb
+        # if info is not provided from env, it will be a ``Batch()``.
+        if not kwargs.get('info', Batch()).is_empty():
+            n = len(kwargs['obs'])
+            info = kwargs['info']
+            for i in range(n):
+                info[i].update(rew=kwargs['rew'][i])
+            self.writer.add_scalar('key', np.mean(
+                info['key']), global_step=self.cnt)
+            self.cnt += 1
+            return Batch(info=info)
+            # or: return {'info': info}
+        else:
+            return Batch()
+
+    @staticmethod
+    def single_preprocess_fn(**kwargs):
+        # same as above, without tfb
+        if not kwargs.get('info', Batch()).is_empty():
+            n = len(kwargs['obs'])
+            info = kwargs['info']
+            for i in range(n):
+                info[i].update(rew=kwargs['rew'][i])
+            return Batch(info=info)
+            # or: return {'info': info}
+        else:
+            return Batch()
 
 
 def test_collector():
@@ -60,16 +70,16 @@ def test_collector():
     policy = MyPolicy()
     env = env_fns[0]()
     c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False),
-                   preprocess_fn)
-    c0.collect(n_step=3, log_fn=logger.log)
-    assert np.allclose(c0.buffer.obs[:3], [0, 1, 0])
-    assert np.allclose(c0.buffer[:3].obs_next, [1, 2, 1])
-    c0.collect(n_episode=3, log_fn=logger.log)
-    assert np.allclose(c0.buffer.obs[:8], [0, 1, 0, 1, 0, 1, 0, 1])
-    assert np.allclose(c0.buffer[:8].obs_next, [1, 2, 1, 2, 1, 2, 1, 2])
+                   logger.preprocess_fn)
+    c0.collect(n_step=3)
+    assert np.allclose(c0.buffer.obs[:4], [0, 1, 0, 1])
+    assert np.allclose(c0.buffer[:4].obs_next, [1, 2, 1, 2])
+    c0.collect(n_episode=3)
+    assert np.allclose(c0.buffer.obs[:10], [0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+    assert np.allclose(c0.buffer[:10].obs_next, [1, 2, 1, 2, 1, 2, 1, 2, 1, 2])
     c0.collect(n_step=3, random=True)
     c1 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False),
-                   preprocess_fn)
+                   logger.preprocess_fn)
     c1.collect(n_step=6)
     assert np.allclose(c1.buffer.obs[:11], [0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3])
     assert np.allclose(c1.buffer[:11].obs_next,
@@ -80,7 +90,7 @@ def test_collector():
                        [1, 2, 3, 4, 5, 1, 2, 1, 2, 3])
     c1.collect(n_episode=3, random=True)
     c2 = Collector(policy, dum, ReplayBuffer(size=100, ignore_obs_next=False),
-                   preprocess_fn)
+                   logger.preprocess_fn)
     c2.collect(n_episode=[1, 2, 2, 2])
     assert np.allclose(c2.buffer.obs_next[:26], [
         1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5,
@@ -93,16 +103,67 @@ def test_collector():
     c2.collect(n_episode=[1, 1, 1, 1], random=True)
 
 
+def test_collector_with_async():
+    env_lens = [2, 3, 4, 5]
+    writer = SummaryWriter('log/async_collector')
+    logger = Logger(writer)
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.1, random_sleep=True)
+               for i in env_lens]
+
+    venv = AsyncVectorEnv(env_fns)
+    policy = MyPolicy()
+    c1 = Collector(policy, venv,
+                   ReplayBuffer(size=1000, ignore_obs_next=False),
+                   logger.preprocess_fn)
+    c1.collect(n_episode=10)
+    # check if the data in the buffer is chronological
+    # i.e. data in the buffer are full episodes, and each episode is
+    # returned by the same environment
+    env_id = c1.buffer.info['env_id']
+    size = len(c1.buffer)
+    obs = c1.buffer.obs[:size]
+    done = c1.buffer.done[:size]
+    print(env_id[:size])
+    print(obs)
+    obs_ground_truth = []
+    i = 0
+    while i < size:
+        # i is the start of an episode
+        if done[i]:
+            # this episode has one transition
+            assert env_lens[env_id[i]] == 1
+            i += 1
+            continue
+        j = i
+        while True:
+            j += 1
+            # in one episode, the environment id is the same
+            assert env_id[j] == env_id[i]
+            if done[j]:
+                break
+        j = j + 1  # j is the start of the next episode
+        assert j - i == env_lens[env_id[i]]
+        obs_ground_truth += list(range(j - i))
+        i = j
+    assert np.allclose(obs, obs_ground_truth)
+
+
 def test_collector_with_dict_state():
     env = MyTestEnv(size=5, sleep=0, dict_state=True)
     policy = MyPolicy(dict_state=True)
-    c0 = Collector(policy, env, ReplayBuffer(size=100), preprocess_fn)
+    c0 = Collector(policy, env, ReplayBuffer(size=100),
+                   Logger.single_preprocess_fn)
     c0.collect(n_step=3)
-    c0.collect(n_episode=3)
+    c0.collect(n_episode=2)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True)
                for i in [2, 3, 4, 5]]
     envs = VectorEnv(env_fns)
-    c1 = Collector(policy, envs, ReplayBuffer(size=100), preprocess_fn)
+    envs.seed(666)
+    obs = envs.reset()
+    assert not np.isclose(obs[0]['rand'], obs[1]['rand'])
+    c1 = Collector(policy, envs, ReplayBuffer(size=100),
+                   Logger.single_preprocess_fn)
+    c1.seed(0)
     c1.collect(n_step=10)
     c1.collect(n_episode=[2, 1, 1, 2])
     batch = c1.sample(10)
@@ -113,7 +174,7 @@ def test_collector_with_dict_state():
         0., 1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4., 0., 1., 0.,
         1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.])
     c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
-                   preprocess_fn)
+                   Logger.single_preprocess_fn)
     c2.collect(n_episode=[0, 0, 0, 10])
     batch = c2.sample(10)
     print(batch['obs_next']['index'])
@@ -125,16 +186,17 @@ def test_collector_with_ma():
     env = MyTestEnv(size=5, sleep=0, ma_rew=4)
     policy = MyPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100),
-                   preprocess_fn, reward_metric=reward_metric)
+                   Logger.single_preprocess_fn, reward_metric=reward_metric)
+    # n_step=3 will collect a full episode
     r = c0.collect(n_step=3)['rew']
-    assert np.asanyarray(r).size == 1 and r == 0.
-    r = c0.collect(n_episode=3)['rew']
+    assert np.asanyarray(r).size == 1 and r == 4.
+    r = c0.collect(n_episode=2)['rew']
     assert np.asanyarray(r).size == 1 and r == 4.
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4)
                for i in [2, 3, 4, 5]]
     envs = VectorEnv(env_fns)
     c1 = Collector(policy, envs, ReplayBuffer(size=100),
-                   preprocess_fn, reward_metric=reward_metric)
+                   Logger.single_preprocess_fn, reward_metric=reward_metric)
     r = c1.collect(n_step=10)['rew']
     assert np.asanyarray(r).size == 1 and r == 4.
     r = c1.collect(n_episode=[2, 1, 1, 2])['rew']
@@ -153,7 +215,7 @@ def test_collector_with_ma():
     assert np.allclose(c0.buffer[:len(c0.buffer)].rew,
                        [[x] * 4 for x in rew])
     c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
-                   preprocess_fn, reward_metric=reward_metric)
+                   Logger.single_preprocess_fn, reward_metric=reward_metric)
     r = c2.collect(n_episode=[0, 0, 0, 10])['rew']
     assert np.asanyarray(r).size == 1 and r == 4.
     batch = c2.sample(10)
@@ -164,3 +226,4 @@ if __name__ == '__main__':
     test_collector()
     test_collector_with_dict_state()
     test_collector_with_ma()
+    test_collector_with_async()

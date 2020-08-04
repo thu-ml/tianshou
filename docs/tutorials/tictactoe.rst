@@ -193,7 +193,7 @@ The explanation of each Tianshou class/function will be deferred to their first 
         parser.add_argument('--eps-train', type=float, default=0.1)
         parser.add_argument('--buffer-size', type=int, default=20000)
         parser.add_argument('--lr', type=float, default=1e-3)
-        parser.add_argument('--gamma', type=float, default=0.1,
+        parser.add_argument('--gamma', type=float, default=0.9,
                             help='a smaller gamma favors earlier win')
         parser.add_argument('--n-step', type=int, default=3)
         parser.add_argument('--target-update-freq', type=int, default=320)
