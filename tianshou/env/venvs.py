@@ -45,11 +45,11 @@ class BaseVectorEnv(gym.Env):
 
 
     :param wait_num: used in asynchronous simulation if the time cost of
-    ``env.step`` varies with time and synchronously waiting for all
-    environments to finish a step is time-wasting. In that case, we can
-    return when ``wait_num`` environments finish a step and keep on
-    simulation in these environments. If ``None``, asynchronous simulation
-    is disabled; else, ``1 <= wait_num <= env_num``.
+        ``env.step`` varies with time and synchronously waiting for all
+        environments to finish a step is time-wasting. In that case, we can
+        return when ``wait_num`` environments finish a step and keep on
+        simulation in these environments. If ``None``, asynchronous simulation
+        is disabled; else, ``1 <= wait_num <= env_num``.
 
     """
 
