@@ -10,11 +10,8 @@ from tianshou.env import VectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import SACPolicy, ImitationPolicy
-
-if __name__ == '__main__':
-    from net import Actor, ActorProb, Critic
-else:  # pytest
-    from test.continuous.net import Actor, ActorProb, Critic
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import Actor, ActorProb, Critic
 
 
 def get_args():
@@ -37,7 +34,9 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--rew-norm', type=bool, default=True)
+    parser.add_argument('--rew-norm', type=int, default=1)
+    parser.add_argument('--ignore-done', type=int, default=1)
+    parser.add_argument('--n-step', type=int, default=4)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -66,24 +65,25 @@ def test_sac_with_il(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
+    net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = ActorProb(
-        args.layer_num, args.state_shape, args.action_shape,
+        net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    critic1 = Critic(
-        args.layer_num, args.state_shape, args.action_shape, args.device
-    ).to(args.device)
+    net = Net(args.layer_num, args.state_shape,
+              args.action_shape, concat=True, device=args.device)
+    critic1 = Critic(net, args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = Critic(
-        args.layer_num, args.state_shape, args.action_shape, args.device
-    ).to(args.device)
+    critic2 = Critic(net, args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
     policy = SACPolicy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         args.tau, args.gamma, args.alpha,
         [env.action_space.low[0], env.action_space.high[0]],
-        reward_normalization=args.rew_norm, ignore_done=True)
+        reward_normalization=args.rew_norm,
+        ignore_done=args.ignore_done,
+        estimation_step=args.n_step)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
@@ -118,15 +118,16 @@ def test_sac_with_il(args=get_args()):
     # here we define an imitation collector with a trivial policy
     if args.task == 'Pendulum-v0':
         env.spec.reward_threshold = -300  # lower the goal
-    net = Actor(1, args.state_shape, args.action_shape,
-                args.max_action, args.device).to(args.device)
+    net = Actor(Net(1, args.state_shape, device=args.device),
+                args.action_shape, args.max_action, args.device
+                ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(net, optim, mode='continuous')
     il_test_collector = Collector(il_policy, test_envs)
     train_collector.reset()
     result = offpolicy_trainer(
         il_policy, train_collector, il_test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, args.test_num,
+        args.step_per_epoch // 5, args.collect_per_step, args.test_num,
         args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
     assert stop_fn(result['best_reward'])
     train_collector.close()

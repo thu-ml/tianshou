@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from typing import Dict, List, Union, Optional
 
 from tianshou.policy import PGPolicy
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
 
 class A2CPolicy(PGPolicy):
@@ -55,7 +55,6 @@ class A2CPolicy(PGPolicy):
         self._grad_norm = max_grad_norm
         self._batch = 64
         self._rew_norm = reward_normalization
-        self.__eps = np.finfo(np.float32).eps.item()
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
@@ -65,7 +64,7 @@ class A2CPolicy(PGPolicy):
         v_ = []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False):
-                v_.append(self.critic(b.obs_next).detach().cpu().numpy())
+                v_.append(to_numpy(self.critic(b.obs_next)))
         v_ = np.concatenate(v_, axis=0)
         return self.compute_episodic_return(
             batch, v_, gamma=self._gamma, gae_lambda=self._lambda)
@@ -99,22 +98,23 @@ class A2CPolicy(PGPolicy):
               **kwargs) -> Dict[str, List[float]]:
         self._batch = batch_size
         r = batch.returns
-        if self._rew_norm and r.std() > self.__eps:
+        if self._rew_norm and not np.isclose(r.std(), 0):
             batch.returns = (r - r.mean()) / r.std()
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for b in batch.split(batch_size):
                 self.optim.zero_grad()
                 dist = self(b).dist
-                v = self.critic(b.obs)
-                a = torch.tensor(b.act, device=v.device)
-                r = torch.tensor(b.returns, device=v.device)
-                a_loss = -(dist.log_prob(a) * (r - v).detach()).mean()
-                vf_loss = F.mse_loss(r[:, None], v)
+                v = self.critic(b.obs).squeeze(-1)
+                a = to_torch_as(b.act, v)
+                r = to_torch_as(b.returns, v)
+                a_loss = -(dist.log_prob(a).reshape(v.shape) * (r - v).detach()
+                           ).mean()
+                vf_loss = F.mse_loss(r, v)
                 ent_loss = dist.entropy().mean()
                 loss = a_loss + self._w_vf * vf_loss - self._w_ent * ent_loss
                 loss.backward()
-                if self._grad_norm:
+                if self._grad_norm is not None:
                     nn.utils.clip_grad_norm_(
                         list(self.actor.parameters()) +
                         list(self.critic.parameters()),

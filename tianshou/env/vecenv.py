@@ -1,98 +1,15 @@
 import gym
 import numpy as np
-from abc import ABC, abstractmethod
 from multiprocessing import Process, Pipe
-from typing import List, Tuple, Union, Optional, Callable
+from typing import List, Tuple, Union, Optional, Callable, Any
 
 try:
     import ray
 except ImportError:
     pass
 
+from tianshou.env import BaseVectorEnv
 from tianshou.env.utils import CloudpickleWrapper
-
-
-class BaseVectorEnv(ABC, gym.Wrapper):
-    """Base class for vectorized environments wrapper. Usage:
-    ::
-
-        env_num = 8
-        envs = VectorEnv([lambda: gym.make(task) for _ in range(env_num)])
-        assert len(envs) == env_num
-
-    It accepts a list of environment generators. In other words, an environment
-    generator ``efn`` of a specific task means that ``efn()`` returns the
-    environment of the given task, for example, ``gym.make(task)``.
-
-    All of the VectorEnv must inherit :class:`~tianshou.env.BaseVectorEnv`.
-    Here are some other usages:
-    ::
-
-        envs.seed(2)  # which is equal to the next line
-        envs.seed([2, 3, 4, 5, 6, 7, 8, 9])  # set specific seed for each env
-        obs = envs.reset()  # reset all environments
-        obs = envs.reset([0, 5, 7])  # reset 3 specific environments
-        obs, rew, done, info = envs.step([1] * 8)  # step synchronously
-        envs.render()  # render all environments
-        envs.close()  # close all environments
-    """
-
-    def __init__(self, env_fns: List[Callable[[], gym.Env]]) -> None:
-        self._env_fns = env_fns
-        self.env_num = len(env_fns)
-
-    def __len__(self) -> int:
-        """Return len(self), which is the number of environments."""
-        return self.env_num
-
-    @abstractmethod
-    def reset(self, id: Optional[Union[int, List[int]]] = None):
-        """Reset the state of all the environments and return initial
-        observations if id is ``None``, otherwise reset the specific
-        environments with given id, either an int or a list.
-        """
-        pass
-
-    @abstractmethod
-    def step(self, action: np.ndarray
-             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Run one timestep of all the environments’ dynamics. When the end of
-        episode is reached, you are responsible for calling reset(id) to reset
-        this environment’s state.
-
-        Accept a batch of action and return a tuple (obs, rew, done, info).
-
-        :param numpy.ndarray action: a batch of action provided by the agent.
-
-        :return: A tuple including four items:
-
-            * ``obs`` a numpy.ndarray, the agent's observation of current \
-                environments
-            * ``rew`` a numpy.ndarray, the amount of rewards returned after \
-                previous actions
-            * ``done`` a numpy.ndarray, whether these episodes have ended, in \
-                which case further step() calls will return undefined results
-            * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
-                information (helpful for debugging, and sometimes learning)
-        """
-        pass
-
-    @abstractmethod
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
-        """Set the seed for all environments. Accept ``None``, an int (which
-        will extend ``i`` to ``[i, i + 1, i + 2, ...]``) or a list.
-        """
-        pass
-
-    @abstractmethod
-    def render(self, **kwargs) -> None:
-        """Render all of the environments."""
-        pass
-
-    @abstractmethod
-    def close(self) -> None:
-        """Close all of the environments."""
-        pass
 
 
 class VectorEnv(BaseVectorEnv):
@@ -108,28 +25,32 @@ class VectorEnv(BaseVectorEnv):
         super().__init__(env_fns)
         self.envs = [_() for _ in env_fns]
 
-    def reset(self, id: Optional[Union[int, List[int]]] = None) -> None:
+    def __getattr__(self, key):
+        return [getattr(env, key) if hasattr(env, key) else None
+                for env in self.envs]
+
+    def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
         if id is None:
-            self._obs = np.stack([e.reset() for e in self.envs])
-        else:
-            if np.isscalar(id):
-                id = [id]
-            for i in id:
-                self._obs[i] = self.envs[i].reset()
-        return self._obs
+            id = range(self.env_num)
+        elif np.isscalar(id):
+            id = [id]
+        obs = np.stack([self.envs[i].reset() for i in id])
+        return obs
 
-    def step(self, action: np.ndarray
+    def step(self,
+             action: np.ndarray,
+             id: Optional[Union[int, List[int]]] = None
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        assert len(action) == self.env_num
-        result = [e.step(a) for e, a in zip(self.envs, action)]
-        self._obs, self._rew, self._done, self._info = zip(*result)
-        self._obs = np.stack(self._obs)
-        self._rew = np.stack(self._rew)
-        self._done = np.stack(self._done)
-        self._info = np.stack(self._info)
-        return self._obs, self._rew, self._done, self._info
+        if id is None:
+            id = range(self.env_num)
+        elif np.isscalar(id):
+            id = [id]
+        assert len(action) == len(id)
+        result = [self.envs[i].step(action[i]) for i in id]
+        obs, rew, done, info = map(np.stack, zip(*result))
+        return obs, rew, done, info
 
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
@@ -140,14 +61,14 @@ class VectorEnv(BaseVectorEnv):
                 result.append(e.seed(s))
         return result
 
-    def render(self, **kwargs) -> None:
+    def render(self, **kwargs) -> List[Any]:
         result = []
         for e in self.envs:
             if hasattr(e, 'render'):
                 result.append(e.render(**kwargs))
         return result
 
-    def close(self) -> None:
+    def close(self) -> List[Any]:
         return [e.close() for e in self.envs]
 
 
@@ -169,6 +90,8 @@ def worker(parent, p, env_fn_wrapper):
                 p.send(env.render(**data) if hasattr(env, 'render') else None)
             elif cmd == 'seed':
                 p.send(env.seed(data) if hasattr(env, 'seed') else None)
+            elif cmd == 'getattr':
+                p.send(getattr(env, data) if hasattr(env, data) else None)
             else:
                 p.close()
                 raise NotImplementedError
@@ -201,35 +124,37 @@ class SubprocVectorEnv(BaseVectorEnv):
         for c in self.child_remote:
             c.close()
 
-    def step(self, action: np.ndarray
+    def __getattr__(self, key):
+        for p in self.parent_remote:
+            p.send(['getattr', key])
+        return [p.recv() for p in self.parent_remote]
+
+    def step(self,
+             action: np.ndarray,
+             id: Optional[Union[int, List[int]]] = None
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        assert len(action) == self.env_num
-        for p, a in zip(self.parent_remote, action):
-            p.send(['step', a])
-        result = [p.recv() for p in self.parent_remote]
-        self._obs, self._rew, self._done, self._info = zip(*result)
-        self._obs = np.stack(self._obs)
-        self._rew = np.stack(self._rew)
-        self._done = np.stack(self._done)
-        self._info = np.stack(self._info)
-        return self._obs, self._rew, self._done, self._info
-
-    def reset(self, id: Optional[Union[int, List[int]]] = None) -> None:
         if id is None:
-            for p in self.parent_remote:
-                p.send(['reset', None])
-            self._obs = np.stack([p.recv() for p in self.parent_remote])
-            return self._obs
-        else:
-            if np.isscalar(id):
-                id = [id]
-            for i in id:
-                self.parent_remote[i].send(['reset', None])
-            for i in id:
-                self._obs[i] = self.parent_remote[i].recv()
-            return self._obs
+            id = range(self.env_num)
+        elif np.isscalar(id):
+            id = [id]
+        assert len(action) == len(id)
+        for i, j in enumerate(id):
+            self.parent_remote[j].send(['step', action[i]])
+        result = [self.parent_remote[i].recv() for i in id]
+        obs, rew, done, info = map(np.stack, zip(*result))
+        return obs, rew, done, info
 
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
+    def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+        if id is None:
+            id = range(self.env_num)
+        elif np.isscalar(id):
+            id = [id]
+        for i in id:
+            self.parent_remote[i].send(['reset', None])
+        obs = np.stack([self.parent_remote[i].recv() for i in id])
+        return obs
+
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
@@ -238,14 +163,14 @@ class SubprocVectorEnv(BaseVectorEnv):
             p.send(['seed', s])
         return [p.recv() for p in self.parent_remote]
 
-    def render(self, **kwargs) -> None:
+    def render(self, **kwargs) -> List[Any]:
         for p in self.parent_remote:
             p.send(['render', kwargs])
         return [p.recv() for p in self.parent_remote]
 
-    def close(self) -> None:
+    def close(self) -> List[Any]:
         if self.closed:
-            return
+            return []
         for p in self.parent_remote:
             p.send(['close', None])
         result = [p.recv() for p in self.parent_remote]
@@ -279,44 +204,44 @@ class RayVectorEnv(BaseVectorEnv):
             ray.remote(gym.Wrapper).options(num_cpus=0).remote(e())
             for e in env_fns]
 
-    def step(self, action: np.ndarray
+    def __getattr__(self, key):
+        return ray.get([e.__getattr__.remote(key) for e in self.envs])
+
+    def step(self,
+             action: np.ndarray,
+             id: Optional[Union[int, List[int]]] = None
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        assert len(action) == self.env_num
-        result = ray.get([e.step.remote(a) for e, a in zip(self.envs, action)])
-        self._obs, self._rew, self._done, self._info = zip(*result)
-        self._obs = np.stack(self._obs)
-        self._rew = np.stack(self._rew)
-        self._done = np.stack(self._done)
-        self._info = np.stack(self._info)
-        return self._obs, self._rew, self._done, self._info
-
-    def reset(self, id: Optional[Union[int, List[int]]] = None) -> None:
         if id is None:
-            result_obj = [e.reset.remote() for e in self.envs]
-            self._obs = np.stack(ray.get(result_obj))
-        else:
-            result_obj = []
-            if np.isscalar(id):
-                id = [id]
-            for i in id:
-                result_obj.append(self.envs[i].reset.remote())
-            for _, i in enumerate(id):
-                self._obs[i] = ray.get(result_obj[_])
-        return self._obs
+            id = range(self.env_num)
+        elif np.isscalar(id):
+            id = [id]
+        assert len(action) == len(id)
+        result = ray.get([self.envs[j].step.remote(action[i])
+                          for i, j in enumerate(id)])
+        obs, rew, done, info = map(np.stack, zip(*result))
+        return obs, rew, done, info
 
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
+    def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+        if id is None:
+            id = range(self.env_num)
+        elif np.isscalar(id):
+            id = [id]
+        obs = np.stack(ray.get([self.envs[i].reset.remote() for i in id]))
+        return obs
+
+    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
         if not hasattr(self.envs[0], 'seed'):
-            return
+            return []
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
             seed = [seed] * self.env_num
         return ray.get([e.seed.remote(s) for e, s in zip(self.envs, seed)])
 
-    def render(self, **kwargs) -> None:
+    def render(self, **kwargs) -> List[Any]:
         if not hasattr(self.envs[0], 'render'):
-            return
+            return [None for e in self.envs]
         return ray.get([e.render.remote(**kwargs) for e in self.envs])
 
-    def close(self) -> None:
+    def close(self) -> List[Any]:
         return ray.get([e.close.remote() for e in self.envs])

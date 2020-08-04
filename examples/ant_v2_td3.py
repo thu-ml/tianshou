@@ -9,8 +9,9 @@ from tianshou.policy import TD3Policy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import VectorEnv, SubprocVectorEnv
-
-from continuous_net import Actor, Critic
+from tianshou.exploration import GaussianNoise
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import Actor, Critic
 
 
 def get_args():
@@ -59,22 +60,22 @@ def test_td3(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
+    net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = Actor(
-        args.layer_num, args.state_shape, args.action_shape,
+        net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    critic1 = Critic(
-        args.layer_num, args.state_shape, args.action_shape, args.device
-    ).to(args.device)
+    net = Net(args.layer_num, args.state_shape,
+              args.action_shape, concat=True, device=args.device)
+    critic1 = Critic(net, args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = Critic(
-        args.layer_num, args.state_shape, args.action_shape, args.device
-    ).to(args.device)
+    critic2 = Critic(net, args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
     policy = TD3Policy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-        args.tau, args.gamma, args.exploration_noise, args.policy_noise,
+        args.tau, args.gamma,
+        GaussianNoise(sigma=args.exploration_noise), args.policy_noise,
         args.update_actor_freq, args.noise_clip,
         [env.action_space.low[0], env.action_space.high[0]],
         reward_normalization=True, ignore_done=True)
@@ -93,7 +94,7 @@ def test_td3(args=get_args()):
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
-        args.batch_size, stop_fn=stop_fn, writer=writer, task=args.task)
+        args.batch_size, stop_fn=stop_fn, writer=writer)
     assert stop_fn(result['best_reward'])
     train_collector.close()
     test_collector.close()

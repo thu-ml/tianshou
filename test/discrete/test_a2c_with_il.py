@@ -10,11 +10,8 @@ from tianshou.env import VectorEnv
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
-
-if __name__ == '__main__':
-    from net import Net, Actor, Critic
-else:  # pytest
-    from test.discrete.net import Net, Actor, Critic
+from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.net.common import Net
 
 
 def get_args():
@@ -31,7 +28,7 @@ def get_args():
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=2)
-    parser.add_argument('--training-num', type=int, default=32)
+    parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -40,7 +37,7 @@ def get_args():
         default='cuda' if torch.cuda.is_available() else 'cpu')
     # a2c special
     parser.add_argument('--vf-coef', type=float, default=0.5)
-    parser.add_argument('--ent-coef', type=float, default=0.001)
+    parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--max-grad-norm', type=float, default=None)
     parser.add_argument('--gae-lambda', type=float, default=1.)
     parser.add_argument('--rew-norm', type=bool, default=False)

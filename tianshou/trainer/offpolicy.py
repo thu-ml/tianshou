@@ -18,6 +18,7 @@ def offpolicy_trainer(
         collect_per_step: int,
         episode_per_test: Union[int, List[int]],
         batch_size: int,
+        update_per_step: int = 1,
         train_fn: Optional[Callable[[int], None]] = None,
         test_fn: Optional[Callable[[int], None]] = None,
         stop_fn: Optional[Callable[[float], bool]] = None,
@@ -26,7 +27,7 @@ def offpolicy_trainer(
         writer: Optional[SummaryWriter] = None,
         log_interval: int = 1,
         verbose: bool = True,
-        **kwargs
+        test_in_train: bool = True,
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for off-policy trainer procedure.
 
@@ -42,10 +43,13 @@ def offpolicy_trainer(
         in one epoch.
     :param int collect_per_step: the number of frames the collector would
         collect before the network update. In other words, collect some frames
-        and do one policy network update.
+        and do some policy network update.
     :param episode_per_test: the number of episodes for one policy evaluation.
     :param int batch_size: the batch size of sample data, which is going to
         feed in the policy network.
+    :param int update_per_step: the number of times the policy network would
+        be updated after frames be collected. In other words, collect some
+        frames and do some policy network update.
     :param function train_fn: a function receives the current number of epoch
         index and performs some operations at the beginning of training in this
         epoch.
@@ -62,6 +66,7 @@ def offpolicy_trainer(
         SummaryWriter.
     :param int log_interval: the log interval of the writer.
     :param bool verbose: whether to print the information.
+    :param bool test_in_train: whether to test in the training phase.
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
@@ -69,7 +74,7 @@ def offpolicy_trainer(
     best_epoch, best_reward = -1, -1
     stat = {}
     start_time = time.time()
-    test_in_train = train_collector.policy == policy
+    test_in_train = test_in_train and train_collector.policy == policy
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()
@@ -98,7 +103,7 @@ def offpolicy_trainer(
                         policy.train()
                         if train_fn:
                             train_fn(epoch)
-                for i in range(min(
+                for i in range(update_per_step * min(
                         result['n/st'] // collect_per_step, t.total - t.n)):
                     global_step += 1
                     losses = policy.learn(train_collector.sample(batch_size))

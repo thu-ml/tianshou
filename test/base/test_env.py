@@ -1,5 +1,6 @@
 import time
 import numpy as np
+from gym.spaces.discrete import Discrete
 from tianshou.env import VectorEnv, SubprocVectorEnv, RayVectorEnv
 
 if __name__ == '__main__':
@@ -11,14 +12,8 @@ else:  # pytest
 def test_vecenv(size=10, num=8, sleep=0.001):
     verbose = __name__ == '__main__'
     env_fns = [
-        lambda: MyTestEnv(size=size, sleep=sleep),
-        lambda: MyTestEnv(size=size + 1, sleep=sleep),
-        lambda: MyTestEnv(size=size + 2, sleep=sleep),
-        lambda: MyTestEnv(size=size + 3, sleep=sleep),
-        lambda: MyTestEnv(size=size + 4, sleep=sleep),
-        lambda: MyTestEnv(size=size + 5, sleep=sleep),
-        lambda: MyTestEnv(size=size + 6, sleep=sleep),
-        lambda: MyTestEnv(size=size + 7, sleep=sleep),
+        lambda i=i: MyTestEnv(size=i, sleep=sleep)
+        for i in range(size, size + num)
     ]
     venv = [
         VectorEnv(env_fns),
@@ -39,7 +34,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
                     A = v.reset(np.where(C)[0])
                 o.append([A, B, C, D])
             for i in zip(*o):
-                for j in range(1, len(i)):
+                for j in range(1, len(i) - 1):
                     assert (i[0] == i[j]).all()
     else:
         t = [0, 0, 0]
@@ -54,6 +49,11 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         print(f'VectorEnv: {t[0]:.6f}s')
         print(f'SubprocVectorEnv: {t[1]:.6f}s')
         print(f'RayVectorEnv: {t[2]:.6f}s')
+    for v in venv:
+        assert v.size == list(range(size, size + num))
+        assert v.env_num == num
+        assert v.action_space == [Discrete(2)] * num
+
     for v in venv:
         v.close()
 

@@ -4,7 +4,7 @@ from torch import nn
 from typing import Dict, List, Tuple, Union, Optional
 
 from tianshou.policy import PGPolicy
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 
 
 class PPOPolicy(PGPolicy):
@@ -53,7 +53,7 @@ class PPOPolicy(PGPolicy):
                  ent_coef: float = .01,
                  action_range: Optional[Tuple[float, float]] = None,
                  gae_lambda: float = 0.95,
-                 dual_clip: float = None,
+                 dual_clip: Optional[float] = None,
                  value_clip: bool = True,
                  reward_normalization: bool = True,
                  **kwargs) -> None:
@@ -74,13 +74,12 @@ class PPOPolicy(PGPolicy):
         self._dual_clip = dual_clip
         self._value_clip = value_clip
         self._rew_norm = reward_normalization
-        self.__eps = np.finfo(np.float32).eps.item()
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
         if self._rew_norm:
             mean, std = batch.rew.mean(), batch.rew.std()
-            if std > self.__eps:
+            if not np.isclose(std, 0):
                 batch.rew = (batch.rew - mean) / std
         if self._lambda in [0, 1]:
             return self.compute_episodic_return(
@@ -89,7 +88,7 @@ class PPOPolicy(PGPolicy):
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False):
                 v_.append(self.critic(b.obs_next))
-        v_ = torch.cat(v_, dim=0).cpu().numpy()
+        v_ = to_numpy(torch.cat(v_, dim=0))
         return self.compute_episodic_return(
             batch, v_, gamma=self._gamma, gae_lambda=self._lambda)
 
@@ -130,28 +129,26 @@ class PPOPolicy(PGPolicy):
             for b in batch.split(batch_size, shuffle=False):
                 v.append(self.critic(b.obs))
                 old_log_prob.append(self(b).dist.log_prob(
-                    torch.tensor(b.act, device=v[0].device)))
-        batch.v = torch.cat(v, dim=0)  # old value
-        dev = batch.v.device
-        batch.act = torch.tensor(batch.act, dtype=torch.float, device=dev)
-        batch.logp_old = torch.cat(old_log_prob, dim=0)
-        batch.returns = torch.tensor(
-            batch.returns, dtype=torch.float, device=dev
-        ).reshape(batch.v.shape)
+                    to_torch_as(b.act, v[0])))
+        batch.v = torch.cat(v, dim=0).squeeze(-1)  # old value
+        batch.act = to_torch_as(batch.act, v[0])
+        batch.logp_old = torch.cat(old_log_prob, dim=0).reshape(batch.v.shape)
+        batch.returns = to_torch_as(batch.returns, v[0])
         if self._rew_norm:
             mean, std = batch.returns.mean(), batch.returns.std()
-            if std > self.__eps:
+            if not np.isclose(std.item(), 0):
                 batch.returns = (batch.returns - mean) / std
         batch.adv = batch.returns - batch.v
         if self._rew_norm:
             mean, std = batch.adv.mean(), batch.adv.std()
-            if std > self.__eps:
+            if not np.isclose(std.item(), 0):
                 batch.adv = (batch.adv - mean) / std
         for _ in range(repeat):
             for b in batch.split(batch_size):
                 dist = self(b).dist
-                value = self.critic(b.obs)
-                ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
+                value = self.critic(b.obs).squeeze(-1)
+                ratio = (dist.log_prob(b.act).reshape(value.shape) - b.logp_old
+                         ).exp().float()
                 surr1 = ratio * b.adv
                 surr2 = ratio.clamp(
                     1. - self._eps_clip, 1. + self._eps_clip) * b.adv

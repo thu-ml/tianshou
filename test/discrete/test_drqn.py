@@ -10,17 +10,13 @@ from tianshou.env import VectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-
-if __name__ == '__main__':
-    from net import Recurrent
-else:  # pytest
-    from test.discrete.net import Recurrent
+from tianshou.utils.net.common import Recurrent
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=1626)
+    parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--eps-test', type=float, default=0.05)
     parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
@@ -63,12 +59,10 @@ def test_drqn(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Recurrent(args.layer_num, args.state_shape,
-                    args.action_shape, args.device)
-    net = net.to(args.device)
+                    args.action_shape, args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
         net, optim, args.gamma, args.n_step,
-        use_target_network=args.target_update_freq > 0,
         target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(

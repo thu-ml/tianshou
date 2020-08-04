@@ -10,42 +10,56 @@ Welcome to Tianshou!
 
 * :class:`~tianshou.policy.PGPolicy` `Policy Gradient <https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf>`_
 * :class:`~tianshou.policy.DQNPolicy` `Deep Q-Network <https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf>`_
-* :class:`~tianshou.policy.DQNPolicy` `Double DQN <https://arxiv.org/pdf/1509.06461.pdf>`_ with n-step returns
-* :class:`~tianshou.policy.DQNPolicy` `Prioritized DQN <https://arxiv.org/pdf/1511.05952.pdf>`_
+* :class:`~tianshou.policy.DQNPolicy` `Double DQN <https://arxiv.org/pdf/1509.06461.pdf>`_
 * :class:`~tianshou.policy.A2CPolicy` `Advantage Actor-Critic <https://openai.com/blog/baselines-acktr-a2c/>`_
 * :class:`~tianshou.policy.DDPGPolicy` `Deep Deterministic Policy Gradient <https://arxiv.org/pdf/1509.02971.pdf>`_
 * :class:`~tianshou.policy.PPOPolicy` `Proximal Policy Optimization <https://arxiv.org/pdf/1707.06347.pdf>`_
 * :class:`~tianshou.policy.TD3Policy` `Twin Delayed DDPG <https://arxiv.org/pdf/1802.09477.pdf>`_
 * :class:`~tianshou.policy.SACPolicy` `Soft Actor-Critic <https://arxiv.org/pdf/1812.05905.pdf>`_
 * :class:`~tianshou.policy.ImitationPolicy` Imitation Learning
-* :meth:`~tianshou.policy.BasePolicy.compute_episodic_return` `Generalized Advantage Estimation <https://arxiv.org/pdf/1506.02438.pdf>`_
+* :class:`~tianshou.data.PrioritizedReplayBuffer` `Prioritized Experience Replay <https://arxiv.org/pdf/1511.05952.pdf>`_
+* :meth:`~tianshou.policy.BasePolicy.compute_episodic_return` `Generalized Advantage Estimator <https://arxiv.org/pdf/1506.02438.pdf>`_
 
+Here is Tianshou's other features:
 
-Tianshou supports parallel workers for all algorithms as well. All of these algorithms are reformatted as replay-buffer based algorithms.
+* Elegant framework, using only ~2000 lines of code
+* Support parallel environment sampling for all algorithms: :ref:`parallel_sampling`
+* Support recurrent state representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
+* Support any type of environment state (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
+* Support customized training process: :ref:`customize_training`
+* Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` for all Q-learning based algorithms
+* Support multi-agent RL: :doc:`/tutorials/tictactoe`
 
+中文文档位于 `https://tianshou.readthedocs.io/zh/latest/ <https://tianshou.readthedocs.io/zh/latest/>`_
 
 Installation
 ------------
 
-Tianshou is currently hosted on `PyPI <https://pypi.org/project/tianshou/>`_. You can simply install Tianshou with the following command:
-::
+Tianshou is currently hosted on `PyPI <https://pypi.org/project/tianshou/>`_. You can simply install Tianshou with the following command (with Python >= 3.6):
 
-    pip3 install tianshou
+.. code-block:: bash
+
+    $ pip install tianshou
 
 You can also install with the newest version through GitHub:
-::
 
-    pip3 install git+https://github.com/thu-ml/tianshou.git@master
+.. code-block:: bash
+
+    # latest release
+    $ pip install git+https://github.com/thu-ml/tianshou.git@master
+    # develop version
+    $ pip install git+https://github.com/thu-ml/tianshou.git@dev
 
 If you use Anaconda or Miniconda, you can install Tianshou through the following command lines:
-::
+
+.. code-block:: bash
 
     # create a new virtualenv and install pip, change the env name if you like
-    conda create -n myenv pip
+    $ conda create -n myenv pip
     # activate the environment
-    conda activate myenv
+    $ conda activate myenv
     # install tianshou
-    pip install tianshou
+    $ pip install tianshou
 
 After installation, open your python console and type
 ::
@@ -55,7 +69,7 @@ After installation, open your python console and type
 
 If no error occurs, you have successfully installed Tianshou.
 
-Tianshou is still under development, you can also check out the documents in stable version through `tianshou.readthedocs.io/en/stable/ <https://tianshou.readthedocs.io/en/stable/>`_.
+Tianshou is still under development, you can also check out the documents in stable version through `tianshou.readthedocs.io/en/stable/ <https://tianshou.readthedocs.io/en/stable/>`_ and the develop version through `tianshou.readthedocs.io/en/dev/ <https://tianshou.readthedocs.io/en/dev/>`_.
 
 .. toctree::
    :maxdepth: 1
@@ -63,6 +77,8 @@ Tianshou is still under development, you can also check out the documents in sta
 
    tutorials/dqn
    tutorials/concepts
+   tutorials/batch
+   tutorials/tictactoe
    tutorials/trick
    tutorials/cheatsheet
 

@@ -3,7 +3,7 @@ import numpy as np
 import torch.nn.functional as F
 from typing import Dict, Union, Optional
 
-from tianshou.data import Batch
+from tianshou.data import Batch, to_torch
 from tianshou.policy import BasePolicy
 
 
@@ -23,7 +23,7 @@ class ImitationPolicy(BasePolicy):
     """
 
     def __init__(self, model: torch.nn.Module, optim: torch.optim.Optimizer,
-                 mode: str = 'continuous', **kwargs) -> None:
+                 mode: str = 'continuous') -> None:
         super().__init__()
         self.model = model
         self.optim = optim
@@ -46,11 +46,11 @@ class ImitationPolicy(BasePolicy):
         self.optim.zero_grad()
         if self.mode == 'continuous':
             a = self(batch).act
-            a_ = torch.tensor(batch.act, dtype=torch.float, device=a.device)
+            a_ = to_torch(batch.act, dtype=torch.float32, device=a.device)
             loss = F.mse_loss(a, a_)
         elif self.mode == 'discrete':  # classification
             a = self(batch).logits
-            a_ = torch.tensor(batch.act, dtype=torch.long, device=a.device)
+            a_ = to_torch(batch.act, dtype=torch.long, device=a.device)
             loss = F.nll_loss(a, a_)
         loss.backward()
         self.optim.step()

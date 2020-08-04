@@ -10,11 +10,9 @@ from tianshou.env import VectorEnv
 from tianshou.policy import DDPGPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-
-if __name__ == '__main__':
-    from net import Actor, Critic
-else:  # pytest
-    from test.continuous.net import Actor, Critic
+from tianshou.exploration import GaussianNoise
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import Actor, Critic
 
 
 def get_args():
@@ -27,6 +25,7 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--exploration-noise', type=float, default=0.1)
+    parser.add_argument('--test-noise', type=float, default=0.1)
     parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=2400)
     parser.add_argument('--collect-per-step', type=int, default=4)
@@ -36,7 +35,9 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--rew-norm', type=bool, default=True)
+    parser.add_argument('--rew-norm', type=int, default=1)
+    parser.add_argument('--ignore-done', type=int, default=1)
+    parser.add_argument('--n-step', type=int, default=1)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -65,24 +66,28 @@ def test_ddpg(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
+    net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = Actor(
-        args.layer_num, args.state_shape, args.action_shape,
+        net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    critic = Critic(
-        args.layer_num, args.state_shape, args.action_shape, args.device
-    ).to(args.device)
+    net = Net(args.layer_num, args.state_shape,
+              args.action_shape, concat=True, device=args.device)
+    critic = Critic(net, args.device).to(args.device)
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
     policy = DDPGPolicy(
         actor, actor_optim, critic, critic_optim,
-        args.tau, args.gamma, args.exploration_noise,
+        args.tau, args.gamma, GaussianNoise(sigma=args.exploration_noise),
         [env.action_space.low[0], env.action_space.high[0]],
-        reward_normalization=args.rew_norm, ignore_done=True)
+        reward_normalization=args.rew_norm,
+        ignore_done=args.ignore_done,
+        estimation_step=args.n_step)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(
+        policy, test_envs, action_noise=GaussianNoise(sigma=args.test_noise))
     # log
     log_path = os.path.join(args.logdir, args.task, 'ddpg')
     writer = SummaryWriter(log_path)

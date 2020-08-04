@@ -10,11 +10,9 @@ from tianshou.env import VectorEnv
 from tianshou.policy import TD3Policy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-
-if __name__ == '__main__':
-    from net import Actor, Critic
-else:  # pytest
-    from test.continuous.net import Actor, Critic
+from tianshou.exploration import GaussianNoise
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import Actor, Critic
 
 
 def get_args():
@@ -39,7 +37,9 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--rew-norm', type=bool, default=True)
+    parser.add_argument('--rew-norm', type=int, default=1)
+    parser.add_argument('--ignore-done', type=int, default=1)
+    parser.add_argument('--n-step', type=int, default=1)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -68,25 +68,26 @@ def test_td3(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
+    net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = Actor(
-        args.layer_num, args.state_shape, args.action_shape,
+        net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    critic1 = Critic(
-        args.layer_num, args.state_shape, args.action_shape, args.device
-    ).to(args.device)
+    net = Net(args.layer_num, args.state_shape,
+              args.action_shape, concat=True, device=args.device)
+    critic1 = Critic(net, args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = Critic(
-        args.layer_num, args.state_shape, args.action_shape, args.device
-    ).to(args.device)
+    critic2 = Critic(net, args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
     policy = TD3Policy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-        args.tau, args.gamma, args.exploration_noise, args.policy_noise,
-        args.update_actor_freq, args.noise_clip,
+        args.tau, args.gamma, GaussianNoise(sigma=args.exploration_noise),
+        args.policy_noise, args.update_actor_freq, args.noise_clip,
         [env.action_space.low[0], env.action_space.high[0]],
-        reward_normalization=args.rew_norm, ignore_done=True)
+        reward_normalization=args.rew_norm,
+        ignore_done=args.ignore_done,
+        estimation_step=args.n_step)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))

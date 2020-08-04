@@ -8,14 +8,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import VectorEnv
 from tianshou.policy import PPOPolicy
-from tianshou.policy.utils import DiagGaussian
+from tianshou.policy.dist import DiagGaussian
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-
-if __name__ == '__main__':
-    from net import ActorProb, Critic
-else:  # pytest
-    from test.continuous.net import ActorProb, Critic
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():
@@ -44,9 +41,9 @@ def get_args():
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
     parser.add_argument('--gae-lambda', type=float, default=0.95)
-    parser.add_argument('--rew-norm', type=bool, default=True)
-    # parser.add_argument('--dual-clip', type=float, default=5.)
-    parser.add_argument('--value-clip', type=bool, default=True)
+    parser.add_argument('--rew-norm', type=int, default=1)
+    parser.add_argument('--dual-clip', type=float, default=None)
+    parser.add_argument('--value-clip', type=int, default=1)
     args = parser.parse_known_args()[0]
     return args
 
@@ -72,13 +69,14 @@ def test_ppo(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
+    net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = ActorProb(
-        args.layer_num, args.state_shape, args.action_shape,
+        net, args.action_shape,
         args.max_action, args.device
     ).to(args.device)
-    critic = Critic(
+    critic = Critic(Net(
         args.layer_num, args.state_shape, device=args.device
-    ).to(args.device)
+    ), device=args.device).to(args.device)
     # orthogonal initialization
     for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):

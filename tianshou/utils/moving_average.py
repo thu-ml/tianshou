@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from typing import Union
 
+from tianshou.data import to_numpy
+
 
 class MovAvg(object):
     """Class for moving average. It will automatically exclude the infinity and
@@ -32,7 +34,7 @@ class MovAvg(object):
         only one element, a python scalar, or a list of python scalar.
         """
         if isinstance(x, torch.Tensor):
-            x = x.item()
+            x = to_numpy(x.flatten())
         if isinstance(x, list) or isinstance(x, np.ndarray):
             for _ in x:
                 if _ not in self.banned:

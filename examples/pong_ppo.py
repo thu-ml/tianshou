@@ -8,9 +8,10 @@ from tianshou.policy import PPOPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.env.atari import create_atari_environment
+from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.net.common import Net
 
-from discrete_net import Net, Actor, Critic
+from atari import create_atari_environment, preprocess_fn
 
 
 def get_args():
@@ -44,17 +45,16 @@ def get_args():
 
 
 def test_ppo(args=get_args()):
-    env = create_atari_environment(
-        args.task, max_episode_steps=args.max_episode_steps)
+    env = create_atari_environment(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space().shape or env.action_space().n
     # train_envs = gym.make(args.task)
-    train_envs = SubprocVectorEnv([lambda: create_atari_environment(
-        args.task, max_episode_steps=args.max_episode_steps)
+    train_envs = SubprocVectorEnv([
+        lambda: create_atari_environment(args.task)
         for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv([lambda: create_atari_environment(
-        args.task, max_episode_steps=args.max_episode_steps)
+    test_envs = SubprocVectorEnv([
+        lambda: create_atari_environment(args.task)
         for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
@@ -77,8 +77,9 @@ def test_ppo(args=get_args()):
         action_range=None)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
-    test_collector = Collector(policy, test_envs)
+        policy, train_envs, ReplayBuffer(args.buffer_size),
+        preprocess_fn=preprocess_fn)
+    test_collector = Collector(policy, test_envs, preprocess_fn=preprocess_fn)
     # log
     writer = SummaryWriter(args.logdir + '/' + 'ppo')
 
@@ -92,15 +93,14 @@ def test_ppo(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
-        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer,
-        task=args.task)
+        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer)
     train_collector.close()
     test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
         env = create_atari_environment(args.task)
-        collector = Collector(policy, env)
+        collector = Collector(policy, env, preprocess_fn=preprocess_fn)
         result = collector.collect(n_step=2000, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
         collector.close()

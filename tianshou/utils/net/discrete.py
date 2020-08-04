@@ -4,53 +4,44 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class Net(nn.Module):
-    def __init__(self, layer_num, state_shape, action_shape=0, device='cpu'):
-        super().__init__()
-        self.device = device
-        self.model = [
-            nn.Linear(np.prod(state_shape), 128),
-            nn.ReLU(inplace=True)]
-        for i in range(layer_num):
-            self.model += [nn.Linear(128, 128), nn.ReLU(inplace=True)]
-        if action_shape:
-            self.model += [nn.Linear(128, np.prod(action_shape))]
-        self.model = nn.Sequential(*self.model)
-
-    def forward(self, s, state=None, info={}):
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(s, device=self.device, dtype=torch.float)
-        batch = s.shape[0]
-        s = s.view(batch, -1)
-        logits = self.model(s)
-        return logits, state
-
-
 class Actor(nn.Module):
-    def __init__(self, preprocess_net, action_shape):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
+    def __init__(self, preprocess_net, action_shape, hidden_layer_size=128):
         super().__init__()
         self.preprocess = preprocess_net
-        self.last = nn.Linear(128, np.prod(action_shape))
+        self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
 
     def forward(self, s, state=None, info={}):
+        r"""s -> Q(s, \*)"""
         logits, h = self.preprocess(s, state)
         logits = F.softmax(self.last(logits), dim=-1)
         return logits, h
 
 
 class Critic(nn.Module):
-    def __init__(self, preprocess_net):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
+    def __init__(self, preprocess_net, hidden_layer_size=128):
         super().__init__()
         self.preprocess = preprocess_net
-        self.last = nn.Linear(128, 1)
+        self.last = nn.Linear(hidden_layer_size, 1)
 
-    def forward(self, s):
-        logits, h = self.preprocess(s, None)
+    def forward(self, s, **kwargs):
+        """s -> V(s)"""
+        logits, h = self.preprocess(s, state=kwargs.get('state', None))
         logits = self.last(logits)
         return logits
 
 
 class DQN(nn.Module):
+    """For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
 
     def __init__(self, h, w, action_shape, device='cpu'):
         super(DQN, self).__init__()
@@ -73,8 +64,9 @@ class DQN(nn.Module):
         self.head = nn.Linear(512, action_shape)
 
     def forward(self, x, state=None, info={}):
+        r"""x -> Q(x, \*)"""
         if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float)
+            x = torch.tensor(x, device=self.device, dtype=torch.float32)
         x = x.permute(0, 3, 1, 2)
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
