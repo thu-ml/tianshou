@@ -123,7 +123,10 @@ def test_sac_with_il(args=get_args()):
                 ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(net, optim, mode='continuous')
-    il_test_collector = Collector(il_policy, test_envs)
+    il_test_collector = Collector(
+        il_policy,
+        VectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    )
     train_collector.reset()
     result = offpolicy_trainer(
         il_policy, train_collector, il_test_collector, args.epoch,
