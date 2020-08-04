@@ -1,0 +1,50 @@
+import gym
+import numpy as np
+from abc import ABC, abstractmethod
+from typing import List, Tuple, Optional, Callable, Any
+
+
+class EnvWorker(ABC, gym.Env):
+    """An abstract worker for an environment.
+    """
+
+    def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
+        self._env_fn = env_fn
+
+    def __getattribute__(self, key: str):
+        if key not in ('observation_space', 'action_space'):
+            return super().__getattribute__(key)
+        else:
+            return self.__getattr__(key)
+
+    @abstractmethod
+    def __getattr__(self, key: str):
+        pass
+
+    @abstractmethod
+    def reset(self):
+        pass
+
+    @abstractmethod
+    def step(self, action: np.ndarray
+             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        pass
+
+    @abstractmethod
+    def seed(self, seed: Optional[int] = None):
+        pass
+
+    @abstractmethod
+    def render(self, **kwargs) -> None:
+        pass
+
+    @abstractmethod
+    def close(self) -> Any:
+        pass
+
+    @staticmethod
+    def wait(workers: List['EnvWorker']) -> List['EnvWorker']:
+        """
+        Given a list of workers, return those ready ones.
+        """
+        raise NotImplementedError
