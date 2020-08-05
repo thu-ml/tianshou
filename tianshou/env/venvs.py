@@ -185,8 +185,9 @@ class BaseVectorEnv(gym.Env):
             elif np.isscalar(id):
                 id = [id]
             assert len(action) == len(id)
-            result = [self.workers[j].step(action[i]) for
-                      i, j in enumerate(id)]
+            for i, j in enumerate(id):
+                self.workers[j].send_action(action[i])
+            result = [self.workers[j].get_result() for j in id]
             obs, rew, done, info = map(np.stack, zip(*result))
             return obs, rew, done, info
         else:
