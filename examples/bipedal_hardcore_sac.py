@@ -42,40 +42,34 @@ def get_args():
     args = parser.parse_known_args()[0]
     return args
 
+# env wrapper for reward scale, action repeat and action noise
+class EnvWrapper(object):
+    def __init__(self, env, action_repeat=3,
+                 reward_scale=5, act_noise=0.3):
+        self._env = env
+        self.action_repeat = action_repeat
+        self.reward_scale = reward_scale
+        self.act_noise = act_noise
+
+    def __getattr__(self, name):
+        return getattr(self._env, name)
+
+    def step(self, action):
+        # add action noise
+        action += self.act_noise * (-2 * np.random.random(4) + 1)
+        r = 0.0
+        for _ in range(self.action_repeat):
+            obs_, reward_, done_, info_ = self._env.step(action)
+            # remove done reward penalty
+            if done_:
+                break
+            r = r + reward_
+        # scale reward
+        return obs_, self.reward_scale * r, done_, info_
+
 
 def test_sac_bipedal(args=get_args()):
     torch.set_num_threads(1)  # we just need only one thread for NN
-
-    # env wrapper for reward scale, action repeat and action noise
-    class EnvWrapper(object):
-        def __init__(self, env,
-                     action_repeat=3,
-                     reward_scale=5,
-                     act_noise=0.3):
-            self._env = env
-            self.action_repeat = action_repeat
-            self.reward_scale = reward_scale
-            self.act_noise = act_noise
-
-        def __getattr__(self, name):
-            return getattr(self._env, name)
-
-        def step(self, action):
-            # add action noise
-            action += self.act_noise * (-2 * np.random.random(4) + 1)
-
-            r = 0.0
-            for _ in range(self.action_repeat):
-                obs_, reward_, done_, info_ = self._env.step(action)
-
-                # remove done reward penalty
-                if done_:
-                    break
-
-                r = r + reward_
-
-            # scale reward
-            return obs_, self.reward_scale * r, done_, info_
 
     def MakeEnv():
         return EnvWrapper(gym.make(args.task))
