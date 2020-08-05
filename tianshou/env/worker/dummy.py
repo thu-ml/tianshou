@@ -30,7 +30,7 @@ class SequentialEnvWorker(EnvWorker):
         return self.env.reset()
 
     def send_action(self, action: np.ndarray):
-        self._result = self.env.step(self.action)
+        self.result = self.env.step(action)
 
     def seed(self, seed: Optional[int] = None):
         return self.env.seed(seed) if hasattr(self.env, 'seed') else None

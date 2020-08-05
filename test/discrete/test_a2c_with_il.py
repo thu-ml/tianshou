@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import VectorEnv
+from tianshou.env import ForLoopVectorEnv
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
@@ -52,10 +52,10 @@ def test_a2c_with_il(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
-    train_envs = VectorEnv(
+    train_envs = ForLoopVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = VectorEnv(
+    test_envs = ForLoopVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
@@ -113,7 +113,7 @@ def test_a2c_with_il(args=get_args()):
     il_policy = ImitationPolicy(net, optim, mode='discrete')
     il_test_collector = Collector(
         il_policy,
-        VectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+        ForLoopVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     )
     train_collector.reset()
     result = offpolicy_trainer(

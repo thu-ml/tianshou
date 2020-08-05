@@ -199,8 +199,8 @@ Make environments:
 
 ```python
 # you can also try with SubprocVectorEnv
-train_envs = ts.env.VectorEnv([lambda: gym.make(task) for _ in range(train_num)])
-test_envs = ts.env.VectorEnv([lambda: gym.make(task) for _ in range(test_num)])
+train_envs = ts.env.ForLoopVectorEnv([lambda: gym.make(task) for _ in range(train_num)])
+test_envs = ts.env.ForLoopVectorEnv([lambda: gym.make(task) for _ in range(test_num)])
 ```
 
 Define the network:

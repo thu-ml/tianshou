@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Optional, Tuple
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import VectorEnv
+from tianshou.env import ForLoopVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
@@ -106,8 +106,8 @@ def train_agent(args: argparse.Namespace = get_args(),
                 ) -> Tuple[dict, BasePolicy]:
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
-    train_envs = VectorEnv([env_func for _ in range(args.training_num)])
-    test_envs = VectorEnv([env_func for _ in range(args.test_num)])
+    train_envs = ForLoopVectorEnv([env_func for _ in range(args.training_num)])
+    test_envs = ForLoopVectorEnv([env_func for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)

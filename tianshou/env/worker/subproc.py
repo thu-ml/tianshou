@@ -143,8 +143,11 @@ class SubProcEnvWorker(EnvWorker):
         return self.parent_remote.recv()
 
     def close(self) -> Any:
-        self.parent_remote.send(['close', None])
-        result = self.parent_remote.recv()
+        try:
+            self.parent_remote.send(['close', None])
+            result = self.parent_remote.recv()
+        except (BrokenPipeError, EOFError):
+            result = None
         self.process.join()
         return result
 

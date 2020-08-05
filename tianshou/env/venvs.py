@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+import warnings
 from typing import List, Tuple, Union, Optional, Callable, Any
 from tianshou.env.worker.base import EnvWorker
 from tianshou.env.worker.subproc import SubProcEnvWorker
@@ -258,11 +259,26 @@ class BaseVectorEnv(gym.Env):
             pass
 
 
+class ForLoopVectorEnv(BaseVectorEnv):
+    def __init__(self,
+                 env_fns: List[Callable[[], gym.Env]],
+                 wait_num: Optional[int] = None,
+                 ) -> None:
+        super(ForLoopVectorEnv, self).__init__(
+            env_fns,
+            lambda fn: SequentialEnvWorker(fn),
+            wait_num=wait_num,
+        )
+
+
 class VectorEnv(BaseVectorEnv):
     def __init__(self,
                  env_fns: List[Callable[[], gym.Env]],
                  wait_num: Optional[int] = None,
                  ) -> None:
+        warnings.warn(
+            'VectorEnv is renamed to ForLoopVectorEnv, and will be removed'
+            ' in 0.3. Use ForLoopVectorEnv instead!', DeprecationWarning)
         super(VectorEnv, self).__init__(
             env_fns,
             lambda fn: SequentialEnvWorker(fn),
