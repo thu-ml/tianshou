@@ -1,14 +1,14 @@
+import gym
 import ctypes
+import numpy as np
 from collections import OrderedDict
-from multiprocessing import Array, Pipe, connection
 from multiprocessing.context import Process
+from multiprocessing import Array, Pipe, connection
 from typing import Callable, Any, List, Tuple, Optional
 
-import gym
-import numpy as np
 
+from tianshou.env.worker import EnvWorker
 from tianshou.env.utils import CloudpickleWrapper
-from tianshou.env.worker.base import EnvWorker
 
 
 def _worker(parent, p, env_fn_wrapper, obs_bufs=None):
@@ -59,18 +59,20 @@ def _worker(parent, p, env_fn_wrapper, obs_bufs=None):
         p.close()
 
 
-_NP_TO_CT = {np.bool: ctypes.c_bool,
-             np.bool_: ctypes.c_bool,
-             np.uint8: ctypes.c_uint8,
-             np.uint16: ctypes.c_uint16,
-             np.uint32: ctypes.c_uint32,
-             np.uint64: ctypes.c_uint64,
-             np.int8: ctypes.c_int8,
-             np.int16: ctypes.c_int16,
-             np.int32: ctypes.c_int32,
-             np.int64: ctypes.c_int64,
-             np.float32: ctypes.c_float,
-             np.float64: ctypes.c_double}
+_NP_TO_CT = {
+    np.bool: ctypes.c_bool,
+    np.bool_: ctypes.c_bool,
+    np.uint8: ctypes.c_uint8,
+    np.uint16: ctypes.c_uint16,
+    np.uint32: ctypes.c_uint32,
+    np.uint64: ctypes.c_uint64,
+    np.int8: ctypes.c_int8,
+    np.int16: ctypes.c_int16,
+    np.int32: ctypes.c_int32,
+    np.int64: ctypes.c_int64,
+    np.float32: ctypes.c_float,
+    np.float64: ctypes.c_double,
+}
 
 
 class ShArray:
@@ -92,11 +94,12 @@ class ShArray:
                              dtype=self.dtype).reshape(self.shape)
 
 
-class SubProcEnvWorker(EnvWorker):
+class SubprocEnvWorker(EnvWorker):
+    """Subprocess worker used in SubprocVectorEnv and ShmemVectorEnv."""
 
     def __init__(self, env_fn: Callable[[], gym.Env], share_memory=False
                  ) -> None:
-        super(SubProcEnvWorker, self).__init__(env_fn)
+        super().__init__(env_fn)
         self.parent_remote, self.child_remote = Pipe()
         self.share_memory = share_memory
         self.buffer = None
@@ -105,22 +108,26 @@ class SubProcEnvWorker(EnvWorker):
             obs_space = dummy.observation_space
             dummy.close()
             del dummy
-            self.buffer = SubProcEnvWorker._setup_buf(obs_space)
+            self.buffer = SubprocEnvWorker._setup_buf(obs_space)
         args = (self.parent_remote, self.child_remote,
                 CloudpickleWrapper(env_fn), self.buffer)
         self.process = Process(target=_worker, args=args, daemon=True)
         self.process.start()
         self.child_remote.close()
 
+    def __getattr__(self, key: str):
+        self.parent_remote.send(['getattr', key])
+        return self.parent_remote.recv()
+
     @staticmethod
     def _setup_buf(space):
         if isinstance(space, gym.spaces.Dict):
             assert isinstance(space.spaces, OrderedDict)
-            buffer = {k: SubProcEnvWorker._setup_buf(v)
+            buffer = {k: SubprocEnvWorker._setup_buf(v)
                       for k, v in space.spaces.items()}
         elif isinstance(space, gym.spaces.Tuple):
             assert isinstance(space.spaces, tuple)
-            buffer = tuple([SubProcEnvWorker._setup_buf(t)
+            buffer = tuple([SubprocEnvWorker._setup_buf(t)
                             for t in space.spaces])
         else:
             buffer = ShArray(space.dtype, space.shape)
@@ -152,14 +159,10 @@ class SubProcEnvWorker(EnvWorker):
         return result
 
     @staticmethod
-    def wait(workers: List['SubProcEnvWorker']) -> List['SubProcEnvWorker']:
+    def wait(workers: List['SubprocEnvWorker']) -> List['SubprocEnvWorker']:
         conns = [x.parent_remote for x in workers]
         ready_conns = connection.wait(conns)
         return [workers[conns.index(con)] for con in ready_conns]
-
-    def __getattr__(self, key: str):
-        self.parent_remote.send(['getattr', key])
-        return self.parent_remote.recv()
 
     def get_result(self
                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:

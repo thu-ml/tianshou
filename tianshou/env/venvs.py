@@ -1,10 +1,10 @@
 import gym
-import numpy as np
 import warnings
+import numpy as np
 from typing import List, Tuple, Union, Optional, Callable, Any
-from tianshou.env.worker.base import EnvWorker
-from tianshou.env.worker.subproc import SubProcEnvWorker
-from tianshou.env.worker.dummy import DummyEnvWorker
+
+from tianshou.env.worker import EnvWorker, DummyEnvWorker, SubprocEnvWorker, \
+    RayEnvWorker
 
 
 def run_once(f):
@@ -66,7 +66,7 @@ class BaseVectorEnv(gym.Env):
         Otherwise, the outputs of these envs may be the same with each other.
 
 
-    :param wait_num: used in asynchronous simulation if the time cost of
+    :param int wait_num: used in asynchronous simulation if the time cost of
         ``env.step`` varies with time and synchronously waiting for all
         environments to finish a step is time-wasting. In that case, we can
         return when ``wait_num`` environments finish a step and keep on
@@ -240,9 +240,9 @@ class BaseVectorEnv(gym.Env):
 
     @run_once
     def close(self) -> List[Any]:
-        """Close all of the environments. This function will be called
-        only once (if not, it will be called during garbage collected).
-        This way, ``close`` of all workers can be assured.
+        """Close all of the environments. This function will be called only
+        once (if not, it will be called during garbage collected). This way,
+        ``close`` of all workers can be assured.
         """
         if self.is_async:
             # finish remaining steps, and close
@@ -264,7 +264,7 @@ class DummyVectorEnv(BaseVectorEnv):
                  env_fns: List[Callable[[], gym.Env]],
                  wait_num: Optional[int] = None,
                  ) -> None:
-        super(DummyVectorEnv, self).__init__(
+        super().__init__(
             env_fns,
             lambda fn: DummyEnvWorker(fn),
             wait_num=wait_num,
@@ -279,7 +279,7 @@ class VectorEnv(BaseVectorEnv):
         warnings.warn(
             'VectorEnv is renamed to DummyVectorEnv, and will be removed'
             ' in 0.3. Use DummyVectorEnv instead!', DeprecationWarning)
-        super(VectorEnv, self).__init__(
+        super().__init__(
             env_fns,
             lambda fn: DummyEnvWorker(fn),
             wait_num=wait_num,
@@ -299,16 +299,16 @@ class SubprocVectorEnv(BaseVectorEnv):
                  env_fns: List[Callable[[], gym.Env]],
                  wait_num: Optional[int] = None,
                  ) -> None:
-        super(SubprocVectorEnv, self).__init__(
+        super().__init__(
             env_fns,
-            lambda fn: SubProcEnvWorker(fn),
+            lambda fn: SubprocEnvWorker(fn),
             wait_num=wait_num,
         )
 
 
 class ShmemVectorEnv(BaseVectorEnv):
     """Optimized version of SubprocVectorEnv that uses shared variables to
-    communicate observations. SubprocVectorEnv has exactly the same API as
+    communicate observations. ShmemVectorEnv has exactly the same API as
     SubprocVectorEnv.
 
     .. seealso::
@@ -321,9 +321,9 @@ class ShmemVectorEnv(BaseVectorEnv):
                  env_fns: List[Callable[[], gym.Env]],
                  wait_num: Optional[int] = None,
                  ) -> None:
-        super(ShmemVectorEnv, self).__init__(
+        super().__init__(
             env_fns,
-            lambda fn: SubProcEnvWorker(fn, share_memory=True),
+            lambda fn: SubprocEnvWorker(fn, share_memory=True),
             wait_num=wait_num,
         )
 
@@ -352,7 +352,6 @@ class RayVectorEnv(BaseVectorEnv):
 
         if not ray.is_initialized():
             ray.init()
-        from tianshou.env.worker.ray import RayEnvWorker
         super().__init__(
             env_fns,
             lambda fn: RayEnvWorker(fn),

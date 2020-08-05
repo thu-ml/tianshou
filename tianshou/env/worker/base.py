@@ -5,8 +5,7 @@ from typing import List, Tuple, Optional, Callable, Any
 
 
 class EnvWorker(ABC, gym.Env):
-    """An abstract worker for an environment.
-    """
+    """An abstract worker for an environment."""
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self._env_fn = env_fn
@@ -35,8 +34,7 @@ class EnvWorker(ABC, gym.Env):
 
     def step(self, action: np.ndarray
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """
-        ``send_action`` and ``get_result`` are coupled in sync simulation,
+        """``send_action`` and ``get_result`` are coupled in sync simulation,
         so typically users only call ``step`` function. But they can be called
         separately in async simulation, i.e. someone calls ``send_action``
         first, and calls ``get_result`` later.
@@ -50,6 +48,7 @@ class EnvWorker(ABC, gym.Env):
 
     @abstractmethod
     def render(self, **kwargs) -> None:
+        """Renders the environment."""
         pass
 
     @abstractmethod
@@ -58,7 +57,6 @@ class EnvWorker(ABC, gym.Env):
 
     @staticmethod
     def wait(workers: List['EnvWorker']) -> List['EnvWorker']:
-        """
-        Given a list of workers, return those ready ones.
+        """Given a list of workers, return those ready ones.
         """
         raise NotImplementedError

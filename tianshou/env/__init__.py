@@ -1,14 +1,13 @@
-from tianshou.env.venvs import \
-    (BaseVectorEnv, DummyVectorEnv, VectorEnv, SubprocVectorEnv,
-     ShmemVectorEnv, RayVectorEnv)
+from tianshou.env.venvs import BaseVectorEnv, DummyVectorEnv, VectorEnv, \
+    SubprocVectorEnv, ShmemVectorEnv, RayVectorEnv
 from tianshou.env.maenv import MultiAgentEnv
 
 __all__ = [
     'BaseVectorEnv',
     'DummyVectorEnv',
-    'VectorEnv',
+    'VectorEnv',  # TODO: remove in later version
     'SubprocVectorEnv',
-    'RayVectorEnv',
     'ShmemVectorEnv',
+    'RayVectorEnv',
     'MultiAgentEnv',
 ]
