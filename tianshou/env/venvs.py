@@ -150,10 +150,10 @@ class BaseVectorEnv(gym.Env):
              id: Optional[Union[int, List[int]]] = None
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Run one timestep of all the environments’ dynamics if id is
-        ``None``, otherwise run one timestep for some environments
-        with given id,  either an int or a list. When the end of
-        episode is reached, you are responsible for calling reset(id)
-        to reset this environment’s state.
+        ``None``, otherwise run one timestep for some environments with given
+        id,  either an int or a list. When the end of episode is reached, you
+        are responsible for calling reset(id) to reset this environment’s
+        state.
 
         Accept a batch of action and return a tuple (obs, rew, done, info).
 
@@ -264,11 +264,7 @@ class DummyVectorEnv(BaseVectorEnv):
                  env_fns: List[Callable[[], gym.Env]],
                  wait_num: Optional[int] = None,
                  ) -> None:
-        super().__init__(
-            env_fns,
-            lambda fn: DummyEnvWorker(fn),
-            wait_num=wait_num,
-        )
+        super().__init__(env_fns, DummyEnvWorker, wait_num=wait_num)
 
 
 class VectorEnv(BaseVectorEnv):
@@ -279,11 +275,7 @@ class VectorEnv(BaseVectorEnv):
         warnings.warn(
             'VectorEnv is renamed to DummyVectorEnv, and will be removed'
             ' in 0.3. Use DummyVectorEnv instead!', DeprecationWarning)
-        super().__init__(
-            env_fns,
-            lambda fn: DummyEnvWorker(fn),
-            wait_num=wait_num,
-        )
+        super().__init__(env_fns, DummyEnvWorker, wait_num=wait_num)
 
 
 class SubprocVectorEnv(BaseVectorEnv):
@@ -301,7 +293,7 @@ class SubprocVectorEnv(BaseVectorEnv):
                  ) -> None:
         super().__init__(
             env_fns,
-            lambda fn: SubprocEnvWorker(fn),
+            lambda fn: SubprocEnvWorker(fn, share_memory=False),
             wait_num=wait_num,
         )
 
@@ -352,8 +344,4 @@ class RayVectorEnv(BaseVectorEnv):
 
         if not ray.is_initialized():
             ray.init()
-        super().__init__(
-            env_fns,
-            lambda fn: RayEnvWorker(fn),
-            wait_num=wait_num,
-        )
+        super().__init__(env_fns, RayEnvWorker, wait_num=wait_num)
