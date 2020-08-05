@@ -51,7 +51,8 @@ class Collector(object):
         collector = Collector(policy, env, buffer=replay_buffer)
 
         # the collector supports vectorized environments as well
-        envs = VectorEnv([lambda: gym.make('CartPole-v0') for _ in range(3)])
+        envs = DummyVectorEnv([lambda: gym.make('CartPole-v0')
+                               for _ in range(3)])
         collector = Collector(policy, envs, buffer=replay_buffer)
 
         # collect 3 episodes

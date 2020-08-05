@@ -8,9 +8,8 @@ from tianshou.env.worker.dummy import DummyEnvWorker
 
 
 def run_once(f):
-    """
-    Run once decorator for a method in a class. Each instance can run
-    the method at most once.
+    """Run once decorator for a method in a class. Each instance can run the
+    method at most once.
     """
     f.has_run_objects = set()
 
@@ -36,7 +35,7 @@ class BaseVectorEnv(gym.Env):
     ::
 
         env_num = 8
-        envs = VectorEnv([lambda: gym.make(task) for _ in range(env_num)])
+        envs = DummyVectorEnv([lambda: gym.make(task) for _ in range(env_num)])
         assert len(envs) == env_num
 
     It accepts a list of environment generators. In other words, an environment
