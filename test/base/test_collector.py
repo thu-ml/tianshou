@@ -2,7 +2,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import BasePolicy
-from tianshou.env import ForLoopVectorEnv, SubprocVectorEnv
+from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.data import Collector, Batch, ReplayBuffer
 
 if __name__ == '__main__':
@@ -66,7 +66,7 @@ def test_collector():
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
 
     venv = SubprocVectorEnv(env_fns)
-    dum = ForLoopVectorEnv(env_fns)
+    dum = DummyVectorEnv(env_fns)
     policy = MyPolicy()
     env = env_fns[0]()
     c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False),
@@ -165,7 +165,7 @@ def test_collector_with_dict_state():
     c0.collect(n_episode=2)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True)
                for i in [2, 3, 4, 5]]
-    envs = ForLoopVectorEnv(env_fns)
+    envs = DummyVectorEnv(env_fns)
     envs.seed(666)
     obs = envs.reset()
     assert not np.isclose(obs[0]['rand'], obs[1]['rand'])
@@ -202,7 +202,7 @@ def test_collector_with_ma():
     assert np.asanyarray(r).size == 1 and r == 4.
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4)
                for i in [2, 3, 4, 5]]
-    envs = ForLoopVectorEnv(env_fns)
+    envs = DummyVectorEnv(env_fns)
     c1 = Collector(policy, envs, ReplayBuffer(size=100),
                    Logger.single_preprocess_fn, reward_metric=reward_metric)
     r = c1.collect(n_step=10)['rew']

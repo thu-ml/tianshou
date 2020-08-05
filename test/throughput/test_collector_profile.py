@@ -5,7 +5,7 @@ from gym.spaces.discrete import Discrete
 from gym.utils import seeding
 
 from tianshou.data import Batch, Collector, ReplayBuffer
-from tianshou.env import ForLoopVectorEnv, SubprocVectorEnv
+from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
 
 
@@ -56,7 +56,7 @@ def data():
     np.random.seed(0)
     env = SimpleEnv()
     env.seed(0)
-    env_vec = ForLoopVectorEnv(
+    env_vec = DummyVectorEnv(
         [lambda: SimpleEnv() for _ in range(100)])
     env_vec.seed(np.random.randint(1000, size=100).tolist())
     env_subproc = SubprocVectorEnv(

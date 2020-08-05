@@ -2,7 +2,7 @@ import time
 import numpy as np
 from gym.spaces.discrete import Discrete
 from tianshou.data import Batch
-from tianshou.env import ForLoopVectorEnv, SubprocVectorEnv, \
+from tianshou.env import DummyVectorEnv, SubprocVectorEnv, \
     RayVectorEnv, ShmemVectorEnv
 
 if __name__ == '__main__':
@@ -78,7 +78,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         for i in range(size, size + num)
     ]
     venv = [
-        ForLoopVectorEnv(env_fns),
+        DummyVectorEnv(env_fns),
         SubprocVectorEnv(env_fns),
         ShmemVectorEnv(env_fns),
     ]

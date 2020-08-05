@@ -6,19 +6,19 @@ import numpy as np
 from tianshou.env.worker.base import EnvWorker
 
 
-class SequentialEnvWorker(EnvWorker):
+class DummyEnvWorker(EnvWorker):
     """
     Dummy worker used in sequential vector environments
     """
 
     @staticmethod
-    def wait(workers: List['SequentialEnvWorker']
-             ) -> List['SequentialEnvWorker']:
+    def wait(workers: List['DummyEnvWorker']
+             ) -> List['DummyEnvWorker']:
         # SequentialEnvWorker objects are always ready
         return workers
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
-        super(SequentialEnvWorker, self).__init__(env_fn)
+        super(DummyEnvWorker, self).__init__(env_fn)
         self.env = env_fn()
 
     def __getattr__(self, key: str):

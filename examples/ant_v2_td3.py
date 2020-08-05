@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.policy import TD3Policy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.env import ForLoopVectorEnv, SubprocVectorEnv
+from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.exploration import GaussianNoise
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
@@ -49,7 +49,7 @@ def test_td3(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
     # train_envs = gym.make(args.task)
-    train_envs = ForLoopVectorEnv(
+    train_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(

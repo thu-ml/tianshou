@@ -5,7 +5,7 @@ import warnings
 import numpy as np
 from typing import Any, Dict, List, Union, Optional, Callable
 
-from tianshou.env import BaseVectorEnv, ForLoopVectorEnv
+from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.exploration import BaseNoise
 from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
@@ -94,7 +94,7 @@ class Collector(object):
                  ) -> None:
         super().__init__()
         if not isinstance(env, BaseVectorEnv):
-            env = ForLoopVectorEnv([lambda: env])
+            env = DummyVectorEnv([lambda: env])
         self.env = env
         self.env_num = len(env)
         # environments that are available in step()

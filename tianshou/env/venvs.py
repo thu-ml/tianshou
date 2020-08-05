@@ -4,7 +4,7 @@ import warnings
 from typing import List, Tuple, Union, Optional, Callable, Any
 from tianshou.env.worker.base import EnvWorker
 from tianshou.env.worker.subproc import SubProcEnvWorker
-from tianshou.env.worker.dummy import SequentialEnvWorker
+from tianshou.env.worker.dummy import DummyEnvWorker
 
 
 def run_once(f):
@@ -260,14 +260,14 @@ class BaseVectorEnv(gym.Env):
             pass
 
 
-class ForLoopVectorEnv(BaseVectorEnv):
+class DummyVectorEnv(BaseVectorEnv):
     def __init__(self,
                  env_fns: List[Callable[[], gym.Env]],
                  wait_num: Optional[int] = None,
                  ) -> None:
-        super(ForLoopVectorEnv, self).__init__(
+        super(DummyVectorEnv, self).__init__(
             env_fns,
-            lambda fn: SequentialEnvWorker(fn),
+            lambda fn: DummyEnvWorker(fn),
             wait_num=wait_num,
         )
 
@@ -278,11 +278,11 @@ class VectorEnv(BaseVectorEnv):
                  wait_num: Optional[int] = None,
                  ) -> None:
         warnings.warn(
-            'VectorEnv is renamed to ForLoopVectorEnv, and will be removed'
-            ' in 0.3. Use ForLoopVectorEnv instead!', DeprecationWarning)
+            'VectorEnv is renamed to DummyVectorEnv, and will be removed'
+            ' in 0.3. Use DummyVectorEnv instead!', DeprecationWarning)
         super(VectorEnv, self).__init__(
             env_fns,
-            lambda fn: SequentialEnvWorker(fn),
+            lambda fn: DummyEnvWorker(fn),
             wait_num=wait_num,
         )
 

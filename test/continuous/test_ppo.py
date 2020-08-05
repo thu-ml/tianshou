@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import ForLoopVectorEnv
+from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPOPolicy
 from tianshou.policy.dist import DiagGaussian
 from tianshou.trainer import onpolicy_trainer
@@ -58,10 +58,10 @@ def test_ppo(args=get_args()):
     args.max_action = env.action_space.high[0]
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
-    train_envs = ForLoopVectorEnv(
+    train_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = ForLoopVectorEnv(
+    test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)

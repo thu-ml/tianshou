@@ -8,7 +8,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils.net.common import Net
-from tianshou.env import ForLoopVectorEnv
+from tianshou.env import DummyVectorEnv
 from tianshou.policy import PGPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Batch, Collector, ReplayBuffer
@@ -112,10 +112,10 @@ def test_pg(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = ForLoopVectorEnv(
+    train_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = ForLoopVectorEnv(
+    test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
