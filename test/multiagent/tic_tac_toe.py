@@ -159,9 +159,6 @@ def train_agent(args: argparse.Namespace = get_args(),
         stop_fn=stop_fn, save_fn=save_fn, writer=writer,
         test_in_train=False)
 
-    train_collector.close()
-    test_collector.close()
-
     return result, policy.policies[args.agent_id - 1]
 
 
@@ -175,4 +172,3 @@ def watch(args: argparse.Namespace = get_args(),
     collector = Collector(policy, env)
     result = collector.collect(n_episode=1, render=args.render)
     print(f'Final reward: {result["rew"]}, length: {result["len"]}')
-    collector.close()

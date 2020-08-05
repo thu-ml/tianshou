@@ -178,7 +178,6 @@ Watch the Agent's Performance
 
     collector = ts.data.Collector(policy, env)
     collector.collect(n_episode=1, render=1 / 35)
-    collector.close()
 
 .. _customized_trainer:
 

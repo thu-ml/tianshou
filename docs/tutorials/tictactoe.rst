@@ -158,7 +158,6 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
     ===x _ o x _ _===
     ===x _ _ _ x x===
     =================
-    >>> collector.close()
 
 Random agents perform badly. In the above game, although agent 2 wins finally, it is clear that a smart agent 1 would place an ``x`` at row 4 col 4 to win directly. 
 
@@ -290,7 +289,6 @@ With the above preparation, we are close to the first learned agent. The followi
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
-        collector.close()
     if args.watch:
         watch(args)
         exit(0)
@@ -350,9 +348,6 @@ With the above preparation, we are close to the first learned agent. The followi
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, save_fn=save_fn, writer=writer,
         test_in_train=False)
-
-    train_collector.close()
-    test_collector.close()
 
     agent = policy.policies[args.agent_id - 1]
     # let's watch the match!

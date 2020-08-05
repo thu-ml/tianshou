@@ -247,7 +247,6 @@ Watch the performance with 35 FPS:
 ```python
 collector = ts.data.Collector(policy, env)
 collector.collect(n_episode=1, render=1 / 35)
-collector.close()
 ```
 
 Look at the result saved in tensorboard: (with bash script in your terminal)

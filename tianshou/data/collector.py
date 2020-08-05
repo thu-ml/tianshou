@@ -167,10 +167,6 @@ class Collector(object):
         """Render all the environment(s)."""
         return self.env.render(**kwargs)
 
-    def close(self) -> None:
-        """Close the environment(s)."""
-        self.env.close()
-
     def _reset_state(self, id: Union[int, List[int]]) -> None:
         """Reset the hidden state: self.data.state[id]."""
         state = self.data.state  # it is a reference

@@ -96,8 +96,6 @@ def test_dqn(args=get_args()):
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, writer=writer)
 
-    train_collector.close()
-    test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
@@ -105,7 +103,6 @@ def test_dqn(args=get_args()):
         collector = Collector(policy, env, preprocess_fn=preprocess_fn)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
-        collector.close()
 
 
 if __name__ == '__main__':

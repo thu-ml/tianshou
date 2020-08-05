@@ -94,8 +94,6 @@ def test_ppo(args=get_args()):
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
         args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer)
-    train_collector.close()
-    test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
@@ -103,7 +101,6 @@ def test_ppo(args=get_args()):
         collector = Collector(policy, env, preprocess_fn=preprocess_fn)
         result = collector.collect(n_step=2000, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
-        collector.close()
 
 
 if __name__ == '__main__':
