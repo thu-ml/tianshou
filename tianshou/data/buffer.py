@@ -395,8 +395,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """Add a batch of data into replay buffer."""
         if weight is None:
             weight = self._max_prio
-        weight = np.abs(weight) ** self._alpha
-        self.weight[self._index] = weight
+        else:
+            weight = np.abs(weight)
+            self._max_prio = max(self._max_prio, weight)
+            self._min_prio = min(self._min_prio, weight)
+        self.weight[self._index] = weight ** self._alpha
         super().add(obs, act, rew, done, obs_next, info, policy)
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
