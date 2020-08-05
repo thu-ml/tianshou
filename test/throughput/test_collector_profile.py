@@ -48,7 +48,7 @@ class SimplePolicy(BasePolicy):
         return super().learn(batch, **kwargs)
 
     def forward(self, batch, state=None, **kwargs):
-        return Batch(act=np.array([30]*len(batch)), state=None, logits=None)
+        return Batch(act=np.array([30] * len(batch)), state=None, logits=None)
 
 
 @pytest.fixture(scope="module")
@@ -70,7 +70,7 @@ def data():
     collector = Collector(policy, env, ReplayBuffer(50000))
     collector_vec = Collector(policy, env_vec, ReplayBuffer(50000))
     collector_subproc = Collector(policy, env_subproc, ReplayBuffer(50000))
-    return{
+    return {
         "env": env,
         "env_vec": env_vec,
         "env_subproc": env_subproc,
@@ -79,14 +79,13 @@ def data():
         "buffer": buffer,
         "collector": collector,
         "collector_vec": collector_vec,
-        "collector_subproc": collector_subproc
-        }
+        "collector_subproc": collector_subproc,
+    }
 
 
 def test_init(data):
     for _ in range(5000):
-        c = Collector(data["policy"], data["env"], data["buffer"])
-    c.close()
+        Collector(data["policy"], data["env"], data["buffer"])
 
 
 def test_reset(data):
@@ -111,8 +110,7 @@ def test_sample(data):
 
 def test_init_vec_env(data):
     for _ in range(5000):
-        c = Collector(data["policy"], data["env_vec"], data["buffer"])
-    c.close()
+        Collector(data["policy"], data["env_vec"], data["buffer"])
 
 
 def test_reset_vec_env(data):
@@ -137,8 +135,7 @@ def test_sample_vec_env(data):
 
 def test_init_subproc_env(data):
     for _ in range(5000):
-        c = Collector(data["policy"], data["env_subproc_init"], data["buffer"])
-    c.close()
+        Collector(data["policy"], data["env_subproc_init"], data["buffer"])
 
 
 def test_reset_subproc_env(data):

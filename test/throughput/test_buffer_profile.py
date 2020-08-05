@@ -8,15 +8,15 @@ from tianshou.data import (ListReplayBuffer, PrioritizedReplayBuffer,
 @pytest.fixture(scope="module")
 def data():
     np.random.seed(0)
-    obs = {'observable': np.random.rand(
-        100, 100), 'hidden': np.random.randint(1000, size=200)}
+    obs = {'observable': np.random.rand(100, 100),
+           'hidden': np.random.randint(1000, size=200)}
     info = {'policy': "dqn", 'base': np.arange(10)}
     add_data = {'obs': obs, 'rew': 1., 'act': np.random.rand(30),
                 'done': False, 'obs_next': obs, 'info': info}
     buffer = ReplayBuffer(int(1e3), stack_num=100)
     buffer2 = ReplayBuffer(int(1e4), stack_num=100)
     indexes = np.random.choice(int(1e3), size=3, replace=False)
-    return{
+    return {
         'add_data': add_data,
         'buffer': buffer,
         'buffer2': buffer2,
