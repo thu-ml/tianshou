@@ -10,6 +10,7 @@ class EnvWorker(ABC, gym.Env):
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self._env_fn = env_fn
+        self._result = None
 
     def __getattribute__(self, key: str):
         if key not in ('observation_space', 'action_space'):
@@ -25,13 +26,13 @@ class EnvWorker(ABC, gym.Env):
     def reset(self):
         pass
 
-    def send_action(self, action: np.ndarray):
-        self.action = action
-
     @abstractmethod
+    def send_action(self, action: np.ndarray):
+        pass
+
     def get_result(self
                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        pass
+        return self._result
 
     def step(self, action: np.ndarray
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:

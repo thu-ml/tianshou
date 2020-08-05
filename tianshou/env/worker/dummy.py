@@ -29,9 +29,8 @@ class SequentialEnvWorker(EnvWorker):
     def reset(self):
         return self.env.reset()
 
-    def get_result(self
-                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        return self.env.step(self.action)
+    def send_action(self, action: np.ndarray):
+        self._result = self.env.step(self.action)
 
     def seed(self, seed: Optional[int] = None):
         return self.env.seed(seed) if hasattr(self.env, 'seed') else None

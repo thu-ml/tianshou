@@ -28,11 +28,11 @@ class RayEnvWorker(EnvWorker):
 
     def get_result(self
                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        return ray.get(self.action)
+        return ray.get(self._result)
 
     def send_action(self, action: np.ndarray):
         # self.action is actually a handle
-        self.action = self.env.step.remote(action)
+        self._result = self.env.step.remote(action)
 
     def seed(self, seed: Optional[int] = None):
         if hasattr(self.env, 'seed'):
