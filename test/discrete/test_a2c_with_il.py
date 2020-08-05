@@ -113,7 +113,8 @@ def test_a2c_with_il(args=get_args()):
     il_policy = ImitationPolicy(net, optim, mode='discrete')
     il_test_collector = Collector(
         il_policy,
-        ForLoopVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+        ForLoopVectorEnv(
+            [lambda: gym.make(args.task) for _ in range(args.test_num)])
     )
     train_collector.reset()
     result = offpolicy_trainer(
