@@ -31,7 +31,7 @@ See :ref:`customized_trainer`.
 Parallel Sampling
 -----------------
 
-Use :class:`~tianshou.env.VectorEnv`, :class:`~tianshou.env.SubprocVectorEnv` or :class:`~tianshou.env.ShmemVectorEnv`.
+Use :class:`~tianshou.env.DummyVectorEnv`, :class:`~tianshou.env.SubprocVectorEnv`, :class:`~tianshou.env.ShmemVectorEnv`, or :class:`~tianshou.env.RayVectorEnv`.
 ::
 
     env_fns = [

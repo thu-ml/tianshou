@@ -175,7 +175,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
     from copy import deepcopy
     from torch.utils.tensorboard import SummaryWriter
 
-    from tianshou.env import VectorEnv
+    from tianshou.env import DummyVectorEnv
     from tianshou.utils.net.common import Net
     from tianshou.trainer import offpolicy_trainer
     from tianshou.data import Collector, ReplayBuffer
@@ -297,8 +297,8 @@ With the above preparation, we are close to the first learned agent. The followi
 
     # ======== environment setup =========
     env_func = lambda: TicTacToeEnv(args.board_size, args.win_size)
-    train_envs = VectorEnv([env_func for _ in range(args.training_num)])
-    test_envs = VectorEnv([env_func for _ in range(args.test_num)])
+    train_envs = DummyVectorEnv([env_func for _ in range(args.training_num)])
+    test_envs = DummyVectorEnv([env_func for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
