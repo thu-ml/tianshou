@@ -28,7 +28,7 @@ Here is Tianshou's other features:
 * Support recurrent state representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
 * Support any type of environment state (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
 * Support customized training process: :ref:`customize_training`
-* Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` for all Q-learning based algorithms
+* Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` and prioritized experience replay for all Q-learning based algorithms
 * Support multi-agent RL: :doc:`/tutorials/tictactoe`
 
 中文文档位于 `https://tianshou.readthedocs.io/zh/latest/ <https://tianshou.readthedocs.io/zh/latest/>`_

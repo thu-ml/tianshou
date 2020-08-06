@@ -1,8 +1,8 @@
-import numpy as np
 import pytest
+import numpy as np
 
 from tianshou.data import (ListReplayBuffer, PrioritizedReplayBuffer,
-                           ReplayBuffer)
+                           ReplayBuffer, SegmentTree)
 
 
 @pytest.fixture(scope="module")
@@ -21,7 +21,7 @@ def data():
         'buffer': buffer,
         'buffer2': buffer2,
         'slice': slice(-3000, -1000, 2),
-        'indexes': indexes
+        'indexes': indexes,
     }
 
 
@@ -75,6 +75,16 @@ def test_sample(data):
     buffer = data['buffer']
     for _ in np.arange(1e1):
         buffer.sample(int(1e2))
+
+
+def test_segtree(data):
+    size = 100000
+    tree = SegmentTree(size)
+    tree[np.arange(size)] = np.random.rand(size)
+
+    for i in np.arange(1e5):
+        scalar = np.random.rand(64) * tree.reduce()
+        tree.get_prefix_sum_idx(scalar)
 
 
 if __name__ == '__main__':
