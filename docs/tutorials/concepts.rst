@@ -64,9 +64,9 @@ Policy
 
 Tianshou aims to modularizing RL algorithms. It comes into several classes of policies in Tianshou. All of the policy classes must inherit :class:`~tianshou.policy.BasePolicy`.
 
-A policy class typically has four parts:
+A policy class typically has the following parts:
 
-* :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including coping the target network and so on;
+* :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including copying the target network and so on;
 * :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the replay buffer;
 * :meth:`~tianshou.policy.BasePolicy.forward`: compute action with given observation;
 * :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given batch of data.
