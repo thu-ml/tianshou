@@ -375,18 +375,22 @@ def _batch_set_item(source: Batch, indices: np.ndarray,
     # 4. both source[k] and target[k] do not exist or are reserved, do nothing.
     # A special case in case 4, if target[k] is reserved but source[k] does
     # not exist, make source[k] reserved, too.
-    for k, v in target.items():
-        if not isinstance(v, Batch) or not v.is_empty():
+    for k, vt in target.items():
+        if not isinstance(vt, Batch) or not vt.is_empty():
             # target[k] is non-reserved
             vs = source.get(k, Batch())
-            if isinstance(vs, Batch) and vs.is_empty():
-                # case 2
-                # use __dict__ to avoid many type checks
-                source.__dict__[k] = _create_value(v[0], size)
+            if isinstance(vs, Batch):
+                if vs.is_empty():
+                    # case 2
+                    # use __dict__ to avoid many type checks
+                    source.__dict__[k] = _create_value(vt[0], size)
+                else:
+                    assert isinstance(vt, Batch)
+                    _batch_set_item(source.__dict__[k], indices, vt, size)
         else:
             # target[k] is reserved
             # case 1 or special case of case 4
             if k not in source.__dict__:
                 source.__dict__[k] = Batch()
             continue
-        source.__dict__[k][indices] = v
+        source.__dict__[k][indices] = vt
