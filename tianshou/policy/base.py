@@ -216,9 +216,23 @@ class BasePolicy(ABC, nn.Module):
         batch.returns = target_q * gammas + returns
         # prio buffer update
         if isinstance(buffer, PrioritizedReplayBuffer):
-            batch.update_weight = buffer.update_weight
-            batch.indice = indice
             batch.weight = to_torch_as(batch.weight, target_q)
         else:
             batch.weight = torch.ones_like(target_q)
         return batch
+
+    def post_process_fn(self, batch: Batch,
+                        buffer: ReplayBuffer, indice: np.ndarray):
+        """Post-process the data from the provided replay buffer. Typical
+        usage is to update the sampling weight in prioritized experience
+        replay. Check out :ref:`policy_concept` for more information.
+        """
+        if isinstance(buffer, PrioritizedReplayBuffer):
+            buffer.update_weight(indice, batch.weight)
+
+    def update(self, buffer: ReplayBuffer, sample_size: int, *args, **kwargs):
+        batch, indice = buffer.sample(sample_size)
+        batch = self.process_fn(batch, buffer, indice)
+        result = self.learn(batch, *args, **kwargs)
+        self.post_process_fn(batch, buffer, indice)
+        return result

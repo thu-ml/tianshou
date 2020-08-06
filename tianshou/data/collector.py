@@ -364,6 +364,11 @@ class Collector(object):
             the buffer, otherwise it will extract the data with the given
             batch_size.
         """
+        import warnings
+        warnings.warn(
+            'Collector.sample is deprecated and will cause error if you use '
+            'prioritized experience replay! Collector.sample will be removed'
+            ' after 0.3. Use policy.update instead!', DeprecationWarning)
         batch_data, indice = self.buffer.sample(batch_size)
         batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data
