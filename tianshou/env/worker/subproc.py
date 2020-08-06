@@ -184,3 +184,7 @@ class SubprocEnvWorker(EnvWorker):
     def seed(self, seed: Optional[int] = None):
         self.parent_remote.send(['seed', seed])
         return self.parent_remote.recv()
+
+    def __del__(self):
+        # ensure the subproc is terminated
+        self.process.terminate()

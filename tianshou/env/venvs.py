@@ -250,14 +250,6 @@ class BaseVectorEnv(gym.Env):
                 self.step(None)
         return [w.close() for w in self.workers]
 
-    def __del__(self):
-        """Close the environment before garbage collected"""
-        try:
-            self.close()
-        except RuntimeError:
-            # it has already been closed
-            pass
-
 
 class DummyVectorEnv(BaseVectorEnv):
     def __init__(self,
