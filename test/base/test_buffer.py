@@ -1,6 +1,9 @@
+import pytest
 import numpy as np
+from timeit import timeit
 
-from tianshou.data import Batch, PrioritizedReplayBuffer, ReplayBuffer
+from tianshou.data import Batch, PrioritizedReplayBuffer, \
+    ReplayBuffer, SegmentTree
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -112,9 +115,110 @@ def test_update():
     assert (buf2[-1].obs == buf1[0].obs).all()
 
 
+def test_segtree():
+    for op, init in zip(['sum', 'max', 'min'], [0., -np.inf, np.inf]):
+        realop = getattr(np, op)
+        # small test
+        actual_len = 8
+        tree = SegmentTree(actual_len, op)  # 1-15. 8-15 are leaf nodes
+        assert np.all([tree[i] == init for i in range(actual_len)])
+        with pytest.raises(IndexError):
+            tree[actual_len]
+        naive = np.full([actual_len], init)
+        for _ in range(1000):
+            # random choose a place to perform single update
+            index = np.random.randint(actual_len)
+            value = np.random.rand()
+            naive[index] = value
+            tree[index] = value
+            for i in range(actual_len):
+                for j in range(i + 1, actual_len):
+                    ref = realop(naive[i:j])
+                    out = tree.reduce(i, j)
+                    assert np.allclose(ref, out)
+        # batch setitem
+        for _ in range(1000):
+            index = np.random.choice(actual_len, size=4)
+            value = np.random.rand(4)
+            naive[index] = value
+            tree[index] = value
+            assert np.allclose(realop(naive), tree.reduce())
+            for i in range(10):
+                left = np.random.randint(actual_len)
+                right = np.random.randint(left + 1, actual_len + 1)
+                assert np.allclose(realop(naive[left:right]),
+                                   tree.reduce(left, right))
+        # large test
+        actual_len = 16384
+        tree = SegmentTree(actual_len, op)
+        naive = np.full([actual_len], init)
+        for _ in range(1000):
+            index = np.random.choice(actual_len, size=64)
+            value = np.random.rand(64)
+            naive[index] = value
+            tree[index] = value
+            assert np.allclose(realop(naive), tree.reduce())
+            for i in range(10):
+                left = np.random.randint(actual_len)
+                right = np.random.randint(left + 1, actual_len + 1)
+                assert np.allclose(realop(naive[left:right]),
+                                   tree.reduce(left, right))
+
+    # test prefix-sum-idx
+    actual_len = 8
+    tree = SegmentTree(actual_len)
+    naive = np.random.rand(actual_len)
+    tree[np.arange(actual_len)] = naive
+    for _ in range(1000):
+        scalar = np.random.rand() * naive.sum()
+        index = tree.get_prefix_sum_idx(scalar)
+        assert naive[:index].sum() <= scalar <= naive[:index + 1].sum()
+    # corner case here
+    naive = np.ones(actual_len, np.int)
+    tree[np.arange(actual_len)] = naive
+    for scalar in range(actual_len):
+        index = tree.get_prefix_sum_idx(scalar * 1.)
+        assert naive[:index].sum() <= scalar <= naive[:index + 1].sum()
+    tree = SegmentTree(10)
+    tree[np.arange(3)] = np.array([0.1, 0, 0.1])
+    assert np.allclose(tree.get_prefix_sum_idx(
+        np.array([0, .1, .1 + 1e-6, .2 - 1e-6])), [0, 0, 2, 2])
+    with pytest.raises(AssertionError):
+        tree.get_prefix_sum_idx(.2)
+    # test large prefix-sum-idx
+    actual_len = 16384
+    tree = SegmentTree(actual_len)
+    naive = np.random.rand(actual_len)
+    tree[np.arange(actual_len)] = naive
+    for _ in range(1000):
+        scalar = np.random.rand() * naive.sum()
+        index = tree.get_prefix_sum_idx(scalar)
+        assert naive[:index].sum() <= scalar <= naive[:index + 1].sum()
+
+    # profile
+    if __name__ == '__main__':
+        size = 100000
+        bsz = 64
+        naive = np.random.rand(size)
+        tree = SegmentTree(size)
+        tree[np.arange(size)] = naive
+
+        def sample_npbuf():
+            return np.random.choice(size, bsz, p=naive / naive.sum())
+
+        def sample_tree():
+            scalar = np.random.rand(bsz) * tree.reduce()
+            return tree.get_prefix_sum_idx(scalar)
+
+        print('npbuf', timeit(sample_npbuf, setup=sample_npbuf, number=1000))
+        print('tree', timeit(sample_tree, setup=sample_tree, number=1000))
+
+
 if __name__ == '__main__':
     test_replaybuffer()
     test_ignore_obs_next()
     test_stack()
+    test_segtree()
+    test_priortized_replaybuffer()
     test_priortized_replaybuffer(233333, 200000)
     test_update()

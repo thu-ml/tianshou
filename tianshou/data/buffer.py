@@ -1,7 +1,9 @@
+import torch
 import numpy as np
 from typing import Any, Tuple, Union, Optional
 
-from tianshou.data.batch import Batch, _create_value
+from tianshou.data import Batch, SegmentTree, to_numpy
+from tianshou.data.batch import _create_value
 
 
 class ReplayBuffer:
@@ -313,7 +315,7 @@ class ReplayBuffer:
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
             info=self.get(index, 'info'),
-            policy=self.get(index, 'policy')
+            policy=self.get(index, 'policy'),
         )
 
 
@@ -326,8 +328,8 @@ class ListReplayBuffer(ReplayBuffer):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` for more
-        detailed explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for more detailed
+        explanation.
     """
 
     def __init__(self, **kwargs) -> None:
@@ -353,31 +355,32 @@ class ListReplayBuffer(ReplayBuffer):
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
-    """Prioritized replay buffer implementation.
+    """Implementation of Prioritized Experience Replay. arXiv:1511.05952
 
     :param float alpha: the prioritization exponent.
     :param float beta: the importance sample soft coefficient.
-    :param str mode: defaults to ``weight``.
-    :param bool replace: whether to sample with replacement
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` for more
-        detailed explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for more detailed
+        explanation.
     """
 
-    def __init__(self, size: int, alpha: float, beta: float,
-                 mode: str = 'weight',
-                 replace: bool = False, **kwargs) -> None:
-        if mode != 'weight':
-            raise NotImplementedError
+    def __init__(self, size: int, alpha: float, beta: float, **kwargs) -> None:
         super().__init__(size, **kwargs)
-        self._alpha = alpha
-        self._beta = beta
-        self._weight_sum = 0.0
-        self._amortization_freq = 50
-        self._replace = replace
-        self._meta.weight = np.zeros(size, dtype=np.float64)
+        assert alpha > 0. and beta >= 0.
+        self._alpha, self._beta = alpha, beta
+        self._max_prio = 1.
+        self._min_prio = 1.
+        # bypass the check
+        self._weight = SegmentTree(size)
+        self.__eps = np.finfo(np.float32).eps.item()
+
+    def __getattr__(self, key: str) -> Union['Batch', Any]:
+        """Return self.key"""
+        if key == 'weight':
+            return self._weight
+        return self._meta.__dict__[key]
 
     def add(self,
             obs: Union[dict, np.ndarray],
@@ -387,68 +390,55 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             obs_next: Optional[Union[dict, np.ndarray]] = None,
             info: dict = {},
             policy: Optional[Union[dict, Batch]] = {},
-            weight: float = 1.0,
+            weight: float = None,
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
-        # we have to sacrifice some convenience for speed
-        self._weight_sum += np.abs(weight) ** self._alpha - \
-            self._meta.weight[self._index]
-        self._add_to_buffer('weight', np.abs(weight) ** self._alpha)
+        if weight is None:
+            weight = self._max_prio
+        else:
+            weight = np.abs(weight)
+            self._max_prio = max(self._max_prio, weight)
+            self._min_prio = min(self._min_prio, weight)
+        self.weight[self._index] = weight ** self._alpha
         super().add(obs, act, rew, done, obs_next, info, policy)
 
-    @property
-    def replace(self):
-        return self._replace
-
-    @replace.setter
-    def replace(self, v: bool):
-        self._replace = v
-
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
-        """Get a random sample from buffer with priority probability. \
-        Return all the data in the buffer if batch_size is ``0``.
+        """Get a random sample from buffer with priority probability. Return
+        all the data in the buffer if batch_size is ``0``.
 
         :return: Sample data and its corresponding index inside the buffer.
+
+        The ``weight`` in the returned Batch is the weight on loss function
+        to de-bias the sampling process (some transition tuples are sampled
+        more often so their losses are weighted less).
         """
-        assert self._size > 0, 'cannot sample a buffer with size == 0 !'
-        p = None
-        if batch_size > 0 and (self._replace or batch_size <= self._size):
-            # sampling weight
-            p = (self.weight / self.weight.sum())[:self._size]
-            indice = np.random.choice(
-                self._size, batch_size, p=p,
-                replace=self._replace)
-            p = p[indice]  # weight of each sample
-        elif batch_size == 0:
-            p = np.full(shape=self._size, fill_value=1.0 / self._size)
+        assert self._size > 0, 'Cannot sample a buffer with 0 size!'
+        if batch_size == 0:
             indice = np.concatenate([
                 np.arange(self._index, self._size),
                 np.arange(0, self._index),
             ])
         else:
-            raise ValueError(
-                f"batch_size should be less than {len(self)}, \
-                    or set replace=True")
+            scalar = np.random.rand(batch_size) * self.weight.reduce()
+            indice = self.weight.get_prefix_sum_idx(scalar)
         batch = self[indice]
-        batch["impt_weight"] = (self._size * p) ** (-self._beta)
+        # impt_weight
+        # original formula: ((p_j/p_sum*N)**(-beta))/((p_min/p_sum*N)**(-beta))
+        # simplified formula: (p_j/p_min)**(-beta)
+        batch.weight = (batch.weight / self._min_prio) ** (-self._beta)
         return batch, indice
 
-    def update_weight(self, indice: Union[slice, np.ndarray],
-                      new_weight: np.ndarray) -> None:
+    def update_weight(self, indice: Union[np.ndarray],
+                      new_weight: Union[np.ndarray, torch.Tensor]) -> None:
         """Update priority weight by indice in this buffer.
 
-        :param np.ndarray indice: indice you want to update weight
-        :param np.ndarray new_weight: new priority weight you want to update
+        :param np.ndarray indice: indice you want to update weight.
+        :param np.ndarray new_weight: new priority weight you want to update.
         """
-        if self._replace:
-            if isinstance(indice, slice):
-                # convert slice to ndarray
-                indice = np.arange(indice.stop)[indice]
-            # remove the same values in indice
-            indice, unique_indice = np.unique(
-                indice, return_index=True)
-            new_weight = new_weight[unique_indice]
-        self.weight[indice] = np.power(np.abs(new_weight), self._alpha)
+        weight = np.abs(to_numpy(new_weight)) + self.__eps
+        self.weight[indice] = weight ** self._alpha
+        self._max_prio = max(self._max_prio, weight.max())
+        self._min_prio = min(self._min_prio, weight.min())
 
     def __getitem__(self, index: Union[
             slice, int, np.integer, np.ndarray]) -> Batch:
@@ -459,6 +449,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             done=self.done[index],
             obs_next=self.get(index, 'obs_next'),
             info=self.get(index, 'info'),
-            weight=self.weight[index],
             policy=self.get(index, 'policy'),
+            weight=self.weight[index],
         )
