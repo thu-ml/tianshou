@@ -64,16 +64,6 @@ class Collector(object):
         #   sleep time between rendering consecutive frames)
         collector.collect(n_episode=1, render=0.03)
 
-        # sample data with a given number of batch-size:
-        batch_data = collector.sample(batch_size=64)
-        # policy.learn(batch_data)  # btw, vanilla policy gradient only
-        #   supports on-policy training, so here we pick all data in the buffer
-        batch_data = collector.sample(batch_size=0)
-        policy.learn(batch_data)
-        # on-policy algorithms use the collected data only once, so here we
-        #   clear the buffer
-        collector.reset_buffer()
-
     Collected data always consist of full episodes. So if only ``n_step``
     argument is give, the collector may return the data more than the
     ``n_step`` limitation. Same as ``n_episode`` for the multiple environment
