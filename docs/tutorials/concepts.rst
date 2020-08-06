@@ -67,9 +67,11 @@ Tianshou aims to modularizing RL algorithms. It comes into several classes of po
 A policy class typically has four parts:
 
 * :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including coping the target network and so on;
+* :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the replay buffer;
 * :meth:`~tianshou.policy.BasePolicy.forward`: compute action with given observation;
-* :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the replay buffer (this function can interact with replay buffer);
 * :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given batch of data.
+* :meth:`~tianshou.policy.BasePolicy.post_process_fn`: update the buffer with a given batch of data.
+* :meth:`~tianshou.policy.BasePolicy.update`: the main interface for training. This function samples data from buffer, pre-process data (such as computing n-step return), learn with the data, and finally post-process the data (can update buffer).
 
 Take 2-step return DQN as an example. The 2-step return DQN compute each frame's return as:
 
@@ -125,10 +127,9 @@ Collector
 ---------
 
 The :class:`~tianshou.data.Collector` enables the policy to interact with different types of environments conveniently.
-In short, :class:`~tianshou.data.Collector` has two main methods:
+In short, :class:`~tianshou.data.Collector` has one main method:
 
 * :meth:`~tianshou.data.Collector.collect`: let the policy perform (at least) a specified number of step ``n_step`` or episode ``n_episode`` and store the data in the replay buffer;
-* :meth:`~tianshou.data.Collector.sample`: sample a data batch from replay buffer; it will call :meth:`~tianshou.policy.BasePolicy.process_fn` before returning the final batch data.
 
 Why do we mention **at least** here? For multiple environments, we could not directly store the collected data into the replay buffer, since it breaks the principle of storing data chronologically.
 
