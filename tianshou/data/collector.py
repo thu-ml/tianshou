@@ -130,6 +130,8 @@ class Collector(object):
 
     def reset(self) -> None:
         """Reset all related variables in the collector."""
+        # use empty Batch for ``state`` so that ``self.data`` supports slicing
+        # convert empty Batch to None when passing data to policy
         self.data = Batch(state={}, obs={}, act={}, rew={}, done={}, info={},
                           obs_next={}, policy={})
         self.reset_env()
@@ -235,7 +237,7 @@ class Collector(object):
 
             # restore the state and the input data
             last_state = self.data.state
-            if last_state.is_empty():
+            if isinstance(last_state, Batch) and last_state.is_empty():
                 last_state = None
             self.data.update(state=Batch(), obs_next=Batch(), policy=Batch())
 

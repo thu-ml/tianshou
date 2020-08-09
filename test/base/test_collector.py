@@ -12,14 +12,22 @@ else:  # pytest
 
 
 class MyPolicy(BasePolicy):
-    def __init__(self, dict_state=False):
+    def __init__(self, dict_state=False, need_state: bool = True):
+        """
+        ``dict_state`` means the observation of the environment is a dict
+        ``need_state`` means the state of the policy (typically in rnn)
+        """
         super().__init__()
         self.dict_state = dict_state
 
     def forward(self, batch, state=None):
+        if state is None:
+            state = np.zeros((len(batch.obs), 2))
+        else:
+            state += 1
         if self.dict_state:
-            return Batch(act=np.ones(len(batch.obs['index'])))
-        return Batch(act=np.ones(len(batch.obs)), state=np.array([1, 2]))
+            return Batch(act=np.ones(len(batch.obs['index'])), state=state)
+        return Batch(act=np.ones(len(batch.obs)), state=state)
 
     def learn(self):
         pass
