@@ -29,7 +29,7 @@ class DummyEnvWorker(EnvWorker):
     def send_action(self, action: np.ndarray) -> None:
         self.result = self.env.step(action)
 
-    def seed(self, seed: Optional[int] = None) -> List[int]:
+    def seed(self, seed: Optional[int] = None) -> int:
         return self.env.seed(seed) if hasattr(self.env, 'seed') else None
 
     def render(self, **kwargs) -> Any:

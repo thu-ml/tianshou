@@ -167,7 +167,7 @@ class SubprocEnvWorker(EnvWorker):
             obs = self._decode_obs(obs)
         return obs, rew, done, info
 
-    def seed(self, seed: Optional[int] = None) -> List[int]:
+    def seed(self, seed: Optional[int] = None) -> int:
         self.parent_remote.send(['seed', seed])
         return self.parent_remote.recv()
 

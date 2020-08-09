@@ -48,6 +48,8 @@ where ``env_fns`` is a list of callable env hooker. The above code can be writte
     env_fns = [lambda x=i: MyTestEnv(size=x) for i in [2, 3, 4, 5]]
     venv = SubprocVectorEnv(env_fns)
 
+All of these VectorEnv class have async mode (related to issue #103), where we can give it an extra parameter ``wait_num``. If we have 4 envs and set ``wait_num = 3``, in each of the step in VectorEnv it only returns 3 results of these 4 envs. This mode eases the case where each step cost vary different time， e.g. 90% step cost 1s, but 10% cost 10s.
+
 .. warning::
 
     If you use your own environment, please make sure the ``seed`` method is set up properly, e.g.,

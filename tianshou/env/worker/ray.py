@@ -39,7 +39,7 @@ class RayEnvWorker(EnvWorker):
                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return ray.get(self.result)
 
-    def seed(self, seed: Optional[int] = None) -> List[int]:
+    def seed(self, seed: Optional[int] = None) -> int:
         if hasattr(self.env, 'seed'):
             return ray.get(self.env.seed.remote(seed))
         return None
