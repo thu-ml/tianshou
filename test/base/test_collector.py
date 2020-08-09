@@ -19,7 +19,7 @@ class MyPolicy(BasePolicy):
     def forward(self, batch, state=None):
         if self.dict_state:
             return Batch(act=np.ones(len(batch.obs['index'])))
-        return Batch(act=np.ones(len(batch.obs)))
+        return Batch(act=np.ones(len(batch.obs)), state=np.array([1, 2]))
 
     def learn(self):
         pass
@@ -72,26 +72,26 @@ def test_collector():
     c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False),
                    logger.preprocess_fn)
     c0.collect(n_step=3)
-    assert np.allclose(c0.buffer.obs[:4], np.expand_dims(
-                                                    [0, 1, 0, 1], axis=-1))
-    assert np.allclose(c0.buffer[:4].obs_next, np.expand_dims(
-                                                [1, 2, 1, 2], axis=-1))
+    assert np.allclose(c0.buffer.obs[:4],
+                       np.expand_dims([0, 1, 0, 1], axis=-1))
+    assert np.allclose(c0.buffer[:4].obs_next,
+                       np.expand_dims([1, 2, 1, 2], axis=-1))
     c0.collect(n_episode=3)
-    assert np.allclose(c0.buffer.obs[:10], np.expand_dims(
-                                [0, 1, 0, 1, 0, 1, 0, 1, 0, 1], axis=-1))
-    assert np.allclose(c0.buffer[:10].obs_next, np.expand_dims(
-                                    [1, 2, 1, 2, 1, 2, 1, 2, 1, 2], axis=-1))
+    assert np.allclose(c0.buffer.obs[:10],
+                       np.expand_dims([0, 1, 0, 1, 0, 1, 0, 1, 0, 1], axis=-1))
+    assert np.allclose(c0.buffer[:10].obs_next,
+                       np.expand_dims([1, 2, 1, 2, 1, 2, 1, 2, 1, 2], axis=-1))
     c0.collect(n_step=3, random=True)
     c1 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False),
                    logger.preprocess_fn)
     c1.collect(n_step=6)
     assert np.allclose(c1.buffer.obs[:11], np.expand_dims(
-                            [0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3], axis=-1))
-    assert np.allclose(c1.buffer[:11].obs_next, np.expand_dims([
-                                1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4], axis=-1))
+        [0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3], axis=-1))
+    assert np.allclose(c1.buffer[:11].obs_next, np.expand_dims(
+        [1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4], axis=-1))
     c1.collect(n_episode=2)
-    assert np.allclose(c1.buffer.obs[11:21], np.expand_dims(
-                            [0, 1, 2, 3, 4, 0, 1, 0, 1, 2], axis=-1))
+    assert np.allclose(c1.buffer.obs[11:21],
+                       np.expand_dims([0, 1, 2, 3, 4, 0, 1, 0, 1, 2], axis=-1))
     assert np.allclose(c1.buffer[11:21].obs_next,
                        np.expand_dims([1, 2, 3, 4, 5, 1, 2, 1, 2, 3], axis=-1))
     c1.collect(n_episode=3, random=True)
@@ -116,7 +116,7 @@ def test_collector_with_async():
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.1, random_sleep=True)
                for i in env_lens]
 
-    venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns))
+    venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
     policy = MyPolicy()
     c1 = Collector(policy, venv,
                    ReplayBuffer(size=1000, ignore_obs_next=False),
@@ -129,8 +129,6 @@ def test_collector_with_async():
     size = len(c1.buffer)
     obs = c1.buffer.obs[:size]
     done = c1.buffer.done[:size]
-    print(env_id[:size])
-    print(obs)
     obs_ground_truth = []
     i = 0
     while i < size:

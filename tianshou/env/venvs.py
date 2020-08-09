@@ -65,14 +65,16 @@ class BaseVectorEnv(gym.Env):
 
         Otherwise, the outputs of these envs may be the same with each other.
 
-
+    :param env_fns: a list of callable envs, ``env_fns[i]()`` will generate
+        the ith env.
+    :param worker_fn: a callable worker, ``worker_fn(env_fns[i])`` will
+        generate a worker which contains this env.
     :param int wait_num: used in asynchronous simulation if the time cost of
         ``env.step`` varies with time and synchronously waiting for all
         environments to finish a step is time-wasting. In that case, we can
         return when ``wait_num`` environments finish a step and keep on
         simulation in these environments. If ``None``, asynchronous simulation
         is disabled; else, ``1 <= wait_num <= env_num``.
-
     """
 
     def __init__(self,
@@ -88,7 +90,7 @@ class BaseVectorEnv(gym.Env):
         self.wait_num = wait_num or len(env_fns)
         assert 1 <= self.wait_num <= len(env_fns), \
             f'wait_num should be in [1, {len(env_fns)}], but got {wait_num}'
-        self.is_async = wait_num is not None
+        self.is_async = self.wait_num != len(env_fns)
         self.waiting_conn = []
         # environments in self.ready_id is actually ready
         # but environments in self.waiting_id are just waiting when checked,
@@ -117,31 +119,32 @@ class BaseVectorEnv(gym.Env):
            environment class."""
         return [getattr(worker, key) for worker in self.workers]
 
-    def _assert_and_transform_id(self,
-                                 id: Optional[Union[int, List[int]]] = None
-                                 ) -> List[int]:
+    def _wrap_id(self,
+                 id: Optional[Union[int, List[int]]] = None
+                 ) -> List[int]:
         if id is None:
             id = list(range(self.env_num))
         elif np.isscalar(id):
             id = [id]
+        return id
+
+    def _assert_id(self,
+                   id: Optional[Union[int, List[int]]] = None
+                   ) -> List[int]:
         for i in id:
             assert i not in self.waiting_id, \
                 f'Cannot manipulate environment {i} which is stepping now!'
             assert i in self.ready_id, \
                 f'Can only manipulate ready environments {self.ready_id}.'
-        return id
 
     def reset(self, id: Optional[Union[int, List[int]]] = None):
         """Reset the state of all the environments and return initial
         observations if id is ``None``, otherwise reset the specific
         environments with given id, either an int or a list.
         """
-        if id is None:
-            id = range(self.env_num)
-        elif np.isscalar(id):
-            id = [id]
+        id = self._wrap_id(id)
         if self.is_async:
-            id = self._assert_and_transform_id(id)
+            self._assert_id(id)
         obs = np.stack([self.workers[i].reset() for i in id])
         return obs
 
@@ -178,11 +181,8 @@ class BaseVectorEnv(gym.Env):
         (initially they are env_ids of all the environments). If action is
         ``None``, fetch unfinished step() calls instead.
         """
+        id = self._wrap_id(id)
         if not self.is_async:
-            if id is None:
-                id = range(self.env_num)
-            elif np.isscalar(id):
-                id = [id]
             assert len(action) == len(id)
             for i, j in enumerate(id):
                 self.workers[j].send_action(action[i])
@@ -191,7 +191,7 @@ class BaseVectorEnv(gym.Env):
             return obs, rew, done, info
         else:
             if action is not None:
-                id = self._assert_and_transform_id(id)
+                self._assert_id(id)
                 assert len(action) == len(id)
                 for i, (act, env_id) in enumerate(zip(action, id)):
                     self.workers[env_id].send_action(act)
@@ -265,8 +265,8 @@ class VectorEnv(BaseVectorEnv):
                  wait_num: Optional[int] = None,
                  ) -> None:
         warnings.warn(
-            'VectorEnv is renamed to DummyVectorEnv, and will be removed'
-            ' in 0.3. Use DummyVectorEnv instead!', DeprecationWarning)
+            'VectorEnv is renamed to DummyVectorEnv, and will be removed in '
+            '0.3. Use DummyVectorEnv instead!', DeprecationWarning)
         super().__init__(env_fns, DummyEnvWorker, wait_num=wait_num)
 
 
