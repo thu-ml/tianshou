@@ -28,8 +28,7 @@ def _worker(parent, p, env_fn_wrapper, obs_bufs=None):
         while True:
             try:
                 cmd, data = p.recv()
-            except EOFError:
-                # the pipe has been closed
+            except EOFError:  # the pipe has been closed
                 p.close()
                 break
             if cmd == 'step':
@@ -145,7 +144,34 @@ class SubprocEnvWorker(EnvWorker):
                 raise NotImplementedError
         return decode_obs(self.buffer)
 
-    def render(self, **kwargs) -> None:
+    def reset(self) -> Any:
+        self.parent_remote.send(['reset', None])
+        obs = self.parent_remote.recv()
+        if self.share_memory:
+            obs = self._decode_obs(obs)
+        return obs
+
+    @staticmethod
+    def wait(workers: List['SubprocEnvWorker']) -> List['SubprocEnvWorker']:
+        conns = [x.parent_remote for x in workers]
+        ready_conns = connection.wait(conns)
+        return [workers[conns.index(con)] for con in ready_conns]
+
+    def send_action(self, action: np.ndarray) -> None:
+        self.parent_remote.send(['step', action])
+
+    def get_result(self
+                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        obs, rew, done, info = self.parent_remote.recv()
+        if self.share_memory:
+            obs = self._decode_obs(obs)
+        return obs, rew, done, info
+
+    def seed(self, seed: Optional[int] = None) -> List[int]:
+        self.parent_remote.send(['seed', seed])
+        return self.parent_remote.recv()
+
+    def render(self, **kwargs) -> Any:
         self.parent_remote.send(['render', kwargs])
         return self.parent_remote.recv()
 
@@ -157,33 +183,6 @@ class SubprocEnvWorker(EnvWorker):
             result = None
         self.process.join()
         return result
-
-    @staticmethod
-    def wait(workers: List['SubprocEnvWorker']) -> List['SubprocEnvWorker']:
-        conns = [x.parent_remote for x in workers]
-        ready_conns = connection.wait(conns)
-        return [workers[conns.index(con)] for con in ready_conns]
-
-    def get_result(self
-                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        obs, rew, done, info = self.parent_remote.recv()
-        if self.share_memory:
-            obs = self._decode_obs(obs)
-        return obs, rew, done, info
-
-    def send_action(self, action: np.ndarray):
-        self.parent_remote.send(['step', action])
-
-    def reset(self):
-        self.parent_remote.send(['reset', None])
-        obs = self.parent_remote.recv()
-        if self.share_memory:
-            obs = self._decode_obs(obs)
-        return obs
-
-    def seed(self, seed: Optional[int] = None):
-        self.parent_remote.send(['seed', seed])
-        return self.parent_remote.recv()
 
     def __del__(self):
         # ensure the subproc is terminated

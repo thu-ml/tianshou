@@ -25,7 +25,7 @@ class EnvWorker(ABC, gym.Env):
         pass
 
     @abstractmethod
-    def send_action(self, action: np.ndarray):
+    def send_action(self, action: np.ndarray) -> None:
         pass
 
     def get_result(self
@@ -42,21 +42,20 @@ class EnvWorker(ABC, gym.Env):
         self.send_action(action)
         return self.get_result()
 
+    @staticmethod
+    def wait(workers: List['EnvWorker']) -> List['EnvWorker']:
+        """Given a list of workers, return those ready ones."""
+        raise NotImplementedError
+
     @abstractmethod
-    def seed(self, seed: Optional[int] = None):
+    def seed(self, seed: Optional[int] = None) -> int:
         pass
 
     @abstractmethod
-    def render(self, **kwargs) -> None:
+    def render(self, **kwargs) -> Any:
         """Renders the environment."""
         pass
 
     @abstractmethod
     def close(self) -> Any:
         pass
-
-    @staticmethod
-    def wait(workers: List['EnvWorker']) -> List['EnvWorker']:
-        """Given a list of workers, return those ready ones.
-        """
-        raise NotImplementedError

@@ -246,18 +246,25 @@ class BaseVectorEnv(gym.Env):
 
 
 class DummyVectorEnv(BaseVectorEnv):
+    """Dummy vectorized environment wrapper, implemented in for-loop.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.env.BaseVectorEnv` for more detailed
+        explanation.
+    """
+
     def __init__(self, env_fns: List[Callable[[], gym.Env]],
                  wait_num: Optional[int] = None) -> None:
         super().__init__(env_fns, DummyEnvWorker, wait_num=wait_num)
 
 
-class VectorEnv(BaseVectorEnv):
-    def __init__(self, env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None) -> None:
+class VectorEnv(DummyVectorEnv):
+    def __init__(self, *args, **kwargs) -> None:
         warnings.warn(
             'VectorEnv is renamed to DummyVectorEnv, and will be removed in '
-            '0.3. Use DummyVectorEnv instead!', DeprecationWarning)
-        super().__init__(env_fns, DummyEnvWorker, wait_num=wait_num)
+            '0.3. Use DummyVectorEnv instead!', Warning)
+        super().__init__(*args, **kwargs)
 
 
 class SubprocVectorEnv(BaseVectorEnv):
@@ -277,7 +284,7 @@ class SubprocVectorEnv(BaseVectorEnv):
 
 
 class ShmemVectorEnv(BaseVectorEnv):
-    """Optimized version of SubprocVectorEnv that uses shared variables to
+    """Optimized version of SubprocVectorEnv which uses shared variables to
     communicate observations. ShmemVectorEnv has exactly the same API as
     SubprocVectorEnv.
 

@@ -20,6 +20,9 @@ class RayEnvWorker(EnvWorker):
     def __getattr__(self, key: str):
         return ray.get(self.env.__getattr__.remote(key))
 
+    def reset(self) -> Any:
+        return ray.get(self.env.reset.remote())
+
     @staticmethod
     def wait(workers: List['RayEnvWorker']) -> List['RayEnvWorker']:
         ready_envs, _ = ray.wait(
@@ -28,23 +31,20 @@ class RayEnvWorker(EnvWorker):
             timeout=0)
         return [workers[ready_envs.index(env)] for env in ready_envs]
 
-    def reset(self):
-        return ray.get(self.env.reset.remote())
+    def send_action(self, action: np.ndarray) -> None:
+        # self.action is actually a handle
+        self.result = self.env.step.remote(action)
 
     def get_result(self
                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return ray.get(self.result)
 
-    def send_action(self, action: np.ndarray):
-        # self.action is actually a handle
-        self.result = self.env.step.remote(action)
-
-    def seed(self, seed: Optional[int] = None):
+    def seed(self, seed: Optional[int] = None) -> List[int]:
         if hasattr(self.env, 'seed'):
             return ray.get(self.env.seed.remote(seed))
         return None
 
-    def render(self, **kwargs) -> None:
+    def render(self, **kwargs) -> Any:
         if hasattr(self.env, 'render'):
             return ray.get(self.env.render.remote(**kwargs))
         return None
