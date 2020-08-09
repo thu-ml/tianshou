@@ -193,7 +193,6 @@ def test_collector_with_dict_state():
                    Logger.single_preprocess_fn)
     c2.collect(n_episode=[0, 0, 0, 10])
     batch = c2.sample(10)
-    batch['obs_next']['index']
 
 
 def test_collector_with_ma():
@@ -235,7 +234,6 @@ def test_collector_with_ma():
     r = c2.collect(n_episode=[0, 0, 0, 10])['rew']
     assert np.asanyarray(r).size == 1 and r == 4.
     batch = c2.sample(10)
-    batch['obs_next']
 
 
 if __name__ == '__main__':

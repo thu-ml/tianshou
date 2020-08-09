@@ -379,8 +379,7 @@ def _batch_set_item(source: Batch, indices: np.ndarray,
             vs = source.get(k, Batch())
             if isinstance(vs, Batch):
                 if vs.is_empty():
-                    # case 2
-                    # use __dict__ to avoid many type checks
+                    # case 2, use __dict__ to avoid many type checks
                     source.__dict__[k] = _create_value(vt[0], size)
                 else:
                     assert isinstance(vt, Batch)
