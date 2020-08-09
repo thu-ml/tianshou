@@ -205,7 +205,7 @@ class BaseVectorEnv(gym.Env):
                     info["env_id"] = env_id
                     result.append((obs, rew, done, info))
                     self.ready_id.append(env_id)
-        return map(np.stack, zip(*result))
+        return list(map(np.stack, zip(*result)))
 
     def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
         """Set the seed for all environments.
