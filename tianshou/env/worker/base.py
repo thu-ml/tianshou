@@ -17,11 +17,11 @@ class EnvWorker(ABC, gym.Env):
             return self.__getattr__(key)
 
     @abstractmethod
-    def __getattr__(self, key: str):
+    def __getattr__(self, key: str) -> Any:
         pass
 
     @abstractmethod
-    def reset(self):
+    def reset(self) -> Any:
         pass
 
     @abstractmethod

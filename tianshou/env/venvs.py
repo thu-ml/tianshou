@@ -15,8 +15,7 @@ def run_once(f):
 
     def wrapper(self, *args, **kwargs):
         if self.unique_id in f.has_run_objects:
-            raise RuntimeError(
-                f'{f} can be called only once for object {self}')
+            raise RuntimeError(f'{f} can be called only once for {self}.')
         f.has_run_objects.add(self.unique_id)
         return f(self, *args, **kwargs)
     return wrapper
@@ -105,42 +104,42 @@ class BaseVectorEnv(gym.Env):
         """Return len(self), which is the number of environments."""
         return self.env_num
 
-    def __getattribute__(self, key: str):
-        """Switch between the default attribute getter or one
-           looking at wrapped environment level depending on the key."""
+    def __getattribute__(self, key: str) -> Any:
+        """Switch between the default attribute getter or one looking at
+        wrapped environment level depending on the key.
+        """
         if key not in ('observation_space', 'action_space'):
             return super().__getattribute__(key)
         else:
             return self.__getattr__(key)
 
-    def __getattr__(self, key: str):
+    def __getattr__(self, key: str) -> Any:
         """Try to retrieve an attribute from each individual wrapped
-           environment, if it does not belong to the wrapping vector
-           environment class."""
+        environment, if it does not belong to the wrapping vector environment
+        class.
+        """
         return [getattr(worker, key) for worker in self.workers]
 
-    def _wrap_id(self,
-                 id: Optional[Union[int, List[int]]] = None
-                 ) -> List[int]:
+    def _wrap_id(
+            self, id: Optional[Union[int, List[int]]] = None) -> List[int]:
         if id is None:
             id = list(range(self.env_num))
         elif np.isscalar(id):
             id = [id]
         return id
 
-    def _assert_id(self,
-                   id: Optional[Union[int, List[int]]] = None
-                   ) -> List[int]:
+    def _assert_id(
+            self, id: Optional[Union[int, List[int]]] = None) -> List[int]:
         for i in id:
             assert i not in self.waiting_id, \
                 f'Cannot manipulate environment {i} which is stepping now!'
             assert i in self.ready_id, \
                 f'Can only manipulate ready environments {self.ready_id}.'
 
-    def reset(self, id: Optional[Union[int, List[int]]] = None):
+    def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
         """Reset the state of all the environments and return initial
         observations if id is ``None``, otherwise reset the specific
-        environments with given id, either an int or a list.
+        environments with the given id, either an int or a list.
         """
         id = self._wrap_id(id)
         if self.is_async:
@@ -152,11 +151,10 @@ class BaseVectorEnv(gym.Env):
              action: Optional[np.ndarray],
              id: Optional[Union[int, List[int]]] = None
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Run one timestep of all the environments’ dynamics if id is
-        ``None``, otherwise run one timestep for some environments with given
-        id,  either an int or a list. When the end of episode is reached, you
-        are responsible for calling reset(id) to reset this environment’s
-        state.
+        """Run one timestep of all the environments’ dynamics if id is "None",
+        otherwise run one timestep for some environments with given id,  either
+        an int or a list. When the end of episode is reached, you are
+        responsible for calling reset(id) to reset this environment’s state.
 
         Accept a batch of action and return a tuple (obs, rew, done, info).
 
@@ -187,8 +185,6 @@ class BaseVectorEnv(gym.Env):
             for i, j in enumerate(id):
                 self.workers[j].send_action(action[i])
             result = [self.workers[j].get_result() for j in id]
-            obs, rew, done, info = map(np.stack, zip(*result))
-            return obs, rew, done, info
         else:
             if action is not None:
                 self._assert_id(id)
@@ -205,13 +201,11 @@ class BaseVectorEnv(gym.Env):
                     waiting_index = self.waiting_conn.index(conn)
                     self.waiting_conn.pop(waiting_index)
                     env_id = self.waiting_id.pop(waiting_index)
-                    ans = conn.get_result()
-                    obs, rew, done, info = ans
+                    obs, rew, done, info = conn.get_result()
                     info["env_id"] = env_id
                     result.append((obs, rew, done, info))
                     self.ready_id.append(env_id)
-            obs, rew, done, info = map(np.stack, zip(*result))
-            return obs, rew, done, info
+        return map(np.stack, zip(*result))
 
     def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
         """Set the seed for all environments.
@@ -252,18 +246,14 @@ class BaseVectorEnv(gym.Env):
 
 
 class DummyVectorEnv(BaseVectorEnv):
-    def __init__(self,
-                 env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None,
-                 ) -> None:
+    def __init__(self, env_fns: List[Callable[[], gym.Env]],
+                 wait_num: Optional[int] = None) -> None:
         super().__init__(env_fns, DummyEnvWorker, wait_num=wait_num)
 
 
 class VectorEnv(BaseVectorEnv):
-    def __init__(self,
-                 env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None,
-                 ) -> None:
+    def __init__(self, env_fns: List[Callable[[], gym.Env]],
+                 wait_num: Optional[int] = None) -> None:
         warnings.warn(
             'VectorEnv is renamed to DummyVectorEnv, and will be removed in '
             '0.3. Use DummyVectorEnv instead!', DeprecationWarning)
@@ -279,15 +269,11 @@ class SubprocVectorEnv(BaseVectorEnv):
         explanation.
     """
 
-    def __init__(self,
-                 env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None,
-                 ) -> None:
-        super().__init__(
-            env_fns,
-            lambda fn: SubprocEnvWorker(fn, share_memory=False),
-            wait_num=wait_num,
-        )
+    def __init__(self, env_fns: List[Callable[[], gym.Env]],
+                 wait_num: Optional[int] = None) -> None:
+        def worker_fn(fn):
+            return SubprocEnvWorker(fn, share_memory=False)
+        super().__init__(env_fns, worker_fn, wait_num=wait_num)
 
 
 class ShmemVectorEnv(BaseVectorEnv):
@@ -301,15 +287,11 @@ class ShmemVectorEnv(BaseVectorEnv):
         detailed explanation.
     """
 
-    def __init__(self,
-                 env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None,
-                 ) -> None:
-        super().__init__(
-            env_fns,
-            lambda fn: SubprocEnvWorker(fn, share_memory=True),
-            wait_num=wait_num,
-        )
+    def __init__(self, env_fns: List[Callable[[], gym.Env]],
+                 wait_num: Optional[int] = None) -> None:
+        def worker_fn(fn):
+            return SubprocEnvWorker(fn, share_memory=True)
+        super().__init__(env_fns, worker_fn, wait_num=wait_num)
 
 
 class RayVectorEnv(BaseVectorEnv):
@@ -323,17 +305,14 @@ class RayVectorEnv(BaseVectorEnv):
         explanation.
     """
 
-    def __init__(self,
-                 env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None,
-                 ) -> None:
+    def __init__(self, env_fns: List[Callable[[], gym.Env]],
+                 wait_num: Optional[int] = None) -> None:
         try:
             import ray
         except ImportError as e:
             raise ImportError(
                 'Please install ray to support RayVectorEnv: pip install ray'
             ) from e
-
         if not ray.is_initialized():
             ray.init()
         super().__init__(env_fns, RayEnvWorker, wait_num=wait_num)
