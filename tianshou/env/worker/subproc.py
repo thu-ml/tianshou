@@ -175,15 +175,14 @@ class SubprocEnvWorker(EnvWorker):
         self.parent_remote.send(['render', kwargs])
         return self.parent_remote.recv()
 
-    def close(self) -> Any:
+    def close_env(self) -> Any:
         try:
             self.parent_remote.send(['close', None])
+            # mp may be deleted so it may raise AttributeError
             result = self.parent_remote.recv()
-        except (BrokenPipeError, EOFError):
+            self.process.join()
+        except (BrokenPipeError, EOFError, AttributeError):
             result = None
-        self.process.join()
-        return result
-
-    def __del__(self):
         # ensure the subproc is terminated
         self.process.terminate()
+        return result

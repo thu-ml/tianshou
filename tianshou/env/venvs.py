@@ -7,28 +7,6 @@ from tianshou.env.worker import EnvWorker, DummyEnvWorker, SubprocEnvWorker, \
     RayEnvWorker
 
 
-def run_once(f):
-    """Run once decorator for a method in a class. Each instance can run the
-    method at most once.
-    """
-    f.has_run_objects = set()
-
-    def wrapper(self, *args, **kwargs):
-        if self.unique_id in f.has_run_objects:
-            raise RuntimeError(f'{f} can be called only once for {self}.')
-        f.has_run_objects.add(self.unique_id)
-        return f(self, *args, **kwargs)
-    return wrapper
-
-
-def generate_id():
-    generate_id.i += 1
-    return generate_id.i
-
-
-generate_id.i = 0
-
-
 class BaseVectorEnv(gym.Env):
     """Base class for vectorized environments wrapper. Usage:
     ::
@@ -98,7 +76,11 @@ class BaseVectorEnv(gym.Env):
         self.waiting_id = []
         # all environments are ready in the beginning
         self.ready_id = list(range(self.env_num))
-        self.unique_id = generate_id()
+        self.is_closed = False
+
+    def _assert_is_closed(self):
+        assert not self.is_closed, f"Methods of {self.__class__.__name__} "\
+            "should not be called after close."
 
     def __len__(self) -> int:
         """Return len(self), which is the number of environments."""
@@ -141,6 +123,7 @@ class BaseVectorEnv(gym.Env):
         observations if id is ``None``, otherwise reset the specific
         environments with the given id, either an int or a list.
         """
+        self._assert_is_closed()
         id = self._wrap_id(id)
         if self.is_async:
             self._assert_id(id)
@@ -179,6 +162,7 @@ class BaseVectorEnv(gym.Env):
         (initially they are env_ids of all the environments). If action is
         ``None``, fetch unfinished step() calls instead.
         """
+        self._assert_is_closed()
         id = self._wrap_id(id)
         if not self.is_async:
             assert len(action) == len(id)
@@ -217,6 +201,7 @@ class BaseVectorEnv(gym.Env):
         generators. The first value in the list should be the "main" seed, or \
         the value which a reproducer pass to "seed".
         """
+        self._assert_is_closed()
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
@@ -226,23 +211,32 @@ class BaseVectorEnv(gym.Env):
 
     def render(self, **kwargs) -> List[Any]:
         """Render all of the environments."""
+        self._assert_is_closed(self.render)
         if self.is_async and len(self.waiting_id) > 0:
             raise RuntimeError(
                 f"Environments {self.waiting_id} are still "
                 f"stepping, cannot render them now.")
         return [w.render(**kwargs) for w in self.workers]
 
-    @run_once
     def close(self) -> List[Any]:
         """Close all of the environments. This function will be called only
         once (if not, it will be called during garbage collected). This way,
         ``close`` of all workers can be assured.
         """
+        self._assert_is_closed()
         if self.is_async:
-            # finish remaining steps, and close
-            if len(self.waiting_conn) > 0:
-                self.step(None)
+            try:
+                # finish remaining steps, and close
+                if len(self.waiting_conn) > 0:
+                    self.step(None)
+            except TypeError:  # self.step -> self.worker.wait doesn't exist
+                pass
+        self.is_closed = True
         return [w.close() for w in self.workers]
+
+    def __del__(self) -> List[Any]:
+        if not self.is_closed:
+            self.close()
 
 
 class DummyVectorEnv(BaseVectorEnv):

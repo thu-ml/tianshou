@@ -49,5 +49,5 @@ class RayEnvWorker(EnvWorker):
             return ray.get(self.env.render.remote(**kwargs))
         return None
 
-    def close(self) -> Any:
+    def close_env(self) -> Any:
         return ray.get(self.env.close.remote())

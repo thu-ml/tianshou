@@ -9,6 +9,7 @@ class EnvWorker(ABC, gym.Env):
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self._env_fn = env_fn
+        self.is_closed = False
 
     def __getattribute__(self, key: str):
         if key not in ('observation_space', 'action_space'):
@@ -57,5 +58,14 @@ class EnvWorker(ABC, gym.Env):
         pass
 
     @abstractmethod
-    def close(self) -> Any:
+    def close_env(self) -> Any:
         pass
+
+    def close(self) -> Any:
+        if self.is_closed:
+            return None
+        self.is_closed = True
+        return self.close_env()
+
+    def __del__(self) -> Any:
+        return self.close()
