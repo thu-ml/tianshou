@@ -66,6 +66,7 @@ def test_async_env(num=8, sleep=0.1):
         env_ids = env_ids[: len(action)]
     spent_time = time.time() - spent_time
     data = Batch.cat(o)
+    v.close()
     # assure 1/7 improvement
     assert spent_time < 6.0 * sleep * num / (num + 1)
     return spent_time, data

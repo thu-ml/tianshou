@@ -48,7 +48,7 @@ def test_drqn(args=get_args()):
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task)for _ in range(args.training_num)])
+        [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)])

@@ -112,6 +112,7 @@ class Collector(object):
         self.policy = policy
         self.preprocess_fn = preprocess_fn
         self.process_fn = policy.process_fn
+        self._action_space = env.action_space
         self._action_noise = action_noise
         self._rew_metric = reward_metric or Collector._default_rew_metric
         # avoid creating attribute outside __init__
@@ -243,14 +244,7 @@ class Collector(object):
 
             # calculate the next action
             if random:
-                if self.is_async:
-                    # TODO self.env.action_space will invoke remote call for
-                    #  all environments, which may hang in async simulation.
-                    #  This can be avoided by using a random policy, but not
-                    #  in the collector level. Leave it as a future work.
-                    raise RuntimeError("cannot use random "
-                                       "sampling in async simulation!")
-                spaces = self.env.action_space
+                spaces = self._action_space
                 result = Batch(
                     act=[spaces[i].sample() for i in self._ready_env_ids])
             else:
