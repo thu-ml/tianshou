@@ -257,7 +257,9 @@ class Collector(object):
                 state = Batch()
             self.data.update(state=state, policy=result.get('policy', Batch()))
             # save hidden state to policy._state, in order to save into buffer
-            self.data.policy._state = self.data.state
+            if not (isinstance(self.data.state, Batch)
+                    and self.data.state.is_empty()):
+                self.data.policy._state = self.data.state
 
             self.data.act = to_numpy(result.act)
             if self._action_noise is not None:
