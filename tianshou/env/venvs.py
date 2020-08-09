@@ -78,7 +78,7 @@ class BaseVectorEnv(gym.Env):
         self.ready_id = list(range(self.env_num))
         self.is_closed = False
 
-    def _assert_is_closed(self):
+    def _assert_is_not_closed(self):
         assert not self.is_closed, f"Methods of {self.__class__.__name__} "\
             "should not be called after close."
 
@@ -123,7 +123,7 @@ class BaseVectorEnv(gym.Env):
         observations if id is ``None``, otherwise reset the specific
         environments with the given id, either an int or a list.
         """
-        self._assert_is_closed()
+        self._assert_is_not_closed()
         id = self._wrap_id(id)
         if self.is_async:
             self._assert_id(id)
@@ -162,7 +162,7 @@ class BaseVectorEnv(gym.Env):
         (initially they are env_ids of all the environments). If action is
         ``None``, fetch unfinished step() calls instead.
         """
-        self._assert_is_closed()
+        self._assert_is_not_closed()
         id = self._wrap_id(id)
         if not self.is_async:
             assert len(action) == len(id)
@@ -201,7 +201,7 @@ class BaseVectorEnv(gym.Env):
         generators. The first value in the list should be the "main" seed, or \
         the value which a reproducer pass to "seed".
         """
-        self._assert_is_closed()
+        self._assert_is_not_closed()
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
@@ -211,7 +211,7 @@ class BaseVectorEnv(gym.Env):
 
     def render(self, **kwargs) -> List[Any]:
         """Render all of the environments."""
-        self._assert_is_closed(self.render)
+        self._assert_is_not_closed()
         if self.is_async and len(self.waiting_id) > 0:
             raise RuntimeError(
                 f"Environments {self.waiting_id} are still "
@@ -223,7 +223,7 @@ class BaseVectorEnv(gym.Env):
         once (if not, it will be called during garbage collected). This way,
         ``close`` of all workers can be assured.
         """
-        self._assert_is_closed()
+        self._assert_is_not_closed()
         if self.is_async:
             try:
                 # finish remaining steps, and close
