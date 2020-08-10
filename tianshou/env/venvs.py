@@ -114,9 +114,9 @@ class BaseVectorEnv(gym.Env):
             self, id: Optional[Union[int, List[int]]] = None) -> List[int]:
         for i in id:
             assert i not in self.waiting_id, \
-                f'Cannot manipulate environment {i} which is stepping now!'
+                f'Cannot interact with environment {i} which is stepping now.'
             assert i in self.ready_id, \
-                f'Can only manipulate ready environments {self.ready_id}.'
+                f'Can only interact with ready environments {self.ready_id}.'
 
     def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
         """Reset the state of all the environments and return initial
@@ -191,23 +191,23 @@ class BaseVectorEnv(gym.Env):
                     self.ready_id.append(env_id)
         return list(map(np.stack, zip(*result)))
 
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> List[int]:
+    def seed(self,
+             seed: Optional[Union[int, List[int]]] = None) -> List[List[int]]:
         """Set the seed for all environments.
 
         Accept ``None``, an int (which will extend ``i`` to
         ``[i, i + 1, i + 2, ...]``) or a list.
 
-        :return: The list of seeds used in this env's random number \
-        generators. The first value in the list should be the "main" seed, or \
-        the value which a reproducer pass to "seed".
+        :return: The list of seeds used in this env's random number generators.
+            The first value in the list should be the "main" seed, or the value
+            which a reproducer pass to "seed".
         """
         self._assert_is_not_closed()
         if np.isscalar(seed):
             seed = [seed + _ for _ in range(self.env_num)]
         elif seed is None:
             seed = [seed] * self.env_num
-        result = [w.seed(s) for w, s in zip(self.workers, seed)]
-        return result
+        return [w.seed(s) for w, s in zip(self.workers, seed)]
 
     def render(self, **kwargs) -> List[Any]:
         """Render all of the environments."""
@@ -218,7 +218,7 @@ class BaseVectorEnv(gym.Env):
                 f"stepping, cannot render them now.")
         return [w.render(**kwargs) for w in self.workers]
 
-    def close(self) -> List[Any]:
+    def close(self) -> None:
         """Close all of the environments. This function will be called only
         once (if not, it will be called during garbage collected). This way,
         ``close`` of all workers can be assured.
@@ -231,10 +231,11 @@ class BaseVectorEnv(gym.Env):
                     self.step(None)
             except TypeError:  # self.step -> self.worker.wait doesn't exist
                 pass
+        for w in self.workers:
+            w.close()
         self.is_closed = True
-        return [w.close() for w in self.workers]
 
-    def __del__(self) -> List[Any]:
+    def __del__(self) -> None:
         if not self.is_closed:
             self.close()
 

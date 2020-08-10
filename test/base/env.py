@@ -46,6 +46,7 @@ class MyTestEnv(gym.Env):
 
     def seed(self, seed=0):
         self.rng = np.random.RandomState(seed)
+        return [seed]
 
     def reset(self, state=0):
         self.done = False

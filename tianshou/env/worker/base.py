@@ -29,8 +29,8 @@ class EnvWorker(ABC, gym.Env):
     def send_action(self, action: np.ndarray) -> None:
         pass
 
-    def get_result(self
-                   ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_result(
+            self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return self.result
 
     def step(self, action: np.ndarray
@@ -49,7 +49,7 @@ class EnvWorker(ABC, gym.Env):
         raise NotImplementedError
 
     @abstractmethod
-    def seed(self, seed: Optional[int] = None) -> int:
+    def seed(self, seed: Optional[int] = None) -> List[int]:
         pass
 
     @abstractmethod
@@ -61,11 +61,8 @@ class EnvWorker(ABC, gym.Env):
     def close_env(self) -> Any:
         pass
 
-    def close(self) -> Any:
+    def close(self) -> None:
         if self.is_closed:
             return None
         self.is_closed = True
-        return self.close_env()
-
-    def __del__(self) -> Any:
-        return self.close()
+        self.close_env()

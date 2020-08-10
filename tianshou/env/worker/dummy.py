@@ -21,15 +21,14 @@ class DummyEnvWorker(EnvWorker):
         return self.env.reset()
 
     @staticmethod
-    def wait(workers: List['DummyEnvWorker']
-             ) -> List['DummyEnvWorker']:
+    def wait(workers: List['DummyEnvWorker']) -> List['DummyEnvWorker']:
         # SequentialEnvWorker objects are always ready
         return workers
 
     def send_action(self, action: np.ndarray) -> None:
         self.result = self.env.step(action)
 
-    def seed(self, seed: Optional[int] = None) -> int:
+    def seed(self, seed: Optional[int] = None) -> List[int]:
         return self.env.seed(seed) if hasattr(self.env, 'seed') else None
 
     def render(self, **kwargs) -> Any:
@@ -37,4 +36,4 @@ class DummyEnvWorker(EnvWorker):
             hasattr(self.env, 'render') else None
 
     def close_env(self) -> Any:
-        return self.env.close()
+        self.env.close()
