@@ -61,9 +61,11 @@ class BaseVectorEnv(gym.Env):
                  ) -> None:
         self._env_fns = env_fns
         self.workers = [worker_fn(fn) for fn in env_fns]
-        self.env_num = len(env_fns)
-        self.worker_class = self.workers[0].__class__
+        self.worker_class = type(self.workers[0])
+        assert issubclass(self.worker_class, EnvWorker)
+        assert all([isinstance(w, self.worker_class) for w in self.workers])
 
+        self.env_num = len(env_fns)
         self.wait_num = wait_num or len(env_fns)
         assert 1 <= self.wait_num <= len(env_fns), \
             f'wait_num should be in [1, {len(env_fns)}], but got {wait_num}'
@@ -78,7 +80,7 @@ class BaseVectorEnv(gym.Env):
         self.ready_id = list(range(self.env_num))
         self.is_closed = False
 
-    def _assert_is_not_closed(self):
+    def _assert_is_not_closed(self) -> None:
         assert not self.is_closed, f"Methods of {self.__class__.__name__} "\
             "should not be called after close."
 

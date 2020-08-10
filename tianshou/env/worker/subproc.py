@@ -178,7 +178,7 @@ class SubprocEnvWorker(EnvWorker):
         self.parent_remote.send(['render', kwargs])
         return self.parent_remote.recv()
 
-    def close_env(self) -> Any:
+    def close_env(self) -> None:
         try:
             self.parent_remote.send(['close', None])
             # mp may be deleted so it may raise AttributeError

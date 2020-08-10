@@ -58,7 +58,7 @@ class EnvWorker(ABC, gym.Env):
         pass
 
     @abstractmethod
-    def close_env(self) -> Any:
+    def close_env(self) -> None:
         pass
 
     def close(self) -> None:
