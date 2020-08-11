@@ -152,7 +152,7 @@ class BasePolicy(ABC, nn.Module):
         for i in range(len(rew) - 1, -1, -1):
             gae = delta[i] + m[i] * gae
             returns[i] += gae
-        if rew_norm and not np.isclose(returns.std(), 0):
+        if rew_norm and not np.isclose(returns.std(), 0, 1e-2):
             returns = (returns - returns.mean()) / returns.std()
         batch.returns = returns
         return batch
@@ -200,7 +200,7 @@ class BasePolicy(ABC, nn.Module):
         if rew_norm:
             bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
-            if np.isclose(std, 0):
+            if np.isclose(std, 0, 1e-2):
                 mean, std = 0, 1
         else:
             mean, std = 0, 1

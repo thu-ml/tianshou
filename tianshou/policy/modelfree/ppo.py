@@ -79,7 +79,7 @@ class PPOPolicy(PGPolicy):
                    indice: np.ndarray) -> Batch:
         if self._rew_norm:
             mean, std = batch.rew.mean(), batch.rew.std()
-            if not np.isclose(std, 0):
+            if not np.isclose(std, 0, 1e-2):
                 batch.rew = (batch.rew - mean) / std
         v, v_, old_log_prob = [], [], []
         with torch.no_grad():
@@ -99,7 +99,7 @@ class PPOPolicy(PGPolicy):
         batch.adv = batch.returns - batch.v
         if self._rew_norm:
             mean, std = batch.adv.mean(), batch.adv.std()
-            if not np.isclose(std.item(), 0):
+            if not np.isclose(std.item(), 0, 1e-2):
                 batch.adv = (batch.adv - mean) / std
         return batch
 

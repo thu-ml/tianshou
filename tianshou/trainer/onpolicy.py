@@ -28,7 +28,8 @@ def onpolicy_trainer(
         verbose: bool = True,
         test_in_train: bool = True,
 ) -> Dict[str, Union[float, str]]:
-    """A wrapper for on-policy trainer procedure.
+    """A wrapper for on-policy trainer procedure. The ``step`` in trainer means
+    a policy network update.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
         class.

@@ -358,7 +358,7 @@ class Collector(object):
         warnings.warn(
             'Collector.sample is deprecated and will cause error if you use '
             'prioritized experience replay! Collector.sample will be removed '
-            'after version 0.3. Use policy.update instead!', Warning)
+            'upon version 0.3. Use policy.update instead!', Warning)
         batch_data, indice = self.buffer.sample(batch_size)
         batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data

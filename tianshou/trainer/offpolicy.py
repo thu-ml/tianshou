@@ -28,7 +28,8 @@ def offpolicy_trainer(
         verbose: bool = True,
         test_in_train: bool = True,
 ) -> Dict[str, Union[float, str]]:
-    """A wrapper for off-policy trainer procedure.
+    """A wrapper for off-policy trainer procedure. The ``step`` in trainer
+    means a policy network update.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
         class.
@@ -47,8 +48,9 @@ def offpolicy_trainer(
     :param int batch_size: the batch size of sample data, which is going to
         feed in the policy network.
     :param int update_per_step: the number of times the policy network would
-        be updated after frames be collected. In other words, collect some
-        frames and do some policy network update.
+        be updated after frames are collected, for example, set it to 256 means
+        it updates policy 256 times once after ``collect_per_step`` frames are
+        collected.
     :param function train_fn: a function receives the current number of epoch
         index and performs some operations at the beginning of training in this
         epoch.
