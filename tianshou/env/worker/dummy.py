@@ -32,8 +32,8 @@ class DummyEnvWorker(EnvWorker):
         return self.env.seed(seed) if hasattr(self.env, 'seed') else None
 
     def render(self, **kwargs) -> Any:
-        return self.env.render(**kwargs) if \
-            hasattr(self.env, 'render') else None
+        return self.env.render(**kwargs) \
+            if hasattr(self.env, 'render') else None
 
     def close_env(self) -> None:
         self.env.close()

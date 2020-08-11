@@ -29,8 +29,8 @@ class EnvWorker(ABC, gym.Env):
     def send_action(self, action: np.ndarray) -> None:
         pass
 
-    def get_result(
-            self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_result(self) -> Tuple[
+            np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return self.result
 
     def step(self, action: np.ndarray

@@ -11,7 +11,6 @@ from tianshou.env.utils import CloudpickleWrapper
 
 
 def _worker(parent, p, env_fn_wrapper, obs_bufs=None):
-
     def _encode_obs(obs, buffer):
         if isinstance(obs, np.ndarray):
             buffer.save(obs)
@@ -97,8 +96,8 @@ class ShArray:
 class SubprocEnvWorker(EnvWorker):
     """Subprocess worker used in SubprocVectorEnv and ShmemVectorEnv."""
 
-    def __init__(self, env_fn: Callable[[], gym.Env], share_memory=False
-                 ) -> None:
+    def __init__(self, env_fn: Callable[[], gym.Env],
+                 share_memory=False) -> None:
         super().__init__(env_fn)
         self.parent_remote, self.child_remote = Pipe()
         self.share_memory = share_memory
@@ -134,7 +133,6 @@ class SubprocEnvWorker(EnvWorker):
         return buffer
 
     def _decode_obs(self, isNone):
-
         def decode_obs(buffer):
             if isinstance(buffer, ShArray):
                 return buffer.get()
@@ -163,8 +161,8 @@ class SubprocEnvWorker(EnvWorker):
     def send_action(self, action: np.ndarray) -> None:
         self.parent_remote.send(['step', action])
 
-    def get_result(
-            self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_result(self) -> Tuple[
+            np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         obs, rew, done, info = self.parent_remote.recv()
         if self.share_memory:
             obs = self._decode_obs(obs)

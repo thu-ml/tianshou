@@ -25,18 +25,16 @@ class RayEnvWorker(EnvWorker):
 
     @staticmethod
     def wait(workers: List['RayEnvWorker']) -> List['RayEnvWorker']:
-        ready_envs, _ = ray.wait(
-            [x.env for x in workers],
-            num_returns=len(workers),
-            timeout=0)
+        ready_envs, _ = ray.wait([x.env for x in workers],
+                                 num_returns=len(workers), timeout=0)
         return [workers[ready_envs.index(env)] for env in ready_envs]
 
     def send_action(self, action: np.ndarray) -> None:
         # self.action is actually a handle
         self.result = self.env.step.remote(action)
 
-    def get_result(
-            self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_result(self) -> Tuple[
+            np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return ray.get(self.result)
 
     def seed(self, seed: Optional[int] = None) -> List[int]:
