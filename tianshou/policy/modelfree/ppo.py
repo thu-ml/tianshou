@@ -81,9 +81,7 @@ class PPOPolicy(PGPolicy):
             mean, std = batch.rew.mean(), batch.rew.std()
             if not np.isclose(std, 0):
                 batch.rew = (batch.rew - mean) / std
-        v_ = []
-        v = []
-        old_log_prob = []
+        v, v_, old_log_prob = [], [], []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False):
                 v_.append(self.critic(b.obs_next))

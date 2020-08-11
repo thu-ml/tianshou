@@ -163,7 +163,8 @@ We give a high-level explanation through the pseudocode used in section :ref:`po
         buffer.store(s, a, s_, r, d)                                # collector.collect(...)
         s = s_                                                      # collector.collect(...)
         if i % 1000 == 0:                                           # done in trainer
-            b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # collector.sample(batch_size)
+                                                                    # the following is done in policy.update(batch_size, buffer)
+            b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # buffer.sample(batch_size)
             # compute 2-step returns. How?
             b_ret = compute_2_step_return(buffer, b_r, b_d, ...)    # policy.process_fn(batch, buffer, indice)
             # update DQN policy

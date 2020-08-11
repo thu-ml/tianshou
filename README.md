@@ -167,7 +167,7 @@ result = collector.collect(n_episode=[1, 0, 3])
 If you want to train the given policy with a sampled batch:
 
 ```python
-result = policy.learn(collector.sample(batch_size))
+result = policy.update(batch_size, collector.buffer)
 ```
 
 You can check out the [documentation](https://tianshou.readthedocs.io) for further usage.
