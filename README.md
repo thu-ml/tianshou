@@ -139,12 +139,14 @@ Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page 
 
 ### Modularized Policy
 
-We decouple all of the algorithms into 4 parts:
+We decouple all of the algorithms into roughly the following parts:
 
 - `__init__`: initialize the policy;
 - `forward`: to compute actions over given observations;
 - `process_fn`: to preprocess data from replay buffer (since we have reformulated all algorithms to replay-buffer based algorithms);
-- `learn`: to learn from a given batch data.
+- `learn`: to learn from a given batch data;
+- `post_process_fn`: to update the replay buffer from the learning process (e.g., prioritized replay buffer needs to update the weight);
+- `update`: the main interface for training, i.e., `process_fn -> learn -> post_process_fn`.
 
 Within this API, we can interact with different policies conveniently.
 
