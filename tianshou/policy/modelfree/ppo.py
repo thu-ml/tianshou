@@ -81,16 +81,29 @@ class PPOPolicy(PGPolicy):
             mean, std = batch.rew.mean(), batch.rew.std()
             if not np.isclose(std, 0):
                 batch.rew = (batch.rew - mean) / std
-        if self._lambda in [0, 1]:
-            return self.compute_episodic_return(
-                batch, None, gamma=self._gamma, gae_lambda=self._lambda)
         v_ = []
+        v = []
+        old_log_prob = []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False):
                 v_.append(self.critic(b.obs_next))
+                v.append(self.critic(b.obs))
+                old_log_prob.append(self(b).dist.log_prob(
+                    to_torch_as(b.act, v[0])))
         v_ = to_numpy(torch.cat(v_, dim=0))
-        return self.compute_episodic_return(
-            batch, v_, gamma=self._gamma, gae_lambda=self._lambda)
+        batch = self.compute_episodic_return(
+            batch, v_, gamma=self._gamma, gae_lambda=self._lambda,
+            rew_norm=self._rew_norm)
+        batch.v = torch.cat(v, dim=0).flatten()  # old value
+        batch.act = to_torch_as(batch.act, v[0])
+        batch.logp_old = torch.cat(old_log_prob, dim=0)
+        batch.returns = to_torch_as(batch.returns, v[0])
+        batch.adv = batch.returns - batch.v
+        if self._rew_norm:
+            mean, std = batch.adv.mean(), batch.adv.std()
+            if not np.isclose(std.item(), 0):
+                batch.adv = (batch.adv - mean) / std
+        return batch
 
     def forward(self, batch: Batch,
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
@@ -123,26 +136,6 @@ class PPOPolicy(PGPolicy):
               **kwargs) -> Dict[str, List[float]]:
         self._batch = batch_size
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
-        v = []
-        old_log_prob = []
-        with torch.no_grad():
-            for b in batch.split(batch_size, shuffle=False):
-                v.append(self.critic(b.obs))
-                old_log_prob.append(self(b).dist.log_prob(
-                    to_torch_as(b.act, v[0])))
-        batch.v = torch.cat(v, dim=0).flatten()  # old value
-        batch.act = to_torch_as(batch.act, v[0])
-        batch.logp_old = torch.cat(old_log_prob, dim=0)
-        batch.returns = to_torch_as(batch.returns, v[0])
-        if self._rew_norm:
-            mean, std = batch.returns.mean(), batch.returns.std()
-            if not np.isclose(std.item(), 0):
-                batch.returns = (batch.returns - mean) / std
-        batch.adv = batch.returns - batch.v
-        if self._rew_norm:
-            mean, std = batch.adv.mean(), batch.adv.std()
-            if not np.isclose(std.item(), 0):
-                batch.adv = (batch.adv - mean) / std
         for _ in range(repeat):
             for b in batch.split(batch_size):
                 dist = self(b).dist

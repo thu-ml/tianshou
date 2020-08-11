@@ -122,6 +122,7 @@ class BasePolicy(ABC, nn.Module):
         v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
+        rew_norm: bool = False,
     ) -> Batch:
         """Compute returns over given full-length episodes, including the
         implementation of Generalized Advantage Estimator (arXiv:1506.02438).
@@ -135,6 +136,8 @@ class BasePolicy(ABC, nn.Module):
             to 0.99.
         :param float gae_lambda: the parameter for Generalized Advantage
             Estimation, should be in [0, 1], defaults to 0.95.
+        :param bool rew_norm: normalize the reward to Normal(0, 1), defaults
+            to ``False``.
 
         :return: a Batch. The result will be stored in batch.returns as a numpy
             array with shape (bsz, ).
@@ -149,6 +152,8 @@ class BasePolicy(ABC, nn.Module):
         for i in range(len(rew) - 1, -1, -1):
             gae = delta[i] + m[i] * gae
             returns[i] += gae
+        if rew_norm and not np.isclose(returns.std(), 0):
+            returns = (returns - returns.mean()) / returns.std()
         batch.returns = returns
         return batch
 
