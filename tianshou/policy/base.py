@@ -94,8 +94,7 @@ class BasePolicy(ABC, nn.Module):
             # some code
             return Batch(..., policy=Batch(log_prob=dist.log_prob(act)))
             # and in the sampled data batch, you can directly call
-            # batch.policy.log_prob to get your data, although it is stored in
-            # np.ndarray.
+            # batch.policy.log_prob to get your data.
         """
         pass
 
@@ -230,7 +229,7 @@ class BasePolicy(ABC, nn.Module):
         if isinstance(buffer, PrioritizedReplayBuffer):
             buffer.update_weight(indice, batch.weight)
 
-    def update(self, buffer: ReplayBuffer, sample_size: int, *args, **kwargs):
+    def update(self, sample_size: int, buffer: ReplayBuffer, *args, **kwargs):
         batch, indice = buffer.sample(sample_size)
         batch = self.process_fn(batch, buffer, indice)
         result = self.learn(batch, *args, **kwargs)

@@ -102,7 +102,7 @@ def onpolicy_trainer(
                         if train_fn:
                             train_fn(epoch)
                 losses = policy.update(
-                    train_collector.buffer, 0, batch_size, repeat_per_collect)
+                    0, train_collector.buffer, batch_size, repeat_per_collect)
                 train_collector.reset_buffer()
                 step = 1
                 for k in losses.keys():

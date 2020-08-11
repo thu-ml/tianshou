@@ -132,7 +132,7 @@ class TD3Policy(DDPGPolicy):
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
         self.critic2_optim.step()
-        batch.weight = (td1 + td2) / 2.
+        batch.weight = (td1 + td2) / 2.  # prio-buffer
         if self._cnt % self._freq == 0:
             actor_loss = -self.critic1(
                 batch.obs, self(batch, eps=0).act).mean()

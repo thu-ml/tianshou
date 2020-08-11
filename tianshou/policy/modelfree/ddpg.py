@@ -145,7 +145,7 @@ class DDPGPolicy(BasePolicy):
         target_q = batch.returns.flatten()
         td = current_q - target_q
         critic_loss = (td.pow(2) * batch.weight).mean()
-        batch.weight = td
+        batch.weight = td  # prio-buffer
         self.critic_optim.zero_grad()
         critic_loss.backward()
         self.critic_optim.step()

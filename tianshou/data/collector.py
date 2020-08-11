@@ -347,8 +347,8 @@ class Collector(object):
 
     def sample(self, batch_size: int) -> Batch:
         """Sample a data batch from the internal replay buffer. It will call
-        :meth:`~tianshou.policy.BasePolicy.process_fn` before returning
-        the final batch data.
+        :meth:`~tianshou.policy.BasePolicy.process_fn` before returning the
+        final batch data.
 
         :param int batch_size: ``0`` means it will extract all the data from
             the buffer, otherwise it will extract the data with the given
@@ -357,8 +357,8 @@ class Collector(object):
         import warnings
         warnings.warn(
             'Collector.sample is deprecated and will cause error if you use '
-            'prioritized experience replay! Collector.sample will be removed'
-            ' after 0.3. Use policy.update instead!', DeprecationWarning)
+            'prioritized experience replay! Collector.sample will be removed '
+            'after version 0.3. Use policy.update instead!', Warning)
         batch_data, indice = self.buffer.sample(batch_size)
         batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data
