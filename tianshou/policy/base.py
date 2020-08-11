@@ -234,8 +234,15 @@ class BasePolicy(ABC, nn.Module):
         if isinstance(buffer, PrioritizedReplayBuffer):
             buffer.update_weight(indice, batch.weight)
 
-    def update(self, sample_size: int, buffer: ReplayBuffer, *args, **kwargs):
-        batch, indice = buffer.sample(sample_size)
+    def update(self, batch_size: int, buffer: ReplayBuffer, *args, **kwargs):
+        """Update the policy network and replay buffer (if needed). It includes
+        three function steps: process_fn, learn, and post_process_fn.
+
+        :param int batch_size: 0 means it will extract all the data from the
+            buffer, otherwise it will sample a batch with the given batch_size.
+        :param ReplayBuffer buffer: the corresponding replay buffer.
+        """
+        batch, indice = buffer.sample(batch_size)
         batch = self.process_fn(batch, buffer, indice)
         result = self.learn(batch, *args, **kwargs)
         self.post_process_fn(batch, buffer, indice)

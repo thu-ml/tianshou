@@ -139,7 +139,7 @@ Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page 
 
 ### Modularized Policy
 
-We decouple all of the algorithms into roughly the following parts:
+We decouple all of the algorithms roughly into the following parts:
 
 - `__init__`: initialize the policy;
 - `forward`: to compute actions over given observations;
