@@ -147,7 +147,7 @@ class ReplayBuffer:
         """Return self.key"""
         if key.startswith('__'):  # since we do not use key begin with "__"
             raise AttributeError
-        return self._meta.__dict__[key]
+        return self._meta[key]
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
