@@ -231,14 +231,10 @@ def test_pickle():
     for i in range(5):
         pbuf.add(obs=Batch(index=np.array([i])),
                  act=2, rew=rew, done=0, weight=np.random.rand())
-    # save
-    pickle.dump(vbuf, open('/tmp/vbuf.pkl', 'wb'))
-    pickle.dump(lbuf, open('/tmp/lbuf.pkl', 'wb'))
-    pickle.dump(pbuf, open('/tmp/pbuf.pkl', 'wb'))
-    # load
-    _vbuf = pickle.load(open('/tmp/vbuf.pkl', 'rb'))
-    _lbuf = pickle.load(open('/tmp/lbuf.pkl', 'rb'))
-    _pbuf = pickle.load(open('/tmp/pbuf.pkl', 'rb'))
+    # save & load
+    _vbuf = pickle.loads(pickle.dumps(vbuf))
+    _lbuf = pickle.loads(pickle.dumps(lbuf))
+    _pbuf = pickle.loads(pickle.dumps(pbuf))
     assert len(_vbuf) == len(vbuf) and np.allclose(_vbuf.act, vbuf.act)
     assert len(_lbuf) == len(lbuf) and np.allclose(_lbuf.act, lbuf.act)
     assert len(_pbuf) == len(pbuf) and np.allclose(_pbuf.act, pbuf.act)
