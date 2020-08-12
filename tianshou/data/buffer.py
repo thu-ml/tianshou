@@ -1,5 +1,4 @@
 import torch
-import pickle
 import numpy as np
 from typing import Any, Tuple, Union, Optional
 
@@ -24,7 +23,7 @@ class ReplayBuffer:
     The following code snippet illustrates its usage:
     ::
 
-        >>> import numpy as np
+        >>> import pickle, numpy as np
         >>> from tianshou.data import ReplayBuffer
         >>> buf = ReplayBuffer(size=20)
         >>> for i in range(3):
@@ -36,7 +35,7 @@ class ReplayBuffer:
         >>> # but there are only three valid items, so len(buf) == 3.
         >>> len(buf)
         3
-        >>> buf.save('old_buf.pkl')  # save to file "old_buf.pkl"
+        >>> pickle.dump(buf, open('buf.pkl', 'wb'))  # save to file "buf.pkl"
         >>> buf2 = ReplayBuffer(size=10)
         >>> for i in range(15):
         ...     buf2.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
@@ -58,7 +57,7 @@ class ReplayBuffer:
         array([ True,  True,  True,  True])
         >>> len(buf)
         13
-        >>> buf = ReplayBuffer.load('old_buf.pkl')  # load from "old_buf.pkl"
+        >>> buf = pickle.load(open('buf.pkl', 'rb'))  # load from "buf.pkl"
         >>> len(buf)
         3
 
@@ -174,18 +173,6 @@ class ReplayBuffer:
             for key in set(inst.keys()).difference(value.__dict__.keys()):
                 value.__dict__[key] = _create_value(inst[key], self._maxsize)
             value[self._index] = inst
-
-    def save(self, filename):
-        """Save data to a pickle file."""
-        pickle.dump(self, open(filename, 'wb'))
-
-    @classmethod
-    def load(cls, filename):
-        """Load data from a pickle file."""
-        buf = pickle.load(open(filename, 'rb'))
-        assert type(buf) == cls, \
-            f"Cannot load a {cls.__name__} from a {buf.__class__.__name__}."
-        return buf
 
     @property
     def stack_num(self):

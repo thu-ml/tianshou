@@ -1,4 +1,5 @@
 import torch
+import pickle
 import pytest
 import numpy as np
 from timeit import timeit
@@ -231,13 +232,13 @@ def test_pickle():
         pbuf.add(obs=Batch(index=np.array([i])),
                  act=2, rew=rew, done=0, weight=np.random.rand())
     # save
-    vbuf.save('/tmp/vbuf.pkl')
-    lbuf.save('/tmp/lbuf.pkl')
-    pbuf.save('/tmp/pbuf.pkl')
-    # normal load
-    _vbuf = ReplayBuffer.load('/tmp/vbuf.pkl')
-    _lbuf = ListReplayBuffer.load('/tmp/lbuf.pkl')
-    _pbuf = PrioritizedReplayBuffer.load('/tmp/pbuf.pkl')
+    pickle.dump(vbuf, open('/tmp/vbuf.pkl', 'wb'))
+    pickle.dump(lbuf, open('/tmp/lbuf.pkl', 'wb'))
+    pickle.dump(pbuf, open('/tmp/pbuf.pkl', 'wb'))
+    # load
+    _vbuf = pickle.load(open('/tmp/vbuf.pkl', 'rb'))
+    _lbuf = pickle.load(open('/tmp/lbuf.pkl', 'rb'))
+    _pbuf = pickle.load(open('/tmp/pbuf.pkl', 'rb'))
     assert len(_vbuf) == len(vbuf) and np.allclose(_vbuf.act, vbuf.act)
     assert len(_lbuf) == len(lbuf) and np.allclose(_lbuf.act, lbuf.act)
     assert len(_pbuf) == len(pbuf) and np.allclose(_pbuf.act, pbuf.act)
@@ -245,11 +246,6 @@ def test_pickle():
     assert _vbuf.stack_num == vbuf.stack_num
     assert np.allclose(_pbuf.weight[np.arange(len(_pbuf))],
                        pbuf.weight[np.arange(len(pbuf))])
-    # load data by inconsistent class will raise an error
-    with pytest.raises(AssertionError):
-        ReplayBuffer.load('/tmp/lbuf.pkl')
-    with pytest.raises(AssertionError):
-        PrioritizedReplayBuffer.load('/tmp/vbuf.pkl')
 
 
 if __name__ == '__main__':
