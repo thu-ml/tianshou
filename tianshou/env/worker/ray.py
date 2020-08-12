@@ -24,9 +24,12 @@ class RayEnvWorker(EnvWorker):
         return ray.get(self.env.reset.remote())
 
     @staticmethod
-    def wait(workers: List['RayEnvWorker']) -> List['RayEnvWorker']:
-        ready_envs, _ = ray.wait([x.env for x in workers],
-                                 num_returns=len(workers), timeout=0)
+    def wait(workers: List['RayEnvWorker'],
+             timeout: Optional[float] = None) -> List['RayEnvWorker']:
+        ready_envs = []
+        while not ready_envs:
+            ready_envs, _ = ray.wait([x.env for x in workers],
+                                     num_returns=len(workers), timeout=timeout)
         return [workers[ready_envs.index(env)] for env in ready_envs]
 
     def send_action(self, action: np.ndarray) -> None:

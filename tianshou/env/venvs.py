@@ -52,12 +52,14 @@ class BaseVectorEnv(gym.Env):
         return when ``wait_num`` environments finish a step and keep on
         simulation in these environments. If ``None``, asynchronous simulation
         is disabled; else, ``1 <= wait_num <= env_num``.
+    :param float timeout: TODO
     """
 
     def __init__(self,
                  env_fns: List[Callable[[], gym.Env]],
                  worker_fn: Callable[[Callable[[], gym.Env]], EnvWorker],
                  wait_num: Optional[int] = None,
+                 timeout: Optional[float] = None,
                  ) -> None:
         self._env_fns = env_fns
         # A VectorEnv contains a pool of EnvWorkers, which corresponds to
@@ -71,7 +73,8 @@ class BaseVectorEnv(gym.Env):
         self.wait_num = wait_num or len(env_fns)
         assert 1 <= self.wait_num <= len(env_fns), \
             f'wait_num should be in [1, {len(env_fns)}], but got {wait_num}'
-        self.is_async = self.wait_num != len(env_fns)
+        self.timeout = timeout
+        self.is_async = self.wait_num != len(env_fns) or timeout is not None
         self.waiting_conn = []
         # environments in self.ready_id is actually ready
         # but environments in self.waiting_id are just waiting when checked,
@@ -184,7 +187,8 @@ class BaseVectorEnv(gym.Env):
                 self.ready_id = [x for x in self.ready_id if x not in id]
             result = []
             while len(self.waiting_conn) > 0 and len(result) < self.wait_num:
-                ready_conns = self.worker_class.wait(self.waiting_conn)
+                ready_conns = self.worker_class.wait(
+                    self.waiting_conn, self.timeout)
                 for conn in ready_conns:
                     waiting_index = self.waiting_conn.index(conn)
                     self.waiting_conn.pop(waiting_index)
@@ -254,7 +258,8 @@ class DummyVectorEnv(BaseVectorEnv):
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None) -> None:
+                 wait_num: Optional[int] = None,
+                 timeout: Optional[float] = None) -> None:
         super().__init__(env_fns, DummyEnvWorker, wait_num=wait_num)
 
 
@@ -276,7 +281,8 @@ class SubprocVectorEnv(BaseVectorEnv):
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None) -> None:
+                 wait_num: Optional[int] = None,
+                 timeout: Optional[float] = None) -> None:
         def worker_fn(fn):
             return SubprocEnvWorker(fn, share_memory=False)
         super().__init__(env_fns, worker_fn, wait_num=wait_num)
@@ -294,7 +300,8 @@ class ShmemVectorEnv(BaseVectorEnv):
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None) -> None:
+                 wait_num: Optional[int] = None,
+                 timeout: Optional[float] = None) -> None:
         def worker_fn(fn):
             return SubprocEnvWorker(fn, share_memory=True)
         super().__init__(env_fns, worker_fn, wait_num=wait_num)
@@ -312,7 +319,8 @@ class RayVectorEnv(BaseVectorEnv):
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None) -> None:
+                 wait_num: Optional[int] = None,
+                 timeout: Optional[float] = None) -> None:
         try:
             import ray
         except ImportError as e:

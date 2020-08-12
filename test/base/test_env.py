@@ -36,7 +36,7 @@ def test_async_env(num=8, sleep=0.1):
         lambda i=i: MyTestEnv(size=i, sleep=sleep, random_sleep=True)
         for i in range(size, size + num)
     ]
-    v = SubprocVectorEnv(env_fns, wait_num=num // 2)
+    v = SubprocVectorEnv(env_fns, wait_num=num // 2, timeout=1e-3)
     v.seed()
     v.reset()
     # for a random variable u ~ U[0, 1], let v = max{u1, u2, ..., un}

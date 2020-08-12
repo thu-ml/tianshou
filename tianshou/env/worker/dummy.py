@@ -21,7 +21,8 @@ class DummyEnvWorker(EnvWorker):
         return self.env.reset()
 
     @staticmethod
-    def wait(workers: List['DummyEnvWorker']) -> List['DummyEnvWorker']:
+    def wait(workers: List['DummyEnvWorker'],
+             timeout: Optional[float] = None) -> List['DummyEnvWorker']:
         # SequentialEnvWorker objects are always ready
         return workers
 

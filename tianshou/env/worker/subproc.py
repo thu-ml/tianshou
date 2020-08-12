@@ -153,9 +153,11 @@ class SubprocEnvWorker(EnvWorker):
         return obs
 
     @staticmethod
-    def wait(workers: List['SubprocEnvWorker']) -> List['SubprocEnvWorker']:
-        conns = [x.parent_remote for x in workers]
-        ready_conns = connection.wait(conns)
+    def wait(workers: List['SubprocEnvWorker'],
+             timeout: Optional[float] = None) -> List['SubprocEnvWorker']:
+        conns, ready_conns = [x.parent_remote for x in workers], []
+        while not ready_conns:
+            ready_conns = connection.wait(conns, timeout=timeout)
         return [workers[conns.index(con)] for con in ready_conns]
 
     def send_action(self, action: np.ndarray) -> None:
