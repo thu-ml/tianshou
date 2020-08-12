@@ -60,6 +60,8 @@ class BaseVectorEnv(gym.Env):
                  wait_num: Optional[int] = None,
                  ) -> None:
         self._env_fns = env_fns
+        # A VectorEnv contains a pool of EnvWorkers, which corresponds to
+        # interact with the given envs (one worker <-> one env).
         self.workers = [worker_fn(fn) for fn in env_fns]
         self.worker_class = type(self.workers[0])
         assert issubclass(self.worker_class, EnvWorker)
