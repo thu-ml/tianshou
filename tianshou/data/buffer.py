@@ -184,7 +184,7 @@ class ReplayBuffer:
         """Load data from a pickle file."""
         buf = pickle.load(open(filename, 'rb'))
         assert type(buf) == cls, \
-            f"Cannot load a {cls} from a {type(buf)}."
+            f"Cannot load a {cls.__name__} from a {buf.__class__.__name__}."
         return buf
 
     @property
