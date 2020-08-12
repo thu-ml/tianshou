@@ -6,29 +6,30 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import DQNPolicy
+from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.utils.net.common import Net
+from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 
 
 def get_args():
     parser = argparse.ArgumentParser()
+    # the parameters are found by Optuna
     parser.add_argument('--task', type=str, default='LunarLander-v2')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--eps-test', type=float, default=0.05)
-    parser.add_argument('--eps-train', type=float, default=1.0)
+    parser.add_argument('--eps-train', type=float, default=0.73)
     parser.add_argument('--buffer-size', type=int, default=100000)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=0.013)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--n-step', type=int, default=4)
     parser.add_argument('--target-update-freq', type=int, default=500)
     parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--step-per-epoch', type=int, default=10000)
+    parser.add_argument('--step-per-epoch', type=int, default=5000)
     parser.add_argument('--collect-per-step', type=int, default=16)
-    parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--layer-num', type=int, default=3)
+    parser.add_argument('--batch-size', type=int, default=128)
+    parser.add_argument('--layer-num', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -93,7 +94,7 @@ def test_dqn(args=get_args()):
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, save_fn=save_fn, writer=writer,
-        test_in_train=True)
+        test_in_train=False)
 
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':
