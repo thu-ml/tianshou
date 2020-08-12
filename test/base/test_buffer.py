@@ -1,3 +1,4 @@
+import torch
 import pytest
 import numpy as np
 from timeit import timeit
@@ -219,13 +220,16 @@ def test_pickle():
     vbuf = ReplayBuffer(size, stack_num=2)
     lbuf = ListReplayBuffer()
     pbuf = PrioritizedReplayBuffer(size, 0.6, 0.4)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    rew = torch.tensor([1.]).to(device)
+    print(rew)
     for i in range(4):
-        vbuf.add(obs=Batch(index=np.array([i])), act=0, rew=1, done=0)
+        vbuf.add(obs=Batch(index=np.array([i])), act=0, rew=rew, done=0)
     for i in range(3):
-        lbuf.add(obs=Batch(index=np.array([i])), act=1, rew=1, done=0)
+        lbuf.add(obs=Batch(index=np.array([i])), act=1, rew=rew, done=0)
     for i in range(5):
         pbuf.add(obs=Batch(index=np.array([i])),
-                 act=2, rew=1, done=0, weight=np.random.rand())
+                 act=2, rew=rew, done=0, weight=np.random.rand())
     # save
     vbuf.save('/tmp/vbuf.pkl')
     lbuf.save('/tmp/lbuf.pkl')
