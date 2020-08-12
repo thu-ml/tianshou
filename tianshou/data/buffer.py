@@ -145,15 +145,9 @@ class ReplayBuffer:
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
+        if key.startswith('__'):  # since we do not use key begin with "__"
+            raise AttributeError
         return self._meta.__dict__[key]
-
-    def __setstate__(self, state):
-        """unpickling interface"""
-        self.__dict__.update(state)
-
-    def __getstate__(self):
-        """pickling interface"""
-        return self.__dict__
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
@@ -394,7 +388,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """Return self.key"""
         if key == 'weight':
             return self._weight
-        return self._meta.__dict__[key]
+        return super().__getattr__(key)
 
     def add(self,
             obs: Union[dict, np.ndarray],
