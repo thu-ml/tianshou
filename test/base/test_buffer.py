@@ -2,8 +2,8 @@ import pytest
 import numpy as np
 from timeit import timeit
 
-from tianshou.data import Batch, PrioritizedReplayBuffer, \
-    ReplayBuffer, SegmentTree
+from tianshou.data import Batch, SegmentTree, \
+    ReplayBuffer, ListReplayBuffer, PrioritizedReplayBuffer
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -214,10 +214,45 @@ def test_segtree():
         print('tree', timeit(sample_tree, setup=sample_tree, number=1000))
 
 
+def test_pickle():
+    size = 100
+    vbuf = ReplayBuffer(size, stack_num=2)
+    lbuf = ListReplayBuffer()
+    pbuf = PrioritizedReplayBuffer(size, 0.6, 0.4)
+    for i in range(4):
+        vbuf.add(obs=Batch(index=np.array([i])), act=0, rew=1, done=0)
+    for i in range(3):
+        lbuf.add(obs=Batch(index=np.array([i])), act=1, rew=1, done=0)
+    for i in range(5):
+        pbuf.add(obs=Batch(index=np.array([i])),
+                 act=2, rew=1, done=0, weight=np.random.rand())
+    # save
+    vbuf.save('/tmp/vbuf.pkl')
+    lbuf.save('/tmp/lbuf.pkl')
+    pbuf.save('/tmp/pbuf.pkl')
+    # normal load
+    _vbuf = ReplayBuffer.load('/tmp/vbuf.pkl')
+    _lbuf = ListReplayBuffer.load('/tmp/lbuf.pkl')
+    _pbuf = PrioritizedReplayBuffer.load('/tmp/pbuf.pkl')
+    assert len(_vbuf) == len(vbuf) and np.allclose(_vbuf.act, vbuf.act)
+    assert len(_lbuf) == len(lbuf) and np.allclose(_lbuf.act, lbuf.act)
+    assert len(_pbuf) == len(pbuf) and np.allclose(_pbuf.act, pbuf.act)
+    # make sure the meta var is identical
+    assert _vbuf.stack_num == vbuf.stack_num
+    assert np.allclose(_pbuf.weight[np.arange(len(_pbuf))],
+                       pbuf.weight[np.arange(len(pbuf))])
+    # load data by inconsistent class will raise an error
+    with pytest.raises(AssertionError):
+        ReplayBuffer.load('/tmp/lbuf.pkl')
+    with pytest.raises(AssertionError):
+        PrioritizedReplayBuffer.load('/tmp/vbuf.pkl')
+
+
 if __name__ == '__main__':
     test_replaybuffer()
     test_ignore_obs_next()
     test_stack()
+    test_pickle()
     test_segtree()
     test_priortized_replaybuffer()
     test_priortized_replaybuffer(233333, 200000)

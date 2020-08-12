@@ -1,4 +1,5 @@
 import torch
+import pickle
 import numpy as np
 from typing import Any, Tuple, Union, Optional
 
@@ -35,6 +36,7 @@ class ReplayBuffer:
         >>> # but there are only three valid items, so len(buf) == 3.
         >>> len(buf)
         3
+        >>> buf.save('old_buf.pkl')  # save to file "old_buf.pkl"
         >>> buf2 = ReplayBuffer(size=10)
         >>> for i in range(15):
         ...     buf2.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
@@ -54,6 +56,11 @@ class ReplayBuffer:
         >>> batch_data, indice = buf.sample(batch_size=4)
         >>> batch_data.obs == buf[indice].obs
         array([ True,  True,  True,  True])
+        >>> len(buf)
+        13
+        >>> buf = ReplayBuffer.load('old_buf.pkl')  # load from "old_buf.pkl"
+        >>> len(buf)
+        3
 
     :class:`~tianshou.data.ReplayBuffer` also supports frame_stack sampling
     (typically for RNN usage, see issue#19), ignoring storing the next
@@ -141,6 +148,15 @@ class ReplayBuffer:
         """Return self.key"""
         return self._meta.__dict__[key]
 
+    def __setstate__(self, state):
+        """unpickling interface"""
+        self.__dict__.update(state)
+
+    def __getstate__(self, data={}):
+        """pickling interface"""
+        data.update(self.__dict__)
+        return data
+
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
             value = self._meta.__dict__[name]
@@ -158,6 +174,18 @@ class ReplayBuffer:
             for key in set(inst.keys()).difference(value.__dict__.keys()):
                 value.__dict__[key] = _create_value(inst[key], self._maxsize)
             value[self._index] = inst
+
+    def save(self, filename):
+        """Save data to a pickle file."""
+        pickle.dump(self, open(filename, 'wb'))
+
+    @classmethod
+    def load(cls, filename):
+        """Load data from a pickle file."""
+        buf = pickle.load(open(filename, 'rb'))
+        assert type(buf) == cls, \
+            f"Cannot load a {cls} from a {type(buf)}."
+        return buf
 
     @property
     def stack_num(self):
