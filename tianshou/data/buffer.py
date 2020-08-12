@@ -145,8 +145,8 @@ class ReplayBuffer:
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
-        if key.startswith('__'):  # since we do not use key begin with "__"
-            raise AttributeError
+        if key.startswith('__') and key.endswith('__'):
+            raise AttributeError  # since we do not use undefined key "__xxx__"
         return self._meta[key]
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
