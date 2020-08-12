@@ -223,7 +223,6 @@ def test_pickle():
     pbuf = PrioritizedReplayBuffer(size, 0.6, 0.4)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     rew = torch.tensor([1.]).to(device)
-    print(rew)
     for i in range(4):
         vbuf.add(obs=Batch(index=np.array([i])), act=0, rew=rew, done=0)
     for i in range(3):
