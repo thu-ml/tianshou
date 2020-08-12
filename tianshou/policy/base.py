@@ -93,7 +93,7 @@ class BasePolicy(ABC, nn.Module):
 
             # some code
             return Batch(..., policy=Batch(log_prob=dist.log_prob(act)))
-            # and in the sampled data batch, you can directly call
+            # and in the sampled data batch, you can directly use
             # batch.policy.log_prob to get your data.
         """
         pass
