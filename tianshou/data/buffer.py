@@ -151,10 +151,9 @@ class ReplayBuffer:
         """unpickling interface"""
         self.__dict__.update(state)
 
-    def __getstate__(self, data={}):
+    def __getstate__(self):
         """pickling interface"""
-        data.update(self.__dict__)
-        return data
+        return self.__dict__
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
