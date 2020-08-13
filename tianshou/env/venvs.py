@@ -54,7 +54,7 @@ class BaseVectorEnv(gym.Env):
         is disabled; else, ``1 <= wait_num <= env_num``.
     :param float timeout: use in asynchronous simulation same as above, in each
         vectorized step it only deal with those environments spending time
-        within the timeout.
+        within ``timeout`` seconds.
     """
 
     def __init__(self,

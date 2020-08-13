@@ -48,11 +48,11 @@ where ``env_fns`` is a list of callable env hooker. The above code can be writte
     env_fns = [lambda x=i: MyTestEnv(size=x) for i in [2, 3, 4, 5]]
     venv = SubprocVectorEnv(env_fns)
 
-All subclasses of :class:`~tianshou.env.BaseVectorEnv` have an async mode (related to `Issue 103 <https://github.com/thu-ml/tianshou/issues/103>`_), where we can give it two extra parameters ``wait_num`` or ``timeout`` (or both). If we have 4 envs and set ``wait_num = 3``, each of the step in VectorEnv only returns 3 results of these 4 envs. This mode eases the case where each step cost varies at different timescale， e.g. 90% step cost 1s, but 10% cost 10s.
-
-.. sidebar:: An example of async VectorEnv
+.. sidebar:: An example of sync/async VectorEnv (the same color represents the same batch forward)
 
      .. Figure:: ../_static/images/async.png
+
+All subclasses of :class:`~tianshou.env.BaseVectorEnv` have an async mode (related to `Issue 103 <https://github.com/thu-ml/tianshou/issues/103>`_), where we can give it two extra parameters ``wait_num`` or ``timeout`` (or both). If we have 4 envs and set ``wait_num = 3``, each of the step in VectorEnv only returns 3 results of these 4 envs. This mode eases the case where each step cost varies at different timescale， e.g. 90% step cost 1s, but 10% cost 10s.
 
 You can treat the ``timeout`` parameter as a dynamic ``wait_num``. In each vectorized step it only returns the environments finished within the given time. If there is no such environment, it will wait until any of them finished.
 
