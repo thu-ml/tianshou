@@ -48,7 +48,7 @@ where ``env_fns`` is a list of callable env hooker. The above code can be writte
     env_fns = [lambda x=i: MyTestEnv(size=x) for i in [2, 3, 4, 5]]
     venv = SubprocVectorEnv(env_fns)
 
-.. sidebar:: An example of sync/async VectorEnv (the same color represents the same batch forward)
+.. sidebar:: An example of sync/async VectorEnv (same color means the same wait step (same batch forward))
 
      .. Figure:: ../_static/images/async.png
 
