@@ -143,15 +143,15 @@ class ReplayBuffer:
         """Return str(self)."""
         return self.__class__.__name__ + self._meta.__repr__()[5:]
 
-    def __getattr__(self, key: str) -> Union['Batch', Any]:
+    def __getattr__(self, key: str) -> Any:
         """Return self.key"""
-        if '_meta' not in self.__dict__:
-            # pickle.load will not init self._meta at first place
-            raise AttributeError
         try:
             return self._meta[key]
         except KeyError:
             raise AttributeError
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
@@ -284,11 +284,12 @@ class ReplayBuffer:
                 1 if indice.step is None else indice.step)
         else:
             indice = np.array(indice, copy=True)
+        done = self._meta.done
         # set last frame done to True
         last_index = (self._index - 1 + self._size) % self._size
-        last_done, self.done[last_index] = self.done[last_index], True
+        last_done, done[last_index] = done[last_index], True
         if key == 'obs_next' and (not self._save_s_ or self.obs_next is None):
-            indice += 1 - self.done[indice].astype(np.int)
+            indice += 1 - done[indice].astype(np.int)
             indice[indice == self._size] = 0
             key = 'obs'
         val = self._meta.__dict__[key]
@@ -300,7 +301,7 @@ class ReplayBuffer:
                     pre_indice = np.asarray(indice - 1)
                     pre_indice[pre_indice == -1] = self._size - 1
                     indice = np.asarray(
-                        pre_indice + self.done[pre_indice].astype(np.int))
+                        pre_indice + done[pre_indice].astype(np.int))
                     indice[indice == self._size] = 0
                 if isinstance(val, Batch):
                     stack = Batch.stack(stack, axis=indice.ndim)
@@ -312,7 +313,7 @@ class ReplayBuffer:
             stack = Batch()
             if not isinstance(val, Batch) or len(val.__dict__) > 0:
                 raise e
-        self.done[last_index] = last_done
+        done[last_index] = last_done
         return stack
 
     def __getitem__(self, index: Union[
