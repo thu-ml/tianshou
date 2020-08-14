@@ -145,9 +145,13 @@ class ReplayBuffer:
 
     def __getattr__(self, key: str) -> Union['Batch', Any]:
         """Return self.key"""
-        if key.startswith('__') and key.endswith('__'):
-            raise AttributeError  # since we do not use undefined key "__xxx__"
-        return self._meta[key]
+        if '_meta' not in self.__dict__:
+            # pickle.load will not init self._meta at first place
+            raise AttributeError
+        try:
+            return self._meta[key]
+        except KeyError:
+            raise AttributeError
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
