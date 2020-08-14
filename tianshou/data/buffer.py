@@ -152,7 +152,7 @@ class ReplayBuffer:
 
     def __setstate__(self, state):
         """Unpickling interface. We need it because pickling buffer does not
-        work out-of-the-box (buffer.__getattr__ is customized).
+        work out-of-the-box (``buffer.__getattr__`` is customized).
         """
         self.__dict__.update(state)
 
