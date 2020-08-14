@@ -45,6 +45,7 @@ class EnvWorker(ABC, gym.Env):
 
     @staticmethod
     def wait(workers: List['EnvWorker'],
+             wait_num: int,
              timeout: Optional[float] = None) -> List['EnvWorker']:
         """Given a list of workers, return those ready ones."""
         raise NotImplementedError

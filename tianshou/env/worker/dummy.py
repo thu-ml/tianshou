@@ -22,6 +22,7 @@ class DummyEnvWorker(EnvWorker):
 
     @staticmethod
     def wait(workers: List['DummyEnvWorker'],
+             wait_num: int,
              timeout: Optional[float] = None) -> List['DummyEnvWorker']:
         # SequentialEnvWorker objects are always ready
         return workers

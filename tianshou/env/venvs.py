@@ -188,17 +188,16 @@ class BaseVectorEnv(gym.Env):
                     self.waiting_id.append(env_id)
                 self.ready_id = [x for x in self.ready_id if x not in id]
             result = []
-            while len(self.waiting_conn) > 0 and len(result) < self.wait_num:
-                ready_conns = self.worker_class.wait(
-                    self.waiting_conn, self.timeout)
-                for conn in ready_conns:
-                    waiting_index = self.waiting_conn.index(conn)
-                    self.waiting_conn.pop(waiting_index)
-                    env_id = self.waiting_id.pop(waiting_index)
-                    obs, rew, done, info = conn.get_result()
-                    info["env_id"] = env_id
-                    result.append((obs, rew, done, info))
-                    self.ready_id.append(env_id)
+            ready_conns = self.worker_class.wait(
+                self.waiting_conn, self.wait_num, self.timeout)
+            for conn in ready_conns:
+                waiting_index = self.waiting_conn.index(conn)
+                self.waiting_conn.pop(waiting_index)
+                env_id = self.waiting_id.pop(waiting_index)
+                obs, rew, done, info = conn.get_result()
+                info["env_id"] = env_id
+                result.append((obs, rew, done, info))
+                self.ready_id.append(env_id)
         return list(map(np.stack, zip(*result)))
 
     def seed(self,
