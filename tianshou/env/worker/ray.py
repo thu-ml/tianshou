@@ -27,10 +27,8 @@ class RayEnvWorker(EnvWorker):
     def wait(workers: List['RayEnvWorker'],
              wait_num: int,
              timeout: Optional[float] = None) -> List['RayEnvWorker']:
-        ready_envs = []
-        while not ready_envs:
-            ready_envs, _ = ray.wait([x.env for x in workers],
-                                     num_returns=wait_num, timeout=timeout)
+        ready_envs, _ = ray.wait([x.env for x in workers],
+                                 num_returns=wait_num, timeout=timeout)
         return [workers[ready_envs.index(env)] for env in ready_envs]
 
     def send_action(self, action: np.ndarray) -> None:

@@ -187,9 +187,10 @@ class BaseVectorEnv(gym.Env):
                     self.waiting_conn.append(self.workers[env_id])
                     self.waiting_id.append(env_id)
                 self.ready_id = [x for x in self.ready_id if x not in id]
-            result = []
-            ready_conns = self.worker_class.wait(
-                self.waiting_conn, self.wait_num, self.timeout)
+            ready_conns, result = [], []
+            while not ready_conns:
+                ready_conns = self.worker_class.wait(
+                    self.waiting_conn, self.wait_num, self.timeout)
             for conn in ready_conns:
                 waiting_index = self.waiting_conn.index(conn)
                 self.waiting_conn.pop(waiting_index)

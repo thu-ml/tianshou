@@ -1,7 +1,7 @@
 import gym
+import time
 import ctypes
 import numpy as np
-import time
 from collections import OrderedDict
 from multiprocessing.context import Process
 from multiprocessing import Array, Pipe, connection
@@ -157,8 +157,7 @@ class SubprocEnvWorker(EnvWorker):
     def wait(workers: List['SubprocEnvWorker'],
              wait_num: int,
              timeout: Optional[float] = None) -> List['SubprocEnvWorker']:
-        conns = [x.parent_remote for x in workers]
-        ready_conns = []
+        conns, ready_conns = [x.parent_remote for x in workers], []
         remain_conns = conns
         t1 = time.time()
         while len(remain_conns) > 0 and len(ready_conns) < wait_num:
@@ -168,8 +167,10 @@ class SubprocEnvWorker(EnvWorker):
                     break
             else:
                 remain_time = timeout
-            remain_conns = [conn for conn in remain_conns if conn not in ready_conns]
-            new_ready_conns = connection.wait(remain_conns, timeout=remain_time)
+            remain_conns = [conn for conn in remain_conns
+                            if conn not in ready_conns]
+            new_ready_conns = connection.wait(
+                remain_conns, timeout=remain_time)
             ready_conns.extend(new_ready_conns)
         return [workers[conns.index(con)] for con in ready_conns]
 
