@@ -236,13 +236,6 @@ class BaseVectorEnv(gym.Env):
         ``close`` of all workers can be assured.
         """
         self._assert_is_not_closed()
-        if self.is_async:
-            try:
-                # finish remaining steps, and close
-                if len(self.waiting_conn) > 0:
-                    self.step(None)
-            except TypeError:  # self.step -> self.worker.wait doesn't exist
-                pass
         for w in self.workers:
             w.close()
         self.is_closed = True
