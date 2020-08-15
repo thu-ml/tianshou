@@ -64,16 +64,6 @@ class Collector(object):
         #   sleep time between rendering consecutive frames)
         collector.collect(n_episode=1, render=0.03)
 
-        # sample data with a given number of batch-size:
-        batch_data = collector.sample(batch_size=64)
-        # policy.learn(batch_data)  # btw, vanilla policy gradient only
-        #   supports on-policy training, so here we pick all data in the buffer
-        batch_data = collector.sample(batch_size=0)
-        policy.learn(batch_data)
-        # on-policy algorithms use the collected data only once, so here we
-        #   clear the buffer
-        collector.reset_buffer()
-
     Collected data always consist of full episodes. So if only ``n_step``
     argument is give, the collector may return the data more than the
     ``n_step`` limitation. Same as ``n_episode`` for the multiple environment
@@ -357,13 +347,18 @@ class Collector(object):
 
     def sample(self, batch_size: int) -> Batch:
         """Sample a data batch from the internal replay buffer. It will call
-        :meth:`~tianshou.policy.BasePolicy.process_fn` before returning
-        the final batch data.
+        :meth:`~tianshou.policy.BasePolicy.process_fn` before returning the
+        final batch data.
 
         :param int batch_size: ``0`` means it will extract all the data from
             the buffer, otherwise it will extract the data with the given
             batch_size.
         """
+        import warnings
+        warnings.warn(
+            'Collector.sample is deprecated and will cause error if you use '
+            'prioritized experience replay! Collector.sample will be removed '
+            'upon version 0.3. Use policy.update instead!', Warning)
         batch_data, indice = self.buffer.sample(batch_size)
         batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data

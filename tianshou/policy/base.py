@@ -93,9 +93,8 @@ class BasePolicy(ABC, nn.Module):
 
             # some code
             return Batch(..., policy=Batch(log_prob=dist.log_prob(act)))
-            # and in the sampled data batch, you can directly call
-            # batch.policy.log_prob to get your data, although it is stored in
-            # np.ndarray.
+            # and in the sampled data batch, you can directly use
+            # batch.policy.log_prob to get your data.
         """
         pass
 
@@ -123,6 +122,7 @@ class BasePolicy(ABC, nn.Module):
         v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
+        rew_norm: bool = False,
     ) -> Batch:
         """Compute returns over given full-length episodes, including the
         implementation of Generalized Advantage Estimator (arXiv:1506.02438).
@@ -136,6 +136,8 @@ class BasePolicy(ABC, nn.Module):
             to 0.99.
         :param float gae_lambda: the parameter for Generalized Advantage
             Estimation, should be in [0, 1], defaults to 0.95.
+        :param bool rew_norm: normalize the reward to Normal(0, 1), defaults
+            to ``False``.
 
         :return: a Batch. The result will be stored in batch.returns as a numpy
             array with shape (bsz, ).
@@ -150,6 +152,8 @@ class BasePolicy(ABC, nn.Module):
         for i in range(len(rew) - 1, -1, -1):
             gae = delta[i] + m[i] * gae
             returns[i] += gae
+        if rew_norm and not np.isclose(returns.std(), 0, 1e-2):
+            returns = (returns - returns.mean()) / returns.std()
         batch.returns = returns
         return batch
 
@@ -196,7 +200,7 @@ class BasePolicy(ABC, nn.Module):
         if rew_norm:
             bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
-            if np.isclose(std, 0):
+            if np.isclose(std, 0, 1e-2):
                 mean, std = 0, 1
         else:
             mean, std = 0, 1
@@ -216,9 +220,30 @@ class BasePolicy(ABC, nn.Module):
         batch.returns = target_q * gammas + returns
         # prio buffer update
         if isinstance(buffer, PrioritizedReplayBuffer):
-            batch.update_weight = buffer.update_weight
-            batch.indice = indice
             batch.weight = to_torch_as(batch.weight, target_q)
         else:
             batch.weight = torch.ones_like(target_q)
         return batch
+
+    def post_process_fn(self, batch: Batch,
+                        buffer: ReplayBuffer, indice: np.ndarray):
+        """Post-process the data from the provided replay buffer. Typical
+        usage is to update the sampling weight in prioritized experience
+        replay. Check out :ref:`policy_concept` for more information.
+        """
+        if isinstance(buffer, PrioritizedReplayBuffer):
+            buffer.update_weight(indice, batch.weight)
+
+    def update(self, batch_size: int, buffer: ReplayBuffer, *args, **kwargs):
+        """Update the policy network and replay buffer (if needed). It includes
+        three function steps: process_fn, learn, and post_process_fn.
+
+        :param int batch_size: 0 means it will extract all the data from the
+            buffer, otherwise it will sample a batch with the given batch_size.
+        :param ReplayBuffer buffer: the corresponding replay buffer.
+        """
+        batch, indice = buffer.sample(batch_size)
+        batch = self.process_fn(batch, buffer, indice)
+        result = self.learn(batch, *args, **kwargs)
+        self.post_process_fn(batch, buffer, indice)
+        return result

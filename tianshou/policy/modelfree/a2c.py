@@ -67,7 +67,8 @@ class A2CPolicy(PGPolicy):
                 v_.append(to_numpy(self.critic(b.obs_next)))
         v_ = np.concatenate(v_, axis=0)
         return self.compute_episodic_return(
-            batch, v_, gamma=self._gamma, gae_lambda=self._lambda)
+            batch, v_, gamma=self._gamma, gae_lambda=self._lambda,
+            rew_norm=self._rew_norm)
 
     def forward(self, batch: Batch,
                 state: Optional[Union[dict, Batch, np.ndarray]] = None,
@@ -97,9 +98,6 @@ class A2CPolicy(PGPolicy):
     def learn(self, batch: Batch, batch_size: int, repeat: int,
               **kwargs) -> Dict[str, List[float]]:
         self._batch = batch_size
-        r = batch.returns
-        if self._rew_norm and not np.isclose(r.std(), 0):
-            batch.returns = (r - r.mean()) / r.std()
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for b in batch.split(batch_size):

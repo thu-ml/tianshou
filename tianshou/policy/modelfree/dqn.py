@@ -160,10 +160,8 @@ class DQNPolicy(BasePolicy):
         q = q[np.arange(len(q)), batch.act]
         r = to_torch_as(batch.returns, q).flatten()
         td = r - q
-        if hasattr(batch, 'update_weight'):  # prio-buffer
-            batch.update_weight(batch.indice, td)
         loss = (td.pow(2) * batch.weight).mean()
-        # loss = F.mse_loss(q, r)
+        batch.weight = td  # prio-buffer
         loss.backward()
         self.optim.step()
         self._cnt += 1
