@@ -29,9 +29,8 @@ def recurse_comp(a, b):
         return False
 
 
-def test_async_env(num=8, sleep=0.1):
+def test_async_env(size=10000, num=8, sleep=0.1):
     # simplify the test case, just keep stepping
-    size = 10000
     env_fns = [
         lambda i=i: MyTestEnv(size=i, sleep=sleep, random_sleep=True)
         for i in range(size, size + num)
@@ -70,6 +69,30 @@ def test_async_env(num=8, sleep=0.1):
     # assure 1/7 improvement
     assert spent_time < 6.0 * sleep * num / (num + 1)
     return spent_time, data
+
+
+def test_async_check_id(size=10000, num=4, sleep=.1, timeout=.35):
+    local = __name__ == '__main__'
+    env_fns = [lambda: MyTestEnv(size=size, sleep=sleep * 2),
+               lambda: MyTestEnv(size=size, sleep=sleep * 3),
+               lambda: MyTestEnv(size=size, sleep=sleep * 5),
+               lambda: MyTestEnv(size=size, sleep=sleep * 7)]
+    v = SubprocVectorEnv(env_fns, wait_num=num - 1, timeout=timeout)
+    v.reset()
+    ids = np.arange(num)
+    act = [1] * num
+    t = time.time()
+    _, _, _, info = v.step([1] * len(ids), ids)
+    ids = Batch(info).env_id
+    print(ids, time.time() - t)
+    assert np.allclose(sorted(ids), [0, 1])
+    assert time.time() - t > timeout
+    t = time.time()
+    _, _, _, info = v.step([1] * len(ids), ids)
+    ids = Batch(info).env_id
+    print(ids, time.time() - t)
+    assert np.allclose(sorted(ids), [0, 2])
+    assert time.time() - t < timeout
 
 
 def test_vecenv(size=10, num=8, sleep=0.001):
@@ -124,5 +147,6 @@ def test_vecenv(size=10, num=8, sleep=0.001):
 
 
 if __name__ == '__main__':
-    test_vecenv()
-    test_async_env()
+    # test_vecenv()
+    # test_async_env()
+    test_async_check_id()
