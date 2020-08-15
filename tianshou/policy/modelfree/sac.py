@@ -154,9 +154,7 @@ class SACPolicy(DDPGPolicy):
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
         self.critic2_optim.step()
-        # prio-buffer
-        if hasattr(batch, 'update_weight'):
-            batch.update_weight(batch.indice, (td1 + td2) / 2.)
+        batch.weight = (td1 + td2) / 2.  # prio-buffer
         # actor
         obs_result = self(batch, explorating=False)
         a = obs_result.act
