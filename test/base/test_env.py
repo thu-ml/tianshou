@@ -71,28 +71,30 @@ def test_async_env(size=10000, num=8, sleep=0.1):
     return spent_time, data
 
 
-def test_async_check_id(size=10000, num=4, sleep=.1, timeout=.35):
-    local = __name__ == '__main__'
+def test_async_check_id(size=100, num=4, sleep=.1, timeout=.35):
     env_fns = [lambda: MyTestEnv(size=size, sleep=sleep * 2),
                lambda: MyTestEnv(size=size, sleep=sleep * 3),
                lambda: MyTestEnv(size=size, sleep=sleep * 5),
                lambda: MyTestEnv(size=size, sleep=sleep * 7)]
     v = SubprocVectorEnv(env_fns, wait_num=num - 1, timeout=timeout)
     v.reset()
+    expect_result = [
+        [0, 1],
+        [0, 1, 2],
+        [0, 1, 3],
+        [0, 1, 2],
+        [0, 1],
+        [0, 2, 3],
+        [0, 1],
+    ]
     ids = np.arange(num)
-    act = [1] * num
-    t = time.time()
-    _, _, _, info = v.step([1] * len(ids), ids)
-    ids = Batch(info).env_id
-    print(ids, time.time() - t)
-    assert np.allclose(sorted(ids), [0, 1])
-    assert time.time() - t > timeout
-    t = time.time()
-    _, _, _, info = v.step([1] * len(ids), ids)
-    ids = Batch(info).env_id
-    print(ids, time.time() - t)
-    assert np.allclose(sorted(ids), [0, 2])
-    assert time.time() - t < timeout
+    for res in expect_result:
+        t = time.time()
+        _, _, _, info = v.step([1] * len(ids), ids)
+        ids = Batch(info).env_id
+        print(ids, time.time() - t)
+        assert np.allclose(sorted(ids), res)
+        assert (time.time() - t < timeout) == (len(res) == 3)
 
 
 def test_vecenv(size=10, num=8, sleep=0.001):
@@ -147,6 +149,6 @@ def test_vecenv(size=10, num=8, sleep=0.001):
 
 
 if __name__ == '__main__':
-    # test_vecenv()
-    # test_async_env()
+    test_vecenv()
+    test_async_env()
     test_async_check_id()
