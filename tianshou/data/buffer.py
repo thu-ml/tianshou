@@ -276,6 +276,12 @@ class ReplayBuffer:
         """
         if stack_num is None:
             stack_num = self.stack_num
+        # the most often case: stack_num == 1
+        if stack_num == 1 and not (key == 'obs_next' and not self._save_s_):
+            try:
+                return self._meta[key][indice]
+            except IndexError:
+                pass
         if isinstance(indice, slice):
             indice = np.arange(
                 0 if indice.start is None
@@ -291,7 +297,7 @@ class ReplayBuffer:
         # set last frame done to True
         last_index = (self._index - 1 + self._size) % self._size
         last_done, done[last_index] = done[last_index], True
-        if key == 'obs_next' and (not self._save_s_ or self.obs_next is None):
+        if key == 'obs_next' and not self._save_s_:
             indice += 1 - done[indice].astype(np.int)
             indice[indice == self._size] = 0
             key = 'obs'
