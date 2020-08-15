@@ -277,7 +277,7 @@ class ReplayBuffer:
         if stack_num is None:
             stack_num = self.stack_num
         # the most often case: stack_num == 1
-        if stack_num == 1 and not (key == 'obs_next' and not self._save_s_):
+        if stack_num == 1 and (key != 'obs_next' or self._save_s_):
             try:
                 return self._meta[key][indice]
             except IndexError:
