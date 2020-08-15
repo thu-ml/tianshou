@@ -76,6 +76,8 @@ class BaseVectorEnv(gym.Env):
         assert 1 <= self.wait_num <= len(env_fns), \
             f'wait_num should be in [1, {len(env_fns)}], but got {wait_num}'
         self.timeout = timeout
+        assert self.timeout is None or self.timeout > 0, \
+            f'timeout is {timeout}, it should be positive if provided!'
         self.is_async = self.wait_num != len(env_fns) or timeout is not None
         self.waiting_conn = []
         # environments in self.ready_id is actually ready
