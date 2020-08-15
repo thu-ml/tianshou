@@ -257,7 +257,8 @@ class DummyVectorEnv(BaseVectorEnv):
     def __init__(self, env_fns: List[Callable[[], gym.Env]],
                  wait_num: Optional[int] = None,
                  timeout: Optional[float] = None) -> None:
-        super().__init__(env_fns, DummyEnvWorker, wait_num=wait_num)
+        super().__init__(env_fns, DummyEnvWorker,
+                         wait_num=wait_num, timeout=timeout)
 
 
 class VectorEnv(DummyVectorEnv):
@@ -282,7 +283,8 @@ class SubprocVectorEnv(BaseVectorEnv):
                  timeout: Optional[float] = None) -> None:
         def worker_fn(fn):
             return SubprocEnvWorker(fn, share_memory=False)
-        super().__init__(env_fns, worker_fn, wait_num=wait_num)
+        super().__init__(env_fns, worker_fn,
+                         wait_num=wait_num, timeout=timeout)
 
 
 class ShmemVectorEnv(BaseVectorEnv):
@@ -301,7 +303,8 @@ class ShmemVectorEnv(BaseVectorEnv):
                  timeout: Optional[float] = None) -> None:
         def worker_fn(fn):
             return SubprocEnvWorker(fn, share_memory=True)
-        super().__init__(env_fns, worker_fn, wait_num=wait_num)
+        super().__init__(env_fns, worker_fn,
+                         wait_num=wait_num, timeout=timeout)
 
 
 class RayVectorEnv(BaseVectorEnv):
@@ -326,4 +329,5 @@ class RayVectorEnv(BaseVectorEnv):
             ) from e
         if not ray.is_initialized():
             ray.init()
-        super().__init__(env_fns, RayEnvWorker, wait_num=wait_num)
+        super().__init__(env_fns, RayEnvWorker,
+                         wait_num=wait_num, timeout=timeout)
