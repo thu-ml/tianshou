@@ -14,7 +14,7 @@ else:  # pytest
 def has_ray():
     try:
         import ray
-        return hasattr(ray, 'init')
+        return hasattr(ray, 'init')  # avoid PEP8 F401 Error
     except ImportError:
         return False
 
