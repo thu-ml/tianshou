@@ -41,10 +41,11 @@ def test_replaybuffer(size=10, bufsize=20):
 
 def test_ignore_obs_next(size=10):
     # Issue 82
-    buf = ReplayBuffer(size, ignore_obs_net=True)
+    buf = ReplayBuffer(size, ignore_obs_next=True)
     for i in range(size):
         buf.add(obs={'mask1': np.array([i, 1, 1, 0, 0]),
-                     'mask2': np.array([i + 4, 0, 1, 0, 0])},
+                     'mask2': np.array([i + 4, 0, 1, 0, 0]),
+                     'mask': i},
                 act={'act_id': i,
                      'position_id': i + 3},
                 rew=i,
@@ -57,6 +58,22 @@ def test_ignore_obs_next(size=10):
     assert isinstance(data, Batch)
     assert isinstance(data2, Batch)
     assert np.allclose(indice, orig)
+    assert np.allclose(data.obs_next.mask, data2.obs_next.mask)
+    assert np.allclose(data.obs_next.mask, [0, 2, 3, 3, 5, 6, 6, 8, 9, 9])
+    buf.stack_num = 4
+    data = buf[indice]
+    data2 = buf[indice]
+    assert np.allclose(data.obs_next.mask, data2.obs_next.mask)
+    assert np.allclose(data.obs_next.mask, np.array([
+        [0, 0, 0, 0], [1, 1, 1, 2], [1, 1, 2, 3], [1, 1, 2, 3],
+        [4, 4, 4, 5], [4, 4, 5, 6], [4, 4, 5, 6],
+        [7, 7, 7, 8], [7, 7, 8, 9], [7, 7, 8, 9]]))
+    assert np.allclose(data.info['if'], data2.info['if'])
+    assert np.allclose(data.info['if'], np.array([
+        [0, 0, 0, 0], [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
+        [4, 4, 4, 4], [4, 4, 4, 5], [4, 4, 5, 6],
+        [7, 7, 7, 7], [7, 7, 7, 8], [7, 7, 8, 9]]))
+    assert data.obs_next
 
 
 def test_stack(size=5, bufsize=9, stack_num=4):
@@ -64,7 +81,7 @@ def test_stack(size=5, bufsize=9, stack_num=4):
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
     buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
     obs = env.reset(1)
-    for i in range(15):
+    for i in range(16):
         obs_next, rew, done, info = env.step(1)
         buf.add(obs, 1, rew, done, None, info)
         buf2.add(obs, 1, rew, done, None, info)
@@ -75,12 +92,11 @@ def test_stack(size=5, bufsize=9, stack_num=4):
     assert np.allclose(buf.get(indice, 'obs'), np.expand_dims(
         [[1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
          [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
-         [3, 3, 3, 3], [3, 3, 3, 4], [1, 1, 1, 1]], axis=-1))
-    print(buf)
+         [1, 2, 3, 4], [4, 4, 4, 4], [1, 1, 1, 1]], axis=-1))
     _, indice = buf2.sample(0)
-    assert indice == [2]
+    assert indice.tolist() == [2, 6]
     _, indice = buf2.sample(1)
-    assert indice.sum() == 2
+    assert indice in [2, 6]
 
 
 def test_priortized_replaybuffer(size=32, bufsize=15):
@@ -109,7 +125,7 @@ def test_update():
     buf2 = ReplayBuffer(4, stack_num=2)
     for i in range(5):
         buf1.add(obs=np.array([i]), act=float(i), rew=i * i,
-                 done=False, info={'incident': 'found'})
+                 done=i % 2 == 0, info={'incident': 'found'})
     assert len(buf1) > len(buf2)
     buf2.update(buf1)
     assert len(buf1) == len(buf2)
