@@ -60,6 +60,7 @@ setup(
             'flake8',
             'pytest',
             'pytest-cov',
+            'ray>=0.8.0',
         ],
         'atari': [
             'atari_py',
