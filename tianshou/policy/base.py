@@ -231,7 +231,8 @@ class BasePolicy(ABC, nn.Module):
         usage is to update the sampling weight in prioritized experience
         replay. Check out :ref:`policy_concept` for more information.
         """
-        if isinstance(buffer, PrioritizedReplayBuffer):
+        if isinstance(buffer, PrioritizedReplayBuffer) \
+                and hasattr(batch, 'weight'):
             buffer.update_weight(indice, batch.weight)
 
     def update(self, batch_size: int, buffer: ReplayBuffer, *args, **kwargs):
