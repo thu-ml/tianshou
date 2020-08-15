@@ -101,7 +101,7 @@ class BaseVectorEnv(gym.Env):
         """Any class who inherits ``gym.Env`` will inherit some attributes,
         like ``action_space``. However, we would like the attribute lookup to
         go straight into the worker (in fact, this vector env's action_space
-        is always None).
+        is always ``None``).
         """
         if key in ['metadata', 'reward_range', 'spec', 'action_space',
                    'observation_space']:  # reserved keys in gym.Env
