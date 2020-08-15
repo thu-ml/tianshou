@@ -107,7 +107,7 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
             _, _, _, info = v.step([1] * len(ids), ids)
             ids = Batch(info).env_id
             print(ids, time.time() - t)
-            if cls == SubprocVectorEnv:
+            if cls != RayVectorEnv:
                 assert np.allclose(sorted(ids), res)
                 assert (time.time() - t < timeout) == (len(res) == num - 1)
 

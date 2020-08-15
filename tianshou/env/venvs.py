@@ -101,7 +101,8 @@ class BaseVectorEnv(gym.Env):
         """Switch between the default attribute getter or one looking at
         wrapped environment level depending on the key.
         """
-        if key not in ('observation_space', 'action_space'):
+        if key not in ['metadata', 'reward_range', 'spec', 'action_space',
+                       'observation_space']:  # reserved keys in gym.Env
             return super().__getattribute__(key)
         else:
             return self.__getattr__(key)
