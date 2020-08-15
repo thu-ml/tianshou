@@ -98,8 +98,10 @@ class BaseVectorEnv(gym.Env):
         return self.env_num
 
     def __getattribute__(self, key: str) -> Any:
-        """Switch between the default attribute getter or one looking at
-        wrapped environment level depending on the key.
+        """Any class who inherits ``gym.Env`` will inherit some attributes,
+        like ``action_space``. However, we would like the attribute lookup to
+        go straight into the worker (in fact, this vector env's action_space
+        is always None).
         """
         if key in ['metadata', 'reward_range', 'spec', 'action_space',
                    'observation_space']:  # reserved keys in gym.Env
@@ -112,7 +114,7 @@ class BaseVectorEnv(gym.Env):
         environment, if it does not belong to the wrapping vector environment
         class.
         """
-        return [getattr(worker, key) for worker in self.workers]
+        return [worker.__getattr__(key) for worker in self.workers]
 
     def _wrap_id(
             self, id: Optional[Union[int, List[int]]] = None) -> List[int]:

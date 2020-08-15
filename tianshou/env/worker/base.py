@@ -11,11 +11,17 @@ class EnvWorker(ABC, gym.Env):
         self._env_fn = env_fn
         self.is_closed = False
 
-    def __getattribute__(self, key: str):
-        if key not in ('observation_space', 'action_space'):
-            return super().__getattribute__(key)
-        else:
+    def __getattribute__(self, key: str) -> Any:
+        """Any class who inherits ``gym.Env`` will inherit some attributes,
+        like ``action_space``. However, we would like the attribute lookup to
+        go straight into the worker (in fact, this vector env's action_space
+        is always None).
+        """
+        if key in ['metadata', 'reward_range', 'spec', 'action_space',
+                   'observation_space']:  # reserved keys in gym.Env
             return self.__getattr__(key)
+        else:
+            return super().__getattribute__(key)
 
     @abstractmethod
     def __getattr__(self, key: str) -> Any:
