@@ -209,8 +209,8 @@ Tianshou supports user-defined training code. Here is the code snippet:
                 # back to training eps
                 policy.set_eps(0.1)
 
-        # train policy with a sampled batch data
-        losses = policy.learn(train_collector.sample(batch_size=64))
+        # train policy with a sampled batch data from buffer
+        losses = policy.update(64, train_collector.buffer)
 
 For further usage, you can refer to the :doc:`/tutorials/cheatsheet`.
 

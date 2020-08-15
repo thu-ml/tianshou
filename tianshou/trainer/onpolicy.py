@@ -28,7 +28,8 @@ def onpolicy_trainer(
         verbose: bool = True,
         test_in_train: bool = True,
 ) -> Dict[str, Union[float, str]]:
-    """A wrapper for on-policy trainer procedure.
+    """A wrapper for on-policy trainer procedure. The ``step`` in trainer means
+    a policy network update.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
         class.
@@ -101,8 +102,8 @@ def onpolicy_trainer(
                         policy.train()
                         if train_fn:
                             train_fn(epoch)
-                losses = policy.learn(
-                    train_collector.sample(0), batch_size, repeat_per_collect)
+                losses = policy.update(
+                    0, train_collector.buffer, batch_size, repeat_per_collect)
                 train_collector.reset_buffer()
                 step = 1
                 for k in losses.keys():

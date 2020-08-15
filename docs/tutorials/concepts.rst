@@ -64,12 +64,14 @@ Policy
 
 Tianshou aims to modularizing RL algorithms. It comes into several classes of policies in Tianshou. All of the policy classes must inherit :class:`~tianshou.policy.BasePolicy`.
 
-A policy class typically has four parts:
+A policy class typically has the following parts:
 
-* :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including coping the target network and so on;
+* :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including copying the target network and so on;
 * :meth:`~tianshou.policy.BasePolicy.forward`: compute action with given observation;
-* :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the replay buffer (this function can interact with replay buffer);
+* :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the replay buffer;
 * :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given batch of data.
+* :meth:`~tianshou.policy.BasePolicy.post_process_fn`: update the buffer with a given batch of data.
+* :meth:`~tianshou.policy.BasePolicy.update`: the main interface for training. This function samples data from buffer, pre-process data (such as computing n-step return), learn with the data, and finally post-process the data (such as updating prioritized replay buffer); in short, ``process_fn -> learn -> post_process_fn``.
 
 Take 2-step return DQN as an example. The 2-step return DQN compute each frame's return as:
 
@@ -125,10 +127,8 @@ Collector
 ---------
 
 The :class:`~tianshou.data.Collector` enables the policy to interact with different types of environments conveniently.
-In short, :class:`~tianshou.data.Collector` has two main methods:
 
-* :meth:`~tianshou.data.Collector.collect`: let the policy perform (at least) a specified number of step ``n_step`` or episode ``n_episode`` and store the data in the replay buffer;
-* :meth:`~tianshou.data.Collector.sample`: sample a data batch from replay buffer; it will call :meth:`~tianshou.policy.BasePolicy.process_fn` before returning the final batch data.
+:class:`~tianshou.data.Collector` has one main method :meth:`~tianshou.data.Collector.collect`: it let the policy perform (at least) a specified number of step ``n_step`` or episode ``n_episode`` and store the data in the replay buffer.
 
 Why do we mention **at least** here? For multiple environments, we could not directly store the collected data into the replay buffer, since it breaks the principle of storing data chronologically.
 
@@ -143,8 +143,6 @@ Trainer
 Once you have a collector and a policy, you can start writing the training method for your RL agent. Trainer, to be honest, is a simple wrapper. It helps you save energy for writing the training loop. You can also construct your own trainer: :ref:`customized_trainer`.
 
 Tianshou has two types of trainer: :func:`~tianshou.trainer.onpolicy_trainer` and :func:`~tianshou.trainer.offpolicy_trainer`, corresponding to on-policy algorithms (such as Policy Gradient) and off-policy algorithms (such as DQN). Please check out :doc:`/api/tianshou.trainer` for the usage.
-
-There will be more types of trainers, for instance, multi-agent trainer.
 
 
 .. _pseudocode:
@@ -165,7 +163,8 @@ We give a high-level explanation through the pseudocode used in section :ref:`po
         buffer.store(s, a, s_, r, d)                                # collector.collect(...)
         s = s_                                                      # collector.collect(...)
         if i % 1000 == 0:                                           # done in trainer
-            b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # collector.sample(batch_size)
+                                                                    # the following is done in policy.update(batch_size, buffer)
+            b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # buffer.sample(batch_size)
             # compute 2-step returns. How?
             b_ret = compute_2_step_return(buffer, b_r, b_d, ...)    # policy.process_fn(batch, buffer, indice)
             # update DQN policy

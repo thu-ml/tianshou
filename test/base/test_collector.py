@@ -182,7 +182,7 @@ def test_collector_with_dict_state():
     c1.seed(0)
     c1.collect(n_step=10)
     c1.collect(n_episode=[2, 1, 1, 2])
-    batch = c1.sample(10)
+    batch, _ = c1.buffer.sample(10)
     print(batch)
     c0.buffer.update(c1.buffer)
     assert np.allclose(c0.buffer[:len(c0.buffer)].obs.index, np.expand_dims([
@@ -192,7 +192,7 @@ def test_collector_with_dict_state():
     c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
                    Logger.single_preprocess_fn)
     c2.collect(n_episode=[0, 0, 0, 10])
-    batch = c2.sample(10)
+    batch, _ = c2.buffer.sample(10)
 
 
 def test_collector_with_ma():
@@ -216,7 +216,7 @@ def test_collector_with_ma():
     assert np.asanyarray(r).size == 1 and r == 4.
     r = c1.collect(n_episode=[2, 1, 1, 2])['rew']
     assert np.asanyarray(r).size == 1 and r == 4.
-    batch = c1.sample(10)
+    batch, _ = c1.buffer.sample(10)
     print(batch)
     c0.buffer.update(c1.buffer)
     obs = np.array(np.expand_dims([
@@ -233,7 +233,7 @@ def test_collector_with_ma():
                    Logger.single_preprocess_fn, reward_metric=reward_metric)
     r = c2.collect(n_episode=[0, 0, 0, 10])['rew']
     assert np.asanyarray(r).size == 1 and r == 4.
-    batch = c2.sample(10)
+    batch, _ = c2.buffer.sample(10)
 
 
 if __name__ == '__main__':
