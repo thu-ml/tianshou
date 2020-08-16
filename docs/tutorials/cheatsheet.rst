@@ -35,20 +35,20 @@ Tianshou provides the following classes for parallel environment simulation:
 
 - :class:`~tianshou.env.DummyVectorEnv` is for pseudo-parallel simulation (implemented with a for-loop, useful for debugging).
 
-- :class:`~tianshou.env.SubprocVectorEnv` uses multiple processes for parallel simulation. This is the default choice for parallel simulation.
+- :class:`~tianshou.env.SubprocVectorEnv` uses multiple processes for parallel simulation. This is the most often choice for parallel simulation.
 
 - :class:`~tianshou.env.ShmemVectorEnv` has a similar implementation to :class:`~tianshou.env.SubprocVectorEnv`, but is optimized (in terms of both memory footprint and simulation speed) for environments with large observations such as images.
 
-- :class:`~tianshou.env.RayVectorEnv` is the only choice for parallel simulation in a cluster with multiple machines.
+- :class:`~tianshou.env.RayVectorEnv` is currently the only choice for parallel simulation in a cluster with multiple machines.
 
 Although these classes are optimized for different scenarios, they have exactly the same APIs because they are sub-classes of :class:`~tianshou.env.BaseVectorEnv`. Just provide a list of functions who return environments upon called, and it is all set.
 
 ::
 
     env_fns = [lambda x=i: MyTestEnv(size=x) for i in [2, 3, 4, 5]]
-    venv = SubprocVectorEnv(env_fns) # DummyVectorEnv, ShmemVectorEnv, or RayVectorEnv, whichever you like.
-    venv.reset() # returns the initial observations of each environment
-    venv.step(actions) # provide actions for each environment and get their results
+    venv = SubprocVectorEnv(env_fns)  # DummyVectorEnv, ShmemVectorEnv, or RayVectorEnv, whichever you like.
+    venv.reset()  # returns the initial observations of each environment
+    venv.step(actions)  # provide actions for each environment and get their results
 
 .. sidebar:: An example of sync/async VectorEnv (steps with the same color end up in one batch that is disposed by the policy at the same time).
 
@@ -62,10 +62,13 @@ Asynchronous simulation is a built-in functionality of :class:`~tianshou.env.Bas
 
 ::
 
-    env_fns = [lambda x=i: MyTestEnv(size=x) for i in [2, 3, 4, 5]]
-    venv = SubprocVectorEnv(env_fns, wait_num=3, timeout=0.2) # DummyVectorEnv, ShmemVectorEnv, or RayVectorEnv, whichever you like.
-    venv.reset() # returns the initial observations of each environment
-    venv.step(actions) # returns ``wait_num`` steps or finished steps after ``timeout`` seconds
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=x) for i in [2, 3, 4, 5]]
+    # DummyVectorEnv, ShmemVectorEnv, or RayVectorEnv, whichever you like.
+    venv = SubprocVectorEnv(env_fns, wait_num=3, timeout=0.2)
+    venv.reset()  # returns the initial observations of each environment
+    # returns ``wait_num`` steps or finished steps after ``timeout`` seconds,
+    # whichever occurs first.
+    venv.step(actions, ready_id)
 
 If we have 4 envs and set ``wait_num = 3``, each of the step only returns 3 results of these 4 envs.
 
