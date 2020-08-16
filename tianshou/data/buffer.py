@@ -23,7 +23,7 @@ class ReplayBuffer:
     The following code snippet illustrates its usage:
     ::
 
-        >>> import numpy as np
+        >>> import pickle, numpy as np
         >>> from tianshou.data import ReplayBuffer
         >>> buf = ReplayBuffer(size=20)
         >>> for i in range(3):
@@ -35,6 +35,7 @@ class ReplayBuffer:
         >>> # but there are only three valid items, so len(buf) == 3.
         >>> len(buf)
         3
+        >>> pickle.dump(buf, open('buf.pkl', 'wb'))  # save to file "buf.pkl"
         >>> buf2 = ReplayBuffer(size=10)
         >>> for i in range(15):
         ...     buf2.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
@@ -54,6 +55,11 @@ class ReplayBuffer:
         >>> batch_data, indice = buf.sample(batch_size=4)
         >>> batch_data.obs == buf[indice].obs
         array([ True,  True,  True,  True])
+        >>> len(buf)
+        13
+        >>> buf = pickle.load(open('buf.pkl', 'rb'))  # load from "buf.pkl"
+        >>> len(buf)
+        3
 
     :class:`~tianshou.data.ReplayBuffer` also supports frame_stack sampling
     (typically for RNN usage, see issue#19), ignoring storing the next
@@ -119,6 +125,7 @@ class ReplayBuffer:
                  sample_avail: bool = False, **kwargs) -> None:
         super().__init__()
         self._maxsize = size
+        self._indices = np.arange(size)
         self._stack = None
         self.stack_num = stack_num
         self._avail = sample_avail and stack_num > 1
@@ -137,9 +144,18 @@ class ReplayBuffer:
         """Return str(self)."""
         return self.__class__.__name__ + self._meta.__repr__()[5:]
 
-    def __getattr__(self, key: str) -> Union['Batch', Any]:
+    def __getattr__(self, key: str) -> Any:
         """Return self.key"""
-        return self._meta.__dict__[key]
+        try:
+            return self._meta[key]
+        except KeyError as e:
+            raise AttributeError from e
+
+    def __setstate__(self, state):
+        """Unpickling interface. We need it because pickling buffer does not
+        work out-of-the-box (``buffer.__getattr__`` is customized).
+        """
+        self.__dict__.update(state)
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
@@ -149,9 +165,8 @@ class ReplayBuffer:
             value = self._meta.__dict__[name]
         if isinstance(inst, np.ndarray) and value.shape[1:] != inst.shape:
             raise ValueError(
-                "Cannot add data to a buffer with different shape, key: "
-                f"{name}, expect shape: {value.shape[1:]}, "
-                f"given shape: {inst.shape}.")
+                "Cannot add data to a buffer with different shape, with key "
+                f"{name}, expect {value.shape[1:]}, given {inst.shape}.")
         try:
             value[self._index] = inst
         except KeyError:
@@ -261,47 +276,42 @@ class ReplayBuffer:
         """
         if stack_num is None:
             stack_num = self.stack_num
-        if isinstance(indice, slice):
-            indice = np.arange(
-                0 if indice.start is None
-                else self._size - indice.start if indice.start < 0
-                else indice.start,
-                self._size if indice.stop is None
-                else self._size - indice.stop if indice.stop < 0
-                else indice.stop,
-                1 if indice.step is None else indice.step)
-        else:
-            indice = np.array(indice, copy=True)
-        # set last frame done to True
-        last_index = (self._index - 1 + self._size) % self._size
-        last_done, self.done[last_index] = self.done[last_index], True
-        if key == 'obs_next' and (not self._save_s_ or self.obs_next is None):
-            indice += 1 - self.done[indice].astype(np.int)
+        if stack_num == 1:  # the most often case
+            if key != 'obs_next' or self._save_s_:
+                val = self._meta.__dict__[key]
+                try:
+                    return val[indice]
+                except IndexError as e:
+                    if not (isinstance(val, Batch) and val.is_empty()):
+                        raise e  # val != Batch()
+                    return Batch()
+        indice = self._indices[:self._size][indice]
+        done = self._meta.__dict__['done']
+        if key == 'obs_next' and not self._save_s_:
+            indice += 1 - done[indice].astype(np.int)
             indice[indice == self._size] = 0
             key = 'obs'
         val = self._meta.__dict__[key]
         try:
-            if stack_num > 1:
-                stack = []
-                for _ in range(stack_num):
-                    stack = [val[indice]] + stack
-                    pre_indice = np.asarray(indice - 1)
-                    pre_indice[pre_indice == -1] = self._size - 1
-                    indice = np.asarray(
-                        pre_indice + self.done[pre_indice].astype(np.int))
-                    indice[indice == self._size] = 0
-                if isinstance(val, Batch):
-                    stack = Batch.stack(stack, axis=indice.ndim)
-                else:
-                    stack = np.stack(stack, axis=indice.ndim)
+            if stack_num == 1:
+                return val[indice]
+            stack = []
+            for _ in range(stack_num):
+                stack = [val[indice]] + stack
+                pre_indice = np.asarray(indice - 1)
+                pre_indice[pre_indice == -1] = self._size - 1
+                indice = np.asarray(
+                    pre_indice + done[pre_indice].astype(np.int))
+                indice[indice == self._size] = 0
+            if isinstance(val, Batch):
+                stack = Batch.stack(stack, axis=indice.ndim)
             else:
-                stack = val[indice]
+                stack = np.stack(stack, axis=indice.ndim)
+            return stack
         except IndexError as e:
-            stack = Batch()
-            if not isinstance(val, Batch) or len(val.__dict__) > 0:
-                raise e
-        self.done[last_index] = last_done
-        return stack
+            if not (isinstance(val, Batch) and val.is_empty()):
+                raise e  # val != Batch()
+            return Batch()
 
     def __getitem__(self, index: Union[
             slice, int, np.integer, np.ndarray]) -> Batch:
@@ -380,7 +390,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """Return self.key"""
         if key == 'weight':
             return self._weight
-        return self._meta.__dict__[key]
+        return super().__getattr__(key)
 
     def add(self,
             obs: Union[dict, np.ndarray],
