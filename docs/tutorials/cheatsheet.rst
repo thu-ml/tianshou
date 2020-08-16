@@ -31,30 +31,47 @@ See :ref:`customized_trainer`.
 Parallel Sampling
 -----------------
 
-Use :class:`~tianshou.env.DummyVectorEnv`, :class:`~tianshou.env.SubprocVectorEnv`, :class:`~tianshou.env.ShmemVectorEnv`, or :class:`~tianshou.env.RayVectorEnv`.
-::
+Tianshou provides the following classes for parallel environment simulation:
 
-    env_fns = [
-        lambda: MyTestEnv(size=2),
-        lambda: MyTestEnv(size=3),
-        lambda: MyTestEnv(size=4),
-        lambda: MyTestEnv(size=5),
-    ]
-    venv = SubprocVectorEnv(env_fns)
+- :class:`~tianshou.env.DummyVectorEnv` is for pseudo-parallel simulation (implemented with a for-loop, useful for debugging).
 
-where ``env_fns`` is a list of callable env hooker. The above code can be written in for-loop as well:
+- :class:`~tianshou.env.SubprocVectorEnv` uses multiple processes for parallel simulation. This is the default choice for parallel simulation.
+
+- :class:`~tianshou.env.ShmemVectorEnv` has a similar implementation to :class:`~tianshou.env.SubprocVectorEnv`, but is optimized (in terms of both memory footprint and simulation speed) for environments with large observations such as images.
+
+- :class:`~tianshou.env.RayVectorEnv` is the only choice for parallel simulation in a cluster with multiple machines.
+
+Although these classes are optimized for different scenarios, they have exactly the same APIs because they are sub-classes of :class:`~tianshou.env.BaseVectorEnv`. Just provide a list of functions who return environments upon called, and it is all set.
+
 ::
 
     env_fns = [lambda x=i: MyTestEnv(size=x) for i in [2, 3, 4, 5]]
-    venv = SubprocVectorEnv(env_fns)
+    venv = SubprocVectorEnv(env_fns) # DummyVectorEnv, ShmemVectorEnv, or RayVectorEnv, whichever you like.
+    venv.reset() # returns the initial observations of each environment
+    venv.step(actions) # provide actions for each environment and get their results
 
-.. sidebar:: An example of sync/async VectorEnv (same color means the same wait step (same batch forward))
+.. sidebar:: An example of sync/async VectorEnv (steps with the same color end up in one batch that is disposed by the policy at the same time).
 
      .. Figure:: ../_static/images/async.png
 
-All subclasses of :class:`~tianshou.env.BaseVectorEnv` have an async mode (related to `Issue 103 <https://github.com/thu-ml/tianshou/issues/103>`_), where we can give it two extra parameters ``wait_num`` or ``timeout`` (or both). If we have 4 envs and set ``wait_num = 3``, each of the step in VectorEnv only returns 3 results of these 4 envs. This mode eases the case where each step cost varies at different timescale， e.g. 90% step cost 1s, but 10% cost 10s.
+By default, parallel environment simulation is synchronous: a step is done after all environments have finished a step. Synchronous simulation works well if each step of environments costs roughly the same time.
+
+In case the time cost of environments varies a lot (e.g. 90% step cost 1s, but 10% cost 10s) where slow environments lag fast environments behind, async simulation can be used (related to `Issue 103 <https://github.com/thu-ml/tianshou/issues/103>`_). The idea is to start those finished environments without waiting for slow environments.
+
+Asynchronous simulation is a built-in functionality of :class:`~tianshou.env.BaseVectorEnv`. Just provide ``wait_num`` or ``timeout`` (or both) and async simulation works.
+
+::
+
+    env_fns = [lambda x=i: MyTestEnv(size=x) for i in [2, 3, 4, 5]]
+    venv = SubprocVectorEnv(env_fns, wait_num=3, timeout=0.2) # DummyVectorEnv, ShmemVectorEnv, or RayVectorEnv, whichever you like.
+    venv.reset() # returns the initial observations of each environment
+    venv.step(actions) # returns ``wait_num`` steps or finished steps after ``timeout`` seconds
+
+If we have 4 envs and set ``wait_num = 3``, each of the step only returns 3 results of these 4 envs.
 
 You can treat the ``timeout`` parameter as a dynamic ``wait_num``. In each vectorized step it only returns the environments finished within the given time. If there is no such environment, it will wait until any of them finished.
+
+The figure in the right gives an intuitive comparison among synchronous/asynchronous simulation.
 
 .. warning::
 
