@@ -148,8 +148,8 @@ class ReplayBuffer:
         """Return self.key"""
         try:
             return self._meta[key]
-        except KeyError:
-            raise AttributeError
+        except KeyError as e:
+            raise AttributeError from e
 
     def __setstate__(self, state):
         """Unpickling interface. We need it because pickling buffer does not
