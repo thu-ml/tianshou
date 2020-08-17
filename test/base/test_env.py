@@ -105,11 +105,12 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
         for res in expect_result:
             t = time.time()
             _, _, _, info = v.step([1] * len(ids), ids)
+            t = time.time() - t
             ids = Batch(info).env_id
-            print(ids, time.time() - t)
-            if cls != RayVectorEnv:
+            print(ids, t)
+            if cls != RayVectorEnv:  # ray-project/ray#10134
                 assert np.allclose(sorted(ids), res)
-                assert (time.time() - t < timeout) == (len(res) == num - 1)
+                assert (t < timeout) == (len(res) == num - 1)
 
 
 def test_vecenv(size=10, num=8, sleep=0.001):
