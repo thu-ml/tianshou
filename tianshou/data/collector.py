@@ -349,7 +349,6 @@ class Collector(object):
             the buffer, otherwise it will extract the data with the given
             batch_size.
         """
-        import warnings
         warnings.warn(
             'Collector.sample is deprecated and will cause error if you use '
             'prioritized experience replay! Collector.sample will be removed '
@@ -357,6 +356,11 @@ class Collector(object):
         batch_data, indice = self.buffer.sample(batch_size)
         batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data
+
+    def close(self) -> None:
+        warnings.warn(
+            'Collector.close is deprecated and will be removed upon version '
+            '0.3.', Warning)
 
 
 def _batch_set_item(source: Batch, indices: np.ndarray,
