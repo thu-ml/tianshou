@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple, Optional, Callable, Any
 
 
-class EnvWorker(ABC, gym.Env):
+class EnvWorker(ABC):
     """An abstract worker for an environment."""
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:

@@ -114,7 +114,7 @@ class BaseVectorEnv(gym.Env):
         environment, if it does not belong to the wrapping vector environment
         class.
         """
-        return [worker.__getattr__(key) for worker in self.workers]
+        return [getattr(worker, key) for worker in self.workers]
 
     def _wrap_id(
             self, id: Optional[Union[int, List[int]]] = None) -> List[int]:
