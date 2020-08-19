@@ -219,8 +219,7 @@ The explanation of each Tianshou class/function will be deferred to their first 
                             help='the path of opponent agent pth file for resuming from a pre-trained agent')
         parser.add_argument('--device', type=str,
                             default='cuda' if torch.cuda.is_available() else 'cpu')
-        args = parser.parse_known_args()[0]
-        return args
+        return parser.parse_args()
 
 .. sidebar:: The relationship between MultiAgentPolicyManager (Manager) and BasePolicy (Agent)
 

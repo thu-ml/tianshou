@@ -40,8 +40,7 @@ def get_args():
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
     parser.add_argument('--max_episode_steps', type=int, default=2000)
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_args()
 
 
 def test_ppo(args=get_args()):

@@ -41,9 +41,7 @@ def get_args():
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--max_episode_steps', type=int, default=2000)
-
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_args()
 
 
 def test_td3(args=get_args()):

@@ -40,8 +40,7 @@ def get_args():
     parser.add_argument('--ent-coef', type=float, default=0.001)
     parser.add_argument('--max-grad-norm', type=float, default=None)
     parser.add_argument('--max_episode_steps', type=int, default=2000)
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_args()
 
 
 def test_a2c(args=get_args()):
