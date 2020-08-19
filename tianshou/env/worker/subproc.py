@@ -94,6 +94,18 @@ class ShArray:
                              dtype=self.dtype).reshape(self.shape)
 
 
+def _setup_buf(space):
+    if isinstance(space, gym.spaces.Dict):
+        assert isinstance(space.spaces, OrderedDict)
+        buffer = {k: _setup_buf(v) for k, v in space.spaces.items()}
+    elif isinstance(space, gym.spaces.Tuple):
+        assert isinstance(space.spaces, tuple)
+        buffer = tuple([_setup_buf(t) for t in space.spaces])
+    else:
+        buffer = ShArray(space.dtype, space.shape)
+    return buffer
+
+
 class SubprocEnvWorker(EnvWorker):
     """Subprocess worker used in SubprocVectorEnv and ShmemVectorEnv."""
 
@@ -108,7 +120,7 @@ class SubprocEnvWorker(EnvWorker):
             obs_space = dummy.observation_space
             dummy.close()
             del dummy
-            self.buffer = SubprocEnvWorker._setup_buf(obs_space)
+            self.buffer = _setup_buf(obs_space)
         args = (self.parent_remote, self.child_remote,
                 CloudpickleWrapper(env_fn), self.buffer)
         self.process = Process(target=_worker, args=args, daemon=True)
@@ -118,20 +130,6 @@ class SubprocEnvWorker(EnvWorker):
     def __getattr__(self, key: str):
         self.parent_remote.send(['getattr', key])
         return self.parent_remote.recv()
-
-    @staticmethod
-    def _setup_buf(space):
-        if isinstance(space, gym.spaces.Dict):
-            assert isinstance(space.spaces, OrderedDict)
-            buffer = {k: SubprocEnvWorker._setup_buf(v)
-                      for k, v in space.spaces.items()}
-        elif isinstance(space, gym.spaces.Tuple):
-            assert isinstance(space.spaces, tuple)
-            buffer = tuple([SubprocEnvWorker._setup_buf(t)
-                            for t in space.spaces])
-        else:
-            buffer = ShArray(space.dtype, space.shape)
-        return buffer
 
     def _decode_obs(self, isNone):
         def decode_obs(buffer):

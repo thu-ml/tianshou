@@ -3,7 +3,7 @@ import numpy as np
 from gym.spaces.discrete import Discrete
 from tianshou.data import Batch
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv, \
-    RayVectorEnv, ShmemVectorEnv
+    ShmemVectorEnv, RayVectorEnv
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -43,7 +43,7 @@ def test_async_env(size=10000, num=8, sleep=0.1):
         lambda i=i: MyTestEnv(size=i, sleep=sleep, random_sleep=True)
         for i in range(size, size + num)
     ]
-    test_cls = [SubprocVectorEnv]
+    test_cls = [SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
         test_cls += [RayVectorEnv]
     for cls in test_cls:
@@ -86,7 +86,7 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
                lambda: MyTestEnv(size=size, sleep=sleep * 3),
                lambda: MyTestEnv(size=size, sleep=sleep * 5),
                lambda: MyTestEnv(size=size, sleep=sleep * 7)]
-    test_cls = [SubprocVectorEnv]
+    test_cls = [SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
         test_cls += [RayVectorEnv]
     for cls in test_cls:
