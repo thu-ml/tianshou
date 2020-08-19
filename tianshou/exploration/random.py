@@ -7,7 +7,7 @@ class BaseNoise(ABC, object):
     """The action noise base class."""
 
     def __init__(self, **kwargs) -> None:
-        super(BaseNoise, self).__init__()
+        super().__init__()
 
     @abstractmethod
     def __call__(self, **kwargs) -> np.ndarray:

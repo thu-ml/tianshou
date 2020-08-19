@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import VectorEnv
+from tianshou.env import DummyVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import SACPolicy, ImitationPolicy
@@ -54,10 +54,10 @@ def test_sac_with_il(args=get_args()):
     args.max_action = env.action_space.high[0]
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
-    train_envs = VectorEnv(
+    train_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = VectorEnv(
+    test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
@@ -105,7 +105,6 @@ def test_sac_with_il(args=get_args()):
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
     assert stop_fn(result['best_reward'])
-    test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
@@ -113,7 +112,6 @@ def test_sac_with_il(args=get_args()):
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
-        collector.close()
 
     # here we define an imitation collector with a trivial policy
     if args.task == 'Pendulum-v0':
@@ -123,15 +121,17 @@ def test_sac_with_il(args=get_args()):
                 ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(net, optim, mode='continuous')
-    il_test_collector = Collector(il_policy, test_envs)
+    il_test_collector = Collector(
+        il_policy,
+        DummyVectorEnv(
+            [lambda: gym.make(args.task) for _ in range(args.test_num)])
+    )
     train_collector.reset()
     result = offpolicy_trainer(
         il_policy, train_collector, il_test_collector, args.epoch,
         args.step_per_epoch // 5, args.collect_per_step, args.test_num,
         args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
     assert stop_fn(result['best_reward'])
-    train_collector.close()
-    il_test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
@@ -139,7 +139,6 @@ def test_sac_with_il(args=get_args()):
         collector = Collector(il_policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
-        collector.close()
 
 
 if __name__ == '__main__':

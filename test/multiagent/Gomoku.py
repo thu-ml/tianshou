@@ -4,7 +4,7 @@ import numpy as np
 from copy import deepcopy
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import VectorEnv
+from tianshou.env import DummyVectorEnv
 from tianshou.data import Collector
 from tianshou.policy import RandomPolicy
 
@@ -37,7 +37,7 @@ def gomoku(args=get_args()):
 
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
-    test_envs = VectorEnv([env_func for _ in range(args.test_num)])
+    test_envs = DummyVectorEnv([env_func for _ in range(args.test_num)])
     for r in range(args.self_play_round):
         rews = []
         agent_learn.set_eps(0.0)

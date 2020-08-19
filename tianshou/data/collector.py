@@ -5,7 +5,7 @@ import warnings
 import numpy as np
 from typing import Any, Dict, List, Union, Optional, Callable
 
-from tianshou.env import BaseVectorEnv, VectorEnv, AsyncVectorEnv
+from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.exploration import BaseNoise
 from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
@@ -51,7 +51,8 @@ class Collector(object):
         collector = Collector(policy, env, buffer=replay_buffer)
 
         # the collector supports vectorized environments as well
-        envs = VectorEnv([lambda: gym.make('CartPole-v0') for _ in range(3)])
+        envs = DummyVectorEnv([lambda: gym.make('CartPole-v0')
+                               for _ in range(3)])
         collector = Collector(policy, envs, buffer=replay_buffer)
 
         # collect 3 episodes
@@ -84,7 +85,7 @@ class Collector(object):
                  ) -> None:
         super().__init__()
         if not isinstance(env, BaseVectorEnv):
-            env = VectorEnv([lambda: env])
+            env = DummyVectorEnv([lambda: env])
         self.env = env
         self.env_num = len(env)
         # environments that are available in step()
@@ -93,7 +94,7 @@ class Collector(object):
         self._ready_env_ids = np.arange(self.env_num)
         # self.async is a flag to indicate whether this collector works
         # with asynchronous simulation
-        self.is_async = isinstance(env, AsyncVectorEnv)
+        self.is_async = env.is_async
         # need cache buffers before storing in the main buffer
         self._cached_buf = [ListReplayBuffer() for _ in range(self.env_num)]
         self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
@@ -101,6 +102,7 @@ class Collector(object):
         self.policy = policy
         self.preprocess_fn = preprocess_fn
         self.process_fn = policy.process_fn
+        self._action_space = env.action_space
         self._action_noise = action_noise
         self._rew_metric = reward_metric or Collector._default_rew_metric
         # avoid creating attribute outside __init__
@@ -119,6 +121,8 @@ class Collector(object):
 
     def reset(self) -> None:
         """Reset all related variables in the collector."""
+        # use empty Batch for ``state`` so that ``self.data`` supports slicing
+        # convert empty Batch to None when passing data to policy
         self.data = Batch(state={}, obs={}, act={}, rew={}, done={}, info={},
                           obs_next={}, policy={})
         self.reset_env()
@@ -155,10 +159,6 @@ class Collector(object):
     def render(self, **kwargs) -> None:
         """Render all the environment(s)."""
         return self.env.render(**kwargs)
-
-    def close(self) -> None:
-        """Close the environment(s)."""
-        self.env.close()
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
         """Reset the hidden state: self.data.state[id]."""
@@ -228,20 +228,13 @@ class Collector(object):
 
             # restore the state and the input data
             last_state = self.data.state
-            if last_state.is_empty():
+            if isinstance(last_state, Batch) and last_state.is_empty():
                 last_state = None
             self.data.update(state=Batch(), obs_next=Batch(), policy=Batch())
 
             # calculate the next action
             if random:
-                if self.is_async:
-                    # TODO self.env.action_space will invoke remote call for
-                    #  all environments, which may hang in async simulation.
-                    #  This can be avoided by using a random policy, but not
-                    #  in the collector level. Leave it as a future work.
-                    raise RuntimeError("cannot use random "
-                                       "sampling in async simulation!")
-                spaces = self.env.action_space
+                spaces = self._action_space
                 result = Batch(
                     act=[spaces[i].sample() for i in self._ready_env_ids])
             else:
@@ -254,7 +247,9 @@ class Collector(object):
                 state = Batch()
             self.data.update(state=state, policy=result.get('policy', Batch()))
             # save hidden state to policy._state, in order to save into buffer
-            self.data.policy._state = self.data.state
+            if not (isinstance(self.data.state, Batch)
+                    and self.data.state.is_empty()):
+                self.data.policy._state = self.data.state
 
             self.data.act = to_numpy(result.act)
             if self._action_noise is not None:
@@ -354,7 +349,6 @@ class Collector(object):
             the buffer, otherwise it will extract the data with the given
             batch_size.
         """
-        import warnings
         warnings.warn(
             'Collector.sample is deprecated and will cause error if you use '
             'prioritized experience replay! Collector.sample will be removed '
@@ -363,23 +357,36 @@ class Collector(object):
         batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data
 
+    def close(self) -> None:
+        warnings.warn(
+            'Collector.close is deprecated and will be removed upon version '
+            '0.3.', Warning)
+
 
 def _batch_set_item(source: Batch, indices: np.ndarray,
                     target: Batch, size: int):
-    # for any key chain k, there are three cases
+    # for any key chain k, there are four cases
     # 1. source[k] is non-reserved, but target[k] does not exist or is reserved
     # 2. source[k] does not exist or is reserved, but target[k] is non-reserved
-    # 3. both source[k] and target[k] is non-reserved
-    for k, v in target.items():
-        if not isinstance(v, Batch) or not v.is_empty():
+    # 3. both source[k] and target[k] are non-reserved
+    # 4. both source[k] and target[k] do not exist or are reserved, do nothing.
+    # A special case in case 4, if target[k] is reserved but source[k] does
+    # not exist, make source[k] reserved, too.
+    for k, vt in target.items():
+        if not isinstance(vt, Batch) or not vt.is_empty():
             # target[k] is non-reserved
             vs = source.get(k, Batch())
-            if isinstance(vs, Batch) and vs.is_empty():
-                # case 2
-                # use __dict__ to avoid many type checks
-                source.__dict__[k] = _create_value(v[0], size)
+            if isinstance(vs, Batch):
+                if vs.is_empty():
+                    # case 2, use __dict__ to avoid many type checks
+                    source.__dict__[k] = _create_value(vt[0], size)
+                else:
+                    assert isinstance(vt, Batch)
+                    _batch_set_item(source.__dict__[k], indices, vt, size)
         else:
             # target[k] is reserved
-            # case 1
+            # case 1 or special case of case 4
+            if k not in source.__dict__:
+                source.__dict__[k] = Batch()
             continue
-        source.__dict__[k][indices] = v
+        source.__dict__[k][indices] = vt

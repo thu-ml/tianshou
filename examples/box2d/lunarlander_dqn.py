@@ -1,3 +1,4 @@
+import os
 import gym
 import torch
 import pprint
@@ -5,48 +6,47 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import DDPGPolicy
+from tianshou.policy import DQNPolicy
+from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.env import VectorEnv, SubprocVectorEnv
-from tianshou.exploration import GaussianNoise
-from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import Actor, Critic
+from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Ant-v2')
-    parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--actor-lr', type=float, default=1e-4)
-    parser.add_argument('--critic-lr', type=float, default=1e-3)
+    # the parameters are found by Optuna
+    parser.add_argument('--task', type=str, default='LunarLander-v2')
+    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--eps-test', type=float, default=0.05)
+    parser.add_argument('--eps-train', type=float, default=0.73)
+    parser.add_argument('--buffer-size', type=int, default=100000)
+    parser.add_argument('--lr', type=float, default=0.013)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--tau', type=float, default=0.005)
-    parser.add_argument('--exploration-noise', type=float, default=0.1)
-    parser.add_argument('--epoch', type=int, default=100)
-    parser.add_argument('--step-per-epoch', type=int, default=2400)
-    parser.add_argument('--collect-per-step', type=int, default=4)
+    parser.add_argument('--n-step', type=int, default=4)
+    parser.add_argument('--target-update-freq', type=int, default=500)
+    parser.add_argument('--epoch', type=int, default=10)
+    parser.add_argument('--step-per-epoch', type=int, default=5000)
+    parser.add_argument('--collect-per-step', type=int, default=16)
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--layer-num', type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_args()
 
 
-def test_ddpg(args=get_args()):
+def test_dqn(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-    args.max_action = env.action_space.high[0]
     # train_envs = gym.make(args.task)
-    train_envs = VectorEnv(
+    # you can also use tianshou.env.SubprocVectorEnv
+    train_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
@@ -57,37 +57,45 @@ def test_ddpg(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, device=args.device)
-    actor = Actor(net, args.action_shape, args.max_action,
-                  args.device).to(args.device)
-    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net = Net(args.layer_num, args.state_shape,
-              args.action_shape, concat=True, device=args.device)
-    critic = Critic(net, args.device).to(args.device)
-    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
-    policy = DDPGPolicy(
-        actor, actor_optim, critic, critic_optim,
-        args.tau, args.gamma, GaussianNoise(sigma=args.exploration_noise),
-        [env.action_space.low[0], env.action_space.high[0]],
-        reward_normalization=True, ignore_done=True)
+              args.action_shape, args.device,
+              dueling=(2, 2)).to(args.device)
+    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    policy = DQNPolicy(
+        net, optim, args.gamma, args.n_step,
+        target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
+    # policy.set_eps(1)
+    train_collector.collect(n_step=args.batch_size)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'ddpg')
+    log_path = os.path.join(args.logdir, args.task, 'dqn')
+    writer = SummaryWriter(log_path)
+
+    def save_fn(policy):
+        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(x):
         return x >= env.spec.reward_threshold
+
+    def train_fn(x):
+        args.eps_train = max(args.eps_train * 0.6, 0.01)
+        policy.set_eps(args.eps_train)
+
+    def test_fn(x):
+        policy.set_eps(args.eps_test)
 
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
-        args.batch_size, stop_fn=stop_fn, writer=writer)
+        args.batch_size, train_fn=train_fn, test_fn=test_fn,
+        stop_fn=stop_fn, save_fn=save_fn, writer=writer,
+        test_in_train=False)
+
     assert stop_fn(result['best_reward'])
-    train_collector.close()
-    test_collector.close()
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
@@ -95,8 +103,7 @@ def test_ddpg(args=get_args()):
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
-        collector.close()
 
 
 if __name__ == '__main__':
-    test_ddpg()
+    test_dqn(get_args())

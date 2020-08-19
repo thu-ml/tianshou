@@ -30,11 +30,11 @@ It is available if you want the original ``gym.Env``:
     train_envs = gym.make('CartPole-v0')
     test_envs = gym.make('CartPole-v0')
 
-Tianshou supports parallel sampling for all algorithms. It provides four types of vectorized environment wrapper: :class:`~tianshou.env.VectorEnv`, :class:`~tianshou.env.SubprocVectorEnv`, :class:`~tianshou.env.ShmemVectorEnv`, and :class:`~tianshou.env.RayVectorEnv`. It can be used as follows: 
+Tianshou supports parallel sampling for all algorithms. It provides four types of vectorized environment wrapper: :class:`~tianshou.env.DummyVectorEnv`, :class:`~tianshou.env.SubprocVectorEnv`, :class:`~tianshou.env.ShmemVectorEnv`, and :class:`~tianshou.env.RayVectorEnv`. It can be used as follows: (more explanation can be found at :ref:`parallel_sampling`)
 ::
 
-    train_envs = ts.env.VectorEnv([lambda: gym.make('CartPole-v0') for _ in range(8)])
-    test_envs = ts.env.VectorEnv([lambda: gym.make('CartPole-v0') for _ in range(100)])
+    train_envs = ts.env.DummyVectorEnv([lambda: gym.make('CartPole-v0') for _ in range(8)])
+    test_envs = ts.env.DummyVectorEnv([lambda: gym.make('CartPole-v0') for _ in range(100)])
 
 Here, we set up 8 environments in ``train_envs`` and 100 environments in ``test_envs``.
 
@@ -178,7 +178,6 @@ Watch the Agent's Performance
 
     collector = ts.data.Collector(policy, env)
     collector.collect(n_episode=1, render=1 / 35)
-    collector.close()
 
 .. _customized_trainer:
 

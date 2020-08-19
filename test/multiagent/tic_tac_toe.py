@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Optional, Tuple
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import VectorEnv
+from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
@@ -106,8 +106,8 @@ def train_agent(args: argparse.Namespace = get_args(),
                 ) -> Tuple[dict, BasePolicy]:
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
-    train_envs = VectorEnv([env_func for _ in range(args.training_num)])
-    test_envs = VectorEnv([env_func for _ in range(args.test_num)])
+    train_envs = DummyVectorEnv([env_func for _ in range(args.training_num)])
+    test_envs = DummyVectorEnv([env_func for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -159,9 +159,6 @@ def train_agent(args: argparse.Namespace = get_args(),
         stop_fn=stop_fn, save_fn=save_fn, writer=writer,
         test_in_train=False)
 
-    train_collector.close()
-    test_collector.close()
-
     return result, policy.policies[args.agent_id - 1]
 
 
@@ -175,4 +172,3 @@ def watch(args: argparse.Namespace = get_args(),
     collector = Collector(policy, env)
     result = collector.collect(n_episode=1, render=args.render)
     print(f'Final reward: {result["rew"]}, length: {result["len"]}')
-    collector.close()

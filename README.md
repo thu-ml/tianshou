@@ -34,7 +34,7 @@
 Here is Tianshou's other features:
 
 - Elegant framework, using only ~2000 lines of code
-- Support parallel environment sampling for all algorithms [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#parallel-sampling)
+- Support parallel environment simulation (synchronous or asynchronous) for all algorithms [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#parallel-sampling)
 - Support recurrent state representation in actor network and critic network (RNN-style training for POMDP) [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#rnn-style-training)
 - Support any type of environment state (e.g. a dict, a self-defined class, ...) [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#user-defined-environment-and-different-state-representation)
 - Support customized training process [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#customize-training-process)
@@ -152,7 +152,7 @@ Within this API, we can interact with different policies conveniently.
 
 ### Elegant and Flexible
 
-Currently, the overall code of Tianshou platform is less than 1500 lines without environment wrappers for Atari and Mujoco. Most of the implemented algorithms are less than 100 lines of python code. It is quite easy to go through the framework and understand how it works. We provide many flexible API as you wish, for instance, if you want to use your policy to interact with the environment with (at least) `n` steps:
+Currently, the overall code of Tianshou platform is less than 2500 lines. Most of the implemented algorithms are less than 100 lines of python code. It is quite easy to go through the framework and understand how it works. We provide many flexible API as you wish, for instance, if you want to use your policy to interact with the environment with (at least) `n` steps:
 
 ```python
 result = collector.collect(n_step=n)
@@ -201,8 +201,8 @@ Make environments:
 
 ```python
 # you can also try with SubprocVectorEnv
-train_envs = ts.env.VectorEnv([lambda: gym.make(task) for _ in range(train_num)])
-test_envs = ts.env.VectorEnv([lambda: gym.make(task) for _ in range(test_num)])
+train_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(train_num)])
+test_envs = ts.env.DummyVectorEnv([lambda: gym.make(task) for _ in range(test_num)])
 ```
 
 Define the network:
@@ -249,7 +249,6 @@ Watch the performance with 35 FPS:
 ```python
 collector = ts.data.Collector(policy, env)
 collector.collect(n_episode=1, render=1 / 35)
-collector.close()
 ```
 
 Look at the result saved in tensorboard: (with bash script in your terminal)

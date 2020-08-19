@@ -29,10 +29,10 @@ def data():
     batch3 = Batch(obs=[np.arange(20) for _ in np.arange(batch_len)],
                    reward=np.arange(batch_len))
     indexs = np.random.choice(batch_len,
-                              size=batch_len//10, replace=False)
+                              size=batch_len // 10, replace=False)
     slice_dict = {'obs': [np.arange(20)
-                          for _ in np.arange(batch_len//10)],
-                  'reward': np.arange(batch_len//10)}
+                          for _ in np.arange(batch_len // 10)],
+                  'reward': np.arange(batch_len // 10)}
     dict_set = [{'obs': np.arange(20), 'info': "this is info", 'reward': 0}
                 for _ in np.arange(1e2)]
     batch4 = Batch(
@@ -45,16 +45,17 @@ def data():
     )
 
     print("Initialised")
-    return {'batch_set': batch_set,
-            'batch0': batch0,
-            'batchs1': batchs1,
-            'batchs2': batchs2,
-            'batch3': batch3,
-            'indexs': indexs,
-            'dict_set': dict_set,
-            'slice_dict': slice_dict,
-            'batch4': batch4
-            }
+    return {
+        'batch_set': batch_set,
+        'batch0': batch0,
+        'batchs1': batchs1,
+        'batchs2': batchs2,
+        'batch3': batch3,
+        'indexs': indexs,
+        'dict_set': dict_set,
+        'slice_dict': slice_dict,
+        'batch4': batch4
+    }
 
 
 def test_init(data):
