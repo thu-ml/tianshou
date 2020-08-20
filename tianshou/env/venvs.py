@@ -182,7 +182,11 @@ class BaseVectorEnv(gym.Env):
             assert len(action) == len(id)
             for i, j in enumerate(id):
                 self.workers[j].send_action(action[i])
-            result = [self.workers[j].get_result() for j in id]
+            result = []
+            for j in id:
+                obs, rew, done, info = self.workers[j].get_result()
+                info["env_id"] = j
+                result.append((obs, rew, done, info))
         else:
             if action is not None:
                 self._assert_id(id)
