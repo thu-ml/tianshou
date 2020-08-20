@@ -173,11 +173,15 @@ class Batch:
         if len(kwargs) > 0:
             self.__init__(kwargs, copy=copy)
 
-    def __setattr__(self, key: str, value: Any):
+    def __contains__(self, key: str) -> bool:
+        """Return key in self."""
+        return key in self.__dict__
+
+    def __setattr__(self, key: str, value: Any) -> None:
         """self.key = value"""
         self.__dict__[key] = _parse_value(value)
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict:
         """Pickling interface. Only the actual data are serialized for both
         efficiency and simplicity.
         """
@@ -188,7 +192,7 @@ class Batch:
             state[k] = v
         return state
 
-    def __setstate__(self, state):
+    def __setstate__(self, state) -> None:
         """Unpickling interface. At this point, self is an empty Batch instance
         that has not been initialized, so it can safely be initialized by the
         pickle state.
