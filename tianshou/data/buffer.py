@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from copy import deepcopy
 from typing import Any, Tuple, Union, Optional
 
 from tianshou.data import Batch, SegmentTree, to_numpy
@@ -355,7 +356,7 @@ class ListReplayBuffer(ReplayBuffer):
             return
         if self._meta.__dict__.get(name, None) is None:
             self._meta.__dict__[name] = []
-        self._meta.__dict__[name].append(inst)
+        self._meta.__dict__[name].append(deepcopy(inst))
 
     def reset(self) -> None:
         self._index = self._size = 0
