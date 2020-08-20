@@ -42,14 +42,16 @@ class Logger:
 
     def preprocess_fn(self, **kwargs):
         # modify info before adding into the buffer, and recorded into tfb
-        # if info is not provided from env, it will be a ``Batch()``.
-        if not kwargs.get('info', Batch()).is_empty():
+        # if obs/act/rew/done/... exist -> normal step
+        # if only obs exist -> reset
+        if 'rew' in kwargs:
             n = len(kwargs['obs'])
             info = kwargs['info']
             for i in range(n):
                 info[i].update(rew=kwargs['rew'][i])
-            self.writer.add_scalar('key', np.mean(
-                info['key']), global_step=self.cnt)
+            if 'key' in info:
+                self.writer.add_scalar('key', np.mean(
+                    info['key']), global_step=self.cnt)
             self.cnt += 1
             return Batch(info=info)
             # or: return {'info': info}
@@ -59,13 +61,12 @@ class Logger:
     @staticmethod
     def single_preprocess_fn(**kwargs):
         # same as above, without tfb
-        if not kwargs.get('info', Batch()).is_empty():
+        if 'rew' in kwargs:
             n = len(kwargs['obs'])
             info = kwargs['info']
             for i in range(n):
                 info[i].update(rew=kwargs['rew'][i])
             return Batch(info=info)
-            # or: return {'info': info}
         else:
             return Batch()
 
