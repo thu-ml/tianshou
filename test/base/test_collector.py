@@ -44,12 +44,12 @@ class Logger:
         # modify info before adding into the buffer, and recorded into tfb
         # if obs/act/rew/done/... exist -> normal step
         # if only obs exist -> reset
-        if 'rew' in kwargs:
+        if 'rew' in kwargs.keys():
             n = len(kwargs['obs'])
             info = kwargs['info']
             for i in range(n):
                 info[i].update(rew=kwargs['rew'][i])
-            if 'key' in info:
+            if 'key' in info.keys():
                 self.writer.add_scalar('key', np.mean(
                     info['key']), global_step=self.cnt)
             self.cnt += 1
@@ -61,7 +61,7 @@ class Logger:
     @staticmethod
     def single_preprocess_fn(**kwargs):
         # same as above, without tfb
-        if 'rew' in kwargs:
+        if 'rew' in kwargs.keys():
             n = len(kwargs['obs'])
             info = kwargs['info']
             for i in range(n):
