@@ -165,11 +165,12 @@ class SubprocEnvWorker(EnvWorker):
                     break
             else:
                 remain_time = timeout
-            remain_conns = [conn for conn in remain_conns
-                            if conn not in ready_conns]
+            # connection.wait hangs if the list is empty
             new_ready_conns = connection.wait(
                 remain_conns, timeout=remain_time)
             ready_conns.extend(new_ready_conns)
+            remain_conns = [conn for conn in remain_conns
+                            if conn not in ready_conns]
         return [workers[conns.index(con)] for con in ready_conns]
 
     def send_action(self, action: np.ndarray) -> None:
