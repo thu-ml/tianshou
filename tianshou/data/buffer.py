@@ -198,12 +198,12 @@ class ReplayBuffer:
         buffer.stack_num = stack_num_orig
 
     def add(self,
-            obs: Union[dict, Batch, np.ndarray],
-            act: Union[np.ndarray, float],
+            obs: Union[dict, Batch, np.ndarray, float],
+            act: Union[dict, Batch, np.ndarray, float],
             rew: Union[int, float],
-            done: bool,
-            obs_next: Optional[Union[dict, Batch, np.ndarray]] = None,
-            info: dict = {},
+            done: Union[bool, int],
+            obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
+            info: Optional[Union[dict, Batch]] = {},
             policy: Optional[Union[dict, Batch]] = {},
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
@@ -393,12 +393,12 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         return super().__getattr__(key)
 
     def add(self,
-            obs: Union[dict, np.ndarray],
-            act: Union[np.ndarray, float],
+            obs: Union[dict, Batch, np.ndarray, float],
+            act: Union[dict, Batch, np.ndarray, float],
             rew: Union[int, float],
-            done: bool,
-            obs_next: Optional[Union[dict, np.ndarray]] = None,
-            info: dict = {},
+            done: Union[bool, int],
+            obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
+            info: Optional[Union[dict, Batch]] = {},
             policy: Optional[Union[dict, Batch]] = {},
             weight: float = None,
             **kwargs) -> None:

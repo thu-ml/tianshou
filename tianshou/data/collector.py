@@ -282,7 +282,11 @@ class Collector(object):
             for j, i in enumerate(self._ready_env_ids):
                 # j is the index in current ready_env_ids
                 # i is the index in all environments
-                self._cached_buf[i].add(**self.data[j])
+                if self.buffer is not None:
+                    self._cached_buf[i].add(**self.data[j])
+                else:
+                    self._cached_buf[i].add(
+                        obs=0, act=0, rew=self.data.rew[j], done=0)  # fakedata
                 if self.data.done[j]:
                     if n_step or np.isscalar(n_episode) or \
                             episode_count[i] < n_episode[i]:
