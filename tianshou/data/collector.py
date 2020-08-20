@@ -208,6 +208,10 @@ class Collector(object):
         step_count = 0
         # episode of each environment
         episode_count = np.zeros(self.env_num)
+        # If n_episode is a list, and some envs have collected the required
+        # number of episodes, these envs will be recorded in this list,
+        # and they will not be stepped.
+        finished_env_ids = []
         reward_total = 0.0
         whole_data = Batch()
         while True:
@@ -217,11 +221,13 @@ class Collector(object):
                     'You should add a time limitation to your environment!',
                     Warning)
 
-            if self.is_async:
+            is_async = self.is_async or len(finished_env_ids) > 0
+            if is_async:
                 # self.data are the data for all environments
-                # in async simulation, only a subset of data are disposed
+                # in async simulation or some envs have finished,
+                # **only a subset of data are disposed**
                 # so we store the whole data in ``whole_data``, let self.data
-                # to be all the data available in ready environments, and
+                # to be the data available in ready environments, and
                 # finally set these back into all the data
                 whole_data = self.data
                 self.data = self.data[self._ready_env_ids]
@@ -256,7 +262,7 @@ class Collector(object):
                 self.data.act += self._action_noise(self.data.act.shape)
 
             # step in env
-            if not self.is_async:
+            if not is_async:
                 obs_next, rew, done, info = self.env.step(self.data.act)
             else:
                 # store computed actions, states, etc
@@ -282,11 +288,15 @@ class Collector(object):
             for j, i in enumerate(self._ready_env_ids):
                 # j is the index in current ready_env_ids
                 # i is the index in all environments
-                if self.buffer is not None:
-                    self._cached_buf[i].add(**self.data[j])
-                else:
+                if self.buffer is None:
+                    # users do not want to store data
+                    # so we store small fake data here
+                    # to make the code clean
                     self._cached_buf[i].add(
-                        obs=0, act=0, rew=self.data.rew[j], done=0)  # fakedata
+                        obs=0, act=0, rew=self.data.rew[j], done=0)
+                else:
+                    self._cached_buf[i].add(**self.data[j])
+
                 if self.data.done[j]:
                     if n_step or np.isscalar(n_episode) or \
                             episode_count[i] < n_episode[i]:
@@ -295,6 +305,11 @@ class Collector(object):
                         step_count += len(self._cached_buf[i])
                         if self.buffer is not None:
                             self.buffer.update(self._cached_buf[i])
+                        if not n_step and not np.isscalar(n_episode) and \
+                                episode_count[i] >= n_episode[i]:
+                            # env i has collected enough data
+                            # it has finished
+                            finished_env_ids.append(i)
                     self._cached_buf[i].reset()
                     self._reset_state(j)
             obs_next = self.data.obs_next
@@ -308,12 +323,14 @@ class Collector(object):
                 else:
                     obs_next[env_ind_local] = obs_reset
             self.data.obs = obs_next
-            if self.is_async:
+            if is_async:
                 # set data back
                 _batch_set_item(whole_data, self._ready_env_ids,
                                 self.data, self.env_num)
                 # let self.data be the data in all environments again
                 self.data = whole_data
+            self._ready_env_ids = np.asarray(
+                [x for x in self._ready_env_ids if x not in finished_env_ids])
             if n_step:
                 if step_count >= n_step:
                     break
@@ -324,6 +341,10 @@ class Collector(object):
                 if isinstance(n_episode, list) and \
                         (episode_count >= n_episode).all():
                     break
+
+        # finished envs are ready, and can be used for the next collection
+        self._ready_env_ids = np.asarray(
+            self._ready_env_ids.tolist() + finished_env_ids)
 
         # generate the statistics
         episode_count = sum(episode_count)

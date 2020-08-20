@@ -120,6 +120,28 @@ def test_collector():
     c2.collect(n_episode=[1, 1, 1, 1], random=True)
 
 
+def test_collector_with_exact_episodes():
+    env_lens = [2, 6, 3, 10]
+    writer = SummaryWriter('log/exact_collector')
+    logger = Logger(writer)
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.1, random_sleep=True)
+               for i in env_lens]
+
+    venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
+    policy = MyPolicy()
+    c1 = Collector(policy, venv,
+                   ReplayBuffer(size=1000, ignore_obs_next=False),
+                   logger.preprocess_fn)
+    n_episode1 = [2, 2, 5, 1]
+    n_episode2 = [1, 3, 2, 4]
+    c1.collect(n_episode=n_episode1)
+    c1.collect(n_episode=n_episode2)
+    expected_steps = sum(
+        [a * (b + c) for a, b, c in zip(env_lens, n_episode1, n_episode2)])
+    actual_steps = sum(venv.steps)
+    assert expected_steps == actual_steps
+
+
 def test_collector_with_async():
     env_lens = [2, 3, 4, 5]
     writer = SummaryWriter('log/async_collector')
@@ -242,3 +264,4 @@ if __name__ == '__main__':
     test_collector_with_dict_state()
     test_collector_with_ma()
     test_collector_with_async()
+    test_collector_with_exact_episodes()
