@@ -10,8 +10,12 @@ def to_numpy(x: Union[
     Batch, dict, list, tuple, np.ndarray, torch.Tensor]) -> Union[
         Batch, dict, list, tuple, np.ndarray, torch.Tensor]:
     """Return an object without torch.Tensor."""
-    if isinstance(x, torch.Tensor):
+    if isinstance(x, np.ndarray):
+        pass
+    elif isinstance(x, torch.Tensor):
         x = x.detach().cpu().numpy()
+    elif isinstance(x, (np.number, np.bool_, Number)):
+        x = np.asanyarray(x)
     elif isinstance(x, dict):
         for k, v in x.items():
             x[k] = to_numpy(v)
@@ -36,13 +40,18 @@ def to_torch(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
         if dtype is not None:
             x = x.type(dtype)
         x = x.to(device)
+    elif isinstance(x, (np.number, np.bool_, Number)):
+        x = to_torch(np.asanyarray(x), dtype, device)
+    elif isinstance(x, np.ndarray) and \
+            issubclass(x.dtype.type, (np.bool_, np.number)):
+        x = torch.from_numpy(x).to(device)
+        if dtype is not None:
+            x = x.type(dtype)
     elif isinstance(x, dict):
         for k, v in x.items():
             x[k] = to_torch(v, dtype, device)
     elif isinstance(x, Batch):
         x.to_torch(dtype, device)
-    elif isinstance(x, (np.number, np.bool_, Number)):
-        x = to_torch(np.asanyarray(x), dtype, device)
     elif isinstance(x, (list, tuple)):
         try:
             x = to_torch(_parse_value(x), dtype, device)
