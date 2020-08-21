@@ -94,12 +94,10 @@ def test_dqn(args=get_args()):
         print("Testing agent ...")
         policy.eval()
         policy.set_eps(args.eps_test)
-        envs = SubprocVectorEnv([lambda: make_atari_env_watch(args)
-                                 for _ in range(args.test_num)])
-        envs.seed(args.seed)
-        collector = Collector(policy, envs)
-        result = collector.collect(n_episode=[1] * args.test_num,
-                                   render=args.render)
+        test_envs.seed(args.seed)
+        test_collector.reset()
+        result = test_collector.collect(n_episode=[1] * args.test_num,
+                                        render=args.render)
         pprint.pprint(result)
 
     if args.watch:

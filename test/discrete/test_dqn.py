@@ -114,6 +114,8 @@ def test_dqn(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
+        policy.eval()
+        policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')

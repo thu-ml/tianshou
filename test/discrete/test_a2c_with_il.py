@@ -98,10 +98,12 @@ def test_a2c_with_il(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
+        policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
 
+    policy.eval()
     # here we define an imitation collector with a trivial policy
     if args.task == 'CartPole-v0':
         env.spec.reward_threshold = 190  # lower the goal
@@ -124,6 +126,7 @@ def test_a2c_with_il(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
+        il_policy.eval()
         collector = Collector(il_policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')

@@ -108,6 +108,7 @@ def test_ddpg(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
+        policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
