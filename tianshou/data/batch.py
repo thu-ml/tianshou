@@ -173,10 +173,6 @@ class Batch:
         if len(kwargs) > 0:
             self.__init__(kwargs, copy=copy)
 
-    def __contains__(self, key: str) -> bool:
-        """Return key in self."""
-        return key in self.__dict__
-
     def __setattr__(self, key: str, value: Any) -> None:
         """self.key = value"""
         self.__dict__[key] = _parse_value(value)
@@ -302,7 +298,7 @@ class Batch:
         """Return str(self)."""
         s = self.__class__.__name__ + '(\n'
         flag = False
-        for k, v in self.items():
+        for k, v in self.__dict__.items():
             rpl = '\n' + ' ' * (6 + len(k))
             obj = pprint.pformat(v).replace('\n', rpl)
             s += f'    {k}: {obj},\n'
@@ -312,6 +308,10 @@ class Batch:
         else:
             s = self.__class__.__name__ + '()'
         return s
+
+    def __contains__(self, key: str) -> bool:
+        """Return key in self."""
+        return key in self.__dict__
 
     def keys(self) -> List[str]:
         """Return self.keys()."""

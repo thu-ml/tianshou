@@ -15,15 +15,16 @@ from atari import create_atari_environment, preprocess_fn
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pong')
-    parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--eps-test', type=float, default=0.05)
-    parser.add_argument('--eps-train', type=float, default=0.1)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--n-step', type=int, default=1)
-    parser.add_argument('--target-update-freq', type=int, default=320)
+    parser.add_argument('--task', type=str, default='PongNoFrameskip-v4')
+    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--eps_test', type=float, default=0.005)
+    parser.add_argument('--eps_train', type=float, default=0.5)
+    parser.add_argument('--eps_train_final', type=float, default=0.05)
+    parser.add_argument('--buffer-size', type=int, default=100000)
+    parser.add_argument('--lr', type=float, default=0.0001)
+    parser.add_argument('--gamma', type=float, default=0.99)
+    parser.add_argument('--n_step', type=int, default=3)
+    parser.add_argument('--target_update_freq', type=int, default=500)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=10)
@@ -88,6 +89,25 @@ def test_dqn(args=get_args()):
     def test_fn(x):
         policy.set_eps(args.eps_test)
 
+    # watch agent's performance
+    def watch():
+        print("Testing agent ...")
+        policy.eval()
+        policy.set_eps(args.eps_test)
+        envs = SubprocVectorEnv([lambda: make_atari_env_watch(args)
+                                 for _ in range(args.test_num)])
+        envs.seed(args.seed)
+        collector = Collector(policy, envs)
+        result = collector.collect(n_episode=[1] * args.test_num,
+                                   render=args.render)
+        pprint.pprint(result)
+
+    if args.watch:
+        watch()
+        exit(0)
+
+    # test train_collector and start filling replay buffer
+    train_collector.collect(n_step=args.batch_size * 4)
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
