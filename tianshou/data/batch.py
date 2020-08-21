@@ -101,9 +101,7 @@ def _create_value(inst: Any, size: int, stack=True) -> Union[
                        dtype=target_type)
     elif isinstance(inst, torch.Tensor):
         return torch.full(shape,
-                          fill_value=0,
-                          device=inst.device,
-                          dtype=inst.dtype)
+                          fill_value=0, device=inst.device, dtype=inst.dtype)
     elif isinstance(inst, (dict, Batch)):
         zero_batch = Batch()
         for key, val in inst.items():
@@ -155,6 +153,7 @@ class Batch:
 
     For a detailed description, please refer to :ref:`batch_concept`.
     """
+
     def __init__(self,
                  batch_dict: Optional[Union[
                      dict, 'Batch', Tuple[Union[dict, 'Batch']],

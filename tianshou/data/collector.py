@@ -290,9 +290,8 @@ class Collector(object):
                 # j is the index in current ready_env_ids
                 # i is the index in all environments
                 if self.buffer is None:
-                    # users do not want to store data
-                    # so we store small fake data here
-                    # to make the code clean
+                    # users do not want to store data, so we store
+                    # small fake data here to make the code clean
                     self._cached_buf[i].add(
                         obs=0, act=0, rew=self.data.rew[j], done=0)
                 else:
@@ -308,8 +307,7 @@ class Collector(object):
                             self.buffer.update(self._cached_buf[i])
                         if not n_step and not np.isscalar(n_episode) and \
                                 episode_count[i] >= n_episode[i]:
-                            # env i has collected enough data
-                            # it has finished
+                            # env i has collected enough data, it has finished
                             finished_env_ids.append(i)
                     self._cached_buf[i].reset()
                     self._reset_state(j)
