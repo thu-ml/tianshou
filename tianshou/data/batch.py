@@ -18,14 +18,14 @@ def _is_batch_set(data: Any) -> bool:
     # Batch set is a list/tuple of dict/Batch objects,
     # or 1-D np.ndarray with np.object type,
     # where each element is a dict/Batch object
-    if isinstance(data, (list, tuple)):
-        if len(data) > 0 and all(isinstance(e, (dict, Batch)) for e in data):
-            return True
-    elif isinstance(data, np.ndarray) and data.dtype == np.object:
+    if isinstance(data, np.ndarray):  # most often case
         # ``for e in data`` will just unpack the first dimension,
         # but data.tolist() will flatten ndarray of objects
         # so do not use data.tolist()
-        if all(isinstance(e, (dict, Batch)) for e in data):
+        return data.dtype == np.object and \
+            all(isinstance(e, (dict, Batch)) for e in data)
+    elif isinstance(data, (list, tuple)):
+        if len(data) > 0 and all(isinstance(e, (dict, Batch)) for e in data):
             return True
     return False
 
@@ -53,6 +53,9 @@ def _is_number(value: Any) -> bool:
 
 
 def _to_array_with_correct_type(v: Any) -> np.ndarray:
+    if isinstance(v, np.ndarray) and \
+            issubclass(v.dtype.type, (np.bool_, np.number)):  # most often case
+        return v
     # convert the value to np.ndarray
     # convert to np.object data type if neither bool nor number
     # raises an exception if array's elements are tensors themself
@@ -111,18 +114,19 @@ def _create_value(inst: Any, size: int, stack=True) -> Union[
         return np.array([None for _ in range(size)])
 
 
-def _assert_type_keys(keys):
-    keys = list(keys)
+def _assert_type_keys(keys) -> None:
     assert all(isinstance(e, str) for e in keys), \
         f"keys should all be string, but got {keys}"
 
 
 def _parse_value(v: Any):
-    if _is_number(v):
+    if isinstance(v, Batch):  # most often case
+        return v
+    elif _is_number(v):  # second often case
         return np.asanyarray(v)
-    elif isinstance(v, np.ndarray) and \
+    elif v is None or isinstance(v, np.ndarray) and \
             issubclass(v.dtype.type, (np.bool_, np.number)) or \
-            isinstance(v, (Batch, torch.Tensor)):
+            isinstance(v, (Batch, torch.Tensor)):  # third often case
         return v
     elif isinstance(v, dict):
         return Batch(v)
@@ -405,7 +409,6 @@ class Batch:
             for batch in batches]
         keys_shared = set.intersection(*keys_map)
         values_shared = [[e[k] for e in batches] for k in keys_shared]
-        _assert_type_keys(keys_shared)
         for k, v in zip(keys_shared, values_shared):
             if all(isinstance(e, (dict, Batch)) for e in v):
                 batch_holder = Batch()
@@ -421,7 +424,6 @@ class Batch:
                 self.__dict__[k] = v
         keys_total = set.union(*[set(b.keys()) for b in batches])
         keys_reserve_or_partial = set.difference(keys_total, keys_shared)
-        _assert_type_keys(keys_reserve_or_partial)
         # keys that are reserved in all batches
         keys_reserve = set.difference(keys_total, set.union(*keys_map))
         # keys that occur only in some batches, but not all
@@ -513,7 +515,6 @@ class Batch:
             for batch in batches]
         keys_shared = set.intersection(*keys_map)
         values_shared = [[e[k] for e in batches] for k in keys_shared]
-        _assert_type_keys(keys_shared)
         for k, v in zip(keys_shared, values_shared):
             if all(isinstance(e, (dict, Batch)) for e in v):
                 self.__dict__[k] = Batch.stack(v, axis)
@@ -535,7 +536,6 @@ class Batch:
             raise ValueError(
                 f"Stack of Batch with non-shared keys {keys_partial} "
                 f"is only supported with axis=0, but got axis={axis}!")
-        _assert_type_keys(keys_reserve_or_partial)
         for k in keys_reserve:
             # reserved keys
             self.__dict__[k] = Batch()

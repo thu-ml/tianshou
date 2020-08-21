@@ -70,7 +70,7 @@ def test_episodic_returns(size=2560):
 
 
 def target_q_fn(buffer, indice):
-    print('target_q_fn:', indice)
+    # return the next reward
     indice = (indice + 1 - buffer.done[indice]) % len(buffer)
     return torch.tensor(-buffer.rew[indice], dtype=torch.float32)
 
