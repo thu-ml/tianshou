@@ -324,9 +324,15 @@ class Batch:
         """Return self.items()."""
         return self.__dict__.items()
 
-    def get(self, k: str, d: Optional[Any] = None) -> Union['Batch', Any]:
+    def get(self, k: str, d: Optional[Any] = None) -> Any:
         """Return self[k] if k in self else d. d defaults to None."""
         return self.__dict__.get(k, d)
+
+    def pop(self, k: str, d: Optional[Any] = None) -> Any:
+        """Return and remove self[k] if k in self else d. d defaults to
+        None.
+        """
+        return self.__dict__.pop(k, d)
 
     def to_numpy(self) -> None:
         """Change all torch.Tensor to numpy.ndarray. This is an in-place
