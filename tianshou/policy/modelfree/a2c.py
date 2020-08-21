@@ -25,6 +25,10 @@ class A2CPolicy(PGPolicy):
         defaults to ``None``.
     :param float gae_lambda: in [0, 1], param for Generalized Advantage
         Estimation, defaults to 0.95.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1),
+        defaults to ``False``.
+    :param int max_batchsize: the maximum number of batchsize when computing
+        GAE, defaults to 2000.
 
     .. seealso::
 
@@ -44,6 +48,7 @@ class A2CPolicy(PGPolicy):
                  max_grad_norm: Optional[float] = None,
                  gae_lambda: float = 0.95,
                  reward_normalization: bool = False,
+                 max_batchsize: int = 2000,
                  **kwargs) -> None:
         super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
         self.actor = actor
@@ -53,7 +58,7 @@ class A2CPolicy(PGPolicy):
         self._w_vf = vf_coef
         self._w_ent = ent_coef
         self._grad_norm = max_grad_norm
-        self._batch = 64
+        self._batch = max_batchsize
         self._rew_norm = reward_normalization
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
@@ -97,7 +102,6 @@ class A2CPolicy(PGPolicy):
 
     def learn(self, batch: Batch, batch_size: int, repeat: int,
               **kwargs) -> Dict[str, List[float]]:
-        self._batch = batch_size
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for b in batch.split(batch_size):

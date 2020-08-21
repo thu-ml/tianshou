@@ -34,6 +34,8 @@ class PPOPolicy(PGPolicy):
         defaults to ``True``.
     :param bool reward_normalization: normalize the returns to Normal(0, 1),
         defaults to ``True``.
+    :param int max_batchsize: the maximum number of batchsize when computing
+        GAE, defaults to 2000.
 
     .. seealso::
 
@@ -56,6 +58,7 @@ class PPOPolicy(PGPolicy):
                  dual_clip: Optional[float] = None,
                  value_clip: bool = True,
                  reward_normalization: bool = True,
+                 max_batchsize: int = 2000,
                  **kwargs) -> None:
         super().__init__(None, None, dist_fn, discount_factor, **kwargs)
         self._max_grad_norm = max_grad_norm
@@ -66,7 +69,7 @@ class PPOPolicy(PGPolicy):
         self.actor = actor
         self.critic = critic
         self.optim = optim
-        self._batch = 64
+        self._batch = max_batchsize
         assert 0 <= gae_lambda <= 1, 'GAE lambda should be in [0, 1].'
         self._lambda = gae_lambda
         assert dual_clip is None or dual_clip > 1, \
@@ -132,7 +135,6 @@ class PPOPolicy(PGPolicy):
 
     def learn(self, batch: Batch, batch_size: int, repeat: int,
               **kwargs) -> Dict[str, List[float]]:
-        self._batch = batch_size
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for b in batch.split(batch_size):
