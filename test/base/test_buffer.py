@@ -89,10 +89,10 @@ def test_stack(size=5, bufsize=9, stack_num=4):
         if done:
             obs = env.reset(1)
     indice = np.arange(len(buf))
-    assert np.allclose(buf.get(indice, 'obs'), np.expand_dims(
-        [[1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
-         [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
-         [1, 2, 3, 4], [4, 4, 4, 4], [1, 1, 1, 1]], axis=-1))
+    assert np.allclose(buf.get(indice, 'obs')[..., 0], [
+        [1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
+        [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
+        [1, 2, 3, 4], [4, 4, 4, 4], [1, 1, 1, 1]])
     _, indice = buf2.sample(0)
     assert indice.tolist() == [2, 6]
     _, indice = buf2.sample(1)

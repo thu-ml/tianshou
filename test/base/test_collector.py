@@ -82,40 +82,36 @@ def test_collector():
     c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False),
                    logger.preprocess_fn)
     c0.collect(n_step=3)
-    assert np.allclose(c0.buffer.obs[:4],
-                       np.expand_dims([0, 1, 0, 1], axis=-1))
-    assert np.allclose(c0.buffer[:4].obs_next,
-                       np.expand_dims([1, 2, 1, 2], axis=-1))
+    assert np.allclose(c0.buffer.obs[:4, 0], [0, 1, 0, 1])
+    assert np.allclose(c0.buffer[:4].obs_next[..., 0], [1, 2, 1, 2])
     c0.collect(n_episode=3)
-    assert np.allclose(c0.buffer.obs[:10],
-                       np.expand_dims([0, 1, 0, 1, 0, 1, 0, 1, 0, 1], axis=-1))
-    assert np.allclose(c0.buffer[:10].obs_next,
-                       np.expand_dims([1, 2, 1, 2, 1, 2, 1, 2, 1, 2], axis=-1))
+    assert np.allclose(c0.buffer.obs[:10, 0], [0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+    assert np.allclose(c0.buffer[:10].obs_next[..., 0],
+                       [1, 2, 1, 2, 1, 2, 1, 2, 1, 2])
     c0.collect(n_step=3, random=True)
     c1 = Collector(policy, venv, ReplayBuffer(size=100, ignore_obs_next=False),
                    logger.preprocess_fn)
     c1.collect(n_step=6)
-    assert np.allclose(c1.buffer.obs[:11], np.expand_dims(
-        [0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3], axis=-1))
-    assert np.allclose(c1.buffer[:11].obs_next, np.expand_dims(
-        [1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4], axis=-1))
+    assert np.allclose(c1.buffer.obs[:11, 0],
+                       [0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3])
+    assert np.allclose(c1.buffer[:11].obs_next[..., 0],
+                       [1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4])
     c1.collect(n_episode=2)
-    assert np.allclose(c1.buffer.obs[11:21],
-                       np.expand_dims([0, 1, 2, 3, 4, 0, 1, 0, 1, 2], axis=-1))
-    assert np.allclose(c1.buffer[11:21].obs_next,
-                       np.expand_dims([1, 2, 3, 4, 5, 1, 2, 1, 2, 3], axis=-1))
+    assert np.allclose(c1.buffer.obs[11:21, 0], [0, 1, 2, 3, 4, 0, 1, 0, 1, 2])
+    assert np.allclose(c1.buffer[11:21].obs_next[..., 0],
+                       [1, 2, 3, 4, 5, 1, 2, 1, 2, 3])
     c1.collect(n_episode=3, random=True)
     c2 = Collector(policy, dum, ReplayBuffer(size=100, ignore_obs_next=False),
                    logger.preprocess_fn)
     c2.collect(n_episode=[1, 2, 2, 2])
-    assert np.allclose(c2.buffer.obs_next[:26], np.expand_dims([
+    assert np.allclose(c2.buffer.obs_next[:26, 0], [
         1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5,
-        1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5], axis=-1))
+        1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5])
     c2.reset_env()
     c2.collect(n_episode=[2, 2, 2, 2])
-    assert np.allclose(c2.buffer.obs_next[26:54], np.expand_dims([
+    assert np.allclose(c2.buffer.obs_next[26:54, 0], [
         1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4, 5,
-        1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5], axis=-1))
+        1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5])
     c2.collect(n_episode=[1, 1, 1, 1], random=True)
 
 
@@ -210,10 +206,10 @@ def test_collector_with_dict_state():
     batch, _ = c1.buffer.sample(10)
     print(batch)
     c0.buffer.update(c1.buffer)
-    assert np.allclose(c0.buffer[:len(c0.buffer)].obs.index, np.expand_dims([
+    assert np.allclose(c0.buffer[:len(c0.buffer)].obs.index[..., 0], [
         0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1.,
         0., 1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4., 0., 1., 0.,
-        1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.], axis=-1))
+        1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.])
     c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
                    Logger.single_preprocess_fn)
     c2.collect(n_episode=[0, 0, 0, 10])
@@ -244,11 +240,10 @@ def test_collector_with_ma():
     batch, _ = c1.buffer.sample(10)
     print(batch)
     c0.buffer.update(c1.buffer)
-    obs = np.array(np.expand_dims([
+    assert np.allclose(c0.buffer[:len(c0.buffer)].obs[..., 0], [
         0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1.,
         0., 1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4., 0., 1., 0.,
-        1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.], axis=-1))
-    assert np.allclose(c0.buffer[:len(c0.buffer)].obs, obs)
+        1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.])
     rew = [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1,
            0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0,
            0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1]

@@ -1,11 +1,12 @@
 import time
+import torch
 import numpy as np
 
-from tianshou.data import Batch
 from tianshou.policy import BasePolicy
+from tianshou.data import Batch, ReplayBuffer
 
 
-def compute_episodic_return_base(batch, aa=None, bb=None, gamma=0.1):
+def compute_episodic_return_base(batch, gamma):
     returns = np.zeros_like(batch.rew)
     last = 0
     for i in reversed(range(len(batch.rew))):
@@ -60,7 +61,7 @@ def test_episodic_returns(size=2560):
         cnt = 3000
         t = time.time()
         for _ in range(cnt):
-            compute_episodic_return_base(batch)
+            compute_episodic_return_base(batch, gamma=.1)
         print(f'vanilla: {(time.time() - t) / cnt}')
         t = time.time()
         for _ in range(cnt):
@@ -68,5 +69,36 @@ def test_episodic_returns(size=2560):
         print(f'policy: {(time.time() - t) / cnt}')
 
 
+def target_q_fn(buffer, indice):
+    print('target_q_fn:', indice)
+    indice = (indice + 1 - buffer.done[indice]) % len(buffer)
+    return torch.tensor(-buffer.rew[indice], dtype=torch.float32)
+
+
+def test_nstep_returns():
+    buf = ReplayBuffer(10)
+    for i in range(12):
+        buf.add(obs=0, act=0, rew=i + 1, done=i % 4 == 3)
+    batch, indice = buf.sample(0)
+    assert np.allclose(indice, [2, 3, 4, 5, 6, 7, 8, 9, 0, 1])
+    # rew:  [10, 11, 2, 3, 4, 5, 6, 7, 8, 9]
+    # done: [ 0,  1, 0, 1, 0, 0, 0, 1, 0, 0]
+    # test nstep = 1
+    returns = BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn, gamma=.1, n_step=1).pop('returns')
+    assert np.allclose(returns, [2.6, 4, 4.4, 5.3, 6.2, 8, 8, 8.9, 9.8, 12])
+    # test nstep = 2
+    returns = BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn, gamma=.1, n_step=2).pop('returns')
+    assert np.allclose(returns, [
+        3.4, 4, 5.53, 6.62, 7.8, 8, 9.89, 10.98, 12.2, 12])
+    # test nstep = 10
+    returns = BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn, gamma=.1, n_step=10).pop('returns')
+    assert np.allclose(returns, [
+        3.4, 4, 5.678, 6.78, 7.8, 8, 10.122, 11.22, 12.2, 12])
+
+
 if __name__ == '__main__':
+    test_nstep_returns()
     test_episodic_returns()
