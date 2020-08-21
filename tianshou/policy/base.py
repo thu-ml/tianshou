@@ -220,7 +220,7 @@ class BasePolicy(ABC, nn.Module):
         batch.returns = to_torch_as(target_q, target_q_)
         # prio buffer update
         if isinstance(buffer, PrioritizedReplayBuffer):
-            batch.weight = to_torch_as(batch.weight, target_q)
+            batch.weight = to_torch_as(batch.weight, target_q_)
         else:  # avoid type check
             batch.__dict__['weight'] = 1.
         return batch
