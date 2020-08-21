@@ -3,6 +3,7 @@ import time
 import torch
 import warnings
 import numpy as np
+from copy import deepcopy
 from typing import Any, Dict, List, Union, Optional, Callable
 
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
@@ -325,6 +326,7 @@ class Collector(object):
             self.data.obs = obs_next
             if is_async:
                 # set data back
+                whole_data = deepcopy(whole_data)  # avoid reference in ListBuf
                 _batch_set_item(whole_data, self._ready_env_ids,
                                 self.data, self.env_num)
                 # let self.data be the data in all environments again
