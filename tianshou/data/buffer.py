@@ -163,7 +163,8 @@ class ReplayBuffer:
         except KeyError:
             self._meta.__dict__[name] = _create_value(inst, self._maxsize)
             value = self._meta.__dict__[name]
-        if isinstance(inst, np.ndarray) and value.shape[1:] != inst.shape:
+        if isinstance(inst, (np.ndarray, torch.Tensor)) \
+                and value.shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, with key "
                 f"{name}, expect {value.shape[1:]}, given {inst.shape}.")

@@ -48,10 +48,8 @@ def _is_number(value: Any) -> bool:
     # isinstance(value, Number) checks 1, 1.0, np.int(1), np.float(1.0), etc.
     # isinstance(value, np.nummber) checks np.int32(1), np.float64(1.0), etc.
     # isinstance(value, np.bool_) checks np.bool_(True), etc.
-    is_number = isinstance(value, Number)
-    is_number = is_number or isinstance(value, np.number)
-    is_number = is_number or isinstance(value, np.bool_)
-    return is_number
+    # similar to np.isscalar but np.isscalar('st') returns True
+    return isinstance(value, (Number, np.number, np.bool_))
 
 
 def _to_array_with_correct_type(v: Any) -> np.ndarray:
@@ -120,10 +118,14 @@ def _assert_type_keys(keys):
 
 
 def _parse_value(v: Any):
-    if isinstance(v, dict):
-        v = Batch(v)
-    elif isinstance(v, (Batch, torch.Tensor)):
-        pass
+    if _is_number(v):
+        return np.asanyarray(v)
+    elif isinstance(v, np.ndarray) and \
+            issubclass(v.dtype.type, (np.bool_, np.number)) or \
+            isinstance(v, (Batch, torch.Tensor)):
+        return v
+    elif isinstance(v, dict):
+        return Batch(v)
     else:
         if not isinstance(v, np.ndarray) and isinstance(v, Collection) and \
                 len(v) > 0 and all(isinstance(e, torch.Tensor) for e in v):
@@ -132,18 +134,17 @@ def _parse_value(v: Any):
             except RuntimeError as e:
                 raise TypeError("Batch does not support non-stackable iterable"
                                 " of torch.Tensor as unique value yet.") from e
-        try:
-            v_ = _to_array_with_correct_type(v)
-        except ValueError as e:
-            raise TypeError("Batch does not support heterogeneous list/tuple"
-                            " of tensors as unique value yet.") from e
         if _is_batch_set(v):
             v = Batch(v)  # list of dict / Batch
         else:
             # None, scalar, normal data list (main case)
             # or an actual list of objects
-            v = v_
-    return v
+            try:
+                v = _to_array_with_correct_type(v)
+            except ValueError as e:
+                raise TypeError("Batch does not support heterogeneous list/"
+                                "tuple of tensors as unique value yet.") from e
+        return v
 
 
 class Batch:
@@ -642,10 +643,8 @@ class Batch:
         if batch is None:
             self.update(kwargs)
             return
-        if isinstance(batch, dict):
-            batch = Batch(batch)
         for k, v in batch.items():
-            self.__dict__[k] = v
+            self.__dict__[k] = _parse_value(v)
         if kwargs:
             self.update(kwargs)
 

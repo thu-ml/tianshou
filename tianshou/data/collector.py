@@ -98,7 +98,6 @@ class Collector(object):
         self.is_async = env.is_async
         # need cache buffers before storing in the main buffer
         self._cached_buf = [ListReplayBuffer() for _ in range(self.env_num)]
-        self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
         self.buffer = buffer
         self.policy = policy
         self.preprocess_fn = preprocess_fn
@@ -107,8 +106,6 @@ class Collector(object):
         self._action_noise = action_noise
         self._rew_metric = reward_metric or Collector._default_rew_metric
         # avoid creating attribute outside __init__
-        self.data = Batch(state={}, obs={}, act={}, rew={}, done={}, info={},
-                          obs_next={}, policy={})
         self.reset()
 
     @staticmethod
@@ -252,14 +249,15 @@ class Collector(object):
             # convert None to Batch(), since None is reserved for 0-init
             if state is None:
                 state = Batch()
-            self.data.update(state=state, policy=result.get('policy', Batch()))
+            # since result is a Batch, it can bypass the type check here
+            self.data.__dict__['state'] = state
+            self.data.__dict__['policy'] = result.get('policy', Batch())
             # save hidden state to policy._state, in order to save into buffer
-            if not (isinstance(self.data.state, Batch)
-                    and self.data.state.is_empty()):
-                self.data.policy._state = self.data.state
+            if not (isinstance(state, Batch) and state.is_empty()):
+                self.data.policy.__dict__['_state'] = self.data.state
 
             self.data.act = to_numpy(result.act)
-            if self._action_noise is not None:
+            if self._action_noise is not None:  # noqa
                 self.data.act += self._action_noise(self.data.act.shape)
 
             # step in env
@@ -271,7 +269,7 @@ class Collector(object):
                                 self.data, self.env_num)
                 # fetch finished data
                 obs_next, rew, done, info = self.env.step(
-                    action=self.data.act, id=self._ready_env_ids)
+                    self.data.act, id=self._ready_env_ids)
                 self._ready_env_ids = np.array([i['env_id'] for i in info])
                 # get the stepped data
                 self.data = whole_data[self._ready_env_ids]
@@ -286,18 +284,18 @@ class Collector(object):
             if self.preprocess_fn:
                 result = self.preprocess_fn(**self.data)
                 self.data.update(result)
+
             for j, i in enumerate(self._ready_env_ids):
                 # j is the index in current ready_env_ids
                 # i is the index in all environments
                 if self.buffer is None:
                     # users do not want to store data, so we store
                     # small fake data here to make the code clean
-                    self._cached_buf[i].add(
-                        obs=0, act=0, rew=self.data.rew[j], done=0)
+                    self._cached_buf[i].add(obs=0, act=0, rew=rew[j], done=0)
                 else:
                     self._cached_buf[i].add(**self.data[j])
 
-                if self.data.done[j]:
+                if done[j]:
                     if n_step or np.isscalar(n_episode) or \
                             episode_count[i] < n_episode[i]:
                         episode_count[i] += 1
@@ -312,8 +310,8 @@ class Collector(object):
                     self._cached_buf[i].reset()
                     self._reset_state(j)
             obs_next = self.data.obs_next
-            if sum(self.data.done):
-                env_ind_local = np.where(self.data.done)[0]
+            if sum(done):
+                env_ind_local = np.where(done)[0]
                 env_ind_global = self._ready_env_ids[env_ind_local]
                 obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
@@ -321,7 +319,7 @@ class Collector(object):
                         obs=obs_reset).get('obs', obs_reset)
                 else:
                     obs_next[env_ind_local] = obs_reset
-            self.data.obs = obs_next
+            self.data.__dict__['obs'] = obs_next
             if is_async:
                 # set data back
                 whole_data = deepcopy(whole_data)  # avoid reference in ListBuf

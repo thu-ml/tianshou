@@ -42,8 +42,8 @@ class Logger:
 
     def preprocess_fn(self, **kwargs):
         # modify info before adding into the buffer, and recorded into tfb
-        # if obs/act/rew/done/... exist -> normal step
         # if only obs exist -> reset
+        # if obs/act/rew/done/... exist -> normal step
         if 'rew' in kwargs.keys():
             n = len(kwargs['obs'])
             info = kwargs['info']
@@ -54,7 +54,6 @@ class Logger:
                     info['key']), global_step=self.cnt)
             self.cnt += 1
             return Batch(info=info)
-            # or: return {'info': info}
         else:
             return Batch()
 
