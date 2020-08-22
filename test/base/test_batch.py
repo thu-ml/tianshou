@@ -26,7 +26,7 @@ def test_batch():
     assert np.allclose(b.c, [3, 5])
     # mimic the behavior of dict.update, where kwargs can overwrite keys
     b.update({'a': 2}, a=3)
-    assert b.a == 3
+    assert b.a == 3 and 'a' in b
     with pytest.raises(AssertionError):
         Batch({1: 2})
     with pytest.raises(TypeError):
@@ -76,6 +76,7 @@ def test_batch():
     assert Batch().shape == []
     assert Batch(a=1).shape == []
     assert batch2.shape[0] == 1
+    assert 'a' in batch2 and all([i in batch2.a for i in 'bcd'])
     with pytest.raises(IndexError):
         batch2[-2]
     with pytest.raises(IndexError):
@@ -296,6 +297,13 @@ def test_batch_cat_and_stack():
     assert np.allclose(test.a, ans.a)
     assert torch.allclose(test.b, ans.b)
     assert np.allclose(test.common.c, ans.common.c)
+
+    # exceptions
+    assert Batch.cat([]).is_empty()
+    b1 = Batch(e=[4, 5], d=6)
+    b2 = Batch(e=[4, 6])
+    with pytest.raises(ValueError):
+        Batch.cat([b1, b2])
 
 
 def test_batch_over_batch_to_torch():

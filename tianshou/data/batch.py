@@ -465,11 +465,10 @@ class Batch:
             lens = [0 if x.is_empty(recurse=True) else len(x)
                     for x in batches]
         except TypeError as e:
-            e2 = ValueError(
-                f'Batch.cat_ meets an exception. Maybe because there is '
-                f'any scalar in {batches} but Batch.cat_ does not support'
-                f'the concatenation of scalar.')
-            raise Exception([e, e2])
+            raise ValueError(
+                f'Batch.cat_ meets an exception. Maybe because there is any '
+                f'scalar in {batches} but Batch.cat_ does not support the '
+                f'concatenation of scalar.') from e
         if not self.is_empty():
             batches = [self] + list(batches)
             lens = [0 if self.is_empty(recurse=True) else len(self)] + lens
@@ -712,19 +711,16 @@ class Batch:
             return list(map(min, zip(*data_shape))) if len(data_shape) > 1 \
                 else data_shape[0]
 
-    def split(self, size: Optional[int] = None,
+    def split(self, size: int,
               shuffle: bool = True) -> Iterator['Batch']:
         """Split whole data into multiple small batches.
 
-        :param int size: if it is ``None``, it does not split the data batch;
-            otherwise it will divide the data batch with the given size.
-            Default to ``None``.
+        :param int size: divide the data batch with the given size, defaults to
+            ``None``.
         :param bool shuffle: randomly shuffle the entire data batch if it is
             ``True``, otherwise remain in the same. Default to ``True``.
         """
         length = len(self)
-        if size is None:
-            size = length
         if shuffle:
             indices = np.random.permutation(length)
         else:
