@@ -27,6 +27,8 @@ def test_batch():
     # mimic the behavior of dict.update, where kwargs can overwrite keys
     b.update({'a': 2}, a=3)
     assert b.a == 3 and 'a' in b
+    assert b.pop('a') == 3
+    assert 'a' not in b
     with pytest.raises(AssertionError):
         Batch({1: 2})
     with pytest.raises(TypeError):
