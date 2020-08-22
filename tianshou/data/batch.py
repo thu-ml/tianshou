@@ -127,7 +127,7 @@ def _parse_value(v: Any):
         return np.asanyarray(v)
     elif v is None or isinstance(v, np.ndarray) and \
             issubclass(v.dtype.type, (np.bool_, np.number)) or \
-            isinstance(v, (Batch, torch.Tensor)):  # third often case
+            isinstance(v, torch.Tensor):  # third often case
         return v
     elif isinstance(v, dict):
         return Batch(v)
@@ -716,8 +716,7 @@ class Batch:
               shuffle: bool = True) -> Iterator['Batch']:
         """Split whole data into multiple small batches.
 
-        :param int size: divide the data batch with the given size, defaults to
-            ``None``.
+        :param int size: divide the data batch with the given size.
         :param bool shuffle: randomly shuffle the entire data batch if it is
             ``True``, otherwise remain in the same. Default to ``True``.
         """

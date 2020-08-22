@@ -44,7 +44,7 @@ class Logger:
         # modify info before adding into the buffer, and recorded into tfb
         # if only obs exist -> reset
         # if obs/act/rew/done/... exist -> normal step
-        if 'rew' in kwargs.keys():
+        if 'rew' in kwargs:
             n = len(kwargs['obs'])
             info = kwargs['info']
             for i in range(n):
@@ -60,7 +60,7 @@ class Logger:
     @staticmethod
     def single_preprocess_fn(**kwargs):
         # same as above, without tfb
-        if 'rew' in kwargs.keys():
+        if 'rew' in kwargs:
             n = len(kwargs['obs'])
             info = kwargs['info']
             for i in range(n):

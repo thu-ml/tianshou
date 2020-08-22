@@ -26,7 +26,7 @@ def test_batch():
     assert np.allclose(b.c, [3, 5])
     # mimic the behavior of dict.update, where kwargs can overwrite keys
     b.update({'a': 2}, a=3)
-    assert b.a == 3 and 'a' in b
+    assert 'a' in b and b.a == 3
     assert b.pop('a') == 3
     assert 'a' not in b
     with pytest.raises(AssertionError):
