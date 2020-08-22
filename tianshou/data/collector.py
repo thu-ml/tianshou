@@ -200,19 +200,25 @@ class Collector(object):
             * ``rew`` the mean reward over collected episodes.
             * ``len`` the mean length over collected episodes.
         """
-        assert (n_step and not n_episode and n_step > 0) or \
-            (not n_step and n_episode and np.sum(n_episode) > 0), \
-            "One and only one collection number specification is permitted!"
+        assert (n_step is not None and n_episode is None and n_step > 0) or (
+            n_step is None and n_episode is not None and np.sum(n_episode) > 0
+        ), "One and only one collection number specification is permitted!"
         start_time = time.time()
         step_count = 0
         # episode of each environment
         episode_count = np.zeros(self.env_num)
         # If n_episode is a list, and some envs have collected the required
-        # number of episodes, these envs will be recorded in this list,
-        # and they will not be stepped.
+        # number of episodes, these envs will be recorded in this list, and
+        # they will not be stepped.
         finished_env_ids = []
         reward_total = 0.0
         whole_data = Batch()
+        if n_episode is not None and not np.isscalar(n_episode):
+            assert len(n_episode) == self.get_env_num()
+            finished_env_ids = [
+                i for i in self._ready_env_ids if n_episode[i] <= 0]
+            self._ready_env_ids = np.asarray(
+                [x for x in self._ready_env_ids if x not in finished_env_ids])
         while True:
             if step_count >= 100000 and episode_count.sum() == 0:
                 warnings.warn(
@@ -222,12 +228,12 @@ class Collector(object):
 
             is_async = self.is_async or len(finished_env_ids) > 0
             if is_async:
-                # self.data are the data for all environments
-                # in async simulation or some envs have finished,
-                # **only a subset of data are disposed**
+                # self.data are the data for all environments in async
+                # simulation or some envs have finished,
+                # **only a subset of data are disposed**,
                 # so we store the whole data in ``whole_data``, let self.data
-                # to be the data available in ready environments, and
-                # finally set these back into all the data
+                # to be the data available in ready environments, and finally
+                # set these back into all the data
                 whole_data = self.data
                 self.data = self.data[self._ready_env_ids]
 
