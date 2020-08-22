@@ -127,7 +127,7 @@ class SubprocEnvWorker(EnvWorker):
         self.process.start()
         self.child_remote.close()
 
-    def __getattr__(self, key: str):
+    def __getattr__(self, key: str) -> Any:
         self.parent_remote.send(['getattr', key])
         return self.parent_remote.recv()
 
