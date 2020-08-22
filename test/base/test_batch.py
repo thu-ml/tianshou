@@ -64,6 +64,27 @@ def test_batch():
             with pytest.raises(AttributeError):
                 b.obs
     print(batch)
+    batch = Batch(a=np.arange(10))
+    with pytest.raises(AssertionError):
+        list(batch.split(0))
+    bs1 = list(batch.split(1, shuffle=False))
+    assert len(bs1) == len(batch)
+    assert [b.a for b in bs1] == list(range(len(batch)))
+    bs1 = list(batch.split(1, shuffle=False, merge_last=True))
+    # since 10 % 1 == 0, the merge_last will not work on split
+    assert [b.a for b in bs1] == list(range(len(batch)))
+    bs3 = list(batch.split(3, shuffle=False))
+    assert [bs3[i].a.tolist() for i in range(len(bs3))] == [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], [9]]
+    bs3 = list(batch.split(3, shuffle=False, merge_last=True))
+    assert [bs3[i].a.tolist() for i in range(len(bs3))] == [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8, 9]]
+    bs7 = list(batch.split(7, shuffle=False))
+    assert [bs7[i].a.tolist() for i in range(len(bs7))] == [
+        [0, 1, 2, 3, 4, 5, 6], [7, 8, 9]]
+    bs7 = list(batch.split(7, shuffle=False, merge_last=True))
+    assert [bs7[i].a.tolist() for i in range(len(bs7))] == [
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
     batch_dict = {'b': np.array([1.0]), 'c': 2.0, 'd': torch.Tensor([3.0])}
     batch_item = Batch({'a': [batch_dict]})[0]
     assert isinstance(batch_item.a.b, np.ndarray)
@@ -376,13 +397,13 @@ def test_utils_to_torch_numpy():
     assert isinstance(data_list_3_torch, list)
     assert all(isinstance(e, torch.Tensor) for e in data_list_3_torch)
     assert all(starmap(np.allclose,
-               zip(to_numpy(to_torch(data_list_3)), data_list_3)))
+                       zip(to_numpy(to_torch(data_list_3)), data_list_3)))
     data_list_4 = [np.zeros((2, 3)), np.zeros((3, 3))]
     data_list_4_torch = to_torch(data_list_4)
     assert isinstance(data_list_4_torch, list)
     assert all(isinstance(e, torch.Tensor) for e in data_list_4_torch)
     assert all(starmap(np.allclose,
-               zip(to_numpy(to_torch(data_list_4)), data_list_4)))
+                       zip(to_numpy(to_torch(data_list_4)), data_list_4)))
     data_list_5 = [np.zeros(2), np.zeros((3, 3))]
     data_list_5_torch = to_torch(data_list_5)
     assert isinstance(data_list_5_torch, list)

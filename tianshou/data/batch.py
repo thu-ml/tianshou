@@ -712,18 +712,27 @@ class Batch:
             return list(map(min, zip(*data_shape))) if len(data_shape) > 1 \
                 else data_shape[0]
 
-    def split(self, size: int,
-              shuffle: bool = True) -> Iterator['Batch']:
+    def split(self, size: int, shuffle: bool = True,
+              merge_last: bool = False) -> Iterator['Batch']:
         """Split whole data into multiple small batches.
 
         :param int size: divide the data batch with the given size.
         :param bool shuffle: randomly shuffle the entire data batch if it is
             ``True``, otherwise remain in the same. Default to ``True``.
+        :param bool merge_last: merge the last batch into the previous one.
+            Default to ``False``.
         """
         length = len(self)
+        assert 1 <= size <= length
         if shuffle:
             indices = np.random.permutation(length)
         else:
             indices = np.arange(length)
-        for idx in np.arange(0, length, size):
-            yield self[indices[idx:(idx + size)]]
+        count = length // size + (length % size > 0 and not merge_last)
+        if merge_last and length % size == 0:
+            merge_last = False
+        for idx in range(count):
+            if idx == count - 1 and merge_last:
+                yield self[indices[idx * size:]]
+            else:
+                yield self[indices[idx * size:(idx + 1) * size]]
