@@ -16,13 +16,16 @@ def test_noise():
 
 def test_moving_average():
     stat = MovAvg(10)
+    assert np.allclose(stat.get(), 0)
+    assert np.allclose(stat.mean(), 0)
+    assert np.allclose(stat.std() ** 2, 0)
     stat.add(torch.tensor([1]))
     stat.add(np.array([2]))
     stat.add([3, 4])
     stat.add(5.)
-    assert np.allclose(stat.get(), 3.)
-    assert np.allclose(stat.mean(), 3.)
-    assert np.allclose(stat.std() ** 2, 2.)
+    assert np.allclose(stat.get(), 3)
+    assert np.allclose(stat.mean(), 3)
+    assert np.allclose(stat.std() ** 2, 2)
 
 
 if __name__ == '__main__':

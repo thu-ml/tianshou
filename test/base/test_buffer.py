@@ -26,7 +26,7 @@ def test_replaybuffer(size=10, bufsize=20):
         obs = obs_next
         assert len(buf) == min(bufsize, i + 1)
     with pytest.raises(ValueError):
-        buf._add_to_buffer('rew', [1, 2, 3])
+        buf._add_to_buffer('rew', np.array([1, 2, 3]))
     data, indice = buf.sample(bufsize * 2)
     assert (indice < len(buf)).all()
     assert (data.obs < size).all()
