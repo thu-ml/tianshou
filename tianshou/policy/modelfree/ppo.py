@@ -86,7 +86,7 @@ class PPOPolicy(PGPolicy):
                 batch.rew = (batch.rew - mean) / std
         v, v_, old_log_prob = [], [], []
         with torch.no_grad():
-            for b in batch.split(self._batch, shuffle=False):
+            for b in batch.split(self._batch, shuffle=False, merge_last=True):
                 v_.append(self.critic(b.obs_next))
                 v.append(self.critic(b.obs))
                 old_log_prob.append(self(b).dist.log_prob(
@@ -137,7 +137,7 @@ class PPOPolicy(PGPolicy):
               **kwargs) -> Dict[str, List[float]]:
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
-            for b in batch.split(batch_size):
+            for b in batch.split(batch_size, merge_last=True):
                 dist = self(b).dist
                 value = self.critic(b.obs).flatten()
                 ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()

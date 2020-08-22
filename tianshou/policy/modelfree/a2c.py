@@ -68,7 +68,7 @@ class A2CPolicy(PGPolicy):
                 batch, None, gamma=self._gamma, gae_lambda=self._lambda)
         v_ = []
         with torch.no_grad():
-            for b in batch.split(self._batch, shuffle=False):
+            for b in batch.split(self._batch, shuffle=False, merge_last=True):
                 v_.append(to_numpy(self.critic(b.obs_next)))
         v_ = np.concatenate(v_, axis=0)
         return self.compute_episodic_return(
@@ -104,7 +104,7 @@ class A2CPolicy(PGPolicy):
               **kwargs) -> Dict[str, List[float]]:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
-            for b in batch.split(batch_size):
+            for b in batch.split(batch_size, merge_last=True):
                 self.optim.zero_grad()
                 dist = self(b).dist
                 v = self.critic(b.obs).flatten()

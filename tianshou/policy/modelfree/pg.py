@@ -82,7 +82,7 @@ class PGPolicy(BasePolicy):
               **kwargs) -> Dict[str, List[float]]:
         losses = []
         for _ in range(repeat):
-            for b in batch.split(batch_size):
+            for b in batch.split(batch_size, merge_last=True):
                 self.optim.zero_grad()
                 dist = self(b).dist
                 a = to_torch_as(b.act, dist.logits)
