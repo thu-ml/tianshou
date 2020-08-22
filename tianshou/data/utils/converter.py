@@ -14,13 +14,13 @@ def to_numpy(x: Union[
         x = x.detach().cpu().numpy()
     elif isinstance(x, np.ndarray):  # second often case
         pass
-    elif isinstance(x, (np.number, np.bool_, Number)):
+    elif isinstance(x, (np.number, np.bool_, Number)) or x is None:
         x = np.asanyarray(x)
+    elif isinstance(x, Batch):
+        x.to_numpy()
     elif isinstance(x, dict):
         for k, v in x.items():
             x[k] = to_numpy(v)
-    elif isinstance(x, Batch):
-        x.to_numpy()
     elif isinstance(x, (list, tuple)):
         try:
             x = to_numpy(_parse_value(x))
@@ -58,13 +58,7 @@ def to_torch(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
         except TypeError:
             x = [to_torch(e, dtype, device) for e in x]
     else:  # fallback
-        x = np.asanyarray(x)
-        if issubclass(x.dtype.type, (np.bool_, np.number)):
-            x = torch.from_numpy(x).to(device)
-            if dtype is not None:
-                x = x.type(dtype)
-        else:
-            raise TypeError(f"object {x} cannot be converted to torch.")
+        raise TypeError(f"object {x} cannot be converted to torch.")
     return x
 
 

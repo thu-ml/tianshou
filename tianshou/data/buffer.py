@@ -352,9 +352,7 @@ class ListReplayBuffer(ReplayBuffer):
     def _add_to_buffer(
             self, name: str,
             inst: Union[dict, Batch, np.ndarray, float, int, bool]) -> None:
-        if inst is None:
-            return
-        if self._meta.__dict__.get(name, None) is None:
+        if self._meta.__dict__.get(name) is None:
             self._meta.__dict__[name] = []
         self._meta.__dict__[name].append(inst)
 

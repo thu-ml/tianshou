@@ -393,6 +393,22 @@ def test_utils_to_torch_numpy():
     assert isinstance(data_empty_array, np.ndarray)
     assert data_empty_array.shape == (0, 2, 2)
     assert np.allclose(to_numpy(to_torch(data_array)), data_array)
+    # additional test for to_numpy, for code-coverage
+    assert isinstance(to_numpy(1), np.ndarray)
+    assert isinstance(to_numpy(1.), np.ndarray)
+    assert isinstance(to_numpy({'a': torch.tensor(1)})['a'], np.ndarray)
+    assert isinstance(to_numpy(Batch(a=torch.tensor(1))).a, np.ndarray)
+    assert to_numpy(None).item() is None
+    assert to_numpy(to_numpy).item() == to_numpy
+    # additional test for to_torch, for code-coverage
+    assert isinstance(to_torch(1), torch.Tensor)
+    assert to_torch(1).dtype == torch.int64
+    assert to_torch(1.).dtype == torch.float64
+    assert isinstance(to_torch({'a': [1]})['a'], torch.Tensor)
+    with pytest.raises(TypeError):
+        to_torch(None)
+    with pytest.raises(TypeError):
+        to_torch(np.array([{}, '2']))
 
 
 def test_batch_pickle():
