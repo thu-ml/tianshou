@@ -723,13 +723,14 @@ class Batch:
             Default to ``False``.
         """
         length = len(self)
-        assert 1 <= size <= length
+        assert 1 <= size  # size can be greater than length, return whole batch
         if shuffle:
             indices = np.random.permutation(length)
         else:
             indices = np.arange(length)
-        count = length // size + (length % size > 0 and not merge_last)
-        if merge_last and length % size == 0:
+        count = length // size + \
+            (length % size > 0 and not merge_last or length < size)
+        if merge_last and (length % size == 0 or count == 0):
             merge_last = False
         for idx in range(count):
             if idx == count - 1 and merge_last:

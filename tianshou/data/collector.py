@@ -213,8 +213,10 @@ class Collector(object):
         finished_env_ids = []
         reward_total = 0.0
         whole_data = Batch()
+        list_n_episode = False
         if n_episode is not None and not np.isscalar(n_episode):
             assert len(n_episode) == self.get_env_num()
+            list_n_episode = True
             finished_env_ids = [
                 i for i in self._ready_env_ids if n_episode[i] <= 0]
             self._ready_env_ids = np.asarray(
@@ -303,14 +305,14 @@ class Collector(object):
                     self._cached_buf[i].add(**self.data[j])
 
                 if done[j]:
-                    if n_step or np.isscalar(n_episode) or \
-                            episode_count[i] < n_episode[i]:
+                    if not (list_n_episode and
+                            episode_count[i] >= n_episode[i]):
                         episode_count[i] += 1
                         reward_total += np.sum(self._cached_buf[i].rew, axis=0)
                         step_count += len(self._cached_buf[i])
                         if self.buffer is not None:
                             self.buffer.update(self._cached_buf[i])
-                        if not n_step and not np.isscalar(n_episode) and \
+                        if list_n_episode and \
                                 episode_count[i] >= n_episode[i]:
                             # env i has collected enough data, it has finished
                             finished_env_ids.append(i)
