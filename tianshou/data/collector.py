@@ -200,7 +200,8 @@ class Collector(object):
             * ``rew`` the mean reward over collected episodes.
             * ``len`` the mean length over collected episodes.
         """
-        assert (n_step and not n_episode) or (not n_step and n_episode), \
+        assert (n_step and not n_episode and n_step > 0) or \
+            (not n_step and n_episode and np.sum(n_episode) > 0), \
             "One and only one collection number specification is permitted!"
         start_time = time.time()
         step_count = 0

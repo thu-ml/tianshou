@@ -127,8 +127,8 @@ def test_collector_with_exact_episodes():
     c1 = Collector(policy, venv,
                    ReplayBuffer(size=1000, ignore_obs_next=False),
                    logger.preprocess_fn)
-    n_episode1 = [2, 2, 5, 1]
-    n_episode2 = [1, 3, 2, 4]
+    n_episode1 = [2, 0, 5, 1]
+    n_episode2 = [1, 3, 2, 0]
     c1.collect(n_episode=n_episode1)
     expected_steps = sum([a * b for a, b in zip(env_lens, n_episode1)])
     actual_steps = sum(venv.steps)
