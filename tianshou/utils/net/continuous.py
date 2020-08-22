@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from torch import nn
 
-from tianshou.data import to_torch
+from tianshou.data import to_torch, to_torch_as
 
 
 class Actor(nn.Module):
@@ -147,8 +147,7 @@ class RecurrentCritic(nn.Module):
         s, (h, c) = self.nn(s)
         s = s[:, -1]
         if a is not None:
-            if not isinstance(a, torch.Tensor):
-                a = torch.tensor(a, device=self.device, dtype=torch.float32)
+            a = to_torch_as(a, s)
             s = torch.cat([s, a], dim=1)
         s = self.fc2(s)
         return s

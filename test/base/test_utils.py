@@ -56,7 +56,7 @@ def test_net():
     # DQN
     state_shape = (4, 84, 84)
     action_shape = (6, )
-    data = torch.rand([bsz, *state_shape])
+    data = np.random.rand(bsz, *state_shape)
     expect_output_shape = [bsz, *action_shape]
     net = DQN(*state_shape, action_shape)
     assert list(net(data)[0].shape) == expect_output_shape
