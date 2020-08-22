@@ -86,6 +86,7 @@ def _create_value(inst: Any, size: int, stack=True) -> Union[
     has_shape = isinstance(inst, (np.ndarray, torch.Tensor))
     is_scalar = _is_scalar(inst)
     if not stack and is_scalar:
+        # should never hit since it has already checked in Batch.cat_
         # here we do not consider scalar types, following the behavior of numpy
         # which does not support concatenation of zero-dimensional arrays
         # (scalars)
@@ -220,13 +221,13 @@ class Batch:
             str, slice, int, np.integer, np.ndarray, List[int]],
             value: Any) -> None:
         """Assign value to self[index]."""
-        if isinstance(index, str):
-            self.__dict__[index] = _parse_value(value)
-            return
         value = _parse_value(value)
+        if isinstance(index, str):
+            self.__dict__[index] = value
+            return
         if isinstance(value, (np.ndarray, torch.Tensor)):
-            raise ValueError("Batch does not supported tensor assignment."
-                             " Use a compatible Batch or dict instead.")
+            raise ValueError("Batch does not supported tensor assignment. "
+                             "Use a compatible Batch or dict instead.")
         if not set(value.keys()).issubset(self.__dict__.keys()):
             raise KeyError(
                 "Creating keys is not supported by item assignment.")

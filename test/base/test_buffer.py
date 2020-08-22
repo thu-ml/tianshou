@@ -20,7 +20,7 @@ def test_replaybuffer(size=10, bufsize=20):
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, a in enumerate(action_list):
         obs_next, rew, done, info = env.step(a)
-        buf.add(obs, a, rew, done, obs_next, info)
+        buf.add(obs, [a], rew, done, obs_next, info)
         obs = obs_next
         assert len(buf) == min(bufsize, i + 1)
     data, indice = buf.sample(bufsize * 2)
