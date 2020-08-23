@@ -716,7 +716,8 @@ class Batch:
               merge_last: bool = False) -> Iterator['Batch']:
         """Split whole data into multiple small batches.
 
-        :param int size: divide the data batch with the given size.
+        :param int size: divide the data batch with the given size, but one
+            batch if the length of the batch is smaller than ``size``.
         :param bool shuffle: randomly shuffle the entire data batch if it is
             ``True``, otherwise remain in the same. Default to ``True``.
         :param bool merge_last: merge the last batch into the previous one.
@@ -728,10 +729,9 @@ class Batch:
             indices = np.random.permutation(length)
         else:
             indices = np.arange(length)
-        count = length // size + \
-            (length % size > 0 and not merge_last or length < size)
-        if merge_last and (length % size == 0 or count == 0):
-            merge_last = False
+        merge_last = merge_last and length % size > 0 and length >= size
+        count = length // size + (1 - merge_last) * \
+            (length % size > 0 or length < size)
         for idx in range(count):
             if idx == count - 1 and merge_last:
                 yield self[indices[idx * size:]]

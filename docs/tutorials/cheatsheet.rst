@@ -96,7 +96,7 @@ This is related to `Issue 42 <https://github.com/thu-ml/tianshou/issues/42>`_.
 
 If you want to get log stat from data stream / pre-process batch-image / modify the reward with given env info, use ``preproces_fn`` in :class:`~tianshou.data.Collector`. This is a hook which will be called before the data adding into the buffer.
 
-This function receives typically up to 7 keys, as listed in :class:`~tianshou.data.Batch`, and returns the modified part within a Batch. For example, you can write your hook as:
+This function receives typically up to 7 keys, as listed in :class:`~tianshou.data.Batch`, and returns the modified part within a :class:`~tianshou.data.Batch`. If it receives only ``obs``, it is applied in the env reset; otherwise, it is applied in the normal env step. For example, you can write your hook as:
 ::
 
     import numpy as np
