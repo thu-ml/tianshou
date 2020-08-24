@@ -35,7 +35,7 @@ class PPOPolicy(PGPolicy):
     :param bool reward_normalization: normalize the returns to Normal(0, 1),
         defaults to ``True``.
     :param int max_batchsize: the maximum number of batchsize when computing
-        GAE, defaults to 2000.
+        GAE, defaults to 256.
 
     .. seealso::
 
