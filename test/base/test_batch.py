@@ -67,42 +67,23 @@ def test_batch():
     batch = Batch(a=np.arange(10))
     with pytest.raises(AssertionError):
         list(batch.split(0))
-    bs1 = list(batch.split(1, shuffle=False))
-    assert len(bs1) == len(batch)
-    assert [b.a for b in bs1] == list(range(len(batch)))
-    bs1 = list(batch.split(1, shuffle=False, merge_last=True))
-    # since 10 % 1 == 0, the merge_last will not work on split
-    assert [b.a for b in bs1] == list(range(len(batch)))
-    bs3 = list(batch.split(3, shuffle=False))
-    assert [bs3[i].a.tolist() for i in range(len(bs3))] == [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8], [9]]
-    bs3 = list(batch.split(3, shuffle=False, merge_last=True))
-    assert [bs3[i].a.tolist() for i in range(len(bs3))] == [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8, 9]]
-    bs5 = list(batch.split(5, shuffle=False))
-    assert [bs5[i].a.tolist() for i in range(len(bs5))] == [
-        [0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]
-    bs5 = list(batch.split(5, shuffle=False, merge_last=True))
-    assert [bs5[i].a.tolist() for i in range(len(bs5))] == [
-        [0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]
-    bs7 = list(batch.split(7, shuffle=False))
-    assert [bs7[i].a.tolist() for i in range(len(bs7))] == [
-        [0, 1, 2, 3, 4, 5, 6], [7, 8, 9]]
-    bs7 = list(batch.split(7, shuffle=False, merge_last=True))
-    assert [bs7[i].a.tolist() for i in range(len(bs7))] == [
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-    bs10 = list(batch.split(10, shuffle=False))
-    assert [bs10[i].a.tolist() for i in range(len(bs10))] == [
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-    bs10 = list(batch.split(10, shuffle=False, merge_last=True))
-    assert [bs10[i].a.tolist() for i in range(len(bs10))] == [
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-    bs100 = list(batch.split(100, shuffle=False))
-    assert [bs100[i].a.tolist() for i in range(len(bs100))] == [
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-    bs100 = list(batch.split(100, shuffle=False, merge_last=True))
-    assert [bs100[i].a.tolist() for i in range(len(bs100))] == [
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+    data = [
+        (1, False, [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9]]),
+        (1, True, [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9]]),
+        (3, False, [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]]),
+        (3, True, [[0, 1, 2], [3, 4, 5], [6, 7, 8, 9]]),
+        (5, False, [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]),
+        (5, True, [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]),
+        (7, False, [[0, 1, 2, 3, 4, 5, 6], [7, 8, 9]]),
+        (7, True, [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]),
+        (10, False, [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]),
+        (10, True, [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]),
+        (100, False, [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]),
+        (100, True, [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]),
+    ]
+    for size, merge_last, result in data:
+        bs = list(batch.split(size, shuffle=False, merge_last=merge_last))
+        assert [bs[i].a.tolist() for i in range(len(bs))] == result
     batch_dict = {'b': np.array([1.0]), 'c': 2.0, 'd': torch.Tensor([3.0])}
     batch_item = Batch({'a': [batch_dict]})[0]
     assert isinstance(batch_item.a.b, np.ndarray)
