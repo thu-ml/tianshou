@@ -27,6 +27,8 @@ def test_replaybuffer(size=10, bufsize=20):
         assert len(buf) == min(bufsize, i + 1)
     with pytest.raises(ValueError):
         buf._add_to_buffer('rew', np.array([1, 2, 3]))
+    assert buf.act.dtype == np.object
+    assert isinstance(buf.act[0], list)
     data, indice = buf.sample(bufsize * 2)
     assert (indice < len(buf)).all()
     assert (data.obs < size).all()
