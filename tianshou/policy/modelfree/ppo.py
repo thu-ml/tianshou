@@ -58,7 +58,7 @@ class PPOPolicy(PGPolicy):
                  dual_clip: Optional[float] = None,
                  value_clip: bool = True,
                  reward_normalization: bool = True,
-                 max_batchsize: int = 2000,
+                 max_batchsize: int = 256,
                  **kwargs) -> None:
         super().__init__(None, None, dist_fn, discount_factor, **kwargs)
         self._max_grad_norm = max_grad_norm

@@ -48,7 +48,7 @@ class A2CPolicy(PGPolicy):
                  max_grad_norm: Optional[float] = None,
                  gae_lambda: float = 0.95,
                  reward_normalization: bool = False,
-                 max_batchsize: int = 2000,
+                 max_batchsize: int = 256,
                  **kwargs) -> None:
         super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
         self.actor = actor
