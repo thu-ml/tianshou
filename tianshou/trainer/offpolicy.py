@@ -88,7 +88,7 @@ def offpolicy_trainer(
                 if test_in_train and stop_fn and stop_fn(result['rew']):
                     test_result = test_episode(
                         policy, test_collector, test_fn,
-                        epoch, episode_per_test)
+                        epoch, episode_per_test, writer, global_step)
                     if stop_fn and stop_fn(test_result['rew']):
                         if save_fn:
                             save_fn(policy)
@@ -104,13 +104,13 @@ def offpolicy_trainer(
                             train_fn(epoch)
                 for i in range(update_per_step * min(
                         result['n/st'] // collect_per_step, t.total - t.n)):
-                    global_step += 1
+                    global_step += collect_per_step
                     losses = policy.update(batch_size, train_collector.buffer)
                     for k in result.keys():
                         data[k] = f'{result[k]:.2f}'
                         if writer and global_step % log_interval == 0:
-                            writer.add_scalar(
-                                k, result[k], global_step=global_step)
+                            writer.add_scalar('train/' + k, result[k],
+                                              global_step=global_step)
                     for k in losses.keys():
                         if stat.get(k) is None:
                             stat[k] = MovAvg()
@@ -124,8 +124,8 @@ def offpolicy_trainer(
             if t.n <= t.total:
                 t.update()
         # test
-        result = test_episode(
-            policy, test_collector, test_fn, epoch, episode_per_test)
+        result = test_episode(policy, test_collector, test_fn, epoch,
+                              episode_per_test, writer, global_step)
         if best_epoch == -1 or best_reward < result['rew']:
             best_reward = result['rew']
             best_epoch = epoch
