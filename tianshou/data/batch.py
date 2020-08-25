@@ -729,11 +729,9 @@ class Batch:
             indices = np.random.permutation(length)
         else:
             indices = np.arange(length)
-        merge_last = merge_last and length % size > 0 and length >= size
-        count = length // size + (1 - merge_last) * \
-            (length % size > 0 or length < size)
-        for idx in range(count):
-            if idx == count - 1 and merge_last:
-                yield self[indices[idx * size:]]
-            else:
-                yield self[indices[idx * size:(idx + 1) * size]]
+        merge_last = merge_last and length % size > 0
+        for idx in range(0, length, size):
+            if merge_last and idx + size + size >= length:
+                yield self[indices[idx:]]
+                break
+            yield self[indices[idx:idx + size]]
