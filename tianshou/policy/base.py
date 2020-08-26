@@ -213,14 +213,14 @@ class BasePolicy(ABC, nn.Module):
             returns[done[now] > 0] = 0
             returns = (rew[now] - mean) / std + gamma * returns
         terminal = (indice + n_step - 1) % buf_len
-        target_q_ = target_q_fn(buffer, terminal).flatten()  # shape: (bsz, )
-        target_q = to_numpy(target_q_)
+        target_q_torch = target_q_fn(buffer, terminal).flatten()  # (bsz, )
+        target_q = to_numpy(target_q_torch)
         target_q[gammas != n_step] = 0
         target_q = target_q * (gamma ** gammas) + returns
-        batch.returns = to_torch_as(target_q, target_q_)
+        batch.returns = to_torch_as(target_q, target_q_torch)
         # prio buffer update
         if isinstance(buffer, PrioritizedReplayBuffer):
-            batch.weight = to_torch_as(batch.weight, target_q_)
+            batch.weight = to_torch_as(batch.weight, target_q_torch)
         return batch
 
     def post_process_fn(self, batch: Batch,

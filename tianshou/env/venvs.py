@@ -226,7 +226,7 @@ class BaseVectorEnv(gym.Env):
         if seed is None:
             seed = [seed] * self.env_num
         elif not isinstance(seed, list):
-            seed = [seed + _ for _ in range(self.env_num)]
+            seed = [seed + i for i in range(self.env_num)]
         return [w.seed(s) for w, s in zip(self.workers, seed)]
 
     def render(self, **kwargs) -> List[Any]:

@@ -219,7 +219,7 @@ class Collector(object):
             list_n_episode = True
             finished_env_ids = [
                 i for i in self._ready_env_ids if n_episode[i] <= 0]
-            self._ready_env_ids = np.asarray(
+            self._ready_env_ids = np.array(
                 [x for x in self._ready_env_ids if x not in finished_env_ids])
         while True:
             if step_count >= 100000 and episode_count.sum() == 0:
@@ -334,7 +334,7 @@ class Collector(object):
                                 self.data, self.env_num)
                 # let self.data be the data in all environments again
                 self.data = whole_data
-            self._ready_env_ids = np.asarray(
+            self._ready_env_ids = np.array(
                 [x for x in self._ready_env_ids if x not in finished_env_ids])
             if n_step:
                 if step_count >= n_step:
@@ -348,7 +348,7 @@ class Collector(object):
                     break
 
         # finished envs are ready, and can be used for the next collection
-        self._ready_env_ids = np.asarray(
+        self._ready_env_ids = np.array(
             self._ready_env_ids.tolist() + finished_env_ids)
 
         # generate the statistics
