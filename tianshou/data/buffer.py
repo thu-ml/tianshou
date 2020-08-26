@@ -122,7 +122,7 @@ class ReplayBuffer:
 
     def __init__(self, size: int, stack_num: int = 1,
                  ignore_obs_next: bool = False,
-                 sample_avail: bool = False, **kwargs) -> None:
+                 sample_avail: bool = False) -> None:
         super().__init__()
         self._maxsize = size
         self._indices = np.arange(size)
