@@ -14,8 +14,10 @@ def to_numpy(x: Union[
         x = x.detach().cpu().numpy()
     elif isinstance(x, np.ndarray):  # second often case
         pass
-    elif isinstance(x, (np.number, np.bool_, Number)) or x is None:
+    elif isinstance(x, (np.number, np.bool_, Number)):
         x = np.asanyarray(x)
+    elif x is None:
+        x = np.array(None, dtype=np.object)
     elif isinstance(x, Batch):
         x.to_numpy()
     elif isinstance(x, dict):

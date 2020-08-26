@@ -3,20 +3,12 @@
 
 from setuptools import setup, find_packages
 
-import re
-from os import path
+import tianshou
 
-here = path.abspath(path.dirname(__file__))
-
-# Get the version string
-with open(path.join(here, 'tianshou', '__init__.py')) as f:
-    raw = re.search(r'__version__ = \'(.*?)\'', f.read())
-    assert raw is not None
-    version = raw.group(1)
 
 setup(
     name='tianshou',
-    version=version,
+    version=tianshou.__version__,
     description='A Library for Deep Reinforcement Learning',
     long_description=open('README.md', encoding='utf8').read(),
     long_description_content_type='text/markdown',
