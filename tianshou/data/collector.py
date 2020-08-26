@@ -258,12 +258,10 @@ class Collector(object):
             # convert None to Batch(), since None is reserved for 0-init
             if state is None:
                 state = Batch()
-            # since result is a Batch, it can bypass the type check here
-            self.data.__dict__['state'] = state
-            self.data.__dict__['policy'] = result.get('policy', Batch())
+            self.data.update(state=state, policy=result.get('policy', Batch()))
             # save hidden state to policy._state, in order to save into buffer
             if not (isinstance(state, Batch) and state.is_empty()):
-                self.data.policy.__dict__['_state'] = self.data.state
+                self.data.policy._state = self.data.state
 
             self.data.act = to_numpy(result.act)
             if self._action_noise is not None:  # noqa
