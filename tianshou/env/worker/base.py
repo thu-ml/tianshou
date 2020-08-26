@@ -10,6 +10,7 @@ class EnvWorker(ABC):
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self._env_fn = env_fn
         self.is_closed = False
+        self.result = (None, None, None, None)
 
     @abstractmethod
     def __getattr__(self, key: str) -> Any:

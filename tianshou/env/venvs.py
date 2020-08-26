@@ -120,12 +120,11 @@ class BaseVectorEnv(gym.Env):
             self, id: Optional[Union[int, List[int]]] = None) -> List[int]:
         if id is None:
             id = list(range(self.env_num))
-        elif np.isscalar(id):
+        elif not isinstance(id, list):
             id = [id]
         return id
 
-    def _assert_id(
-            self, id: Optional[Union[int, List[int]]] = None) -> List[int]:
+    def _assert_id(self, id: List[int]) -> None:
         for i in id:
             assert i not in self.waiting_id, \
                 f'Cannot interact with environment {i} which is stepping now.'
@@ -145,15 +144,16 @@ class BaseVectorEnv(gym.Env):
         return obs
 
     def step(self,
-             action: Optional[np.ndarray],
+             action: np.ndarray,
              id: Optional[Union[int, List[int]]] = None
-             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+             ) -> List[np.ndarray]:
         """Run one timestep of all the environments’ dynamics if id is "None",
         otherwise run one timestep for some environments with given id,  either
         an int or a list. When the end of episode is reached, you are
         responsible for calling reset(id) to reset this environment’s state.
 
-        Accept a batch of action and return a tuple (obs, rew, done, info).
+        Accept a batch of action and return a tuple (obs, rew, done, info) in
+        numpy format.
 
         :param numpy.ndarray action: a batch of action provided by the agent.
 
@@ -222,10 +222,10 @@ class BaseVectorEnv(gym.Env):
             which a reproducer pass to "seed".
         """
         self._assert_is_not_closed()
-        if np.isscalar(seed):
-            seed = [seed + _ for _ in range(self.env_num)]
-        elif seed is None:
+        if seed is None:
             seed = [seed] * self.env_num
+        elif not isinstance(seed, list):
+            seed = [seed + _ for _ in range(self.env_num)]
         return [w.seed(s) for w, s in zip(self.workers, seed)]
 
     def render(self, **kwargs) -> List[Any]:

@@ -10,7 +10,9 @@ here = path.abspath(path.dirname(__file__))
 
 # Get the version string
 with open(path.join(here, 'tianshou', '__init__.py')) as f:
-    version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
+    raw = re.search(r'__version__ = \'(.*?)\'', f.read())
+    assert raw is not None
+    version = raw.group(1)
 
 setup(
     name='tianshou',
