@@ -126,8 +126,8 @@ def _parse_value(v: Any):
         return v
     elif _is_number(v):  # second often case
         return np.asanyarray(v)
-    elif v is None or isinstance(v, np.ndarray) and \
-            issubclass(v.dtype.type, (np.bool_, np.number)) or \
+    elif v is None or (isinstance(v, np.ndarray) and
+                       issubclass(v.dtype.type, (np.bool_, np.number))) or \
             isinstance(v, torch.Tensor):  # third often case
         return v
     elif isinstance(v, dict):
