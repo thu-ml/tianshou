@@ -380,7 +380,7 @@ class Batch:
                 self.__dict__[k] = v
 
     def __cat(self,
-              batches: Union['Batch', List[Union[dict, 'Batch']]],
+              batches: List[Union[dict, 'Batch']],
               lens: List[int]) -> None:
         """::
 

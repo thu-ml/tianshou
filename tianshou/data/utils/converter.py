@@ -62,9 +62,9 @@ def to_torch(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
     return x
 
 
-def to_torch_as(x: Union[torch.Tensor, dict, Batch, np.ndarray],
+def to_torch_as(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
                 y: torch.Tensor
-                ) -> Union[dict, Batch, torch.Tensor]:
+                ) -> Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor]:
     """Return an object without np.ndarray. Same as
     ``to_torch(x, dtype=y.dtype, device=y.device)``.
     """

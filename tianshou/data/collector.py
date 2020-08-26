@@ -202,7 +202,8 @@ class Collector(object):
         """
         assert (n_step is not None and n_episode is None and n_step > 0) or (
             n_step is None and n_episode is not None and np.sum(n_episode) > 0
-        ), "One and only one collection number specification is permitted!"
+        ), "Only one of n_step or n_episode is allowed in Collector.collect, "
+        f"got n_step = {n_step}, n_episode = {n_episode}."
         start_time = time.time()
         step_count = 0
         # episode of each environment
