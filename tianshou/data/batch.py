@@ -421,8 +421,7 @@ class Batch:
                 # cat Batch(a=np.zeros((3, 4))) and Batch(a=Batch(b=Batch()))
                 # will fail here
                 v = np.concatenate(v)
-                v = _to_array_with_correct_type(v)
-                self.__dict__[k] = v
+                self.__dict__[k] = _to_array_with_correct_type(v)
         keys_total = set.union(*[set(b.keys()) for b in batches])
         keys_reserve_or_partial = set.difference(keys_total, keys_shared)
         # keys that are reserved in all batches
@@ -442,8 +441,8 @@ class Batch:
                 try:
                     self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
                 except KeyError:
-                    self.__dict__[k] = \
-                        _create_value(val, sum_lens[-1], stack=False)
+                    self.__dict__[k] = _create_value(
+                        val, sum_lens[-1], stack=False)
                     self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
 
     def cat_(self,
@@ -516,14 +515,13 @@ class Batch:
         keys_shared = set.intersection(*keys_map)
         values_shared = [[e[k] for e in batches] for k in keys_shared]
         for k, v in zip(keys_shared, values_shared):
-            if all(isinstance(e, (dict, Batch)) for e in v):
-                self.__dict__[k] = Batch.stack(v, axis)
-            elif all(isinstance(e, torch.Tensor) for e in v):
+            if all(isinstance(e, torch.Tensor) for e in v):  # second often
                 self.__dict__[k] = torch.stack(v, axis)
-            else:
+            elif all(isinstance(e, (Batch, dict)) for e in v):  # third often
+                self.__dict__[k] = Batch.stack(v, axis)
+            else:  # most often case is np.ndarray
                 v = np.stack(v, axis)
-                v = _to_array_with_correct_type(v)
-                self.__dict__[k] = v
+                self.__dict__[k] = _to_array_with_correct_type(v)
         # all the keys
         keys_total = set.union(*[set(b.keys()) for b in batches])
         # keys that are reserved in all batches
@@ -549,8 +547,7 @@ class Batch:
                 try:
                     self.__dict__[k][i] = val
                 except KeyError:
-                    self.__dict__[k] = \
-                        _create_value(val, len(batches))
+                    self.__dict__[k] = _create_value(val, len(batches))
                     self.__dict__[k][i] = val
 
     @staticmethod
@@ -607,17 +604,17 @@ class Batch:
             )
         """
         for k, v in self.items():
-            if v is None:
-                continue
-            if isinstance(v, Batch):
-                self.__dict__[k].empty_(index=index)
-            elif isinstance(v, torch.Tensor):
+            if isinstance(v, torch.Tensor):  # most often case
                 self.__dict__[k][index] = 0
+            elif v is None:
+                continue
             elif isinstance(v, np.ndarray):
                 if v.dtype == np.object:
                     self.__dict__[k][index] = None
                 else:
                     self.__dict__[k][index] = 0
+            elif isinstance(v, Batch):
+                self.__dict__[k].empty_(index=index)
             else:  # scalar value
                 warnings.warn('You are calling Batch.empty on a NumPy scalar, '
                               'which may cause undefined behaviors.')
