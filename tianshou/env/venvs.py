@@ -1,7 +1,7 @@
 import gym
 import warnings
 import numpy as np
-from typing import List, Tuple, Union, Optional, Callable, Any
+from typing import List, Union, Optional, Callable, Any
 
 from tianshou.env.worker import EnvWorker, DummyEnvWorker, SubprocEnvWorker, \
     RayEnvWorker
@@ -116,11 +116,11 @@ class BaseVectorEnv(gym.Env):
         """
         return [getattr(worker, key) for worker in self.workers]
 
-    def _wrap_id(
-            self, id: Optional[Union[int, List[int]]] = None) -> List[int]:
+    def _wrap_id(self, id: Optional[Union[int, List[int], np.ndarray]] = None
+                 ) -> List[int]:
         if id is None:
             id = list(range(self.env_num))
-        elif not isinstance(id, list):
+        elif np.isscalar(id):
             id = [id]
         return id
 
@@ -131,7 +131,8 @@ class BaseVectorEnv(gym.Env):
             assert i in self.ready_id, \
                 f'Can only interact with ready environments {self.ready_id}.'
 
-    def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+    def reset(self, id: Optional[Union[int, List[int], np.ndarray]] = None
+              ) -> np.ndarray:
         """Reset the state of all the environments and return initial
         observations if id is ``None``, otherwise reset the specific
         environments with the given id, either an int or a list.
@@ -145,7 +146,7 @@ class BaseVectorEnv(gym.Env):
 
     def step(self,
              action: np.ndarray,
-             id: Optional[Union[int, List[int]]] = None
+             id: Optional[Union[int, List[int], np.ndarray]] = None
              ) -> List[np.ndarray]:
         """Run one timestep of all the environments’ dynamics if id is "None",
         otherwise run one timestep for some environments with given id,  either

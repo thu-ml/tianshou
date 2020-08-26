@@ -5,7 +5,8 @@ import numpy as np
 from copy import deepcopy
 from numbers import Number
 from collections.abc import Collection
-from typing import Any, List, Tuple, Union, Iterator, Optional
+from typing import Any, List, Tuple, Union, Iterator, KeysView, ValuesView, \
+    ItemsView, Optional
 
 # Disable pickle warning related to torch, since it has been removed
 # on torch master branch. See Pull Request #39003 for details:
@@ -318,15 +319,15 @@ class Batch:
         """Return key in self."""
         return key in self.__dict__
 
-    def keys(self) -> List[str]:
+    def keys(self) -> KeysView[str]:
         """Return self.keys()."""
         return self.__dict__.keys()
 
-    def values(self) -> List[Any]:
+    def values(self) -> ValuesView[Any]:
         """Return self.values()."""
         return self.__dict__.values()
 
-    def items(self) -> List[Tuple[str, Any]]:
+    def items(self) -> ItemsView[str, Any]:
         """Return self.items()."""
         return self.__dict__.items()
 
