@@ -1,7 +1,7 @@
 import time
 import numpy as np
-from typing import Dict, List, Union, Callable
 from torch.utils.tensorboard import SummaryWriter
+from typing import Dict, List, Union, Callable, Optional
 
 from tianshou.data import Collector
 from tianshou.policy import BasePolicy
@@ -10,7 +10,7 @@ from tianshou.policy import BasePolicy
 def test_episode(
         policy: BasePolicy,
         collector: Collector,
-        test_fn: Callable[[int], None],
+        test_fn: Optional[Callable[[int], None]],
         epoch: int,
         n_episode: Union[int, List[int]],
         writer: SummaryWriter = None,

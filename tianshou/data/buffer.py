@@ -399,7 +399,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
             info: Optional[Union[dict, Batch]] = {},
             policy: Optional[Union[dict, Batch]] = {},
-            weight: float = None,
+            weight: Optional[float] = None,
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
         if weight is None:

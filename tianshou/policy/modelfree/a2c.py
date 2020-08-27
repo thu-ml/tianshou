@@ -40,8 +40,7 @@ class A2CPolicy(PGPolicy):
                  actor: torch.nn.Module,
                  critic: torch.nn.Module,
                  optim: torch.optim.Optimizer,
-                 dist_fn: torch.distributions.Distribution
-                 = torch.distributions.Categorical,
+                 dist_fn: torch.distributions.Distribution,
                  discount_factor: float = 0.99,
                  vf_coef: float = .5,
                  ent_coef: float = .01,

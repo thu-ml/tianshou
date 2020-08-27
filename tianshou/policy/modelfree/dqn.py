@@ -37,7 +37,7 @@ class DQNPolicy(BasePolicy):
                  optim: torch.optim.Optimizer,
                  discount_factor: float = 0.99,
                  estimation_step: int = 1,
-                 target_update_freq: Optional[int] = 0,
+                 target_update_freq: int = 0,
                  reward_normalization: bool = False,
                  **kwargs) -> None:
         super().__init__(**kwargs)

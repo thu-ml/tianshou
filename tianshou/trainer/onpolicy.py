@@ -71,7 +71,7 @@ def onpolicy_trainer(
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
     global_step = 0
-    best_epoch, best_reward = -1, -1
+    best_epoch, best_reward = -1, -1.
     stat = {}
     start_time = time.time()
     test_in_train = test_in_train and train_collector.policy == policy

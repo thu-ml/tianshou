@@ -80,7 +80,7 @@ class Collector(object):
                  policy: BasePolicy,
                  env: Union[gym.Env, BaseVectorEnv],
                  buffer: Optional[ReplayBuffer] = None,
-                 preprocess_fn: Callable[[Any], Union[dict, Batch]] = None,
+                 preprocess_fn: Callable[[Any], Batch] = None,
                  action_noise: Optional[BaseNoise] = None,
                  reward_metric: Optional[Callable[[np.ndarray], float]] = None,
                  ) -> None:
@@ -384,6 +384,7 @@ class Collector(object):
             'Collector.sample is deprecated and will cause error if you use '
             'prioritized experience replay! Collector.sample will be removed '
             'upon version 0.3. Use policy.update instead!', Warning)
+        assert self.buffer is not None, "Cannot get sample from empty buffer!"
         batch_data, indice = self.buffer.sample(batch_size)
         batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data

@@ -224,7 +224,7 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
     def post_process_fn(self, batch: Batch,
-                        buffer: ReplayBuffer, indice: np.ndarray):
+                        buffer: ReplayBuffer, indice: np.ndarray) -> None:
         """Post-process the data from the provided replay buffer. Typical
         usage is to update the sampling weight in prioritized experience
         replay. Check out :ref:`policy_concept` for more information.
@@ -233,7 +233,8 @@ class BasePolicy(ABC, nn.Module):
                 and hasattr(batch, 'weight'):
             buffer.update_weight(indice, batch.weight)
 
-    def update(self, batch_size: int, buffer: ReplayBuffer, *args, **kwargs):
+    def update(self, batch_size: int, buffer: Optional[ReplayBuffer],
+               *args, **kwargs) -> Dict[str, Union[float, List[float]]]:
         """Update the policy network and replay buffer (if needed). It includes
         three function steps: process_fn, learn, and post_process_fn.
 
@@ -241,6 +242,8 @@ class BasePolicy(ABC, nn.Module):
             buffer, otherwise it will sample a batch with the given batch_size.
         :param ReplayBuffer buffer: the corresponding replay buffer.
         """
+        if buffer is None:
+            return {}
         batch, indice = buffer.sample(batch_size)
         batch = self.process_fn(batch, buffer, indice)
         result = self.learn(batch, *args, **kwargs)
