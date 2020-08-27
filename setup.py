@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 from setuptools import setup, find_packages
 
 
 setup(
     name='tianshou',
-    version=open(os.path.join('tianshou', 'version.txt')).read().strip(),
+    version='0.2.6',
     description='A Library for Deep Reinforcement Learning',
     long_description=open('README.md', encoding='utf8').read(),
     long_description_content_type='text/markdown',
