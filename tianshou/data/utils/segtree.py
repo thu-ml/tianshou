@@ -1,30 +1,32 @@
 import numpy as np
+from numba import njit
 from typing import Union, Optional
-# from numba import njit
 
 
-# numba version, 5x speed up
-# with size=100000 and bsz=64
-# first block (vectorized np): 0.0923 (now) -> 0.0251
-# second block (for-loop): 0.2914 -> 0.0192 (future)
-# @njit
-def _get_prefix_sum_idx(value, bound, sums):
+@njit
+def _get_prefix_sum_idx(value: np.ndarray, bound: int,
+                        sums: np.ndarray) -> np.ndarray:
+    """numba version (v0.51), 4x speed up with size=100000 and bsz=64
+    vectorized np: 0.0923 (numpy best) -> 0.0249
+    for-loop: 0.2914 -> 0.0289
+    """
     index = np.ones(value.shape, dtype=np.int64)
     while index[0] < bound:
         index *= 2
-        direct = sums[index] < value
-        value -= sums[index] * direct
+        lsons = sums[index]
+        direct = lsons < value
+        value -= lsons * direct
         index += direct
-    # for _, s in enumerate(value):
+    # for id, s in enumerate(value):
     #     i = 1
     #     while i < bound:
-    #         l = i * 2
-    #         if sums[l] >= s:
-    #             i = l
+    #         j = i * 2
+    #         if sums[j] >= s:
+    #             i = j
     #         else:
-    #             s = s - sums[l]
-    #             i = l + 1
-    #     index[_] = i
+    #             s = s - sums[j]
+    #             i = j + 1
+    #     index[id] = i
     index -= bound
     return index
 
