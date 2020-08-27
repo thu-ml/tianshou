@@ -327,7 +327,7 @@ class Collector(object):
                         obs=obs_reset).get('obs', obs_reset)
                 else:
                     obs_next[env_ind_local] = obs_reset
-            self.data.__dict__['obs'] = obs_next
+            self.data.obs = obs_next
             if is_async:
                 # set data back
                 whole_data = deepcopy(whole_data)  # avoid reference in ListBuf
