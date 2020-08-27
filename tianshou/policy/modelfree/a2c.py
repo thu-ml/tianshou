@@ -28,7 +28,7 @@ class A2CPolicy(PGPolicy):
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to ``False``.
     :param int max_batchsize: the maximum size of the batch when computing GAE,
-        defaults to 256.
+        should be as large as possible for efficiency; defaults to 256.
 
     .. seealso::
 

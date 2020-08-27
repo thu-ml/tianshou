@@ -153,8 +153,8 @@ class BaseVectorEnv(gym.Env):
         an int or a list. When the end of episode is reached, you are
         responsible for calling reset(id) to reset this environment’s state.
 
-        Accept a batch of action and return a tuple (obs, rew, done, info) in
-        numpy format.
+        Accept a batch of action and return a tuple (batch_obs, batch_rew,
+        batch_done, batch_info) in numpy format.
 
         :param numpy.ndarray action: a batch of action provided by the agent.
 
@@ -225,7 +225,7 @@ class BaseVectorEnv(gym.Env):
         self._assert_is_not_closed()
         if seed is None:
             seed = [seed] * self.env_num
-        elif not isinstance(seed, list):
+        elif np.isscalar(seed):
             seed = [seed + i for i in range(self.env_num)]
         return [w.seed(s) for w, s in zip(self.workers, seed)]
 
