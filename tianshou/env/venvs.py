@@ -1,7 +1,7 @@
 import gym
 import warnings
 import numpy as np
-from typing import List, Tuple, Union, Optional, Callable, Any
+from typing import List, Union, Optional, Callable, Any
 
 from tianshou.env.worker import EnvWorker, DummyEnvWorker, SubprocEnvWorker, \
     RayEnvWorker
@@ -116,23 +116,23 @@ class BaseVectorEnv(gym.Env):
         """
         return [getattr(worker, key) for worker in self.workers]
 
-    def _wrap_id(
-            self, id: Optional[Union[int, List[int]]] = None) -> List[int]:
+    def _wrap_id(self, id: Optional[Union[int, List[int], np.ndarray]] = None
+                 ) -> List[int]:
         if id is None:
             id = list(range(self.env_num))
         elif np.isscalar(id):
             id = [id]
         return id
 
-    def _assert_id(
-            self, id: Optional[Union[int, List[int]]] = None) -> List[int]:
+    def _assert_id(self, id: List[int]) -> None:
         for i in id:
             assert i not in self.waiting_id, \
                 f'Cannot interact with environment {i} which is stepping now.'
             assert i in self.ready_id, \
                 f'Can only interact with ready environments {self.ready_id}.'
 
-    def reset(self, id: Optional[Union[int, List[int]]] = None) -> np.ndarray:
+    def reset(self, id: Optional[Union[int, List[int], np.ndarray]] = None
+              ) -> np.ndarray:
         """Reset the state of all the environments and return initial
         observations if id is ``None``, otherwise reset the specific
         environments with the given id, either an int or a list.
@@ -145,15 +145,16 @@ class BaseVectorEnv(gym.Env):
         return obs
 
     def step(self,
-             action: Optional[np.ndarray],
-             id: Optional[Union[int, List[int]]] = None
-             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+             action: np.ndarray,
+             id: Optional[Union[int, List[int], np.ndarray]] = None
+             ) -> List[np.ndarray]:
         """Run one timestep of all the environments’ dynamics if id is "None",
         otherwise run one timestep for some environments with given id,  either
         an int or a list. When the end of episode is reached, you are
         responsible for calling reset(id) to reset this environment’s state.
 
-        Accept a batch of action and return a tuple (obs, rew, done, info).
+        Accept a batch of action and return a tuple (batch_obs, batch_rew,
+        batch_done, batch_info) in numpy format.
 
         :param numpy.ndarray action: a batch of action provided by the agent.
 
@@ -182,7 +183,11 @@ class BaseVectorEnv(gym.Env):
             assert len(action) == len(id)
             for i, j in enumerate(id):
                 self.workers[j].send_action(action[i])
-            result = [self.workers[j].get_result() for j in id]
+            result = []
+            for j in id:
+                obs, rew, done, info = self.workers[j].get_result()
+                info["env_id"] = j
+                result.append((obs, rew, done, info))
         else:
             if action is not None:
                 self._assert_id(id)
@@ -218,10 +223,10 @@ class BaseVectorEnv(gym.Env):
             which a reproducer pass to "seed".
         """
         self._assert_is_not_closed()
-        if np.isscalar(seed):
-            seed = [seed + _ for _ in range(self.env_num)]
-        elif seed is None:
+        if seed is None:
             seed = [seed] * self.env_num
+        elif np.isscalar(seed):
+            seed = [seed + i for i in range(self.env_num)]
         return [w.seed(s) for w, s in zip(self.workers, seed)]
 
     def render(self, **kwargs) -> List[Any]:

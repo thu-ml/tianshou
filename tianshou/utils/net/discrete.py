@@ -45,7 +45,7 @@ class DQN(nn.Module):
     Reference paper: "Human-level control through deep reinforcement learning".
     """
 
-    def __init__(self, h, w, action_shape, device='cpu'):
+    def __init__(self, c, h, w, action_shape, device='cpu'):
         super(DQN, self).__init__()
         self.device = device
 
@@ -66,7 +66,7 @@ class DQN(nn.Module):
         linear_input_size = convw * convh * 64
 
         self.net = nn.Sequential(
-            nn.Conv2d(4, 32, kernel_size=8, stride=4),
+            nn.Conv2d(c, 32, kernel_size=8, stride=4),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(inplace=True),
@@ -74,12 +74,11 @@ class DQN(nn.Module):
             nn.ReLU(inplace=True),
             nn.Flatten(),
             nn.Linear(linear_input_size, 512),
-            nn.Linear(512, action_shape)
+            nn.Linear(512, np.prod(action_shape))
         )
 
     def forward(self, x, state=None, info={}):
         r"""x -> Q(x, \*)"""
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device, dtype=torch.float32)
-        x = x.permute(0, 3, 1, 2)
         return self.net(x), state

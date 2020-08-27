@@ -176,6 +176,8 @@ Watch the Agent's Performance
 :class:`~tianshou.data.Collector` supports rendering. Here is the example of watching the agent's performance in 35 FPS:
 ::
 
+    policy.eval()
+    policy.set_eps(0.05)
     collector = ts.data.Collector(policy, env)
     collector.collect(n_episode=1, render=1 / 35)
 

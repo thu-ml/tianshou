@@ -21,6 +21,8 @@ class MyTestEnv(gym.Env):
         self.recurse_state = recurse_state
         self.ma_rew = ma_rew
         self._md_action = multidiscrete_action
+        # how many steps this env has stepped
+        self.steps = 0
         if dict_state:
             self.observation_space = Dict(
                 {"index": Box(shape=(1, ), low=0, high=size - 1),
@@ -74,6 +76,7 @@ class MyTestEnv(gym.Env):
             return np.array([self.index], dtype=np.float32)
 
     def step(self, action):
+        self.steps += 1
         if self._md_action:
             action = action[0]
         if self.done:

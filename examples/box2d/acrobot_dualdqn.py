@@ -102,9 +102,12 @@ def test_dqn(args=get_args()):
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
-        env = gym.make(args.task)
-        collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
+        policy.eval()
+        policy.set_eps(args.eps_test)
+        test_envs.seed(args.seed)
+        test_collector.reset()
+        result = test_collector.collect(n_episode=[1] * args.test_num,
+                                        render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
 
 

@@ -16,13 +16,19 @@ else:  # pytest
 def test_replaybuffer(size=10, bufsize=20):
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize)
+    buf.update(buf)
+    assert str(buf) == buf.__class__.__name__ + '()'
     obs = env.reset()
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, a in enumerate(action_list):
         obs_next, rew, done, info = env.step(a)
-        buf.add(obs, a, rew, done, obs_next, info)
+        buf.add(obs, [a], rew, done, obs_next, info)
         obs = obs_next
         assert len(buf) == min(bufsize, i + 1)
+    with pytest.raises(ValueError):
+        buf._add_to_buffer('rew', np.array([1, 2, 3]))
+    assert buf.act.dtype == np.object
+    assert isinstance(buf.act[0], list)
     data, indice = buf.sample(bufsize * 2)
     assert (indice < len(buf)).all()
     assert (data.obs < size).all()
@@ -37,6 +43,11 @@ def test_replaybuffer(size=10, bufsize=20):
     assert np.all(b.info.a[1:] == 0)
     assert b.info.b.c[0] == 5.0 and b.info.b.c.dtype == np.inexact
     assert np.all(b.info.b.c[1:] == 0.0)
+    with pytest.raises(IndexError):
+        b[22]
+    b = ListReplayBuffer()
+    with pytest.raises(NotImplementedError):
+        b.sample(0)
 
 
 def test_ignore_obs_next(size=10):
@@ -89,14 +100,16 @@ def test_stack(size=5, bufsize=9, stack_num=4):
         if done:
             obs = env.reset(1)
     indice = np.arange(len(buf))
-    assert np.allclose(buf.get(indice, 'obs'), np.expand_dims(
-        [[1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
-         [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
-         [1, 2, 3, 4], [4, 4, 4, 4], [1, 1, 1, 1]], axis=-1))
+    assert np.allclose(buf.get(indice, 'obs')[..., 0], [
+        [1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
+        [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
+        [1, 2, 3, 4], [4, 4, 4, 4], [1, 1, 1, 1]])
     _, indice = buf2.sample(0)
     assert indice.tolist() == [2, 6]
     _, indice = buf2.sample(1)
     assert indice in [2, 6]
+    with pytest.raises(IndexError):
+        buf[bufsize * 2]
 
 
 def test_priortized_replaybuffer(size=32, bufsize=15):
@@ -139,6 +152,7 @@ def test_segtree():
         # small test
         actual_len = 8
         tree = SegmentTree(actual_len, op)  # 1-15. 8-15 are leaf nodes
+        assert len(tree) == actual_len
         assert np.all([tree[i] == init for i in range(actual_len)])
         with pytest.raises(IndexError):
             tree[actual_len]
@@ -154,6 +168,8 @@ def test_segtree():
                     ref = realop(naive[i:j])
                     out = tree.reduce(i, j)
                     assert np.allclose(ref, out)
+        assert np.allclose(tree.reduce(start=1), realop(naive[1:]))
+        assert np.allclose(tree.reduce(end=-1), realop(naive[:-1]))
         # batch setitem
         for _ in range(1000):
             index = np.random.choice(actual_len, size=4)

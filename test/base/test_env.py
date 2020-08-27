@@ -48,6 +48,7 @@ def test_async_env(size=10000, num=8, sleep=0.1):
         test_cls += [RayVectorEnv]
     for cls in test_cls:
         v = cls(env_fns, wait_num=num // 2, timeout=1e-3)
+        v.seed(None)
         v.reset()
         # for a random variable u ~ U[0, 1], let v = max{u1, u2, ..., un}
         # P(v <= x) = x^n (0 <= x <= 1), pdf of v is nx^{n-1}

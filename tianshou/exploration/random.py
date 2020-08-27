@@ -14,7 +14,7 @@ class BaseNoise(ABC, object):
         """Generate new noise."""
         raise NotImplementedError
 
-    def reset(self, **kwargs) -> None:
+    def reset(self) -> None:
         """Reset to the initial state."""
         pass
 

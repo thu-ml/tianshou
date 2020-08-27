@@ -64,12 +64,12 @@ class MultiAgentPolicyManager(BasePolicy):
 
             {
                 "act": actions corresponding to the input
-                "state":{
+                "state": {
                     "agent_1": output state of agent_1's policy for the state
                     "agent_2": xxx
                     ...
                     "agent_n": xxx}
-                "out":{
+                "out": {
                     "agent_1": output of agent_1's policy for the input
                     "agent_2": xxx
                     ...

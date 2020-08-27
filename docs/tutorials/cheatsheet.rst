@@ -96,7 +96,7 @@ This is related to `Issue 42 <https://github.com/thu-ml/tianshou/issues/42>`_.
 
 If you want to get log stat from data stream / pre-process batch-image / modify the reward with given env info, use ``preproces_fn`` in :class:`~tianshou.data.Collector`. This is a hook which will be called before the data adding into the buffer.
 
-This function receives typically 7 keys, as listed in :class:`~tianshou.data.Batch`, and returns the modified part within a dict or a Batch. For example, you can write your hook as:
+This function receives up to 7 keys ``obs``, ``act``, ``rew``, ``done``, ``obs_next``, ``info``, and ``policy``, as listed in :class:`~tianshou.data.Batch`, and returns the modified part within a :class:`~tianshou.data.Batch`. Only ``obs`` is defined at env reset, while every key is specified for normal steps. For example, you can write your hook as:
 ::
 
     import numpy as np
@@ -109,9 +109,11 @@ This function receives typically 7 keys, as listed in :class:`~tianshou.data.Bat
             self.baseline = 0
         def preprocess_fn(**kwargs):
             """change reward to zero mean"""
+            # if only obs exist -> reset
+            # if obs/act/rew/done/... exist -> normal step
             if 'rew' not in kwargs:
                 # means that it is called after env.reset(), it can only process the obs
-                return {}  # none of the variables are needed to be updated
+                return Batch()  # none of the variables are needed to be updated
             else:
                 n = len(kwargs['rew'])  # the number of envs in collector
                 if self.episode_log is None:
@@ -125,7 +127,6 @@ This function receives typically 7 keys, as listed in :class:`~tianshou.data.Bat
                         self.episode_log[i] = []
                         self.baseline = np.mean(self.main_log)
                 return Batch(rew=kwargs['rew'])
-                # you can also return with {'rew': kwargs['rew']}
 
 And finally,
 ::

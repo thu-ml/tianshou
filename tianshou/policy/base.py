@@ -213,20 +213,18 @@ class BasePolicy(ABC, nn.Module):
             returns[done[now] > 0] = 0
             returns = (rew[now] - mean) / std + gamma * returns
         terminal = (indice + n_step - 1) % buf_len
-        target_q = target_q_fn(buffer, terminal).flatten()  # shape: [bsz, ]
+        target_q_torch = target_q_fn(buffer, terminal).flatten()  # (bsz, )
+        target_q = to_numpy(target_q_torch)
         target_q[gammas != n_step] = 0
-        returns = to_torch_as(returns, target_q)
-        gammas = to_torch_as(gamma ** gammas, target_q)
-        batch.returns = target_q * gammas + returns
+        target_q = target_q * (gamma ** gammas) + returns
+        batch.returns = to_torch_as(target_q, target_q_torch)
         # prio buffer update
         if isinstance(buffer, PrioritizedReplayBuffer):
-            batch.weight = to_torch_as(batch.weight, target_q)
-        else:
-            batch.weight = torch.ones_like(target_q)
+            batch.weight = to_torch_as(batch.weight, target_q_torch)
         return batch
 
     def post_process_fn(self, batch: Batch,
-                        buffer: ReplayBuffer, indice: np.ndarray):
+                        buffer: ReplayBuffer, indice: np.ndarray) -> None:
         """Post-process the data from the provided replay buffer. Typical
         usage is to update the sampling weight in prioritized experience
         replay. Check out :ref:`policy_concept` for more information.
@@ -235,7 +233,8 @@ class BasePolicy(ABC, nn.Module):
                 and hasattr(batch, 'weight'):
             buffer.update_weight(indice, batch.weight)
 
-    def update(self, batch_size: int, buffer: ReplayBuffer, *args, **kwargs):
+    def update(self, batch_size: int, buffer: Optional[ReplayBuffer],
+               *args, **kwargs) -> Dict[str, Union[float, List[float]]]:
         """Update the policy network and replay buffer (if needed). It includes
         three function steps: process_fn, learn, and post_process_fn.
 
@@ -243,6 +242,8 @@ class BasePolicy(ABC, nn.Module):
             buffer, otherwise it will sample a batch with the given batch_size.
         :param ReplayBuffer buffer: the corresponding replay buffer.
         """
+        if buffer is None:
+            return {}
         batch, indice = buffer.sample(batch_size)
         batch = self.process_fn(batch, buffer, indice)
         result = self.learn(batch, *args, **kwargs)

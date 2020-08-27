@@ -17,7 +17,7 @@ class RayEnvWorker(EnvWorker):
         super().__init__(env_fn)
         self.env = ray.remote(gym.Wrapper).options(num_cpus=0).remote(env_fn())
 
-    def __getattr__(self, key: str):
+    def __getattr__(self, key: str) -> Any:
         return ray.get(self.env.__getattr__.remote(key))
 
     def reset(self) -> Any:

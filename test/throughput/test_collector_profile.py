@@ -22,8 +22,7 @@ class SimpleEnv(gym.Env):
     def reset(self):
         self._index = 0
         self.done = np.random.randint(3, high=200)
-        return {'observable': np.zeros((10, 10, 1)),
-                'hidden': self._index}
+        return {'observable': np.zeros((10, 10, 1)), 'hidden': self._index}
 
     def step(self, action):
         if self._index == self.done:
@@ -56,11 +55,9 @@ def data():
     np.random.seed(0)
     env = SimpleEnv()
     env.seed(0)
-    env_vec = DummyVectorEnv(
-        [lambda: SimpleEnv() for _ in range(100)])
+    env_vec = DummyVectorEnv([lambda: SimpleEnv() for _ in range(100)])
     env_vec.seed(np.random.randint(1000, size=100).tolist())
-    env_subproc = SubprocVectorEnv(
-        [lambda: SimpleEnv() for _ in range(8)])
+    env_subproc = SubprocVectorEnv([lambda: SimpleEnv() for _ in range(8)])
     env_subproc.seed(np.random.randint(1000, size=100).tolist())
     env_subproc_init = SubprocVectorEnv(
         [lambda: SimpleEnv() for _ in range(8)])

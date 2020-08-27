@@ -122,7 +122,7 @@ class ReplayBuffer:
 
     def __init__(self, size: int, stack_num: int = 1,
                  ignore_obs_next: bool = False,
-                 sample_avail: bool = False, **kwargs) -> None:
+                 sample_avail: bool = False) -> None:
         super().__init__()
         self._maxsize = size
         self._indices = np.arange(size)
@@ -163,7 +163,8 @@ class ReplayBuffer:
         except KeyError:
             self._meta.__dict__[name] = _create_value(inst, self._maxsize)
             value = self._meta.__dict__[name]
-        if isinstance(inst, np.ndarray) and value.shape[1:] != inst.shape:
+        if isinstance(inst, (np.ndarray, torch.Tensor)) \
+                and value.shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, with key "
                 f"{name}, expect {value.shape[1:]}, given {inst.shape}.")
@@ -198,12 +199,12 @@ class ReplayBuffer:
         buffer.stack_num = stack_num_orig
 
     def add(self,
-            obs: Union[dict, Batch, np.ndarray],
-            act: Union[np.ndarray, float],
+            obs: Union[dict, Batch, np.ndarray, float],
+            act: Union[dict, Batch, np.ndarray, float],
             rew: Union[int, float],
-            done: bool,
-            obs_next: Optional[Union[dict, Batch, np.ndarray]] = None,
-            info: dict = {},
+            done: Union[bool, int],
+            obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
+            info: Optional[Union[dict, Batch]] = {},
             policy: Optional[Union[dict, Batch]] = {},
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
@@ -351,9 +352,7 @@ class ListReplayBuffer(ReplayBuffer):
     def _add_to_buffer(
             self, name: str,
             inst: Union[dict, Batch, np.ndarray, float, int, bool]) -> None:
-        if inst is None:
-            return
-        if self._meta.__dict__.get(name, None) is None:
+        if self._meta.__dict__.get(name) is None:
             self._meta.__dict__[name] = []
         self._meta.__dict__[name].append(inst)
 
@@ -393,14 +392,14 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         return super().__getattr__(key)
 
     def add(self,
-            obs: Union[dict, np.ndarray],
-            act: Union[np.ndarray, float],
+            obs: Union[dict, Batch, np.ndarray, float],
+            act: Union[dict, Batch, np.ndarray, float],
             rew: Union[int, float],
-            done: bool,
-            obs_next: Optional[Union[dict, np.ndarray]] = None,
-            info: dict = {},
+            done: Union[bool, int],
+            obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
+            info: Optional[Union[dict, Batch]] = {},
             policy: Optional[Union[dict, Batch]] = {},
-            weight: float = None,
+            weight: Optional[float] = None,
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
         if weight is None:

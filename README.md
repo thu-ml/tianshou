@@ -247,6 +247,8 @@ policy.load_state_dict(torch.load('dqn.pth'))
 Watch the performance with 35 FPS:
 
 ```python
+policy.eval()
+policy.set_eps(eps_test)
 collector = ts.data.Collector(policy, env)
 collector.collect(n_episode=1, render=1 / 35)
 ```
