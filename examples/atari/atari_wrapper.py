@@ -1,3 +1,6 @@
+# Borrow a lot from openai baselines:
+# https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
+
 import cv2
 import gym
 import numpy as np
@@ -56,8 +59,8 @@ class MaxAndSkipEnv(gym.Wrapper):
 
 
 class EpisodicLifeEnv(gym.Wrapper):
-    """Make end-of-life == end-of-episode, but only reset on true game over.
-    Done by DeepMind for the DQN and co. since it helps value estimation.
+    """Make end-of-life == end-of-episode, but only reset on true game over. It
+    helps the value estimation.
 
     :param gym.Env env: the environment to wrap.
     """
@@ -125,8 +128,9 @@ class WarpFrame(gym.ObservationWrapper):
         super().__init__(env)
         self.size = 84
         self.observation_space = gym.spaces.Box(
-            low=0, high=255, shape=(self.size, self.size),
-            dtype=env.observation_space.dtype)
+            low=np.min(env.observation_space.low),
+            high=np.max(env.observation_space.high),
+            shape=(self.size, self.size), dtype=env.observation_space.dtype)
 
     def observation(self, frame):
         """returns the current observation from a frame"""
@@ -143,12 +147,16 @@ class ScaledFloatFrame(gym.ObservationWrapper):
 
     def __init__(self, env):
         super().__init__(env)
+        low = np.min(env.observation_space.low)
+        high = np.max(env.observation_space.high)
+        self.bias = low
+        self.scale = high - low
         self.observation_space = gym.spaces.Box(
-            low=0, high=1., shape=env.observation_space.shape,
+            low=0., high=1., shape=env.observation_space.shape,
             dtype=np.float32)
 
     def observation(self, observation):
-        return np.array(observation, dtype=np.float32) / 255.
+        return (observation - self.bias) / self.scale
 
 
 class ClipRewardEnv(gym.RewardWrapper):
@@ -179,7 +187,9 @@ class FrameStack(gym.Wrapper):
         self.frames = deque([], maxlen=n_frames)
         shape = (n_frames,) + env.observation_space.shape
         self.observation_space = gym.spaces.Box(
-            low=0, high=255, shape=shape, dtype=env.observation_space.dtype)
+            low=np.min(env.observation_space.low),
+            high=np.max(env.observation_space.high),
+            shape=shape, dtype=env.observation_space.dtype)
 
     def reset(self):
         obs = self.env.reset()
@@ -213,7 +223,8 @@ def make_atari(env_id):
 
 def wrap_deepmind(env_id, episode_life=True, clip_rewards=True,
                   frame_stack=4, scale=False):
-    """Configure environment for DeepMind-style Atari.
+    """Configure environment for DeepMind-style Atari. The observation is
+    channel-first: (c, h, w) instead of (h, w, c).
 
     :param str env_id: the atari environment id.
     :param bool episode_life: wrap the episode life wrapper.
