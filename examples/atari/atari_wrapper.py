@@ -23,7 +23,7 @@ class NoopResetEnv(gym.Wrapper):
 
     def reset(self):
         self.env.reset()
-        noops = np.random.randint(self.noop_max) + 1
+        noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)
         for _ in range(noops):
             obs, _, done, _ = self.env.step(self.noop_action)
             if done:
@@ -118,8 +118,8 @@ class FireResetEnv(gym.Wrapper):
         return obs
 
 
-class WarpFrame(gym.ObservationWrapper):
-    """Warp frames to 84x84 as done in the Nature paper and later work.
+class WrapFrame(gym.ObservationWrapper):
+    """Wrap frames to 84x84 as done in the Nature paper and later work.
 
     :param gym.Env env: the environment to wrap.
     """
@@ -208,21 +208,8 @@ class FrameStack(gym.Wrapper):
         return np.stack(self.frames, axis=0)
 
 
-def make_atari(env_id):
-    """Create a wrapped atari Environment.
-
-    :param str env_id: the environment ID.
-    :return: the wrapped atari environment.
-    """
-    assert 'NoFrameskip' in env_id
-    env = gym.make(env_id)
-    env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip=4)
-    return env
-
-
 def wrap_deepmind(env_id, episode_life=True, clip_rewards=True,
-                  frame_stack=4, scale=False):
+                  frame_stack=4, scale=False, wrap_frame=True):
     """Configure environment for DeepMind-style Atari. The observation is
     channel-first: (c, h, w) instead of (h, w, c).
 
@@ -233,12 +220,16 @@ def wrap_deepmind(env_id, episode_life=True, clip_rewards=True,
     :param bool scale: wrap the scaling observation wrapper.
     :return: the wrapped atari environment.
     """
-    env = make_atari(env_id)
+    assert 'NoFrameskip' in env_id
+    env = gym.make(env_id)
+    env = NoopResetEnv(env, noop_max=30)
+    env = MaxAndSkipEnv(env, skip=4)
     if episode_life:
         env = EpisodicLifeEnv(env)
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
-    env = WarpFrame(env)
+    if wrap_frame:
+        env = WrapFrame(env)
     if scale:
         env = ScaledFloatFrame(env)
     if clip_rewards:
