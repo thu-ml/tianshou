@@ -116,7 +116,8 @@ class ReplayBuffer:
     :param bool ignore_obs_next: whether to store obs_next, defaults to
         ``False``.
     :param bool save_last_obs: only save the last obs/obs_next when it has a
-        shape of (timestep, ...), defaults to ``False``.
+        shape of (timestep, ...),  because of temporal stacking, defaults to
+        ``False``.
     :param bool sample_avail: the parameter indicating sampling only available
         index when using frame-stack sampling method, defaults to ``False``.
         This feature is not supported in Prioritized Replay Buffer currently.
