@@ -129,7 +129,7 @@ We select some of famous reinforcement learning platforms: 2 GitHub repos with m
 
 All of the platforms use 5 different seeds for testing. We erase those trials which failed for training. The reward threshold is 195.0 in CartPole and -250.0 in Pendulum over consecutive 100 episodes' mean returns (except for PyTorch-DRL). 
 
-We will add results of Atari Pong / Mujoco these days.
+The Atari/Mujoco benchmark results are under [examples/atari/](examples/atari/) and [examples/mujoco/](examples/mujoco/) folders.
 
 ### Reproducible
 
