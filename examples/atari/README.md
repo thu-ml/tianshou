@@ -1,10 +1,14 @@
 # Atari General
 
-Using random policy, the sample speed is \~3000 env step per second (\~12000 Atari frame per second in fact since we use frame_stack=4). The main bottleneck is training the convolutional neural network.
+The sample speed is \~3000 env step per second (\~12000 Atari frame per second in fact since we use frame_stack=4) under the normal mode (use a CNN policy and a collector, also storing data into the buffer). The main bottleneck is training the convolutional neural network.
+
+The Atari env seed cannot be fixed due to the discussion [here](https://github.com/openai/gym/issues/1478), but it is not a big issue since on Atari it will always have the similar results.
 
 The env wrapper is a crucial thing. Without wrappers, the agent cannot perform well enough on Atari games. Many existing RL codebases use [OpenAI wrapper](https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py), but it is not the original DeepMind version ([related issue](https://github.com/openai/baselines/issues/240)). Dopamine has a different [wrapper](https://github.com/google/dopamine/blob/master/dopamine/discrete_domains/atari_lib.py) but unfortunately it cannot work very well in our codebase.
 
 # DQN (single run)
+
+One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 
 | task                        | best reward | reward curve                          | parameters                                                   | time cost           |
 | --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ | ------------------- |
