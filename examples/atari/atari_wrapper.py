@@ -118,8 +118,8 @@ class FireResetEnv(gym.Wrapper):
         return obs
 
 
-class WrapFrame(gym.ObservationWrapper):
-    """Wrap frames to 84x84 as done in the Nature paper and later work.
+class WarpFrame(gym.ObservationWrapper):
+    """Warp frames to 84x84 as done in the Nature paper and later work.
 
     :param gym.Env env: the environment to wrap.
     """
@@ -209,7 +209,7 @@ class FrameStack(gym.Wrapper):
 
 
 def wrap_deepmind(env_id, episode_life=True, clip_rewards=True,
-                  frame_stack=4, scale=False, wrap_frame=True):
+                  frame_stack=4, scale=False, warp_frame=True):
     """Configure environment for DeepMind-style Atari. The observation is
     channel-first: (c, h, w) instead of (h, w, c).
 
@@ -218,6 +218,7 @@ def wrap_deepmind(env_id, episode_life=True, clip_rewards=True,
     :param bool clip_rewards: wrap the reward clipping wrapper.
     :param int frame_stack: wrap the frame stacking wrapper.
     :param bool scale: wrap the scaling observation wrapper.
+    :param bool warp_frame: wrap the grayscale + resize observation wrapper.
     :return: the wrapped atari environment.
     """
     assert 'NoFrameskip' in env_id
@@ -228,8 +229,8 @@ def wrap_deepmind(env_id, episode_life=True, clip_rewards=True,
         env = EpisodicLifeEnv(env)
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
-    if wrap_frame:
-        env = WrapFrame(env)
+    if warp_frame:
+        env = WarpFrame(env)
     if scale:
         env = ScaledFloatFrame(env)
     if clip_rewards:
