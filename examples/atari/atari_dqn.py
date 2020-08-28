@@ -81,10 +81,12 @@ def test_dqn(args=get_args()):
     if args.resume_path:
         policy.load_state_dict(torch.load(args.resume_path))
         print("Loaded agent from: ", args.resume_path)
+    # replay buffer
+    # save_last_obs and stack_num can be removed together when you have RAM
+    buffer = ReplayBuffer(args.buffer_size, ignore_obs_next=True,
+                          save_last_obs=True, stack_num=args.frames_stack)
     # collector
-    train_collector = Collector(
-        policy, train_envs,
-        ReplayBuffer(args.buffer_size, ignore_obs_next=True))  # save memory
+    train_collector = Collector(policy, train_envs, buffer)
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'dqn')

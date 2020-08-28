@@ -91,11 +91,13 @@ def test_stack(size=5, bufsize=9, stack_num=4):
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
     buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
+    buf3 = ReplayBuffer(bufsize, stack_num=stack_num, save_last_obs=True)
     obs = env.reset(1)
     for i in range(16):
         obs_next, rew, done, info = env.step(1)
         buf.add(obs, 1, rew, done, None, info)
         buf2.add(obs, 1, rew, done, None, info)
+        buf3.add([None, None, obs], 1, rew, done, [None, obs], info)
         obs = obs_next
         if done:
             obs = env.reset(1)
@@ -104,6 +106,8 @@ def test_stack(size=5, bufsize=9, stack_num=4):
         [1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
         [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
         [1, 2, 3, 4], [4, 4, 4, 4], [1, 1, 1, 1]])
+    assert np.allclose(buf.get(indice, 'obs'), buf3.get(indice, 'obs'))
+    assert np.allclose(buf.get(indice, 'obs'), buf3.get(indice, 'obs_next'))
     _, indice = buf2.sample(0)
     assert indice.tolist() == [2, 6]
     _, indice = buf2.sample(1)

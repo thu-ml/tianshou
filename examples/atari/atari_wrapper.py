@@ -7,6 +7,7 @@ from collections import deque
 class NoopResetEnv(gym.Wrapper):
     """Sample initial states by taking random number of no-ops on reset.
     No-op is assumed to be action 0.
+
     :param gym.Env env: the environment to wrap.
     :param int noop_max: the maximum value of no-ops to run.
     """
@@ -30,6 +31,7 @@ class NoopResetEnv(gym.Wrapper):
 class MaxAndSkipEnv(gym.Wrapper):
     """Return only every `skip`-th frame (frameskipping) using most recent raw
     observations (for max pooling across time steps)
+
     :param gym.Env env: the environment to wrap.
     :param int skip: number of `skip`-th frame.
     """
@@ -42,7 +44,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         """Step the environment with the given action. Repeat action, sum
         reward, and max over last observations.
         """
-        obs_list, total_reward, done = [], 0., None
+        obs_list, total_reward, done = [], 0., False
         for i in range(self._skip):
             obs, reward, done, info = self.env.step(action)
             obs_list.append(obs)
@@ -56,6 +58,7 @@ class MaxAndSkipEnv(gym.Wrapper):
 class EpisodicLifeEnv(gym.Wrapper):
     """Make end-of-life == end-of-episode, but only reset on true game over.
     Done by DeepMind for the DQN and co. since it helps value estimation.
+
     :param gym.Env env: the environment to wrap.
     """
 
@@ -73,7 +76,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         if 0 < lives < self.lives:
             # for Qbert sometimes we stay in lives == 0 condition for a few
             # frames, so its important to keep lives > 0, so that we only reset
-            # once the environment advertises done.
+            # once the environment is actually done.
             done = True
         self.lives = lives
         return obs, reward, done, info
@@ -94,6 +97,7 @@ class EpisodicLifeEnv(gym.Wrapper):
 
 class FireResetEnv(gym.Wrapper):
     """Take action on reset for environments that are fixed until firing.
+
     :param gym.Env env: the environment to wrap.
     """
 
@@ -113,6 +117,7 @@ class FireResetEnv(gym.Wrapper):
 
 class WarpFrame(gym.ObservationWrapper):
     """Warp frames to 84x84 as done in the Nature paper and later work.
+
     :param gym.Env env: the environment to wrap.
     """
 
@@ -132,6 +137,7 @@ class WarpFrame(gym.ObservationWrapper):
 
 class ScaledFloatFrame(gym.ObservationWrapper):
     """Normalize observations to 0~1.
+
     :param gym.Env env: the environment to wrap.
     """
 
@@ -147,6 +153,7 @@ class ScaledFloatFrame(gym.ObservationWrapper):
 
 class ClipRewardEnv(gym.RewardWrapper):
     """clips the reward to {+1, 0, -1} by its sign.
+
     :param gym.Env env: the environment to wrap.
     """
 
@@ -155,13 +162,13 @@ class ClipRewardEnv(gym.RewardWrapper):
         self.reward_range = (-1, 1)
 
     def reward(self, reward):
-        """Bin reward to {+1, 0, -1} by its sign."""
+        """Bin reward to {+1, 0, -1} by its sign. Note: np.sign(0) == 0."""
         return np.sign(reward)
 
 
 class FrameStack(gym.Wrapper):
     """Stack n_frames last frames.
-    Returns lazy array, which is much more memory efficient.
+
     :param gym.Env env: the environment to wrap.
     :param int n_frames: the number of frames to stack.
     """
@@ -193,11 +200,12 @@ class FrameStack(gym.Wrapper):
 
 def make_atari(env_id):
     """Create a wrapped atari Environment.
+
     :param str env_id: the environment ID.
     :return: the wrapped atari environment.
     """
+    assert 'NoFrameskip' in env_id
     env = gym.make(env_id)
-    assert 'NoFrameskip' in env.spec.id
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)
     return env
@@ -206,6 +214,7 @@ def make_atari(env_id):
 def wrap_deepmind(env_id, episode_life=True, clip_rewards=True,
                   frame_stack=4, scale=False):
     """Configure environment for DeepMind-style Atari.
+
     :param str env_id: the atari environment id.
     :param bool episode_life: wrap the episode life wrapper.
     :param bool clip_rewards: wrap the reward clipping wrapper.
