@@ -23,7 +23,7 @@ class NoopResetEnv(gym.Wrapper):
 
     def reset(self):
         self.env.reset()
-        noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)
+        noops = np.random.randint(1, self.noop_max + 1)
         for _ in range(noops):
             obs, _, done, _ = self.env.step(self.noop_action)
             if done:
@@ -93,13 +93,14 @@ class EpisodicLifeEnv(gym.Wrapper):
             obs = self.env.reset()
         else:
             # no-op step to advance from terminal/lost life state
-            obs, _, _, _ = self.env.step(0)
+            obs = self.env.step(0)[0]
         self.lives = self.env.unwrapped.ale.lives()
         return obs
 
 
 class FireResetEnv(gym.Wrapper):
     """Take action on reset for environments that are fixed until firing.
+    Related discussion: https://github.com/openai/baselines/issues/240
 
     :param gym.Env env: the environment to wrap.
     """
@@ -111,11 +112,7 @@ class FireResetEnv(gym.Wrapper):
 
     def reset(self):
         self.env.reset()
-        for act in [1, 2]:
-            obs, _, done, _ = self.env.step(act)
-            if done:
-                self.env.reset()
-        return obs
+        return self.env.step(1)[0]
 
 
 class WarpFrame(gym.ObservationWrapper):
