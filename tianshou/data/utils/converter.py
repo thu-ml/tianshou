@@ -40,13 +40,13 @@ def to_torch(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
     """Return an object without np.ndarray."""
     if isinstance(x, np.ndarray) and \
             issubclass(x.dtype.type, (np.bool_, np.number)):  # most often case
-        x = torch.from_numpy(x).to(device)
+        x = torch.from_numpy(x).to(device)  # type: ignore
         if dtype is not None:
             x = x.type(dtype)
     elif isinstance(x, torch.Tensor):  # second often case
         if dtype is not None:
             x = x.type(dtype)
-        x = x.to(device)
+        x = x.to(device)  # type: ignore
     elif isinstance(x, (np.number, np.bool_, Number)):
         x = to_torch(np.asanyarray(x), dtype, device)
     elif isinstance(x, dict):

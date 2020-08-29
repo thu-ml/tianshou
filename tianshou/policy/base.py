@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
+from numba import njit
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union, Optional, Callable
 
@@ -50,22 +51,18 @@ class BasePolicy(ABC, nn.Module):
         policy.load_state_dict(torch.load('policy.pth'))
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self,
+                 observation_space: gym.Space = None,
+                 action_space: gym.Space = None
+                 ) -> None:
         super().__init__()
-        self.observation_space = kwargs.get('observation_space')
-        self.action_space = kwargs.get('action_space')
+        self.observation_space = observation_space
+        self.action_space = action_space
         self.agent_id = 0
 
     def set_agent_id(self, agent_id: int) -> None:
         """set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
-
-    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
-                   indice: np.ndarray) -> Batch:
-        """Pre-process the data from the provided replay buffer. Check out
-        :ref:`policy_concept` for more information.
-        """
-        return batch
 
     @abstractmethod
     def forward(self, batch: Batch,
@@ -98,6 +95,13 @@ class BasePolicy(ABC, nn.Module):
         """
         pass
 
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
+        """Pre-process the data from the provided replay buffer. Check out
+        :ref:`policy_concept` for more information.
+        """
+        return batch
+
     @abstractmethod
     def learn(self, batch: Batch, **kwargs
               ) -> Dict[str, Union[float, List[float]]]:
@@ -115,6 +119,33 @@ class BasePolicy(ABC, nn.Module):
             tensors will amplify this error.
         """
         pass
+
+    def post_process_fn(self, batch: Batch,
+                        buffer: ReplayBuffer, indice: np.ndarray) -> None:
+        """Post-process the data from the provided replay buffer. Typical
+        usage is to update the sampling weight in prioritized experience
+        replay. Check out :ref:`policy_concept` for more information.
+        """
+        if isinstance(buffer, PrioritizedReplayBuffer) \
+                and hasattr(batch, 'weight'):
+            buffer.update_weight(indice, batch.weight)
+
+    def update(self, batch_size: int, buffer: Optional[ReplayBuffer],
+               *args, **kwargs) -> Dict[str, Union[float, List[float]]]:
+        """Update the policy network and replay buffer (if needed). It includes
+        three function steps: process_fn, learn, and post_process_fn.
+
+        :param int batch_size: 0 means it will extract all the data from the
+            buffer, otherwise it will sample a batch with the given batch_size.
+        :param ReplayBuffer buffer: the corresponding replay buffer.
+        """
+        if buffer is None:
+            return {}
+        batch, indice = buffer.sample(batch_size)
+        batch = self.process_fn(batch, buffer, indice)
+        result = self.learn(batch, *args, **kwargs)
+        self.post_process_fn(batch, buffer, indice)
+        return result
 
     @staticmethod
     def compute_episodic_return(
@@ -222,30 +253,3 @@ class BasePolicy(ABC, nn.Module):
         if isinstance(buffer, PrioritizedReplayBuffer):
             batch.weight = to_torch_as(batch.weight, target_q_torch)
         return batch
-
-    def post_process_fn(self, batch: Batch,
-                        buffer: ReplayBuffer, indice: np.ndarray) -> None:
-        """Post-process the data from the provided replay buffer. Typical
-        usage is to update the sampling weight in prioritized experience
-        replay. Check out :ref:`policy_concept` for more information.
-        """
-        if isinstance(buffer, PrioritizedReplayBuffer) \
-                and hasattr(batch, 'weight'):
-            buffer.update_weight(indice, batch.weight)
-
-    def update(self, batch_size: int, buffer: Optional[ReplayBuffer],
-               *args, **kwargs) -> Dict[str, Union[float, List[float]]]:
-        """Update the policy network and replay buffer (if needed). It includes
-        three function steps: process_fn, learn, and post_process_fn.
-
-        :param int batch_size: 0 means it will extract all the data from the
-            buffer, otherwise it will sample a batch with the given batch_size.
-        :param ReplayBuffer buffer: the corresponding replay buffer.
-        """
-        if buffer is None:
-            return {}
-        batch, indice = buffer.sample(batch_size)
-        batch = self.process_fn(batch, buffer, indice)
-        result = self.learn(batch, *args, **kwargs)
-        self.post_process_fn(batch, buffer, indice)
-        return result
