@@ -115,6 +115,9 @@ class ReplayBuffer:
         than or equal to 1, defaults to 1 (no stacking).
     :param bool ignore_obs_next: whether to store obs_next, defaults to
         ``False``.
+    :param bool save_only_last_obs: only save the last obs/obs_next when it has
+        a shape of (timestep, ...)  because of temporal stacking, defaults to
+        ``False``.
     :param bool sample_avail: the parameter indicating sampling only available
         index when using frame-stack sampling method, defaults to ``False``.
         This feature is not supported in Prioritized Replay Buffer currently.
@@ -122,6 +125,7 @@ class ReplayBuffer:
 
     def __init__(self, size: int, stack_num: int = 1,
                  ignore_obs_next: bool = False,
+                 save_only_last_obs: bool = False,
                  sample_avail: bool = False) -> None:
         super().__init__()
         self._maxsize = size
@@ -131,6 +135,7 @@ class ReplayBuffer:
         self._avail = sample_avail and stack_num > 1
         self._avail_index = []
         self._save_s_ = not ignore_obs_next
+        self._last_obs = save_only_last_obs
         self._index = 0
         self._size = 0
         self._meta = Batch()
@@ -210,6 +215,8 @@ class ReplayBuffer:
         """Add a batch of data into replay buffer."""
         assert isinstance(info, (dict, Batch)), \
             'You should return a dict in the last argument of env.step().'
+        if self._last_obs:
+            obs = obs[-1]
         self._add_to_buffer('obs', obs)
         self._add_to_buffer('act', act)
         self._add_to_buffer('rew', rew)
@@ -217,6 +224,8 @@ class ReplayBuffer:
         if self._save_s_:
             if obs_next is None:
                 obs_next = Batch()
+            elif self._last_obs:
+                obs_next = obs_next[-1]
             self._add_to_buffer('obs_next', obs_next)
         self._add_to_buffer('info', info)
         self._add_to_buffer('policy', policy)
