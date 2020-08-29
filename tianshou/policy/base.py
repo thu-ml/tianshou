@@ -176,14 +176,7 @@ class BasePolicy(ABC, nn.Module):
         """
         rew = batch.rew
         v_s_ = rew * 0. if v_s_ is None else to_numpy(v_s_).flatten()
-        returns = np.roll(v_s_, 1, axis=0)
-        m = (1. - batch.done) * gamma
-        delta = rew + v_s_ * m - returns
-        m *= gae_lambda
-        gae = 0.
-        for i in range(len(rew) - 1, -1, -1):
-            gae = delta[i] + m[i] * gae
-            returns[i] += gae
+        returns = _episodic_return(v_s_, rew, batch.done, gamma, gae_lambda)
         if rew_norm and not np.isclose(returns.std(), 0, 1e-2):
             returns = (returns - returns.mean()) / returns.std()
         batch.returns = returns
@@ -254,3 +247,20 @@ class BasePolicy(ABC, nn.Module):
         if isinstance(buffer, PrioritizedReplayBuffer):
             batch.weight = to_torch_as(batch.weight, target_q_torch)
         return batch
+
+
+@njit
+def _episodic_return(
+    v_s_: np.ndarray, rew: np.ndarray, done: np.ndarray,
+    gamma: float, gae_lambda: float,
+) -> np.ndarray:
+    """Numba speedup: 4.1s -> 0.057s"""
+    returns = np.roll(v_s_, 1)
+    m = (1. - done) * gamma
+    delta = rew + v_s_ * m - returns
+    m *= gae_lambda
+    gae = 0.
+    for i in range(len(rew) - 1, -1, -1):
+        gae = delta[i] + m[i] * gae
+        returns[i] += gae
+    return returns

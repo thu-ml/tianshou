@@ -1,6 +1,6 @@
-import time
 import torch
 import numpy as np
+from timeit import timeit
 
 from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer
@@ -58,15 +58,16 @@ def test_episodic_returns(size=2560):
             done=np.random.randint(100, size=size) == 0,
             rew=np.random.random(size),
         )
+
+        def vanilla():
+            return compute_episodic_return_base(batch, gamma=.1)
+
+        def optimized():
+            return fn(batch, gamma=.1)
+
         cnt = 3000
-        t = time.time()
-        for _ in range(cnt):
-            compute_episodic_return_base(batch, gamma=.1)
-        print(f'vanilla: {(time.time() - t) / cnt}')
-        t = time.time()
-        for _ in range(cnt):
-            fn(batch, None, gamma=.1, gae_lambda=1)
-        print(f'policy: {(time.time() - t) / cnt}')
+        print('vanilla', timeit(vanilla, setup=vanilla, number=cnt))
+        print('optimized', timeit(optimized, setup=optimized, number=cnt))
 
 
 def target_q_fn(buffer, indice):
