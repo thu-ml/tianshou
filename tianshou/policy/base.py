@@ -176,8 +176,7 @@ class BasePolicy(ABC, nn.Module):
         """
         rew = batch.rew
         v_s_ = np.zeros_like(rew) if v_s_ is None else to_numpy(v_s_).flatten()
-        returns = _episodic_return(
-            v_s_.astype(np.float64), rew, batch.done, gamma, gae_lambda)
+        returns = _episodic_return(v_s_, rew, batch.done, gamma, gae_lambda)
         if rew_norm and not np.isclose(returns.std(), 0, 1e-2):
             returns = (returns - returns.mean()) / returns.std()
         batch.returns = returns
@@ -291,6 +290,7 @@ def _compile():
     b = np.array([False, True], dtype=np.bool_)
     i64 = np.array([0, 1], dtype=np.int64)
     _episodic_return(f64, f64, b, .1, .1)
+    _episodic_return(f32, f64, b, .1, .1)
     _nstep_return(f64, b, f32, i64, .1, 1, 4, 1., 0.)
 
 
