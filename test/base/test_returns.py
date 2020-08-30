@@ -137,7 +137,7 @@ def test_nstep_returns(size=10000):
                 batch, buf, indice, target_q_fn, gamma=.1, n_step=3)
 
         cnt = 3000
-        # print('nstep vanilla', timeit(vanilla, setup=vanilla, number=cnt))
+        print('nstep vanilla', timeit(vanilla, setup=vanilla, number=cnt))
         print('nstep optim  ', timeit(optimized, setup=optimized, number=cnt))
 
 

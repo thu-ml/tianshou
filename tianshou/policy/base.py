@@ -2,7 +2,7 @@ import gym
 import torch
 import numpy as np
 from torch import nn
-# from numba import njit
+from numba import njit
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union, Optional, Callable
 
@@ -175,8 +175,9 @@ class BasePolicy(ABC, nn.Module):
             array with shape (bsz, ).
         """
         rew = batch.rew
-        v_s_ = rew * 0. if v_s_ is None else to_numpy(v_s_).flatten()
-        returns = _episodic_return(v_s_, rew, batch.done, gamma, gae_lambda)
+        v_s_ = np.zeros_like(rew) if v_s_ is None else to_numpy(v_s_).flatten()
+        returns = _episodic_return(
+            v_s_.astype(np.float64), rew, batch.done, gamma, gae_lambda)
         if rew_norm and not np.isclose(returns.std(), 0, 1e-2):
             returns = (returns - returns.mean()) / returns.std()
         batch.returns = returns
@@ -226,9 +227,9 @@ class BasePolicy(ABC, nn.Module):
             bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
             if np.isclose(std, 0, 1e-2):
-                mean, std = 0, 1
+                mean, std = 0., 1.
         else:
-            mean, std = 0, 1
+            mean, std = 0., 1.
         buf_len = len(buffer)
         terminal = (indice + n_step - 1) % buf_len
         target_q_torch = target_q_fn(buffer, terminal).flatten()  # (bsz, )
@@ -244,7 +245,7 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
 
-# @njit
+@njit
 def _episodic_return(
     v_s_: np.ndarray, rew: np.ndarray, done: np.ndarray,
     gamma: float, gae_lambda: float,
@@ -261,12 +262,13 @@ def _episodic_return(
     return returns
 
 
-# @njit
+@njit
 def _nstep_return(
     rew: np.ndarray, done: np.ndarray, target_q: np.ndarray,
     indice: np.ndarray, gamma: float, n_step: int, buf_len: int,
     mean: float, std: float
 ) -> np.ndarray:
+    """Numba speedup: 0.3s -> 0.15s"""
     returns = np.zeros(indice.shape)
     gammas = np.full(indice.shape, n_step)
     for n in range(n_step - 1, -1, -1):
@@ -277,3 +279,19 @@ def _nstep_return(
     target_q[gammas != n_step] = 0
     target_q = target_q * (gamma ** gammas) + returns
     return target_q
+
+
+def _compile():
+    """Since Numba acceleration needs to pre-compile the function, here we
+    use some fake data for the common-type function-call compilation.
+    Otherwise, the current training speed cannot compare with the previous.
+    """
+    f64 = np.array([0, 1], dtype=np.float64)
+    f32 = np.array([0, 1], dtype=np.float32)
+    b = np.array([False, True], dtype=np.bool_)
+    i64 = np.array([0, 1], dtype=np.int64)
+    _episodic_return(f64, f64, b, .1, .1)
+    _nstep_return(f64, b, f32, i64, .1, 1, 4, 1., 0.)
+
+
+_compile()
