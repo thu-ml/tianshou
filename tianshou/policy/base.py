@@ -2,7 +2,7 @@ import gym
 import torch
 import numpy as np
 from torch import nn
-from numba import njit
+# from numba import njit
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union, Optional, Callable
 
@@ -229,19 +229,14 @@ class BasePolicy(ABC, nn.Module):
                 mean, std = 0, 1
         else:
             mean, std = 0, 1
-        returns = np.zeros_like(indice)
-        gammas = np.zeros_like(indice) + n_step
-        done, buf_len = buffer.done, len(buffer)
-        for n in range(n_step - 1, -1, -1):
-            now = (indice + n) % buf_len
-            gammas[done[now] > 0] = n
-            returns[done[now] > 0] = 0
-            returns = (rew[now] - mean) / std + gamma * returns
+        buf_len = len(buffer)
         terminal = (indice + n_step - 1) % buf_len
         target_q_torch = target_q_fn(buffer, terminal).flatten()  # (bsz, )
         target_q = to_numpy(target_q_torch)
-        target_q[gammas != n_step] = 0
-        target_q = target_q * (gamma ** gammas) + returns
+
+        target_q = _nstep_return(rew, buffer.done, target_q, indice,
+                                 gamma, n_step, len(buffer), mean, std)
+
         batch.returns = to_torch_as(target_q, target_q_torch)
         # prio buffer update
         if isinstance(buffer, PrioritizedReplayBuffer):
@@ -249,7 +244,7 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
 
-@njit
+# @njit
 def _episodic_return(
     v_s_: np.ndarray, rew: np.ndarray, done: np.ndarray,
     gamma: float, gae_lambda: float,
@@ -264,3 +259,21 @@ def _episodic_return(
         gae = delta[i] + m[i] * gae
         returns[i] += gae
     return returns
+
+
+# @njit
+def _nstep_return(
+    rew: np.ndarray, done: np.ndarray, target_q: np.ndarray,
+    indice: np.ndarray, gamma: float, n_step: int, buf_len: int,
+    mean: float, std: float
+) -> np.ndarray:
+    returns = np.zeros(indice.shape)
+    gammas = np.full(indice.shape, n_step)
+    for n in range(n_step - 1, -1, -1):
+        now = (indice + n) % buf_len
+        gammas[done[now] > 0] = n
+        returns[done[now] > 0] = 0.
+        returns = (rew[now] - mean) / std + gamma * returns
+    target_q[gammas != n_step] = 0
+    target_q = target_q * (gamma ** gammas) + returns
+    return target_q
