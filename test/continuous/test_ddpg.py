@@ -6,12 +6,12 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import DummyVectorEnv
 from tianshou.policy import DDPGPolicy
-from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
-from tianshou.exploration import GaussianNoise
+from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
+from tianshou.trainer import offpolicy_trainer
+from tianshou.exploration import GaussianNoise
+from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.continuous import Actor, Critic
 
 
@@ -115,4 +115,6 @@ def test_ddpg(args=get_args()):
 
 
 if __name__ == '__main__':
+    from tianshou.policy.base import _compile
+    _compile()  # exclude compilation time to get the correct train_speed
     test_ddpg()

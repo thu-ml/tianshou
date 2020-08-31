@@ -292,6 +292,3 @@ def _compile():
     _episodic_return(f64, f64, b, .1, .1)
     _episodic_return(f32, f64, b, .1, .1)
     _nstep_return(f64, b, f32, i64, .1, 1, 4, 1., 0.)
-
-
-_compile()

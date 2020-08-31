@@ -6,12 +6,12 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPOPolicy
+from tianshou.env import DummyVectorEnv
+from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.discrete import Actor, Critic
-from tianshou.utils.net.common import Net
 
 
 def get_args():
@@ -119,4 +119,6 @@ def test_ppo(args=get_args()):
 
 
 if __name__ == '__main__':
+    from tianshou.policy.base import _compile
+    _compile()  # exclude compilation time to get the correct train_speed
     test_ppo()
