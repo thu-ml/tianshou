@@ -119,6 +119,6 @@ def test_ppo(args=get_args()):
 
 
 if __name__ == '__main__':
-    from tianshou.policy.base import _compile
-    _compile()  # exclude compilation time to get the correct train_speed
+    from tianshou.utils import pre_compile
+    pre_compile()  # exclude compilation time to get the correct train_speed
     test_ppo()
