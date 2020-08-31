@@ -112,8 +112,8 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
             ids = Batch(info).env_id
             print(ids, t)
             if cls != RayVectorEnv:  # ray-project/ray#10134
-                if not (np.allclose(sorted(ids), res) and
-                        (t < timeout) == (len(res) == num - 1)):
+                if not (len(ids) == len(res) and np.allclose(sorted(ids), res)
+                        and (t < timeout) == (len(res) == num - 1)):
                     flag = 0
                     break
         cnt += flag
