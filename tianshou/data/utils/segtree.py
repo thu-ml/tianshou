@@ -117,15 +117,5 @@ def _get_prefix_sum_idx(value: np.ndarray, bound: int,
         direct = lsons < value
         value -= lsons * direct
         index += direct
-    # for id, s in enumerate(value):
-    #     i = 1
-    #     while i < bound:
-    #         j = i * 2
-    #         if sums[j] >= s:
-    #             i = j
-    #         else:
-    #             s = s - sums[j]
-    #             i = j + 1
-    #     index[id] = i
     index -= bound
     return index

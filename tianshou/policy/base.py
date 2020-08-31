@@ -281,8 +281,8 @@ def _nstep_return(
 
 
 def _compile():
-    """Since Numba acceleration needs to pre-compile the function, here we
-    use some fake data for the common-type function-call compilation.
+    """Since Numba acceleration needs to compile the function in the first run,
+    here we use some fake data for the common-type function-call compilation.
     Otherwise, the current training speed cannot compare with the previous.
     """
     f64 = np.array([0, 1], dtype=np.float64)
