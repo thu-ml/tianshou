@@ -90,9 +90,9 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
     test_cls = [SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
         test_cls += [RayVectorEnv]
-    cnt = 0
+    total_pass = 0
     for cls in test_cls:
-        flag = 1
+        pass_check = 1
         v = cls(env_fns, wait_num=num - 1, timeout=timeout)
         v.reset()
         expect_result = [
@@ -114,10 +114,10 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
             if cls != RayVectorEnv:  # ray-project/ray#10134
                 if not (len(ids) == len(res) and np.allclose(sorted(ids), res)
                         and (t < timeout) == (len(res) == num - 1)):
-                    flag = 0
+                    pass_check = 0
                     break
-        cnt += flag
-    assert cnt >= 1  # should be modified when ray>=0.9.0 release
+        total_pass += pass_check
+    assert total_pass >= 1  # should be modified when ray>=0.9.0 release
 
 
 def test_vecenv(size=10, num=8, sleep=0.001):
