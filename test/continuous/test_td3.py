@@ -120,6 +120,4 @@ def test_td3(args=get_args()):
 
 
 if __name__ == '__main__':
-    from tianshou.utils import pre_compile
-    pre_compile()  # exclude compilation time to get the correct train_speed
     test_td3()
