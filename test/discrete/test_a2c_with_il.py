@@ -7,11 +7,11 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import DummyVectorEnv
+from tianshou.utils.net.common import Net
 from tianshou.data import Collector, ReplayBuffer
+from tianshou.utils.net.discrete import Actor, Critic
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
-from tianshou.utils.net.discrete import Actor, Critic
-from tianshou.utils.net.common import Net
 
 
 def get_args():

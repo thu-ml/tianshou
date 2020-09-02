@@ -1,9 +1,9 @@
-import time
 import torch
 import numpy as np
+from timeit import timeit
 
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, to_numpy
 
 
 def compute_episodic_return_base(batch, gamma):
@@ -58,15 +58,16 @@ def test_episodic_returns(size=2560):
             done=np.random.randint(100, size=size) == 0,
             rew=np.random.random(size),
         )
+
+        def vanilla():
+            return compute_episodic_return_base(batch, gamma=.1)
+
+        def optimized():
+            return fn(batch, gamma=.1)
+
         cnt = 3000
-        t = time.time()
-        for _ in range(cnt):
-            compute_episodic_return_base(batch, gamma=.1)
-        print(f'vanilla: {(time.time() - t) / cnt}')
-        t = time.time()
-        for _ in range(cnt):
-            fn(batch, None, gamma=.1, gae_lambda=1)
-        print(f'policy: {(time.time() - t) / cnt}')
+        print('GAE vanilla', timeit(vanilla, setup=vanilla, number=cnt))
+        print('GAE optim  ', timeit(optimized, setup=optimized, number=cnt))
 
 
 def target_q_fn(buffer, indice):
@@ -75,7 +76,25 @@ def target_q_fn(buffer, indice):
     return torch.tensor(-buffer.rew[indice], dtype=torch.float32)
 
 
-def test_nstep_returns():
+def compute_nstep_return_base(nstep, gamma, buffer, indice):
+    returns = np.zeros_like(indice, dtype=np.float)
+    buf_len = len(buffer)
+    for i in range(len(indice)):
+        flag, r = False, 0.
+        for n in range(nstep):
+            idx = (indice[i] + n) % buf_len
+            r += buffer.rew[idx] * gamma ** n
+            if buffer.done[idx]:
+                flag = True
+                break
+        if not flag:
+            idx = (indice[i] + nstep - 1) % buf_len
+            r += to_numpy(target_q_fn(buffer, idx)) * gamma ** nstep
+        returns[i] = r
+    return returns
+
+
+def test_nstep_returns(size=10000):
     buf = ReplayBuffer(10)
     for i in range(12):
         buf.add(obs=0, act=0, rew=i + 1, done=i % 4 == 3)
@@ -84,19 +103,42 @@ def test_nstep_returns():
     # rew:  [10, 11, 2, 3, 4, 5, 6, 7, 8, 9]
     # done: [ 0,  1, 0, 1, 0, 0, 0, 1, 0, 0]
     # test nstep = 1
-    returns = BasePolicy.compute_nstep_return(
-        batch, buf, indice, target_q_fn, gamma=.1, n_step=1).pop('returns')
+    returns = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn, gamma=.1, n_step=1).pop('returns'))
     assert np.allclose(returns, [2.6, 4, 4.4, 5.3, 6.2, 8, 8, 8.9, 9.8, 12])
+    r_ = compute_nstep_return_base(1, .1, buf, indice)
+    assert np.allclose(returns, r_), (r_, returns)
     # test nstep = 2
-    returns = BasePolicy.compute_nstep_return(
-        batch, buf, indice, target_q_fn, gamma=.1, n_step=2).pop('returns')
+    returns = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn, gamma=.1, n_step=2).pop('returns'))
     assert np.allclose(returns, [
         3.4, 4, 5.53, 6.62, 7.8, 8, 9.89, 10.98, 12.2, 12])
+    r_ = compute_nstep_return_base(2, .1, buf, indice)
+    assert np.allclose(returns, r_)
     # test nstep = 10
-    returns = BasePolicy.compute_nstep_return(
-        batch, buf, indice, target_q_fn, gamma=.1, n_step=10).pop('returns')
+    returns = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn, gamma=.1, n_step=10).pop('returns'))
     assert np.allclose(returns, [
         3.4, 4, 5.678, 6.78, 7.8, 8, 10.122, 11.22, 12.2, 12])
+    r_ = compute_nstep_return_base(10, .1, buf, indice)
+    assert np.allclose(returns, r_)
+
+    if __name__ == '__main__':
+        buf = ReplayBuffer(size)
+        for i in range(int(size * 1.5)):
+            buf.add(obs=0, act=0, rew=i + 1, done=np.random.randint(3) == 0)
+        batch, indice = buf.sample(256)
+
+        def vanilla():
+            return compute_nstep_return_base(3, .1, buf, indice)
+
+        def optimized():
+            return BasePolicy.compute_nstep_return(
+                batch, buf, indice, target_q_fn, gamma=.1, n_step=3)
+
+        cnt = 3000
+        print('nstep vanilla', timeit(vanilla, setup=vanilla, number=cnt))
+        print('nstep optim  ', timeit(optimized, setup=optimized, number=cnt))
 
 
 if __name__ == '__main__':

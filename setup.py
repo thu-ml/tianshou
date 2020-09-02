@@ -43,6 +43,7 @@ setup(
         'numpy',
         'tensorboard',
         'torch>=1.4.0',
+        'numba>=0.51.0',
     ],
     extras_require={
         'dev': [

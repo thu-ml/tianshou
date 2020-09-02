@@ -170,7 +170,7 @@ def watch(args: argparse.Namespace = get_args(),
     policy, optim = get_agents(
         args, agent_learn=agent_learn, agent_opponent=agent_opponent)
     policy.eval()
-    policy.set_eps(args.eps_test)
+    policy.policies[args.agent_id - 1].set_eps(args.eps_test)
     collector = Collector(policy, env)
     result = collector.collect(n_episode=1, render=args.render)
     print(f'Final reward: {result["rew"]}, length: {result["len"]}')
