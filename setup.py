@@ -3,18 +3,10 @@
 
 from setuptools import setup, find_packages
 
-import re
-from os import path
-
-here = path.abspath(path.dirname(__file__))
-
-# Get the version string
-with open(path.join(here, 'tianshou', '__init__.py')) as f:
-    version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
 
 setup(
     name='tianshou',
-    version=version,
+    version='0.2.6',
     description='A Library for Deep Reinforcement Learning',
     long_description=open('README.md', encoding='utf8').read(),
     long_description_content_type='text/markdown',
@@ -51,6 +43,7 @@ setup(
         'numpy',
         'tensorboard',
         'torch>=1.4.0',
+        'numba>=0.51.0',
     ],
     extras_require={
         'dev': [

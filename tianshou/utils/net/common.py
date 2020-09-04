@@ -1,12 +1,13 @@
 import torch
 import numpy as np
 from torch import nn
-from typing import Tuple, Union, Optional
+from typing import List, Tuple, Union, Optional
 
 from tianshou.data import to_torch
 
 
-def miniblock(inp: int, oup: int, norm_layer: nn.modules.Module):
+def miniblock(inp: int, oup: int,
+              norm_layer: nn.modules.Module) -> List[nn.modules.Module]:
     ret = [nn.Linear(inp, oup)]
     if norm_layer is not None:
         ret += [norm_layer(oup)]
@@ -28,7 +29,7 @@ class Net(nn.Module):
     """
 
     def __init__(self, layer_num: int, state_shape: tuple,
-                 action_shape: Optional[tuple] = 0,
+                 action_shape: Optional[Union[tuple, int]] = 0,
                  device: Union[str, torch.device] = 'cpu',
                  softmax: bool = False,
                  concat: bool = False,

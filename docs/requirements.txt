@@ -1,5 +1,6 @@
 gym
 tqdm
 torch
+numba
 tensorboard
 sphinxcontrib-bibtex

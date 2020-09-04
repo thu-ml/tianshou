@@ -6,12 +6,12 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPOPolicy
+from tianshou.env import DummyVectorEnv
+from tianshou.utils.net.common import Net
 from tianshou.policy.dist import DiagGaussian
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
@@ -123,6 +123,7 @@ def test_ppo(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
+        policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')

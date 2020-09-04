@@ -1,6 +1,8 @@
+import gym
 import torch
 import numpy as np
 from torch import nn
+from numba import njit
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union, Optional, Callable
 
@@ -50,22 +52,18 @@ class BasePolicy(ABC, nn.Module):
         policy.load_state_dict(torch.load('policy.pth'))
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self,
+                 observation_space: gym.Space = None,
+                 action_space: gym.Space = None
+                 ) -> None:
         super().__init__()
-        self.observation_space = kwargs.get('observation_space')
-        self.action_space = kwargs.get('action_space')
+        self.observation_space = observation_space
+        self.action_space = action_space
         self.agent_id = 0
 
     def set_agent_id(self, agent_id: int) -> None:
         """set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
-
-    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
-                   indice: np.ndarray) -> Batch:
-        """Pre-process the data from the provided replay buffer. Check out
-        :ref:`policy_concept` for more information.
-        """
-        return batch
 
     @abstractmethod
     def forward(self, batch: Batch,
@@ -98,6 +96,13 @@ class BasePolicy(ABC, nn.Module):
         """
         pass
 
+    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
+                   indice: np.ndarray) -> Batch:
+        """Pre-process the data from the provided replay buffer. Check out
+        :ref:`policy_concept` for more information.
+        """
+        return batch
+
     @abstractmethod
     def learn(self, batch: Batch, **kwargs
               ) -> Dict[str, Union[float, List[float]]]:
@@ -115,6 +120,33 @@ class BasePolicy(ABC, nn.Module):
             tensors will amplify this error.
         """
         pass
+
+    def post_process_fn(self, batch: Batch,
+                        buffer: ReplayBuffer, indice: np.ndarray) -> None:
+        """Post-process the data from the provided replay buffer. Typical
+        usage is to update the sampling weight in prioritized experience
+        replay. Check out :ref:`policy_concept` for more information.
+        """
+        if isinstance(buffer, PrioritizedReplayBuffer) \
+                and hasattr(batch, 'weight'):
+            buffer.update_weight(indice, batch.weight)
+
+    def update(self, batch_size: int, buffer: Optional[ReplayBuffer],
+               *args, **kwargs) -> Dict[str, Union[float, List[float]]]:
+        """Update the policy network and replay buffer (if needed). It includes
+        three function steps: process_fn, learn, and post_process_fn.
+
+        :param int batch_size: 0 means it will extract all the data from the
+            buffer, otherwise it will sample a batch with the given batch_size.
+        :param ReplayBuffer buffer: the corresponding replay buffer.
+        """
+        if buffer is None:
+            return {}
+        batch, indice = buffer.sample(batch_size)
+        batch = self.process_fn(batch, buffer, indice)
+        result = self.learn(batch, *args, **kwargs)
+        self.post_process_fn(batch, buffer, indice)
+        return result
 
     @staticmethod
     def compute_episodic_return(
@@ -143,15 +175,8 @@ class BasePolicy(ABC, nn.Module):
             array with shape (bsz, ).
         """
         rew = batch.rew
-        v_s_ = rew * 0. if v_s_ is None else to_numpy(v_s_).flatten()
-        returns = np.roll(v_s_, 1, axis=0)
-        m = (1. - batch.done) * gamma
-        delta = rew + v_s_ * m - returns
-        m *= gae_lambda
-        gae = 0.
-        for i in range(len(rew) - 1, -1, -1):
-            gae = delta[i] + m[i] * gae
-            returns[i] += gae
+        v_s_ = np.zeros_like(rew) if v_s_ is None else to_numpy(v_s_).flatten()
+        returns = _episodic_return(v_s_, rew, batch.done, gamma, gae_lambda)
         if rew_norm and not np.isclose(returns.std(), 0, 1e-2):
             returns = (returns - returns.mean()) / returns.std()
         batch.returns = returns
@@ -201,50 +226,55 @@ class BasePolicy(ABC, nn.Module):
             bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
             if np.isclose(std, 0, 1e-2):
-                mean, std = 0, 1
+                mean, std = 0., 1.
         else:
-            mean, std = 0, 1
-        returns = np.zeros_like(indice)
-        gammas = np.zeros_like(indice) + n_step
-        done, buf_len = buffer.done, len(buffer)
-        for n in range(n_step - 1, -1, -1):
-            now = (indice + n) % buf_len
-            gammas[done[now] > 0] = n
-            returns[done[now] > 0] = 0
-            returns = (rew[now] - mean) / std + gamma * returns
+            mean, std = 0., 1.
+        buf_len = len(buffer)
         terminal = (indice + n_step - 1) % buf_len
-        target_q = target_q_fn(buffer, terminal).flatten()  # shape: [bsz, ]
-        target_q[gammas != n_step] = 0
-        returns = to_torch_as(returns, target_q)
-        gammas = to_torch_as(gamma ** gammas, target_q)
-        batch.returns = target_q * gammas + returns
+        target_q_torch = target_q_fn(buffer, terminal).flatten()  # (bsz, )
+        target_q = to_numpy(target_q_torch)
+
+        target_q = _nstep_return(rew, buffer.done, target_q, indice,
+                                 gamma, n_step, len(buffer), mean, std)
+
+        batch.returns = to_torch_as(target_q, target_q_torch)
         # prio buffer update
         if isinstance(buffer, PrioritizedReplayBuffer):
-            batch.weight = to_torch_as(batch.weight, target_q)
-        else:
-            batch.weight = torch.ones_like(target_q)
+            batch.weight = to_torch_as(batch.weight, target_q_torch)
         return batch
 
-    def post_process_fn(self, batch: Batch,
-                        buffer: ReplayBuffer, indice: np.ndarray):
-        """Post-process the data from the provided replay buffer. Typical
-        usage is to update the sampling weight in prioritized experience
-        replay. Check out :ref:`policy_concept` for more information.
-        """
-        if isinstance(buffer, PrioritizedReplayBuffer) \
-                and hasattr(batch, 'weight'):
-            buffer.update_weight(indice, batch.weight)
 
-    def update(self, batch_size: int, buffer: ReplayBuffer, *args, **kwargs):
-        """Update the policy network and replay buffer (if needed). It includes
-        three function steps: process_fn, learn, and post_process_fn.
+@njit
+def _episodic_return(
+    v_s_: np.ndarray, rew: np.ndarray, done: np.ndarray,
+    gamma: float, gae_lambda: float,
+) -> np.ndarray:
+    """Numba speedup: 4.1s -> 0.057s"""
+    returns = np.roll(v_s_, 1)
+    m = (1. - done) * gamma
+    delta = rew + v_s_ * m - returns
+    m *= gae_lambda
+    gae = 0.
+    for i in range(len(rew) - 1, -1, -1):
+        gae = delta[i] + m[i] * gae
+        returns[i] += gae
+    return returns
 
-        :param int batch_size: 0 means it will extract all the data from the
-            buffer, otherwise it will sample a batch with the given batch_size.
-        :param ReplayBuffer buffer: the corresponding replay buffer.
-        """
-        batch, indice = buffer.sample(batch_size)
-        batch = self.process_fn(batch, buffer, indice)
-        result = self.learn(batch, *args, **kwargs)
-        self.post_process_fn(batch, buffer, indice)
-        return result
+
+@njit
+def _nstep_return(
+    rew: np.ndarray, done: np.ndarray, target_q: np.ndarray,
+    indice: np.ndarray, gamma: float, n_step: int, buf_len: int,
+    mean: float, std: float
+) -> np.ndarray:
+    """Numba speedup: 0.3s -> 0.15s"""
+    returns = np.zeros(indice.shape)
+    gammas = np.full(indice.shape, n_step)
+    for n in range(n_step - 1, -1, -1):
+        now = (indice + n) % buf_len
+        gammas[done[now] > 0] = n
+        returns[done[now] > 0] = 0.
+        returns = (rew[now] - mean) / std + gamma * returns
+    target_q[gammas != n_step] = 0
+    target_q = target_q * (gamma ** gammas) + returns
+    return target_q

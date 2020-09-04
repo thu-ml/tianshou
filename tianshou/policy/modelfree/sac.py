@@ -137,11 +137,12 @@ class SACPolicy(DDPGPolicy):
         return target_q
 
     def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
+        weight = batch.pop('weight', 1.)
         # critic 1
         current_q1 = self.critic1(batch.obs, batch.act).flatten()
         target_q = batch.returns.flatten()
         td1 = current_q1 - target_q
-        critic1_loss = (td1.pow(2) * batch.weight).mean()
+        critic1_loss = (td1.pow(2) * weight).mean()
         # critic1_loss = F.mse_loss(current_q1, target_q)
         self.critic1_optim.zero_grad()
         critic1_loss.backward()
@@ -149,7 +150,7 @@ class SACPolicy(DDPGPolicy):
         # critic 2
         current_q2 = self.critic2(batch.obs, batch.act).flatten()
         td2 = current_q2 - target_q
-        critic2_loss = (td2.pow(2) * batch.weight).mean()
+        critic2_loss = (td2.pow(2) * weight).mean()
         # critic2_loss = F.mse_loss(current_q2, target_q)
         self.critic2_optim.zero_grad()
         critic2_loss.backward()

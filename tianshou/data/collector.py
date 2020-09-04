@@ -3,6 +3,7 @@ import time
 import torch
 import warnings
 import numpy as np
+from copy import deepcopy
 from typing import Any, Dict, List, Union, Optional, Callable
 
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
@@ -79,7 +80,7 @@ class Collector(object):
                  policy: BasePolicy,
                  env: Union[gym.Env, BaseVectorEnv],
                  buffer: Optional[ReplayBuffer] = None,
-                 preprocess_fn: Callable[[Any], Union[dict, Batch]] = None,
+                 preprocess_fn: Callable[[Any], Batch] = None,
                  action_noise: Optional[BaseNoise] = None,
                  reward_metric: Optional[Callable[[np.ndarray], float]] = None,
                  ) -> None:
@@ -97,7 +98,6 @@ class Collector(object):
         self.is_async = env.is_async
         # need cache buffers before storing in the main buffer
         self._cached_buf = [ListReplayBuffer() for _ in range(self.env_num)]
-        self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
         self.buffer = buffer
         self.policy = policy
         self.preprocess_fn = preprocess_fn
@@ -106,8 +106,6 @@ class Collector(object):
         self._action_noise = action_noise
         self._rew_metric = reward_metric or Collector._default_rew_metric
         # avoid creating attribute outside __init__
-        self.data = Batch(state={}, obs={}, act={}, rew={}, done={}, info={},
-                          obs_next={}, policy={})
         self.reset()
 
     @staticmethod
@@ -202,14 +200,28 @@ class Collector(object):
             * ``rew`` the mean reward over collected episodes.
             * ``len`` the mean length over collected episodes.
         """
-        assert (n_step and not n_episode) or (not n_step and n_episode), \
-            "One and only one collection number specification is permitted!"
+        assert (n_step is not None and n_episode is None and n_step > 0) or (
+            n_step is None and n_episode is not None and np.sum(n_episode) > 0
+        ), "Only one of n_step or n_episode is allowed in Collector.collect, "
+        f"got n_step = {n_step}, n_episode = {n_episode}."
         start_time = time.time()
         step_count = 0
         # episode of each environment
         episode_count = np.zeros(self.env_num)
+        # If n_episode is a list, and some envs have collected the required
+        # number of episodes, these envs will be recorded in this list, and
+        # they will not be stepped.
+        finished_env_ids = []
         reward_total = 0.0
         whole_data = Batch()
+        list_n_episode = False
+        if n_episode is not None and not np.isscalar(n_episode):
+            assert len(n_episode) == self.get_env_num()
+            list_n_episode = True
+            finished_env_ids = [
+                i for i in self._ready_env_ids if n_episode[i] <= 0]
+            self._ready_env_ids = np.array(
+                [x for x in self._ready_env_ids if x not in finished_env_ids])
         while True:
             if step_count >= 100000 and episode_count.sum() == 0:
                 warnings.warn(
@@ -217,12 +229,14 @@ class Collector(object):
                     'You should add a time limitation to your environment!',
                     Warning)
 
-            if self.is_async:
-                # self.data are the data for all environments
-                # in async simulation, only a subset of data are disposed
+            is_async = self.is_async or len(finished_env_ids) > 0
+            if is_async:
+                # self.data are the data for all environments in async
+                # simulation or some envs have finished,
+                # **only a subset of data are disposed**,
                 # so we store the whole data in ``whole_data``, let self.data
-                # to be all the data available in ready environments, and
-                # finally set these back into all the data
+                # to be the data available in ready environments, and finally
+                # set these back into all the data
                 whole_data = self.data
                 self.data = self.data[self._ready_env_ids]
 
@@ -247,16 +261,15 @@ class Collector(object):
                 state = Batch()
             self.data.update(state=state, policy=result.get('policy', Batch()))
             # save hidden state to policy._state, in order to save into buffer
-            if not (isinstance(self.data.state, Batch)
-                    and self.data.state.is_empty()):
+            if not (isinstance(state, Batch) and state.is_empty()):
                 self.data.policy._state = self.data.state
 
             self.data.act = to_numpy(result.act)
-            if self._action_noise is not None:
+            if self._action_noise is not None:  # noqa
                 self.data.act += self._action_noise(self.data.act.shape)
 
             # step in env
-            if not self.is_async:
+            if not is_async:
                 obs_next, rew, done, info = self.env.step(self.data.act)
             else:
                 # store computed actions, states, etc
@@ -264,7 +277,7 @@ class Collector(object):
                                 self.data, self.env_num)
                 # fetch finished data
                 obs_next, rew, done, info = self.env.step(
-                    action=self.data.act, id=self._ready_env_ids)
+                    self.data.act, id=self._ready_env_ids)
                 self._ready_env_ids = np.array([i['env_id'] for i in info])
                 # get the stepped data
                 self.data = whole_data[self._ready_env_ids]
@@ -279,23 +292,34 @@ class Collector(object):
             if self.preprocess_fn:
                 result = self.preprocess_fn(**self.data)
                 self.data.update(result)
+
             for j, i in enumerate(self._ready_env_ids):
                 # j is the index in current ready_env_ids
                 # i is the index in all environments
-                self._cached_buf[i].add(**self.data[j])
-                if self.data.done[j]:
-                    if n_step or np.isscalar(n_episode) or \
-                            episode_count[i] < n_episode[i]:
+                if self.buffer is None:
+                    # users do not want to store data, so we store
+                    # small fake data here to make the code clean
+                    self._cached_buf[i].add(obs=0, act=0, rew=rew[j], done=0)
+                else:
+                    self._cached_buf[i].add(**self.data[j])
+
+                if done[j]:
+                    if not (list_n_episode and
+                            episode_count[i] >= n_episode[i]):
                         episode_count[i] += 1
                         reward_total += np.sum(self._cached_buf[i].rew, axis=0)
                         step_count += len(self._cached_buf[i])
                         if self.buffer is not None:
                             self.buffer.update(self._cached_buf[i])
+                        if list_n_episode and \
+                                episode_count[i] >= n_episode[i]:
+                            # env i has collected enough data, it has finished
+                            finished_env_ids.append(i)
                     self._cached_buf[i].reset()
                     self._reset_state(j)
             obs_next = self.data.obs_next
-            if sum(self.data.done):
-                env_ind_local = np.where(self.data.done)[0]
+            if sum(done):
+                env_ind_local = np.where(done)[0]
                 env_ind_global = self._ready_env_ids[env_ind_local]
                 obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
@@ -304,12 +328,15 @@ class Collector(object):
                 else:
                     obs_next[env_ind_local] = obs_reset
             self.data.obs = obs_next
-            if self.is_async:
+            if is_async:
                 # set data back
+                whole_data = deepcopy(whole_data)  # avoid reference in ListBuf
                 _batch_set_item(whole_data, self._ready_env_ids,
                                 self.data, self.env_num)
                 # let self.data be the data in all environments again
                 self.data = whole_data
+            self._ready_env_ids = np.array(
+                [x for x in self._ready_env_ids if x not in finished_env_ids])
             if n_step:
                 if step_count >= n_step:
                     break
@@ -320,6 +347,10 @@ class Collector(object):
                 if isinstance(n_episode, list) and \
                         (episode_count >= n_episode).all():
                     break
+
+        # finished envs are ready, and can be used for the next collection
+        self._ready_env_ids = np.array(
+            self._ready_env_ids.tolist() + finished_env_ids)
 
         # generate the statistics
         episode_count = sum(episode_count)
@@ -353,6 +384,7 @@ class Collector(object):
             'Collector.sample is deprecated and will cause error if you use '
             'prioritized experience replay! Collector.sample will be removed '
             'upon version 0.3. Use policy.update instead!', Warning)
+        assert self.buffer is not None, "Cannot get sample from empty buffer!"
         batch_data, indice = self.buffer.sample(batch_size)
         batch_data = self.process_fn(batch_data, self.buffer, indice)
         return batch_data
