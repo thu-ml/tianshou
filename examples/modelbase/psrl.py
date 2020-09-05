@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument('--collect-per-step', type=int, default=100)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--training-num', type=int, default=8)
-    parser.add_argument('--test-num', type=int, default=1)
+    parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     return parser.parse_args()
@@ -31,6 +31,7 @@ def get_args():
 
 def test_psrl(args=get_args()):
     env = gym.make(args.task)
+    print('Reward threshold: ', env.spec.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.env.action_space.shape or env.env.action_space.n
     # train_envs = gym.make(args.task)
