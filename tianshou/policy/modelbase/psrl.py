@@ -43,19 +43,18 @@ class PSRLModel(object):
     ) -> None:
         """Add data into memory pool.
 
+        For rewards, we have a normal prior at first. After we observed a
+        reward for a given state-action pair, we use the mean value of our
+        observations instead of the prior mean as the posterior mean. The
+        standard deviations are in inverse proportion to the number of the
+        corresponding observations.
+
         :param np.ndarray p: the number of observations, with shape
             (n_action, n_state, n_state).
         :param np.ndarray rew_sum: total rewards, with shape
             (n_state, n_action).
         :param np.ndarray rew_count: the number of rewards, with
             shape (n_state, n_action).
-        Here self.p += p updates p.
-        For rewards, we have a normal prior at first. After
-        we observed a reward for a given state-action pair, we use
-        the mean value of our observations instead of the prior mean
-        as the posterior mean. The standard deviations are in
-        inverse proportion to the number of corresponding
-        observations.
         """
         self.updated = False
         self.p += p
@@ -79,12 +78,11 @@ class PSRLModel(object):
         sample_rew = sample_rew * self.rew_std + self.rew_mean
         return sample_rew
 
-    def solve_policy(self) -> np.ndarray:
+    def solve_policy(self) -> None:
         self.updated = True
         self.p_ml = self.get_p_ml()
         self.sample_rew = self.sample_from_rew()
         self.policy = self.value_iteration(self.p_ml, self.sample_rew)
-        return self.policy
 
     @staticmethod
     def value_iteration(p: np.ndarray, rew: np.ndarray,
@@ -194,9 +192,9 @@ class PSRLPolicy(BasePolicy):
                     act[i] = np.random.randint(0, self.model.n_action)
         return Batch(act=act)
 
-    def learn(  # type: ignore
+    def learn(
         self, batch: Batch, **kwargs: Any
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Union[float, List[float]]]:
         p = np.zeros((self.model.n_action, self.model.n_state,
                       self.model.n_state))
         rew_sum = np.zeros((self.model.n_state, self.model.n_action))
@@ -210,4 +208,4 @@ class PSRLPolicy(BasePolicy):
             rew_sum[obs[i]][a[i]] += r[i]
             rew_count[obs[i]][a[i]] += 1
         self.model.observe(p, rew_sum, rew_count)
-        return {'loss': 0.0}
+        return {}
