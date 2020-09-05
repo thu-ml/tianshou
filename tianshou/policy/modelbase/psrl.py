@@ -28,14 +28,11 @@ class PSRLModel(object):
         rew_std_prior: np.ndarray,
     ) -> None:
         self.p = p_prior
-        self.n_action = len(self.p)
-        self.n_state = len(self.p[0])
+        self.n_action, self.n_state, _ = p_prior.shape
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
         self.rew_count = np.zeros_like(rew_mean_prior)
-        self.p_ml = None
-        self.sample_rew = None
-        self.policy = None
+        self.policy: Optional[np.ndarray] = None
         self.updated = False
 
     def observe(
@@ -80,9 +77,8 @@ class PSRLModel(object):
 
     def solve_policy(self) -> None:
         self.updated = True
-        self.p_ml = self.get_p_ml()
-        self.sample_rew = self.sample_from_rew()
-        self.policy = self.value_iteration(self.p_ml, self.sample_rew)
+        self.policy = self.value_iteration(
+            self.get_p_ml(), self.sample_from_rew())
 
     @staticmethod
     def value_iteration(p: np.ndarray, rew: np.ndarray,
@@ -163,7 +159,7 @@ class PSRLPolicy(BasePolicy):
         discount factor, :math:`\gamma \in [0, 1]`.
         """
         return self.compute_episodic_return(
-            batch, gamma=self._gamma, gae_lambda=1., rew_norm=self._rew_norm
+            batch, gamma=self._gamma, gae_lambda=1.0, rew_norm=self._rew_norm
         )
 
     def forward(
@@ -192,17 +188,15 @@ class PSRLPolicy(BasePolicy):
                     act[i] = np.random.randint(0, self.model.n_action)
         return Batch(act=act)
 
-    def learn(
+    def learn(  # type: ignore
         self, batch: Batch, **kwargs: Any
-    ) -> Dict[str, Union[float, List[float]]]:
+    ) -> Dict[str, float]:
         p = np.zeros((self.model.n_action, self.model.n_state,
                       self.model.n_state))
         rew_sum = np.zeros((self.model.n_state, self.model.n_action))
-        rew_count = np.zeros((self.model.n_state, self.model.n_action))
-        a = batch.act
-        r = batch.returns
-        obs = batch.obs
-        obs_next = batch.obs_next
+        rew_count = np.zeros_like(rew_sum)
+        a, r = batch.act, batch.returns
+        obs, obs_next = batch.obs, batch.obs_next
         for i in range(len(obs)):
             p[a[i]][obs[i]][obs_next[i]] += 1
             rew_sum[obs[i]][a[i]] += r[i]
