@@ -51,6 +51,7 @@ setup(
         'numpy',
         'tensorboard',
         'torch>=1.4.0',
+        'pymdptoolbox',
     ],
     extras_require={
         'dev': [

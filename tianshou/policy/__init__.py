@@ -9,7 +9,7 @@ from tianshou.policy.modelfree.ppo import PPOPolicy
 from tianshou.policy.modelfree.td3 import TD3Policy
 from tianshou.policy.modelfree.sac import SACPolicy
 from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
-from tianshou.policy.psrl.psrl import PSRLPolicy
+from tianshou.policy.modelbase.psrl import PSRLPolicy
 
 
 __all__ = [
