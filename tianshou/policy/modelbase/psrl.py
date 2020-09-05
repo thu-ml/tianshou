@@ -12,8 +12,8 @@ class PSRLModel(object):
         (n_action, n_state, n_state).
     :param np.ndarray rew_mean_prior: means of the normal priors of rewards,
         with shape (n_state, n_action).
-    :param np.ndarray rew_std_prior: standard deviations of the normal
-        priors of rewards, with shape (n_state, n_action).
+    :param np.ndarray rew_std_prior: standard deviations of the normal priors
+        of rewards, with shape (n_state, n_action).
 
     .. seealso::
 
@@ -50,8 +50,8 @@ class PSRLModel(object):
             (n_action, n_state, n_state).
         :param np.ndarray rew_sum: total rewards, with shape
             (n_state, n_action).
-        :param np.ndarray rew_count: the number of rewards, with
-            shape (n_state, n_action).
+        :param np.ndarray rew_count: the number of rewards, with shape
+            (n_state, n_action).
         """
         self.updated = False
         self.p += p
@@ -89,6 +89,8 @@ class PSRLModel(object):
             (n_action, n_state, n_state).
         :param np.ndarray rew: rewards, with shape (n_state, n_action).
         :param float epsilon: for precision control.
+
+        :return: the optimal policy with shape (n_state, ).
         """
         value = np.zeros(len(rew))
         while True:
