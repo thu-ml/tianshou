@@ -12,7 +12,7 @@ class PSRLModel(object):
     :param np.ndarray p_prior: dirichlet prior (alphas).
     :param np.ndarray rew_mean_prior: means of the normal priors of rewards.
     :param np.ndarray rew_std_prior: standard deviations of the normal
-    priors of rewards.
+        priors of rewards.
     :param float discount_factor: in (0, 1].
 
     .. seealso::
@@ -99,7 +99,7 @@ class PSRLPolicy(BasePolicy):
     :param np.ndarray p_prior: dirichlet prior (alphas).
     :param np.ndarray rew_mean_prior: means of the normal priors of rewards.
     :param np.ndarray rew_std_prior: standard deviations of the normal
-    priors of rewards.
+        priors of rewards.
     :param torch.distributions.Distribution dist_fn: for computing the action.
     :param float discount_factor: in [0, 1].
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
