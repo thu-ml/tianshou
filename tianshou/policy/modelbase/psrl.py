@@ -1,6 +1,6 @@
 import mdptoolbox
 import numpy as np
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, Union, Optional
 
 from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer
