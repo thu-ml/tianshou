@@ -43,7 +43,6 @@ setup(
         'numpy',
         'tensorboard',
         'torch>=1.4.0',
-        'pymdptoolbox',
         'numba>=0.51.0',
     ],
     extras_require={

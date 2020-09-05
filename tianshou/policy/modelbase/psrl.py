@@ -1,4 +1,3 @@
-import mdptoolbox
 import numpy as np
 from typing import Any, Dict, Union, Optional
 
@@ -13,7 +12,6 @@ class PSRLModel(object):
     :param np.ndarray rew_mean_prior: means of the normal priors of rewards.
     :param np.ndarray rew_std_prior: standard deviations of the normal
         priors of rewards.
-    :param float discount_factor: in (0, 1].
 
     .. seealso::
 
@@ -26,16 +24,14 @@ class PSRLModel(object):
         p_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
-        discount_factor: float = 0.99,
     ) -> None:
         self.p = p_prior
         self.n_action = len(self.p)
         self.n_state = len(self.p[0])
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
-        self.discount_factor = discount_factor
         self.rew_count = np.zeros_like(rew_mean_prior)
-        self.sample_p = None
+        self.p_ml = None
         self.sample_rew = None
         self.policy = None
         self.updated = False
@@ -58,16 +54,9 @@ class PSRLModel(object):
                                  self.rew_count) / sum_count_nonzero
         self.rew_count += rew_count
 
-    def sample_from_p(self) -> np.ndarray:
-        sample_p = []
-        for a in range(self.n_action):
-            for i in range(self.n_state):
-                param = self.p[a][i] + \
-                    1e-5 * np.random.randn(len(self.p[a][i]))
-                sample_p.append(param / np.sum(param))
-        sample_p = np.array(sample_p).reshape(
-            self.n_action, self.n_state, self.n_state)
-        return sample_p
+    def get_p_ml(self) -> np.ndarray:
+        p_ml = self.p / np.sum(self.p, axis=-1, keepdims=True)
+        return p_ml
 
     def sample_from_rew(self) -> np.ndarray:
         sample_rew = np.random.randn(len(self.rew_mean), len(self.rew_mean[0]))
@@ -76,13 +65,23 @@ class PSRLModel(object):
 
     def solve_policy(self) -> np.ndarray:
         self.updated = True
-        self.sample_p = self.sample_from_p()
+        self.p_ml = self.get_p_ml()
         self.sample_rew = self.sample_from_rew()
-        problem = mdptoolbox.mdp.ValueIteration(
-            self.sample_p, self.sample_rew, self.discount_factor)
-        problem.run()
-        self.policy = np.array(problem.policy)
+        self.policy = self.value_iteration(self.p_ml, self.sample_rew)
         return self.policy
+
+    @staticmethod
+    def value_iteration(p: np.ndarray, rew: np.ndarray,
+                        epsilon: float = 0.01) -> np.ndarray:
+        value = np.zeros(len(rew))
+        while True:
+            Q = rew + np.matmul(p, value).T
+            new_value = np.max(Q, axis=1)
+            if np.max(np.abs(new_value - value) /
+                      (np.abs(new_value) + 1e-5)) < epsilon:
+                return np.argmax(Q, axis=1)
+            else:
+                value = new_value
 
     def __call__(self, obs: np.ndarray, state=None, info=None) -> np.ndarray:
         if self.updated is False:
