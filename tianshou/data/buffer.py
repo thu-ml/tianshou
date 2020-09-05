@@ -115,6 +115,9 @@ class ReplayBuffer:
         than or equal to 1, defaults to 1 (no stacking).
     :param bool ignore_obs_next: whether to store obs_next, defaults to
         ``False``.
+    :param bool save_only_last_obs: only save the last obs/obs_next when it has
+        a shape of (timestep, ...)  because of temporal stacking, defaults to
+        ``False``.
     :param bool sample_avail: the parameter indicating sampling only available
         index when using frame-stack sampling method, defaults to ``False``.
         This feature is not supported in Prioritized Replay Buffer currently.
@@ -122,7 +125,8 @@ class ReplayBuffer:
 
     def __init__(self, size: int, stack_num: int = 1,
                  ignore_obs_next: bool = False,
-                 sample_avail: bool = False, **kwargs) -> None:
+                 save_only_last_obs: bool = False,
+                 sample_avail: bool = False) -> None:
         super().__init__()
         self._maxsize = size
         self._indices = np.arange(size)
@@ -131,6 +135,7 @@ class ReplayBuffer:
         self._avail = sample_avail and stack_num > 1
         self._avail_index = []
         self._save_s_ = not ignore_obs_next
+        self._last_obs = save_only_last_obs
         self._index = 0
         self._size = 0
         self._meta = Batch()
@@ -163,7 +168,8 @@ class ReplayBuffer:
         except KeyError:
             self._meta.__dict__[name] = _create_value(inst, self._maxsize)
             value = self._meta.__dict__[name]
-        if isinstance(inst, np.ndarray) and value.shape[1:] != inst.shape:
+        if isinstance(inst, (np.ndarray, torch.Tensor)) \
+                and value.shape[1:] != inst.shape:
             raise ValueError(
                 "Cannot add data to a buffer with different shape, with key "
                 f"{name}, expect {value.shape[1:]}, given {inst.shape}.")
@@ -198,17 +204,19 @@ class ReplayBuffer:
         buffer.stack_num = stack_num_orig
 
     def add(self,
-            obs: Union[dict, Batch, np.ndarray],
-            act: Union[np.ndarray, float],
+            obs: Union[dict, Batch, np.ndarray, float],
+            act: Union[dict, Batch, np.ndarray, float],
             rew: Union[int, float],
-            done: bool,
-            obs_next: Optional[Union[dict, Batch, np.ndarray]] = None,
-            info: dict = {},
+            done: Union[bool, int],
+            obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
+            info: Optional[Union[dict, Batch]] = {},
             policy: Optional[Union[dict, Batch]] = {},
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
         assert isinstance(info, (dict, Batch)), \
             'You should return a dict in the last argument of env.step().'
+        if self._last_obs:
+            obs = obs[-1]
         self._add_to_buffer('obs', obs)
         self._add_to_buffer('act', act)
         self._add_to_buffer('rew', rew)
@@ -216,6 +224,8 @@ class ReplayBuffer:
         if self._save_s_:
             if obs_next is None:
                 obs_next = Batch()
+            elif self._last_obs:
+                obs_next = obs_next[-1]
             self._add_to_buffer('obs_next', obs_next)
         self._add_to_buffer('info', info)
         self._add_to_buffer('policy', policy)
@@ -351,9 +361,7 @@ class ListReplayBuffer(ReplayBuffer):
     def _add_to_buffer(
             self, name: str,
             inst: Union[dict, Batch, np.ndarray, float, int, bool]) -> None:
-        if inst is None:
-            return
-        if self._meta.__dict__.get(name, None) is None:
+        if self._meta.__dict__.get(name) is None:
             self._meta.__dict__[name] = []
         self._meta.__dict__[name].append(inst)
 
@@ -393,14 +401,14 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         return super().__getattr__(key)
 
     def add(self,
-            obs: Union[dict, np.ndarray],
-            act: Union[np.ndarray, float],
+            obs: Union[dict, Batch, np.ndarray, float],
+            act: Union[dict, Batch, np.ndarray, float],
             rew: Union[int, float],
-            done: bool,
-            obs_next: Optional[Union[dict, np.ndarray]] = None,
-            info: dict = {},
+            done: Union[bool, int],
+            obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
+            info: Optional[Union[dict, Batch]] = {},
             policy: Optional[Union[dict, Batch]] = {},
-            weight: float = None,
+            weight: Optional[float] = None,
             **kwargs) -> None:
         """Add a batch of data into replay buffer."""
         if weight is None:

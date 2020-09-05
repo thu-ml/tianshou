@@ -25,6 +25,12 @@ class A2CPolicy(PGPolicy):
         defaults to ``None``.
     :param float gae_lambda: in [0, 1], param for Generalized Advantage
         Estimation, defaults to 0.95.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1),
+        defaults to ``False``.
+    :param int max_batchsize: the maximum size of the batch when computing GAE,
+        depends on the size of available memory and the memory cost of the
+        model; should be as large as possible within the memory constraint;
+        defaults to 256.
 
     .. seealso::
 
@@ -36,14 +42,14 @@ class A2CPolicy(PGPolicy):
                  actor: torch.nn.Module,
                  critic: torch.nn.Module,
                  optim: torch.optim.Optimizer,
-                 dist_fn: torch.distributions.Distribution
-                 = torch.distributions.Categorical,
+                 dist_fn: torch.distributions.Distribution,
                  discount_factor: float = 0.99,
                  vf_coef: float = .5,
                  ent_coef: float = .01,
                  max_grad_norm: Optional[float] = None,
                  gae_lambda: float = 0.95,
                  reward_normalization: bool = False,
+                 max_batchsize: int = 256,
                  **kwargs) -> None:
         super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
         self.actor = actor
@@ -53,7 +59,7 @@ class A2CPolicy(PGPolicy):
         self._w_vf = vf_coef
         self._w_ent = ent_coef
         self._grad_norm = max_grad_norm
-        self._batch = 64
+        self._batch = max_batchsize
         self._rew_norm = reward_normalization
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
@@ -63,7 +69,7 @@ class A2CPolicy(PGPolicy):
                 batch, None, gamma=self._gamma, gae_lambda=self._lambda)
         v_ = []
         with torch.no_grad():
-            for b in batch.split(self._batch, shuffle=False):
+            for b in batch.split(self._batch, shuffle=False, merge_last=True):
                 v_.append(to_numpy(self.critic(b.obs_next)))
         v_ = np.concatenate(v_, axis=0)
         return self.compute_episodic_return(
@@ -97,10 +103,9 @@ class A2CPolicy(PGPolicy):
 
     def learn(self, batch: Batch, batch_size: int, repeat: int,
               **kwargs) -> Dict[str, List[float]]:
-        self._batch = batch_size
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
-            for b in batch.split(batch_size):
+            for b in batch.split(batch_size, merge_last=True):
                 self.optim.zero_grad()
                 dist = self(b).dist
                 v = self.critic(b.obs).flatten()

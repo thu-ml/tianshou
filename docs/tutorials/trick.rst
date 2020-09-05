@@ -73,6 +73,12 @@ Tianshou has many short-but-efficient lines of code. For example, when we want t
 .. Jiayi: I write each line of code after quite a lot of time of consideration. Details make a difference.
 
 
+Atari/Mujoco Task Specific
+--------------------------
+
+Please refer to `Atari examples page <https://github.com/thu-ml/tianshou/tree/master/examples/atari>`_ and `Mujoco examples page <https://github.com/thu-ml/tianshou/tree/master/examples/mujoco>`_.
+
+
 Finally
 -------
 

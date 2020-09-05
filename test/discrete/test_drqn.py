@@ -6,23 +6,23 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQNPolicy
+from tianshou.env import DummyVectorEnv
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.common import Recurrent
+from tianshou.data import Collector, ReplayBuffer
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--eps-test', type=float, default=0.05)
     parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--stack-num', type=int, default=4)
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.9)
+    parser.add_argument('--gamma', type=float, default=0.95)
     parser.add_argument('--n-step', type=int, default=4)
     parser.add_argument('--target-update-freq', type=int, default=320)
     parser.add_argument('--epoch', type=int, default=10)
@@ -100,6 +100,7 @@ def test_drqn(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
+        policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')

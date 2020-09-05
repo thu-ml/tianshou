@@ -44,6 +44,7 @@ def get_args():
 
 class EnvWrapper(object):
     """Env wrapper for reward scale, action repeat and action noise"""
+
     def __init__(self, task, action_repeat=3,
                  reward_scale=5, act_noise=0.3):
         self._env = gym.make(task)
@@ -71,10 +72,11 @@ class EnvWrapper(object):
 def test_sac_bipedal(args=get_args()):
     torch.set_num_threads(1)  # we just need only one thread for NN
 
-    def IsStop(reward):
-        return reward >= 300 * 5
-
     env = EnvWrapper(args.task)
+
+    def IsStop(reward):
+        return reward >= env.spec.reward_threshold
+
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
@@ -82,8 +84,8 @@ def test_sac_bipedal(args=get_args()):
     train_envs = SubprocVectorEnv(
         [lambda: EnvWrapper(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
-        [lambda: EnvWrapper(args.task) for _ in range(args.test_num)])
+    test_envs = SubprocVectorEnv([lambda: EnvWrapper(args.task, reward_scale=1)
+                                  for _ in range(args.test_num)])
 
     # seed
     np.random.seed(args.seed)
@@ -138,9 +140,11 @@ def test_sac_bipedal(args=get_args()):
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
-        env = EnvWrapper(args.task)
-        collector = Collector(policy, env)
-        result = collector.collect(n_episode=16, render=args.render)
+        policy.eval()
+        test_envs.seed(args.seed)
+        test_collector.reset()
+        result = test_collector.collect(n_episode=[1] * args.test_num,
+                                        render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
 
 

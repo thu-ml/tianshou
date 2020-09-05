@@ -28,9 +28,7 @@ def data():
 def test_init():
     for _ in np.arange(1e5):
         _ = ReplayBuffer(1e5)
-        _ = PrioritizedReplayBuffer(
-            size=int(1e5), alpha=0.5,
-            beta=0.5, repeat_sample=True)
+        _ = PrioritizedReplayBuffer(size=int(1e5), alpha=0.5, beta=0.5)
         _ = ListReplayBuffer()
 
 

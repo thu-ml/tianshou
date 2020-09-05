@@ -7,11 +7,11 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import DummyVectorEnv
+from tianshou.utils.net.common import Net
 from tianshou.data import Collector, ReplayBuffer
+from tianshou.utils.net.discrete import Actor, Critic
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
-from tianshou.utils.net.discrete import Actor, Critic
-from tianshou.utils.net.common import Net
 
 
 def get_args():
@@ -98,10 +98,12 @@ def test_a2c_with_il(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
+        policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
 
+    policy.eval()
     # here we define an imitation collector with a trivial policy
     if args.task == 'CartPole-v0':
         env.spec.reward_threshold = 190  # lower the goal
@@ -124,6 +126,7 @@ def test_a2c_with_il(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
+        il_policy.eval()
         collector = Collector(il_policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')

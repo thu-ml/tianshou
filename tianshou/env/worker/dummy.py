@@ -12,10 +12,8 @@ class DummyEnvWorker(EnvWorker):
         super().__init__(env_fn)
         self.env = env_fn()
 
-    def __getattr__(self, key: str):
-        if hasattr(self.env, key):
-            return getattr(self.env, key)
-        return None
+    def __getattr__(self, key: str) -> Any:
+        return getattr(self.env, key)
 
     def reset(self) -> Any:
         return self.env.reset()

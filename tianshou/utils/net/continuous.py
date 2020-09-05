@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from torch import nn
 
-from tianshou.data import to_torch
+from tianshou.data import to_torch, to_torch_as
 
 
 class Actor(nn.Module):
@@ -10,8 +10,8 @@ class Actor(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, action_shape,
-                 max_action, device='cpu', hidden_layer_size=128):
+    def __init__(self, preprocess_net, action_shape, max_action=1.,
+                 device='cpu', hidden_layer_size=128):
         super().__init__()
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
@@ -35,7 +35,7 @@ class Critic(nn.Module):
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, 1)
 
-    def forward(self, s, a=None, **kwargs):
+    def forward(self, s, a=None, info={}):
         """(s, a) -> logits -> Q(s, a)"""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.flatten(1)
@@ -53,7 +53,7 @@ class ActorProb(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, action_shape, max_action,
+    def __init__(self, preprocess_net, action_shape, max_action=1.,
                  device='cpu', unbounded=False, hidden_layer_size=128):
         super().__init__()
         self.preprocess = preprocess_net
@@ -63,7 +63,7 @@ class ActorProb(nn.Module):
         self._max = max_action
         self._unbounded = unbounded
 
-    def forward(self, s, state=None, **kwargs):
+    def forward(self, s, state=None, info={}):
         """s -> logits -> (mu, sigma)"""
         logits, h = self.preprocess(s, state)
         mu = self.mu(logits)
@@ -80,8 +80,8 @@ class RecurrentActorProb(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, layer_num, state_shape, action_shape,
-                 max_action, device='cpu', hidden_layer_size=128):
+    def __init__(self, layer_num, state_shape, action_shape, max_action=1.,
+                 device='cpu', unbounded=False, hidden_layer_size=128):
         super().__init__()
         self.device = device
         self.nn = nn.LSTM(input_size=np.prod(state_shape),
@@ -89,8 +89,10 @@ class RecurrentActorProb(nn.Module):
                           num_layers=layer_num, batch_first=True)
         self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
+        self._max = max_action
+        self._unbounded = unbounded
 
-    def forward(self, s, **kwargs):
+    def forward(self, s, state=None, info={}):
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
@@ -98,13 +100,24 @@ class RecurrentActorProb(nn.Module):
         # in evaluation phase.
         if len(s.shape) == 2:
             s = s.unsqueeze(-2)
-        logits, _ = self.nn(s)
-        logits = logits[:, -1]
+        self.nn.flatten_parameters()
+        if state is None:
+            s, (h, c) = self.nn(s)
+        else:
+            # we store the stack data in [bsz, len, ...] format
+            # but pytorch rnn needs [len, bsz, ...]
+            s, (h, c) = self.nn(s, (state['h'].transpose(0, 1).contiguous(),
+                                    state['c'].transpose(0, 1).contiguous()))
+        logits = s[:, -1]
         mu = self.mu(logits)
+        if not self._unbounded:
+            mu = self._max * torch.tanh(mu)
         shape = [1] * len(mu.shape)
         shape[1] = -1
         sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
-        return (mu, sigma), None
+        # please ensure the first dim is batch size: [bsz, len, ...]
+        return (mu, sigma), {'h': h.transpose(0, 1).detach(),
+                             'c': c.transpose(0, 1).detach()}
 
 
 class RecurrentCritic(nn.Module):
@@ -134,8 +147,7 @@ class RecurrentCritic(nn.Module):
         s, (h, c) = self.nn(s)
         s = s[:, -1]
         if a is not None:
-            if not isinstance(a, torch.Tensor):
-                a = torch.tensor(a, device=self.device, dtype=torch.float32)
+            a = to_torch_as(a, s)
             s = torch.cat([s, a], dim=1)
         s = self.fc2(s)
         return s

@@ -24,8 +24,7 @@ class PGPolicy(BasePolicy):
     def __init__(self,
                  model: torch.nn.Module,
                  optim: torch.optim.Optimizer,
-                 dist_fn: torch.distributions.Distribution
-                 = torch.distributions.Categorical,
+                 dist_fn: torch.distributions.Distribution,
                  discount_factor: float = 0.99,
                  reward_normalization: bool = False,
                  **kwargs) -> None:
@@ -82,7 +81,7 @@ class PGPolicy(BasePolicy):
               **kwargs) -> Dict[str, List[float]]:
         losses = []
         for _ in range(repeat):
-            for b in batch.split(batch_size):
+            for b in batch.split(batch_size, merge_last=True):
                 self.optim.zero_grad()
                 dist = self(b).dist
                 a = to_torch_as(b.act, dist.logits)

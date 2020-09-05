@@ -7,10 +7,10 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import DummyVectorEnv
+from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import SACPolicy, ImitationPolicy
-from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, ActorProb, Critic
 
 
@@ -109,11 +109,13 @@ def test_sac_with_il(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
+        policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
 
     # here we define an imitation collector with a trivial policy
+    policy.eval()
     if args.task == 'Pendulum-v0':
         env.spec.reward_threshold = -300  # lower the goal
     net = Actor(Net(1, args.state_shape, device=args.device),
@@ -136,6 +138,7 @@ def test_sac_with_il(args=get_args()):
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
+        il_policy.eval()
         collector = Collector(il_policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
