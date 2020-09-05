@@ -1,15 +1,14 @@
+import gym
 import torch
 import pprint
 import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import DummyVectorEnv, SubprocVectorEnv
+from tianshou.policy import PSRLPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-
-import gym
-from tianshou.policy import PSRLPolicy
+from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 
 
 def get_args():
@@ -81,12 +80,15 @@ def test_psrl(args=get_args()):
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
-        env = gym.make(args.task)
-        collector = Collector(policy, env)
         policy.eval()
-        result = collector.collect(n_episode=1, render=args.render)
+        policy.set_eps(args.eps_test)
+        test_envs.seed(args.seed)
+        test_collector.reset()
+        result = test_collector.collect(n_episode=[1] * args.test_num,
+                                        render=args.render)
+        pprint.pprint(result)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
 
 
 if __name__ == '__main__':
-    test_psrl()
+    test_psrl(get_args())
