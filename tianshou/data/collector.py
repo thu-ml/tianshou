@@ -173,6 +173,7 @@ class Collector(object):
                 n_episode: Optional[Union[int, List[int]]] = None,
                 random: bool = False,
                 render: Optional[float] = None,
+                no_grad: bool = True,
                 ) -> Dict[str, float]:
         """Collect a specified number of step or episode.
 
@@ -185,6 +186,8 @@ class Collector(object):
             defaults to ``False``.
         :param float render: the sleep time between rendering consecutive
             frames, defaults to ``None`` (no rendering).
+        :param bool no_grad: whether to retain gradient in policy.forward,
+            defaults to ``True`` (no gradient retaining).
 
         .. note::
 
@@ -252,7 +255,10 @@ class Collector(object):
                 result = Batch(
                     act=[spaces[i].sample() for i in self._ready_env_ids])
             else:
-                with torch.no_grad():
+                if no_grad:
+                    with torch.no_grad():  # faster than retain_grad version
+                        result = self.policy(self.data, last_state)
+                else:
                     result = self.policy(self.data, last_state)
 
             state = result.get('state', Batch())

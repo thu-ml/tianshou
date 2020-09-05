@@ -8,7 +8,6 @@ To install Tianshou in an "editable" mode, run
 
 .. code-block:: bash
 
-    $ git checkout dev
     $ pip install -e ".[dev]"
 
 in the main directory. This installation is removable by
@@ -70,9 +69,4 @@ To compile documentation into webpages, run
 
 under the ``docs/`` directory. The generated webpages are in ``docs/_build`` and can be viewed with browsers.
 
-Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/, and the develop version of documentation is in https://tianshou.readthedocs.io/en/dev/.
-
-Pull Request
-------------
-
-All of the commits should merge through the pull request to the ``dev`` branch. The pull request must have 2 approvals before merging.
+Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/.
