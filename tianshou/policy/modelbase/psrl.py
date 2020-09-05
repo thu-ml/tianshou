@@ -8,12 +8,12 @@ from tianshou.data import Batch, ReplayBuffer
 class PSRLModel(object):
     """Implementation of Posterior Sampling Reinforcement Learning Model.
 
-    :param np.ndarray p_prior: dirichlet prior (alphas),
-        shape: (n_action, n_state, n_state).
+    :param np.ndarray p_prior: dirichlet prior (alphas), with shape
+        (n_action, n_state, n_state).
     :param np.ndarray rew_mean_prior: means of the normal priors of rewards,
-        shape: (n_state, n_action)
+        with shape (n_state, n_action).
     :param np.ndarray rew_std_prior: standard deviations of the normal
-        priors of rewards, shape: (n_state, n_action).
+        priors of rewards, with shape (n_state, n_action).
 
     .. seealso::
 
@@ -42,12 +42,20 @@ class PSRLModel(object):
         self, p: np.ndarray, rew_sum: np.ndarray, rew_count: np.ndarray
     ) -> None:
         """Add data into memory pool.
-        :param np.ndarray p: the number of observations,
-            shape: (n_action, n_state, n_state).
-        :param np.ndarray rew_sum: total rewards,
-            shape: (n_state, n_action)
-        :param np.ndarray rew_count: the number of rewards,
-            shape: (n_state, n_action).
+
+        :param np.ndarray p: the number of observations, with shape
+            (n_action, n_state, n_state).
+        :param np.ndarray rew_sum: total rewards, with shape
+            (n_state, n_action).
+        :param np.ndarray rew_count: the number of rewards, with
+            shape (n_state, n_action).
+        Here self.p += p updates p.
+        For rewards, we have a normal prior at first. After
+        we observed a reward for a given state-action pair, we use
+        the mean value of our observations instead of the prior mean
+        as the posterior mean. The standard deviations are in
+        inverse proportion to the number of corresponding
+        observations.
         """
         self.updated = False
         self.p += p
@@ -81,6 +89,13 @@ class PSRLModel(object):
     @staticmethod
     def value_iteration(p: np.ndarray, rew: np.ndarray,
                         epsilon: float = 0.01) -> np.ndarray:
+        """Value iteration solver for MDPs.
+
+        :param np.ndarray p: transition probabilities, with shape
+            (n_action, n_state, n_state).
+        :param np.ndarray rew: rewards, with shape (n_state, n_action).
+        :param float epsilon: for precision control.
+        """
         value = np.zeros(len(rew))
         while True:
             Q = rew + np.matmul(p, value).T
@@ -160,7 +175,7 @@ class PSRLPolicy(BasePolicy):
         eps: Optional[float] = None,
         **kwargs: Any,
     ) -> Batch:
-        """Compute action over the given batch data.
+        """Compute action over the given batch data with PSRL model.
 
         :return: A :class:`~tianshou.data.Batch` with "act" key containing
             the action.
