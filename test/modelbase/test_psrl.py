@@ -33,7 +33,7 @@ def test_psrl(args=get_args()):
     env = gym.make(args.task)
     if args.task == "NChain-v0":
         env.spec.reward_threshold = 3650  # discribed in PSRL paper
-    print("reward threahold:", env.spec.reward_threshold)
+    print("reward threshold:", env.spec.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.env.action_space.shape or env.env.action_space.n
     # train_envs = gym.make(args.task)
@@ -51,10 +51,10 @@ def test_psrl(args=get_args()):
     # model
     n_action = args.action_shape
     n_state = args.state_shape
-    p_pri = 1e-3 * np.ones((n_action, n_state, n_state))
-    rew_mean = np.zeros((n_state, n_action))
-    rew_std = np.ones((n_state, n_action))
-    policy = PSRLPolicy(p_pri, rew_mean, rew_std)
+    p_prior = 1e-3 * np.ones((n_action, n_state, n_state))
+    rew_mean_prior = np.zeros((n_state, n_action))
+    rew_std_prior = np.ones((n_state, n_action))
+    policy = PSRLPolicy(p_prior, rew_mean_prior, rew_std_prior)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))

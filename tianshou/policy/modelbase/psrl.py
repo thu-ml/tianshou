@@ -8,10 +8,12 @@ from tianshou.data import Batch, ReplayBuffer
 class PSRLModel(object):
     """Implementation of Posterior Sampling Reinforcement Learning Model.
 
-    :param np.ndarray p_prior: dirichlet prior (alphas).
-    :param np.ndarray rew_mean_prior: means of the normal priors of rewards.
+    :param np.ndarray p_prior: dirichlet prior (alphas),
+        shape: (n_action, n_state, n_state).
+    :param np.ndarray rew_mean_prior: means of the normal priors of rewards,
+        shape: (n_state, n_action)
     :param np.ndarray rew_std_prior: standard deviations of the normal
-        priors of rewards.
+        priors of rewards, shape: (n_state, n_action).
 
     .. seealso::
 
@@ -39,7 +41,14 @@ class PSRLModel(object):
     def observe(
         self, p: np.ndarray, rew_sum: np.ndarray, rew_count: np.ndarray
     ) -> None:
-        """Add data into memory pool."""
+        """Add data into memory pool.
+        :param np.ndarray p: the number of observations,
+            shape: (n_action, n_state, n_state).
+        :param np.ndarray rew_sum: total rewards,
+            shape: (n_state, n_action)
+        :param np.ndarray rew_count: the number of rewards,
+            shape: (n_state, n_action).
+        """
         self.updated = False
         self.p += p
         sum_count_nonzero = np.where(self.rew_count + rew_count == 0,
@@ -55,11 +64,10 @@ class PSRLModel(object):
         self.rew_count += rew_count
 
     def get_p_ml(self) -> np.ndarray:
-        p_ml = self.p / np.sum(self.p, axis=-1, keepdims=True)
-        return p_ml
+        return self.p / np.sum(self.p, axis=-1, keepdims=True)
 
     def sample_from_rew(self) -> np.ndarray:
-        sample_rew = np.random.randn(len(self.rew_mean), len(self.rew_mean[0]))
+        sample_rew = np.random.randn(*self.rew_mean.shape)
         sample_rew = sample_rew * self.rew_std + self.rew_mean
         return sample_rew
 
@@ -77,8 +85,7 @@ class PSRLModel(object):
         while True:
             Q = rew + np.matmul(p, value).T
             new_value = np.max(Q, axis=1)
-            if np.max(np.abs(new_value - value) /
-                      (np.abs(new_value) + 1e-5)) < epsilon:
+            if np.allclose(new_value, value, epsilon):
                 return np.argmax(Q, axis=1)
             else:
                 value = new_value
@@ -121,10 +128,11 @@ class PSRLPolicy(BasePolicy):
     ) -> None:
         super().__init__(**kwargs)
         self.model = PSRLModel(p_prior, rew_mean_prior, rew_std_prior)
-        assert 0 <= discount_factor <= 1, 'discount factor should in [0, 1]'
+        assert 0.0 <= discount_factor <= 1.0, \
+            "discount factor should in [0, 1]"
         self._gamma = discount_factor
         self._rew_norm = reward_normalization
-        self.eps = 0
+        self.eps = 0.0
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
