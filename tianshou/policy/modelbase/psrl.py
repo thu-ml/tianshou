@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Any, Dict, Union, Optional
 
-from tianshou.data import Batch
+from tianshou.data import Batch, ReplayBuffer
 from tianshou.policy import BasePolicy
 
 
@@ -125,15 +125,34 @@ class PSRLPolicy(BasePolicy):
         p_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
+        discount_factor: float = 0,
+        reward_normalization: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.model = PSRLModel(p_prior, rew_mean_prior, rew_std_prior)
+        assert 0.0 <= discount_factor <= 1.0, \
+            "discount factor should in [0, 1]"
+        self._gamma = discount_factor
+        self._rew_norm = reward_normalization
         self.eps = 0.0
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
         self.eps = eps
+
+    def process_fn(
+            self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> Batch:
+        r"""Compute the discounted returns for each frame:
+        .. math::
+            G_t = \sum_{i=t}^T \gamma^{i-t}r_i
+        , where :math:`T` is the terminal time step, :math:`\gamma` is the
+        discount factor, :math:`\gamma \in [0, 1]`.
+        """
+        return self.compute_episodic_return(
+            batch, gamma=self._gamma, gae_lambda=1.0, rew_norm=self._rew_norm
+        )
 
     def forward(
         self,
