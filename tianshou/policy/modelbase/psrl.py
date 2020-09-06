@@ -186,17 +186,19 @@ class PSRLPolicy(BasePolicy):
         return Batch(act=act)
 
     def learn(  # type: ignore
-        self, batch: Batch, **kwargs: Any
-    ) -> Dict[str, float]:
-        p = np.zeros((self.model.n_action, self.model.n_state,
-                      self.model.n_state))
-        rew_sum = np.zeros((self.model.n_state, self.model.n_action))
-        rew_count = np.zeros_like(rew_sum)
-        a, r = batch.act, batch.returns
-        obs, obs_next = batch.obs, batch.obs_next
-        for i in range(len(obs)):
-            p[a[i]][obs[i]][obs_next[i]] += 1
-            rew_sum[obs[i]][a[i]] += r[i]
-            rew_count[obs[i]][a[i]] += 1
-        self.model.observe(p, rew_sum, rew_count)
+        self, batch: Batch, batch_size: int, repeat: int,
+            **kwargs: Any) -> Dict[str, float]:
+        for _ in range(repeat):
+            for b in batch.split(batch_size, merge_last=True):
+                p = np.zeros((self.model.n_action, self.model.n_state,
+                              self.model.n_state))
+                rew_sum = np.zeros((self.model.n_state, self.model.n_action))
+                rew_count = np.zeros_like(rew_sum)
+                a, r = b.act, b.returns
+                obs, obs_next = b.obs, b.obs_next
+                for i in range(len(obs)):
+                    p[a[i]][obs[i]][obs_next[i]] += 1
+                    rew_sum[obs[i]][a[i]] += r[i]
+                    rew_count[obs[i]][a[i]] += 1
+                self.model.observe(p, rew_sum, rew_count)
         return {}
