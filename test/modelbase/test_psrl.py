@@ -15,7 +15,6 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='NChain-v0')
     parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--gamma', type=float, default=1.0)
     parser.add_argument('--eps-test', type=float, default=0.0)
     parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
@@ -56,7 +55,7 @@ def test_psrl(args=get_args()):
     rew_mean_prior = np.zeros((n_state, n_action))
     rew_std_prior = np.ones((n_state, n_action))
     policy = PSRLPolicy(trans_count_prior,
-                        rew_mean_prior, rew_std_prior, args.gamma)
+                        rew_mean_prior, rew_std_prior)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))

@@ -2,7 +2,7 @@ import numpy as np
 from typing import Any, Dict, Union, Optional
 
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch
 
 
 class PSRLModel(object):
@@ -129,7 +129,6 @@ class PSRLPolicy(BasePolicy):
     :param np.ndarray rew_mean_prior: means of the normal priors of rewards.
     :param np.ndarray rew_std_prior: standard deviations of the normal
         priors of rewards.
-    :param float discount_factor: in [0, 1].
 
     .. seealso::
 
@@ -142,35 +141,16 @@ class PSRLPolicy(BasePolicy):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
-        discount_factor: float = 0.0,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.model = PSRLModel(trans_count_prior, rew_mean_prior,
                                rew_std_prior)
-        assert 0.0 <= discount_factor <= 1.0, \
-            "discount factor should in [0, 1]"
-        self._gamma = discount_factor
         self.eps = 0.0
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
         self.eps = eps
-
-    def process_fn(
-            self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> Batch:
-        r"""Compute the discounted returns for each frame:
-
-        .. math::
-
-            G_t = \sum_{i=t}^T \gamma^{i-t}r_i
-
-        , where :math:`T` is the terminal time step, :math:`\gamma` is the
-        discount factor, :math:`\gamma \in [0, 1]`.
-        """
-        return self.compute_episodic_return(
-            batch, gamma=self._gamma, gae_lambda=1.0)
 
     def forward(
         self,
@@ -205,7 +185,7 @@ class PSRLPolicy(BasePolicy):
                                 self.model.n_state))
         rew_sum = np.zeros((self.model.n_state, self.model.n_action))
         rew_count = np.zeros_like(rew_sum)
-        a, r = batch.act, batch.returns
+        a, r = batch.act, batch.rew
         obs, obs_next = batch.obs, batch.obs_next
         for i in range(len(obs)):
             trans_count[a[i]][obs[i]][obs_next[i]] += 1
