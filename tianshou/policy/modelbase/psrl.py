@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Any, Dict, Union, Optional
 
-from tianshou.data import Batch, ReplayBuffer
 from tianshou.policy import BasePolicy
+from tianshou.data import Batch, ReplayBuffer
 
 
 class PSRLModel(object):
@@ -112,6 +112,7 @@ class PSRLPolicy(BasePolicy):
     :param np.ndarray rew_mean_prior: means of the normal priors of rewards.
     :param np.ndarray rew_std_prior: standard deviations of the normal
         priors of rewards.
+    :param float discount_factor: in [0, 1].
     :param torch.distributions.Distribution dist_fn: for computing the action.
 
     .. seealso::
@@ -125,8 +126,7 @@ class PSRLPolicy(BasePolicy):
         p_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
-        discount_factor: float = 0,
-        reward_normalization: bool = False,
+        discount_factor: float = 0.0,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -134,7 +134,6 @@ class PSRLPolicy(BasePolicy):
         assert 0.0 <= discount_factor <= 1.0, \
             "discount factor should in [0, 1]"
         self._gamma = discount_factor
-        self._rew_norm = reward_normalization
         self.eps = 0.0
 
     def set_eps(self, eps: float) -> None:
@@ -145,14 +144,16 @@ class PSRLPolicy(BasePolicy):
             self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
     ) -> Batch:
         r"""Compute the discounted returns for each frame:
+
         .. math::
+
             G_t = \sum_{i=t}^T \gamma^{i-t}r_i
+
         , where :math:`T` is the terminal time step, :math:`\gamma` is the
         discount factor, :math:`\gamma \in [0, 1]`.
         """
         return self.compute_episodic_return(
-            batch, gamma=self._gamma, gae_lambda=1.0, rew_norm=self._rew_norm
-        )
+            batch, gamma=self._gamma, gae_lambda=1.0)
 
     def forward(
         self,
@@ -181,19 +182,17 @@ class PSRLPolicy(BasePolicy):
         return Batch(act=act)
 
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int,
-            **kwargs: Any) -> Dict[str, float]:
-        for _ in range(repeat):
-            for b in batch.split(batch_size, merge_last=True):
-                p = np.zeros((self.model.n_action, self.model.n_state,
-                              self.model.n_state))
-                rew_sum = np.zeros((self.model.n_state, self.model.n_action))
-                rew_count = np.zeros_like(rew_sum)
-                a, r = b.act, b.returns
-                obs, obs_next = b.obs, b.obs_next
-                for i in range(len(obs)):
-                    p[a[i]][obs[i]][obs_next[i]] += 1
-                    rew_sum[obs[i]][a[i]] += r[i]
-                    rew_count[obs[i]][a[i]] += 1
-                self.model.observe(p, rew_sum, rew_count)
+        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+    ) -> Dict[str, float]:
+        p = np.zeros((self.model.n_action, self.model.n_state,
+                      self.model.n_state))
+        rew_sum = np.zeros((self.model.n_state, self.model.n_action))
+        rew_count = np.zeros_like(rew_sum)
+        a, r = batch.act, batch.returns
+        obs, obs_next = batch.obs, batch.obs_next
+        for i in range(len(obs)):
+            p[a[i]][obs[i]][obs_next[i]] += 1
+            rew_sum[obs[i]][a[i]] += r[i]
+            rew_count[obs[i]][a[i]] += 1
+        self.model.observe(p, rew_sum, rew_count)
         return {}
