@@ -113,7 +113,6 @@ class PSRLPolicy(BasePolicy):
     :param np.ndarray rew_std_prior: standard deviations of the normal
         priors of rewards.
     :param float discount_factor: in [0, 1].
-    :param torch.distributions.Distribution dist_fn: for computing the action.
 
     .. seealso::
 
