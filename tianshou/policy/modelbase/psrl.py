@@ -27,11 +27,12 @@ class PSRLModel(object):
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
     ) -> None:
+        self.__eps = np.finfo(np.float32).eps.item()
         self.p = p_prior
         self.n_action, self.n_state, _ = p_prior.shape
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
-        self.rew_count = np.zeros_like(rew_mean_prior)
+        self.rew_count = np.zeros_like(rew_mean_prior) + self.__eps
         self.policy: Optional[np.ndarray] = None
         self.updated = False
 
@@ -55,17 +56,10 @@ class PSRLModel(object):
         """
         self.updated = False
         self.p += p
-        sum_count_nonzero = np.where(self.rew_count + rew_count == 0,
-                                     1, self.rew_count + rew_count)
-        rew_count_nonzero = np.where(rew_count == 0, 1, rew_count)
-        self.rew_mean = np.where(self.rew_count == 0,
-                                 np.where(rew_count == 0, self.rew_mean,
-                                          rew_sum / rew_count_nonzero),
-                                 (self.rew_mean * self.rew_count + rew_sum)
-                                 / sum_count_nonzero)
-        self.rew_std *= np.where(self.rew_count == 0, 1,
-                                 self.rew_count) / sum_count_nonzero
-        self.rew_count += rew_count
+        sum_count = self.rew_count + rew_count
+        self.rew_mean = (self.rew_mean * self.rew_count + rew_sum) / sum_count
+        self.rew_std *= self.rew_count / sum_count
+        self.rew_count = sum_count
 
     def get_p_ml(self) -> np.ndarray:
         return self.p / np.sum(self.p, axis=-1, keepdims=True)
@@ -81,14 +75,15 @@ class PSRLModel(object):
             self.get_p_ml(), self.sample_from_rew())
 
     @staticmethod
-    def value_iteration(p: np.ndarray, rew: np.ndarray,
-                        epsilon: float = 0.01) -> np.ndarray:
+    def value_iteration(
+        p: np.ndarray, rew: np.ndarray, eps: float = 0.01
+    ) -> np.ndarray:
         """Value iteration solver for MDPs.
 
         :param np.ndarray p: transition probabilities, with shape
             (n_action, n_state, n_state).
         :param np.ndarray rew: rewards, with shape (n_state, n_action).
-        :param float epsilon: for precision control.
+        :param float eps: for precision control.
 
         :return: the optimal policy with shape (n_state, ).
         """
@@ -96,7 +91,7 @@ class PSRLModel(object):
         while True:
             Q = rew + np.matmul(p, value).T
             new_value = np.max(Q, axis=1)
-            if np.allclose(new_value, value, epsilon):
+            if np.allclose(new_value, value, eps):
                 return np.argmax(Q, axis=1)
             else:
                 value = new_value
