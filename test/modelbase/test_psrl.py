@@ -52,10 +52,11 @@ def test_psrl(args=get_args()):
     # model
     n_action = args.action_shape
     n_state = args.state_shape
-    p_prior = 1e-3 * np.ones((n_action, n_state, n_state))
+    trans_count_prior = 1e-3 * np.ones((n_action, n_state, n_state))
     rew_mean_prior = np.zeros((n_state, n_action))
     rew_std_prior = np.ones((n_state, n_action))
-    policy = PSRLPolicy(p_prior, rew_mean_prior, rew_std_prior, args.gamma)
+    policy = PSRLPolicy(trans_count_prior,
+                        rew_mean_prior, rew_std_prior, args.gamma)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
