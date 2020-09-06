@@ -62,6 +62,12 @@ class PSRLModel(object):
         self.rew_mean = (self.rew_mean * self.rew_count + rew_sum) / sum_count
         self.rew_std *= self.rew_count / sum_count
         self.rew_count = sum_count
+        # I find that maybe we did not gather information
+        # for absorbing states' transition probabilities.
+        # After 1000 observations, if for some states, their
+        # trans_count almost do not change, the code adds
+        # the counts of these states transiting to themselves
+        # by 1.
         if np.sum(self.trans_count) > \
                 np.sum(self.trans_count_prior_sum) + 1000:
             min_index = np.argmin(np.sum(self.trans_count, axis=2), axis=1)
@@ -71,8 +77,7 @@ class PSRLModel(object):
                              min_index, min_index] += \
                 mask[np.array(range(self.n_action)), min_index]
 
-    def get_trans_prob_ml(self) -> np.ndarray:
-        """Here ml means maximum likelihood."""
+    def get_trans_prob_max_likelihood(self) -> np.ndarray:
         return self.trans_count / np.sum(self.trans_count,
                                          axis=-1, keepdims=True)
 
@@ -84,7 +89,7 @@ class PSRLModel(object):
     def solve_policy(self) -> None:
         self.updated = True
         self.policy = self.value_iteration(
-            self.get_trans_prob_ml(), self.sample_from_rew())
+            self.get_trans_prob_max_likelihood(), self.sample_from_rew())
 
     @staticmethod
     def value_iteration(
@@ -99,7 +104,6 @@ class PSRLModel(object):
 
         :return: the optimal policy with shape (n_state, ).
         """
-        # print(trans_prob, rew)
         value = np.zeros(len(rew))
         Q = rew + np.matmul(trans_prob, value).T
         new_value = np.max(Q, axis=1)
