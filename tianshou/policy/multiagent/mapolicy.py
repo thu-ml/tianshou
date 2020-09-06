@@ -36,7 +36,8 @@ class MultiAgentPolicyManager(BasePolicy):
         # reward can be empty Batch (after initial reset) or nparray.
         has_rew = isinstance(buffer.rew, np.ndarray)
         if has_rew:  # save the original reward in save_rew
-            save_rew, buffer.rew = buffer.rew, Batch()
+            # since buffer.__setattr__ is not override, here we use _meta
+            save_rew, buffer._meta.rew = buffer.rew, Batch()
         for policy in self.policies:
             agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
             if len(agent_index) == 0:
@@ -45,11 +46,11 @@ class MultiAgentPolicyManager(BasePolicy):
             tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
             if has_rew:
                 tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
-                buffer.rew = save_rew[:, policy.agent_id - 1]
+                buffer._meta.rew = save_rew[:, policy.agent_id - 1]
             results[f'agent_{policy.agent_id}'] = \
                 policy.process_fn(tmp_batch, buffer, tmp_indice)
         if has_rew:  # restore from save_rew
-            buffer.rew = save_rew
+            buffer._meta.rew = save_rew
         return Batch(results)
 
     def forward(self, batch: Batch,
