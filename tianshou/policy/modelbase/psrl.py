@@ -29,6 +29,7 @@ class PSRLModel(object):
     ) -> None:
         self.__eps = np.finfo(np.float32).eps.item()
         self.p = p_prior
+        self.p_prior_sum = np.sum(p_prior, axis=2)
         self.n_action, self.n_state, _ = p_prior.shape
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
@@ -60,6 +61,12 @@ class PSRLModel(object):
         self.rew_mean = (self.rew_mean * self.rew_count + rew_sum) / sum_count
         self.rew_std *= self.rew_count / sum_count
         self.rew_count = sum_count
+        if np.sum(self.p) > np.sum(self.p_prior_sum) + 1000:
+            min_index = np.argmin(np.sum(self.p, axis=2), axis=1)
+            mask = np.isclose(np.sum(self.p, axis=2),
+                              self.p_prior_sum).astype("float32")
+            self.p[np.array(range(self.n_action)), min_index, min_index] += \
+                mask[np.array(range(self.n_action)), min_index]
 
     def get_p_ml(self) -> np.ndarray:
         return self.p / np.sum(self.p, axis=-1, keepdims=True)
