@@ -15,13 +15,13 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='NChain-v0')
     parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--eps-test', type=float, default=0)
+    parser.add_argument('--gamma', type=float, default=1.0)
+    parser.add_argument('--eps-test', type=float, default=0.0)
     parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=1)
     parser.add_argument('--collect-per-step', type=int, default=1)
-    parser.add_argument('--repeat', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
@@ -55,7 +55,7 @@ def test_psrl(args=get_args()):
     p_prior = 1e-3 * np.ones((n_action, n_state, n_state))
     rew_mean_prior = np.zeros((n_state, n_action))
     rew_std_prior = np.ones((n_state, n_action))
-    policy = PSRLPolicy(p_prior, rew_mean_prior, rew_std_prior)
+    policy = PSRLPolicy(p_prior, rew_mean_prior, rew_std_prior, args.gamma)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
@@ -77,17 +77,19 @@ def test_psrl(args=get_args()):
     # trainer
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, args.repeat,
+        args.step_per_epoch, args.collect_per_step, 1,
         args.test_num, args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, writer=writer)
 
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
-        env = gym.make(args.task)
-        collector = Collector(policy, env)
         policy.eval()
-        result = collector.collect(n_episode=1, render=args.render)
+        policy.set_eps(args.eps_test)
+        test_envs.seed(args.seed)
+        test_collector.reset()
+        result = test_collector.collect(n_episode=[1] * args.test_num,
+                                        render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
 
 
