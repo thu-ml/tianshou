@@ -57,10 +57,8 @@ $ pip install tianshou
 You can also install with the newest version through GitHub:
 
 ```bash
-# latest release
+# latest version
 $ pip install git+https://github.com/thu-ml/tianshou.git@master
-# develop version
-$ pip install git+https://github.com/thu-ml/tianshou.git@dev
 ```
 
 If you use Anaconda or Miniconda, you can install Tianshou through the following command lines:
