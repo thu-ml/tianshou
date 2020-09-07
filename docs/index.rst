@@ -63,8 +63,8 @@ If you use Anaconda or Miniconda, you can install Tianshou through the following
 After installation, open your python console and type
 ::
 
-    import tianshou as ts
-    print(ts.__version__)
+    import tianshou
+    print(tianshou.__version__)
 
 If no error occurs, you have successfully installed Tianshou.
 

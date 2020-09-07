@@ -74,8 +74,8 @@ $ pip install tianshou
 After installation, open your python console and type
 
 ```python
-import tianshou as ts
-print(ts.__version__)
+import tianshou
+print(tianshou.__version__)
 ```
 
 If no error occurs, you have successfully installed Tianshou.
