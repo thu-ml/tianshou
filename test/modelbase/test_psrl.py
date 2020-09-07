@@ -15,8 +15,6 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='NChain-v0')
     parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--eps-test', type=float, default=0.0)
-    parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=1)
@@ -51,7 +49,7 @@ def test_psrl(args=get_args()):
     # model
     n_action = args.action_shape
     n_state = args.state_shape
-    trans_count_prior = 1e-3 * np.ones((n_action, n_state, n_state))
+    trans_count_prior = np.ones((n_action, n_state, n_state))
     rew_mean_prior = np.zeros((n_state, n_action))
     rew_std_prior = np.ones((n_state, n_action))
     policy = PSRLPolicy(trans_count_prior,
@@ -63,12 +61,6 @@ def test_psrl(args=get_args()):
     # log
     writer = SummaryWriter(args.logdir + '/' + args.task)
 
-    def train_fn(x):
-        policy.set_eps(args.eps_train)
-
-    def test_fn(x):
-        policy.set_eps(args.eps_test)
-
     def stop_fn(x):
         if env.env.spec.reward_threshold:
             return x >= env.spec.reward_threshold
@@ -78,14 +70,12 @@ def test_psrl(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, 1,
-        args.test_num, args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, writer=writer)
+        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer)
 
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
         policy.eval()
-        policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
         result = test_collector.collect(n_episode=[1] * args.test_num,

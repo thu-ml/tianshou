@@ -27,13 +27,12 @@ class PSRLModel(object):
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
     ) -> None:
-        self.__eps = np.finfo(np.float32).eps.item()
         self.trans_count = trans_count_prior
         self.trans_count_prior_sum = np.sum(trans_count_prior, axis=2)
         self.n_action, self.n_state, _ = trans_count_prior.shape
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
-        self.rew_count = np.zeros_like(rew_mean_prior) + self.__eps
+        self.rew_count = np.ones_like(rew_mean_prior)
         self.policy: Optional[np.ndarray] = None
         self.updated = False
 
@@ -67,7 +66,7 @@ class PSRLModel(object):
         # After 1000 observations, if for some states, their
         # trans_count almost do not change, the code adds
         # the counts of these states transiting to themselves
-        # by 1.
+        # by 100.
         if np.sum(self.trans_count) > \
                 np.sum(self.trans_count_prior_sum) + 1000:
             min_index = np.argmin(np.sum(self.trans_count, axis=2), axis=1)
@@ -75,11 +74,15 @@ class PSRLModel(object):
                               self.trans_count_prior_sum).astype("float32")
             self.trans_count[np.array(range(self.n_action)),
                              min_index, min_index] += \
-                mask[np.array(range(self.n_action)), min_index]
+                mask[np.array(range(self.n_action)), min_index] * 100
 
-    def get_trans_prob_max_likelihood(self) -> np.ndarray:
-        return self.trans_count / np.sum(self.trans_count,
-                                         axis=-1, keepdims=True)
+    def sample_from_prob(self) -> np.ndarray:
+        sample_prob = np.zeros_like(self.trans_count)
+        for i in range(self.n_action):
+            for j in range(self.n_state):
+                sample_prob[i][j] = np.random.dirichlet(
+                    self.trans_count[i][j])
+        return sample_prob
 
     def sample_from_rew(self) -> np.ndarray:
         sample_rew = np.random.randn(*self.rew_mean.shape)
@@ -89,7 +92,7 @@ class PSRLModel(object):
     def solve_policy(self) -> None:
         self.updated = True
         self.policy = self.value_iteration(
-            self.get_trans_prob_max_likelihood(), self.sample_from_rew())
+            self.sample_from_prob(), self.sample_from_rew())
 
     @staticmethod
     def value_iteration(
@@ -146,11 +149,6 @@ class PSRLPolicy(BasePolicy):
         super().__init__(**kwargs)
         self.model = PSRLModel(trans_count_prior, rew_mean_prior,
                                rew_std_prior)
-        self.eps = 0.0
-
-    def set_eps(self, eps: float) -> None:
-        """Set the eps for epsilon-greedy exploration."""
-        self.eps = eps
 
     def forward(
         self,
@@ -170,12 +168,6 @@ class PSRLPolicy(BasePolicy):
             more detailed explanation.
         """
         act = self.model(batch.obs, state=state, info=batch.info)
-        if eps is None:
-            eps = self.eps
-        if not np.isclose(eps, 0):
-            for i in range(len(act)):
-                if np.random.rand() < eps:
-                    act[i] = np.random.randint(0, self.model.n_action)
         return Batch(act=act)
 
     def learn(  # type: ignore
