@@ -85,8 +85,7 @@ class PSRLModel(object):
         return sample_prob
 
     def sample_from_rew(self) -> np.ndarray:
-        sample_rew = np.random.randn(*self.rew_mean.shape)
-        sample_rew = sample_rew * self.rew_std + self.rew_mean
+        sample_rew = np.random.normal(self.rew_mean, self.rew_std)
         return sample_rew
 
     def solve_policy(self) -> None:
