@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 from setuptools import setup, find_packages
+
+
+def get_version() -> str:
+    # https://packaging.python.org/guides/single-sourcing-package-version/
+    init = open(os.path.join("tianshou", "__init__.py"), "r").read().split()
+    return init[init.index("__version__") + 2][1:-1]
 
 
 setup(
     name='tianshou',
-    version='0.2.6',
+    version=get_version(),
     description='A Library for Deep Reinforcement Learning',
     long_description=open('README.md', encoding='utf8').read(),
     long_description_content_type='text/markdown',

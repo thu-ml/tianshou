@@ -5,7 +5,7 @@ from tianshou import data, env, utils, policy, trainer, exploration
 utils.pre_compile()
 
 
-__version__ = '0.2.6'
+__version__ = '0.2.7'
 
 __all__ = [
     'env',
