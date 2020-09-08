@@ -25,11 +25,11 @@ Welcome to Tianshou!
 Here is Tianshou's other features:
 
 * Elegant framework, using only ~2000 lines of code
-* Support parallel environment sampling for all algorithms: :ref:`parallel_sampling`
-* Support recurrent state representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
+* Support parallel environment simulation (synchronous or asynchronous) for all algorithms: :ref:`parallel_sampling`
+* Support recurrent state/action representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
 * Support any type of environment state (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
 * Support customized training process: :ref:`customize_training`
-* Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` and prioritized experience replay for all Q-learning based algorithms
+* Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` and prioritized experience replay :class:`~tianshou.data.PrioritizedReplayBuffer` for all Q-learning based algorithms; GAE, nstep and PER are very fast thanks to numba jit function and vectorized numpy operation
 * Support multi-agent RL: :doc:`/tutorials/tictactoe`
 
 中文文档位于 `https://tianshou.readthedocs.io/zh/latest/ <https://tianshou.readthedocs.io/zh/latest/>`_
@@ -64,8 +64,8 @@ If you use Anaconda or Miniconda, you can install Tianshou through the following
 After installation, open your python console and type
 ::
 
-    import tianshou as ts
-    print(ts.__version__)
+    import tianshou
+    print(tianshou.__version__)
 
 If no error occurs, you have successfully installed Tianshou.
 
