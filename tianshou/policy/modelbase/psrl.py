@@ -61,20 +61,6 @@ class PSRLModel(object):
         self.rew_mean = (self.rew_mean * self.rew_count + rew_sum) / sum_count
         self.rew_std *= self.rew_count / sum_count
         self.rew_count = sum_count
-        # I find that maybe we did not gather information
-        # for absorbing states' transition probabilities.
-        # After 1000 observations, if for some states, their
-        # trans_count almost do not change, the code adds
-        # the counts of these states transiting to themselves
-        # by 100.
-        if np.sum(self.trans_count) > \
-                np.sum(self.trans_count_prior_sum) + 1000:
-            min_index = np.argmin(np.sum(self.trans_count, axis=2), axis=1)
-            mask = np.isclose(np.sum(self.trans_count, axis=2),
-                              self.trans_count_prior_sum).astype("float32")
-            self.trans_count[np.array(range(self.n_action)),
-                             min_index, min_index] += \
-                mask[np.array(range(self.n_action)), min_index] * 100
 
     def sample_from_prob(self) -> np.ndarray:
         sample_prob = np.zeros_like(self.trans_count)
@@ -182,5 +168,10 @@ class PSRLPolicy(BasePolicy):
             trans_count[a[i]][obs[i]][obs_next[i]] += 1
             rew_sum[obs[i]][a[i]] += r[i]
             rew_count[obs[i]][a[i]] += 1
+            if batch.done[i]:
+                if hasattr(batch.info, 'TimeLimit.truncated') \
+                        and batch.info['TimeLimit.truncated'][i]:
+                    continue
+                trans_count[:, obs_next[i], obs_next[i]] += 1
         self.model.observe(trans_count, rew_sum, rew_count)
         return {}
