@@ -67,8 +67,6 @@ def test_psrl(args=get_args()):
     writer = SummaryWriter(args.logdir + '/' + args.task)
 
     def stop_fn(x):
-        print(policy.model.rew_mean, policy.model.rew_mean.mean())
-        print(policy.model.rew_std, policy.model.rew_std.mean())
         if env.spec.reward_threshold:
             return x >= env.spec.reward_threshold
         else:
