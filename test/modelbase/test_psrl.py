@@ -23,8 +23,9 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.0)
-    parser.add_argument('--rew-mean-prior', type=float, default=0.0)
+    parser.add_argument('--rew-mean-prior', type=float, default=1.0)
     parser.add_argument('--rew-std-prior', type=float, default=10.0)
+    parser.add_argument('--rew-count-prior', type=int, default=1)
     parser.add_argument('--eps', type=float, default=0.01)
     return parser.parse_known_args()[0]
 
@@ -54,8 +55,10 @@ def test_psrl(args=get_args()):
     trans_count_prior = np.ones((n_state, n_action, n_state))
     rew_mean_prior = np.full((n_state, n_action), args.rew_mean_prior)
     rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)
+    rew_count_prior = np.full((n_state, n_action), args.rew_count_prior)
     policy = PSRLPolicy(
-        trans_count_prior, rew_mean_prior, rew_std_prior, args.eps)
+        trans_count_prior, rew_mean_prior, rew_std_prior, rew_count_prior,
+        args.eps)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
@@ -64,6 +67,8 @@ def test_psrl(args=get_args()):
     writer = SummaryWriter(args.logdir + '/' + args.task)
 
     def stop_fn(x):
+        print(policy.model.rew_mean, policy.model.rew_mean.mean())
+        print(policy.model.rew_std, policy.model.rew_std.mean())
         if env.spec.reward_threshold:
             return x >= env.spec.reward_threshold
         else:

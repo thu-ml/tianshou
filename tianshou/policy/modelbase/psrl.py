@@ -14,6 +14,8 @@ class PSRLModel(object):
         with shape (n_state, n_action).
     :param np.ndarray rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
+    :param np.ndarray rew_count_prior: count (weight) of the normal priors of
+        rewards, with shape (n_state, n_action).
     :param float epsilon: for precision control in value iteration.
     """
 
@@ -22,15 +24,17 @@ class PSRLModel(object):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
+        rew_count_prior: np.ndarray,
         epsilon: float,
     ) -> None:
         self.trans_count = trans_count_prior
         self.n_state, self.n_action = rew_mean_prior.shape
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
-        self.rew_count = np.ones_like(rew_mean_prior)
+        self.rew_count = rew_count_prior
         self.eps = epsilon
         self.policy: Optional[np.ndarray] = None
+        self.value = np.zeros(self.n_state)
         self.updated = False
 
     def observe(
@@ -75,15 +79,16 @@ class PSRLModel(object):
 
     def solve_policy(self) -> None:
         self.updated = True
-        self.policy = self.value_iteration(
+        self.policy, self.value = self.value_iteration(
             self.sample_from_prob(self.trans_count),
             self.sample_from_rew(),
             self.eps,
+            self.value,
         )
 
     @staticmethod
     def value_iteration(
-        trans_prob: np.ndarray, rew: np.ndarray, eps: float
+        trans_prob: np.ndarray, rew: np.ndarray, eps: float, value: np.ndarray
     ) -> np.ndarray:
         """Value iteration solver for MDPs.
 
@@ -91,16 +96,18 @@ class PSRLModel(object):
             (n_action, n_state, n_state).
         :param np.ndarray rew: rewards, with shape (n_state, n_action).
         :param float eps: for precision control.
+        :param np.ndarray value: the initialize value of value array, with
+            shape (n_state, ).
 
         :return: the optimal policy with shape (n_state, ).
         """
-        value = -np.nan
-        new_value = rew.max(axis=1)
+        Q = rew + trans_prob.dot(value)
+        new_value = Q.max(axis=1)
         while not np.allclose(new_value, value, eps):
             value = new_value
             Q = rew + trans_prob.dot(value)
             new_value = Q.max(axis=1)
-        return Q.argmax(axis=1)
+        return Q.argmax(axis=1), new_value
 
     def __call__(self, obs: np.ndarray, state=None, info=None) -> np.ndarray:
         if not self.updated:
@@ -120,6 +127,8 @@ class PSRLPolicy(BasePolicy):
         with shape (n_state, n_action).
     :param np.ndarray rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
+    :param np.ndarray rew_count_prior: count (weight) of the normal priors of
+        rewards, with shape (n_state, n_action).
     :param float epsilon: for precision control in value iteration.
 
     .. seealso::
@@ -133,12 +142,13 @@ class PSRLPolicy(BasePolicy):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
+        rew_count_prior: np.ndarray,
         epsilon: float = 0.01,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.model = PSRLModel(
-            trans_count_prior, rew_mean_prior, rew_std_prior, epsilon)
+        self.model = PSRLModel(trans_count_prior, rew_mean_prior,
+                               rew_std_prior, rew_count_prior, epsilon)
 
     def forward(
         self,
@@ -172,9 +182,13 @@ class PSRLPolicy(BasePolicy):
             rew_sum[obs[i], act[i]] += rew[i]
             rew_count[obs[i], act[i]] += 1
             if batch.done[i]:
-                if hasattr(batch.info, 'TimeLimit.truncated') \
-                        and batch.info['TimeLimit.truncated'][i]:
+                if hasattr(batch.info, "TimeLimit.truncated") \
+                        and batch.info["TimeLimit.truncated"][i]:
                     continue
                 trans_count[obs_next[i], :, obs_next[i]] += 1
+                rew_count[obs_next[i], :] += 1
         self.model.observe(trans_count, rew_sum, rew_count)
-        return {}
+        return {
+            "psrl/rew_mean": self.model.rew_mean.mean(),
+            "psrl/rew_std": self.model.rew_std.mean(),
+        }
