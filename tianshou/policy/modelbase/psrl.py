@@ -14,6 +14,7 @@ class PSRLModel(object):
         with shape (n_state, n_action).
     :param np.ndarray rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
+    :param float epsilon: for precision control in value iteration.
     """
 
     def __init__(
@@ -21,12 +22,14 @@ class PSRLModel(object):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
+        epsilon: float,
     ) -> None:
         self.trans_count = trans_count_prior
         self.n_state, self.n_action = rew_mean_prior.shape
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
         self.rew_count = np.ones_like(rew_mean_prior)
+        self.eps = epsilon
         self.policy: Optional[np.ndarray] = None
         self.updated = False
 
@@ -58,12 +61,13 @@ class PSRLModel(object):
         self.rew_std *= self.rew_count / sum_count
         self.rew_count = sum_count
 
-    def sample_from_prob(self) -> np.ndarray:
-        sample_prob = np.zeros_like(self.trans_count)
-        for i in range(self.n_state):
-            for j in range(self.n_action):
-                sample_prob[i][j] = np.random.dirichlet(
-                    self.trans_count[i][j])
+    @staticmethod
+    def sample_from_prob(trans_count: np.ndarray) -> np.ndarray:
+        sample_prob = np.zeros_like(trans_count)
+        n_s, n_a = trans_count.shape[:2]
+        for i in range(n_s):
+            for j in range(n_a):  # numba does not support dirichlet :(
+                sample_prob[i][j] = np.random.dirichlet(trans_count[i][j])
         return sample_prob
 
     def sample_from_rew(self) -> np.ndarray:
@@ -72,11 +76,14 @@ class PSRLModel(object):
     def solve_policy(self) -> None:
         self.updated = True
         self.policy = self.value_iteration(
-            self.sample_from_prob(), self.sample_from_rew())
+            self.sample_from_prob(self.trans_count),
+            self.sample_from_rew(),
+            self.eps,
+        )
 
     @staticmethod
     def value_iteration(
-        trans_prob: np.ndarray, rew: np.ndarray, eps: float = 0.01
+        trans_prob: np.ndarray, rew: np.ndarray, eps: float
     ) -> np.ndarray:
         """Value iteration solver for MDPs.
 
@@ -87,18 +94,16 @@ class PSRLModel(object):
 
         :return: the optimal policy with shape (n_state, ).
         """
-        value = np.zeros(len(rew))
-        print(trans_prob.shape, value.shape)
-        Q = rew + trans_prob.dot(value)  # (s, a) = (s, a) + (s, a, s) * (s)
-        new_value = np.max(Q, axis=1)  # (s) = (s, a).max(axis=1)
+        value = -np.nan
+        new_value = rew.max(axis=1)
         while not np.allclose(new_value, value, eps):
             value = new_value
             Q = rew + trans_prob.dot(value)
-            new_value = np.max(Q, axis=1)
-        return np.argmax(Q, axis=1)
+            new_value = Q.max(axis=1)
+        return Q.argmax(axis=1)
 
     def __call__(self, obs: np.ndarray, state=None, info=None) -> np.ndarray:
-        if self.updated is False:
+        if not self.updated:
             self.solve_policy()
         return self.policy[obs]
 
@@ -115,6 +120,7 @@ class PSRLPolicy(BasePolicy):
         with shape (n_state, n_action).
     :param np.ndarray rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
+    :param float epsilon: for precision control in value iteration.
 
     .. seealso::
 
@@ -127,17 +133,17 @@ class PSRLPolicy(BasePolicy):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
+        epsilon: float = 0.01,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.model = PSRLModel(
-            trans_count_prior, rew_mean_prior, rew_std_prior)
+            trans_count_prior, rew_mean_prior, rew_std_prior, epsilon)
 
     def forward(
         self,
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
-        eps: Optional[float] = None,
         **kwargs: Any,
     ) -> Batch:
         """Compute action over the given batch data with PSRL model.
@@ -153,7 +159,7 @@ class PSRLPolicy(BasePolicy):
         return Batch(act=self.model(batch.obs, state=state, info=batch.info))
 
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+        self, batch: Batch, *args: Any, **kwargs: Any
     ) -> Dict[str, float]:
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
@@ -162,9 +168,9 @@ class PSRLPolicy(BasePolicy):
         act, rew = batch.act, batch.rew
         obs, obs_next = batch.obs, batch.obs_next
         for i in range(len(obs)):
-            trans_count[obs[i]][act[i]][obs_next[i]] += 1
-            rew_sum[obs[i]][act[i]] += rew[i]
-            rew_count[obs[i]][act[i]] += 1
+            trans_count[obs[i], act[i], obs_next[i]] += 1
+            rew_sum[obs[i], act[i]] += rew[i]
+            rew_count[obs[i], act[i]] += 1
             if batch.done[i]:
                 if hasattr(batch.info, 'TimeLimit.truncated') \
                         and batch.info['TimeLimit.truncated'][i]:
