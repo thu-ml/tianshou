@@ -1,6 +1,6 @@
 # PSRL
 
-`NChain-v0`: `python3 psrl.py --step-per-epoch 100`
+`NChain-v0`: `python3 psrl.py`
 
 `FrozenLake-v0`: `python3 psrl.py --task FrozenLake-v0 --epoch 20 --step-per-epoch 1000`
 

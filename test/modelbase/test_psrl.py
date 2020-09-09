@@ -22,7 +22,9 @@ def get_args():
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument('--render', type=float, default=0.0)
+    parser.add_argument('--rew-mean-prior', type=float, default=0.0)
+    parser.add_argument('--rew-std-prior', type=float, default=1.0)
     return parser.parse_known_args()[0]
 
 
@@ -49,10 +51,10 @@ def test_psrl(args=get_args()):
     n_action = args.action_shape
     n_state = args.state_shape
     trans_count_prior = np.ones((n_action, n_state, n_state))
-    rew_mean_prior = np.zeros((n_state, n_action))
-    rew_std_prior = 10 * np.ones((n_state, n_action))
-    policy = PSRLPolicy(trans_count_prior,
-                        rew_mean_prior, rew_std_prior)
+    rew_mean_prior = np.full((n_state, n_action), args.rew_mean_prior)
+    rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)
+    policy = PSRLPolicy(
+        trans_count_prior, rew_mean_prior, rew_std_prior)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
@@ -69,7 +71,8 @@ def test_psrl(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, 1,
-        args.test_num, 0, stop_fn=stop_fn, writer=writer)
+        args.test_num, 0, stop_fn=stop_fn, writer=writer,
+        test_in_train=False)
 
     if __name__ == '__main__':
         pprint.pprint(result)
