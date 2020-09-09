@@ -16,7 +16,7 @@ def get_args():
     parser.add_argument('--task', type=str, default='NChain-v0')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--epoch', type=int, default=20)
+    parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--step-per-epoch', type=int, default=10)
     parser.add_argument('--collect-per-step', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=8)
@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.0)
     parser.add_argument('--rew-mean-prior', type=float, default=0.0)
-    parser.add_argument('--rew-std-prior', type=float, default=1.0)
+    parser.add_argument('--rew-std-prior', type=float, default=10.0)
     return parser.parse_known_args()[0]
 
 
