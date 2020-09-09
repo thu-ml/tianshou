@@ -8,7 +8,7 @@ from tianshou.policy import BasePolicy
 
 
 class ImitationPolicy(BasePolicy):
-    """Implementation of vanilla imitation learning (for continuous action space).
+    """Implementation of vanilla imitation learning.
 
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> a)

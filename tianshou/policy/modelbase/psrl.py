@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Any, Dict, Union, Optional
 
-from tianshou.policy import BasePolicy
 from tianshou.data import Batch
+from tianshou.policy import BasePolicy
 
 
 class PSRLModel(object):
@@ -37,8 +37,10 @@ class PSRLModel(object):
         self.updated = False
 
     def observe(
-        self, trans_count: np.ndarray,
-            rew_sum: np.ndarray, rew_count: np.ndarray
+        self,
+        trans_count: np.ndarray,
+        rew_sum: np.ndarray,
+        rew_count: np.ndarray
     ) -> None:
         """Add data into memory pool.
 
@@ -131,8 +133,8 @@ class PSRLPolicy(BasePolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.model = PSRLModel(trans_count_prior, rew_mean_prior,
-                               rew_std_prior)
+        self.model = PSRLModel(
+            trans_count_prior, rew_mean_prior, rew_std_prior)
 
     def forward(
         self,
@@ -151,22 +153,21 @@ class PSRLPolicy(BasePolicy):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
-        act = self.model(batch.obs, state=state, info=batch.info)
-        return Batch(act=act)
+        return Batch(act=self.model(batch.obs, state=state, info=batch.info))
 
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, float]:
-        trans_count = np.zeros((self.model.n_action, self.model.n_state,
-                                self.model.n_state))
-        rew_sum = np.zeros((self.model.n_state, self.model.n_action))
-        rew_count = np.zeros_like(rew_sum)
-        a, r = batch.act, batch.rew
+        n_s, n_a = self.model.n_state, self.model.n_action
+        trans_count = np.zeros((n_a, n_s, n_s))
+        rew_sum = np.zeros((n_s, n_a))
+        rew_count = np.zeros((n_s, n_a))
+        act, rew = batch.act, batch.rew
         obs, obs_next = batch.obs, batch.obs_next
         for i in range(len(obs)):
-            trans_count[a[i]][obs[i]][obs_next[i]] += 1
-            rew_sum[obs[i]][a[i]] += r[i]
-            rew_count[obs[i]][a[i]] += 1
+            trans_count[act[i]][obs[i]][obs_next[i]] += 1
+            rew_sum[obs[i]][act[i]] += rew[i]
+            rew_count[obs[i]][act[i]] += 1
             if batch.done[i]:
                 if hasattr(batch.info, 'TimeLimit.truncated') \
                         and batch.info['TimeLimit.truncated'][i]:
