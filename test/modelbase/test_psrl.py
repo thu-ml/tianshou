@@ -51,7 +51,7 @@ def test_psrl(args=get_args()):
     n_state = args.state_shape
     trans_count_prior = np.ones((n_action, n_state, n_state))
     rew_mean_prior = np.zeros((n_state, n_action))
-    rew_std_prior = np.ones((n_state, n_action))
+    rew_std_prior = 10 * np.ones((n_state, n_action))
     policy = PSRLPolicy(trans_count_prior,
                         rew_mean_prior, rew_std_prior)
     # collector
