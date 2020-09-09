@@ -50,7 +50,7 @@ def test_psrl(args=get_args()):
     # model
     n_action = args.action_shape
     n_state = args.state_shape
-    trans_count_prior = np.ones((n_action, n_state, n_state))
+    trans_count_prior = np.ones((n_state, n_action, n_state))
     rew_mean_prior = np.full((n_state, n_action), args.rew_mean_prior)
     rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)
     policy = PSRLPolicy(

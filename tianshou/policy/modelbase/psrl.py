@@ -9,16 +9,11 @@ class PSRLModel(object):
     """Implementation of Posterior Sampling Reinforcement Learning Model.
 
     :param np.ndarray p_prior: dirichlet prior (alphas), with shape
-        (n_action, n_state, n_state).
+        (n_state, n_action, n_state).
     :param np.ndarray rew_mean_prior: means of the normal priors of rewards,
         with shape (n_state, n_action).
     :param np.ndarray rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
     """
 
     def __init__(
@@ -28,8 +23,7 @@ class PSRLModel(object):
         rew_std_prior: np.ndarray,
     ) -> None:
         self.trans_count = trans_count_prior
-        self.trans_count_prior_sum = np.sum(trans_count_prior, axis=2)
-        self.n_action, self.n_state, _ = trans_count_prior.shape
+        self.n_state, self.n_action = rew_mean_prior.shape
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
         self.rew_count = np.ones_like(rew_mean_prior)
@@ -51,7 +45,7 @@ class PSRLModel(object):
         corresponding observations.
 
         :param np.ndarray trans_count: the number of observations, with shape
-            (n_action, n_state, n_state).
+            (n_state, n_action, n_state).
         :param np.ndarray rew_sum: total rewards, with shape
             (n_state, n_action).
         :param np.ndarray rew_count: the number of rewards, with shape
@@ -66,8 +60,8 @@ class PSRLModel(object):
 
     def sample_from_prob(self) -> np.ndarray:
         sample_prob = np.zeros_like(self.trans_count)
-        for i in range(self.n_action):
-            for j in range(self.n_state):
+        for i in range(self.n_state):
+            for j in range(self.n_action):
                 sample_prob[i][j] = np.random.dirichlet(
                     self.trans_count[i][j])
         return sample_prob
@@ -94,11 +88,12 @@ class PSRLModel(object):
         :return: the optimal policy with shape (n_state, ).
         """
         value = np.zeros(len(rew))
-        Q = rew + np.matmul(trans_prob, value).T
-        new_value = np.max(Q, axis=1)
+        print(trans_prob.shape, value.shape)
+        Q = rew + trans_prob.dot(value)  # (s, a) = (s, a) + (s, a, s) * (s)
+        new_value = np.max(Q, axis=1)  # (s) = (s, a).max(axis=1)
         while not np.allclose(new_value, value, eps):
             value = new_value
-            Q = rew + np.matmul(trans_prob, value).T
+            Q = rew + trans_prob.dot(value)
             new_value = np.max(Q, axis=1)
         return np.argmax(Q, axis=1)
 
@@ -114,10 +109,12 @@ class PSRLPolicy(BasePolicy):
     Reference: Strens M. A Bayesian framework for reinforcement learning [C]
     //ICML. 2000, 2000: 943-950.
 
-    :param np.ndarray trans_count_prior: dirichlet prior (alphas).
-    :param np.ndarray rew_mean_prior: means of the normal priors of rewards.
-    :param np.ndarray rew_std_prior: standard deviations of the normal
-        priors of rewards.
+    :param np.ndarray trans_count_prior: dirichlet prior (alphas), with shape
+        (n_state, n_action, n_state).
+    :param np.ndarray rew_mean_prior: means of the normal priors of rewards,
+        with shape (n_state, n_action).
+    :param np.ndarray rew_std_prior: standard deviations of the normal priors
+        of rewards, with shape (n_state, n_action).
 
     .. seealso::
 
@@ -159,19 +156,19 @@ class PSRLPolicy(BasePolicy):
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, float]:
         n_s, n_a = self.model.n_state, self.model.n_action
-        trans_count = np.zeros((n_a, n_s, n_s))
+        trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
         rew_count = np.zeros((n_s, n_a))
         act, rew = batch.act, batch.rew
         obs, obs_next = batch.obs, batch.obs_next
         for i in range(len(obs)):
-            trans_count[act[i]][obs[i]][obs_next[i]] += 1
+            trans_count[obs[i]][act[i]][obs_next[i]] += 1
             rew_sum[obs[i]][act[i]] += rew[i]
             rew_count[obs[i]][act[i]] += 1
             if batch.done[i]:
                 if hasattr(batch.info, 'TimeLimit.truncated') \
                         and batch.info['TimeLimit.truncated'][i]:
                     continue
-                trans_count[:, obs_next[i], obs_next[i]] += 1
+                trans_count[obs_next[i], :, obs_next[i]] += 1
         self.model.observe(trans_count, rew_sum, rew_count)
         return {}
