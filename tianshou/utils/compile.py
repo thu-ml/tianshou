@@ -1,12 +1,13 @@
 import numpy as np
 
-# functions that need to pre-compile for producing benchmark result
 from tianshou.policy.base import _episodic_return, _nstep_return
 from tianshou.data.utils.segtree import _reduce, _setitem, _get_prefix_sum_idx
 
 
 def pre_compile():
-    """Since Numba acceleration needs to compile the function in the first run,
+    """Functions that need to pre-compile for producing benchmark result.
+
+    Since Numba acceleration needs to compile the function in the first run,
     here we use some fake data for the common-type function-call compilation.
     Otherwise, the current training speed cannot compare with the previous.
     """

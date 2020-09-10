@@ -200,7 +200,6 @@ def test_collector_with_dict_state():
     assert not np.isclose(obs[0]['rand'], obs[1]['rand'])
     c1 = Collector(policy, envs, ReplayBuffer(size=100),
                    Logger.single_preprocess_fn)
-    c1.seed(0)
     c1.collect(n_step=10)
     c1.collect(n_episode=[2, 1, 1, 2])
     batch, _ = c1.buffer.sample(10)

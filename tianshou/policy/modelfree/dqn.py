@@ -8,12 +8,12 @@ from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
 
 class DQNPolicy(BasePolicy):
-    """Implementation of Deep Q Network. arXiv:1312.5602
+    """Implementation of Deep Q Network. arXiv:1312.5602.
 
-    Implementation of Double Q-Learning. arXiv:1509.06461
+    Implementation of Double Q-Learning. arXiv:1509.06461.
 
     Implementation of Dueling DQN. arXiv:1511.06581 (the dueling DQN is
-    implemented in the network side, not here)
+    implemented in the network side, not here).
 
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
@@ -21,10 +21,10 @@ class DQNPolicy(BasePolicy):
     :param float discount_factor: in [0, 1].
     :param int estimation_step: greater than 1, the number of steps to look
         ahead.
-    :param int target_update_freq: the target network update frequency (``0``
-        if you do not use the target network).
+    :param int target_update_freq: the target network update frequency (0 if
+        you do not use the target network).
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to ``False``.
+        defaults to False.
 
     .. seealso::
 
@@ -87,8 +87,10 @@ class DQNPolicy(BasePolicy):
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
-        """Compute the n-step return for Q-learning targets. More details can
-        be found at :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
+        """Compute the n-step return for Q-learning targets.
+
+        More details can be found at
+        :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
         """
         batch = self.compute_nstep_return(
             batch, buffer, indice, self._target_q,
@@ -101,9 +103,10 @@ class DQNPolicy(BasePolicy):
                 input: str = 'obs',
                 eps: Optional[float] = None,
                 **kwargs) -> Batch:
-        """Compute action over the given batch data. If you need to mask the
-        action, please add a "mask" into batch.obs, for example, if we have an
-        environment that has "0/1/2" three actions:
+        """Compute action over the given batch data.
+
+        If you need to mask the action, please add a "mask" into batch.obs, for
+        example, if we have an environment that has "0/1/2" three actions:
         ::
 
             batch == Batch(

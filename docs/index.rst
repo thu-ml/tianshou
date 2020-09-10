@@ -3,6 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+
 Welcome to Tianshou!
 ====================
 
@@ -25,13 +26,14 @@ Here is Tianshou's other features:
 
 * Elegant framework, using only ~2000 lines of code
 * Support parallel environment simulation (synchronous or asynchronous) for all algorithms: :ref:`parallel_sampling`
-* Support recurrent state/action representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
-* Support any type of environment state (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
-* Support customized training process: :ref:`customize_training`
+* Support recurrent state representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
+* Support any type of environment state/action (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
+* Support :ref:`customize_training`
 * Support n-step returns estimation :meth:`~tianshou.policy.BasePolicy.compute_nstep_return` and prioritized experience replay :class:`~tianshou.data.PrioritizedReplayBuffer` for all Q-learning based algorithms; GAE, nstep and PER are very fast thanks to numba jit function and vectorized numpy operation
-* Support multi-agent RL: :doc:`/tutorials/tictactoe`
+* Support :doc:`/tutorials/tictactoe`
 
 中文文档位于 `https://tianshou.readthedocs.io/zh/latest/ <https://tianshou.readthedocs.io/zh/latest/>`_
+
 
 Installation
 ------------
@@ -70,6 +72,7 @@ If no error occurs, you have successfully installed Tianshou.
 
 Tianshou is still under development, you can also check out the documents in stable version through `tianshou.readthedocs.io/en/stable/ <https://tianshou.readthedocs.io/en/stable/>`_.
 
+
 .. toctree::
    :maxdepth: 1
    :caption: Tutorials
@@ -81,6 +84,7 @@ Tianshou is still under development, you can also check out the documents in sta
    tutorials/trick
    tutorials/cheatsheet
 
+
 .. toctree::
    :maxdepth: 1
    :caption: API Docs
@@ -91,6 +95,7 @@ Tianshou is still under development, you can also check out the documents in sta
    api/tianshou.trainer
    api/tianshou.exploration
    api/tianshou.utils
+
 
 .. toctree::
    :maxdepth: 1

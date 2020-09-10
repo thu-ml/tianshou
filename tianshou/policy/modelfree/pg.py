@@ -12,7 +12,7 @@ class PGPolicy(BasePolicy):
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
-    :param torch.distributions.Distribution dist_fn: for computing the action.
+    :param dist_fn: distribution class for computing the action.
     :param float discount_factor: in [0, 1].
 
     .. seealso::
@@ -38,12 +38,12 @@ class PGPolicy(BasePolicy):
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
-        r"""Compute the discounted returns for each frame:
+        r"""Compute the discounted returns for each frame.
 
         .. math::
             G_t = \sum_{i=t}^T \gamma^{i-t}r_i
 
-        , where :math:`T` is the terminal time step, :math:`\gamma` is the
+        where :math:`T` is the terminal time step, :math:`\gamma` is the
         discount factor, :math:`\gamma \in [0, 1]`.
         """
         # batch.returns = self._vanilla_returns(batch)

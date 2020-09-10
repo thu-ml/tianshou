@@ -20,9 +20,7 @@ class BaseNoise(ABC, object):
 
 
 class GaussianNoise(BaseNoise):
-    """Class for vanilla gaussian process,
-    used for exploration in DDPG by default.
-    """
+    """The vanilla gaussian process, for exploration in DDPG by default."""
 
     def __init__(self,
                  mu: float = 0.0,
@@ -38,6 +36,7 @@ class GaussianNoise(BaseNoise):
 
 class OUNoise(BaseNoise):
     """Class for Ornstein-Uhlenbeck process, as used for exploration in DDPG.
+
     Usage:
     ::
 
@@ -67,8 +66,9 @@ class OUNoise(BaseNoise):
         self.reset()
 
     def __call__(self, size: tuple, mu: Optional[float] = None) -> np.ndarray:
-        """Generate new noise. Return a ``numpy.ndarray`` which size is equal
-        to ``size``.
+        """Generate new noise.
+
+        Return a ``numpy.ndarray`` which size is equal to ``size``.
         """
         if self._x is None or self._x.shape != size:
             self._x = 0
