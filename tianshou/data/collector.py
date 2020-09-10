@@ -24,7 +24,7 @@ class Collector(object):
         class. If set to ``None`` (testing phase), it will not store the data.
     :param function preprocess_fn: a function called before the data has been
         added to the buffer, see issue #42 and :ref:`preprocess_fn`, defaults
-        to ``None``.
+        to None.
     :param BaseNoise action_noise: add a noise to continuous action. Normally
         a policy already has a noise param for exploration in training phase,
         so this is recommended to use in test collector for some purpose.
@@ -172,11 +172,11 @@ class Collector(object):
             a list, it means to collect exactly ``n_episode[i]`` episodes in
             the i-th environment
         :param bool random: whether to use random policy for collecting data,
-            defaults to ``False``.
+            defaults to False.
         :param float render: the sleep time between rendering consecutive
-            frames, defaults to ``None`` (no rendering).
+            frames, defaults to None (no rendering).
         :param bool no_grad: whether to retain gradient in policy.forward,
-            defaults to ``True`` (no gradient retaining).
+            defaults to True (no gradient retaining).
 
         .. note::
 

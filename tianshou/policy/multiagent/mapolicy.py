@@ -33,7 +33,7 @@ class MultiAgentPolicyManager(BasePolicy):
         """Dispatch batch data from obs.agent_id to every policy's process_fn.
 
         Save original multi-dimensional rew in "save_rew", set rew to the
-        reward of each agent during their ``process_fn``, and restore the
+        reward of each agent during their "process_fn", and restore the
         original reward afterwards.
         """
         results = {}

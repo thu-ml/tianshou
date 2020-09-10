@@ -28,7 +28,7 @@ class Net(nn.Module):
     :param bool dueling: whether to use dueling network to calculate Q values
         (for Dueling DQN), defaults to False.
     :param nn.modules.Module norm_layer: use which normalization before ReLU,
-        e.g., ``nn.LayerNorm`` and ``nn.BatchNorm1d``, defaults to "None".
+        e.g., ``nn.LayerNorm`` and ``nn.BatchNorm1d``, defaults to None.
     """
 
     def __init__(self, layer_num: int, state_shape: tuple,

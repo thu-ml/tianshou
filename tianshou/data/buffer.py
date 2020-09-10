@@ -115,13 +115,12 @@ class ReplayBuffer:
     :param int size: the size of replay buffer.
     :param int stack_num: the frame-stack sampling argument, should be greater
         than or equal to 1, defaults to 1 (no stacking).
-    :param bool ignore_obs_next: whether to store obs_next, defaults to
-        ``False``.
+    :param bool ignore_obs_next: whether to store obs_next, defaults to False.
     :param bool save_only_last_obs: only save the last obs/obs_next when it has
         a shape of (timestep, ...)  because of temporal stacking, defaults to
-        ``False``.
+        False.
     :param bool sample_avail: the parameter indicating sampling only available
-        index when using frame-stack sampling method, defaults to ``False``.
+        index when using frame-stack sampling method, defaults to False.
         This feature is not supported in Prioritized Replay Buffer currently.
     """
 
@@ -162,7 +161,7 @@ class ReplayBuffer:
         """Unpickling interface.
 
         We need it because pickling buffer does not work out-of-the-box
-        (``buffer.__getattr__`` is customized).
+        ("buffer.__getattr__" is customized).
         """
         self.__dict__.update(state)
 
@@ -264,7 +263,7 @@ class ReplayBuffer:
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         """Get a random sample from buffer with size equal to batch_size. \
-        Return all the data in the buffer if batch_size is ``0``.
+        Return all the data in the buffer if batch_size is 0.
 
         :return: Sample data and its corresponding index inside the buffer.
         """
@@ -352,7 +351,7 @@ class ListReplayBuffer(ReplayBuffer):
 
     The function of :class:`~tianshou.data.ListReplayBuffer` is almost the same
     as :class:`~tianshou.data.ReplayBuffer`. The only difference is that
-    :class:`~tianshou.data.ListReplayBuffer` is based on ``list``. Therefore,
+    :class:`~tianshou.data.ListReplayBuffer` is based on list. Therefore,
     it does not support advanced indexing, which means you cannot sample a
     batch of data out of it. It is typically used for storing data.
 
@@ -426,11 +425,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         """Get a random sample from buffer with priority probability.
 
-        Return all the data in the buffer if batch_size is ``0``.
+        Return all the data in the buffer if batch_size is 0.
 
         :return: Sample data and its corresponding index inside the buffer.
 
-        The ``weight`` in the returned Batch is the weight on loss function
+        The "weight" in the returned Batch is the weight on loss function
         to de-bias the sampling process (some transition tuples are sampled
         more often so their losses are weighted less).
         """

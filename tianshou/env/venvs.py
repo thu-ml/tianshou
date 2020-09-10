@@ -105,7 +105,7 @@ class BaseVectorEnv(gym.Env):
         Any class who inherits ``gym.Env`` will inherit some attributes, like
         ``action_space``. However, we would like the attribute lookup to go
         straight into the worker (in fact, this vector env's action_space is
-        always ``None``).
+        always None).
         """
         if key in ['metadata', 'reward_range', 'spec', 'action_space',
                    'observation_space']:  # reserved keys in gym.Env
@@ -141,7 +141,7 @@ class BaseVectorEnv(gym.Env):
               ) -> np.ndarray:
         """Reset the state of some envs and return initial observations.
 
-        If id is "None", reset the state of all the environments and return
+        If id is None, reset the state of all the environments and return
         initial observations, otherwise reset the specific environments with
         the given id, either an int or a list.
         """
@@ -158,7 +158,7 @@ class BaseVectorEnv(gym.Env):
              ) -> List[np.ndarray]:
         """Run one timestep of some environments' dynamics.
 
-        If id is "None", run one timestep of all the environments’ dynamics;
+        If id is None, run one timestep of all the environments’ dynamics;
         otherwise run one timestep for some environments with given id,  either
         an int or a list. When the end of episode is reached, you are
         responsible for calling reset(id) to reset this environment’s state.
@@ -185,7 +185,7 @@ class BaseVectorEnv(gym.Env):
         should correspond to the ``id`` argument, and the ``id`` argument
         should be a subset of the ``env_id`` in the last returned ``info``
         (initially they are env_ids of all the environments). If action is
-        "None", fetch unfinished step() calls instead.
+        None, fetch unfinished step() calls instead.
         """
         self._assert_is_not_closed()
         id = self._wrap_id(id)

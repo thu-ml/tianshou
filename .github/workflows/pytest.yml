@@ -26,7 +26,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
     - name: Install dependencies
       run: |
-        pip install ".[dev]" --upgrade
+        python -m pip install ".[dev]" --upgrade
     - name: Test with pytest
       # ignore test/throughput which only profiles the code
       run: |

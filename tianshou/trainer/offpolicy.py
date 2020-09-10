@@ -30,7 +30,7 @@ def offpolicy_trainer(
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for off-policy trainer procedure.
 
-    The ``step`` in trainer means a policy network update.
+    The "step" in trainer means a policy network update.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
         class.

@@ -21,11 +21,11 @@ class A2CPolicy(PGPolicy):
     :param float vf_coef: weight for value loss, defaults to 0.5.
     :param float ent_coef: weight for entropy loss, defaults to 0.01.
     :param float max_grad_norm: clipping gradients in back propagation,
-        defaults to ``None``.
+        defaults to None.
     :param float gae_lambda: in [0, 1], param for Generalized Advantage
         Estimation, defaults to 0.95.
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to ``False``.
+        defaults to False.
     :param int max_batchsize: the maximum size of the batch when computing GAE,
         depends on the size of available memory and the memory cost of the
         model; should be as large as possible within the memory constraint;

@@ -26,7 +26,7 @@ CartPole-v0 is a simple environment with a discrete action space, for which DQN 
 Setup Multi-environment Wrapper
 -------------------------------
 
-It is okay if you want the original ``gym.Env``:
+If you want to use the original ``gym.Env``:
 ::
 
     train_envs = gym.make('CartPole-v0')
@@ -59,7 +59,7 @@ For the demonstration, here we use the second code-block.
 Build the Network
 -----------------
 
-Tianshou supports any user-defined PyTorch networks and optimizers only with the limitation of input and output API. Here is an example:
+Tianshou supports any user-defined PyTorch networks and optimizers. Yet, of course, the inputs and outputs must comply with Tianshou's API. Here is an example:
 ::
 
     import torch, numpy as np
@@ -87,10 +87,10 @@ Tianshou supports any user-defined PyTorch networks and optimizers only with the
     net = Net(state_shape, action_shape)
     optim = torch.optim.Adam(net.parameters(), lr=1e-3)
 
-You can have a try with those pre-defined networks in :mod:`~tianshou.utils.net.common`, :mod:`~tianshou.utils.net.discrete`, and :mod:`~tianshou.utils.net.continuous`. The rules of self-defined networks are:
+It is also possible to use pre-defined MLP networks in :mod:`~tianshou.utils.net.common`, :mod:`~tianshou.utils.net.discrete`, and :mod:`~tianshou.utils.net.continuous`. The rules of self-defined networks are:
 
 1. Input: observation ``obs`` (may be a ``numpy.ndarray``, ``torch.Tensor``, dict, or self-defined class), hidden state ``state`` (for RNN usage), and other information ``info`` provided by the environment.
-2. Output: some ``logits``, the next hidden state ``state``. The logits could be a tuple instead of a ``torch.Tensor``, or containing intermediate result during the policy forwarding procedure. It depends on how the policy class process the network output. For example, in PPO :cite:`PPO`, the return of the network might be ``(mu, sigma), state`` for Gaussian policy.
+2. Output: some ``logits``, the next hidden state ``state``. The logits could be a tuple instead of a ``torch.Tensor``, or some other useful variables or results during the policy forwarding procedure. It depends on how the policy class process the network output. For example, in PPO :cite:`PPO`, the return of the network might be ``(mu, sigma), state`` for Gaussian policy.
 
 
 Setup Policy

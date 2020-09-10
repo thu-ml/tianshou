@@ -16,7 +16,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
     - name: Install dependencies
       run: |
-        pip install ".[dev]" --upgrade
+        python -m pip install ".[dev]" --upgrade
     - name: Lint with flake8
       run: |
         flake8 . --count --show-source --statistics

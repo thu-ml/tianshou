@@ -31,27 +31,25 @@ class BasePolicy(ABC, nn.Module):
     Most of the policy needs a neural network to predict the action and an
     optimizer to optimize the policy. The rules of self-defined networks are:
 
-    1. Input: observation ``obs`` (may be a ``numpy.ndarray``, a \
-        ``torch.Tensor``, a dict or any others), hidden state ``state`` (for \
-        RNN usage), and other information ``info`` provided by the \
-        environment.
-    2. Output: some ``logits``, the next hidden state ``state``, and the \
-        intermediate result during policy forwarding procedure ``policy``. The\
-        ``logits`` could be a tuple instead of a ``torch.Tensor``. It depends \
-        on how the policy process the network output. For example, in PPO, the\
-        return of the network might be ``(mu, sigma), state`` for Gaussian \
-        policy. The ``policy`` can be a Batch of torch.Tensor or other things,\
-        which will be stored in the replay buffer, and can be accessed in the \
-        policy update process (e.g. in ``policy.learn()``, the \
-        ``batch.policy`` is what you need).
+    1. Input: observation "obs" (may be a ``numpy.ndarray``, a \
+    ``torch.Tensor``, a dict or any others), hidden state "state" (for RNN \
+    usage), and other information "info" provided by the environment.
+    2. Output: some "logits", the next hidden state "state", and the \
+    intermediate result during policy forwarding procedure "policy". The \
+    "logits" could be a tuple instead of a ``torch.Tensor``. It depends on how\
+    the policy process the network output. For example, in PPO, the return of \
+    the network might be ``(mu, sigma), state`` for Gaussian policy. The \
+    "policy" can be a Batch of torch.Tensor or other things, which will be \
+    stored in the replay buffer, and can be accessed in the policy update \
+    process (e.g. in "policy.learn()", the "batch.policy" is what you need).
 
     Since :class:`~tianshou.policy.BasePolicy` inherits ``torch.nn.Module``,
     you can use :class:`~tianshou.policy.BasePolicy` almost the same as
     ``torch.nn.Module``, for instance, loading and saving the model:
     ::
 
-        torch.save(policy.state_dict(), 'policy.pth')
-        policy.load_state_dict(torch.load('policy.pth'))
+        torch.save(policy.state_dict(), "policy.pth")
+        policy.load_state_dict(torch.load("policy.pth"))
     """
 
     def __init__(self,
@@ -176,7 +174,7 @@ class BasePolicy(ABC, nn.Module):
         :param float gae_lambda: the parameter for Generalized Advantage
             Estimation, should be in [0, 1], defaults to 0.95.
         :param bool rew_norm: normalize the reward to Normal(0, 1), defaults
-            to ``False``.
+            to False.
 
         :return: a Batch. The result will be stored in batch.returns as a numpy
             array with shape (bsz, ).
@@ -223,7 +221,7 @@ class BasePolicy(ABC, nn.Module):
         :param int n_step: the number of estimation step, should be an int
             greater than 0, defaults to 1.
         :param bool rew_norm: normalize the reward to Normal(0, 1), defaults
-            to ``False``.
+            to False.
 
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with shape (bsz, ).

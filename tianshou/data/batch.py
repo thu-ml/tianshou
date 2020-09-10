@@ -20,7 +20,7 @@ def _is_batch_set(data: Any) -> bool:
     # or 1-D np.ndarray with np.object type,
     # where each element is a dict/Batch object
     if isinstance(data, np.ndarray):  # most often case
-        # ``for e in data`` will just unpack the first dimension,
+        # "for e in data" will just unpack the first dimension,
         # but data.tolist() will flatten ndarray of objects
         # so do not use data.tolist()
         return data.dtype == np.object and \
@@ -155,8 +155,13 @@ def _parse_value(v: Any):
 
 
 class Batch:
-    """Batch the internal data structure to pass any kind of data to other \
-    methods, for example, a collector gives a batch data to policy.forward().
+    """The internal data structure in Tianshou.
+
+    Batch is a kind of supercharged array (of temporal data) stored
+    individually in a (recursive) dictionary of object that can be either numpy
+    array, torch tensor, or batch themself. It is designed to make it extremely
+    easily to access, manipulate and set partial view of the heterogeneous data
+    conveniently.
 
     For a detailed description, please refer to :ref:`batch_concept`.
     """
@@ -571,7 +576,7 @@ class Batch:
     def empty_(self, index: Union[
         str, slice, int, np.integer, np.ndarray, List[int]] = None
     ) -> 'Batch':
-        """Return an empty Batch object with 0 or "None" filled.
+        """Return an empty Batch object with 0 or None filled.
 
         If "index" is specified, it will only reset the specific indexed-data.
         ::
@@ -620,7 +625,7 @@ class Batch:
     def empty(batch: 'Batch', index: Union[
         str, slice, int, np.integer, np.ndarray, List[int]] = None
     ) -> 'Batch':
-        """Return an empty Batch object with 0 or "None" filled.
+        """Return an empty Batch object with 0 or None filled.
 
         The shape is the same as the given Batch.
         """
@@ -707,11 +712,11 @@ class Batch:
         """Split whole data into multiple small batches.
 
         :param int size: divide the data batch with the given size, but one
-            batch if the length of the batch is smaller than ``size``.
+            batch if the length of the batch is smaller than "size".
         :param bool shuffle: randomly shuffle the entire data batch if it is
-            ``True``, otherwise remain in the same. Default to ``True``.
+            True, otherwise remain in the same. Default to True.
         :param bool merge_last: merge the last batch into the previous one.
-            Default to ``False``.
+            Default to False.
         """
         length = len(self)
         assert 1 <= size  # size can be greater than length, return whole batch

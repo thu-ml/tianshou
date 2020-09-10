@@ -32,10 +32,10 @@ class EnvWorker(ABC):
              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Perform one timestep of the environment's dynamic.
 
-        ``send_action`` and ``get_result`` are coupled in sync simulation, so
-        typically users only call ``step`` function. But they can be called
-        separately in async simulation, i.e. someone calls ``send_action``
-        first, and calls ``get_result`` later.
+        "send_action" and "get_result" are coupled in sync simulation, so
+        typically users only call "step" function. But they can be called
+        separately in async simulation, i.e. someone calls "send_action" first,
+        and calls "get_result" later.
         """
         self.send_action(action)
         return self.get_result()

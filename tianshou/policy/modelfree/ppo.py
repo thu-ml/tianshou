@@ -18,7 +18,7 @@ class PPOPolicy(PGPolicy):
     :param dist_fn: distribution class for computing the action.
     :param float discount_factor: in [0, 1], defaults to 0.99.
     :param float max_grad_norm: clipping gradients in back propagation,
-        defaults to ``None``.
+        defaults to None.
     :param float eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
         paper, defaults to 0.2.
     :param float vf_coef: weight for value loss, defaults to 0.5.
@@ -31,9 +31,9 @@ class PPOPolicy(PGPolicy):
         where c > 1 is a constant indicating the lower bound,
         defaults to 5.0 (set ``None`` if you do not want to use it).
     :param bool value_clip: a parameter mentioned in arXiv:1811.02553 Sec. 4.1,
-        defaults to ``True``.
+        defaults to True.
     :param bool reward_normalization: normalize the returns to Normal(0, 1),
-        defaults to ``True``.
+        defaults to True.
     :param int max_batchsize: the maximum size of the batch when computing GAE,
         depends on the size of available memory and the memory cost of the
         model; should be as large as possible within the memory constraint;

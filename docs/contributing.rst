@@ -77,8 +77,8 @@ under the ``docs/`` directory. The generated webpages are in ``docs/_build`` and
 Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/.
 
 
-Documentation Test
-------------------
+Documentation Generation Test
+-----------------------------
 
 We have the following three documentation tests:
 
