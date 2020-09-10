@@ -15,7 +15,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='NChain-v0')
     parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--buffer-size', type=int, default=20000)
+    parser.add_argument('--buffer-size', type=int, default=50000)
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--step-per-epoch', type=int, default=10)
     parser.add_argument('--collect-per-step', type=int, default=1)
@@ -25,7 +25,6 @@ def get_args():
     parser.add_argument('--render', type=float, default=0.0)
     parser.add_argument('--rew-mean-prior', type=float, default=1.0)
     parser.add_argument('--rew-std-prior', type=float, default=10.0)
-    parser.add_argument('--rew-count-prior', type=int, default=1)
     parser.add_argument('--eps', type=float, default=0.01)
     return parser.parse_known_args()[0]
 
@@ -55,10 +54,8 @@ def test_psrl(args=get_args()):
     trans_count_prior = np.ones((n_state, n_action, n_state))
     rew_mean_prior = np.full((n_state, n_action), args.rew_mean_prior)
     rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)
-    rew_count_prior = np.full((n_state, n_action), args.rew_count_prior)
     policy = PSRLPolicy(
-        trans_count_prior, rew_mean_prior, rew_std_prior, rew_count_prior,
-        args.eps)
+        trans_count_prior, rew_mean_prior, rew_std_prior, args.eps)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
@@ -71,6 +68,8 @@ def test_psrl(args=get_args()):
             return x >= env.spec.reward_threshold
         else:
             return False
+
+    train_collector.collect(n_step=args.buffer_size, random=True)
     # trainer
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,

@@ -14,8 +14,6 @@ class PSRLModel(object):
         with shape (n_state, n_action).
     :param np.ndarray rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
-    :param np.ndarray rew_count_prior: count (weight) of the normal priors of
-        rewards, with shape (n_state, n_action).
     :param float epsilon: for precision control in value iteration.
     """
 
@@ -24,14 +22,13 @@ class PSRLModel(object):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
-        rew_count_prior: np.ndarray,
         epsilon: float,
     ) -> None:
         self.trans_count = trans_count_prior
         self.n_state, self.n_action = rew_mean_prior.shape
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
-        self.rew_count = rew_count_prior
+        self.rew_count = np.full(rew_mean_prior.shape, epsilon)  # no weight
         self.eps = epsilon
         self.policy: Optional[np.ndarray] = None
         self.value = np.zeros(self.n_state)
@@ -127,8 +124,6 @@ class PSRLPolicy(BasePolicy):
         with shape (n_state, n_action).
     :param np.ndarray rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
-    :param np.ndarray rew_count_prior: count (weight) of the normal priors of
-        rewards, with shape (n_state, n_action).
     :param float epsilon: for precision control in value iteration.
 
     .. seealso::
@@ -142,13 +137,12 @@ class PSRLPolicy(BasePolicy):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
-        rew_count_prior: np.ndarray,
         epsilon: float = 0.01,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.model = PSRLModel(trans_count_prior, rew_mean_prior,
-                               rew_std_prior, rew_count_prior, epsilon)
+        self.model = PSRLModel(
+            trans_count_prior, rew_mean_prior, rew_std_prior, epsilon)
 
     def forward(
         self,
