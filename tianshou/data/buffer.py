@@ -7,9 +7,11 @@ from tianshou.data.batch import _create_value
 
 
 class ReplayBuffer:
-    """:class:`~tianshou.data.ReplayBuffer` stores data generated from
-    interaction between the policy and environment. The current implementation
-    of Tianshou typically use 7 reserved keys in :class:`~tianshou.data.Batch`:
+    """:class:`~tianshou.data.ReplayBuffer` stores data generated from \
+    interaction between the policy and environment.
+
+    The current implementation of Tianshou typically use 7 reserved keys in
+    :class:`~tianshou.data.Batch`
 
     * ``obs`` the observation of step :math:`t` ;
     * ``act`` the action of step :math:`t` ;
@@ -150,15 +152,17 @@ class ReplayBuffer:
         return self.__class__.__name__ + self._meta.__repr__()[5:]
 
     def __getattr__(self, key: str) -> Any:
-        """Return self.key"""
+        """Return self.key."""
         try:
             return self._meta[key]
         except KeyError as e:
             raise AttributeError from e
 
     def __setstate__(self, state):
-        """Unpickling interface. We need it because pickling buffer does not
-        work out-of-the-box (``buffer.__getattr__`` is customized).
+        """Unpickling interface.
+
+        We need it because pickling buffer does not work out-of-the-box
+        (``buffer.__getattr__`` is customized).
         """
         self.__dict__.update(state)
 
@@ -280,9 +284,11 @@ class ReplayBuffer:
 
     def get(self, indice: Union[slice, int, np.integer, np.ndarray], key: str,
             stack_num: Optional[int] = None) -> Union[Batch, np.ndarray]:
-        """Return the stacked result, e.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t],
-        where s is self.key, t is indice. The stack_num (here equals to 4) is
-        given from buffer initialization procedure.
+        """Return the stacked result.
+
+        E.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t], where s is self.key, t is the
+        indice. The stack_num (here equals to 4) is given from buffer
+        initialization procedure.
         """
         if stack_num is None:
             stack_num = self.stack_num
@@ -325,8 +331,10 @@ class ReplayBuffer:
 
     def __getitem__(self, index: Union[
             slice, int, np.integer, np.ndarray]) -> Batch:
-        """Return a data batch: self[index]. If stack_num is larger than 1,
-        return the stacked obs and obs_next with shape [batch, len, ...].
+        """Return a data batch: self[index].
+
+        If stack_num is larger than 1, return the stacked obs and obs_next
+        with shape (batch, len, ...).
         """
         return Batch(
             obs=self.get(index, 'obs'),
@@ -340,8 +348,10 @@ class ReplayBuffer:
 
 
 class ListReplayBuffer(ReplayBuffer):
-    """The function of :class:`~tianshou.data.ListReplayBuffer` is almost the
-    same as :class:`~tianshou.data.ReplayBuffer`. The only difference is that
+    """List-based replay buffer.
+
+    The function of :class:`~tianshou.data.ListReplayBuffer` is almost the same
+    as :class:`~tianshou.data.ReplayBuffer`. The only difference is that
     :class:`~tianshou.data.ListReplayBuffer` is based on ``list``. Therefore,
     it does not support advanced indexing, which means you cannot sample a
     batch of data out of it. It is typically used for storing data.
@@ -373,7 +383,7 @@ class ListReplayBuffer(ReplayBuffer):
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
-    """Implementation of Prioritized Experience Replay. arXiv:1511.05952
+    """Implementation of Prioritized Experience Replay. arXiv:1511.05952.
 
     :param float alpha: the prioritization exponent.
     :param float beta: the importance sample soft coefficient.
@@ -388,17 +398,10 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         super().__init__(size, **kwargs)
         assert alpha > 0. and beta >= 0.
         self._alpha, self._beta = alpha, beta
-        self._max_prio = 1.
-        self._min_prio = 1.
-        # bypass the check
-        self._weight = SegmentTree(size)
+        self._max_prio = self._min_prio = 1.0
+        # save weight directly in this class instead of self._meta
+        self.weight = SegmentTree(size)
         self.__eps = np.finfo(np.float32).eps.item()
-
-    def __getattr__(self, key: str) -> Union['Batch', Any]:
-        """Return self.key"""
-        if key == 'weight':
-            return self._weight
-        return super().__getattr__(key)
 
     def add(self,
             obs: Union[dict, Batch, np.ndarray, float],
@@ -418,11 +421,12 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             self._max_prio = max(self._max_prio, weight)
             self._min_prio = min(self._min_prio, weight)
         self.weight[self._index] = weight ** self._alpha
-        super().add(obs, act, rew, done, obs_next, info, policy)
+        super().add(obs, act, rew, done, obs_next, info, policy, **kwargs)
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
-        """Get a random sample from buffer with priority probability. Return
-        all the data in the buffer if batch_size is ``0``.
+        """Get a random sample from buffer with priority probability.
+
+        Return all the data in the buffer if batch_size is ``0``.
 
         :return: Sample data and its corresponding index inside the buffer.
 
@@ -440,7 +444,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             scalar = np.random.rand(batch_size) * self.weight.reduce()
             indice = self.weight.get_prefix_sum_idx(scalar)
         batch = self[indice]
-        # impt_weight
+        # important sampling weight calculation
         # original formula: ((p_j/p_sum*N)**(-beta))/((p_min/p_sum*N)**(-beta))
         # simplified formula: (p_j/p_min)**(-beta)
         batch.weight = (batch.weight / self._min_prio) ** (-self._beta)

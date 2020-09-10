@@ -22,7 +22,7 @@ class DummyEnvWorker(EnvWorker):
     def wait(workers: List['DummyEnvWorker'],
              wait_num: int,
              timeout: Optional[float] = None) -> List['DummyEnvWorker']:
-        # SequentialEnvWorker objects are always ready
+        # Sequential EnvWorker objects are always ready
         return workers
 
     def send_action(self, action: np.ndarray) -> None:

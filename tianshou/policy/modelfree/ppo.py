@@ -8,14 +8,14 @@ from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 
 
 class PPOPolicy(PGPolicy):
-    r"""Implementation of Proximal Policy Optimization. arXiv:1707.06347
+    r"""Implementation of Proximal Policy Optimization. arXiv:1707.06347.
 
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.nn.Module critic: the critic network. (s -> V(s))
     :param torch.optim.Optimizer optim: the optimizer for actor and critic
         network.
-    :param torch.distributions.Distribution dist_fn: for computing the action.
+    :param dist_fn: distribution class for computing the action.
     :param float discount_factor: in [0, 1], defaults to 0.99.
     :param float max_grad_norm: clipping gradients in back propagation,
         defaults to ``None``.

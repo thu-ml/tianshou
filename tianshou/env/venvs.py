@@ -8,7 +8,9 @@ from tianshou.env.worker import EnvWorker, DummyEnvWorker, SubprocEnvWorker, \
 
 
 class BaseVectorEnv(gym.Env):
-    """Base class for vectorized environments wrapper. Usage:
+    """Base class for vectorized environments wrapper.
+
+    Usage:
     ::
 
         env_num = 8
@@ -45,7 +47,7 @@ class BaseVectorEnv(gym.Env):
     :param env_fns: a list of callable envs, ``env_fns[i]()`` generates the ith
         env.
     :param worker_fn: a callable worker, ``worker_fn(env_fns[i])`` generates a
-        worker which contains this env.
+        worker which contains the i-th env.
     :param int wait_num: use in asynchronous simulation if the time cost of
         ``env.step`` varies with time and synchronously waiting for all
         environments to finish a step is time-wasting. In that case, we can
@@ -98,10 +100,12 @@ class BaseVectorEnv(gym.Env):
         return self.env_num
 
     def __getattribute__(self, key: str) -> Any:
-        """Any class who inherits ``gym.Env`` will inherit some attributes,
-        like ``action_space``. However, we would like the attribute lookup to
-        go straight into the worker (in fact, this vector env's action_space
-        is always ``None``).
+        """Switch the attribute getter depending on the key.
+
+        Any class who inherits ``gym.Env`` will inherit some attributes, like
+        ``action_space``. However, we would like the attribute lookup to go
+        straight into the worker (in fact, this vector env's action_space is
+        always ``None``).
         """
         if key in ['metadata', 'reward_range', 'spec', 'action_space',
                    'observation_space']:  # reserved keys in gym.Env
@@ -110,9 +114,11 @@ class BaseVectorEnv(gym.Env):
             return super().__getattribute__(key)
 
     def __getattr__(self, key: str) -> Any:
-        """Try to retrieve an attribute from each individual wrapped
-        environment, if it does not belong to the wrapping vector environment
-        class.
+        """Fetch a list of env attributes.
+
+        This function tries to retrieve an attribute from each individual
+        wrapped environment, if it does not belong to the wrapping vector
+        environment class.
         """
         return [getattr(worker, key) for worker in self.workers]
 
@@ -133,9 +139,11 @@ class BaseVectorEnv(gym.Env):
 
     def reset(self, id: Optional[Union[int, List[int], np.ndarray]] = None
               ) -> np.ndarray:
-        """Reset the state of all the environments and return initial
-        observations if id is ``None``, otherwise reset the specific
-        environments with the given id, either an int or a list.
+        """Reset the state of some envs and return initial observations.
+
+        If id is "None", reset the state of all the environments and return
+        initial observations, otherwise reset the specific environments with
+        the given id, either an int or a list.
         """
         self._assert_is_not_closed()
         id = self._wrap_id(id)
@@ -148,7 +156,9 @@ class BaseVectorEnv(gym.Env):
              action: np.ndarray,
              id: Optional[Union[int, List[int], np.ndarray]] = None
              ) -> List[np.ndarray]:
-        """Run one timestep of all the environments’ dynamics if id is "None",
+        """Run one timestep of some environments' dynamics.
+
+        If id is "None", run one timestep of all the environments’ dynamics;
         otherwise run one timestep for some environments with given id,  either
         an int or a list. When the end of episode is reached, you are
         responsible for calling reset(id) to reset this environment’s state.
@@ -175,7 +185,7 @@ class BaseVectorEnv(gym.Env):
         should correspond to the ``id`` argument, and the ``id`` argument
         should be a subset of the ``env_id`` in the last returned ``info``
         (initially they are env_ids of all the environments). If action is
-        ``None``, fetch unfinished step() calls instead.
+        "None", fetch unfinished step() calls instead.
         """
         self._assert_is_not_closed()
         id = self._wrap_id(id)
@@ -239,9 +249,11 @@ class BaseVectorEnv(gym.Env):
         return [w.render(**kwargs) for w in self.workers]
 
     def close(self) -> None:
-        """Close all of the environments. This function will be called only
-        once (if not, it will be called during garbage collected). This way,
-        ``close`` of all workers can be assured.
+        """Close all of the environments.
+
+        This function will be called only once (if not, it will be called
+        during garbage collected). This way, ``close`` of all workers can be
+        assured.
         """
         self._assert_is_not_closed()
         for w in self.workers:
@@ -249,6 +261,7 @@ class BaseVectorEnv(gym.Env):
         self.is_closed = True
 
     def __del__(self) -> None:
+        """Redirect to self.close()."""
         if not self.is_closed:
             self.close()
 
@@ -270,6 +283,8 @@ class DummyVectorEnv(BaseVectorEnv):
 
 
 class VectorEnv(DummyVectorEnv):
+    """VectorEnv is renamed to DummyVectorEnv."""
+
     def __init__(self, *args, **kwargs) -> None:
         warnings.warn(
             'VectorEnv is renamed to DummyVectorEnv, and will be removed in '
@@ -296,9 +311,9 @@ class SubprocVectorEnv(BaseVectorEnv):
 
 
 class ShmemVectorEnv(BaseVectorEnv):
-    """Optimized version of SubprocVectorEnv which uses shared variables to
-    communicate observations. ShmemVectorEnv has exactly the same API as
-    SubprocVectorEnv.
+    """Optimized SubprocVectorEnv with shared buffers to exchange observations.
+
+    ShmemVectorEnv has exactly the same API as SubprocVectorEnv.
 
     .. seealso::
 
@@ -316,9 +331,9 @@ class ShmemVectorEnv(BaseVectorEnv):
 
 
 class RayVectorEnv(BaseVectorEnv):
-    """Vectorized environment wrapper based on
-    `ray <https://github.com/ray-project/ray>`_. This is a choice to run
-    distributed environments in a cluster.
+    """Vectorized environment wrapper based on ray.
+
+    This is a choice to run distributed environments in a cluster.
 
     .. seealso::
 

@@ -6,8 +6,9 @@ from tianshou.data import to_numpy
 
 
 class MovAvg(object):
-    """Class for moving average. It will automatically exclude the infinity and
-    NaN. Usage:
+    """Class for moving average.
+
+    It will automatically exclude the infinity and NaN. Usage:
     ::
 
         >>> stat = MovAvg(size=66)
@@ -30,8 +31,10 @@ class MovAvg(object):
         self.banned = [np.inf, np.nan, -np.inf]
 
     def add(self, x: Union[float, list, np.ndarray, torch.Tensor]) -> float:
-        """Add a scalar into :class:`MovAvg`. You can add ``torch.Tensor`` with
-        only one element, a python scalar, or a list of python scalar.
+        """Add a scalar into :class:`MovAvg`.
+
+        You can add ``torch.Tensor`` with only one element, a python scalar, or
+        a list of python scalar.
         """
         if isinstance(x, torch.Tensor):
             x = to_numpy(x.flatten())

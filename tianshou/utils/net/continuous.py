@@ -6,7 +6,9 @@ from tianshou.data import to_torch, to_torch_as
 
 
 class Actor(nn.Module):
-    """For advanced usage (how to customize the network), please refer to
+    """Simple actor network with MLP.
+
+    For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
 
@@ -18,14 +20,16 @@ class Actor(nn.Module):
         self._max = max_action
 
     def forward(self, s, state=None, info={}):
-        """s -> logits -> action"""
+        """Mapping: s -> logits -> action."""
         logits, h = self.preprocess(s, state)
         logits = self._max * torch.tanh(self.last(logits))
         return logits, h
 
 
 class Critic(nn.Module):
-    """For advanced usage (how to customize the network), please refer to
+    """Simple critic network with MLP.
+
+    For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
 
@@ -36,7 +40,7 @@ class Critic(nn.Module):
         self.last = nn.Linear(hidden_layer_size, 1)
 
     def forward(self, s, a=None, info={}):
-        """(s, a) -> logits -> Q(s, a)"""
+        """Mapping: (s, a) -> logits -> Q(s, a)."""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.flatten(1)
         if a is not None:
@@ -49,7 +53,9 @@ class Critic(nn.Module):
 
 
 class ActorProb(nn.Module):
-    """For advanced usage (how to customize the network), please refer to
+    """Simple actor network (output with a Gauss distribution) with MLP.
+
+    For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
 
@@ -64,7 +70,7 @@ class ActorProb(nn.Module):
         self._unbounded = unbounded
 
     def forward(self, s, state=None, info={}):
-        """s -> logits -> (mu, sigma)"""
+        """Mapping: s -> logits -> (mu, sigma)."""
         logits, h = self.preprocess(s, state)
         mu = self.mu(logits)
         if not self._unbounded:
@@ -76,7 +82,9 @@ class ActorProb(nn.Module):
 
 
 class RecurrentActorProb(nn.Module):
-    """For advanced usage (how to customize the network), please refer to
+    """Recurrent version of ActorProb.
+
+    For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
 
@@ -121,7 +129,9 @@ class RecurrentActorProb(nn.Module):
 
 
 class RecurrentCritic(nn.Module):
-    """For advanced usage (how to customize the network), please refer to
+    """Recurrent version of Critic.
+
+    For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
 

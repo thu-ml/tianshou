@@ -8,6 +8,7 @@ from tianshou.data import to_torch
 
 def miniblock(inp: int, oup: int,
               norm_layer: nn.modules.Module) -> List[nn.modules.Module]:
+    """Construct a miniblock with given input/output-size and norm layer."""
     ret = [nn.Linear(inp, oup)]
     if norm_layer is not None:
         ret += [norm_layer(oup)]
@@ -16,8 +17,10 @@ def miniblock(inp: int, oup: int,
 
 
 class Net(nn.Module):
-    """Simple MLP backbone. For advanced usage (how to customize the network),
-    please refer to :ref:`build_the_network`.
+    """Simple MLP backbone.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
 
     :param bool concat: whether the input shape is concatenated by state_shape
         and action_shape. If it is True, ``action_shape`` is not the output
@@ -25,7 +28,7 @@ class Net(nn.Module):
     :param bool dueling: whether to use dueling network to calculate Q values
         (for Dueling DQN), defaults to False.
     :param nn.modules.Module norm_layer: use which normalization before ReLU,
-        e.g., ``nn.LayerNorm`` and ``nn.BatchNorm1d``, defaults to None.
+        e.g., ``nn.LayerNorm`` and ``nn.BatchNorm1d``, defaults to "None".
     """
 
     def __init__(self, layer_num: int, state_shape: tuple,
@@ -76,7 +79,7 @@ class Net(nn.Module):
         self.model = nn.Sequential(*self.model)
 
     def forward(self, s, state=None, info={}):
-        """s -> flatten -> logits"""
+        """Mapping: s -> flatten -> logits."""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.reshape(s.size(0), -1)
         logits = self.model(s)
@@ -89,8 +92,10 @@ class Net(nn.Module):
 
 
 class Recurrent(nn.Module):
-    """Simple Recurrent network based on LSTM. For advanced usage (how to
-    customize the network), please refer to :ref:`build_the_network`.
+    """Simple Recurrent network based on LSTM.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
     """
 
     def __init__(self, layer_num, state_shape, action_shape,
@@ -106,9 +111,11 @@ class Recurrent(nn.Module):
         self.fc2 = nn.Linear(hidden_layer_size, np.prod(action_shape))
 
     def forward(self, s, state=None, info={}):
-        """In the evaluation mode, s should be with shape ``[bsz, dim]``; in
-        the training mode, s should be with shape ``[bsz, len, dim]``. See the
-        code and comment for more detail.
+        """Mapping: s -> flatten -> logits.
+
+        In the evaluation mode, s should be with shape ``[bsz, dim]``; in the
+        training mode, s should be with shape ``[bsz, len, dim]``. See the code
+        and comment for more detail.
         """
         s = to_torch(s, device=self.device, dtype=torch.float32)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)

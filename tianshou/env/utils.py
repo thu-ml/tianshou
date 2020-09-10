@@ -2,7 +2,7 @@ import cloudpickle
 
 
 class CloudpickleWrapper(object):
-    """A cloudpickle wrapper used in :class:`~tianshou.env.SubprocVectorEnv`"""
+    """A cloudpickle wrapper used in SubprocVectorEnv."""
 
     def __init__(self, data):
         self.data = data

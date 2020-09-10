@@ -14,8 +14,7 @@ from tianshou.data.batch import _create_value
 
 
 class Collector(object):
-    """The :class:`~tianshou.data.Collector` enables the policy to interact
-    with different types of environments conveniently.
+    """Collector enables the policy to interact with different types of envs.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
         class.
@@ -42,7 +41,7 @@ class Collector(object):
     :class:`~tianshou.data.Batch` with the modified keys and values. Examples
     are in "test/base/test_collector.py".
 
-    Example:
+    Here is the example:
     ::
 
         policy = PGPolicy(...)  # or other policies if you wish
@@ -139,9 +138,7 @@ class Collector(object):
         return self.env_num
 
     def reset_env(self) -> None:
-        """Reset all of the environment(s)' states and reset all of the cache
-        buffers (if need).
-        """
+        """Reset all of the environment(s)' states and the cache buffers."""
         self._ready_env_ids = np.arange(self.env_num)
         obs = self.env.reset()
         if self.preprocess_fn:
@@ -149,14 +146,6 @@ class Collector(object):
         self.data.obs = obs
         for b in self._cached_buf:
             b.reset()
-
-    def seed(self, seed: Optional[Union[int, List[int]]] = None) -> None:
-        """Reset all the seed(s) of the given environment(s)."""
-        return self.env.seed(seed)
-
-    def render(self, **kwargs) -> None:
-        """Render all the environment(s)."""
-        return self.env.render(**kwargs)
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
         """Reset the hidden state: self.data.state[id]."""
@@ -291,7 +280,7 @@ class Collector(object):
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
 
             if render:
-                self.render()
+                self.env.render()
                 time.sleep(render)
 
             # add data into the buffer
@@ -378,9 +367,10 @@ class Collector(object):
         }
 
     def sample(self, batch_size: int) -> Batch:
-        """Sample a data batch from the internal replay buffer. It will call
-        :meth:`~tianshou.policy.BasePolicy.process_fn` before returning the
-        final batch data.
+        """Sample a data batch from the internal replay buffer.
+
+        It will call :meth:`~tianshou.policy.BasePolicy.process_fn` before
+        returning the final batch data.
 
         :param int batch_size: ``0`` means it will extract all the data from
             the buffer, otherwise it will extract the data with the given

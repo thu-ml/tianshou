@@ -11,8 +11,10 @@ from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, \
 
 
 class BasePolicy(ABC, nn.Module):
-    """Tianshou aims to modularizing RL algorithms. It comes into several
-    classes of policies in Tianshou. All of the policy classes must inherit
+    """The base class for any RL policy.
+
+    Tianshou aims to modularizing RL algorithms. It comes into several classes
+    of policies in Tianshou. All of the policy classes must inherit
     :class:`~tianshou.policy.BasePolicy`.
 
     A policy class typically has four parts:
@@ -62,7 +64,7 @@ class BasePolicy(ABC, nn.Module):
         self.agent_id = 0
 
     def set_agent_id(self, agent_id: int) -> None:
-        """set self.agent_id = agent_id, for MARL."""
+        """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
     @abstractmethod
@@ -86,7 +88,7 @@ class BasePolicy(ABC, nn.Module):
             return Batch(logits=..., act=..., state=None, dist=...)
 
         The keyword ``policy`` is reserved and the corresponding data will be
-        stored into the replay buffer in numpy. For instance,
+        stored into the replay buffer. For instance,
         ::
 
             # some code
@@ -98,8 +100,10 @@ class BasePolicy(ABC, nn.Module):
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
-        """Pre-process the data from the provided replay buffer. Check out
-        :ref:`policy_concept` for more information.
+        """Pre-process the data from the provided replay buffer.
+
+        Used in :meth:`update`. Check out :ref:`process_fn` for more
+        information.
         """
         return batch
 
@@ -123,26 +127,28 @@ class BasePolicy(ABC, nn.Module):
 
     def post_process_fn(self, batch: Batch,
                         buffer: ReplayBuffer, indice: np.ndarray) -> None:
-        """Post-process the data from the provided replay buffer. Typical
-        usage is to update the sampling weight in prioritized experience
-        replay. Check out :ref:`policy_concept` for more information.
+        """Post-process the data from the provided replay buffer.
+
+        Typical usage is to update the sampling weight in prioritized
+        experience replay. Used in :meth:`update`.
         """
         if isinstance(buffer, PrioritizedReplayBuffer) \
                 and hasattr(batch, 'weight'):
             buffer.update_weight(indice, batch.weight)
 
-    def update(self, batch_size: int, buffer: Optional[ReplayBuffer],
+    def update(self, sample_size: int, buffer: Optional[ReplayBuffer],
                *args, **kwargs) -> Dict[str, Union[float, List[float]]]:
-        """Update the policy network and replay buffer (if needed). It includes
-        three function steps: process_fn, learn, and post_process_fn.
+        """Update the policy network and replay buffer.
 
-        :param int batch_size: 0 means it will extract all the data from the
-            buffer, otherwise it will sample a batch with the given batch_size.
+        It includes 3 function steps: process_fn, learn, and post_process_fn.
+
+        :param int sample_size: 0 means it will extract all the data from the
+            buffer, otherwise it will sample a batch with given sample_size.
         :param ReplayBuffer buffer: the corresponding replay buffer.
         """
         if buffer is None:
             return {}
-        batch, indice = buffer.sample(batch_size)
+        batch, indice = buffer.sample(sample_size)
         batch = self.process_fn(batch, buffer, indice)
         result = self.learn(batch, *args, **kwargs)
         self.post_process_fn(batch, buffer, indice)
@@ -156,8 +162,9 @@ class BasePolicy(ABC, nn.Module):
         gae_lambda: float = 0.95,
         rew_norm: bool = False,
     ) -> Batch:
-        """Compute returns over given full-length episodes, including the
-        implementation of Generalized Advantage Estimator (arXiv:1506.02438).
+        """Compute returns over given full-length episodes.
+
+        Implementation of Generalized Advantage Estimator (arXiv:1506.02438).
 
         :param batch: a data batch which contains several full-episode data
             chronologically.
@@ -192,13 +199,13 @@ class BasePolicy(ABC, nn.Module):
         n_step: int = 1,
         rew_norm: bool = False,
     ) -> Batch:
-        r"""Compute n-step return for Q-learning targets:
+        r"""Compute n-step return for Q-learning targets.
 
         .. math::
             G_t = \sum_{i = t}^{t + n - 1} \gamma^{i - t}(1 - d_i)r_i +
             \gamma^n (1 - d_{t + n}) Q_{\mathrm{target}}(s_{t + n})
 
-        , where :math:`\gamma` is the discount factor,
+        where :math:`\gamma` is the discount factor,
         :math:`\gamma \in [0, 1]`, :math:`d_t` is the done flag of step
         :math:`t`.
 
@@ -249,7 +256,7 @@ def _episodic_return(
     v_s_: np.ndarray, rew: np.ndarray, done: np.ndarray,
     gamma: float, gae_lambda: float,
 ) -> np.ndarray:
-    """Numba speedup: 4.1s -> 0.057s"""
+    """Numba speedup: 4.1s -> 0.057s."""
     returns = np.roll(v_s_, 1)
     m = (1. - done) * gamma
     delta = rew + v_s_ * m - returns
@@ -267,7 +274,7 @@ def _nstep_return(
     indice: np.ndarray, gamma: float, n_step: int, buf_len: int,
     mean: float, std: float
 ) -> np.ndarray:
-    """Numba speedup: 0.3s -> 0.15s"""
+    """Numba speedup: 0.3s -> 0.15s."""
     returns = np.zeros(indice.shape)
     gammas = np.full(indice.shape, n_step)
     for n in range(n_step - 1, -1, -1):

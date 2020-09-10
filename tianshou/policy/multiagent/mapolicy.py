@@ -6,7 +6,9 @@ from tianshou.data import Batch, ReplayBuffer
 
 
 class MultiAgentPolicyManager(BasePolicy):
-    """This multi-agent policy manager accepts a list of
+    """Multi-agent policy manager for MARL.
+
+    This multi-agent policy manager accepts a list of
     :class:`~tianshou.policy.BasePolicy`. It dispatches the batch data to each
     of these policies when the "forward" is called. The same as "process_fn"
     and "learn": it splits the data and feeds them to each policy. A figure in
@@ -28,7 +30,9 @@ class MultiAgentPolicyManager(BasePolicy):
 
     def process_fn(self, batch: Batch, buffer: ReplayBuffer,
                    indice: np.ndarray) -> Batch:
-        """Save original multi-dimensional rew in "save_rew", set rew to the
+        """Dispatch batch data from obs.agent_id to every policy's process_fn.
+
+        Save original multi-dimensional rew in "save_rew", set rew to the
         reward of each agent during their ``process_fn``, and restore the
         original reward afterwards.
         """
@@ -57,7 +61,9 @@ class MultiAgentPolicyManager(BasePolicy):
     def forward(self, batch: Batch,
                 state: Optional[Union[dict, Batch]] = None,
                 **kwargs) -> Batch:
-        """:param state: if None, it means all agents have no state. If not
+        """Dispatch batch data from obs.agent_id to every policy's forward.
+
+        :param state: if None, it means all agents have no state. If not
             None, it should contain keys of "agent_1", "agent_2", ...
 
         :return: a Batch with the following contents:
@@ -120,7 +126,9 @@ class MultiAgentPolicyManager(BasePolicy):
 
     def learn(self, batch: Batch, **kwargs
               ) -> Dict[str, Union[float, List[float]]]:
-        """:return: a dict with the following contents:
+        """Dispatch the data to all policies for learning.
+
+        :return: a dict with the following contents:
 
         ::
 

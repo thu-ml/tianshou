@@ -9,8 +9,7 @@ from tianshou.exploration import BaseNoise, GaussianNoise
 
 
 class TD3Policy(DDPGPolicy):
-    """Implementation of Twin Delayed Deep Deterministic Policy Gradient,
-    arXiv:1802.09477
+    """Implementation of TD3, arXiv:1802.09477.
 
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)

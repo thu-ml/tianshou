@@ -6,6 +6,7 @@ In this section, we describe how to use Tianshou to implement multi-agent reinfo
 .. image:: ../_static/images/tic-tac-toe.png
     :align: center
 
+
 Tic-Tac-Toe Environment
 -----------------------
 
@@ -15,11 +16,11 @@ The scripts are located at ``test/multiagent/``. We have implemented a Tic-Tac-T
     >>> from tic_tac_toe_env import TicTacToeEnv    # the module tic_tac_toe_env is in test/multiagent/
     >>> board_size = 6                              # the size of board size
     >>> win_size = 4                                # how many signs in a row are considered to win
-    >>> 
+    >>>
     >>> # This board has 6 rows and 6 cols (36 places in total)
     >>> # Players place 'x' and 'o' in turn on the board
     >>> # The player who first gets 4 consecutive 'x's or 'o's wins
-    >>> 
+    >>>
     >>> env = TicTacToeEnv(size=board_size, win_size=win_size)
     >>> obs = env.reset()
     >>> env.render()                                # render the empty board
@@ -105,6 +106,7 @@ One worth-noting case is that the game is over when there is only one empty posi
 
 After being familiar with the environment, let's try to play with random agents first!
 
+
 Two Random Agent
 ----------------
 
@@ -119,7 +121,7 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
     >>> from tianshou.data import Collector
     >>> from tianshou.policy import RandomPolicy, MultiAgentPolicyManager
     >>>
-    >>> # agents should be wrapped into one policy, 
+    >>> # agents should be wrapped into one policy,
     >>> # which is responsible for calling the acting agent correctly
     >>> # here we use two random agents
     >>> policy = MultiAgentPolicyManager([RandomPolicy(), RandomPolicy()])
@@ -159,7 +161,8 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
     ===x _ _ _ x x===
     =================
 
-Random agents perform badly. In the above game, although agent 2 wins finally, it is clear that a smart agent 1 would place an ``x`` at row 4 col 4 to win directly. 
+Random agents perform badly. In the above game, although agent 2 wins finally, it is clear that a smart agent 1 would place an ``x`` at row 4 col 4 to win directly.
+
 
 Train an MARL Agent
 -------------------
@@ -212,7 +215,7 @@ The explanation of each Tianshou class/function will be deferred to their first 
         parser.add_argument('--watch', default=False, action='store_true',
                             help='no training, watch the play of pre-trained models')
         parser.add_argument('--agent_id', type=int, default=2,
-                            help='the learned agent plays as the agent_id-th player. choices are 1 and 2.')
+                            help='the learned agent plays as the agent_id-th player. Choices are 1 and 2.')
         parser.add_argument('--resume_path', type=str, default='',
                             help='the path of agent pth file for resuming from a pre-trained agent')
         parser.add_argument('--opponent_path', type=str, default='',
@@ -229,7 +232,7 @@ The following ``get_agents`` function returns agents and their optimizers from e
 
 - The action model we use is an instance of :class:`~tianshou.utils.net.common.Net`, essentially a multi-layer perceptron with the ReLU activation function;
 - The network model is passed to a :class:`~tianshou.policy.DQNPolicy`, where actions are selected according to both the action mask and their Q-values;
-- The opponent can be either a random agent :class:`~tianshou.policy.RandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.DQNPolicy` allowing learned agents to play with themselves. 
+- The opponent can be either a random agent :class:`~tianshou.policy.RandomPolicy` that randomly chooses an action from legal actions, or it can be a pre-trained :class:`~tianshou.policy.DQNPolicy` allowing learned agents to play with themselves.
 
 Both agents are passed to :class:`~tianshou.policy.MultiAgentPolicyManager`, which is responsible to call the correct agent according to the ``agent_id`` in the observation. :class:`~tianshou.policy.MultiAgentPolicyManager` also dispatches data to each agent according to ``agent_id``, so that each agent seems to play with a virtual single-agent environment.
 

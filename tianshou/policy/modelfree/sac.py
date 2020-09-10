@@ -10,7 +10,7 @@ from tianshou.exploration import BaseNoise
 
 
 class SACPolicy(DDPGPolicy):
-    """Implementation of Soft Actor-Critic. arXiv:1812.05905
+    """Implementation of Soft Actor-Critic. arXiv:1812.05905.
 
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)

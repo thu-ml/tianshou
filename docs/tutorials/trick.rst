@@ -56,21 +56,19 @@ Algorithm specific tricks
 
 Here is about the experience of hyper-parameter tuning on CartPole and Pendulum:
 
-* :class:`~tianshou.policy.DQNPolicy`: use estimation_step greater than 1 and target network, also with a suitable size of replay buffer;
+* :class:`~tianshou.policy.DQNPolicy`: use estimation_step = 3 or 4 and target network, also with a suitable size of replay buffer;
 * :class:`~tianshou.policy.PGPolicy`: TBD
 * :class:`~tianshou.policy.A2CPolicy`: TBD
 * :class:`~tianshou.policy.PPOPolicy`: TBD
 * :class:`~tianshou.policy.DDPGPolicy`, :class:`~tianshou.policy.TD3Policy`, and :class:`~tianshou.policy.SACPolicy`: We found two tricks. The first is to ignore the done flag. The second is to normalize reward to a standard normal distribution (it is against the theoretical analysis, but indeed works very well). The two tricks work amazingly on Mujoco tasks, typically with a faster converge speed (1M -> 200K).
 
-* On-policy algorithms: increase the repeat-time (to 2 or 4 for trivial benchmark, 10 for mujoco) of the given batch in each training update will make the algorithm more stable. 
+* On-policy algorithms: increase the repeat-time (to 2 or 4 for trivial benchmark, 10 for mujoco) of the given batch in each training update will make the algorithm more stable.
 
 
 Code-level optimization
 -----------------------
 
 Tianshou has many short-but-efficient lines of code. For example, when we want to compute :math:`V(s)` and :math:`V(s')` by the same network, the best way is to concatenate :math:`s` and :math:`s'` together instead of computing the value function using twice of network forward.
-
-.. Jiayi: I write each line of code after quite a lot of time of consideration. Details make a difference.
 
 
 Atari/Mujoco Task Specific
