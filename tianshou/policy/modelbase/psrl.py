@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Any, Dict, Union, Optional
 
-from tianshou.data import Batch
 from tianshou.policy import BasePolicy
+from tianshou.data import Batch, ReplayBuffer
 
 
 class PSRLModel(object):
@@ -124,6 +124,7 @@ class PSRLPolicy(BasePolicy):
         with shape (n_state, n_action).
     :param np.ndarray rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
+    :param float discount_factor: in [0, 1].
     :param float epsilon: for precision control in value iteration.
 
     .. seealso::
@@ -137,12 +138,16 @@ class PSRLPolicy(BasePolicy):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
+        discount_factor: float = 0.99,
         epsilon: float = 0.01,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.model = PSRLModel(
             trans_count_prior, rew_mean_prior, rew_std_prior, epsilon)
+        assert 0.0 <= discount_factor <= 1.0, \
+            "discount factor should be in [0, 1]"
+        self._gamma = discount_factor
 
     def forward(
         self,
@@ -162,6 +167,12 @@ class PSRLPolicy(BasePolicy):
         """
         return Batch(act=self.model(batch.obs, state=state, info=batch.info))
 
+    def process_fn(
+        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> Batch:
+        return self.compute_episodic_return(
+            batch, gamma=self._gamma, gae_lambda=1.)
+
     def learn(  # type: ignore
         self, batch: Batch, *args: Any, **kwargs: Any
     ) -> Dict[str, float]:
@@ -169,7 +180,7 @@ class PSRLPolicy(BasePolicy):
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
         rew_count = np.zeros((n_s, n_a))
-        act, rew = batch.act, batch.rew
+        act, rew = batch.act, batch.returns
         obs, obs_next = batch.obs, batch.obs_next
         for i in range(len(obs)):
             trans_count[obs[i], act[i], obs_next[i]] += 1
