@@ -5,11 +5,11 @@ import pprint
 import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
+from torch.distributions import Independent, Normal
 
 from tianshou.policy import PPOPolicy
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
-from tianshou.policy.dist import DiagGaussian
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -84,7 +84,11 @@ def test_ppo(args=get_args()):
             torch.nn.init.zeros_(m.bias)
     optim = torch.optim.Adam(list(
         actor.parameters()) + list(critic.parameters()), lr=args.lr)
-    dist = DiagGaussian
+
+    # replace DiagGuassian with Independent(Normal) which is equivalent
+    # pass *logits to be consistent with policy.forward
+    def dist(*logits):
+        return Independent(Normal(*logits), 1)
     policy = PPOPolicy(
         actor, critic, optim, dist, args.gamma,
         max_grad_norm=args.max_grad_norm,

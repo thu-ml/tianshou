@@ -2,9 +2,9 @@ import torch
 import numpy as np
 from copy import deepcopy
 from typing import Dict, Tuple, Union, Optional
+from torch.distributions import Normal, Independent
 
 from tianshou.policy import DDPGPolicy
-from tianshou.policy.dist import DiagGaussian
 from tianshou.data import Batch, to_torch_as, ReplayBuffer
 from tianshou.exploration import BaseNoise
 
@@ -82,7 +82,7 @@ class SACPolicy(DDPGPolicy):
                    and alpha[1].requires_grad)
             self._log_alpha = alpha[1]
             self._alpha_optim = alpha[2]
-            self._alpha = self._log_alpha.exp()
+            self._alpha = self._log_alpha.detach().exp()
         else:
             self._alpha = alpha
 
@@ -111,12 +111,13 @@ class SACPolicy(DDPGPolicy):
         obs = getattr(batch, input)
         logits, h = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
-        dist = DiagGaussian(*logits)
+        dist = Independent(Normal(*logits), 1)
         x = dist.rsample()
         y = torch.tanh(x)
         act = y * self._action_scale + self._action_bias
         y = self._action_scale * (1 - y.pow(2)) + self.__eps
-        log_prob = dist.log_prob(x) - torch.log(y).sum(-1, keepdim=True)
+        log_prob = dist.log_prob(x).unsqueeze(-1)
+        log_prob = log_prob - torch.log(y).sum(-1, keepdim=True)
         if self._noise is not None and self.training and explorating:
             act += to_torch_as(self._noise(act.shape), act)
         act = act.clamp(self._range[0], self._range[1])
@@ -168,12 +169,12 @@ class SACPolicy(DDPGPolicy):
         self.actor_optim.step()
 
         if self._automatic_alpha_tuning:
-            log_prob = (obs_result.log_prob + self._target_entropy).detach()
+            log_prob = obs_result.log_prob.detach() + self._target_entropy
             alpha_loss = -(self._log_alpha * log_prob).mean()
             self._alpha_optim.zero_grad()
             alpha_loss.backward()
             self._alpha_optim.step()
-            self._alpha = self._log_alpha.exp()
+            self._alpha = self._log_alpha.detach().exp()
 
         self.sync_weight()
 
@@ -184,4 +185,5 @@ class SACPolicy(DDPGPolicy):
         }
         if self._automatic_alpha_tuning:
             result['loss/alpha'] = alpha_loss.item()
+            result['v/alpha'] = self._alpha.item()
         return result
