@@ -9,24 +9,23 @@ from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
 
 class A2CPolicy(PGPolicy):
-    """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783
+    """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
 
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.nn.Module critic: the critic network. (s -> V(s))
     :param torch.optim.Optimizer optim: the optimizer for actor and critic
         network.
-    :param torch.distributions.Distribution dist_fn: for computing the action,
-        defaults to ``torch.distributions.Categorical``.
+    :param dist_fn: distribution class for computing the action.
     :param float discount_factor: in [0, 1], defaults to 0.99.
     :param float vf_coef: weight for value loss, defaults to 0.5.
     :param float ent_coef: weight for entropy loss, defaults to 0.01.
     :param float max_grad_norm: clipping gradients in back propagation,
-        defaults to ``None``.
+        defaults to None.
     :param float gae_lambda: in [0, 1], param for Generalized Advantage
         Estimation, defaults to 0.95.
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to ``False``.
+        defaults to False.
     :param int max_batchsize: the maximum size of the batch when computing GAE,
         depends on the size of available memory and the memory cost of the
         model; should be as large as possible within the memory constraint;

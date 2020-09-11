@@ -5,12 +5,14 @@ This page shows some code snippets of how to use Tianshou to develop new algorit
 
 By the way, some of these issues can be resolved by using a ``gym.wrapper``. It could be a universal solution in the policy-environment interaction. But you can also use the batch processor :ref:`preprocess_fn`.
 
+
 .. _network_api:
 
 Build Policy Network
 --------------------
 
 See :ref:`build_the_network`.
+
 
 .. _new_policy:
 
@@ -19,12 +21,14 @@ Build New Policy
 
 See :class:`~tianshou.policy.BasePolicy`.
 
+
 .. _customize_training:
 
 Customize Training Process
 --------------------------
 
 See :ref:`customized_trainer`.
+
 
 .. _parallel_sampling:
 
@@ -66,7 +70,7 @@ Asynchronous simulation is a built-in functionality of :class:`~tianshou.env.Bas
     # DummyVectorEnv, ShmemVectorEnv, or RayVectorEnv, whichever you like.
     venv = SubprocVectorEnv(env_fns, wait_num=3, timeout=0.2)
     venv.reset()  # returns the initial observations of each environment
-    # returns ``wait_num`` steps or finished steps after ``timeout`` seconds,
+    # returns "wait_num" steps or finished steps after "timeout" seconds,
     # whichever occurs first.
     venv.step(actions, ready_id)
 
@@ -87,6 +91,7 @@ The figure in the right gives an intuitive comparison among synchronous/asynchro
 
     Otherwise, the outputs of these envs may be the same with each other.
 
+
 .. _preprocess_fn:
 
 Handle Batched Data Stream in Collector
@@ -96,17 +101,24 @@ This is related to `Issue 42 <https://github.com/thu-ml/tianshou/issues/42>`_.
 
 If you want to get log stat from data stream / pre-process batch-image / modify the reward with given env info, use ``preproces_fn`` in :class:`~tianshou.data.Collector`. This is a hook which will be called before the data adding into the buffer.
 
-This function receives up to 7 keys ``obs``, ``act``, ``rew``, ``done``, ``obs_next``, ``info``, and ``policy``, as listed in :class:`~tianshou.data.Batch`, and returns the modified part within a :class:`~tianshou.data.Batch`. Only ``obs`` is defined at env reset, while every key is specified for normal steps. For example, you can write your hook as:
+This function receives up to 7 keys ``obs``, ``act``, ``rew``, ``done``, ``obs_next``, ``info``, and ``policy``, as listed in :class:`~tianshou.data.Batch`. It returns the modified part within a :class:`~tianshou.data.Batch`. Only ``obs`` is defined at env.reset, while every key is specified for normal steps.
+
+These variables are intended to gather all the information requires to keep track of a simulation step, namely the (observation, action, reward, done flag, next observation, info, intermediate result of the policy) at time t, for the whole duration of the simulation.
+
+For example, you can write your hook as:
 ::
 
     import numpy as np
     from collections import deque
+
+
     class MyProcessor:
         def __init__(self, size=100):
             self.episode_log = None
             self.main_log = deque(maxlen=size)
             self.main_log.append(0)
             self.baseline = 0
+
         def preprocess_fn(**kwargs):
             """change reward to zero mean"""
             # if only obs exist -> reset
@@ -136,6 +148,7 @@ And finally,
 
 Some examples are in `test/base/test_collector.py <https://github.com/thu-ml/tianshou/blob/master/test/base/test_collector.py>`_.
 
+
 .. _rnn_training:
 
 RNN-style Training
@@ -143,17 +156,18 @@ RNN-style Training
 
 This is related to `Issue 19 <https://github.com/thu-ml/tianshou/issues/19>`_.
 
-First, add an argument ``stack_num`` to :class:`~tianshou.data.ReplayBuffer`:
+First, add an argument "stack_num" to :class:`~tianshou.data.ReplayBuffer`:
 ::
 
     buf = ReplayBuffer(size=size, stack_num=stack_num)
 
-Then, change the network to recurrent-style, for example, class ``Recurrent`` in `code snippet 1 <https://github.com/thu-ml/tianshou/blob/master/test/discrete/net.py>`_, or ``RecurrentActor`` and ``RecurrentCritic`` in `code snippet 2 <https://github.com/thu-ml/tianshou/blob/master/test/continuous/net.py>`_.
+Then, change the network to recurrent-style, for example, :class:`~tianshou.utils.net.common.Recurrent`, :class:`~tianshou.utils.net.continuous.RecurrentActorProb` and :class:`~tianshou.utils.net.continuous.RecurrentCritic`.
 
 The above code supports only stacked-observation. If you want to use stacked-action (for Q(stacked-s, stacked-a)), stacked-reward, or other stacked variables, you can add a ``gym.wrapper`` to modify the state representation. For example, if we add a wrapper that map [s, a] pair to a new state:
 
 - Before: (s, a, s', r, d) stored in replay buffer, and get stacked s;
 - After applying wrapper: ([s, a], a, [s', a'], r, d) stored in replay buffer, and get both stacked s and a.
+
 
 .. _self_defined_env:
 
@@ -174,11 +188,11 @@ First of all, your self-defined environment must follow the Gym's API, some of t
 
 - close() -> None
 
-- observation_space
+- observation_space: gym.Space
 
-- action_space
+- action_space: gym.Space
 
-The state can be a ``numpy.ndarray`` or a Python dictionary. Take ``FetchReach-v1`` as an example:
+The state can be a ``numpy.ndarray`` or a Python dictionary. Take "FetchReach-v1" as an example:
 ::
 
     >>> e = gym.make('FetchReach-v1')
@@ -284,6 +298,7 @@ But the state stored in the buffer may be a shallow-copy. To make sure each of y
     def step(a):
         ...
         return copy.deepcopy(self.graph), reward, done, {}
+
 
 .. _marl_example:
 

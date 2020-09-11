@@ -9,7 +9,7 @@ from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
 
 class DDPGPolicy(BasePolicy):
-    """Implementation of Deep Deterministic Policy Gradient. arXiv:1509.02971
+    """Implementation of Deep Deterministic Policy Gradient. arXiv:1509.02971.
 
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
@@ -25,9 +25,9 @@ class DDPGPolicy(BasePolicy):
     :param action_range: the action range (minimum, maximum).
     :type action_range: (float, float)
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to ``False``.
+        defaults to False.
     :param bool ignore_done: ignore the done flag while training the policy,
-        defaults to ``False``.
+        defaults to False.
     :param int estimation_step: greater than 1, the number of steps to look
         ahead.
 

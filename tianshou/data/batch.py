@@ -20,7 +20,7 @@ def _is_batch_set(data: Any) -> bool:
     # or 1-D np.ndarray with np.object type,
     # where each element is a dict/Batch object
     if isinstance(data, np.ndarray):  # most often case
-        # ``for e in data`` will just unpack the first dimension,
+        # "for e in data" will just unpack the first dimension,
         # but data.tolist() will flatten ndarray of objects
         # so do not use data.tolist()
         return data.dtype == np.object and \
@@ -79,7 +79,8 @@ def _to_array_with_correct_type(v: Any) -> np.ndarray:
 
 def _create_value(inst: Any, size: int, stack=True) -> Union[
         'Batch', np.ndarray, torch.Tensor]:
-    """
+    """Create empty place-holders accroding to inst's shape.
+
     :param bool stack: whether to stack or to concatenate. E.g. if inst has
         shape of (3, 5), size = 10, stack=True returns an np.ndarry with shape
         of (10, 3, 5), otherwise (10, 5)
@@ -154,9 +155,13 @@ def _parse_value(v: Any):
 
 
 class Batch:
-    """Tianshou provides :class:`~tianshou.data.Batch` as the internal data
-    structure to pass any kind of data to other methods, for example, a
-    collector gives a :class:`~tianshou.data.Batch` to policy for learning.
+    """The internal data structure in Tianshou.
+
+    Batch is a kind of supercharged array (of temporal data) stored
+    individually in a (recursive) dictionary of object that can be either numpy
+    array, torch tensor, or batch themself. It is designed to make it extremely
+    easily to access, manipulate and set partial view of the heterogeneous data
+    conveniently.
 
     For a detailed description, please refer to :ref:`batch_concept`.
     """
@@ -180,12 +185,13 @@ class Batch:
             self.__init__(kwargs, copy=copy)
 
     def __setattr__(self, key: str, value: Any) -> None:
-        """self.key = value"""
+        """Set self.key = value."""
         self.__dict__[key] = _parse_value(value)
 
     def __getstate__(self) -> dict:
-        """Pickling interface. Only the actual data are serialized for both
-        efficiency and simplicity.
+        """Pickling interface.
+
+        Only the actual data are serialized for both efficiency and simplicity.
         """
         state = {}
         for k, v in self.items():
@@ -195,9 +201,10 @@ class Batch:
         return state
 
     def __setstate__(self, state) -> None:
-        """Unpickling interface. At this point, self is an empty Batch instance
-        that has not been initialized, so it can safely be initialized by the
-        pickle state.
+        """Unpickling interface.
+
+        At this point, self is an empty Batch instance that has not been
+        initialized, so it can safely be initialized by the pickle state.
         """
         self.__init__(**state)
 
@@ -246,8 +253,7 @@ class Batch:
                     self.__dict__[key][index] = None
 
     def __iadd__(self, other: Union['Batch', Number, np.number]):
-        """Algebraic addition with another :class:`~tianshou.data.Batch`
-        instance in-place."""
+        """Algebraic addition with another Batch instance in-place."""
         if isinstance(other, Batch):
             for (k, r), v in zip(self.__dict__.items(),
                                  other.__dict__.values()):
@@ -268,14 +274,12 @@ class Batch:
             raise TypeError("Only addition of Batch or number is supported.")
 
     def __add__(self, other: Union['Batch', Number, np.number]):
-        """Algebraic addition with another :class:`~tianshou.data.Batch`
-        instance out-of-place."""
+        """Algebraic addition with another Batch instance out-of-place."""
         return deepcopy(self).__iadd__(other)
 
     def __imul__(self, val: Union[Number, np.number]):
         """Algebraic multiplication with a scalar value in-place."""
-        assert _is_number(val), \
-            "Only multiplication by a number is supported."
+        assert _is_number(val), "Only multiplication by a number is supported."
         for k, r in self.__dict__.items():
             if isinstance(r, Batch) and r.is_empty():
                 continue
@@ -288,8 +292,7 @@ class Batch:
 
     def __itruediv__(self, val: Union[Number, np.number]):
         """Algebraic division with a scalar value in-place."""
-        assert _is_number(val), \
-            "Only division by a number is supported."
+        assert _is_number(val), "Only division by a number is supported."
         for k, r in self.__dict__.items():
             if isinstance(r, Batch) and r.is_empty():
                 continue
@@ -336,15 +339,11 @@ class Batch:
         return self.__dict__.get(k, d)
 
     def pop(self, k: str, d: Optional[Any] = None) -> Any:
-        """Return and remove self[k] if k in self else d. d defaults to
-        None.
-        """
+        """Return & remove self[k] if k in self else d. d defaults to None."""
         return self.__dict__.pop(k, d)
 
     def to_numpy(self) -> None:
-        """Change all torch.Tensor to numpy.ndarray. This is an in-place
-        operation.
-        """
+        """Change all torch.Tensor to numpy.ndarray in-place."""
         for k, v in self.items():
             if isinstance(v, torch.Tensor):
                 self.__dict__[k] = v.detach().cpu().numpy()
@@ -353,9 +352,7 @@ class Batch:
 
     def to_torch(self, dtype: Optional[torch.dtype] = None,
                  device: Union[str, int, torch.device] = 'cpu') -> None:
-        """Change all numpy.ndarray to torch.Tensor. This is an in-place
-        operation.
-        """
+        """Change all numpy.ndarray to torch.Tensor in-place."""
         if not isinstance(device, torch.device):
             device = torch.device(device)
 
@@ -382,7 +379,9 @@ class Batch:
     def __cat(self,
               batches: List[Union[dict, 'Batch']],
               lens: List[int]) -> None:
-        """::
+        """Private method for Batch.cat_.
+
+        ::
 
             >>> a = Batch(a=np.random.randn(3, 4))
             >>> x = Batch(a=a, b=np.random.randn(4, 4))
@@ -448,9 +447,7 @@ class Batch:
 
     def cat_(self,
              batches: Union['Batch', List[Union[dict, 'Batch']]]) -> None:
-        """Concatenate a list of (or one) :class:`~tianshou.data.Batch` objects
-        into current batch.
-        """
+        """Concatenate a list of (or one) Batch objects into current batch."""
         if isinstance(batches, Batch):
             batches = [batches]
         if len(batches) == 0:
@@ -477,10 +474,10 @@ class Batch:
 
     @staticmethod
     def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':
-        """Concatenate a list of :class:`~tianshou.data.Batch` object into a
-        single new batch. For keys that are not shared across all batches,
-        batches that do not have these keys will be padded by zeros with
-        appropriate shapes. E.g.
+        """Concatenate a list of Batch object into a single new batch.
+
+        For keys that are not shared across all batches, batches that do not
+        have these keys will be padded by zeros with appropriate shapes. E.g.
         ::
 
             >>> a = Batch(a=np.zeros([3, 4]), common=Batch(c=np.zeros([3, 5])))
@@ -500,9 +497,7 @@ class Batch:
     def stack_(self,
                batches: List[Union[dict, 'Batch']],
                axis: int = 0) -> None:
-        """Stack a list of :class:`~tianshou.data.Batch` object into current
-        batch.
-        """
+        """Stack a list of Batch object into current batch."""
         if len(batches) == 0:
             return
         batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
@@ -553,9 +548,10 @@ class Batch:
 
     @staticmethod
     def stack(batches: List[Union[dict, 'Batch']], axis: int = 0) -> 'Batch':
-        """Stack a list of :class:`~tianshou.data.Batch` object into a single
-        new batch. For keys that are not shared across all batches,
-        batches that do not have these keys will be padded by zeros. E.g.
+        """Stack a list of Batch object into a single new batch.
+
+        For keys that are not shared across all batches, batches that do not
+        have these keys will be padded by zeros. E.g.
         ::
 
             >>> a = Batch(a=np.zeros([4, 4]), common=Batch(c=np.zeros([4, 5])))
@@ -580,9 +576,9 @@ class Batch:
     def empty_(self, index: Union[
         str, slice, int, np.integer, np.ndarray, List[int]] = None
     ) -> 'Batch':
-        """Return an empty a :class:`~tianshou.data.Batch` object with 0 or
-        ``None`` filled. If ``index`` is specified, it will only reset the
-        specific indexed-data.
+        """Return an empty Batch object with 0 or None filled.
+
+        If "index" is specified, it will only reset the specific indexed-data.
         ::
 
             >>> data.empty_()
@@ -629,9 +625,9 @@ class Batch:
     def empty(batch: 'Batch', index: Union[
         str, slice, int, np.integer, np.ndarray, List[int]] = None
     ) -> 'Batch':
-        """Return an empty :class:`~tianshou.data.Batch` object with 0 or
-        ``None`` filled, the shape is the same as the given
-        :class:`~tianshou.data.Batch`.
+        """Return an empty Batch object with 0 or None filled.
+
+        The shape is the same as the given Batch.
         """
         return deepcopy(batch).empty_(index)
 
@@ -664,9 +660,10 @@ class Batch:
         return min(r)
 
     def is_empty(self, recurse: bool = False):
-        """
-        Test if a Batch is empty. If ``recurse=True``, it further tests the
-        values of the object; else it only tests the existence of any key.
+        """Test if a Batch is empty.
+
+        If ``recurse=True``, it further tests the values of the object; else
+        it only tests the existence of any key.
 
         ``b.is_empty(recurse=True)`` is mainly used to distinguish
         ``Batch(a=Batch(a=Batch()))`` and ``Batch(a=1)``. They both raise
@@ -715,11 +712,11 @@ class Batch:
         """Split whole data into multiple small batches.
 
         :param int size: divide the data batch with the given size, but one
-            batch if the length of the batch is smaller than ``size``.
+            batch if the length of the batch is smaller than "size".
         :param bool shuffle: randomly shuffle the entire data batch if it is
-            ``True``, otherwise remain in the same. Default to ``True``.
+            True, otherwise remain in the same. Default to True.
         :param bool merge_last: merge the last batch into the previous one.
-            Default to ``False``.
+            Default to False.
         """
         length = len(self)
         assert 1 <= size  # size can be greater than length, return whole batch

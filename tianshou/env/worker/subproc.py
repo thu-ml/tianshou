@@ -76,7 +76,7 @@ _NP_TO_CT = {
 
 
 class ShArray:
-    """Wrapper of multiprocessing Array"""
+    """Wrapper of multiprocessing Array."""
 
     def __init__(self, dtype, shape):
         self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))

@@ -5,7 +5,9 @@ import torch.nn.functional as F
 
 
 class Actor(nn.Module):
-    """For advanced usage (how to customize the network), please refer to
+    """Simple actor network with MLP.
+
+    For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
 
@@ -15,14 +17,16 @@ class Actor(nn.Module):
         self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
 
     def forward(self, s, state=None, info={}):
-        r"""s -> Q(s, \*)"""
+        r"""Mapping: s -> Q(s, \*)."""
         logits, h = self.preprocess(s, state)
         logits = F.softmax(self.last(logits), dim=-1)
         return logits, h
 
 
 class Critic(nn.Module):
-    """For advanced usage (how to customize the network), please refer to
+    """Simple critic network with MLP.
+
+    For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
 
@@ -32,17 +36,17 @@ class Critic(nn.Module):
         self.last = nn.Linear(hidden_layer_size, 1)
 
     def forward(self, s, **kwargs):
-        """s -> V(s)"""
+        """Mapping: s -> V(s)."""
         logits, h = self.preprocess(s, state=kwargs.get('state', None))
         logits = self.last(logits)
         return logits
 
 
 class DQN(nn.Module):
-    """For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
+    """Reference: Human-level control through deep reinforcement learning.
 
-    Reference paper: "Human-level control through deep reinforcement learning".
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
     """
 
     def __init__(self, c, h, w, action_shape, device='cpu'):
@@ -78,7 +82,7 @@ class DQN(nn.Module):
         )
 
     def forward(self, x, state=None, info={}):
-        r"""x -> Q(x, \*)"""
+        r"""Mapping: x -> Q(x, \*)."""
         if not isinstance(x, torch.Tensor):
             x = torch.tensor(x, device=self.device, dtype=torch.float32)
         return self.net(x), state

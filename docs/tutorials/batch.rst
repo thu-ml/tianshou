@@ -3,9 +3,10 @@
 Understand Batch
 ================
 
-:class:`~tianshou.data.Batch` is the internal data structure extensively used in Tianshou. It is designed to store and manipulate hierarchical named tensors. This tutorial aims to help users correctly understand the concept and the behavior of ``Batch`` so that users can make the best of Tianshou.
+:class:`~tianshou.data.Batch` is the internal data structure extensively used in Tianshou. It is designed to store and manipulate hierarchical named tensors. This tutorial aims to help users correctly understand the concept and the behavior of :class:`~tianshou.data.Batch` so that users can make the best of Tianshou.
 
-The tutorial has three parts. We first explain the concept of hierarchical named tensors, and introduce basic usage of ``Batch``, followed by advanced topics of ``Batch``.
+The tutorial has three parts. We first explain the concept of hierarchical named tensors, and introduce basic usage of :class:`~tianshou.data.Batch`, followed by advanced topics of :class:`~tianshou.data.Batch`.
+
 
 Hierarchical Named Tensors
 ---------------------------
@@ -43,10 +44,12 @@ Note that, storing hierarchical named tensors is as easy as creating nested dict
 
 The real problem is how to **manipulate them**, such as adding new transition tuples into replay buffer and dealing with their heterogeneity. ``Batch`` is designed to easily create, store, and manipulate these hierarchical named tensors.
 
+
 Basic Usages
 ------------
 
 Here we cover some basic usages of ``Batch``, describing what ``Batch`` contains, how to construct ``Batch`` objects and how to manipulate them.
+
 
 What Does Batch Contain
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -68,6 +71,7 @@ The content of ``Batch`` objects can be defined by the following rules.
     ``Batch`` cannot store ``dict`` objects, because internally ``Batch`` uses ``dict`` to store data. During construction, ``dict`` objects will be automatically converted to ``Batch`` objects.
 
     The data types of tensors are bool and numbers (any size of int and float as long as they are supported by NumPy or PyTorch). Besides, NumPy supports ndarray of objects and we take advantage of this feature to store non-number objects in ``Batch``. If one wants to store data that are neither boolean nor numbers (such as strings and sets), they can store the data in ``np.ndarray`` with the ``np.object`` data type. This way, ``Batch`` can store any type of python objects.
+
 
 Construction of Batch
 ^^^^^^^^^^^^^^^^^^^^^
@@ -135,6 +139,7 @@ There are two ways to construct a ``Batch`` object: from a ``dict``, or using ``
 .. raw:: html
 
    </details><br>
+
 
 Data Manipulation With Batch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -285,10 +290,12 @@ Stacking and concatenating multiple ``Batch`` instances, or split an instance in
 
    </details><br>
 
+
 Advanced Topics
 ---------------
 
 From here on, this tutorial focuses on advanced topics of ``Batch``, including key reservation, length/shape, and aggregation of heterogeneous batches.
+
 
 .. _key_reservations:
 
@@ -347,6 +354,7 @@ The ``Batch.is_empty`` function has an option to decide whether to identify dire
 
     Do not get confused with ``Batch.is_empty`` and ``Batch.empty``. ``Batch.empty`` and its in-place variant ``Batch.empty_`` are used to set some values to zeros or None. Check the API documentation for further details.
 
+
 Length and Shape
 ^^^^^^^^^^^^^^^^
 
@@ -390,6 +398,7 @@ The ``obj.shape`` attribute of ``Batch`` behaves somewhat similar to ``len(obj)`
 3. If there is any scalar value in a ``Batch`` object, ``obj.shape`` returns ``[]``.
 
 4. The shape of reserved keys is undetermined, too. We treat their shape as ``[]``.
+
 
 .. _aggregation:
 
@@ -456,6 +465,7 @@ For a set of ``Batch`` objects denoted as :math:`S`, they can be aggregated if t
     2. Type consistency: If ``bi[k]`` is not ``Batch()`` (the last key in the key chain is not a reserved key), then the type of ``b[k]`` should be the same as ``bi[k]`` (both should be scalar/tensor/non-empty Batch values).
 
 The ``Batch`` object ``b`` satisfying these rules with the minimum number of keys determines the structure of aggregating :math:`S`. The values are relatively easy to define: for any key chain ``k`` that applies to ``b``, ``b[k]`` is the stack/concatenation of ``[bi[k] for bi in S]`` (if ``k`` does not apply to ``bi``, the appropriate size of zeros or ``None`` are filled automatically). If ``bi[k]`` are all ``Batch()``, then the aggregation result is also an empty ``Batch()``.
+
 
 Miscellaneous Notes
 ^^^^^^^^^^^^^^^^^^^

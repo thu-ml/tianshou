@@ -8,6 +8,7 @@ The full script is at `test/discrete/test_dqn.py <https://github.com/thu-ml/tian
 
 Contrary to existing Deep RL libraries such as `RLlib <https://github.com/ray-project/ray/tree/master/rllib/>`_, which could only accept a config specification of hyperparameters, network, and others, Tianshou provides an easy way of construction through the code-level.
 
+
 Make an Environment
 -------------------
 
@@ -21,10 +22,11 @@ First of all, you have to make an environment for your agent to interact with. F
 
 CartPole-v0 is a simple environment with a discrete action space, for which DQN applies. You have to identify whether the action space is continuous or discrete and apply eligible algorithms. DDPG :cite:`DDPG`, for example, could only be applied to continuous action spaces, while almost all other policy gradient methods could be applied to both, depending on the probability distribution on the action.
 
+
 Setup Multi-environment Wrapper
 -------------------------------
 
-It is available if you want the original ``gym.Env``: 
+If you want to use the original ``gym.Env``:
 ::
 
     train_envs = gym.make('CartPole-v0')
@@ -38,7 +40,7 @@ Tianshou supports parallel sampling for all algorithms. It provides four types o
 
 Here, we set up 8 environments in ``train_envs`` and 100 environments in ``test_envs``.
 
-For the demonstration, here we use the second block of codes.
+For the demonstration, here we use the second code-block.
 
 .. warning::
 
@@ -51,12 +53,13 @@ For the demonstration, here we use the second block of codes.
 
     Otherwise, the outputs of these envs may be the same with each other.
 
+
 .. _build_the_network:
 
 Build the Network
 -----------------
 
-Tianshou supports any user-defined PyTorch networks and optimizers but with the limitation of input and output API. Here is an example code: 
+Tianshou supports any user-defined PyTorch networks and optimizers. Yet, of course, the inputs and outputs must comply with Tianshou's API. Here is an example:
 ::
 
     import torch, numpy as np
@@ -65,12 +68,13 @@ Tianshou supports any user-defined PyTorch networks and optimizers but with the 
     class Net(nn.Module):
         def __init__(self, state_shape, action_shape):
             super().__init__()
-            self.model = nn.Sequential(*[
+            self.model = nn.Sequential(
                 nn.Linear(np.prod(state_shape), 128), nn.ReLU(inplace=True),
                 nn.Linear(128, 128), nn.ReLU(inplace=True),
                 nn.Linear(128, 128), nn.ReLU(inplace=True),
-                nn.Linear(128, np.prod(action_shape))
-            ])
+                nn.Linear(128, np.prod(action_shape)),
+            )
+
         def forward(self, obs, state=None, info={}):
             if not isinstance(obs, torch.Tensor):
                 obs = torch.tensor(obs, dtype=torch.float)
@@ -83,28 +87,31 @@ Tianshou supports any user-defined PyTorch networks and optimizers but with the 
     net = Net(state_shape, action_shape)
     optim = torch.optim.Adam(net.parameters(), lr=1e-3)
 
-You can also have a try with those pre-defined networks in :mod:`~tianshou.utils.net.common`, :mod:`~tianshou.utils.net.discrete`, and :mod:`~tianshou.utils.net.continuous`. The rules of self-defined networks are:
+It is also possible to use pre-defined MLP networks in :mod:`~tianshou.utils.net.common`, :mod:`~tianshou.utils.net.discrete`, and :mod:`~tianshou.utils.net.continuous`. The rules of self-defined networks are:
 
 1. Input: observation ``obs`` (may be a ``numpy.ndarray``, ``torch.Tensor``, dict, or self-defined class), hidden state ``state`` (for RNN usage), and other information ``info`` provided by the environment.
-2. Output: some ``logits``, the next hidden state ``state``, and intermediate result during the policy forwarding procedure ``policy``. The logits could be a tuple instead of a ``torch.Tensor``. It depends on how the policy process the network output. For example, in PPO :cite:`PPO`, the return of the network might be ``(mu, sigma), state`` for Gaussian policy. The ``policy`` can be a Batch of torch.Tensor or other things, which will be stored in the replay buffer, and can be accessed in the policy update process (e.g. in ``policy.learn()``, the ``batch.policy`` is what you need).
+2. Output: some ``logits``, the next hidden state ``state``. The logits could be a tuple instead of a ``torch.Tensor``, or some other useful variables or results during the policy forwarding procedure. It depends on how the policy class process the network output. For example, in PPO :cite:`PPO`, the return of the network might be ``(mu, sigma), state`` for Gaussian policy.
+
 
 Setup Policy
 ------------
 
-We use the defined ``net`` and ``optim``, with extra policy hyper-parameters, to define a policy. Here we define a DQN policy with using a target network: 
+We use the defined ``net`` and ``optim`` above, with extra policy hyper-parameters, to define a policy. Here we define a DQN policy with a target network:
 ::
 
     policy = ts.policy.DQNPolicy(net, optim, discount_factor=0.9, estimation_step=3, target_update_freq=320)
 
+
 Setup Collector
 ---------------
 
-The collector is a key concept in Tianshou. It allows the policy to interact with different types of environments conveniently. 
+The collector is a key concept in Tianshou. It allows the policy to interact with different types of environments conveniently.
 In each step, the collector will let the policy perform (at least) a specified number of steps or episodes and store the data in a replay buffer.
 ::
 
     train_collector = ts.data.Collector(policy, train_envs, ts.data.ReplayBuffer(size=20000))
     test_collector = ts.data.Collector(policy, test_envs)
+
 
 Train Policy with a Trainer
 ---------------------------
@@ -161,14 +168,16 @@ The returned result is a dictionary as follows:
 
 It shows that within approximately 4 seconds, we finished training a DQN agent on CartPole. The mean returns over 100 consecutive episodes is 199.03.
 
+
 Save/Load Policy
 ----------------
 
-Since the policy inherits the ``torch.nn.Module`` class, saving and loading the policy are exactly the same as a torch module:
+Since the policy inherits the class ``torch.nn.Module``, saving and loading the policy are exactly the same as a torch module:
 ::
 
     torch.save(policy.state_dict(), 'dqn.pth')
     policy.load_state_dict(torch.load('dqn.pth'))
+
 
 Watch the Agent's Performance
 -----------------------------
@@ -180,6 +189,7 @@ Watch the Agent's Performance
     policy.set_eps(0.05)
     collector = ts.data.Collector(policy, env)
     collector.collect(n_episode=1, render=1 / 35)
+
 
 .. _customized_trainer:
 

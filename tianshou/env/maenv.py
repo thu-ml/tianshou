@@ -5,8 +5,10 @@ from abc import ABC, abstractmethod
 
 
 class MultiAgentEnv(ABC, gym.Env):
-    """The interface for multi-agent environments. Multi-agent environments
-    must be wrapped as :class:`~tianshou.env.MultiAgentEnv`. Here is the usage:
+    """The interface for multi-agent environments.
+
+    Multi-agent environments must be wrapped as
+    :class:`~tianshou.env.MultiAgentEnv`. Here is the usage:
     ::
 
         env = MultiAgentEnv(...)
@@ -25,18 +27,20 @@ class MultiAgentEnv(ABC, gym.Env):
 
     @abstractmethod
     def reset(self) -> dict:
-        """Reset the state. Return the initial state, first agent_id, and the
-        initial action set, for example,
-        ``{'obs': obs, 'agent_id': agent_id, 'mask': mask}``
+        """Reset the state.
+
+        Return the initial state, first agent_id, and the initial action set,
+        for example, ``{'obs': obs, 'agent_id': agent_id, 'mask': mask}``
         """
         pass
 
     @abstractmethod
     def step(self, action: np.ndarray
              ) -> Tuple[dict, np.ndarray, np.ndarray, np.ndarray]:
-        """Run one timestep of the environment’s dynamics. When the end of
-        episode is reached, you are responsible for calling reset() to reset
-        the environment’s state.
+        """Run one timestep of the environment’s dynamics.
+
+        When the end of episode is reached, you are responsible for calling
+        reset() to reset the environment’s state.
 
         Accept action and return a tuple (obs, rew, done, info).
 

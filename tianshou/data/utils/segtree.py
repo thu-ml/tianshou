@@ -4,13 +4,13 @@ from typing import Union, Optional
 
 
 class SegmentTree:
-    """Implementation of Segment Tree: store an array ``arr`` with size ``n``
-    in a segment tree, support value update and fast query of the sum for the
-    interval ``[left, right)`` in O(log n) time.
+    """Implementation of Segment Tree.
 
-    The detailed procedure is as follows:
+    The segment tree stores an array ``arr`` with size ``n``. It supports value
+    update and fast query of the sum for the interval ``[left, right)`` in
+    O(log n) time. The detailed procedure is as follows:
 
-    1. Pad the array to have length of power of 2, so that leaf nodes in the\
+    1. Pad the array to have length of power of 2, so that leaf nodes in the \
     segment tree have the same depth.
     2. Store the segment tree in a binary heap.
 
@@ -30,12 +30,14 @@ class SegmentTree:
 
     def __getitem__(self, index: Union[int, np.ndarray]
                     ) -> Union[float, np.ndarray]:
-        """Return self[index]"""
+        """Return self[index]."""
         return self._value[index + self._bound]
 
     def __setitem__(self, index: Union[int, np.ndarray],
                     value: Union[float, np.ndarray]) -> None:
-        """Duplicate values in ``index`` are handled by numpy: later index
+        """Update values in segment tree.
+
+        Duplicate values in ``index`` are handled by numpy: later index
         overwrites previous ones.
         ::
 
@@ -61,9 +63,11 @@ class SegmentTree:
 
     def get_prefix_sum_idx(
             self, value: Union[float, np.ndarray]) -> Union[int, np.ndarray]:
-        """Return the minimum index for each ``v`` in ``value`` so that
-        :math:`v \\le \\mathrm{sums}_i`, where :math:`\\mathrm{sums}_i =
-        \\sum_{j=0}^{i} \\mathrm{arr}_j`.
+        r"""Find the index with given value.
+
+        Return the minimum index for each ``v`` in ``value`` so that
+        :math:`v \le \mathrm{sums}_i`, where
+        :math:`\mathrm{sums}_i = \sum_{j = 0}^{i} \mathrm{arr}_j`.
 
         .. warning::
 
@@ -81,7 +85,7 @@ class SegmentTree:
 
 @njit
 def _setitem(tree: np.ndarray, index: np.ndarray, value: np.ndarray) -> None:
-    """4x faster: 0.1 -> 0.024"""
+    """Numba version, 4x faster: 0.1 -> 0.024."""
     tree[index] = value
     while index[0] > 1:
         index //= 2
@@ -90,7 +94,7 @@ def _setitem(tree: np.ndarray, index: np.ndarray, value: np.ndarray) -> None:
 
 @njit
 def _reduce(tree: np.ndarray, start: int, end: int) -> float:
-    """2x faster: 0.009 -> 0.005"""
+    """Numba version, 2x faster: 0.009 -> 0.005."""
     # nodes in (start, end) should be aggregated
     result = 0.
     while end - start > 1:  # (start, end) interval is not empty
@@ -106,7 +110,8 @@ def _reduce(tree: np.ndarray, start: int, end: int) -> float:
 @njit
 def _get_prefix_sum_idx(value: np.ndarray, bound: int,
                         sums: np.ndarray) -> np.ndarray:
-    """numba version (v0.51), 5x speed up with size=100000 and bsz=64
+    """Numba version (v0.51), 5x speed up with size=100000 and bsz=64.
+
     vectorized np: 0.0923 (numpy best) -> 0.024 (now)
     for-loop: 0.2914 -> 0.019 (but not so stable)
     """

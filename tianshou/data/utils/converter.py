@@ -67,8 +67,9 @@ def to_torch(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
 def to_torch_as(x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
                 y: torch.Tensor
                 ) -> Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor]:
-    """Return an object without np.ndarray. Same as
-    ``to_torch(x, dtype=y.dtype, device=y.device)``.
+    """Return an object without np.ndarray.
+
+    Same as ``to_torch(x, dtype=y.dtype, device=y.device)``.
     """
     assert isinstance(y, torch.Tensor)
     return to_torch(x, dtype=y.dtype, device=y.device)
