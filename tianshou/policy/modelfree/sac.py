@@ -47,23 +47,26 @@ class SACPolicy(DDPGPolicy):
         explanation.
     """
 
-    def __init__(self,
-                 actor: torch.nn.Module,
-                 actor_optim: torch.optim.Optimizer,
-                 critic1: torch.nn.Module,
-                 critic1_optim: torch.optim.Optimizer,
-                 critic2: torch.nn.Module,
-                 critic2_optim: torch.optim.Optimizer,
-                 tau: float = 0.005,
-                 gamma: float = 0.99,
-                 alpha: Tuple[float, torch.Tensor, torch.optim.Optimizer]
-                 or float = 0.2,
-                 action_range: Optional[Tuple[float, float]] = None,
-                 reward_normalization: bool = False,
-                 ignore_done: bool = False,
-                 estimation_step: int = 1,
-                 exploration_noise: Optional[BaseNoise] = None,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        actor: torch.nn.Module,
+        actor_optim: torch.optim.Optimizer,
+        critic1: torch.nn.Module,
+        critic1_optim: torch.optim.Optimizer,
+        critic2: torch.nn.Module,
+        critic2_optim: torch.optim.Optimizer,
+        tau: float = 0.005,
+        gamma: float = 0.99,
+        alpha: Union[
+            float, Tuple[float, torch.Tensor, torch.optim.Optimizer]
+        ] = 0.2,
+        action_range: Optional[Tuple[float, float]] = None,
+        reward_normalization: bool = False,
+        ignore_done: bool = False,
+        estimation_step: int = 1,
+        exploration_noise: Optional[BaseNoise] = None,
+        **kwargs
+    ) -> None:
         super().__init__(None, None, None, None, tau, gamma, exploration_noise,
                          action_range, reward_normalization, ignore_done,
                          estimation_step, **kwargs)
@@ -75,13 +78,11 @@ class SACPolicy(DDPGPolicy):
         self.critic2_old.eval()
         self.critic2_optim = critic2_optim
 
-        self._automatic_alpha_tuning = not isinstance(alpha, float)
-        if self._automatic_alpha_tuning:
-            self._target_entropy = alpha[0]
-            assert(alpha[1].shape == torch.Size([1])
-                   and alpha[1].requires_grad)
-            self._log_alpha = alpha[1]
-            self._alpha_optim = alpha[2]
+        self._is_auto_alpha = False
+        if isinstance(alpha, tuple):
+            self._is_auto_alpha = True
+            self._target_entropy, self._log_alpha, self._alpha_optim = alpha
+            assert alpha[1].shape == torch.Size([1]) and alpha[1].requires_grad
             self._alpha = self._log_alpha.detach().exp()
         else:
             self._alpha = alpha
@@ -168,7 +169,7 @@ class SACPolicy(DDPGPolicy):
         actor_loss.backward()
         self.actor_optim.step()
 
-        if self._automatic_alpha_tuning:
+        if self._is_auto_alpha:
             log_prob = obs_result.log_prob.detach() + self._target_entropy
             alpha_loss = -(self._log_alpha * log_prob).mean()
             self._alpha_optim.zero_grad()
@@ -183,7 +184,7 @@ class SACPolicy(DDPGPolicy):
             'loss/critic1': critic1_loss.item(),
             'loss/critic2': critic2_loss.item(),
         }
-        if self._automatic_alpha_tuning:
+        if self._is_auto_alpha:
             result['loss/alpha'] = alpha_loss.item()
             result['v/alpha'] = self._alpha.item()
         return result
