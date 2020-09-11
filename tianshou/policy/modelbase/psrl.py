@@ -104,7 +104,7 @@ class PSRLModel(object):
             value = new_value
             Q = rew + trans_prob.dot(value)
             new_value = Q.max(axis=1)
-        Q += eps * np.random.randn(*np.shape(Q))
+        Q += eps * np.random.randn(*Q.shape)
         return Q.argmax(axis=1), new_value
 
     def __call__(self, obs: np.ndarray, state=None, info=None) -> np.ndarray:
