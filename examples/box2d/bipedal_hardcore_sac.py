@@ -48,7 +48,7 @@ def get_args():
 class EnvWrapper(object):
     """Env wrapper for reward scale, action repeat and action noise"""
 
-    def __init__(self, task, action_repeat=3, reward_scale=5, act_noise=0.3):
+    def __init__(self, task, action_repeat=3, reward_scale=5, act_noise=0.0):
         self._env = gym.make(task)
         self.action_repeat = action_repeat
         self.reward_scale = reward_scale
