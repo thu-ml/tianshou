@@ -10,23 +10,23 @@ from tianshou.trainer import test_episode, gather_info
 
 
 def onpolicy_trainer(
-        policy: BasePolicy,
-        train_collector: Collector,
-        test_collector: Collector,
-        max_epoch: int,
-        step_per_epoch: int,
-        collect_per_step: int,
-        repeat_per_collect: int,
-        episode_per_test: Union[int, List[int]],
-        batch_size: int,
-        train_fn: Optional[Callable[[int], None]] = None,
-        test_fn: Optional[Callable[[int], None]] = None,
-        stop_fn: Optional[Callable[[float], bool]] = None,
-        save_fn: Optional[Callable[[BasePolicy], None]] = None,
-        writer: Optional[SummaryWriter] = None,
-        log_interval: int = 1,
-        verbose: bool = True,
-        test_in_train: bool = True,
+    policy: BasePolicy,
+    train_collector: Collector,
+    test_collector: Collector,
+    max_epoch: int,
+    step_per_epoch: int,
+    collect_per_step: int,
+    repeat_per_collect: int,
+    episode_per_test: Union[int, List[int]],
+    batch_size: int,
+    train_fn: Optional[Callable[[int], None]] = None,
+    test_fn: Optional[Callable[[int], None]] = None,
+    stop_fn: Optional[Callable[[float], bool]] = None,
+    save_fn: Optional[Callable[[BasePolicy], None]] = None,
+    writer: Optional[SummaryWriter] = None,
+    log_interval: int = 1,
+    verbose: bool = True,
+    test_in_train: bool = True,
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for on-policy trainer procedure.
 
@@ -72,7 +72,7 @@ def onpolicy_trainer(
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
     global_step = 0
-    best_epoch, best_reward = -1, -1.
+    best_epoch, best_reward = -1, -1.0
     stat = {}
     start_time = time.time()
     test_in_train = test_in_train and train_collector.policy == policy
@@ -81,30 +81,32 @@ def onpolicy_trainer(
         policy.train()
         if train_fn:
             train_fn(epoch)
-        with tqdm.tqdm(total=step_per_epoch, desc=f'Epoch #{epoch}',
-                       **tqdm_config) as t:
+        with tqdm.tqdm(
+            total=step_per_epoch, desc=f"Epoch #{epoch}", **tqdm_config
+        ) as t:
             while t.n < t.total:
                 result = train_collector.collect(n_episode=collect_per_step)
                 data = {}
-                if test_in_train and stop_fn and stop_fn(result['rew']):
+                if test_in_train and stop_fn and stop_fn(result["rew"]):
                     test_result = test_episode(
                         policy, test_collector, test_fn,
                         epoch, episode_per_test, writer, global_step)
-                    if stop_fn and stop_fn(test_result['rew']):
+                    if stop_fn and stop_fn(test_result["rew"]):
                         if save_fn:
                             save_fn(policy)
                         for k in result.keys():
-                            data[k] = f'{result[k]:.2f}'
+                            data[k] = f"{result[k]:.2f}"
                         t.set_postfix(**data)
                         return gather_info(
                             start_time, train_collector, test_collector,
-                            test_result['rew'])
+                            test_result["rew"])
                     else:
                         policy.train()
                         if train_fn:
                             train_fn(epoch)
                 losses = policy.update(
-                    0, train_collector.buffer, batch_size, repeat_per_collect)
+                    0, train_collector.buffer,
+                    batch_size=batch_size, repeat=repeat_per_collect)
                 train_collector.reset_buffer()
                 step = 1
                 for k in losses.keys():
@@ -112,15 +114,15 @@ def onpolicy_trainer(
                         step = max(step, len(losses[k]))
                 global_step += step * collect_per_step
                 for k in result.keys():
-                    data[k] = f'{result[k]:.2f}'
+                    data[k] = f"{result[k]:.2f}"
                     if writer and global_step % log_interval == 0:
                         writer.add_scalar(
-                            'train/' + k, result[k], global_step=global_step)
+                            "train/" + k, result[k], global_step=global_step)
                 for k in losses.keys():
                     if stat.get(k) is None:
                         stat[k] = MovAvg()
                     stat[k].add(losses[k])
-                    data[k] = f'{stat[k].get():.6f}'
+                    data[k] = f"{stat[k].get():.6f}"
                     if writer and global_step % log_interval == 0:
                         writer.add_scalar(
                             k, stat[k].get(), global_step=global_step)
@@ -131,14 +133,14 @@ def onpolicy_trainer(
         # test
         result = test_episode(policy, test_collector, test_fn, epoch,
                               episode_per_test, writer, global_step)
-        if best_epoch == -1 or best_reward < result['rew']:
-            best_reward = result['rew']
+        if best_epoch == -1 or best_reward < result["rew"]:
+            best_reward = result["rew"]
             best_epoch = epoch
             if save_fn:
                 save_fn(policy)
         if verbose:
-            print(f'Epoch #{epoch}: test_reward: {result["rew"]:.6f}, '
-                  f'best_reward: {best_reward:.6f} in #{best_epoch}')
+            print(f"Epoch #{epoch}: test_reward: {result['rew']:.6f}, "
+                  f"best_reward: {best_reward:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break
     return gather_info(

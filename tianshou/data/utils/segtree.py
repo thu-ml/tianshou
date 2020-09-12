@@ -24,17 +24,20 @@ class SegmentTree:
         self._size = size
         self._bound = bound
         self._value = np.zeros([bound * 2])
+        self._compile()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._size
 
-    def __getitem__(self, index: Union[int, np.ndarray]
-                    ) -> Union[float, np.ndarray]:
+    def __getitem__(
+        self, index: Union[int, np.ndarray]
+    ) -> Union[float, np.ndarray]:
         """Return self[index]."""
         return self._value[index + self._bound]
 
-    def __setitem__(self, index: Union[int, np.ndarray],
-                    value: Union[float, np.ndarray]) -> None:
+    def __setitem__(
+        self, index: Union[int, np.ndarray], value: Union[float, np.ndarray]
+    ) -> None:
         """Update values in segment tree.
 
         Duplicate values in ``index`` are handled by numpy: later index
@@ -62,7 +65,8 @@ class SegmentTree:
         return _reduce(self._value, start + self._bound - 1, end + self._bound)
 
     def get_prefix_sum_idx(
-            self, value: Union[float, np.ndarray]) -> Union[int, np.ndarray]:
+        self, value: Union[float, np.ndarray]
+    ) -> Union[int, np.ndarray]:
         r"""Find the index with given value.
 
         Return the minimum index for each ``v`` in ``value`` so that
@@ -74,13 +78,23 @@ class SegmentTree:
             Please make sure all of the values inside the segment tree are
             non-negative when using this function.
         """
-        assert np.all(value >= 0.) and np.all(value < self._value[1])
+        assert np.all(value >= 0.0) and np.all(value < self._value[1])
         single = False
         if not isinstance(value, np.ndarray):
             value = np.array([value])
             single = True
         index = _get_prefix_sum_idx(value, self._bound, self._value)
         return index.item() if single else index
+
+    def _compile(self) -> None:
+        f64 = np.array([0, 1], dtype=np.float64)
+        f32 = np.array([0, 1], dtype=np.float32)
+        i64 = np.array([0, 1], dtype=np.int64)
+        _setitem(f64, i64, f64)
+        _setitem(f64, i64, f32)
+        _reduce(f64, 0, 1)
+        _get_prefix_sum_idx(f64, 1, f64)
+        _get_prefix_sum_idx(f32, 1, f64)
 
 
 @njit
@@ -96,7 +110,7 @@ def _setitem(tree: np.ndarray, index: np.ndarray, value: np.ndarray) -> None:
 def _reduce(tree: np.ndarray, start: int, end: int) -> float:
     """Numba version, 2x faster: 0.009 -> 0.005."""
     # nodes in (start, end) should be aggregated
-    result = 0.
+    result = 0.0
     while end - start > 1:  # (start, end) interval is not empty
         if start % 2 == 0:
             result += tree[start + 1]
@@ -108,8 +122,9 @@ def _reduce(tree: np.ndarray, start: int, end: int) -> float:
 
 
 @njit
-def _get_prefix_sum_idx(value: np.ndarray, bound: int,
-                        sums: np.ndarray) -> np.ndarray:
+def _get_prefix_sum_idx(
+    value: np.ndarray, bound: int, sums: np.ndarray
+) -> np.ndarray:
     """Numba version (v0.51), 5x speed up with size=100000 and bsz=64.
 
     vectorized np: 0.0923 (numpy best) -> 0.024 (now)

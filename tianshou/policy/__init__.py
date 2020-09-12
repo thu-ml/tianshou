@@ -13,16 +13,16 @@ from tianshou.policy.modelbase.psrl import PSRLPolicy
 
 
 __all__ = [
-    'BasePolicy',
-    'RandomPolicy',
-    'ImitationPolicy',
-    'DQNPolicy',
-    'PGPolicy',
-    'A2CPolicy',
-    'DDPGPolicy',
-    'PPOPolicy',
-    'TD3Policy',
-    'SACPolicy',
-    'MultiAgentPolicyManager',
-    'PSRLPolicy',
+    "BasePolicy",
+    "RandomPolicy",
+    "ImitationPolicy",
+    "DQNPolicy",
+    "PGPolicy",
+    "A2CPolicy",
+    "DDPGPolicy",
+    "PPOPolicy",
+    "TD3Policy",
+    "SACPolicy",
+    "MultiAgentPolicyManager",
+    "PSRLPolicy",
 ]

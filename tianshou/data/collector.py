@@ -4,13 +4,14 @@ import torch
 import warnings
 import numpy as np
 from copy import deepcopy
-from typing import Any, Dict, List, Union, Optional, Callable
+from numbers import Number
+from typing import Dict, List, Union, Optional, Callable
 
-from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 from tianshou.exploration import BaseNoise
-from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
 from tianshou.data.batch import _create_value
+from tianshou.env import BaseVectorEnv, DummyVectorEnv
+from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
 
 
 class Collector(object):
@@ -75,14 +76,15 @@ class Collector(object):
         Please make sure the given environment has a time limitation.
     """
 
-    def __init__(self,
-                 policy: BasePolicy,
-                 env: Union[gym.Env, BaseVectorEnv],
-                 buffer: Optional[ReplayBuffer] = None,
-                 preprocess_fn: Callable[[Any], Batch] = None,
-                 action_noise: Optional[BaseNoise] = None,
-                 reward_metric: Optional[Callable[[np.ndarray], float]] = None,
-                 ) -> None:
+    def __init__(
+        self,
+        policy: BasePolicy,
+        env: Union[gym.Env, BaseVectorEnv],
+        buffer: Optional[ReplayBuffer] = None,
+        preprocess_fn: Optional[Callable[..., Batch]] = None,
+        action_noise: Optional[BaseNoise] = None,
+        reward_metric: Optional[Callable[[np.ndarray], float]] = None,
+    ) -> None:
         super().__init__()
         if not isinstance(env, BaseVectorEnv):
             env = DummyVectorEnv([lambda: env])
@@ -108,12 +110,15 @@ class Collector(object):
         self.reset()
 
     @staticmethod
-    def _default_rew_metric(x):
+    def _default_rew_metric(
+        x: Union[Number, np.number]
+    ) -> Union[Number, np.number]:
         # this internal function is designed for single-agent RL
         # for multi-agent RL, a reward_metric must be provided
-        assert np.asanyarray(x).size == 1, \
-            'Please specify the reward_metric ' \
-            'since the reward is not a scalar.'
+        assert np.asanyarray(x).size == 1, (
+            "Please specify the reward_metric "
+            "since the reward is not a scalar."
+        )
         return x
 
     def reset(self) -> None:
@@ -124,7 +129,7 @@ class Collector(object):
                           obs_next={}, policy={})
         self.reset_env()
         self.reset_buffer()
-        self.collect_time, self.collect_step, self.collect_episode = 0., 0, 0
+        self.collect_time, self.collect_step, self.collect_episode = 0.0, 0, 0
         if self._action_noise is not None:
             self._action_noise.reset()
 
@@ -142,7 +147,7 @@ class Collector(object):
         self._ready_env_ids = np.arange(self.env_num)
         obs = self.env.reset()
         if self.preprocess_fn:
-            obs = self.preprocess_fn(obs=obs).get('obs', obs)
+            obs = self.preprocess_fn(obs=obs).get("obs", obs)
         self.data.obs = obs
         for b in self._cached_buf:
             b.reset()
@@ -157,13 +162,14 @@ class Collector(object):
         elif isinstance(state, Batch):
             state.empty_(id)
 
-    def collect(self,
-                n_step: Optional[int] = None,
-                n_episode: Optional[Union[int, List[int]]] = None,
-                random: bool = False,
-                render: Optional[float] = None,
-                no_grad: bool = True,
-                ) -> Dict[str, float]:
+    def collect(
+        self,
+        n_step: Optional[int] = None,
+        n_episode: Optional[Union[int, List[int]]] = None,
+        random: bool = False,
+        render: Optional[float] = None,
+        no_grad: bool = True,
+    ) -> Dict[str, float]:
         """Collect a specified number of step or episode.
 
         :param int n_step: how many steps you want to collect.
@@ -217,8 +223,8 @@ class Collector(object):
         while True:
             if step_count >= 100000 and episode_count.sum() == 0:
                 warnings.warn(
-                    'There are already many steps in an episode. '
-                    'You should add a time limitation to your environment!',
+                    "There are already many steps in an episode. "
+                    "You should add a time limitation to your environment!",
                     Warning)
 
             is_async = self.is_async or len(finished_env_ids) > 0
@@ -250,11 +256,11 @@ class Collector(object):
                 else:
                     result = self.policy(self.data, last_state)
 
-            state = result.get('state', Batch())
+            state = result.get("state", Batch())
             # convert None to Batch(), since None is reserved for 0-init
             if state is None:
                 state = Batch()
-            self.data.update(state=state, policy=result.get('policy', Batch()))
+            self.data.update(state=state, policy=result.get("policy", Batch()))
             # save hidden state to policy._state, in order to save into buffer
             if not (isinstance(state, Batch) and state.is_empty()):
                 self.data.policy._state = self.data.state
@@ -268,12 +274,12 @@ class Collector(object):
                 obs_next, rew, done, info = self.env.step(self.data.act)
             else:
                 # store computed actions, states, etc
-                _batch_set_item(whole_data, self._ready_env_ids,
-                                self.data, self.env_num)
+                _batch_set_item(
+                    whole_data, self._ready_env_ids, self.data, self.env_num)
                 # fetch finished data
                 obs_next, rew, done, info = self.env.step(
                     self.data.act, id=self._ready_env_ids)
-                self._ready_env_ids = np.array([i['env_id'] for i in info])
+                self._ready_env_ids = np.array([i["env_id"] for i in info])
                 # get the stepped data
                 self.data = whole_data[self._ready_env_ids]
             # move data to self.data
@@ -319,15 +325,15 @@ class Collector(object):
                 obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
                     obs_next[env_ind_local] = self.preprocess_fn(
-                        obs=obs_reset).get('obs', obs_reset)
+                        obs=obs_reset).get("obs", obs_reset)
                 else:
                     obs_next[env_ind_local] = obs_reset
             self.data.obs = obs_next
             if is_async:
                 # set data back
                 whole_data = deepcopy(whole_data)  # avoid reference in ListBuf
-                _batch_set_item(whole_data, self._ready_env_ids,
-                                self.data, self.env_num)
+                _batch_set_item(
+                    whole_data, self._ready_env_ids, self.data, self.env_num)
                 # let self.data be the data in all environments again
                 self.data = whole_data
             self._ready_env_ids = np.array(
@@ -358,12 +364,12 @@ class Collector(object):
         if np.asanyarray(reward_avg).size > 1:  # non-scalar reward_avg
             reward_avg = self._rew_metric(reward_avg)
         return {
-            'n/ep': episode_count,
-            'n/st': step_count,
-            'v/st': step_count / duration,
-            'v/ep': episode_count / duration,
-            'rew': reward_avg,
-            'len': step_count / episode_count,
+            "n/ep": episode_count,
+            "n/st": step_count,
+            "v/st": step_count / duration,
+            "v/ep": episode_count / duration,
+            "rew": reward_avg,
+            "len": step_count / episode_count,
         }
 
     def sample(self, batch_size: int) -> Batch:
@@ -377,9 +383,9 @@ class Collector(object):
             batch_size.
         """
         warnings.warn(
-            'Collector.sample is deprecated and will cause error if you use '
-            'prioritized experience replay! Collector.sample will be removed '
-            'upon version 0.3. Use policy.update instead!', Warning)
+            "Collector.sample is deprecated and will cause error if you use "
+            "prioritized experience replay! Collector.sample will be removed "
+            "upon version 0.3. Use policy.update instead!", Warning)
         assert self.buffer is not None, "Cannot get sample from empty buffer!"
         batch_data, indice = self.buffer.sample(batch_size)
         batch_data = self.process_fn(batch_data, self.buffer, indice)
@@ -387,12 +393,13 @@ class Collector(object):
 
     def close(self) -> None:
         warnings.warn(
-            'Collector.close is deprecated and will be removed upon version '
-            '0.3.', Warning)
+            "Collector.close is deprecated and will be removed upon version "
+            "0.3.", Warning)
 
 
-def _batch_set_item(source: Batch, indices: np.ndarray,
-                    target: Batch, size: int):
+def _batch_set_item(
+    source: Batch, indices: np.ndarray, target: Batch, size: int
+) -> None:
     # for any key chain k, there are four cases
     # 1. source[k] is non-reserved, but target[k] does not exist or is reserved
     # 2. source[k] does not exist or is reserved, but target[k] is non-reserved

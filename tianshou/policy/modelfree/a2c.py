@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
-from typing import Dict, List, Union, Optional
+from typing import Any, Dict, List, Union, Optional, Callable
 
 from tianshou.policy import PGPolicy
 from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
@@ -17,6 +17,7 @@ class A2CPolicy(PGPolicy):
     :param torch.optim.Optimizer optim: the optimizer for actor and critic
         network.
     :param dist_fn: distribution class for computing the action.
+    :type dist_fn: Callable[[], torch.distributions.Distribution]
     :param float discount_factor: in [0, 1], defaults to 0.99.
     :param float vf_coef: weight for value loss, defaults to 0.5.
     :param float ent_coef: weight for entropy loss, defaults to 0.01.
@@ -37,23 +38,25 @@ class A2CPolicy(PGPolicy):
         explanation.
     """
 
-    def __init__(self,
-                 actor: torch.nn.Module,
-                 critic: torch.nn.Module,
-                 optim: torch.optim.Optimizer,
-                 dist_fn: torch.distributions.Distribution,
-                 discount_factor: float = 0.99,
-                 vf_coef: float = .5,
-                 ent_coef: float = .01,
-                 max_grad_norm: Optional[float] = None,
-                 gae_lambda: float = 0.95,
-                 reward_normalization: bool = False,
-                 max_batchsize: int = 256,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        actor: torch.nn.Module,
+        critic: torch.nn.Module,
+        optim: torch.optim.Optimizer,
+        dist_fn: Callable[[], torch.distributions.Distribution],
+        discount_factor: float = 0.99,
+        vf_coef: float = 0.5,
+        ent_coef: float = 0.01,
+        max_grad_norm: Optional[float] = None,
+        gae_lambda: float = 0.95,
+        reward_normalization: bool = False,
+        max_batchsize: int = 256,
+        **kwargs: Any
+    ) -> None:
         super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
         self.actor = actor
         self.critic = critic
-        assert 0 <= gae_lambda <= 1, 'GAE lambda should be in [0, 1].'
+        assert 0.0 <= gae_lambda <= 1.0, "GAE lambda should be in [0, 1]."
         self._lambda = gae_lambda
         self._w_vf = vf_coef
         self._w_ent = ent_coef
@@ -61,9 +64,10 @@ class A2CPolicy(PGPolicy):
         self._batch = max_batchsize
         self._rew_norm = reward_normalization
 
-    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
-                   indice: np.ndarray) -> Batch:
-        if self._lambda in [0, 1]:
+    def process_fn(
+        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> Batch:
+        if self._lambda in [0.0, 1.0]:
             return self.compute_episodic_return(
                 batch, None, gamma=self._gamma, gae_lambda=self._lambda)
         v_ = []
@@ -75,9 +79,12 @@ class A2CPolicy(PGPolicy):
             batch, v_, gamma=self._gamma, gae_lambda=self._lambda,
             rew_norm=self._rew_norm)
 
-    def forward(self, batch: Batch,
-                state: Optional[Union[dict, Batch, np.ndarray]] = None,
-                **kwargs) -> Batch:
+    def forward(
+        self,
+        batch: Batch,
+        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        **kwargs: Any
+    ) -> Batch:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
@@ -100,8 +107,9 @@ class A2CPolicy(PGPolicy):
         act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def learn(self, batch: Batch, batch_size: int, repeat: int,
-              **kwargs) -> Dict[str, List[float]]:
+    def learn(
+        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+    ) -> Dict[str, List[float]]:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for b in batch.split(batch_size, merge_last=True):
@@ -110,8 +118,7 @@ class A2CPolicy(PGPolicy):
                 v = self.critic(b.obs).flatten()
                 a = to_torch_as(b.act, v)
                 r = to_torch_as(b.returns, v)
-                log_prob = dist.log_prob(a).reshape(
-                    r.shape[0], -1).transpose(0, 1)
+                log_prob = dist.log_prob(a).reshape(len(r), -1).transpose(0, 1)
                 a_loss = -(log_prob * (r - v).detach()).mean()
                 vf_loss = F.mse_loss(r, v)
                 ent_loss = dist.entropy().mean()
@@ -119,17 +126,18 @@ class A2CPolicy(PGPolicy):
                 loss.backward()
                 if self._grad_norm is not None:
                     nn.utils.clip_grad_norm_(
-                        list(self.actor.parameters()) +
-                        list(self.critic.parameters()),
-                        max_norm=self._grad_norm)
+                        list(self.actor.parameters())
+                        + list(self.critic.parameters()),
+                        max_norm=self._grad_norm,
+                    )
                 self.optim.step()
                 actor_losses.append(a_loss.item())
                 vf_losses.append(vf_loss.item())
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
         return {
-            'loss': losses,
-            'loss/actor': actor_losses,
-            'loss/vf': vf_losses,
-            'loss/ent': ent_losses,
+            "loss": losses,
+            "loss/actor": actor_losses,
+            "loss/vf": vf_losses,
+            "loss/ent": ent_losses,
         }

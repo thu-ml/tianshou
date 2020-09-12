@@ -4,8 +4,8 @@ from tianshou.env.worker.subproc import SubprocEnvWorker
 from tianshou.env.worker.ray import RayEnvWorker
 
 __all__ = [
-    'EnvWorker',
-    'DummyEnvWorker',
-    'SubprocEnvWorker',
-    'RayEnvWorker',
+    "EnvWorker",
+    "DummyEnvWorker",
+    "SubprocEnvWorker",
+    "RayEnvWorker",
 ]

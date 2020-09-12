@@ -1,4 +1,4 @@
 tqdm_config = {
-    'dynamic_ncols': True,
-    'ascii': True,
+    "dynamic_ncols": True,
+    "ascii": True,
 }

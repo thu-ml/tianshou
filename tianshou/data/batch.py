@@ -5,8 +5,8 @@ import numpy as np
 from copy import deepcopy
 from numbers import Number
 from collections.abc import Collection
-from typing import Any, List, Tuple, Union, Iterator, KeysView, ValuesView, \
-    ItemsView, Optional
+from typing import Any, List, Dict, Union, Iterator, Optional, Iterable, \
+    Sequence, KeysView, ValuesView, ItemsView
 
 # Disable pickle warning related to torch, since it has been removed
 # on torch master branch. See Pull Request #39003 for details:
@@ -23,8 +23,8 @@ def _is_batch_set(data: Any) -> bool:
         # "for e in data" will just unpack the first dimension,
         # but data.tolist() will flatten ndarray of objects
         # so do not use data.tolist()
-        return data.dtype == np.object and \
-            all(isinstance(e, (dict, Batch)) for e in data)
+        return data.dtype == np.object and all(
+            isinstance(e, (dict, Batch)) for e in data)
     elif isinstance(data, (list, tuple)):
         if len(data) > 0 and all(isinstance(e, (dict, Batch)) for e in data):
             return True
@@ -54,8 +54,9 @@ def _is_number(value: Any) -> bool:
 
 
 def _to_array_with_correct_type(v: Any) -> np.ndarray:
-    if isinstance(v, np.ndarray) and \
-            issubclass(v.dtype.type, (np.bool_, np.number)):  # most often case
+    if isinstance(v, np.ndarray) and issubclass(
+        v.dtype.type, (np.bool_, np.number)
+    ):  # most often case
         return v
     # convert the value to np.ndarray
     # convert to np.object data type if neither bool nor number
@@ -71,14 +72,16 @@ def _to_array_with_correct_type(v: Any) -> np.ndarray:
         # array([{}, array({}, dtype=object)], dtype=object)
         if not v.shape:
             v = v.item(0)
-        elif any(isinstance(e, (np.ndarray, torch.Tensor))
-                 for e in v.reshape(-1)):
+        elif any(
+            isinstance(e, (np.ndarray, torch.Tensor)) for e in v.reshape(-1)
+        ):
             raise ValueError("Numpy arrays of tensors are not supported yet.")
     return v
 
 
-def _create_value(inst: Any, size: int, stack=True) -> Union[
-        'Batch', np.ndarray, torch.Tensor]:
+def _create_value(
+    inst: Any, size: int, stack: bool = True
+) -> Union["Batch", np.ndarray, torch.Tensor]:
     """Create empty place-holders accroding to inst's shape.
 
     :param bool stack: whether to stack or to concatenate. E.g. if inst has
@@ -100,12 +103,15 @@ def _create_value(inst: Any, size: int, stack=True) -> Union[
             target_type = inst.dtype.type
         else:
             target_type = np.object
-        return np.full(shape,
-                       fill_value=None if target_type == np.object else 0,
-                       dtype=target_type)
+        return np.full(
+            shape,
+            fill_value=None if target_type == np.object else 0,
+            dtype=target_type
+        )
     elif isinstance(inst, torch.Tensor):
-        return torch.full(shape,
-                          fill_value=0, device=inst.device, dtype=inst.dtype)
+        return torch.full(
+            shape, fill_value=0, device=inst.device, dtype=inst.dtype
+        )
     elif isinstance(inst, (dict, Batch)):
         zero_batch = Batch()
         for key, val in inst.items():
@@ -117,12 +123,13 @@ def _create_value(inst: Any, size: int, stack=True) -> Union[
         return np.array([None for _ in range(size)])
 
 
-def _assert_type_keys(keys) -> None:
-    assert all(isinstance(e, str) for e in keys), \
-        f"keys should all be string, but got {keys}"
+def _assert_type_keys(keys: Iterable[str]) -> None:
+    assert all(
+        isinstance(e, str) for e in keys
+    ), f"keys should all be string, but got {keys}"
 
 
-def _parse_value(v: Any):
+def _parse_value(v: Any) -> Optional[Union["Batch", np.ndarray, torch.Tensor]]:
     if isinstance(v, Batch):  # most often case
         return v
     elif (isinstance(v, np.ndarray) and
@@ -166,12 +173,14 @@ class Batch:
     For a detailed description, please refer to :ref:`batch_concept`.
     """
 
-    def __init__(self,
-                 batch_dict: Optional[Union[
-                     dict, 'Batch', Tuple[Union[dict, 'Batch']],
-                     List[Union[dict, 'Batch']], np.ndarray]] = None,
-                 copy: bool = False,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        batch_dict: Optional[
+            Union[dict, "Batch", Sequence[Union[dict, "Batch"]], np.ndarray]
+        ] = None,
+        copy: bool = False,
+        **kwargs: Any,
+    ) -> None:
         if copy:
             batch_dict = deepcopy(batch_dict)
         if batch_dict is not None:
@@ -188,7 +197,7 @@ class Batch:
         """Set self.key = value."""
         self.__dict__[key] = _parse_value(value)
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> Dict[str, Any]:
         """Pickling interface.
 
         Only the actual data are serialized for both efficiency and simplicity.
@@ -200,7 +209,7 @@ class Batch:
             state[k] = v
         return state
 
-    def __setstate__(self, state) -> None:
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         """Unpickling interface.
 
         At this point, self is an empty Batch instance that has not been
@@ -208,8 +217,9 @@ class Batch:
         """
         self.__init__(**state)
 
-    def __getitem__(self, index: Union[
-            str, slice, int, np.integer, np.ndarray, List[int]]) -> 'Batch':
+    def __getitem__(
+        self, index: Union[str, slice, int, np.integer, np.ndarray, List[int]]
+    ) -> Union["Batch", np.ndarray, torch.Tensor]:
         """Return self[index]."""
         if isinstance(index, str):
             return self.__dict__[index]
@@ -225,9 +235,11 @@ class Batch:
         else:
             raise IndexError("Cannot access item from empty Batch object.")
 
-    def __setitem__(self, index: Union[
-            str, slice, int, np.integer, np.ndarray, List[int]],
-            value: Any) -> None:
+    def __setitem__(
+        self,
+        index: Union[str, slice, int, np.integer, np.ndarray, List[int]],
+        value: Any,
+    ) -> None:
         """Assign value to self[index]."""
         value = _parse_value(value)
         if isinstance(index, str):
@@ -252,12 +264,12 @@ class Batch:
                 else:
                     self.__dict__[key][index] = None
 
-    def __iadd__(self, other: Union['Batch', Number, np.number]):
+    def __iadd__(self, other: Union["Batch", Number, np.number]) -> "Batch":
         """Algebraic addition with another Batch instance in-place."""
         if isinstance(other, Batch):
-            for (k, r), v in zip(self.__dict__.items(),
-                                 other.__dict__.values()):
-                # TODO are keys consistent?
+            for (k, r), v in zip(
+                self.__dict__.items(), other.__dict__.values()
+            ):  # TODO are keys consistent?
                 if isinstance(r, Batch) and r.is_empty():
                     continue
                 else:
@@ -273,11 +285,11 @@ class Batch:
         else:
             raise TypeError("Only addition of Batch or number is supported.")
 
-    def __add__(self, other: Union['Batch', Number, np.number]):
+    def __add__(self, other: Union["Batch", Number, np.number]) -> "Batch":
         """Algebraic addition with another Batch instance out-of-place."""
         return deepcopy(self).__iadd__(other)
 
-    def __imul__(self, val: Union[Number, np.number]):
+    def __imul__(self, val: Union[Number, np.number]) -> "Batch":
         """Algebraic multiplication with a scalar value in-place."""
         assert _is_number(val), "Only multiplication by a number is supported."
         for k, r in self.__dict__.items():
@@ -286,11 +298,11 @@ class Batch:
             self.__dict__[k] *= val
         return self
 
-    def __mul__(self, val: Union[Number, np.number]):
+    def __mul__(self, val: Union[Number, np.number]) -> "Batch":
         """Algebraic multiplication with a scalar value out-of-place."""
         return deepcopy(self).__imul__(val)
 
-    def __itruediv__(self, val: Union[Number, np.number]):
+    def __itruediv__(self, val: Union[Number, np.number]) -> "Batch":
         """Algebraic division with a scalar value in-place."""
         assert _is_number(val), "Only division by a number is supported."
         for k, r in self.__dict__.items():
@@ -299,23 +311,23 @@ class Batch:
             self.__dict__[k] /= val
         return self
 
-    def __truediv__(self, val: Union[Number, np.number]):
+    def __truediv__(self, val: Union[Number, np.number]) -> "Batch":
         """Algebraic division with a scalar value out-of-place."""
         return deepcopy(self).__itruediv__(val)
 
     def __repr__(self) -> str:
         """Return str(self)."""
-        s = self.__class__.__name__ + '(\n'
+        s = self.__class__.__name__ + "(\n"
         flag = False
         for k, v in self.__dict__.items():
-            rpl = '\n' + ' ' * (6 + len(k))
-            obj = pprint.pformat(v).replace('\n', rpl)
-            s += f'    {k}: {obj},\n'
+            rpl = "\n" + " " * (6 + len(k))
+            obj = pprint.pformat(v).replace("\n", rpl)
+            s += f"    {k}: {obj},\n"
             flag = True
         if flag:
-            s += ')'
+            s += ")"
         else:
-            s = self.__class__.__name__ + '()'
+            s = self.__class__.__name__ + "()"
         return s
 
     def __contains__(self, key: str) -> bool:
@@ -350,8 +362,11 @@ class Batch:
             elif isinstance(v, Batch):
                 v.to_numpy()
 
-    def to_torch(self, dtype: Optional[torch.dtype] = None,
-                 device: Union[str, int, torch.device] = 'cpu') -> None:
+    def to_torch(
+        self,
+        dtype: Optional[torch.dtype] = None,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
         """Change all numpy.ndarray to torch.Tensor in-place."""
         if not isinstance(device, torch.device):
             device = torch.device(device)
@@ -376,9 +391,9 @@ class Batch:
                     v = v.type(dtype)
                 self.__dict__[k] = v
 
-    def __cat(self,
-              batches: List[Union[dict, 'Batch']],
-              lens: List[int]) -> None:
+    def __cat(
+        self, batches: Sequence[Union[dict, "Batch"]], lens: List[int]
+    ) -> None:
         """Private method for Batch.cat_.
 
         ::
@@ -445,8 +460,9 @@ class Batch:
                         val, sum_lens[-1], stack=False)
                     self.__dict__[k][sum_lens[i]:sum_lens[i + 1]] = val
 
-    def cat_(self,
-             batches: Union['Batch', List[Union[dict, 'Batch']]]) -> None:
+    def cat_(
+        self, batches: Union["Batch", Sequence[Union[dict, "Batch"]]]
+    ) -> None:
         """Concatenate a list of (or one) Batch objects into current batch."""
         if isinstance(batches, Batch):
             batches = [batches]
@@ -460,20 +476,19 @@ class Batch:
             # x.is_empty(recurse=True) here means x is a nested empty batch
             # like Batch(a=Batch), and we have to treat it as length zero and
             # keep it.
-            lens = [0 if x.is_empty(recurse=True) else len(x)
-                    for x in batches]
+            lens = [0 if x.is_empty(recurse=True) else len(x) for x in batches]
         except TypeError as e:
             raise ValueError(
-                f'Batch.cat_ meets an exception. Maybe because there is any '
-                f'scalar in {batches} but Batch.cat_ does not support the '
-                f'concatenation of scalar.') from e
+                "Batch.cat_ meets an exception. Maybe because there is any "
+                f"scalar in {batches} but Batch.cat_ does not support the "
+                "concatenation of scalar.") from e
         if not self.is_empty():
             batches = [self] + list(batches)
             lens = [0 if self.is_empty(recurse=True) else len(self)] + lens
-        return self.__cat(batches, lens)
+        self.__cat(batches, lens)
 
     @staticmethod
-    def cat(batches: List[Union[dict, 'Batch']]) -> 'Batch':
+    def cat(batches: Sequence[Union[dict, "Batch"]]) -> "Batch":
         """Concatenate a list of Batch object into a single new batch.
 
         For keys that are not shared across all batches, batches that do not
@@ -494,9 +509,9 @@ class Batch:
         batch.cat_(batches)
         return batch
 
-    def stack_(self,
-               batches: List[Union[dict, 'Batch']],
-               axis: int = 0) -> None:
+    def stack_(
+        self, batches: Sequence[Union[dict, "Batch"]], axis: int = 0
+    ) -> None:
         """Stack a list of Batch object into current batch."""
         if len(batches) == 0:
             return
@@ -528,8 +543,8 @@ class Batch:
         keys_partial = keys_reserve_or_partial.difference(keys_reserve)
         if keys_partial and axis != 0:
             raise ValueError(
-                f"Stack of Batch with non-shared keys {keys_partial} "
-                f"is only supported with axis=0, but got axis={axis}!")
+                f"Stack of Batch with non-shared keys {keys_partial} is only "
+                f"supported with axis=0, but got axis={axis}!")
         for k in keys_reserve:
             # reserved keys
             self.__dict__[k] = Batch()
@@ -547,7 +562,9 @@ class Batch:
                     self.__dict__[k][i] = val
 
     @staticmethod
-    def stack(batches: List[Union[dict, 'Batch']], axis: int = 0) -> 'Batch':
+    def stack(
+        batches: Sequence[Union[dict, "Batch"]], axis: int = 0
+    ) -> "Batch":
         """Stack a list of Batch object into a single new batch.
 
         For keys that are not shared across all batches, batches that do not
@@ -573,9 +590,12 @@ class Batch:
         batch.stack_(batches, axis)
         return batch
 
-    def empty_(self, index: Union[
-        str, slice, int, np.integer, np.ndarray, List[int]] = None
-    ) -> 'Batch':
+    def empty_(
+        self,
+        index: Union[
+            str, slice, int, np.integer, np.ndarray, List[int]
+        ] = None,
+    ) -> "Batch":
         """Return an empty Batch object with 0 or None filled.
 
         If "index" is specified, it will only reset the specific indexed-data.
@@ -613,8 +633,8 @@ class Batch:
             elif isinstance(v, Batch):
                 self.__dict__[k].empty_(index=index)
             else:  # scalar value
-                warnings.warn('You are calling Batch.empty on a NumPy scalar, '
-                              'which may cause undefined behaviors.')
+                warnings.warn("You are calling Batch.empty on a NumPy scalar, "
+                              "which may cause undefined behaviors.")
                 if _is_number(v):
                     self.__dict__[k] = v.__class__(0)
                 else:
@@ -622,17 +642,21 @@ class Batch:
         return self
 
     @staticmethod
-    def empty(batch: 'Batch', index: Union[
-        str, slice, int, np.integer, np.ndarray, List[int]] = None
-    ) -> 'Batch':
+    def empty(
+        batch: "Batch",
+        index: Union[
+            str, slice, int, np.integer, np.ndarray, List[int]
+        ] = None,
+    ) -> "Batch":
         """Return an empty Batch object with 0 or None filled.
 
         The shape is the same as the given Batch.
         """
         return deepcopy(batch).empty_(index)
 
-    def update(self, batch: Optional[Union[dict, 'Batch']] = None,
-               **kwargs) -> None:
+    def update(
+        self, batch: Optional[Union[dict, "Batch"]] = None, **kwargs: Any
+    ) -> None:
         """Update this batch from another dict/Batch."""
         if batch is None:
             self.update(kwargs)
@@ -648,8 +672,9 @@ class Batch:
         for v in self.__dict__.values():
             if isinstance(v, Batch) and v.is_empty(recurse=True):
                 continue
-            elif hasattr(v, '__len__') and (not isinstance(
-                    v, (np.ndarray, torch.Tensor)) or v.ndim > 0):
+            elif hasattr(v, "__len__") and (not isinstance(
+                v, (np.ndarray, torch.Tensor)) or v.ndim > 0
+            ):
                 r.append(len(v))
             else:
                 raise TypeError(f"Object {v} in {self} has no len()")
@@ -659,7 +684,7 @@ class Batch:
             raise TypeError(f"Object {self} has no len()")
         return min(r)
 
-    def is_empty(self, recurse: bool = False):
+    def is_empty(self, recurse: bool = False) -> bool:
         """Test if a Batch is empty.
 
         If ``recurse=True``, it further tests the values of the object; else
@@ -689,8 +714,9 @@ class Batch:
             return True
         if not recurse:
             return False
-        return all(False if not isinstance(x, Batch)
-                   else x.is_empty(recurse=True) for x in self.values())
+        return all(
+            False if not isinstance(x, Batch) else x.is_empty(recurse=True)
+            for x in self.values())
 
     @property
     def shape(self) -> List[int]:
@@ -707,8 +733,9 @@ class Batch:
             return list(map(min, zip(*data_shape))) if len(data_shape) > 1 \
                 else data_shape[0]
 
-    def split(self, size: int, shuffle: bool = True,
-              merge_last: bool = False) -> Iterator['Batch']:
+    def split(
+        self, size: int, shuffle: bool = True, merge_last: bool = False
+    ) -> Iterator["Batch"]:
         """Split whole data into multiple small batches.
 
         :param int size: divide the data batch with the given size, but one
