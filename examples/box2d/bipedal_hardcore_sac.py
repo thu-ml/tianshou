@@ -24,6 +24,8 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.1)
+    parser.add_argument('--auto_alpha', type=int, default=1)
+    parser.add_argument('--alpha_lr', type=float, default=3e-4)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=10000)
     parser.add_argument('--collect-per-step', type=int, default=10)
@@ -46,7 +48,7 @@ def get_args():
 class EnvWrapper(object):
     """Env wrapper for reward scale, action repeat and action noise"""
 
-    def __init__(self, task, action_repeat=3, reward_scale=5, act_noise=0.3):
+    def __init__(self, task, action_repeat=3, reward_scale=5, act_noise=0.0):
         self._env = gym.make(task)
         self.action_repeat = action_repeat
         self.reward_scale = reward_scale
@@ -108,6 +110,12 @@ def test_sac_bipedal(args=get_args()):
                  args.action_shape, concat=True, device=args.device)
     critic2 = Critic(net_c2, args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+
+    if args.auto_alpha:
+        target_entropy = -np.prod(env.action_space.shape)
+        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
+        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
+        args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = SACPolicy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
