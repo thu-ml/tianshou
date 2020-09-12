@@ -1,5 +1,4 @@
 import gym
-import warnings
 import numpy as np
 from typing import Any, List, Union, Optional, Callable
 
@@ -84,12 +83,12 @@ class BaseVectorEnv(gym.Env):
             self.timeout is None or self.timeout > 0
         ), f"timeout is {timeout}, it should be positive if provided!"
         self.is_async = self.wait_num != len(env_fns) or timeout is not None
-        self.waiting_conn = []
+        self.waiting_conn: List[EnvWorker] = []
         # environments in self.ready_id is actually ready
         # but environments in self.waiting_id are just waiting when checked,
         # and they may be ready now, but this is not known until we check it
         # in the step() function
-        self.waiting_id = []
+        self.waiting_id: List[int] = []
         # all environments are ready in the beginning
         self.ready_id = list(range(self.env_num))
         self.is_closed = False
@@ -216,10 +215,11 @@ class BaseVectorEnv(gym.Env):
                     self.waiting_conn.append(self.workers[env_id])
                     self.waiting_id.append(env_id)
                 self.ready_id = [x for x in self.ready_id if x not in id]
-            ready_conns, result = [], []
+            ready_conns: List[EnvWorker] = []
             while not ready_conns:
                 ready_conns = self.worker_class.wait(
                     self.waiting_conn, self.wait_num, self.timeout)
+            result = []
             for conn in ready_conns:
                 waiting_index = self.waiting_conn.index(conn)
                 self.waiting_conn.pop(waiting_index)
@@ -243,11 +243,14 @@ class BaseVectorEnv(gym.Env):
             which a reproducer pass to "seed".
         """
         self._assert_is_not_closed()
+        seed_list: Union[List[None], List[int]]
         if seed is None:
-            seed = [seed] * self.env_num
-        elif np.isscalar(seed):
-            seed = [seed + i for i in range(self.env_num)]
-        return [w.seed(s) for w, s in zip(self.workers, seed)]
+            seed_list = [seed] * self.env_num
+        elif isinstance(seed, int):
+            seed_list = [seed + i for i in range(self.env_num)]
+        else:
+            seed_list = seed
+        return [w.seed(s) for w, s in zip(self.workers, seed_list)]
 
     def render(self, **kwargs: Any) -> List[Any]:
         """Render all of the environments."""
@@ -293,16 +296,6 @@ class DummyVectorEnv(BaseVectorEnv):
     ) -> None:
         super().__init__(
             env_fns, DummyEnvWorker, wait_num=wait_num, timeout=timeout)
-
-
-class VectorEnv(DummyVectorEnv):
-    """VectorEnv is renamed to DummyVectorEnv."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        warnings.warn(
-            "VectorEnv is renamed to DummyVectorEnv, and will be removed in "
-            "0.3. Use DummyVectorEnv instead!", Warning)
-        super().__init__(*args, **kwargs)
 
 
 class SubprocVectorEnv(BaseVectorEnv):

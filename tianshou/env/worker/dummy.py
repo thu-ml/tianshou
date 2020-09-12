@@ -19,7 +19,7 @@ class DummyEnvWorker(EnvWorker):
         return self.env.reset()
 
     @staticmethod
-    def wait(
+    def wait(  # type: ignore
         workers: List["DummyEnvWorker"],
         wait_num: int,
         timeout: Optional[float] = None,

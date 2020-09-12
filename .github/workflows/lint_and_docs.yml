@@ -1,4 +1,4 @@
-name: PEP8 and Docs Check
+name: PEP8, Types and Docs Check
 
 on: [push, pull_request]
 
@@ -20,6 +20,9 @@ jobs:
     - name: Lint with flake8
       run: |
         flake8 . --count --show-source --statistics
+    - name: Type check
+      run: |
+        mypy
     - name: Documentation test
       run: |
         pydocstyle tianshou

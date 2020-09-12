@@ -212,10 +212,8 @@ class Collector(object):
         finished_env_ids = []
         reward_total = 0.0
         whole_data = Batch()
-        list_n_episode = False
-        if n_episode is not None and not np.isscalar(n_episode):
+        if isinstance(n_episode, list):
             assert len(n_episode) == self.get_env_num()
-            list_n_episode = True
             finished_env_ids = [
                 i for i in self._ready_env_ids if n_episode[i] <= 0]
             self._ready_env_ids = np.array(
@@ -266,7 +264,8 @@ class Collector(object):
                 self.data.policy._state = self.data.state
 
             self.data.act = to_numpy(result.act)
-            if self._action_noise is not None:  # noqa
+            if self._action_noise is not None:
+                assert isinstance(self.data.act, np.ndarray)
                 self.data.act += self._action_noise(self.data.act.shape)
 
             # step in env
@@ -291,7 +290,7 @@ class Collector(object):
 
             # add data into the buffer
             if self.preprocess_fn:
-                result = self.preprocess_fn(**self.data)
+                result = self.preprocess_fn(**self.data)  # type: ignore
                 self.data.update(result)
 
             for j, i in enumerate(self._ready_env_ids):
@@ -305,14 +304,14 @@ class Collector(object):
                     self._cached_buf[i].add(**self.data[j])
 
                 if done[j]:
-                    if not (list_n_episode and
-                            episode_count[i] >= n_episode[i]):
+                    if not (isinstance(n_episode, list)
+                            and episode_count[i] >= n_episode[i]):
                         episode_count[i] += 1
                         reward_total += np.sum(self._cached_buf[i].rew, axis=0)
                         step_count += len(self._cached_buf[i])
                         if self.buffer is not None:
                             self.buffer.update(self._cached_buf[i])
-                        if list_n_episode and \
+                        if isinstance(n_episode, list) and \
                                 episode_count[i] >= n_episode[i]:
                             # env i has collected enough data, it has finished
                             finished_env_ids.append(i)
@@ -324,10 +323,9 @@ class Collector(object):
                 env_ind_global = self._ready_env_ids[env_ind_local]
                 obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
-                    obs_next[env_ind_local] = self.preprocess_fn(
+                    obs_reset = self.preprocess_fn(
                         obs=obs_reset).get("obs", obs_reset)
-                else:
-                    obs_next[env_ind_local] = obs_reset
+                obs_next[env_ind_local] = obs_reset
             self.data.obs = obs_next
             if is_async:
                 # set data back
@@ -362,7 +360,7 @@ class Collector(object):
         # average reward across the number of episodes
         reward_avg = reward_total / episode_count
         if np.asanyarray(reward_avg).size > 1:  # non-scalar reward_avg
-            reward_avg = self._rew_metric(reward_avg)
+            reward_avg = self._rew_metric(reward_avg)  # type: ignore
         return {
             "n/ep": episode_count,
             "n/st": step_count,
@@ -371,30 +369,6 @@ class Collector(object):
             "rew": reward_avg,
             "len": step_count / episode_count,
         }
-
-    def sample(self, batch_size: int) -> Batch:
-        """Sample a data batch from the internal replay buffer.
-
-        It will call :meth:`~tianshou.policy.BasePolicy.process_fn` before
-        returning the final batch data.
-
-        :param int batch_size: ``0`` means it will extract all the data from
-            the buffer, otherwise it will extract the data with the given
-            batch_size.
-        """
-        warnings.warn(
-            "Collector.sample is deprecated and will cause error if you use "
-            "prioritized experience replay! Collector.sample will be removed "
-            "upon version 0.3. Use policy.update instead!", Warning)
-        assert self.buffer is not None, "Cannot get sample from empty buffer!"
-        batch_data, indice = self.buffer.sample(batch_size)
-        batch_data = self.process_fn(batch_data, self.buffer, indice)
-        return batch_data
-
-    def close(self) -> None:
-        warnings.warn(
-            "Collector.close is deprecated and will be removed upon version "
-            "0.3.", Warning)
 
 
 def _batch_set_item(
