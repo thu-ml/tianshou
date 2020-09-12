@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Any, Union, Optional, Dict, List
+from typing import Any, Dict, List, Union, Optional
 
 from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer

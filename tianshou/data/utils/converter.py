@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from copy import deepcopy
 from numbers import Number
 from typing import Union, Optional
 
@@ -20,6 +21,7 @@ def to_numpy(
     elif x is None:
         return np.array(None, dtype=np.object)
     elif isinstance(x, Batch):
+        x = deepcopy(x)
         x.to_numpy()
         return x
     elif isinstance(x, dict):
@@ -56,6 +58,7 @@ def to_torch(
     elif isinstance(x, dict):
         return {k: to_torch(v, dtype, device) for k, v in x.items()}
     elif isinstance(x, Batch):
+        x = deepcopy(x)
         x.to_torch(dtype, device)
         return x
     elif isinstance(x, (list, tuple)):
