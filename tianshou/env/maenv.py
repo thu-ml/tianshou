@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-from typing import Tuple
+from typing import Any, Dict, Tuple
 from abc import ABC, abstractmethod
 
 
@@ -22,7 +22,7 @@ class MultiAgentEnv(ABC, gym.Env):
     usage can be found at :ref:`marl_example`.
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self) -> None:
         pass
 
     @abstractmethod
@@ -30,13 +30,14 @@ class MultiAgentEnv(ABC, gym.Env):
         """Reset the state.
 
         Return the initial state, first agent_id, and the initial action set,
-        for example, ``{'obs': obs, 'agent_id': agent_id, 'mask': mask}``
+        for example, ``{'obs': obs, 'agent_id': agent_id, 'mask': mask}``.
         """
         pass
 
     @abstractmethod
-    def step(self, action: np.ndarray
-             ) -> Tuple[dict, np.ndarray, np.ndarray, np.ndarray]:
+    def step(
+        self, action: np.ndarray
+    ) -> Tuple[Dict[str, Any], np.ndarray, np.ndarray, np.ndarray]:
         """Run one timestep of the environment’s dynamics.
 
         When the end of episode is reached, you are responsible for calling

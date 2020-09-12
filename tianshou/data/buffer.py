@@ -1,6 +1,7 @@
 import torch
 import numpy as np
-from typing import Any, Tuple, Union, Optional
+from numbers import Number
+from typing import Any, Dict, Tuple, Union, Optional
 
 from tianshou.data import Batch, SegmentTree, to_numpy
 from tianshou.data.batch import _create_value
@@ -11,7 +12,7 @@ class ReplayBuffer:
     interaction between the policy and environment.
 
     The current implementation of Tianshou typically use 7 reserved keys in
-    :class:`~tianshou.data.Batch`
+    :class:`~tianshou.data.Batch`:
 
     * ``obs`` the observation of step :math:`t` ;
     * ``act`` the action of step :math:`t` ;
@@ -124,14 +125,17 @@ class ReplayBuffer:
         This feature is not supported in Prioritized Replay Buffer currently.
     """
 
-    def __init__(self, size: int, stack_num: int = 1,
-                 ignore_obs_next: bool = False,
-                 save_only_last_obs: bool = False,
-                 sample_avail: bool = False) -> None:
+    def __init__(
+        self,
+        size: int,
+        stack_num: int = 1,
+        ignore_obs_next: bool = False,
+        save_only_last_obs: bool = False,
+        sample_avail: bool = False,
+    ) -> None:
         super().__init__()
         self._maxsize = size
         self._indices = np.arange(size)
-        self._stack = None
         self.stack_num = stack_num
         self._avail = sample_avail and stack_num > 1
         self._avail_index = []
@@ -157,7 +161,7 @@ class ReplayBuffer:
         except KeyError as e:
             raise AttributeError from e
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         """Unpickling interface.
 
         We need it because pickling buffer does not work out-of-the-box
@@ -171,11 +175,12 @@ class ReplayBuffer:
         except KeyError:
             self._meta.__dict__[name] = _create_value(inst, self._maxsize)
             value = self._meta.__dict__[name]
-        if isinstance(inst, (np.ndarray, torch.Tensor)) \
-                and value.shape[1:] != inst.shape:
+        if isinstance(inst, (torch.Tensor, np.ndarray)) and \
+                inst.shape != value.shape[1:]:
             raise ValueError(
-                "Cannot add data to a buffer with different shape, with key "
-                f"{name}, expect {value.shape[1:]}, given {inst.shape}.")
+                "Cannot add data to a buffer with different shape with key "
+                f"{name}, expect {value.shape[1:]}, given {inst.shape}."
+            )
         try:
             value[self._index] = inst
         except KeyError:
@@ -184,15 +189,15 @@ class ReplayBuffer:
             value[self._index] = inst
 
     @property
-    def stack_num(self):
+    def stack_num(self) -> int:
         return self._stack
 
     @stack_num.setter
-    def stack_num(self, num):
-        assert num > 0, 'stack_num should greater than 0'
+    def stack_num(self, num: int) -> None:
+        assert num > 0, "stack_num should greater than 0"
         self._stack = num
 
-    def update(self, buffer: 'ReplayBuffer') -> None:
+    def update(self, buffer: "ReplayBuffer") -> None:
         """Move the data from the given buffer to self."""
         if len(buffer) == 0:
             return
@@ -206,32 +211,35 @@ class ReplayBuffer:
                 break
         buffer.stack_num = stack_num_orig
 
-    def add(self,
-            obs: Union[dict, Batch, np.ndarray, float],
-            act: Union[dict, Batch, np.ndarray, float],
-            rew: Union[int, float],
-            done: Union[bool, int],
-            obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
-            info: Optional[Union[dict, Batch]] = {},
-            policy: Optional[Union[dict, Batch]] = {},
-            **kwargs) -> None:
+    def add(
+        self,
+        obs: Any,
+        act: Any,
+        rew: Union[Number, np.number, np.ndarray],
+        done: Union[Number, np.number, np.bool_],
+        obs_next: Any = None,
+        info: Optional[Union[dict, Batch]] = {},
+        policy: Optional[Union[dict, Batch]] = {},
+        **kwargs: Any,
+    ) -> None:
         """Add a batch of data into replay buffer."""
-        assert isinstance(info, (dict, Batch)), \
-            'You should return a dict in the last argument of env.step().'
+        assert isinstance(
+            info, (dict, Batch)
+        ), "You should return a dict in the last argument of env.step()."
         if self._last_obs:
             obs = obs[-1]
-        self._add_to_buffer('obs', obs)
-        self._add_to_buffer('act', act)
-        self._add_to_buffer('rew', rew)
-        self._add_to_buffer('done', done)
+        self._add_to_buffer("obs", obs)
+        self._add_to_buffer("act", act)
+        self._add_to_buffer("rew", rew)
+        self._add_to_buffer("done", done)
         if self._save_s_:
             if obs_next is None:
                 obs_next = Batch()
             elif self._last_obs:
                 obs_next = obs_next[-1]
-            self._add_to_buffer('obs_next', obs_next)
-        self._add_to_buffer('info', info)
-        self._add_to_buffer('policy', policy)
+            self._add_to_buffer("obs_next", obs_next)
+        self._add_to_buffer("info", info)
+        self._add_to_buffer("policy", policy)
 
         # maintain available index for frame-stack sampling
         if self._avail:
@@ -262,7 +270,8 @@ class ReplayBuffer:
         self._avail_index = []
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
-        """Get a random sample from buffer with size equal to batch_size. \
+        """Get a random sample from buffer with size equal to batch_size.
+
         Return all the data in the buffer if batch_size is 0.
 
         :return: Sample data and its corresponding index inside the buffer.
@@ -278,11 +287,15 @@ class ReplayBuffer:
                     np.arange(self._index, self._size),
                     np.arange(0, self._index),
                 ])
-        assert len(indice) > 0, 'No available indice can be sampled.'
+        assert len(indice) > 0, "No available indice can be sampled."
         return self[indice], indice
 
-    def get(self, indice: Union[slice, int, np.integer, np.ndarray], key: str,
-            stack_num: Optional[int] = None) -> Union[Batch, np.ndarray]:
+    def get(
+        self,
+        indice: Union[slice, int, np.integer, np.ndarray],
+        key: str,
+        stack_num: Optional[int] = None,
+    ) -> Union[Batch, np.ndarray]:
         """Return the stacked result.
 
         E.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t], where s is self.key, t is the
@@ -292,7 +305,7 @@ class ReplayBuffer:
         if stack_num is None:
             stack_num = self.stack_num
         if stack_num == 1:  # the most often case
-            if key != 'obs_next' or self._save_s_:
+            if key != "obs_next" or self._save_s_:
                 val = self._meta.__dict__[key]
                 try:
                     return val[indice]
@@ -301,11 +314,11 @@ class ReplayBuffer:
                         raise e  # val != Batch()
                     return Batch()
         indice = self._indices[:self._size][indice]
-        done = self._meta.__dict__['done']
-        if key == 'obs_next' and not self._save_s_:
+        done = self._meta.__dict__["done"]
+        if key == "obs_next" and not self._save_s_:
             indice += 1 - done[indice].astype(np.int)
             indice[indice == self._size] = 0
-            key = 'obs'
+            key = "obs"
         val = self._meta.__dict__[key]
         try:
             if stack_num == 1:
@@ -319,30 +332,30 @@ class ReplayBuffer:
                     pre_indice + done[pre_indice].astype(np.int))
                 indice[indice == self._size] = 0
             if isinstance(val, Batch):
-                stack = Batch.stack(stack, axis=indice.ndim)
+                return Batch.stack(stack, axis=indice.ndim)
             else:
-                stack = np.stack(stack, axis=indice.ndim)
-            return stack
+                return np.stack(stack, axis=indice.ndim)
         except IndexError as e:
             if not (isinstance(val, Batch) and val.is_empty()):
                 raise e  # val != Batch()
             return Batch()
 
-    def __getitem__(self, index: Union[
-            slice, int, np.integer, np.ndarray]) -> Batch:
+    def __getitem__(
+        self, index: Union[slice, int, np.integer, np.ndarray]
+    ) -> Batch:
         """Return a data batch: self[index].
 
-        If stack_num is larger than 1, return the stacked obs and obs_next
-        with shape (batch, len, ...).
+        If stack_num is larger than 1, return the stacked obs and obs_next with
+        shape (batch, len, ...).
         """
         return Batch(
-            obs=self.get(index, 'obs'),
+            obs=self.get(index, "obs"),
             act=self.act[index],
             rew=self.rew[index],
             done=self.done[index],
-            obs_next=self.get(index, 'obs_next'),
-            info=self.get(index, 'info'),
-            policy=self.get(index, 'policy'),
+            obs_next=self.get(index, "obs_next"),
+            info=self.get(index, "info"),
+            policy=self.get(index, "policy"),
         )
 
 
@@ -361,15 +374,15 @@ class ListReplayBuffer(ReplayBuffer):
         explanation.
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(size=0, ignore_obs_next=False, **kwargs)
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         raise NotImplementedError("ListReplayBuffer cannot be sampled!")
 
     def _add_to_buffer(
-            self, name: str,
-            inst: Union[dict, Batch, np.ndarray, float, int, bool]) -> None:
+        self, name: str, inst: Union[dict, Batch, np.ndarray, float, int, bool]
+    ) -> None:
         if self._meta.__dict__.get(name) is None:
             self._meta.__dict__[name] = []
         self._meta.__dict__[name].append(inst)
@@ -393,25 +406,29 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         explanation.
     """
 
-    def __init__(self, size: int, alpha: float, beta: float, **kwargs) -> None:
+    def __init__(
+        self, size: int, alpha: float, beta: float, **kwargs: Any
+    ) -> None:
         super().__init__(size, **kwargs)
-        assert alpha > 0. and beta >= 0.
+        assert alpha > 0.0 and beta >= 0.0
         self._alpha, self._beta = alpha, beta
         self._max_prio = self._min_prio = 1.0
         # save weight directly in this class instead of self._meta
         self.weight = SegmentTree(size)
         self.__eps = np.finfo(np.float32).eps.item()
 
-    def add(self,
-            obs: Union[dict, Batch, np.ndarray, float],
-            act: Union[dict, Batch, np.ndarray, float],
-            rew: Union[int, float],
-            done: Union[bool, int],
-            obs_next: Optional[Union[dict, Batch, np.ndarray, float]] = None,
-            info: Optional[Union[dict, Batch]] = {},
-            policy: Optional[Union[dict, Batch]] = {},
-            weight: Optional[float] = None,
-            **kwargs) -> None:
+    def add(
+        self,
+        obs: Any,
+        act: Any,
+        rew: Union[Number, np.number, np.ndarray],
+        done: Union[Number, np.number, np.bool_],
+        obs_next: Any = None,
+        info: Optional[Union[dict, Batch]] = {},
+        policy: Optional[Union[dict, Batch]] = {},
+        weight: Optional[Union[Number, np.number]] = None,
+        **kwargs: Any,
+    ) -> None:
         """Add a batch of data into replay buffer."""
         if weight is None:
             weight = self._max_prio
@@ -433,7 +450,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         to de-bias the sampling process (some transition tuples are sampled
         more often so their losses are weighted less).
         """
-        assert self._size > 0, 'Cannot sample a buffer with 0 size!'
+        assert self._size > 0, "Cannot sample a buffer with 0 size!"
         if batch_size == 0:
             indice = np.concatenate([
                 np.arange(self._index, self._size),
@@ -449,8 +466,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         batch.weight = (batch.weight / self._min_prio) ** (-self._beta)
         return batch, indice
 
-    def update_weight(self, indice: Union[np.ndarray],
-                      new_weight: Union[np.ndarray, torch.Tensor]) -> None:
+    def update_weight(
+        self,
+        indice: Union[np.ndarray],
+        new_weight: Union[np.ndarray, torch.Tensor]
+    ) -> None:
         """Update priority weight by indice in this buffer.
 
         :param np.ndarray indice: indice you want to update weight.
@@ -461,15 +481,16 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._max_prio = max(self._max_prio, weight.max())
         self._min_prio = min(self._min_prio, weight.min())
 
-    def __getitem__(self, index: Union[
-            slice, int, np.integer, np.ndarray]) -> Batch:
+    def __getitem__(
+        self, index: Union[slice, int, np.integer, np.ndarray]
+    ) -> Batch:
         return Batch(
-            obs=self.get(index, 'obs'),
+            obs=self.get(index, "obs"),
             act=self.act[index],
             rew=self.rew[index],
             done=self.done[index],
-            obs_next=self.get(index, 'obs_next'),
-            info=self.get(index, 'info'),
-            policy=self.get(index, 'policy'),
+            obs_next=self.get(index, "obs_next"),
+            info=self.get(index, "info"),
+            policy=self.get(index, "policy"),
             weight=self.weight[index],
         )
