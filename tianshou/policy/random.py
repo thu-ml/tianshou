@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Union, Optional, Dict, List
+from typing import Any, Dict, Union, Optional
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy
@@ -11,9 +11,12 @@ class RandomPolicy(BasePolicy):
     It randomly chooses an action from the legal action.
     """
 
-    def forward(self, batch: Batch,
-                state: Optional[Union[dict, Batch, np.ndarray]] = None,
-                **kwargs) -> Batch:
+    def forward(
+        self,
+        batch: Batch,
+        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        **kwargs: Any,
+    ) -> Batch:
         """Compute the random action over the given batch data.
 
         The input should contain a mask in batch.obs, with "True" to be
@@ -34,7 +37,6 @@ class RandomPolicy(BasePolicy):
         logits[~mask] = -np.inf
         return Batch(act=logits.argmax(axis=-1))
 
-    def learn(self, batch: Batch, **kwargs
-              ) -> Dict[str, Union[float, List[float]]]:
+    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         """Since a random agent learn nothing, it returns an empty dict."""
         return {}

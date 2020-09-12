@@ -71,8 +71,8 @@ def test_sac(args=get_args()):
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
     policy = SACPolicy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-        args.tau, args.gamma, args.alpha,
-        [env.action_space.low[0], env.action_space.high[0]],
+        action_range=[env.action_space.low[0], env.action_space.high[0]],
+        tau=args.tau, gamma=args.gamma, alpha=args.alpha,
         reward_normalization=args.rew_norm, ignore_done=True)
     # collector
     train_collector = Collector(

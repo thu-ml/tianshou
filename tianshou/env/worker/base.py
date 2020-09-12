@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Optional, Callable, Any
+from typing import Any, List, Tuple, Optional, Callable
 
 
 class EnvWorker(ABC):
@@ -24,12 +24,14 @@ class EnvWorker(ABC):
     def send_action(self, action: np.ndarray) -> None:
         pass
 
-    def get_result(self) -> Tuple[
-            np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_result(
+        self,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return self.result
 
-    def step(self, action: np.ndarray
-             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def step(
+        self, action: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Perform one timestep of the environment's dynamic.
 
         "send_action" and "get_result" are coupled in sync simulation, so
@@ -41,19 +43,21 @@ class EnvWorker(ABC):
         return self.get_result()
 
     @staticmethod
-    def wait(workers: List['EnvWorker'],
-             wait_num: int,
-             timeout: Optional[float] = None) -> List['EnvWorker']:
+    def wait(
+        workers: List["EnvWorker"],
+        wait_num: int,
+        timeout: Optional[float] = None,
+    ) -> List["EnvWorker"]:
         """Given a list of workers, return those ready ones."""
         raise NotImplementedError
 
     @abstractmethod
-    def seed(self, seed: Optional[int] = None) -> List[int]:
+    def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
         pass
 
     @abstractmethod
-    def render(self, **kwargs) -> Any:
-        """Renders the environment."""
+    def render(self, **kwargs: Any) -> Any:
+        """Render the environment."""
         pass
 
     @abstractmethod

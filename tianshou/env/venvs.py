@@ -1,7 +1,7 @@
 import gym
 import warnings
 import numpy as np
-from typing import List, Union, Optional, Callable, Any
+from typing import Any, List, Union, Optional, Callable
 
 from tianshou.env.worker import EnvWorker, DummyEnvWorker, SubprocEnvWorker, \
     RayEnvWorker
@@ -59,12 +59,13 @@ class BaseVectorEnv(gym.Env):
         within ``timeout`` seconds.
     """
 
-    def __init__(self,
-                 env_fns: List[Callable[[], gym.Env]],
-                 worker_fn: Callable[[Callable[[], gym.Env]], EnvWorker],
-                 wait_num: Optional[int] = None,
-                 timeout: Optional[float] = None,
-                 ) -> None:
+    def __init__(
+        self,
+        env_fns: List[Callable[[], gym.Env]],
+        worker_fn: Callable[[Callable[[], gym.Env]], EnvWorker],
+        wait_num: Optional[int] = None,
+        timeout: Optional[float] = None,
+    ) -> None:
         self._env_fns = env_fns
         # A VectorEnv contains a pool of EnvWorkers, which corresponds to
         # interact with the given envs (one worker <-> one env).
@@ -75,11 +76,13 @@ class BaseVectorEnv(gym.Env):
 
         self.env_num = len(env_fns)
         self.wait_num = wait_num or len(env_fns)
-        assert 1 <= self.wait_num <= len(env_fns), \
-            f'wait_num should be in [1, {len(env_fns)}], but got {wait_num}'
+        assert (
+            1 <= self.wait_num <= len(env_fns)
+        ), f"wait_num should be in [1, {len(env_fns)}], but got {wait_num}"
         self.timeout = timeout
-        assert self.timeout is None or self.timeout > 0, \
-            f'timeout is {timeout}, it should be positive if provided!'
+        assert (
+            self.timeout is None or self.timeout > 0
+        ), f"timeout is {timeout}, it should be positive if provided!"
         self.is_async = self.wait_num != len(env_fns) or timeout is not None
         self.waiting_conn = []
         # environments in self.ready_id is actually ready
@@ -92,8 +95,9 @@ class BaseVectorEnv(gym.Env):
         self.is_closed = False
 
     def _assert_is_not_closed(self) -> None:
-        assert not self.is_closed, f"Methods of {self.__class__.__name__} "\
-            "should not be called after close."
+        assert not self.is_closed, (
+            f"Methods of {self.__class__.__name__} cannot be called after "
+            "close.")
 
     def __len__(self) -> int:
         """Return len(self), which is the number of environments."""
@@ -113,7 +117,7 @@ class BaseVectorEnv(gym.Env):
         else:
             return super().__getattribute__(key)
 
-    def __getattr__(self, key: str) -> Any:
+    def __getattr__(self, key: str) -> List[Any]:
         """Fetch a list of env attributes.
 
         This function tries to retrieve an attribute from each individual
@@ -122,8 +126,9 @@ class BaseVectorEnv(gym.Env):
         """
         return [getattr(worker, key) for worker in self.workers]
 
-    def _wrap_id(self, id: Optional[Union[int, List[int], np.ndarray]] = None
-                 ) -> List[int]:
+    def _wrap_id(
+        self, id: Optional[Union[int, List[int], np.ndarray]] = None
+    ) -> Union[List[int], np.ndarray]:
         if id is None:
             id = list(range(self.env_num))
         elif np.isscalar(id):
@@ -132,13 +137,16 @@ class BaseVectorEnv(gym.Env):
 
     def _assert_id(self, id: List[int]) -> None:
         for i in id:
-            assert i not in self.waiting_id, \
-                f'Cannot interact with environment {i} which is stepping now.'
-            assert i in self.ready_id, \
-                f'Can only interact with ready environments {self.ready_id}.'
+            assert (
+                i not in self.waiting_id
+            ), f"Cannot interact with environment {i} which is stepping now."
+            assert (
+                i in self.ready_id
+            ), f"Can only interact with ready environments {self.ready_id}."
 
-    def reset(self, id: Optional[Union[int, List[int], np.ndarray]] = None
-              ) -> np.ndarray:
+    def reset(
+        self, id: Optional[Union[int, List[int], np.ndarray]] = None
+    ) -> np.ndarray:
         """Reset the state of some envs and return initial observations.
 
         If id is None, reset the state of all the environments and return
@@ -152,10 +160,11 @@ class BaseVectorEnv(gym.Env):
         obs = np.stack([self.workers[i].reset() for i in id])
         return obs
 
-    def step(self,
-             action: np.ndarray,
-             id: Optional[Union[int, List[int], np.ndarray]] = None
-             ) -> List[np.ndarray]:
+    def step(
+        self,
+        action: np.ndarray,
+        id: Optional[Union[int, List[int], np.ndarray]] = None
+    ) -> List[np.ndarray]:
         """Run one timestep of some environments' dynamics.
 
         If id is None, run one timestep of all the environments’ dynamics;
@@ -221,8 +230,9 @@ class BaseVectorEnv(gym.Env):
                 self.ready_id.append(env_id)
         return list(map(np.stack, zip(*result)))
 
-    def seed(self,
-             seed: Optional[Union[int, List[int]]] = None) -> List[List[int]]:
+    def seed(
+        self, seed: Optional[Union[int, List[int]]] = None
+    ) -> List[Optional[List[int]]]:
         """Set the seed for all environments.
 
         Accept ``None``, an int (which will extend ``i`` to
@@ -239,13 +249,13 @@ class BaseVectorEnv(gym.Env):
             seed = [seed + i for i in range(self.env_num)]
         return [w.seed(s) for w, s in zip(self.workers, seed)]
 
-    def render(self, **kwargs) -> List[Any]:
+    def render(self, **kwargs: Any) -> List[Any]:
         """Render all of the environments."""
         self._assert_is_not_closed()
         if self.is_async and len(self.waiting_id) > 0:
             raise RuntimeError(
-                f"Environments {self.waiting_id} are still "
-                f"stepping, cannot render them now.")
+                f"Environments {self.waiting_id} are still stepping, cannot "
+                "render them now.")
         return [w.render(**kwargs) for w in self.workers]
 
     def close(self) -> None:
@@ -275,20 +285,23 @@ class DummyVectorEnv(BaseVectorEnv):
         explanation.
     """
 
-    def __init__(self, env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None,
-                 timeout: Optional[float] = None) -> None:
-        super().__init__(env_fns, DummyEnvWorker,
-                         wait_num=wait_num, timeout=timeout)
+    def __init__(
+        self,
+        env_fns: List[Callable[[], gym.Env]],
+        wait_num: Optional[int] = None,
+        timeout: Optional[float] = None,
+    ) -> None:
+        super().__init__(
+            env_fns, DummyEnvWorker, wait_num=wait_num, timeout=timeout)
 
 
 class VectorEnv(DummyVectorEnv):
     """VectorEnv is renamed to DummyVectorEnv."""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         warnings.warn(
-            'VectorEnv is renamed to DummyVectorEnv, and will be removed in '
-            '0.3. Use DummyVectorEnv instead!', Warning)
+            "VectorEnv is renamed to DummyVectorEnv, and will be removed in "
+            "0.3. Use DummyVectorEnv instead!", Warning)
         super().__init__(*args, **kwargs)
 
 
@@ -301,13 +314,17 @@ class SubprocVectorEnv(BaseVectorEnv):
         explanation.
     """
 
-    def __init__(self, env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None,
-                 timeout: Optional[float] = None) -> None:
-        def worker_fn(fn):
+    def __init__(
+        self,
+        env_fns: List[Callable[[], gym.Env]],
+        wait_num: Optional[int] = None,
+        timeout: Optional[float] = None,
+    ) -> None:
+        def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=False)
-        super().__init__(env_fns, worker_fn,
-                         wait_num=wait_num, timeout=timeout)
+
+        super().__init__(
+            env_fns, worker_fn, wait_num=wait_num, timeout=timeout)
 
 
 class ShmemVectorEnv(BaseVectorEnv):
@@ -321,13 +338,17 @@ class ShmemVectorEnv(BaseVectorEnv):
         detailed explanation.
     """
 
-    def __init__(self, env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None,
-                 timeout: Optional[float] = None) -> None:
-        def worker_fn(fn):
+    def __init__(
+        self,
+        env_fns: List[Callable[[], gym.Env]],
+        wait_num: Optional[int] = None,
+        timeout: Optional[float] = None,
+    ) -> None:
+        def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
-        super().__init__(env_fns, worker_fn,
-                         wait_num=wait_num, timeout=timeout)
+
+        super().__init__(
+            env_fns, worker_fn, wait_num=wait_num, timeout=timeout)
 
 
 class RayVectorEnv(BaseVectorEnv):
@@ -341,16 +362,19 @@ class RayVectorEnv(BaseVectorEnv):
         explanation.
     """
 
-    def __init__(self, env_fns: List[Callable[[], gym.Env]],
-                 wait_num: Optional[int] = None,
-                 timeout: Optional[float] = None) -> None:
+    def __init__(
+        self,
+        env_fns: List[Callable[[], gym.Env]],
+        wait_num: Optional[int] = None,
+        timeout: Optional[float] = None,
+    ) -> None:
         try:
             import ray
         except ImportError as e:
             raise ImportError(
-                'Please install ray to support RayVectorEnv: pip install ray'
+                "Please install ray to support RayVectorEnv: pip install ray"
             ) from e
         if not ray.is_initialized():
             ray.init()
-        super().__init__(env_fns, RayEnvWorker,
-                         wait_num=wait_num, timeout=timeout)
+        super().__init__(
+            env_fns, RayEnvWorker, wait_num=wait_num, timeout=timeout)

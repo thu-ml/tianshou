@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from typing import Dict, List, Union, Optional
+from typing import Any, Dict, List, Union, Optional, Callable
 
 from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
@@ -13,6 +13,7 @@ class PGPolicy(BasePolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param dist_fn: distribution class for computing the action.
+    :type dist_fn: Callable[[], torch.distributions.Distribution]
     :param float discount_factor: in [0, 1].
 
     .. seealso::
@@ -21,23 +22,28 @@ class PGPolicy(BasePolicy):
         explanation.
     """
 
-    def __init__(self,
-                 model: torch.nn.Module,
-                 optim: torch.optim.Optimizer,
-                 dist_fn: torch.distributions.Distribution,
-                 discount_factor: float = 0.99,
-                 reward_normalization: bool = False,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        model: Optional[torch.nn.Module],
+        optim: torch.optim.Optimizer,
+        dist_fn: Callable[[], torch.distributions.Distribution],
+        discount_factor: float = 0.99,
+        reward_normalization: bool = False,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         self.model = model
         self.optim = optim
         self.dist_fn = dist_fn
-        assert 0 <= discount_factor <= 1, 'discount factor should in [0, 1]'
+        assert (
+            0.0 <= discount_factor <= 1.0
+        ), "discount factor should be in [0, 1]"
         self._gamma = discount_factor
         self._rew_norm = reward_normalization
 
-    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
-                   indice: np.ndarray) -> Batch:
+    def process_fn(
+        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> Batch:
         r"""Compute the discounted returns for each frame.
 
         .. math::
@@ -48,13 +54,15 @@ class PGPolicy(BasePolicy):
         """
         # batch.returns = self._vanilla_returns(batch)
         # batch.returns = self._vectorized_returns(batch)
-        # return batch
         return self.compute_episodic_return(
-            batch, gamma=self._gamma, gae_lambda=1., rew_norm=self._rew_norm)
+            batch, gamma=self._gamma, gae_lambda=1.0, rew_norm=self._rew_norm)
 
-    def forward(self, batch: Batch,
-                state: Optional[Union[dict, Batch, np.ndarray]] = None,
-                **kwargs) -> Batch:
+    def forward(
+        self,
+        batch: Batch,
+        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        **kwargs: Any,
+    ) -> Batch:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
@@ -77,8 +85,9 @@ class PGPolicy(BasePolicy):
         act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def learn(self, batch: Batch, batch_size: int, repeat: int,
-              **kwargs) -> Dict[str, List[float]]:
+    def learn(
+        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+    ) -> Dict[str, List[float]]:
         losses = []
         for _ in range(repeat):
             for b in batch.split(batch_size, merge_last=True):
@@ -86,13 +95,12 @@ class PGPolicy(BasePolicy):
                 dist = self(b).dist
                 a = to_torch_as(b.act, dist.logits)
                 r = to_torch_as(b.returns, dist.logits)
-                log_prob = dist.log_prob(a).reshape(
-                    r.shape[0], -1).transpose(0, 1)
+                log_prob = dist.log_prob(a).reshape(len(r), -1).transpose(0, 1)
                 loss = -(log_prob * r).mean()
                 loss.backward()
                 self.optim.step()
                 losses.append(loss.item())
-        return {'loss': losses}
+        return {"loss": losses}
 
     # def _vanilla_returns(self, batch):
     #     returns = batch.rew[:]

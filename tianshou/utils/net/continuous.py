@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
+from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
 from tianshou.data import to_torch, to_torch_as
 
@@ -12,14 +13,25 @@ class Actor(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, action_shape, max_action=1.,
-                 device='cpu', hidden_layer_size=128):
+    def __init__(
+        self,
+        preprocess_net: nn.Module,
+        action_shape: Sequence[int],
+        max_action: float = 1.0,
+        device: Union[str, int, torch.device] = "cpu",
+        hidden_layer_size: int = 128,
+    ) -> None:
         super().__init__()
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self._max = max_action
 
-    def forward(self, s, state=None, info={}):
+    def forward(
+        self,
+        s: Union[np.ndarray, torch.Tensor],
+        state: Optional[Any] = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[torch.Tensor, Any]:
         """Mapping: s -> logits -> action."""
         logits, h = self.preprocess(s, state)
         logits = self._max * torch.tanh(self.last(logits))
@@ -33,13 +45,23 @@ class Critic(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, device='cpu', hidden_layer_size=128):
+    def __init__(
+        self,
+        preprocess_net: nn.Module,
+        device: Union[str, int, torch.device] = "cpu",
+        hidden_layer_size: int = 128,
+    ) -> None:
         super().__init__()
         self.device = device
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, 1)
 
-    def forward(self, s, a=None, info={}):
+    def forward(
+        self,
+        s: Union[np.ndarray, torch.Tensor],
+        a: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        info: Dict[str, Any] = {},
+    ) -> torch.Tensor:
         """Mapping: (s, a) -> logits -> Q(s, a)."""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.flatten(1)
@@ -59,8 +81,15 @@ class ActorProb(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, action_shape, max_action=1.,
-                 device='cpu', unbounded=False, hidden_layer_size=128):
+    def __init__(
+        self,
+        preprocess_net: nn.Module,
+        action_shape: Sequence[int],
+        max_action: float = 1.0,
+        device: Union[str, int, torch.device] = "cpu",
+        unbounded: bool = False,
+        hidden_layer_size: int = 128,
+    ) -> None:
         super().__init__()
         self.preprocess = preprocess_net
         self.device = device
@@ -69,7 +98,12 @@ class ActorProb(nn.Module):
         self._max = max_action
         self._unbounded = unbounded
 
-    def forward(self, s, state=None, info={}):
+    def forward(
+        self,
+        s: Union[np.ndarray, torch.Tensor],
+        state: Optional[Any] = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Any]:
         """Mapping: s -> logits -> (mu, sigma)."""
         logits, h = self.preprocess(s, state)
         mu = self.mu(logits)
@@ -78,7 +112,7 @@ class ActorProb(nn.Module):
         shape = [1] * len(mu.shape)
         shape[1] = -1
         sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
-        return (mu, sigma), None
+        return (mu, sigma), state
 
 
 class RecurrentActorProb(nn.Module):
@@ -88,19 +122,35 @@ class RecurrentActorProb(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, layer_num, state_shape, action_shape, max_action=1.,
-                 device='cpu', unbounded=False, hidden_layer_size=128):
+    def __init__(
+        self,
+        layer_num: int,
+        state_shape: Sequence[int],
+        action_shape: Sequence[int],
+        max_action: float = 1.0,
+        device: Union[str, int, torch.device] = "cpu",
+        unbounded: bool = False,
+        hidden_layer_size: int = 128,
+    ) -> None:
         super().__init__()
         self.device = device
-        self.nn = nn.LSTM(input_size=np.prod(state_shape),
-                          hidden_size=hidden_layer_size,
-                          num_layers=layer_num, batch_first=True)
+        self.nn = nn.LSTM(
+            input_size=np.prod(state_shape),
+            hidden_size=hidden_layer_size,
+            num_layers=layer_num,
+            batch_first=True,
+        )
         self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
         self._max = max_action
         self._unbounded = unbounded
 
-    def forward(self, s, state=None, info={}):
+    def forward(
+        self,
+        s: Union[np.ndarray, torch.Tensor],
+        state: Optional[Dict[str, torch.Tensor]] = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict[str, torch.Tensor]]:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
@@ -114,8 +164,8 @@ class RecurrentActorProb(nn.Module):
         else:
             # we store the stack data in [bsz, len, ...] format
             # but pytorch rnn needs [len, bsz, ...]
-            s, (h, c) = self.nn(s, (state['h'].transpose(0, 1).contiguous(),
-                                    state['c'].transpose(0, 1).contiguous()))
+            s, (h, c) = self.nn(s, (state["h"].transpose(0, 1).contiguous(),
+                                    state["c"].transpose(0, 1).contiguous()))
         logits = s[:, -1]
         mu = self.mu(logits)
         if not self._unbounded:
@@ -124,8 +174,8 @@ class RecurrentActorProb(nn.Module):
         shape[1] = -1
         sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
         # please ensure the first dim is batch size: [bsz, len, ...]
-        return (mu, sigma), {'h': h.transpose(0, 1).detach(),
-                             'c': c.transpose(0, 1).detach()}
+        return (mu, sigma), {"h": h.transpose(0, 1).detach(),
+                             "c": c.transpose(0, 1).detach()}
 
 
 class RecurrentCritic(nn.Module):
@@ -135,18 +185,32 @@ class RecurrentCritic(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, layer_num, state_shape,
-                 action_shape=0, device='cpu', hidden_layer_size=128):
+    def __init__(
+        self,
+        layer_num: int,
+        state_shape: Sequence[int],
+        action_shape: Sequence[int] = [0],
+        device: Union[str, int, torch.device] = "cpu",
+        hidden_layer_size: int = 128,
+    ) -> None:
         super().__init__()
         self.state_shape = state_shape
         self.action_shape = action_shape
         self.device = device
-        self.nn = nn.LSTM(input_size=np.prod(state_shape),
-                          hidden_size=hidden_layer_size,
-                          num_layers=layer_num, batch_first=True)
+        self.nn = nn.LSTM(
+            input_size=np.prod(state_shape),
+            hidden_size=hidden_layer_size,
+            num_layers=layer_num,
+            batch_first=True,
+        )
         self.fc2 = nn.Linear(hidden_layer_size + np.prod(action_shape), 1)
 
-    def forward(self, s, a=None):
+    def forward(
+        self,
+        s: Union[np.ndarray, torch.Tensor],
+        a: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        info: Dict[str, Any] = {},
+    ) -> torch.Tensor:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         s = to_torch(s, device=self.device, dtype=torch.float32)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)

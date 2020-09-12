@@ -4,7 +4,7 @@ import numpy as np
 from torch import nn
 from numba import njit
 from abc import ABC, abstractmethod
-from typing import Dict, List, Union, Optional, Callable
+from typing import Any, List, Union, Mapping, Optional, Callable
 
 from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, \
     to_torch_as, to_numpy
@@ -52,23 +52,28 @@ class BasePolicy(ABC, nn.Module):
         policy.load_state_dict(torch.load("policy.pth"))
     """
 
-    def __init__(self,
-                 observation_space: gym.Space = None,
-                 action_space: gym.Space = None
-                 ) -> None:
+    def __init__(
+        self,
+        observation_space: gym.Space = None,
+        action_space: gym.Space = None
+    ) -> None:
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
         self.agent_id = 0
+        self._compile()
 
     def set_agent_id(self, agent_id: int) -> None:
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
     @abstractmethod
-    def forward(self, batch: Batch,
-                state: Optional[Union[dict, Batch, np.ndarray]] = None,
-                **kwargs) -> Batch:
+    def forward(
+        self,
+        batch: Batch,
+        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        **kwargs: Any,
+    ) -> Batch:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which MUST have the following\
@@ -96,8 +101,9 @@ class BasePolicy(ABC, nn.Module):
         """
         pass
 
-    def process_fn(self, batch: Batch, buffer: ReplayBuffer,
-                   indice: np.ndarray) -> Batch:
+    def process_fn(
+        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> Batch:
         """Pre-process the data from the provided replay buffer.
 
         Used in :meth:`update`. Check out :ref:`process_fn` for more
@@ -106,8 +112,9 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
     @abstractmethod
-    def learn(self, batch: Batch, **kwargs
-              ) -> Dict[str, Union[float, List[float]]]:
+    def learn(
+        self, batch: Batch, **kwargs: Any
+    ) -> Mapping[str, Union[float, List[float]]]:
         """Update policy with a given batch of data.
 
         :return: A dict which includes loss and its corresponding label.
@@ -123,19 +130,22 @@ class BasePolicy(ABC, nn.Module):
         """
         pass
 
-    def post_process_fn(self, batch: Batch,
-                        buffer: ReplayBuffer, indice: np.ndarray) -> None:
+    def post_process_fn(
+        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> None:
         """Post-process the data from the provided replay buffer.
 
         Typical usage is to update the sampling weight in prioritized
         experience replay. Used in :meth:`update`.
         """
-        if isinstance(buffer, PrioritizedReplayBuffer) \
-                and hasattr(batch, 'weight'):
+        if isinstance(buffer, PrioritizedReplayBuffer) and hasattr(
+            batch, "weight"
+        ):
             buffer.update_weight(indice, batch.weight)
 
-    def update(self, sample_size: int, buffer: Optional[ReplayBuffer],
-               *args, **kwargs) -> Dict[str, Union[float, List[float]]]:
+    def update(
+        self, sample_size: int, buffer: Optional[ReplayBuffer], **kwargs: Any
+    ) -> Mapping[str, Union[float, List[float]]]:
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn.
@@ -148,7 +158,7 @@ class BasePolicy(ABC, nn.Module):
             return {}
         batch, indice = buffer.sample(sample_size)
         batch = self.process_fn(batch, buffer, indice)
-        result = self.learn(batch, *args, **kwargs)
+        result = self.learn(batch, **kwargs)
         self.post_process_fn(batch, buffer, indice)
         return result
 
@@ -182,7 +192,7 @@ class BasePolicy(ABC, nn.Module):
         rew = batch.rew
         v_s_ = np.zeros_like(rew) if v_s_ is None else to_numpy(v_s_).flatten()
         returns = _episodic_return(v_s_, rew, batch.done, gamma, gae_lambda)
-        if rew_norm and not np.isclose(returns.std(), 0, 1e-2):
+        if rew_norm and not np.isclose(returns.std(), 0.0, 1e-2):
             returns = (returns - returns.mean()) / returns.std()
         batch.returns = returns
         return batch
@@ -231,9 +241,9 @@ class BasePolicy(ABC, nn.Module):
             bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
             if np.isclose(std, 0, 1e-2):
-                mean, std = 0., 1.
+                mean, std = 0.0, 1.0
         else:
-            mean, std = 0., 1.
+            mean, std = 0.0, 1.0
         buf_len = len(buffer)
         terminal = (indice + n_step - 1) % buf_len
         target_q_torch = target_q_fn(buffer, terminal).flatten()  # (bsz, )
@@ -248,18 +258,30 @@ class BasePolicy(ABC, nn.Module):
             batch.weight = to_torch_as(batch.weight, target_q_torch)
         return batch
 
+    def _compile(self) -> None:
+        f64 = np.array([0, 1], dtype=np.float64)
+        f32 = np.array([0, 1], dtype=np.float32)
+        b = np.array([False, True], dtype=np.bool_)
+        i64 = np.array([0, 1], dtype=np.int64)
+        _episodic_return(f64, f64, b, 0.1, 0.1)
+        _episodic_return(f32, f64, b, 0.1, 0.1)
+        _nstep_return(f64, b, f32, i64, 0.1, 1, 4, 1.0, 0.0)
+
 
 @njit
 def _episodic_return(
-    v_s_: np.ndarray, rew: np.ndarray, done: np.ndarray,
-    gamma: float, gae_lambda: float,
+    v_s_: np.ndarray,
+    rew: np.ndarray,
+    done: np.ndarray,
+    gamma: float,
+    gae_lambda: float,
 ) -> np.ndarray:
     """Numba speedup: 4.1s -> 0.057s."""
     returns = np.roll(v_s_, 1)
-    m = (1. - done) * gamma
+    m = (1.0 - done) * gamma
     delta = rew + v_s_ * m - returns
     m *= gae_lambda
-    gae = 0.
+    gae = 0.0
     for i in range(len(rew) - 1, -1, -1):
         gae = delta[i] + m[i] * gae
         returns[i] += gae
@@ -268,9 +290,15 @@ def _episodic_return(
 
 @njit
 def _nstep_return(
-    rew: np.ndarray, done: np.ndarray, target_q: np.ndarray,
-    indice: np.ndarray, gamma: float, n_step: int, buf_len: int,
-    mean: float, std: float
+    rew: np.ndarray,
+    done: np.ndarray,
+    target_q: np.ndarray,
+    indice: np.ndarray,
+    gamma: float,
+    n_step: int,
+    buf_len: int,
+    mean: float,
+    std: float,
 ) -> np.ndarray:
     """Numba speedup: 0.3s -> 0.15s."""
     returns = np.zeros(indice.shape)
@@ -278,8 +306,8 @@ def _nstep_return(
     for n in range(n_step - 1, -1, -1):
         now = (indice + n) % buf_len
         gammas[done[now] > 0] = n
-        returns[done[now] > 0] = 0.
+        returns[done[now] > 0] = 0.0
         returns = (rew[now] - mean) / std + gamma * returns
-    target_q[gammas != n_step] = 0
+    target_q[gammas != n_step] = 0.0
     target_q = target_q * (gamma ** gammas) + returns
     return target_q
