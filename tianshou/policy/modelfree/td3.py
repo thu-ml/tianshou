@@ -22,6 +22,8 @@ class TD3Policy(DDPGPolicy):
         a))
     :param torch.optim.Optimizer critic2_optim: the optimizer for the second
         critic network.
+    :param action_range: the action range (minimum, maximum).
+    :type action_range: Tuple[float, float]
     :param float tau: param for soft update of the target network, defaults to
         0.005.
     :param float gamma: discount factor, in [0, 1], defaults to 0.99.
@@ -33,8 +35,6 @@ class TD3Policy(DDPGPolicy):
         default to 2.
     :param float noise_clip: the clipping range used in updating policy
         network, default to 0.5.
-    :param action_range: the action range (minimum, maximum).
-    :type action_range: (float, float)
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to False.
     :param bool ignore_done: ignore the done flag while training the policy,
@@ -54,20 +54,20 @@ class TD3Policy(DDPGPolicy):
         critic1_optim: torch.optim.Optimizer,
         critic2: torch.nn.Module,
         critic2_optim: torch.optim.Optimizer,
+        action_range: Tuple[float, float],
         tau: float = 0.005,
         gamma: float = 0.99,
         exploration_noise: Optional[BaseNoise] = GaussianNoise(sigma=0.1),
         policy_noise: float = 0.2,
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,
-        action_range: Optional[Tuple[float, float]] = None,
         reward_normalization: bool = False,
         ignore_done: bool = False,
         estimation_step: int = 1,
         **kwargs: Any,
     ) -> None:
-        super().__init__(actor, actor_optim, None, None, tau, gamma,
-                         exploration_noise, action_range, reward_normalization,
+        super().__init__(actor, actor_optim, None, None, action_range,
+                         tau, gamma, exploration_noise, reward_normalization,
                          ignore_done, estimation_step, **kwargs)
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()

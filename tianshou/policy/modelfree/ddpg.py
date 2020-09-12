@@ -17,13 +17,13 @@ class DDPGPolicy(BasePolicy):
     :param torch.nn.Module critic: the critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic_optim: the optimizer for critic
         network.
+    :param action_range: the action range (minimum, maximum).
+    :type action_range: Tuple[float, float]
     :param float tau: param for soft update of the target network, defaults to
         0.005.
     :param float gamma: discount factor, in [0, 1], defaults to 0.99.
     :param BaseNoise exploration_noise: the exploration noise,
         add to the action, defaults to ``GaussianNoise(sigma=0.1)``.
-    :param action_range: the action range (minimum, maximum).
-    :type action_range: (float, float)
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to False.
     :param bool ignore_done: ignore the done flag while training the policy,
@@ -43,10 +43,10 @@ class DDPGPolicy(BasePolicy):
         actor_optim: Optional[torch.optim.Optimizer],
         critic: Optional[torch.nn.Module],
         critic_optim: Optional[torch.optim.Optimizer],
+        action_range: Tuple[float, float],
         tau: float = 0.005,
         gamma: float = 0.99,
         exploration_noise: Optional[BaseNoise] = GaussianNoise(sigma=0.1),
-        action_range: Optional[Tuple[float, float]] = None,
         reward_normalization: bool = False,
         ignore_done: bool = False,
         estimation_step: int = 1,
@@ -66,11 +66,10 @@ class DDPGPolicy(BasePolicy):
         assert 0.0 <= gamma <= 1.0, "gamma should be in [0, 1]"
         self._gamma = gamma
         self._noise = exploration_noise
-        assert action_range is not None
         self._range = action_range
         self._action_bias = (action_range[0] + action_range[1]) / 2.0
         self._action_scale = (action_range[1] - action_range[0]) / 2.0
-        # it is only a little difference to use rand_normal
+        # it is only a little difference to use GaussianNoise
         # self.noise = OUNoise()
         self._rm_done = ignore_done
         self._rew_norm = reward_normalization

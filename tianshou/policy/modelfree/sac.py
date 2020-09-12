@@ -23,6 +23,8 @@ class SACPolicy(DDPGPolicy):
         a))
     :param torch.optim.Optimizer critic2_optim: the optimizer for the second
         critic network.
+    :param action_range: the action range (minimum, maximum).
+    :type action_range: Tuple[float, float]
     :param float tau: param for soft update of the target network, defaults to
         0.005.
     :param float gamma: discount factor, in [0, 1], defaults to 0.99.
@@ -32,8 +34,6 @@ class SACPolicy(DDPGPolicy):
         regularization coefficient, default to 0.2.
         If a tuple (target_entropy, log_alpha, alpha_optim) is provided, then
         alpha is automatatically tuned.
-    :param action_range: the action range (minimum, maximum).
-    :type action_range: (float, float)
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to False.
     :param bool ignore_done: ignore the done flag while training the policy,
@@ -55,20 +55,20 @@ class SACPolicy(DDPGPolicy):
         critic1_optim: torch.optim.Optimizer,
         critic2: torch.nn.Module,
         critic2_optim: torch.optim.Optimizer,
+        action_range: Tuple[float, float],
         tau: float = 0.005,
         gamma: float = 0.99,
         alpha: Union[
             float, Tuple[float, torch.Tensor, torch.optim.Optimizer]
         ] = 0.2,
-        action_range: Optional[Tuple[float, float]] = None,
         reward_normalization: bool = False,
         ignore_done: bool = False,
         estimation_step: int = 1,
         exploration_noise: Optional[BaseNoise] = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(None, None, None, None, tau, gamma, exploration_noise,
-                         action_range, reward_normalization, ignore_done,
+        super().__init__(None, None, None, None, action_range, tau, gamma,
+                         exploration_noise, reward_normalization, ignore_done,
                          estimation_step, **kwargs)
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
