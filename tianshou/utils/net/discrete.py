@@ -17,10 +17,12 @@ class Actor(nn.Module):
         preprocess_net: nn.Module,
         action_shape: Sequence[int],
         hidden_layer_size: int = 128,
+        softmax_output: bool = True,
     ) -> None:
         super().__init__()
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
+        self.softmax_output = softmax_output
 
     def forward(
         self,
@@ -30,7 +32,9 @@ class Actor(nn.Module):
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
         logits, h = self.preprocess(s, state)
-        logits = F.softmax(self.last(logits), dim=-1)
+        logits = self.last(logits)
+        if self.softmax_output:
+            logits = F.softmax(logits, dim=-1)
         return logits, h
 
 
@@ -41,12 +45,10 @@ class Critic(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(
-        self, preprocess_net: nn.Module, hidden_layer_size: int = 128
-    ) -> None:
+    def __init__(self, preprocess_net, hidden_layer_size=128, last_size=1):
         super().__init__()
         self.preprocess = preprocess_net
-        self.last = nn.Linear(hidden_layer_size, 1)
+        self.last = nn.Linear(hidden_layer_size, last_size)
 
     def forward(
         self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any

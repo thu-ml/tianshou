@@ -28,8 +28,6 @@ class SACPolicy(DDPGPolicy):
     :param float tau: param for soft update of the target network, defaults to
         0.005.
     :param float gamma: discount factor, in [0, 1], defaults to 0.99.
-    :param float exploration_noise: the noise intensity, add to the action,
-        defaults to 0.1.
     :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
         regularization coefficient, default to 0.2.
         If a tuple (target_entropy, log_alpha, alpha_optim) is provided, then
@@ -39,7 +37,7 @@ class SACPolicy(DDPGPolicy):
     :param bool ignore_done: ignore the done flag while training the policy,
         defaults to False.
     :param BaseNoise exploration_noise: add a noise to action for exploration.
-        This is useful when solving hard-exploration problem.
+        defaults to None. This is useful when solving hard-exploration problem.
 
     .. seealso::
 
@@ -193,5 +191,5 @@ class SACPolicy(DDPGPolicy):
         }
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
-            result["v/alpha"] = self._alpha.item()
+            result["alpha"] = self._alpha.item()
         return result
