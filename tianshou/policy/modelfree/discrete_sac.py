@@ -65,7 +65,7 @@ class DiscreteSACPolicy(SACPolicy):
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         input: str = "obs",
-        **kwargs
+        **kwargs: Any,
     ) -> Batch:
         obs = getattr(batch, input)
         logits, h = self.actor(obs, state=state, info=batch.info)
@@ -140,4 +140,5 @@ class DiscreteSACPolicy(SACPolicy):
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
             result["alpha"] = self._alpha.item()
+
         return result
