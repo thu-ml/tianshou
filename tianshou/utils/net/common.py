@@ -12,7 +12,7 @@ def miniblock(
     norm_layer: Optional[Callable[[int], nn.modules.Module]],
 ) -> List[nn.modules.Module]:
     """Construct a miniblock with given input/output-size and norm layer."""
-    ret = [nn.Linear(inp, oup)]
+    ret: List[nn.modules.Module] = [nn.Linear(inp, oup)]
     if norm_layer is not None:
         ret += [norm_layer(oup)]
     ret += [nn.ReLU(inplace=True)]
@@ -54,36 +54,33 @@ class Net(nn.Module):
         if concat:
             input_size += np.prod(action_shape)
 
-        self.model = miniblock(input_size, hidden_layer_size, norm_layer)
+        model = miniblock(input_size, hidden_layer_size, norm_layer)
 
         for i in range(layer_num):
-            self.model += miniblock(hidden_layer_size,
-                                    hidden_layer_size, norm_layer)
+            model += miniblock(
+                hidden_layer_size, hidden_layer_size, norm_layer)
 
-        if self.dueling is None:
+        if dueling is None:
             if action_shape and not concat:
-                self.model += [nn.Linear(hidden_layer_size,
-                                         np.prod(action_shape))]
+                model += [nn.Linear(hidden_layer_size, np.prod(action_shape))]
         else:  # dueling DQN
-            assert isinstance(self.dueling, tuple) and len(self.dueling) == 2
-
-            q_layer_num, v_layer_num = self.dueling
-            self.Q, self.V = [], []
+            q_layer_num, v_layer_num = dueling
+            Q, V = [], []
 
             for i in range(q_layer_num):
-                self.Q += miniblock(hidden_layer_size,
-                                    hidden_layer_size, norm_layer)
+                Q += miniblock(
+                    hidden_layer_size, hidden_layer_size, norm_layer)
             for i in range(v_layer_num):
-                self.V += miniblock(hidden_layer_size,
-                                    hidden_layer_size, norm_layer)
+                V += miniblock(
+                    hidden_layer_size, hidden_layer_size, norm_layer)
 
             if action_shape and not concat:
-                self.Q += [nn.Linear(hidden_layer_size, np.prod(action_shape))]
-                self.V += [nn.Linear(hidden_layer_size, 1)]
+                Q += [nn.Linear(hidden_layer_size, np.prod(action_shape))]
+                V += [nn.Linear(hidden_layer_size, 1)]
 
-            self.Q = nn.Sequential(*self.Q)
-            self.V = nn.Sequential(*self.V)
-        self.model = nn.Sequential(*self.model)
+            self.Q = nn.Sequential(*Q)
+            self.V = nn.Sequential(*V)
+        self.model = nn.Sequential(*model)
 
     def forward(
         self,

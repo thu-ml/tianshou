@@ -53,14 +53,16 @@ class DDPGPolicy(BasePolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        if actor is not None:
-            self.actor, self.actor_old = actor, deepcopy(actor)
+        if actor is not None and actor_optim is not None:
+            self.actor: torch.nn.Module = actor
+            self.actor_old = deepcopy(actor)
             self.actor_old.eval()
-            self.actor_optim = actor_optim
-        if critic is not None:
-            self.critic, self.critic_old = critic, deepcopy(critic)
+            self.actor_optim: torch.optim.Optimizer = actor_optim
+        if critic is not None and critic_optim is not None:
+            self.critic: torch.nn.Module = critic
+            self.critic_old = deepcopy(critic)
             self.critic_old.eval()
-            self.critic_optim = critic_optim
+            self.critic_optim: torch.optim.Optimizer = critic_optim
         assert 0.0 <= tau <= 1.0, "tau should be in [0, 1]"
         self._tau = tau
         assert 0.0 <= gamma <= 1.0, "gamma should be in [0, 1]"
@@ -141,7 +143,7 @@ class DDPGPolicy(BasePolicy):
         obs = getattr(batch, input)
         actions, h = model(obs, state=state, info=batch.info)
         actions += self._action_bias
-        if self.training and explorating:
+        if self._noise and self.training and explorating:
             actions += to_torch_as(self._noise(actions.shape), actions)
         actions = actions.clamp(self._range[0], self._range[1])
         return Batch(act=actions, state=h)

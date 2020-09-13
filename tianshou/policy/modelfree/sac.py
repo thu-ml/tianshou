@@ -105,7 +105,7 @@ class SACPolicy(DDPGPolicy):
         ):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
 
-    def forward(
+    def forward(  # type: ignore
         self,
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
@@ -191,5 +191,5 @@ class SACPolicy(DDPGPolicy):
         }
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
-            result["alpha"] = self._alpha.item()
+            result["alpha"] = self._alpha.item()  # type: ignore
         return result

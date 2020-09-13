@@ -4,6 +4,8 @@ from torch import nn
 import torch.nn.functional as F
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
+from tianshou.data import to_torch
+
 
 class Actor(nn.Module):
     """Simple actor network with MLP.
@@ -125,5 +127,5 @@ class DQN(nn.Module):
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Q(x, \*)."""
         if not isinstance(x, torch.Tensor):
-            x = torch.tensor(x, device=self.device, dtype=torch.float32)
+            x = to_torch(x, device=self.device, dtype=torch.float32)
         return self.net(x), state

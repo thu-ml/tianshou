@@ -24,7 +24,7 @@ class RayEnvWorker(EnvWorker):
         return ray.get(self.env.reset.remote())
 
     @staticmethod
-    def wait(
+    def wait(  # type: ignore
         workers: List["RayEnvWorker"],
         wait_num: int,
         timeout: Optional[float] = None,

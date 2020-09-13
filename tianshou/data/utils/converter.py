@@ -45,14 +45,14 @@ def to_torch(
     if isinstance(x, np.ndarray) and issubclass(
         x.dtype.type, (np.bool_, np.number)
     ):  # most often case
-        x = torch.from_numpy(x).to(device)
+        x = torch.from_numpy(x).to(device)  # type: ignore
         if dtype is not None:
             x = x.type(dtype)
         return x
     elif isinstance(x, torch.Tensor):  # second often case
         if dtype is not None:
             x = x.type(dtype)
-        return x.to(device)
+        return x.to(device)  # type: ignore
     elif isinstance(x, (np.number, np.bool_, Number)):
         return to_torch(np.asanyarray(x), dtype, device)
     elif isinstance(x, dict):
