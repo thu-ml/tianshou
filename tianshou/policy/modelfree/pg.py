@@ -32,7 +32,8 @@ class PGPolicy(BasePolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.model = model
+        if model is not None:
+            self.model: torch.nn.Module = model
         self.optim = optim
         self.dist_fn = dist_fn
         assert (
@@ -81,11 +82,11 @@ class PGPolicy(BasePolicy):
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
-            dist = self.dist_fn(logits)
+            dist = self.dist_fn(logits)  # type: ignore
         act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def learn(
+    def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
         losses = []

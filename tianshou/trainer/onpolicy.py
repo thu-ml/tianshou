@@ -73,7 +73,7 @@ def onpolicy_trainer(
     """
     global_step = 0
     best_epoch, best_reward = -1, -1.0
-    stat = {}
+    stat: Dict[str, MovAvg] = {}
     start_time = time.time()
     train_collector.reset_stat()
     test_collector.reset_stat()
@@ -93,7 +93,7 @@ def onpolicy_trainer(
                     test_result = test_episode(
                         policy, test_collector, test_fn,
                         epoch, episode_per_test, writer, global_step)
-                    if stop_fn and stop_fn(test_result["rew"]):
+                    if stop_fn(test_result["rew"]):
                         if save_fn:
                             save_fn(policy)
                         for k in result.keys():
@@ -111,9 +111,9 @@ def onpolicy_trainer(
                     batch_size=batch_size, repeat=repeat_per_collect)
                 train_collector.reset_buffer()
                 step = 1
-                for k in losses.keys():
-                    if isinstance(losses[k], list):
-                        step = max(step, len(losses[k]))
+                for v in losses.values():
+                    if isinstance(v, list):
+                        step = max(step, len(v))
                 global_step += step * collect_per_step
                 for k in result.keys():
                     data[k] = f"{result[k]:.2f}"

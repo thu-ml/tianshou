@@ -22,7 +22,7 @@ def test_episode(
     policy.eval()
     if test_fn:
         test_fn(epoch)
-    if collector.get_env_num() > 1 and np.isscalar(n_episode):
+    if collector.get_env_num() > 1 and isinstance(n_episode, int):
         n = collector.get_env_num()
         n_ = np.zeros(n) + n_episode // n
         n_[:n_episode % n] += 1

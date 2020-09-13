@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from numbers import Number
-from typing import Any, Dict, Tuple, Union, Optional
+from typing import Any, Dict, List, Tuple, Union, Optional
 
 from tianshou.data import Batch, SegmentTree, to_numpy
 from tianshou.data.batch import _create_value
@@ -138,7 +138,7 @@ class ReplayBuffer:
         self._indices = np.arange(size)
         self.stack_num = stack_num
         self._avail = sample_avail and stack_num > 1
-        self._avail_index = []
+        self._avail_index: List[int] = []
         self._save_s_ = not ignore_obs_next
         self._last_obs = save_only_last_obs
         self._index = 0
@@ -175,12 +175,12 @@ class ReplayBuffer:
         except KeyError:
             self._meta.__dict__[name] = _create_value(inst, self._maxsize)
             value = self._meta.__dict__[name]
-        if isinstance(inst, (torch.Tensor, np.ndarray)) \
-                and inst.shape != value.shape[1:]:
-            raise ValueError(
-                "Cannot add data to a buffer with different shape, with key "
-                f"{name}, expect {value.shape[1:]}, given {inst.shape}."
-            )
+        if isinstance(inst, (torch.Tensor, np.ndarray)):
+            if inst.shape != value.shape[1:]:
+                raise ValueError(
+                    "Cannot add data to a buffer with different shape with key"
+                    f" {name}, expect {value.shape[1:]}, given {inst.shape}."
+                )
         try:
             value[self._index] = inst
         except KeyError:
@@ -205,7 +205,7 @@ class ReplayBuffer:
         stack_num_orig = buffer.stack_num
         buffer.stack_num = 1
         while True:
-            self.add(**buffer[i])
+            self.add(**buffer[i])  # type: ignore
             i = (i + 1) % len(buffer)
             if i == begin:
                 break
@@ -323,7 +323,7 @@ class ReplayBuffer:
         try:
             if stack_num == 1:
                 return val[indice]
-            stack = []
+            stack: List[Any] = []
             for _ in range(stack_num):
                 stack = [val[indice]] + stack
                 pre_indice = np.asarray(indice - 1)

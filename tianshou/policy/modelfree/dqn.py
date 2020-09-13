@@ -146,11 +146,10 @@ class DQNPolicy(BasePolicy):
         obs = getattr(batch, input)
         obs_ = obs.obs if hasattr(obs, "obs") else obs
         q, h = model(obs_, state=state, info=batch.info)
-        act = to_numpy(q.max(dim=1)[1])
-        has_mask = hasattr(obs, 'mask')
-        if has_mask:
+        act: np.ndarray = to_numpy(q.max(dim=1)[1])
+        if hasattr(obs, "mask"):
             # some of actions are masked, they cannot be selected
-            q_ = to_numpy(q)
+            q_: np.ndarray = to_numpy(q)
             q_[~obs.mask] = -np.inf
             act = q_.argmax(axis=1)
         # add eps to act
@@ -160,7 +159,7 @@ class DQNPolicy(BasePolicy):
             for i in range(len(q)):
                 if np.random.rand() < eps:
                     q_ = np.random.rand(*q[i].shape)
-                    if has_mask:
+                    if hasattr(obs, "mask"):
                         q_[~obs.mask[i]] = -np.inf
                     act[i] = q_.argmax()
         return Batch(logits=q, act=act, state=h)
@@ -172,7 +171,7 @@ class DQNPolicy(BasePolicy):
         weight = batch.pop("weight", 1.0)
         q = self(batch, eps=0.0).logits
         q = q[np.arange(len(q)), batch.act]
-        r = to_torch_as(batch.returns, q).flatten()
+        r = to_torch_as(batch.returns.flatten(), q)
         td = r - q
         loss = (td.pow(2) * weight).mean()
         batch.weight = td  # prio-buffer

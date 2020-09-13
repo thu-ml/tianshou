@@ -11,22 +11,71 @@ from tianshou.env.worker import EnvWorker
 from tianshou.env.utils import CloudpickleWrapper
 
 
+_NP_TO_CT = {
+    np.bool: ctypes.c_bool,
+    np.bool_: ctypes.c_bool,
+    np.uint8: ctypes.c_uint8,
+    np.uint16: ctypes.c_uint16,
+    np.uint32: ctypes.c_uint32,
+    np.uint64: ctypes.c_uint64,
+    np.int8: ctypes.c_int8,
+    np.int16: ctypes.c_int16,
+    np.int32: ctypes.c_int32,
+    np.int64: ctypes.c_int64,
+    np.float32: ctypes.c_float,
+    np.float64: ctypes.c_double,
+}
+
+
+class ShArray:
+    """Wrapper of multiprocessing Array."""
+
+    def __init__(self, dtype: np.generic, shape: Tuple[int]) -> None:
+        self.arr = Array(
+            _NP_TO_CT[dtype.type],  # type: ignore
+            int(np.prod(shape)),
+        )
+        self.dtype = dtype
+        self.shape = shape
+
+    def save(self, ndarray: np.ndarray) -> None:
+        assert isinstance(ndarray, np.ndarray)
+        dst = self.arr.get_obj()
+        dst_np = np.frombuffer(dst, dtype=self.dtype).reshape(self.shape)
+        np.copyto(dst_np, ndarray)
+
+    def get(self) -> np.ndarray:
+        obj = self.arr.get_obj()
+        return np.frombuffer(obj, dtype=self.dtype).reshape(self.shape)
+
+
+def _setup_buf(space: gym.Space) -> Union[dict, tuple, ShArray]:
+    if isinstance(space, gym.spaces.Dict):
+        assert isinstance(space.spaces, OrderedDict)
+        return {k: _setup_buf(v) for k, v in space.spaces.items()}
+    elif isinstance(space, gym.spaces.Tuple):
+        assert isinstance(space.spaces, tuple)
+        return tuple([_setup_buf(t) for t in space.spaces])
+    else:
+        return ShArray(space.dtype, space.shape)
+
+
 def _worker(
     parent: connection.Connection,
     p: connection.Connection,
     env_fn_wrapper: CloudpickleWrapper,
-    obs_bufs: Optional[Union[dict, tuple, "ShArray"]] = None,
+    obs_bufs: Optional[Union[dict, tuple, ShArray]] = None,
 ) -> None:
     def _encode_obs(
         obs: Union[dict, tuple, np.ndarray],
         buffer: Union[dict, tuple, ShArray],
     ) -> None:
-        if isinstance(obs, np.ndarray):
+        if isinstance(obs, np.ndarray) and isinstance(buffer, ShArray):
             buffer.save(obs)
-        elif isinstance(obs, tuple):
+        elif isinstance(obs, tuple) and isinstance(buffer, tuple):
             for o, b in zip(obs, buffer):
                 _encode_obs(o, b)
-        elif isinstance(obs, dict):
+        elif isinstance(obs, dict) and isinstance(buffer, dict):
             for k in obs.keys():
                 _encode_obs(obs[k], buffer[k])
         return None
@@ -69,52 +118,6 @@ def _worker(
         p.close()
 
 
-_NP_TO_CT = {
-    np.bool: ctypes.c_bool,
-    np.bool_: ctypes.c_bool,
-    np.uint8: ctypes.c_uint8,
-    np.uint16: ctypes.c_uint16,
-    np.uint32: ctypes.c_uint32,
-    np.uint64: ctypes.c_uint64,
-    np.int8: ctypes.c_int8,
-    np.int16: ctypes.c_int16,
-    np.int32: ctypes.c_int32,
-    np.int64: ctypes.c_int64,
-    np.float32: ctypes.c_float,
-    np.float64: ctypes.c_double,
-}
-
-
-class ShArray:
-    """Wrapper of multiprocessing Array."""
-
-    def __init__(self, dtype: np.generic, shape: Tuple[int]) -> None:
-        self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))
-        self.dtype = dtype
-        self.shape = shape
-
-    def save(self, ndarray: np.ndarray) -> None:
-        assert isinstance(ndarray, np.ndarray)
-        dst = self.arr.get_obj()
-        dst_np = np.frombuffer(dst, dtype=self.dtype).reshape(self.shape)
-        np.copyto(dst_np, ndarray)
-
-    def get(self) -> np.ndarray:
-        obj = self.arr.get_obj()
-        return np.frombuffer(obj, dtype=self.dtype).reshape(self.shape)
-
-
-def _setup_buf(space: gym.Space) -> Union[dict, tuple, ShArray]:
-    if isinstance(space, gym.spaces.Dict):
-        assert isinstance(space.spaces, OrderedDict)
-        return {k: _setup_buf(v) for k, v in space.spaces.items()}
-    elif isinstance(space, gym.spaces.Tuple):
-        assert isinstance(space.spaces, tuple)
-        return tuple([_setup_buf(t) for t in space.spaces])
-    else:
-        return ShArray(space.dtype, space.shape)
-
-
 class SubprocEnvWorker(EnvWorker):
     """Subprocess worker used in SubprocVectorEnv and ShmemVectorEnv."""
 
@@ -124,7 +127,7 @@ class SubprocEnvWorker(EnvWorker):
         super().__init__(env_fn)
         self.parent_remote, self.child_remote = Pipe()
         self.share_memory = share_memory
-        self.buffer = None
+        self.buffer: Optional[Union[dict, tuple, ShArray]] = None
         if self.share_memory:
             dummy = env_fn()
             obs_space = dummy.observation_space
@@ -168,25 +171,23 @@ class SubprocEnvWorker(EnvWorker):
         return obs
 
     @staticmethod
-    def wait(
+    def wait(  # type: ignore
         workers: List["SubprocEnvWorker"],
         wait_num: int,
         timeout: Optional[float] = None,
     ) -> List["SubprocEnvWorker"]:
-        conns, ready_conns = [x.parent_remote for x in workers], []
-        remain_conns = conns
-        t1 = time.time()
+        remain_conns = conns = [x.parent_remote for x in workers]
+        ready_conns: List[connection.Connection] = []
+        remain_time, t1 = timeout, time.time()
         while len(remain_conns) > 0 and len(ready_conns) < wait_num:
             if timeout:
                 remain_time = timeout - (time.time() - t1)
                 if remain_time <= 0:
                     break
-            else:
-                remain_time = timeout
             # connection.wait hangs if the list is empty
             new_ready_conns = connection.wait(
                 remain_conns, timeout=remain_time)
-            ready_conns.extend(new_ready_conns)
+            ready_conns.extend(new_ready_conns)  # type: ignore
             remain_conns = [
                 conn for conn in remain_conns if conn not in ready_conns]
         return [workers[conns.index(con)] for con in ready_conns]

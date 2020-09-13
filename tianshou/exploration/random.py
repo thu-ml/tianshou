@@ -9,14 +9,14 @@ class BaseNoise(ABC, object):
     def __init__(self) -> None:
         super().__init__()
 
+    def reset(self) -> None:
+        """Reset to the initial state."""
+        pass
+
     @abstractmethod
     def __call__(self, size: Sequence[int]) -> np.ndarray:
         """Generate new noise."""
         raise NotImplementedError
-
-    def reset(self) -> None:
-        """Reset to the initial state."""
-        pass
 
 
 class GaussianNoise(BaseNoise):
@@ -64,6 +64,10 @@ class OUNoise(BaseNoise):
         self._x0 = x0
         self.reset()
 
+    def reset(self) -> None:
+        """Reset to the initial state."""
+        self._x = self._x0
+
     def __call__(
         self, size: Sequence[int], mu: Optional[float] = None
     ) -> np.ndarray:
@@ -71,14 +75,11 @@ class OUNoise(BaseNoise):
 
         Return an numpy array which size is equal to ``size``.
         """
-        if self._x is None or self._x.shape != size:
+        if self._x is None or isinstance(
+                self._x, np.ndarray) and self._x.shape != size:
             self._x = 0.0
         if mu is None:
             mu = self._mu
         r = self._beta * np.random.normal(size=size)
         self._x = self._x + self._alpha * (mu - self._x) + r
         return self._x
-
-    def reset(self) -> None:
-        """Reset to the initial state."""
-        self._x = self._x0

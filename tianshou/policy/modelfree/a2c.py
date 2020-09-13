@@ -103,11 +103,11 @@ class A2CPolicy(PGPolicy):
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
-            dist = self.dist_fn(logits)
+            dist = self.dist_fn(logits)  # type: ignore
         act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def learn(
+    def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
@@ -120,7 +120,7 @@ class A2CPolicy(PGPolicy):
                 r = to_torch_as(b.returns, v)
                 log_prob = dist.log_prob(a).reshape(len(r), -1).transpose(0, 1)
                 a_loss = -(log_prob * (r - v).detach()).mean()
-                vf_loss = F.mse_loss(r, v)
+                vf_loss = F.mse_loss(r, v)  # type: ignore
                 ent_loss = dist.entropy().mean()
                 loss = a_loss + self._w_vf * vf_loss - self._w_ent * ent_loss
                 loss.backward()
