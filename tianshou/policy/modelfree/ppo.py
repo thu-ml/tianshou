@@ -137,13 +137,13 @@ class PPOPolicy(PGPolicy):
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
-            dist = self.dist_fn(logits)
+            dist = self.dist_fn(logits)  # type: ignore
         act = dist.sample()
         if self._range:
             act = act.clamp(self._range[0], self._range[1])
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def learn(
+    def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
@@ -157,8 +157,9 @@ class PPOPolicy(PGPolicy):
                 surr2 = ratio.clamp(1.0 - self._eps_clip,
                                     1.0 + self._eps_clip) * b.adv
                 if self._dual_clip:
-                    clip_loss = -torch.max(torch.min(surr1, surr2),
-                                           self._dual_clip * b.adv).mean()
+                    clip_loss = -torch.max(
+                        torch.min(surr1, surr2), self._dual_clip * b.adv
+                    ).mean()
                 else:
                     clip_loss = -torch.min(surr1, surr2).mean()
                 clip_losses.append(clip_loss.item())

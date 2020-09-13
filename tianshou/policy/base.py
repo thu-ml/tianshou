@@ -187,7 +187,7 @@ class BasePolicy(ABC, nn.Module):
             array with shape (bsz, ).
         """
         rew = batch.rew
-        v_s_ = np.zeros_like(rew) if v_s_ is None else to_numpy(v_s_).flatten()
+        v_s_ = np.zeros_like(rew) if v_s_ is None else to_numpy(v_s_.flatten())
         returns = _episodic_return(v_s_, rew, batch.done, gamma, gae_lambda)
         if rew_norm and not np.isclose(returns.std(), 0.0, 1e-2):
             returns = (returns - returns.mean()) / returns.std()
