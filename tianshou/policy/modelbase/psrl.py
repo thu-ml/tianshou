@@ -2,13 +2,13 @@ import numpy as np
 from typing import Any, Dict, Union, Optional
 
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch
 
 
 class PSRLModel(object):
     """Implementation of Posterior Sampling Reinforcement Learning Model.
 
-    :param np.ndarray p_prior: dirichlet prior (alphas), with shape
+    :param np.ndarray trans_count_prior: dirichlet prior (alphas), with shape
         (n_state, n_action, n_state).
     :param np.ndarray rew_mean_prior: means of the normal priors of rewards,
         with shape (n_state, n_action).
