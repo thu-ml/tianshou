@@ -113,7 +113,7 @@ class SACPolicy(DDPGPolicy):
         explorating: bool = True,
         **kwargs: Any,
     ) -> Batch:
-        obs = getattr(batch, input)
+        obs = batch[input]
         logits, h = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
         dist = Independent(Normal(*logits), 1)
@@ -145,6 +145,7 @@ class SACPolicy(DDPGPolicy):
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         weight = batch.pop("weight", 1.0)
+
         # critic 1
         current_q1 = self.critic1(batch.obs, batch.act).flatten()
         target_q = batch.returns.flatten()
@@ -154,6 +155,7 @@ class SACPolicy(DDPGPolicy):
         self.critic1_optim.zero_grad()
         critic1_loss.backward()
         self.critic1_optim.step()
+
         # critic 2
         current_q2 = self.critic2(batch.obs, batch.act).flatten()
         td2 = current_q2 - target_q
@@ -163,6 +165,7 @@ class SACPolicy(DDPGPolicy):
         critic2_loss.backward()
         self.critic2_optim.step()
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
+
         # actor
         obs_result = self(batch, explorating=False)
         a = obs_result.act
@@ -192,4 +195,5 @@ class SACPolicy(DDPGPolicy):
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
             result["alpha"] = self._alpha.item()  # type: ignore
+
         return result

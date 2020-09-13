@@ -56,18 +56,19 @@ class DiscreteSACPolicy(SACPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, actor_optim, critic1, critic1_optim, critic2,
-                         critic2_optim, [-np.inf, np.inf], tau, gamma, alpha,
+                         critic2_optim, (-np.inf, np.inf), tau, gamma, alpha,
                          reward_normalization, ignore_done, estimation_step,
                          **kwargs)
+        self._alpha: Union[float, torch.Tensor]
 
-    def forward(
+    def forward(  # type: ignore
         self,
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         input: str = "obs",
         **kwargs: Any,
     ) -> Batch:
-        obs = getattr(batch, input)
+        obs = batch[input]
         logits, h = self.actor(obs, state=state, info=batch.info)
         dist = Categorical(logits=logits)
         act = dist.sample()
@@ -90,8 +91,9 @@ class DiscreteSACPolicy(SACPolicy):
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         weight = batch.pop("weight", 1.0)
         target_q = batch.returns.flatten()
-        act = to_torch(batch.act, device=target_q.device, dtype=torch.long)
-        act = act.unsqueeze(1)
+        act = to_torch(
+            batch.act[:, np.newaxis], device=target_q.device, dtype=torch.long)
+
         # critic 1
         current_q1 = self.critic1(batch.obs).gather(1, act).flatten()
         td1 = current_q1 - target_q
@@ -100,6 +102,7 @@ class DiscreteSACPolicy(SACPolicy):
         self.critic1_optim.zero_grad()
         critic1_loss.backward()
         self.critic1_optim.step()
+
         # critic 2
         current_q2 = self.critic2(batch.obs).gather(1, act).flatten()
         td2 = current_q2 - target_q
@@ -109,6 +112,7 @@ class DiscreteSACPolicy(SACPolicy):
         critic2_loss.backward()
         self.critic2_optim.step()
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
+
         # actor
         dist = self(batch).dist
         entropy = dist.entropy()
@@ -139,6 +143,6 @@ class DiscreteSACPolicy(SACPolicy):
         }
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
-            result["alpha"] = self._alpha.item()
+            result["alpha"] = self._alpha.item()  # type: ignore
 
         return result
