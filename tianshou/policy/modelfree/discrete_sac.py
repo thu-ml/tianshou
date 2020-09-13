@@ -4,7 +4,7 @@ from torch.distributions import Categorical
 from typing import Any, Dict, Tuple, Union, Optional
 
 from tianshou.policy import SACPolicy
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, to_torch
 
 
 class DiscreteSACPolicy(SACPolicy):
@@ -89,13 +89,11 @@ class DiscreteSACPolicy(SACPolicy):
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         weight = batch.pop("weight", 1.0)
-        # critic 1
-        current_q1 = self.critic1(batch.obs)
-        a = torch.tensor(batch.act, device=current_q1.device, dtype=torch.long)
-        a = a.unsqueeze(1)
-        current_q1 = current_q1.gather(1, a).flatten()
         target_q = batch.returns.flatten()
-
+        act = to_torch(batch.act, device=target_q.device, dtype=torch.long)
+        act = act.unsqueeze(1)
+        # critic 1
+        current_q1 = self.critic1(batch.obs).gather(1, act).flatten()
         td1 = current_q1 - target_q
         critic1_loss = (td1.pow(2) * weight).mean()
 
@@ -103,7 +101,7 @@ class DiscreteSACPolicy(SACPolicy):
         critic1_loss.backward()
         self.critic1_optim.step()
         # critic 2
-        current_q2 = self.critic2(batch.obs).gather(1, a).flatten()
+        current_q2 = self.critic2(batch.obs).gather(1, act).flatten()
         td2 = current_q2 - target_q
         critic2_loss = (td2.pow(2) * weight).mean()
 
@@ -112,8 +110,7 @@ class DiscreteSACPolicy(SACPolicy):
         self.critic2_optim.step()
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
         # actor
-        obs_result = self(batch)
-        dist = obs_result.dist
+        dist = self(batch).dist
         entropy = dist.entropy()
         with torch.no_grad():
             current_q1a = self.critic1(batch.obs)
