@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Any, Dict, Union, Optional
 
-from tianshou.policy import BasePolicy
 from tianshou.data import Batch
+from tianshou.policy import BasePolicy
 
 
 class PSRLModel(object):
@@ -33,7 +33,7 @@ class PSRLModel(object):
         self.discount_factor = discount_factor
         self.rew_count = np.full(rew_mean_prior.shape, epsilon)  # no weight
         self.eps = epsilon
-        self.policy: Optional[np.ndarray] = None
+        self.policy: np.ndarray
         self.value = np.zeros(self.n_state)
         self.updated = False
 
@@ -112,7 +112,12 @@ class PSRLModel(object):
         Q += eps * np.random.randn(*Q.shape)
         return Q.argmax(axis=1), new_value
 
-    def __call__(self, obs: np.ndarray, state=None, info=None) -> np.ndarray:
+    def __call__(
+        self,
+        obs: np.ndarray,
+        state: Optional[Any] = None,
+        info: Dict[str, Any] = {},
+    ) -> np.ndarray:
         if not self.updated:
             self.solve_policy()
         return self.policy[obs]
@@ -173,7 +178,7 @@ class PSRLPolicy(BasePolicy):
         """
         return Batch(act=self.model(batch.obs, state=state, info=batch.info))
 
-    def learn(  # type: ignore
+    def learn(
         self, batch: Batch, *args: Any, **kwargs: Any
     ) -> Dict[str, float]:
         n_s, n_a = self.model.n_state, self.model.n_action
