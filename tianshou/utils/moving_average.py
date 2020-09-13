@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from numbers import Number
-from typing import Union
+from typing import List, Union
 
 from tianshou.data import to_numpy
 
@@ -28,7 +28,7 @@ class MovAvg(object):
     def __init__(self, size: int = 100) -> None:
         super().__init__()
         self.size = size
-        self.cache = []
+        self.cache: List[Union[Number, np.number]] = []
         self.banned = [np.inf, np.nan, -np.inf]
 
     def add(

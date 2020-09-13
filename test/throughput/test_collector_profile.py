@@ -100,11 +100,6 @@ def test_collect_ep(data):
         data["collector"].collect(n_episode=10)
 
 
-def test_sample(data):
-    for _ in range(5000):
-        data["collector"].sample(256)
-
-
 def test_init_vec_env(data):
     for _ in range(5000):
         Collector(data["policy"], data["env_vec"], data["buffer"])
@@ -125,11 +120,6 @@ def test_collect_vec_env_ep(data):
         data["collector_vec"].collect(n_episode=10)
 
 
-def test_sample_vec_env(data):
-    for _ in range(5000):
-        data["collector_vec"].sample(256)
-
-
 def test_init_subproc_env(data):
     for _ in range(5000):
         Collector(data["policy"], data["env_subproc_init"], data["buffer"])
@@ -148,11 +138,6 @@ def test_collect_subproc_env_st(data):
 def test_collect_subproc_env_ep(data):
     for _ in range(50):
         data["collector_subproc"].collect(n_episode=10)
-
-
-def test_sample_subproc_env(data):
-    for _ in range(5000):
-        data["collector_subproc"].sample(256)
 
 
 if __name__ == '__main__':

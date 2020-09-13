@@ -66,7 +66,7 @@ class Critic(nn.Module):
         s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.flatten(1)
         if a is not None:
-            a = to_torch(a, device=self.device, dtype=torch.float32)
+            a = to_torch_as(a, s)
             a = a.flatten(1)
             s = torch.cat([s, a], dim=1)
         logits, h = self.preprocess(s)

@@ -28,6 +28,16 @@ We follow PEP8 python code style. To check, in the main directory, run:
     $ flake8 . --count --show-source --statistics
 
 
+Type Check
+----------
+
+We use `mypy <https://github.com/python/mypy/>`_ to check the type annotations. To check, in the main directory, run:
+
+.. code-block:: bash
+
+    $ mypy
+
+
 Test Locally
 ------------
 

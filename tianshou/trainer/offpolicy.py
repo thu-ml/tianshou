@@ -73,7 +73,7 @@ def offpolicy_trainer(
     """
     global_step = 0
     best_epoch, best_reward = -1, -1.0
-    stat = {}
+    stat: Dict[str, MovAvg] = {}
     start_time = time.time()
     test_in_train = test_in_train and train_collector.policy == policy
     for epoch in range(1, 1 + max_epoch):
@@ -91,7 +91,7 @@ def offpolicy_trainer(
                     test_result = test_episode(
                         policy, test_collector, test_fn,
                         epoch, episode_per_test, writer, global_step)
-                    if stop_fn and stop_fn(test_result["rew"]):
+                    if stop_fn(test_result["rew"]):
                         if save_fn:
                             save_fn(policy)
                         for k in result.keys():

@@ -6,7 +6,7 @@ from copy import deepcopy
 from numbers import Number
 from collections.abc import Collection
 from typing import Any, List, Dict, Union, Iterator, Optional, Iterable, \
-    Sequence, KeysView, ValuesView, ItemsView
+    Sequence
 
 # Disable pickle warning related to torch, since it has been removed
 # on torch master branch. See Pull Request #39003 for details:
@@ -144,7 +144,7 @@ def _parse_value(v: Any) -> Optional[Union["Batch", np.ndarray, torch.Tensor]]:
         if not isinstance(v, np.ndarray) and isinstance(v, Collection) and \
                 len(v) > 0 and all(isinstance(e, torch.Tensor) for e in v):
             try:
-                return torch.stack(v)
+                return torch.stack(v)  # type: ignore
             except RuntimeError as e:
                 raise TypeError("Batch does not support non-stackable iterable"
                                 " of torch.Tensor as unique value yet.") from e
@@ -191,11 +191,19 @@ class Batch:
             elif _is_batch_set(batch_dict):
                 self.stack_(batch_dict)
         if len(kwargs) > 0:
-            self.__init__(kwargs, copy=copy)
+            self.__init__(kwargs, copy=copy)  # type: ignore
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
         self.__dict__[key] = _parse_value(value)
+
+    def __getattr__(self, key: str) -> Any:
+        """Return self.key. The "Any" return type is needed for mypy."""
+        return getattr(self.__dict__, key)
+
+    def __contains__(self, key: str) -> bool:
+        """Return key in self."""
+        return key in self.__dict__
 
     def __getstate__(self) -> Dict[str, Any]:
         """Pickling interface.
@@ -215,11 +223,11 @@ class Batch:
         At this point, self is an empty Batch instance that has not been
         initialized, so it can safely be initialized by the pickle state.
         """
-        self.__init__(**state)
+        self.__init__(**state)  # type: ignore
 
     def __getitem__(
         self, index: Union[str, slice, int, np.integer, np.ndarray, List[int]]
-    ) -> Union["Batch", np.ndarray, torch.Tensor]:
+    ) -> Any:
         """Return self[index]."""
         if isinstance(index, str):
             return self.__dict__[index]
@@ -245,7 +253,7 @@ class Batch:
         if isinstance(index, str):
             self.__dict__[index] = value
             return
-        if isinstance(value, (np.ndarray, torch.Tensor)):
+        if not isinstance(value, Batch):
             raise ValueError("Batch does not supported tensor assignment. "
                              "Use a compatible Batch or dict instead.")
         if not set(value.keys()).issubset(self.__dict__.keys()):
@@ -330,30 +338,6 @@ class Batch:
             s = self.__class__.__name__ + "()"
         return s
 
-    def __contains__(self, key: str) -> bool:
-        """Return key in self."""
-        return key in self.__dict__
-
-    def keys(self) -> KeysView[str]:
-        """Return self.keys()."""
-        return self.__dict__.keys()
-
-    def values(self) -> ValuesView[Any]:
-        """Return self.values()."""
-        return self.__dict__.values()
-
-    def items(self) -> ItemsView[str, Any]:
-        """Return self.items()."""
-        return self.__dict__.items()
-
-    def get(self, k: str, d: Optional[Any] = None) -> Any:
-        """Return self[k] if k in self else d. d defaults to None."""
-        return self.__dict__.get(k, d)
-
-    def pop(self, k: str, d: Optional[Any] = None) -> Any:
-        """Return & remove self[k] if k in self else d. d defaults to None."""
-        return self.__dict__.pop(k, d)
-
     def to_numpy(self) -> None:
         """Change all torch.Tensor to numpy.ndarray in-place."""
         for k, v in self.items():
@@ -375,7 +359,6 @@ class Batch:
             if isinstance(v, torch.Tensor):
                 if dtype is not None and v.dtype != dtype or \
                         v.device.type != device.type or \
-                        device.index is not None and \
                         device.index != v.device.index:
                     if dtype is not None:
                         v = v.type(dtype)
@@ -517,7 +500,7 @@ class Batch:
             return
         batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
         if not self.is_empty():
-            batches = [self] + list(batches)
+            batches = [self] + batches
         # collect non-empty keys
         keys_map = [
             set(k for k, v in batch.items()
@@ -672,8 +655,8 @@ class Batch:
         for v in self.__dict__.values():
             if isinstance(v, Batch) and v.is_empty(recurse=True):
                 continue
-            elif hasattr(v, "__len__") and (not isinstance(
-                v, (np.ndarray, torch.Tensor)) or v.ndim > 0
+            elif hasattr(v, "__len__") and (
+                isinstance(v, Batch) or v.ndim > 0
             ):
                 r.append(len(v))
             else:
