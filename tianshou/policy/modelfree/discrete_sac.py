@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch.distributions import Categorical
-from typing import Dict, Tuple, Union, Optional
+from typing import Any, Dict, Tuple, Union, Optional
 
 from tianshou.policy import SACPolicy
 from tianshou.data import Batch, ReplayBuffer
@@ -53,27 +53,32 @@ class DiscreteSACPolicy(SACPolicy):
         reward_normalization: bool = False,
         ignore_done: bool = False,
         estimation_step: int = 1,
-        **kwargs
+        **kwargs: Any,
     ) -> None:
         super().__init__(actor, actor_optim, critic1, critic1_optim, critic2,
                          critic2_optim, [-np.inf, np.inf], tau, gamma, alpha,
-                         reward_normalization, ignore_done, estimation_step)
+                         reward_normalization, ignore_done, estimation_step,
+                         **kwargs)
 
-    def forward(self, batch: Batch,
-                state: Optional[Union[dict, Batch, np.ndarray]] = None,
-                input: str = 'obs',
-                **kwargs) -> Batch:
+    def forward(
+        self,
+        batch: Batch,
+        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        input: str = "obs",
+        **kwargs
+    ) -> Batch:
         obs = getattr(batch, input)
         logits, h = self.actor(obs, state=state, info=batch.info)
         dist = Categorical(logits=logits)
         act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def _target_q(self, buffer: ReplayBuffer,
-                  indice: np.ndarray) -> torch.Tensor:
+    def _target_q(
+        self, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs: s_{t+n}
         with torch.no_grad():
-            obs_next_result = self(batch, input='obs_next')
+            obs_next_result = self(batch, input="obs_next")
             dist = obs_next_result.dist
             target_q = dist.probs * torch.min(
                 self.critic1_old(batch.obs_next),
@@ -82,8 +87,8 @@ class DiscreteSACPolicy(SACPolicy):
             target_q = target_q.sum(dim=-1) + self._alpha * dist.entropy()
         return target_q
 
-    def learn(self, batch: Batch, **kwargs) -> Dict[str, float]:
-        weight = batch.pop('weight', 1.)
+    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+        weight = batch.pop("weight", 1.0)
         # critic 1
         current_q1 = self.critic1(batch.obs)
         a = torch.tensor(batch.act, device=current_q1.device, dtype=torch.long)
@@ -105,7 +110,7 @@ class DiscreteSACPolicy(SACPolicy):
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
         self.critic2_optim.step()
-        batch.weight = (td1 + td2) / 2.  # prio-buffer
+        batch.weight = (td1 + td2) / 2.0  # prio-buffer
         # actor
         obs_result = self(batch)
         dist = obs_result.dist
@@ -131,11 +136,11 @@ class DiscreteSACPolicy(SACPolicy):
         self.sync_weight()
 
         result = {
-            'loss/actor': actor_loss.item(),
-            'loss/critic1': critic1_loss.item(),
-            'loss/critic2': critic2_loss.item(),
+            "loss/actor": actor_loss.item(),
+            "loss/critic1": critic1_loss.item(),
+            "loss/critic2": critic2_loss.item(),
         }
         if self._is_auto_alpha:
-            result['loss/alpha'] = alpha_loss.item()
-            result['alpha'] = self._alpha.item()
+            result["loss/alpha"] = alpha_loss.item()
+            result["alpha"] = self._alpha.item()
         return result
