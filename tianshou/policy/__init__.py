@@ -13,16 +13,16 @@ from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
 
 
 __all__ = [
-    'BasePolicy',
-    'RandomPolicy',
-    'ImitationPolicy',
-    'DQNPolicy',
-    'PGPolicy',
-    'A2CPolicy',
-    'DDPGPolicy',
-    'PPOPolicy',
-    'TD3Policy',
-    'SACPolicy',
-    'DiscreteSACPolicy',
-    'MultiAgentPolicyManager',
+    "BasePolicy",
+    "RandomPolicy",
+    "ImitationPolicy",
+    "DQNPolicy",
+    "PGPolicy",
+    "A2CPolicy",
+    "DDPGPolicy",
+    "PPOPolicy",
+    "TD3Policy",
+    "SACPolicy",
+    "DiscreteSACPolicy",
+    "MultiAgentPolicyManager",
 ]

@@ -36,7 +36,7 @@ class SACPolicy(DDPGPolicy):
         defaults to False.
     :param bool ignore_done: ignore the done flag while training the policy,
         defaults to False.
-    :param BaseNoise exploration_noise: add a noise to action for exploration.
+    :param BaseNoise exploration_noise: add a noise to action for exploration,
         defaults to None. This is useful when solving hard-exploration problem.
 
     .. seealso::
