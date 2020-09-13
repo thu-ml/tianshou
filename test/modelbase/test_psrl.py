@@ -25,7 +25,7 @@ def get_args():
     parser.add_argument('--render', type=float, default=0.0)
     parser.add_argument('--rew-mean-prior', type=float, default=0.0)
     parser.add_argument('--rew-std-prior', type=float, default=1.0)
-    parser.add_argument('--gamma', type=float, default=0.0)
+    parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--eps', type=float, default=0.01)
     return parser.parse_known_args()[0]
 

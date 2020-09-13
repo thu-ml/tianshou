@@ -14,6 +14,7 @@ class PSRLModel(object):
         with shape (n_state, n_action).
     :param np.ndarray rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
+    :param float discount_factor: in [0, 1].
     :param float epsilon: for precision control in value iteration.
     """
 
@@ -22,12 +23,14 @@ class PSRLModel(object):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
+        discount_factor: float,
         epsilon: float,
     ) -> None:
         self.trans_count = trans_count_prior
         self.n_state, self.n_action = rew_mean_prior.shape
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
+        self.discount_factor = discount_factor
         self.rew_count = np.full(rew_mean_prior.shape, epsilon)  # no weight
         self.eps = epsilon
         self.policy: Optional[np.ndarray] = None
@@ -79,13 +82,15 @@ class PSRLModel(object):
         self.policy, self.value = self.value_iteration(
             self.sample_from_prob(self.trans_count),
             self.sample_from_rew(),
+            self.discount_factor,
             self.eps,
             self.value,
         )
 
     @staticmethod
     def value_iteration(
-        trans_prob: np.ndarray, rew: np.ndarray, eps: float, value: np.ndarray
+        trans_prob: np.ndarray, rew: np.ndarray,
+            discount_factor: float, eps: float, value: np.ndarray
     ) -> np.ndarray:
         """Value iteration solver for MDPs.
 
@@ -93,16 +98,16 @@ class PSRLModel(object):
             (n_action, n_state, n_state).
         :param np.ndarray rew: rewards, with shape (n_state, n_action).
         :param float eps: for precision control.
+        :param float discount_factor: in [0, 1].
         :param np.ndarray value: the initialize value of value array, with
             shape (n_state, ).
-
         :return: the optimal policy with shape (n_state, ).
         """
-        Q = rew + trans_prob.dot(value)
+        Q = rew + discount_factor * trans_prob.dot(value)
         new_value = Q.max(axis=1)
         while not np.allclose(new_value, value, eps):
             value = new_value
-            Q = rew + trans_prob.dot(value)
+            Q = rew + discount_factor * trans_prob.dot(value)
             new_value = Q.max(axis=1)
         Q += eps * np.random.randn(*Q.shape)
         return Q.argmax(axis=1), new_value
@@ -145,10 +150,10 @@ class PSRLPolicy(BasePolicy):
     ) -> None:
         super().__init__(**kwargs)
         self.model = PSRLModel(
-            trans_count_prior, rew_mean_prior, rew_std_prior, epsilon)
+            trans_count_prior, rew_mean_prior, rew_std_prior,
+            discount_factor, epsilon)
         assert 0.0 <= discount_factor <= 1.0, \
             "discount factor should be in [0, 1]"
-        self._gamma = discount_factor
 
     def forward(
         self,
@@ -168,12 +173,6 @@ class PSRLPolicy(BasePolicy):
         """
         return Batch(act=self.model(batch.obs, state=state, info=batch.info))
 
-    def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> Batch:
-        return self.compute_episodic_return(
-            batch, gamma=self._gamma, gae_lambda=1.)
-
     def learn(  # type: ignore
         self, batch: Batch, *args: Any, **kwargs: Any
     ) -> Dict[str, float]:
@@ -181,7 +180,7 @@ class PSRLPolicy(BasePolicy):
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
         rew_count = np.zeros((n_s, n_a))
-        act, rew = batch.act, batch.returns
+        act, rew = batch.act, batch.rew
         obs, obs_next = batch.obs, batch.obs_next
         for i in range(len(obs)):
             trans_count[obs[i], act[i], obs_next[i]] += 1
