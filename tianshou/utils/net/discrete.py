@@ -45,7 +45,12 @@ class Critic(nn.Module):
     :ref:`build_the_network`.
     """
 
-    def __init__(self, preprocess_net, hidden_layer_size=128, last_size=1):
+    def __init__(
+        self,
+        preprocess_net: nn.Module,
+        hidden_layer_size: int = 128,
+        last_size: int = 1
+    ) -> None:
         super().__init__()
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, last_size)
