@@ -129,9 +129,13 @@ class Collector(object):
                           obs_next={}, policy={})
         self.reset_env()
         self.reset_buffer()
-        self.collect_time, self.collect_step, self.collect_episode = 0.0, 0, 0
+        self.reset_stat()
         if self._action_noise is not None:
             self._action_noise.reset()
+
+    def reset_stat(self) -> None:
+        """Reset the statistic variables."""
+        self.collect_time, self.collect_step, self.collect_episode = 0.0, 0, 0
 
     def reset_buffer(self) -> None:
         """Reset the main data buffer."""

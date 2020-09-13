@@ -13,11 +13,11 @@ from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='FrozenLake-v0')
+    parser.add_argument('--task', type=str, default='NChain-v0')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=50000)
     parser.add_argument('--epoch', type=int, default=5)
-    parser.add_argument('--step-per-epoch', type=int, default=1000)
+    parser.add_argument('--step-per-epoch', type=int, default=5)
     parser.add_argument('--collect-per-step', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
@@ -33,7 +33,7 @@ def get_args():
 def test_psrl(args=get_args()):
     env = gym.make(args.task)
     if args.task == "NChain-v0":
-        env.spec.reward_threshold = 3650  # described in PSRL paper
+        env.spec.reward_threshold = 3647  # described in PSRL paper
     print("reward threshold:", env.spec.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
