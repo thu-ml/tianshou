@@ -104,6 +104,7 @@ class PSRLModel(object):
         :param float discount_factor: in [0, 1].
         :param np.ndarray value: the initialize value of value array, with
             shape (n_state, ).
+
         :return: the optimal policy with shape (n_state, ).
         """
         Q = rew + discount_factor * trans_prob.dot(value)
@@ -158,11 +159,12 @@ class PSRLPolicy(BasePolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
+        assert (
+            0.0 <= discount_factor <= 1.0
+        ), "discount factor should be in [0, 1]"
         self.model = PSRLModel(
             trans_count_prior, rew_mean_prior, rew_std_prior,
             discount_factor, epsilon)
-        assert 0.0 <= discount_factor <= 1.0, \
-            "discount factor should be in [0, 1]"
 
     def forward(
         self,
@@ -180,7 +182,8 @@ class PSRLPolicy(BasePolicy):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
-        return Batch(act=self.model(batch.obs, state=state, info=batch.info))
+        act = self.model(batch.obs, state=state, info=batch.info)
+        return Batch(act=act)
 
     def learn(
         self, batch: Batch, *args: Any, **kwargs: Any
@@ -189,19 +192,18 @@ class PSRLPolicy(BasePolicy):
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
         rew_count = np.zeros((n_s, n_a))
-        act, rew = batch.act, batch.rew
-        obs, obs_next = batch.obs, batch.obs_next
-        for i in range(len(obs)):
-            trans_count[obs[i], act[i], obs_next[i]] += 1
-            rew_sum[obs[i], act[i]] += rew[i]
-            rew_count[obs[i], act[i]] += 1
-            if batch.done[i]:
-                if hasattr(batch.info, "TimeLimit.truncated") \
-                        and batch.info["TimeLimit.truncated"][i]:
+        for (obs, act, rew, done, obs_next, info) in zip(
+                batch.obs, batch.act, batch.rew, batch.done, batch.obs_next,
+                batch.info):
+            trans_count[obs, act, obs_next] += 1
+            rew_sum[obs, act] += rew
+            rew_count[obs, act] += 1
+            if done:
+                if info.get("TimeLimit.truncated"):
                     continue
                 # special operation for terminal states: add a self-loop
-                trans_count[obs_next[i], :, obs_next[i]] += 1
-                rew_count[obs_next[i], :] += 1
+                trans_count[obs_next, :, obs_next] += 1
+                rew_count[obs_next, :] += 1
         self.model.observe(trans_count, rew_sum, rew_count)
         return {
             "psrl/rew_mean": self.model.rew_mean.mean(),
