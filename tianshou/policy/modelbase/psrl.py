@@ -192,15 +192,12 @@ class PSRLPolicy(BasePolicy):
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
         rew_count = np.zeros((n_s, n_a))
-        for (obs, act, rew, done, obs_next, info) in zip(
-                batch.obs, batch.act, batch.rew, batch.done, batch.obs_next,
-                batch.info):
+        for b in batch.split(size=1):
+            obs, act, obs_next = b.obs, b.act, b.obs_next
             trans_count[obs, act, obs_next] += 1
-            rew_sum[obs, act] += rew
+            rew_sum[obs, act] += b.rew
             rew_count[obs, act] += 1
-            if done:
-                if info.get("TimeLimit.truncated"):
-                    continue
+            if b.done:
                 # special operation for terminal states: add a self-loop
                 trans_count[obs_next, :, obs_next] += 1
                 rew_count[obs_next, :] += 1
