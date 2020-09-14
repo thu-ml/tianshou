@@ -28,8 +28,6 @@ class SACPolicy(DDPGPolicy):
     :param float tau: param for soft update of the target network, defaults to
         0.005.
     :param float gamma: discount factor, in [0, 1], defaults to 0.99.
-    :param float exploration_noise: the noise intensity, add to the action,
-        defaults to 0.1.
     :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
         regularization coefficient, default to 0.2.
         If a tuple (target_entropy, log_alpha, alpha_optim) is provided, then
@@ -38,8 +36,8 @@ class SACPolicy(DDPGPolicy):
         defaults to False.
     :param bool ignore_done: ignore the done flag while training the policy,
         defaults to False.
-    :param BaseNoise exploration_noise: add a noise to action for exploration.
-        This is useful when solving hard-exploration problem.
+    :param BaseNoise exploration_noise: add a noise to action for exploration,
+        defaults to None. This is useful when solving hard-exploration problem.
 
     .. seealso::
 
@@ -115,7 +113,7 @@ class SACPolicy(DDPGPolicy):
         explorating: bool = True,
         **kwargs: Any,
     ) -> Batch:
-        obs = getattr(batch, input)
+        obs = batch[input]
         logits, h = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
         dist = Independent(Normal(*logits), 1)
@@ -147,6 +145,7 @@ class SACPolicy(DDPGPolicy):
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         weight = batch.pop("weight", 1.0)
+
         # critic 1
         current_q1 = self.critic1(batch.obs, batch.act).flatten()
         target_q = batch.returns.flatten()
@@ -156,6 +155,7 @@ class SACPolicy(DDPGPolicy):
         self.critic1_optim.zero_grad()
         critic1_loss.backward()
         self.critic1_optim.step()
+
         # critic 2
         current_q2 = self.critic2(batch.obs, batch.act).flatten()
         td2 = current_q2 - target_q
@@ -165,6 +165,7 @@ class SACPolicy(DDPGPolicy):
         critic2_loss.backward()
         self.critic2_optim.step()
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
+
         # actor
         obs_result = self(batch, explorating=False)
         a = obs_result.act
@@ -193,5 +194,6 @@ class SACPolicy(DDPGPolicy):
         }
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
-            result["v/alpha"] = self._alpha.item()  # type: ignore
+            result["alpha"] = self._alpha.item()  # type: ignore
+
         return result

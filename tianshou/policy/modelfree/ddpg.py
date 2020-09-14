@@ -140,7 +140,7 @@ class DDPGPolicy(BasePolicy):
             more detailed explanation.
         """
         model = getattr(self, model)
-        obs = getattr(batch, input)
+        obs = batch[input]
         actions, h = model(obs, state=state, info=batch.info)
         actions += self._action_bias
         if self._noise and self.training and explorating:

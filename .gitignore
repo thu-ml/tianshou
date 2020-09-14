@@ -137,7 +137,6 @@ dmypy.json
 .pytype/
 
 # customize
-flake8.sh
 log/
 MUJOCO_LOG.TXT
 *.pth
