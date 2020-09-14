@@ -143,7 +143,7 @@ class DQNPolicy(BasePolicy):
             more detailed explanation.
         """
         model = getattr(self, model)
-        obs = getattr(batch, input)
+        obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
         q, h = model(obs_, state=state, info=batch.info)
         act: np.ndarray = to_numpy(q.max(dim=1)[1])
