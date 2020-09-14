@@ -143,7 +143,7 @@ class ReplayBuffer:
         self._last_obs = save_only_last_obs
         self._index = 0
         self._size = 0
-        self._meta = Batch()
+        self._meta: Batch = Batch()
         self.reset()
 
     def __len__(self) -> int:
