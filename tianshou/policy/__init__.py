@@ -8,8 +8,8 @@ from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.modelfree.ppo import PPOPolicy
 from tianshou.policy.modelfree.td3 import TD3Policy
 from tianshou.policy.modelfree.sac import SACPolicy
-from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
 from tianshou.policy.modelbase.psrl import PSRLPolicy
+from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
 
 
 __all__ = [
@@ -23,6 +23,6 @@ __all__ = [
     "PPOPolicy",
     "TD3Policy",
     "SACPolicy",
-    "MultiAgentPolicyManager",
     "PSRLPolicy",
+    "MultiAgentPolicyManager",
 ]
