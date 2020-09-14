@@ -89,13 +89,16 @@ class PSRLModel(object):
 
     @staticmethod
     def value_iteration(
-        trans_prob: np.ndarray, rew: np.ndarray,
-            discount_factor: float, eps: float, value: np.ndarray
+        trans_prob: np.ndarray,
+        rew: np.ndarray,
+        discount_factor: float,
+        eps: float,
+        value: np.ndarray
     ) -> np.ndarray:
         """Value iteration solver for MDPs.
 
         :param np.ndarray trans_prob: transition probabilities, with shape
-            (n_action, n_state, n_state).
+            (n_state, n_action, n_state).
         :param np.ndarray rew: rewards, with shape (n_state, n_action).
         :param float eps: for precision control.
         :param float discount_factor: in [0, 1].
@@ -109,6 +112,7 @@ class PSRLModel(object):
             value = new_value
             Q = rew + discount_factor * trans_prob.dot(value)
             new_value = Q.max(axis=1)
+        # this is to make sure if Q(s, a1) == Q(s, a2) -> choose a1/a2 randomly
         Q += eps * np.random.randn(*Q.shape)
         return Q.argmax(axis=1), new_value
 
@@ -195,6 +199,7 @@ class PSRLPolicy(BasePolicy):
                 if hasattr(batch.info, "TimeLimit.truncated") \
                         and batch.info["TimeLimit.truncated"][i]:
                     continue
+                # special operation for terminal states: add a self-loop
                 trans_count[obs_next[i], :, obs_next[i]] += 1
                 rew_count[obs_next[i], :] += 1
         self.model.observe(trans_count, rew_sum, rew_count)
