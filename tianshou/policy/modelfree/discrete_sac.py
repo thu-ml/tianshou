@@ -127,8 +127,8 @@ class DiscreteSACPolicy(SACPolicy):
         self.actor_optim.step()
 
         if self._is_auto_alpha:
-            log_prob = entropy.detach() - self._target_entropy
-            alpha_loss = (self._log_alpha * log_prob).mean()
+            log_prob = -entropy.detach() + self._target_entropy
+            alpha_loss = -(self._log_alpha * log_prob).mean()
             self._alpha_optim.zero_grad()
             alpha_loss.backward()
             self._alpha_optim.step()
