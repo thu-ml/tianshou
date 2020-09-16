@@ -30,6 +30,8 @@ class PSRLModel(object):
         self.n_state, self.n_action = rew_mean_prior.shape
         self.rew_mean = rew_mean_prior
         self.rew_std = rew_std_prior
+        self.rew_square_sum = np.zeros_like(rew_mean_prior)
+        self.rew_std_prior = rew_std_prior
         self.discount_factor = discount_factor
         self.rew_count = np.full(rew_mean_prior.shape, epsilon)  # no weight
         self.eps = epsilon
@@ -41,6 +43,7 @@ class PSRLModel(object):
         self,
         trans_count: np.ndarray,
         rew_sum: np.ndarray,
+        rew_square_sum: np.ndarray,
         rew_count: np.ndarray
     ) -> None:
         """Add data into memory pool.
@@ -55,6 +58,8 @@ class PSRLModel(object):
             (n_state, n_action, n_state).
         :param np.ndarray rew_sum: total rewards, with shape
             (n_state, n_action).
+        :param np.ndarray rew_square_sum: total rewards' squares, with shape
+            (n_state, n_action).
         :param np.ndarray rew_count: the number of rewards, with shape
             (n_state, n_action).
         """
@@ -62,7 +67,10 @@ class PSRLModel(object):
         self.trans_count += trans_count
         sum_count = self.rew_count + rew_count
         self.rew_mean = (self.rew_mean * self.rew_count + rew_sum) / sum_count
-        self.rew_std *= self.rew_count / sum_count
+        self.rew_square_sum += rew_square_sum
+        self.rew_std = np.sqrt(1 / ((sum_count /
+                                     (self.rew_square_sum + 1e-6)) +
+                                    1 / self.rew_std_prior ** 2))
         self.rew_count = sum_count
 
     @staticmethod
@@ -195,17 +203,19 @@ class PSRLPolicy(BasePolicy):
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
+        rew_square_sum = np.zeros((n_s, n_a))
         rew_count = np.zeros((n_s, n_a))
         for b in batch.split(size=1):
             obs, act, obs_next = b.obs, b.act, b.obs_next
             trans_count[obs, act, obs_next] += 1
             rew_sum[obs, act] += b.rew
+            rew_square_sum[obs, act] += b.rew ** 2
             rew_count[obs, act] += 1
             if self._add_done_loop and b.done:
                 # special operation for terminal states: add a self-loop
                 trans_count[obs_next, :, obs_next] += 1
                 rew_count[obs_next, :] += 1
-        self.model.observe(trans_count, rew_sum, rew_count)
+        self.model.observe(trans_count, rew_sum, rew_square_sum, rew_count)
         return {
             "psrl/rew_mean": self.model.rew_mean.mean(),
             "psrl/rew_std": self.model.rew_std.mean(),
