@@ -27,6 +27,7 @@ def get_args():
     parser.add_argument('--rew-std-prior', type=float, default=1.0)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--eps', type=float, default=0.01)
+    parser.add_argument('--add-done-loop', action='store_true')
     return parser.parse_known_args()[0]
 
 
@@ -56,7 +57,8 @@ def test_psrl(args=get_args()):
     rew_mean_prior = np.full((n_state, n_action), args.rew_mean_prior)
     rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)
     policy = PSRLPolicy(
-        trans_count_prior, rew_mean_prior, rew_std_prior, args.gamma, args.eps)
+        trans_count_prior, rew_mean_prior, rew_std_prior, args.gamma, args.eps,
+        args.add_done_loop)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))

@@ -142,6 +142,8 @@ class PSRLPolicy(BasePolicy):
         of rewards, with shape (n_state, n_action).
     :param float discount_factor: in [0, 1].
     :param float epsilon: for precision control in value iteration.
+    :param bool add_done_loop: whether to add an extra self-loop for the
+        terminal state in MDP, defaults to False.
 
     .. seealso::
 
@@ -156,6 +158,7 @@ class PSRLPolicy(BasePolicy):
         rew_std_prior: np.ndarray,
         discount_factor: float = 0.99,
         epsilon: float = 0.01,
+        add_done_loop: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -165,6 +168,7 @@ class PSRLPolicy(BasePolicy):
         self.model = PSRLModel(
             trans_count_prior, rew_mean_prior, rew_std_prior,
             discount_factor, epsilon)
+        self._add_done_loop = add_done_loop
 
     def forward(
         self,
@@ -197,7 +201,7 @@ class PSRLPolicy(BasePolicy):
             trans_count[obs, act, obs_next] += 1
             rew_sum[obs, act] += b.rew
             rew_count[obs, act] += 1
-            if b.done:
+            if self._add_done_loop and b.done:
                 # special operation for terminal states: add a self-loop
                 trans_count[obs_next, :, obs_next] += 1
                 rew_count[obs_next, :] += 1
