@@ -69,7 +69,8 @@ class PSRLModel(object):
         self.rew_mean = (self.rew_mean * self.rew_count + rew_sum) / sum_count
         self.rew_square_sum += rew_square_sum
         self.rew_std = np.sqrt(1 / ((sum_count /
-                                     (self.rew_square_sum + 1e-6)) +
+                                     (self.rew_square_sum / sum_count -
+                                      self.rew_mean ** 2 + 1e-6)) +
                                     1 / self.rew_std_prior ** 2))
         self.rew_count = sum_count
 
