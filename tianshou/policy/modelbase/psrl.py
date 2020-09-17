@@ -38,13 +38,14 @@ class PSRLModel(object):
         self.policy: np.ndarray
         self.value = np.zeros(self.n_state)
         self.updated = False
+        self.__eps = np.finfo(np.float32).eps.item()
 
     def observe(
         self,
         trans_count: np.ndarray,
         rew_sum: np.ndarray,
         rew_square_sum: np.ndarray,
-        rew_count: np.ndarray
+        rew_count: np.ndarray,
     ) -> None:
         """Add data into memory pool.
 
@@ -68,10 +69,9 @@ class PSRLModel(object):
         sum_count = self.rew_count + rew_count
         self.rew_mean = (self.rew_mean * self.rew_count + rew_sum) / sum_count
         self.rew_square_sum += rew_square_sum
-        self.rew_std = np.sqrt(1 / ((sum_count /
-                                     (self.rew_square_sum / sum_count -
-                                      self.rew_mean ** 2 + 1e-6)) +
-                                    1 / self.rew_std_prior ** 2))
+        raw_std2 = self.rew_square_sum / sum_count - self.rew_mean ** 2
+        self.rew_std = np.sqrt(1 / (
+            sum_count / (raw_std2 + self.__eps) + 1 / self.rew_std_prior ** 2))
         self.rew_count = sum_count
 
     @staticmethod
@@ -102,7 +102,7 @@ class PSRLModel(object):
         rew: np.ndarray,
         discount_factor: float,
         eps: float,
-        value: np.ndarray
+        value: np.ndarray,
     ) -> np.ndarray:
         """Value iteration solver for MDPs.
 
