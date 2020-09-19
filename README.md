@@ -27,6 +27,7 @@
 - [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf)
 - [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf)
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf)
+- [Discrete Soft Actor-Critic (SAC-Discrete)](https://arxiv.org/pdf/1910.07207.pdf)
 - Vanilla Imitation Learning
 - [Prioritized Experience Replay (PER)](https://arxiv.org/pdf/1511.05952.pdf)
 - [Generalized Advantage Estimator (GAE)](https://arxiv.org/pdf/1506.02438.pdf)
