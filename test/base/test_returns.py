@@ -27,13 +27,17 @@ def test_episodic_returns(size=2560):
     batch = fn(batch, None, gamma=.1, gae_lambda=1)
     ans = np.array([0, 1.23, 2.3, 3, 4.5, 5, 6.7, 7])
     assert np.allclose(batch.returns, ans)
+    batch = fn(batch, None, gamma=.1, gae_lambda=1, time_trunc=3)
+    assert np.allclose(batch.returns, ans), (batch.returns, ans)
     batch = Batch(
-        done=np.array([0, 1, 0, 1, 0, 1, 0.]),
+        done=np.array([0, 1, 0, 1, 0, 1, 1.]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
     )
     batch = fn(batch, None, gamma=.1, gae_lambda=1)
     ans = np.array([7.6, 6, 1.2, 2, 3.4, 4, 5])
     assert np.allclose(batch.returns, ans)
+    batch = fn(batch, None, gamma=.1, gae_lambda=1, time_trunc=2)
+    assert np.allclose(batch.returns, ans), (batch.returns, ans)
     batch = Batch(
         done=np.array([0, 1, 0, 1, 0, 0, 1.]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
@@ -41,10 +45,12 @@ def test_episodic_returns(size=2560):
     batch = fn(batch, None, gamma=.1, gae_lambda=1)
     ans = np.array([7.6, 6, 1.2, 2, 3.45, 4.5, 5])
     assert np.allclose(batch.returns, ans)
+    batch = fn(batch, None, gamma=.1, gae_lambda=1, time_trunc=3)
+    assert np.allclose(batch.returns, ans)
     batch = Batch(
         done=np.array([0, 0, 0, 1., 0, 0, 0, 1, 0, 0, 0, 1]),
         rew=np.array([
-            101, 102, 103., 200, 104, 105, 106, 201, 107, 108, 109, 202])
+            101, 102, 103, 200, 104, 105, 106, 201, 107, 108, 109, 202.])
     )
     v = np.array([2., 3., 4, -1, 5., 6., 7, -2, 8., 9., 10, -3])
     ret = fn(batch, v, gamma=0.99, gae_lambda=0.95)
@@ -52,6 +58,14 @@ def test_episodic_returns(size=2560):
         454.8344, 376.1143, 291.298, 200.,
         464.5610, 383.1085, 295.387, 201.,
         474.2876, 390.1027, 299.476, 202.])
+    assert np.allclose(ret.returns, returns)
+    ret = fn(batch, v, gamma=0.99, gae_lambda=0.95, time_trunc=4)
+    assert np.allclose(ret.returns, returns)
+    ret = fn(batch, v, gamma=0.99, gae_lambda=0.95, time_trunc=2)
+    returns = np.array([
+        199.8233, 202.7444, 291.298, 200.0,
+        208.5866, 211.5077, 295.387, 201.0,
+        217.3499, 220.2710, 299.476, 202.0])
     assert np.allclose(ret.returns, returns)
     if __name__ == '__main__':
         batch = Batch(
@@ -142,5 +156,5 @@ def test_nstep_returns(size=10000):
 
 
 if __name__ == '__main__':
-    test_nstep_returns()
     test_episodic_returns()
+    test_nstep_returns()

@@ -25,6 +25,8 @@ class A2CPolicy(PGPolicy):
         defaults to None.
     :param float gae_lambda: in [0, 1], param for Generalized Advantage
         Estimation, defaults to 0.95.
+    :param int return_trunc_step: the truncate step for return estimation,
+        should be greater than 0 or be None (no truncate), defaults to 5.
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to False.
     :param int max_batchsize: the maximum size of the batch when computing GAE,
@@ -49,15 +51,20 @@ class A2CPolicy(PGPolicy):
         ent_coef: float = 0.01,
         max_grad_norm: Optional[float] = None,
         gae_lambda: float = 0.95,
+        return_trunc_step: Optional[int] = 5,
         reward_normalization: bool = False,
         max_batchsize: int = 256,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
         self.actor = actor
         self.critic = critic
         assert 0.0 <= gae_lambda <= 1.0, "GAE lambda should be in [0, 1]."
         self._lambda = gae_lambda
+        assert (
+            return_trunc_step is None or return_trunc_step > 0
+        ), "Truncate step for return estimation should be greater than 0."
+        self._n_step = return_trunc_step
         self._w_vf = vf_coef
         self._w_ent = ent_coef
         self._grad_norm = max_grad_norm
@@ -69,7 +76,8 @@ class A2CPolicy(PGPolicy):
     ) -> Batch:
         if self._lambda in [0.0, 1.0]:
             return self.compute_episodic_return(
-                batch, None, gamma=self._gamma, gae_lambda=self._lambda)
+                batch, None, gamma=self._gamma, gae_lambda=self._lambda,
+                time_trunc=self._n_step)
         v_ = []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
@@ -77,7 +85,7 @@ class A2CPolicy(PGPolicy):
         v_ = np.concatenate(v_, axis=0)
         return self.compute_episodic_return(
             batch, v_, gamma=self._gamma, gae_lambda=self._lambda,
-            rew_norm=self._rew_norm)
+            time_trunc=self._n_step, rew_norm=self._rew_norm)
 
     def forward(
         self,

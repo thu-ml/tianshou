@@ -165,6 +165,7 @@ class BasePolicy(ABC, nn.Module):
         v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
+        time_trunc: Optional[int] = None,
         rew_norm: bool = False,
     ) -> Batch:
         """Compute returns over given full-length episodes.
@@ -188,7 +189,8 @@ class BasePolicy(ABC, nn.Module):
         """
         rew = batch.rew
         v_s_ = np.zeros_like(rew) if v_s_ is None else to_numpy(v_s_.flatten())
-        returns = _episodic_return(v_s_, rew, batch.done, gamma, gae_lambda)
+        returns = _episodic_return(
+            v_s_, rew, batch.done, gamma, gae_lambda, time_trunc)
         if rew_norm and not np.isclose(returns.std(), 0.0, 1e-2):
             returns = (returns - returns.mean()) / returns.std()
         batch.returns = returns
@@ -259,8 +261,8 @@ class BasePolicy(ABC, nn.Module):
         f32 = np.array([0, 1], dtype=np.float32)
         b = np.array([False, True], dtype=np.bool_)
         i64 = np.array([0, 1], dtype=np.int64)
-        _episodic_return(f64, f64, b, 0.1, 0.1)
-        _episodic_return(f32, f64, b, 0.1, 0.1)
+        _episodic_return(f64, f64, b, 0.1, 0.1, None)
+        _episodic_return(f32, f64, b, 0.1, 0.1, 5)
         _nstep_return(f64, b, f32, i64, 0.1, 1, 4, 1.0, 0.0)
 
 
@@ -271,16 +273,25 @@ def _episodic_return(
     done: np.ndarray,
     gamma: float,
     gae_lambda: float,
+    time_trunc: Optional[int],
 ) -> np.ndarray:
     """Numba speedup: 4.1s -> 0.057s."""
     returns = np.roll(v_s_, 1)
     m = (1.0 - done) * gamma
     delta = rew + v_s_ * m - returns
     m *= gae_lambda
-    gae = 0.0
-    for i in range(len(rew) - 1, -1, -1):
-        gae = delta[i] + m[i] * gae
-        returns[i] += gae
+    if time_trunc is None:  # compute gae using full episode data
+        gae = 0.0
+        for i in range(len(rew) - 1, -1, -1):
+            gae = delta[i] + m[i] * gae
+            returns[i] += gae
+    else:  # compute gae using truncate length of data, to reduce variance
+        n = len(v_s_)
+        gae, indice = np.zeros(n), np.arange(n)
+        for i in range(time_trunc):
+            now = (indice - i + n) % n
+            gae = delta[now] + m[now] * gae
+        returns[now] += gae
     return returns
 
 
