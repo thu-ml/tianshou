@@ -80,9 +80,10 @@ A policy class typically has the following parts:
 Three states for policy
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-TODO: explain what is training state, learning state and testing state.
-
-We define the learning state as performing ``policy.learn()`` during training.
+During the training process, the policy has three state, namely training state, learning state, and testing state:
+Training state is defined as interacting with environments and collecting training data into the buffer;
+we define the learning state as performing a model update (such as ``policy.learn()``) during training process;
+and the testing state is obvious: evaluate the performance of the current policy during training process.
 
 In order to distinguish the training state, learning state and testing state, you can check the policy state by ``policy.training`` and ``policy.learning``. The state setting is as follows:
 
@@ -95,6 +96,8 @@ In order to distinguish the training state, learning state and testing state, yo
 +------------------+-----------------+-----------------+
 | Testing state    | False           | False           |
 +------------------+-----------------+-----------------+
+
+``policy.learning`` is helpful to distinguish the different exploration state, for example, in DQN we don't have to use epsilon-greedy in a pure network update, so ``policy.learning`` is helpful for setting epsilon in this case.
 
 
 policy.forward
