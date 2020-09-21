@@ -61,6 +61,7 @@ class BasePolicy(ABC, nn.Module):
         self.observation_space = observation_space
         self.action_space = action_space
         self.agent_id = 0
+        self.learning = False
         self._compile()
 
     def set_agent_id(self, agent_id: int) -> None:
@@ -127,6 +128,14 @@ class BasePolicy(ABC, nn.Module):
             "[batch_size]" shape while Normal distribution gives "[batch_size,
             1]" shape. The auto-broadcasting of numerical operation with torch
             tensors will amplify this error.
+        .. trick::
+            In order to distinguish the training state, learning state and
+            testing state, you can check the policy state by ``self.training``
+             and ``self.learning``. The state setting is as follow:
+            training: ``self.training=True``.
+            perform ``self.learn()`` during training: ``self.training=True``,
+            ``self.learning=True``.
+            testing: ``self.training=False``, ``self.learning=False``
         """
         pass
 
@@ -149,6 +158,8 @@ class BasePolicy(ABC, nn.Module):
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn.
+        In addition, ``self.learning`` will be True before ``self.learn()``
+        and ``self.learning`` will be False after ``self.learn()``.
 
         :param int sample_size: 0 means it will extract all the data from the
             buffer, otherwise it will sample a batch with given sample_size.
@@ -158,7 +169,9 @@ class BasePolicy(ABC, nn.Module):
             return {}
         batch, indice = buffer.sample(sample_size)
         batch = self.process_fn(batch, buffer, indice)
+        self.learning = True
         result = self.learn(batch, **kwargs)
+        self.learning = False
         self.post_process_fn(batch, buffer, indice)
         return result
 
