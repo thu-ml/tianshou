@@ -75,6 +75,28 @@ A policy class typically has the following parts:
 * :meth:`~tianshou.policy.BasePolicy.update`: the main interface for training. This function samples data from buffer, pre-process data (such as computing n-step return), learn with the data, and finally post-process the data (such as updating prioritized replay buffer); in short, ``process_fn -> learn -> post_process_fn``.
 
 
+.. _policy_state:
+
+Three states for policy
+^^^^^^^^^^^^^^^^^^^^^^^
+
+TODO: explain what is training state, learning state and testing state.
+
+We define the learning state as performing ``policy.learn()`` during training.
+
+In order to distinguish the training state, learning state and testing state, you can check the policy state by ``policy.training`` and ``policy.learning``. The state setting is as follows:
+
++------------------+-----------------+-----------------+
+| State for policy | policy.learning | policy.training |
++==================+=================+=================+
+| Training state   | False           | True            |
++------------------+-----------------+-----------------+
+| Learning state   | True            | True            |
++------------------+-----------------+-----------------+
+| Testing state    | False           | False           |
++------------------+-----------------+-----------------+
+
+
 policy.forward
 ^^^^^^^^^^^^^^
 
@@ -95,24 +117,6 @@ For example, if you try to use your policy to evaluate one episode (and don't wa
         obs, rew, done, info = env.step(act)
 
 Here, ``Batch(obs=[obs])`` will automatically create the 0-dimension to be the batch-size. Otherwise, the network cannot determine the batch-size.
-
-
-.. _policy_state:
-
-Three states for policy
-^^^^^^^^^^^^^^^^^^^^^^^
-
-TODO: explain what is training state, learning state and testing state.
-
-We define the learning state as performing ``policy.learn()`` during training.
-
-In order to distinguish the training state, learning state and testing state, you can check the policy state by ``policy.training`` and ``policy.learning``. The state setting is as follows:
-
-TODO: use a table instead of itemize
-
-* Training: ``policy.training=True`` and ``policy.learning=False``;
-* Learning state: ``policy.training=True`` and ``policy.learning=True``;
-* Testing: ``policy.training=False`` and ``policy.learning=False``.
 
 
 .. _process_fn:
