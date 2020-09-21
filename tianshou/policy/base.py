@@ -119,6 +119,13 @@ class BasePolicy(ABC, nn.Module):
 
         :return: A dict which includes loss and its corresponding label.
 
+        .. note::
+
+            In order to distinguish the training state, learning state and
+            testing state, you can check the policy state by ``self.training``
+            and ``self.learning``. Please refer to :ref:`policy_state` for more
+            detailed explanation.
+
         .. warning::
 
             If you use ``torch.distributions.Normal`` and
@@ -127,14 +134,6 @@ class BasePolicy(ABC, nn.Module):
             "[batch_size]" shape while Normal distribution gives "[batch_size,
             1]" shape. The auto-broadcasting of numerical operation with torch
             tensors will amplify this error.
-        .. trick::
-            In order to distinguish the training state, learning state and
-            testing state, you can check the policy state by ``self.training``
-             and ``self.learning``. The state setting is as follow:
-            training: ``self.training=True``.
-            perform ``self.learn()`` during training: ``self.training=True``,
-            ``self.learning=True``.
-            testing: ``self.training=False``, ``self.learning=False``
         """
         pass
 
@@ -155,8 +154,10 @@ class BasePolicy(ABC, nn.Module):
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn.
-        In addition, ``self.learning`` will be True before ``self.learn()``
-        and ``self.learning`` will be False after ``self.learn()``.
+        In addition, this function will change the value of ``self.learning``:
+        it will be True before ``self.learn()`` and will be False after
+        ``self.learn()``. Please refer to :ref:`policy_state` for more detailed
+        explanation.
 
         :param int sample_size: 0 means it will extract all the data from the
             buffer, otherwise it will sample a batch with given sample_size.
