@@ -72,6 +72,7 @@ A policy class typically has the following parts:
 * :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the replay buffer;
 * :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given batch of data.
 * :meth:`~tianshou.policy.BasePolicy.post_process_fn`: update the buffer with a given batch of data.
+* :meth:`~tianshou.policy.BasePolicy.learning`: indicate the learning state.
 * :meth:`~tianshou.policy.BasePolicy.update`: the main interface for training. This function samples data from buffer, pre-process data (such as computing n-step return), learn with the data, and finally post-process the data (such as updating prioritized replay buffer); in short, ``process_fn -> learn -> post_process_fn``.
 
 
