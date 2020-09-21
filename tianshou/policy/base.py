@@ -166,11 +166,11 @@ class BasePolicy(ABC, nn.Module):
         if buffer is None:
             return {}
         batch, indice = buffer.sample(sample_size)
-        batch = self.process_fn(batch, buffer, indice)
         self.learning = True
+        batch = self.process_fn(batch, buffer, indice)
         result = self.learn(batch, **kwargs)
-        self.learning = False
         self.post_process_fn(batch, buffer, indice)
+        self.learning = False
         return result
 
     @staticmethod
