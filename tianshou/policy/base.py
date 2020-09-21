@@ -121,7 +121,7 @@ class BasePolicy(ABC, nn.Module):
 
         .. note::
 
-            In order to distinguish the training state, learning state and
+            In order to distinguish the collecting state, learning state and
             testing state, you can check the policy state by ``self.training``
             and ``self.learning``. Please refer to :ref:`policy_state` for more
             detailed explanation.

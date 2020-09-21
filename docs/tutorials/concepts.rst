@@ -80,17 +80,17 @@ A policy class typically has the following parts:
 Three states for policy
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-During the training process, the policy has three state, namely training state, learning state, and testing state:
-Training state is defined as interacting with environments and collecting training data into the buffer;
+During the training process, the policy has three state, namely collecting state, learning state, and testing state:
+Collecting state is defined as interacting with environments and collecting training data into the buffer;
 we define the learning state as performing a model update (such as ``policy.learn()``) during training process;
 and the testing state is obvious: evaluate the performance of the current policy during training process.
 
-In order to distinguish the training state, learning state and testing state, you can check the policy state by ``policy.training`` and ``policy.learning``. The state setting is as follows:
+In order to distinguish the collecting state, learning state and testing state, you can check the policy state by ``policy.training`` and ``policy.learning``. The state setting is as follows:
 
 +------------------+-----------------+-----------------+
-| State for policy | policy.learning | policy.training |
+| State for policy | policy.training | policy.learning |
 +==================+=================+=================+
-| Training state   | False           | True            |
+| Collecting state | True            | False           |
 +------------------+-----------------+-----------------+
 | Learning state   | True            | True            |
 +------------------+-----------------+-----------------+
