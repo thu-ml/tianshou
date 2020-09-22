@@ -77,27 +77,30 @@ A policy class typically has the following parts:
 
 .. _policy_state:
 
-Three states for policy
-^^^^^^^^^^^^^^^^^^^^^^^
+States for policy
+^^^^^^^^^^^^^^^^^
 
-During the training process, the policy has three state, namely collecting state, learning state, and testing state:
-Collecting state is defined as interacting with environments and collecting training data into the buffer;
-we define the learning state as performing a model update (such as ``policy.learn()``) during training process;
-and the testing state is obvious: evaluate the performance of the current policy during training process.
+During the training process, the policy has two main states: training state and testing state. The training state can be further divided into the collecting state and updating state.
 
-In order to distinguish the collecting state, learning state and testing state, you can check the policy state by ``policy.training`` and ``policy.learning``. The state setting is as follows:
+The meaning of training and testing state is obvious: the agent interacts with environment, collects training data and performs update, that's training state; the testing state is to evaluate the performance of the current policy during training process.
 
-+------------------+-----------------+-----------------+
-| State for policy | policy.training | policy.learning |
-+==================+=================+=================+
-| Collecting state | True            | False           |
-+------------------+-----------------+-----------------+
-| Learning state   | True            | True            |
-+------------------+-----------------+-----------------+
-| Testing state    | False           | False           |
-+------------------+-----------------+-----------------+
+As for the collecting state, it is defined as interacting with environments and collecting training data into the buffer;
+we define the updating state as performing a model update by :meth:`~tianshou.policy.BasePolicy.update` during training process.
 
-``policy.learning`` is helpful to distinguish the different exploration state, for example, in DQN we don't have to use epsilon-greedy in a pure network update, so ``policy.learning`` is helpful for setting epsilon in this case.
+
+In order to distinguish these states, you can check the policy state by ``policy.training`` and ``policy.updating``. The state setting is as follows:
+
++-----------------------------------+-----------------+-----------------+
+|          State for policy         | policy.training | policy.updating |
++================+==================+=================+=================+
+|                | Collecting state |       True      |      False      |
+| Training state +------------------+-----------------+-----------------+
+|                |  Updating state  |       True      |      True       |
++----------------+------------------+-----------------+-----------------+
+|           Testing state           |       False     |      False      |
++-----------------------------------+-----------------+-----------------+
+
+``policy.updating`` is helpful to distinguish the different exploration state, for example, in DQN we don't have to use epsilon-greedy in a pure network update, so ``policy.updating`` is helpful for setting epsilon in this case.
 
 
 policy.forward

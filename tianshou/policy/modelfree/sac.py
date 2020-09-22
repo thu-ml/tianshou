@@ -122,7 +122,7 @@ class SACPolicy(DDPGPolicy):
         y = self._action_scale * (1 - y.pow(2)) + self.__eps
         log_prob = dist.log_prob(x).unsqueeze(-1)
         log_prob = log_prob - torch.log(y).sum(-1, keepdim=True)
-        if self._noise is not None and not self.learning:
+        if self._noise is not None and not self.updating:
             act += to_torch_as(self._noise(act.shape), act)
         act = act.clamp(self._range[0], self._range[1])
         return Batch(

@@ -142,7 +142,7 @@ class DDPGPolicy(BasePolicy):
         obs = batch[input]
         actions, h = model(obs, state=state, info=batch.info)
         actions += self._action_bias
-        if self._noise and not self.learning:
+        if self._noise and not self.updating:
             actions += to_torch_as(self._noise(actions.shape), actions)
         actions = actions.clamp(self._range[0], self._range[1])
         return Batch(act=actions, state=h)

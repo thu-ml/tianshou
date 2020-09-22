@@ -152,7 +152,7 @@ class DQNPolicy(BasePolicy):
             q_[~obs.mask] = -np.inf
             act = q_.argmax(axis=1)
         # add eps to act in training or testing phase
-        if not self.learning and not np.isclose(self.eps, 0.0):
+        if not self.updating and not np.isclose(self.eps, 0.0):
             for i in range(len(q)):
                 if np.random.rand() < self.eps:
                     q_ = np.random.rand(*q[i].shape)

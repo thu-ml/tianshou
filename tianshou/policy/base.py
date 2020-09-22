@@ -60,7 +60,7 @@ class BasePolicy(ABC, nn.Module):
         self.observation_space = observation_space
         self.action_space = action_space
         self.agent_id = 0
-        self.learning = False
+        self.updating = False
         self._compile()
 
     def set_agent_id(self, agent_id: int) -> None:
@@ -121,9 +121,9 @@ class BasePolicy(ABC, nn.Module):
 
         .. note::
 
-            In order to distinguish the collecting state, learning state and
+            In order to distinguish the collecting state, updating state and
             testing state, you can check the policy state by ``self.training``
-            and ``self.learning``. Please refer to :ref:`policy_state` for more
+            and ``self.updating``. Please refer to :ref:`policy_state` for more
             detailed explanation.
 
         .. warning::
@@ -154,9 +154,9 @@ class BasePolicy(ABC, nn.Module):
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn.
-        In addition, this function will change the value of ``self.learning``:
-        it will be True before ``self.learn()`` and will be False after
-        ``self.learn()``. Please refer to :ref:`policy_state` for more detailed
+        In addition, this function will change the value of ``self.updating``:
+        it will be False before this function and will be True when executing
+        :meth:`update`. Please refer to :ref:`policy_state` for more detailed
         explanation.
 
         :param int sample_size: 0 means it will extract all the data from the
@@ -166,11 +166,11 @@ class BasePolicy(ABC, nn.Module):
         if buffer is None:
             return {}
         batch, indice = buffer.sample(sample_size)
-        self.learning = True
+        self.updating = True
         batch = self.process_fn(batch, buffer, indice)
         result = self.learn(batch, **kwargs)
         self.post_process_fn(batch, buffer, indice)
-        self.learning = False
+        self.updating = False
         return result
 
     @staticmethod
