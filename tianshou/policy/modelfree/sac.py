@@ -110,7 +110,6 @@ class SACPolicy(DDPGPolicy):
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         input: str = "obs",
-        explorating: bool = True,
         **kwargs: Any,
     ) -> Batch:
         obs = batch[input]
@@ -123,7 +122,7 @@ class SACPolicy(DDPGPolicy):
         y = self._action_scale * (1 - y.pow(2)) + self.__eps
         log_prob = dist.log_prob(x).unsqueeze(-1)
         log_prob = log_prob - torch.log(y).sum(-1, keepdim=True)
-        if self._noise is not None and self.training and explorating:
+        if self._noise is not None and not self.updating:
             act += to_torch_as(self._noise(act.shape), act)
         act = act.clamp(self._range[0], self._range[1])
         return Batch(
@@ -134,7 +133,7 @@ class SACPolicy(DDPGPolicy):
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs: s_{t+n}
         with torch.no_grad():
-            obs_next_result = self(batch, input='obs_next', explorating=False)
+            obs_next_result = self(batch, input='obs_next')
             a_ = obs_next_result.act
             batch.act = to_torch_as(batch.act, a_)
             target_q = torch.min(
@@ -167,7 +166,7 @@ class SACPolicy(DDPGPolicy):
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor
-        obs_result = self(batch, explorating=False)
+        obs_result = self(batch)
         a = obs_result.act
         current_q1a = self.critic1(batch.obs, a).flatten()
         current_q2a = self.critic2(batch.obs, a).flatten()

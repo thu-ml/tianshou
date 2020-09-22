@@ -75,6 +75,34 @@ A policy class typically has the following parts:
 * :meth:`~tianshou.policy.BasePolicy.update`: the main interface for training. This function samples data from buffer, pre-process data (such as computing n-step return), learn with the data, and finally post-process the data (such as updating prioritized replay buffer); in short, ``process_fn -> learn -> post_process_fn``.
 
 
+.. _policy_state:
+
+States for policy
+^^^^^^^^^^^^^^^^^
+
+During the training process, the policy has two main states: training state and testing state. The training state can be further divided into the collecting state and updating state.
+
+The meaning of training and testing state is obvious: the agent interacts with environment, collects training data and performs update, that's training state; the testing state is to evaluate the performance of the current policy during training process.
+
+As for the collecting state, it is defined as interacting with environments and collecting training data into the buffer;
+we define the updating state as performing a model update by :meth:`~tianshou.policy.BasePolicy.update` during training process.
+
+
+In order to distinguish these states, you can check the policy state by ``policy.training`` and ``policy.updating``. The state setting is as follows:
+
++-----------------------------------+-----------------+-----------------+
+|          State for policy         | policy.training | policy.updating |
++================+==================+=================+=================+
+|                | Collecting state |       True      |      False      |
+| Training state +------------------+-----------------+-----------------+
+|                |  Updating state  |       True      |      True       |
++----------------+------------------+-----------------+-----------------+
+|           Testing state           |       False     |      False      |
++-----------------------------------+-----------------+-----------------+
+
+``policy.updating`` is helpful to distinguish the different exploration state, for example, in DQN we don't have to use epsilon-greedy in a pure network update, so ``policy.updating`` is helpful for setting epsilon in this case.
+
+
 policy.forward
 ^^^^^^^^^^^^^^
 

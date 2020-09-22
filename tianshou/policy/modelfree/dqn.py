@@ -80,7 +80,7 @@ class DQNPolicy(BasePolicy):
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-            a = self(batch, input="obs_next", eps=0).act
+            a = self(batch, input="obs_next").act
             with torch.no_grad():
                 target_q = self(
                     batch, model="model_old", input="obs_next"
@@ -110,7 +110,6 @@ class DQNPolicy(BasePolicy):
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
-        eps: Optional[float] = None,
         **kwargs: Any,
     ) -> Batch:
         """Compute action over the given batch data.
@@ -152,12 +151,10 @@ class DQNPolicy(BasePolicy):
             q_: np.ndarray = to_numpy(q)
             q_[~obs.mask] = -np.inf
             act = q_.argmax(axis=1)
-        # add eps to act
-        if eps is None:
-            eps = self.eps
-        if not np.isclose(eps, 0.0):
+        # add eps to act in training or testing phase
+        if not self.updating and not np.isclose(self.eps, 0.0):
             for i in range(len(q)):
-                if np.random.rand() < eps:
+                if np.random.rand() < self.eps:
                     q_ = np.random.rand(*q[i].shape)
                     if hasattr(obs, "mask"):
                         q_[~obs.mask[i]] = -np.inf
@@ -169,7 +166,7 @@ class DQNPolicy(BasePolicy):
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
-        q = self(batch, eps=0.0).logits
+        q = self(batch).logits
         q = q[np.arange(len(q)), batch.act]
         r = to_torch_as(batch.returns.flatten(), q)
         td = r - q
