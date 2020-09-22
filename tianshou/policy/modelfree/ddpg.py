@@ -103,9 +103,9 @@ class DDPGPolicy(BasePolicy):
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         with torch.no_grad():
-            target_q = self.critic_old(batch.obs_next, self(
-                batch, model='actor_old', input='obs_next',
-                explorating=False).act)
+            target_q = self.critic_old(
+                batch.obs_next,
+                self(batch, model='actor_old', input='obs_next').act)
         return target_q
 
     def process_fn(
@@ -124,7 +124,6 @@ class DDPGPolicy(BasePolicy):
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         model: str = "actor",
         input: str = "obs",
-        explorating: bool = True,
         **kwargs: Any,
     ) -> Batch:
         """Compute action over the given batch data.
@@ -143,7 +142,7 @@ class DDPGPolicy(BasePolicy):
         obs = batch[input]
         actions, h = model(obs, state=state, info=batch.info)
         actions += self._action_bias
-        if self._noise and self.training and explorating:
+        if self._noise and not self.updating:
             actions += to_torch_as(self._noise(actions.shape), actions)
         actions = actions.clamp(self._range[0], self._range[1])
         return Batch(act=actions, state=h)
@@ -158,7 +157,7 @@ class DDPGPolicy(BasePolicy):
         self.critic_optim.zero_grad()
         critic_loss.backward()
         self.critic_optim.step()
-        action = self(batch, explorating=False).act
+        action = self(batch).act
         actor_loss = -self.critic(batch.obs, action).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()

@@ -60,6 +60,7 @@ class BasePolicy(ABC, nn.Module):
         self.observation_space = observation_space
         self.action_space = action_space
         self.agent_id = 0
+        self.updating = False
         self._compile()
 
     def set_agent_id(self, agent_id: int) -> None:
@@ -118,6 +119,13 @@ class BasePolicy(ABC, nn.Module):
 
         :return: A dict which includes loss and its corresponding label.
 
+        .. note::
+
+            In order to distinguish the collecting state, updating state and
+            testing state, you can check the policy state by ``self.training``
+            and ``self.updating``. Please refer to :ref:`policy_state` for more
+            detailed explanation.
+
         .. warning::
 
             If you use ``torch.distributions.Normal`` and
@@ -146,6 +154,10 @@ class BasePolicy(ABC, nn.Module):
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn.
+        In addition, this function will change the value of ``self.updating``:
+        it will be False before this function and will be True when executing
+        :meth:`update`. Please refer to :ref:`policy_state` for more detailed
+        explanation.
 
         :param int sample_size: 0 means it will extract all the data from the
             buffer, otherwise it will sample a batch with given sample_size.
@@ -154,9 +166,11 @@ class BasePolicy(ABC, nn.Module):
         if buffer is None:
             return {}
         batch, indice = buffer.sample(sample_size)
+        self.updating = True
         batch = self.process_fn(batch, buffer, indice)
         result = self.learn(batch, **kwargs)
         self.post_process_fn(batch, buffer, indice)
+        self.updating = False
         return result
 
     @staticmethod
