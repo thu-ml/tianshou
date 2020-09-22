@@ -75,6 +75,8 @@ def offpolicy_trainer(
     best_epoch, best_reward = -1, -1.0
     stat: Dict[str, MovAvg] = {}
     start_time = time.time()
+    train_collector.reset_stat()
+    test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
     for epoch in range(1, 1 + max_epoch):
         # train
