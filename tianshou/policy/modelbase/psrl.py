@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 from typing import Any, Dict, Union, Optional
 
@@ -74,23 +75,19 @@ class PSRLModel(object):
             sum_count / (raw_std2 + self.__eps) + 1 / self.rew_std_prior ** 2))
         self.rew_count = sum_count
 
-    @staticmethod
-    def sample_from_prob(trans_count: np.ndarray) -> np.ndarray:
-        sample_prob = np.zeros_like(trans_count)
-        n_s, n_a = trans_count.shape[:2]
-        for i in range(n_s):
-            for j in range(n_a):  # numba does not support dirichlet :(
-                sample_prob[i][j] = np.random.dirichlet(trans_count[i][j])
+    def sample_trans_prob(self) -> np.ndarray:
+        sample_prob = torch.distributions.Dirichlet(
+            torch.from_numpy(self.trans_count)).sample().numpy()
         return sample_prob
 
-    def sample_from_rew(self) -> np.ndarray:
+    def sample_reward(self) -> np.ndarray:
         return np.random.normal(self.rew_mean, self.rew_std)
 
     def solve_policy(self) -> None:
         self.updated = True
         self.policy, self.value = self.value_iteration(
-            self.sample_from_prob(self.trans_count),
-            self.sample_from_rew(),
+            self.sample_trans_prob(),
+            self.sample_reward(),
             self.discount_factor,
             self.eps,
             self.value,
