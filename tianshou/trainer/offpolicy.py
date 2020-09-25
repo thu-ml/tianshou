@@ -20,7 +20,7 @@ def offpolicy_trainer(
     batch_size: int,
     update_per_step: int = 1,
     train_fn: Optional[Callable[[int, int], None]] = None,
-    test_fn: Optional[Callable[[], None]] = None,
+    test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
     stop_fn: Optional[Callable[[float], bool]] = None,
     save_fn: Optional[Callable[[BasePolicy], None]] = None,
     writer: Optional[SummaryWriter] = None,
@@ -55,8 +55,9 @@ def offpolicy_trainer(
     :param function train_fn: a function receives the current number of epoch
         and step index, and performs some operations at the beginning of
         training in this epoch.
-    :param function test_fn: a function performs some operations at the
-        beginning of testing in this epoch.
+    :param function test_fn: a function receives the current number of epoch
+        and step index, and performs some operations at the beginning of
+        testing in this epoch.
     :param function save_fn: a function for saving policy when the undiscounted
         average mean reward in evaluation phase gets better.
     :param function stop_fn: a function receives the average undiscounted

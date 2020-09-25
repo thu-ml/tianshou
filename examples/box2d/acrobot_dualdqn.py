@@ -78,17 +78,17 @@ def test_dqn(args=get_args()):
     def stop_fn(mean_rewards):
         return mean_rewards >= env.spec.reward_threshold
 
-    def train_fn(epoch, env_step):
-        if env_step <= 100000:
+    def train_fn(epoch, num_env_step):
+        if num_env_step <= 100000:
             policy.set_eps(args.eps_train)
-        elif env_step <= 500000:
-            eps = args.eps_train - (env_step - 100000) / \
+        elif num_env_step <= 500000:
+            eps = args.eps_train - (num_env_step - 100000) / \
                 400000 * (0.5 * args.eps_train)
             policy.set_eps(eps)
         else:
             policy.set_eps(0.5 * args.eps_train)
 
-    def test_fn():
+    def test_fn(epoch, num_env_step):
         policy.set_eps(args.eps_test)
 
     # trainer
