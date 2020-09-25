@@ -230,8 +230,8 @@ Let's train it:
 result = ts.trainer.offpolicy_trainer(
     policy, train_collector, test_collector, epoch, step_per_epoch, collect_per_step,
     test_num, batch_size,
-    train_fn=lambda epoch, num_env_step: policy.set_eps(eps_train),
-    test_fn=lambda epoch, num_env_step: policy.set_eps(eps_test),
+    train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
+    test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
     writer=writer, task=task)
 print(f'Finished training! Use {result["duration"]}')
