@@ -103,7 +103,7 @@ def test_dqn(args=get_args()):
         else:
             return False
 
-    def train_fn(env_step):
+    def train_fn(epoch, env_step):
         # nature DQN setting, linear decay in the first 1M steps
         if env_step <= 1e6:
             eps = args.eps_train - env_step / 1e6 * \

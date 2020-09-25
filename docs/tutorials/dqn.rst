@@ -123,7 +123,7 @@ Tianshou provides :class:`~tianshou.trainer.onpolicy_trainer` and :class:`~tians
         policy, train_collector, test_collector,
         max_epoch=10, step_per_epoch=1000, collect_per_step=10,
         episode_per_test=100, batch_size=64,
-        train_fn=lambda env_step: policy.set_eps(0.1),
+        train_fn=lambda epoch, env_step: policy.set_eps(0.1),
         test_fn=lambda: policy.set_eps(0.05),
         stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
         writer=None)

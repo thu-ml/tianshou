@@ -19,7 +19,7 @@ def onpolicy_trainer(
     repeat_per_collect: int,
     episode_per_test: Union[int, List[int]],
     batch_size: int,
-    train_fn: Optional[Callable[[int], None]] = None,
+    train_fn: Optional[Callable[[int, int], None]] = None,
     test_fn: Optional[Callable[[], None]] = None,
     stop_fn: Optional[Callable[[float], bool]] = None,
     save_fn: Optional[Callable[[BasePolicy], None]] = None,
@@ -52,9 +52,9 @@ def onpolicy_trainer(
     :type episode_per_test: int or list of ints
     :param int batch_size: the batch size of sample data, which is going to
         feed in the policy network.
-    :param function train_fn: a function receives the current number of step
-        index and performs some operations at the beginning of training in this
-        poch.
+    :param function train_fn: a function receives the current number of epoch
+        and step index, and performs some operations at the beginning of
+        training in this poch.
     :param function test_fn: a function performs some operations at the
         beginning of testing in this epoch.
     :param function save_fn: a function for saving policy when the undiscounted
@@ -85,7 +85,7 @@ def onpolicy_trainer(
         ) as t:
             while t.n < t.total:
                 if train_fn:
-                    train_fn(global_step)
+                    train_fn(epoch, global_step)
                 result = train_collector.collect(n_episode=collect_per_step)
                 data = {}
                 if test_in_train and stop_fn and stop_fn(result["rew"]):
