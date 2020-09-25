@@ -6,11 +6,11 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import TD3Policy
+from tianshou.env import SubprocVectorEnv
+from tianshou.utils.net.common import Net
+from tianshou.exploration import GaussianNoise
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.env import SubprocVectorEnv
-from tianshou.exploration import GaussianNoise
-from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
 
 

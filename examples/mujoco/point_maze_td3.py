@@ -6,12 +6,13 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import TD3Policy
-from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.utils.net.common import Net
 from tianshou.env import SubprocVectorEnv
 from tianshou.exploration import GaussianNoise
-from tianshou.utils.net.common import Net
+from tianshou.trainer import offpolicy_trainer
+from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.continuous import Actor, Critic
+
 from mujoco.register import reg
 
 
@@ -40,7 +41,6 @@ def get_args():
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
-    parser.add_argument('--max_episode_steps', type=int, default=2000)
     return parser.parse_args()
 
 
