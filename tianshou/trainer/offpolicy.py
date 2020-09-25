@@ -53,7 +53,7 @@ def offpolicy_trainer(
         it updates policy 256 times once after ``collect_per_step`` frames are
         collected.
     :param function train_fn: a function receives the current number of epoch
-        and step index and performs some operations at the beginning of
+        and step index, and performs some operations at the beginning of
         training in this epoch.
     :param function test_fn: a function performs some operations at the
         beginning of testing in this epoch.
