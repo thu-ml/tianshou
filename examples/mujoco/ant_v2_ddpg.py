@@ -77,8 +77,8 @@ def test_ddpg(args=get_args()):
     # log
     writer = SummaryWriter(args.logdir + '/' + 'ddpg')
 
-    def stop_fn(x):
-        return x >= env.spec.reward_threshold
+    def stop_fn(mean_rewards):
+        return mean_rewards >= env.spec.reward_threshold
 
     # trainer
     result = offpolicy_trainer(

@@ -91,8 +91,8 @@ def test_sac(args=get_args()):
     log_path = os.path.join(args.logdir, args.task, 'sac', args.run_id)
     writer = SummaryWriter(log_path)
 
-    def stop_fn(x):
-        return x >= env.spec.reward_threshold
+    def stop_fn(mean_rewards):
+        return mean_rewards >= env.spec.reward_threshold
 
     # trainer
     result = offpolicy_trainer(

@@ -95,26 +95,25 @@ def test_dqn(args=get_args()):
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
-    def stop_fn(x):
+    def stop_fn(mean_rewards):
         if env.env.spec.reward_threshold:
-            return x >= env.spec.reward_threshold
+            return mean_rewards >= env.spec.reward_threshold
         elif 'Pong' in args.task:
-            return x >= 20
+            return mean_rewards >= 20
         else:
             return False
 
-    def train_fn(x):
+    def train_fn(env_step):
         # nature DQN setting, linear decay in the first 1M steps
-        now = x * args.collect_per_step * args.step_per_epoch
-        if now <= 1e6:
-            eps = args.eps_train - now / 1e6 * \
+        if env_step <= 1e6:
+            eps = args.eps_train - env_step / 1e6 * \
                 (args.eps_train - args.eps_train_final)
         else:
             eps = args.eps_train_final
         policy.set_eps(eps)
-        writer.add_scalar('train/eps', eps, global_step=now)
+        writer.add_scalar('train/eps', eps, global_step=env_step)
 
-    def test_fn(x):
+    def test_fn():
         policy.set_eps(args.eps_test)
 
     # watch agent's performance

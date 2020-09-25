@@ -76,11 +76,11 @@ def test_a2c(args=get_args()):
         preprocess_fn=preprocess_fn)
     test_collector = Collector(policy, test_envs, preprocess_fn=preprocess_fn)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'a2c')
+    writer = SummaryWriter(args.logdir + '/a2c')
 
-    def stop_fn(x):
+    def stop_fn(mean_rewards):
         if env.env.spec.reward_threshold:
-            return x >= env.spec.reward_threshold
+            return mean_rewards >= env.spec.reward_threshold
         else:
             return False
 

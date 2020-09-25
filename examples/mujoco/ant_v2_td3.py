@@ -88,8 +88,8 @@ def test_td3(args=get_args()):
     # log
     writer = SummaryWriter(args.logdir + '/' + 'td3')
 
-    def stop_fn(x):
-        return x >= env.spec.reward_threshold
+    def stop_fn(mean_rewards):
+        return mean_rewards >= env.spec.reward_threshold
 
     # trainer
     result = offpolicy_trainer(
