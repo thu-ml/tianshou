@@ -67,10 +67,8 @@ def test_summary_writer():
     # get first instance by key of `default` or your own key
     writer1 = SummaryWriter.get_instance(
         key="first", log_dir="log/test_sw/first")
-    writer2 = SummaryWriter.get_instance(
-        key="default", log_dir="log/test_sw/first")
-    writer3 = SummaryWriter.get_instance()
-    assert writer1 is writer2 is writer3
+    writer2 = SummaryWriter.get_instance()
+    assert writer1 is writer2
     # create new instance by specify a new key
     writer4 = SummaryWriter.get_instance(
         key="second", log_dir="log/test_sw/second")
