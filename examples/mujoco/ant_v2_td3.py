@@ -6,11 +6,11 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import TD3Policy
+from tianshou.env import SubprocVectorEnv
+from tianshou.utils.net.common import Net
+from tianshou.exploration import GaussianNoise
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.env import SubprocVectorEnv
-from tianshou.exploration import GaussianNoise
-from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
 
 
@@ -88,8 +88,8 @@ def test_td3(args=get_args()):
     # log
     writer = SummaryWriter(args.logdir + '/' + 'td3')
 
-    def stop_fn(x):
-        return x >= env.spec.reward_threshold
+    def stop_fn(mean_rewards):
+        return mean_rewards >= env.spec.reward_threshold
 
     # trainer
     result = offpolicy_trainer(

@@ -64,11 +64,12 @@ def get_args() -> argparse.Namespace:
     return args
 
 
-def get_agents(args: argparse.Namespace = get_args(),
-               agent_learn: Optional[BasePolicy] = None,
-               agent_opponent: Optional[BasePolicy] = None,
-               optim: Optional[torch.optim.Optimizer] = None,
-               ) -> Tuple[BasePolicy, torch.optim.Optimizer]:
+def get_agents(
+    args: argparse.Namespace = get_args(),
+    agent_learn: Optional[BasePolicy] = None,
+    agent_opponent: Optional[BasePolicy] = None,
+    optim: Optional[torch.optim.Optimizer] = None,
+) -> Tuple[BasePolicy, torch.optim.Optimizer]:
     env = TicTacToeEnv(args.board_size, args.win_size)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -99,11 +100,12 @@ def get_agents(args: argparse.Namespace = get_args(),
     return policy, optim
 
 
-def train_agent(args: argparse.Namespace = get_args(),
-                agent_learn: Optional[BasePolicy] = None,
-                agent_opponent: Optional[BasePolicy] = None,
-                optim: Optional[torch.optim.Optimizer] = None,
-                ) -> Tuple[dict, BasePolicy]:
+def train_agent(
+    args: argparse.Namespace = get_args(),
+    agent_learn: Optional[BasePolicy] = None,
+    agent_opponent: Optional[BasePolicy] = None,
+    optim: Optional[torch.optim.Optimizer] = None,
+) -> Tuple[dict, BasePolicy]:
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
     train_envs = DummyVectorEnv([env_func for _ in range(args.training_num)])
@@ -142,13 +144,13 @@ def train_agent(args: argparse.Namespace = get_args(),
             policy.policies[args.agent_id - 1].state_dict(),
             model_save_path)
 
-    def stop_fn(x):
-        return x >= args.win_rate
+    def stop_fn(mean_rewards):
+        return mean_rewards >= args.win_rate
 
-    def train_fn(x):
+    def train_fn(epoch, env_step):
         policy.policies[args.agent_id - 1].set_eps(args.eps_train)
 
-    def test_fn(x):
+    def test_fn(epoch, env_step):
         policy.policies[args.agent_id - 1].set_eps(args.eps_test)
 
     # trainer
@@ -162,10 +164,11 @@ def train_agent(args: argparse.Namespace = get_args(),
     return result, policy.policies[args.agent_id - 1]
 
 
-def watch(args: argparse.Namespace = get_args(),
-          agent_learn: Optional[BasePolicy] = None,
-          agent_opponent: Optional[BasePolicy] = None,
-          ) -> None:
+def watch(
+    args: argparse.Namespace = get_args(),
+    agent_learn: Optional[BasePolicy] = None,
+    agent_opponent: Optional[BasePolicy] = None,
+) -> None:
     env = TicTacToeEnv(args.board_size, args.win_size)
     policy, optim = get_agents(
         args, agent_learn=agent_learn, agent_opponent=agent_opponent)

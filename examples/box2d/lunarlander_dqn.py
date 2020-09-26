@@ -18,7 +18,7 @@ def get_args():
     # the parameters are found by Optuna
     parser.add_argument('--task', type=str, default='LunarLander-v2')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--eps-test', type=float, default=0.05)
+    parser.add_argument('--eps-test', type=float, default=0.01)
     parser.add_argument('--eps-train', type=float, default=0.73)
     parser.add_argument('--buffer-size', type=int, default=100000)
     parser.add_argument('--lr', type=float, default=0.013)
@@ -77,14 +77,14 @@ def test_dqn(args=get_args()):
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
-    def stop_fn(x):
-        return x >= env.spec.reward_threshold
+    def stop_fn(mean_rewards):
+        return mean_rewards >= env.spec.reward_threshold
 
-    def train_fn(x):
-        args.eps_train = max(args.eps_train * 0.6, 0.01)
-        policy.set_eps(args.eps_train)
+    def train_fn(epoch, env_step):  # exp decay
+        eps = max(args.eps_train * (1 - 5e-6) ** env_step, args.eps_test)
+        policy.set_eps(eps)
 
-    def test_fn(x):
+    def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
 
     # trainer

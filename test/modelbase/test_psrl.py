@@ -66,9 +66,9 @@ def test_psrl(args=get_args()):
     # log
     writer = SummaryWriter(args.logdir + '/' + args.task)
 
-    def stop_fn(x):
+    def stop_fn(mean_rewards):
         if env.spec.reward_threshold:
-            return x >= env.spec.reward_threshold
+            return mean_rewards >= env.spec.reward_threshold
         else:
             return False
 

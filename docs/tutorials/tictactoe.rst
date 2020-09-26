@@ -334,15 +334,15 @@ With the above preparation, we are close to the first learned agent. The followi
             policy.policies[args.agent_id - 1].state_dict(),
             model_save_path)
 
-    def stop_fn(x):
-        return x >= args.win_rate  # 95% winning rate by default
+    def stop_fn(mean_rewards):
+        return mean_rewards >= args.win_rate  # 95% winning rate by default
         # the default args.win_rate is 0.9, but the reward is [-1, 1]
         # instead of [0, 1], so args.win_rate == 0.9 is equal to 95% win rate.
 
-    def train_fn(x):
+    def train_fn(epoch, env_step):
         policy.policies[args.agent_id - 1].set_eps(args.eps_train)
 
-    def test_fn(x):
+    def test_fn(epoch, env_step):
         policy.policies[args.agent_id - 1].set_eps(args.eps_test)
 
     # start training, this may require about three minutes

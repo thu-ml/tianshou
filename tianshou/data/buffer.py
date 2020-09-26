@@ -230,7 +230,8 @@ class ReplayBuffer:
             obs = obs[-1]
         self._add_to_buffer("obs", obs)
         self._add_to_buffer("act", act)
-        self._add_to_buffer("rew", rew)
+        # make sure the reward is a float instead of an int
+        self._add_to_buffer("rew", rew * 1.0)  # type: ignore
         self._add_to_buffer("done", done)
         if self._save_s_:
             if obs_next is None:
