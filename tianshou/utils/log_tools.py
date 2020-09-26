@@ -4,7 +4,7 @@ from typing import Dict, Optional
 
 
 class SummaryWriter(tensorboard.SummaryWriter):
-    """A more convenient Summary Writer.
+    """A more convenient Summary Writer(`tensorboard.SummaryWriter`).
 
     You can get the same instance of summary writer everywhere after you
     created one.
@@ -37,7 +37,7 @@ class SummaryWriter(tensorboard.SummaryWriter):
                      max_queue: int = 10,
                      flush_secs: int = 120,
                      filename_suffix: str = '') -> "SummaryWriter":
-        """Get instance of torch.utils.tensorboard.SummaryWriter by key"""
+        """Get instance of torch.utils.tensorboard.SummaryWriter by key."""
         with SummaryWriter._mutex_lock:
             if key is None:
                 key = SummaryWriter._default_key
