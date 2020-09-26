@@ -22,14 +22,14 @@ def test_moving_average():
     stat = MovAvg(10)
     assert np.allclose(stat.get(), 0)
     assert np.allclose(stat.mean(), 0)
-    assert np.allclose(stat.std()**2, 0)
+    assert np.allclose(stat.std() ** 2, 0)
     stat.add(torch.tensor([1]))
     stat.add(np.array([2]))
     stat.add([3, 4])
     stat.add(5.)
     assert np.allclose(stat.get(), 3)
     assert np.allclose(stat.mean(), 3)
-    assert np.allclose(stat.std()**2, 2)
+    assert np.allclose(stat.std() ** 2, 2)
 
 
 def test_net():
@@ -65,15 +65,15 @@ def test_net():
 
 def test_summary_writer():
     # get first instance by key of `default` or your own key
-    writer1 = SummaryWriter.get_instance(key="first",
-                                         log_dir="log/test_sw/first")
-    writer2 = SummaryWriter.get_instance(key="default",
-                                         log_dir="log/test_sw/first")
+    writer1 = SummaryWriter.get_instance(
+        key="first", log_dir="log/test_sw/first")
+    writer2 = SummaryWriter.get_instance(
+        key="default", log_dir="log/test_sw/first")
     writer3 = SummaryWriter.get_instance()
     assert writer1 is writer2 is writer3
     # create new instance by specify a new key
-    writer4 = SummaryWriter.get_instance(key="second",
-                                         log_dir="log/test_sw/second")
+    writer4 = SummaryWriter.get_instance(
+        key="second", log_dir="log/test_sw/second")
     writer5 = SummaryWriter.get_instance(key="second")
     assert writer1 is not writer4
     assert writer4 is writer5

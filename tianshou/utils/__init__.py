@@ -5,5 +5,5 @@ from tianshou.utils.log_tools import SummaryWriter
 __all__ = [
     "MovAvg",
     "tqdm_config",
-    "SummaryWriter"
+    "SummaryWriter",
 ]
