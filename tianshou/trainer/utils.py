@@ -10,7 +10,7 @@ from tianshou.policy import BasePolicy
 def test_episode(
     policy: BasePolicy,
     collector: Collector,
-    test_fn: Optional[Callable[[int], None]],
+    test_fn: Optional[Callable[[int, Optional[int]], None]],
     epoch: int,
     n_episode: Union[int, List[int]],
     writer: Optional[SummaryWriter] = None,
@@ -21,7 +21,7 @@ def test_episode(
     collector.reset_buffer()
     policy.eval()
     if test_fn:
-        test_fn(epoch)
+        test_fn(epoch, global_step)
     if collector.get_env_num() > 1 and isinstance(n_episode, int):
         n = collector.get_env_num()
         n_ = np.zeros(n) + n_episode // n

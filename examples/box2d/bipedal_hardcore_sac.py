@@ -74,9 +74,6 @@ class EnvWrapper(object):
 def test_sac_bipedal(args=get_args()):
     env = EnvWrapper(args.task)
 
-    def IsStop(reward):
-        return reward >= env.spec.reward_threshold
-
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
@@ -141,11 +138,14 @@ def test_sac_bipedal(args=get_args()):
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
+    def stop_fn(mean_rewards):
+        return mean_rewards >= env.spec.reward_threshold
+
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
-        args.batch_size, stop_fn=IsStop, save_fn=save_fn, writer=writer,
+        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer,
         test_in_train=False)
 
     if __name__ == '__main__':

@@ -1,3 +1,4 @@
+import os
 import torch
 import pprint
 import argparse
@@ -80,11 +81,11 @@ def test_ppo(args=get_args()):
         preprocess_fn=preprocess_fn)
     test_collector = Collector(policy, test_envs, preprocess_fn=preprocess_fn)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'ppo')
+    writer = SummaryWriter(os.path.join(args.logdir, args.task, 'ppo'))
 
-    def stop_fn(x):
+    def stop_fn(mean_rewards):
         if env.env.spec.reward_threshold:
-            return x >= env.spec.reward_threshold
+            return mean_rewards >= env.spec.reward_threshold
         else:
             return False
 

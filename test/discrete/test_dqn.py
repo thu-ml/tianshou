@@ -85,21 +85,21 @@ def test_dqn(args=get_args()):
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
-    def stop_fn(x):
-        return x >= env.spec.reward_threshold
+    def stop_fn(mean_rewards):
+        return mean_rewards >= env.spec.reward_threshold
 
-    def train_fn(x):
+    def train_fn(epoch, env_step):
         # eps annnealing, just a demo
-        if x <= int(0.1 * args.epoch):
+        if env_step <= 10000:
             policy.set_eps(args.eps_train)
-        elif x <= int(0.5 * args.epoch):
-            eps = args.eps_train - (x - 0.1 * args.epoch) / \
-                (0.4 * args.epoch) * (0.9 * args.eps_train)
+        elif env_step <= 50000:
+            eps = args.eps_train - (env_step - 10000) / \
+                40000 * (0.9 * args.eps_train)
             policy.set_eps(eps)
         else:
             policy.set_eps(0.1 * args.eps_train)
 
-    def test_fn(x):
+    def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
 
     # trainer

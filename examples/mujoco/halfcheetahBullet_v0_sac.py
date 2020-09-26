@@ -4,18 +4,14 @@ import torch
 import pprint
 import argparse
 import numpy as np
+import pybullet_envs
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import SubprocVectorEnv
 from tianshou.policy import SACPolicy
+from tianshou.utils.net.common import Net
+from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-
-try:
-    import pybullet_envs
-except ImportError:
-    pass
-from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
@@ -91,8 +87,8 @@ def test_sac(args=get_args()):
     log_path = os.path.join(args.logdir, args.task, 'sac', args.run_id)
     writer = SummaryWriter(log_path)
 
-    def stop_fn(x):
-        return x >= env.spec.reward_threshold
+    def stop_fn(mean_rewards):
+        return mean_rewards >= env.spec.reward_threshold
 
     # trainer
     result = offpolicy_trainer(

@@ -123,9 +123,9 @@ Tianshou provides :class:`~tianshou.trainer.onpolicy_trainer` and :class:`~tians
         policy, train_collector, test_collector,
         max_epoch=10, step_per_epoch=1000, collect_per_step=10,
         episode_per_test=100, batch_size=64,
-        train_fn=lambda e: policy.set_eps(0.1),
-        test_fn=lambda e: policy.set_eps(0.05),
-        stop_fn=lambda x: x >= env.spec.reward_threshold,
+        train_fn=lambda epoch, env_step: policy.set_eps(0.1),
+        test_fn=lambda epoch, env_step: policy.set_eps(0.05),
+        stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
         writer=None)
     print(f'Finished training! Use {result["duration"]}')
 
@@ -136,8 +136,8 @@ The meaning of each parameter is as follows (full description can be found at :m
 * ``collect_per_step``: The number of frames the collector would collect before the network update. For example, the code above means "collect 10 frames and do one policy network update";
 * ``episode_per_test``: The number of episodes for one policy evaluation.
 * ``batch_size``: The batch size of sample data, which is going to feed in the policy network.
-* ``train_fn``: A function receives the current number of epoch index and performs some operations at the beginning of training in this epoch. For example, the code above means "reset the epsilon to 0.1 in DQN before training".
-* ``test_fn``: A function receives the current number of epoch index and performs some operations at the beginning of testing in this epoch. For example, the code above means "reset the epsilon to 0.05 in DQN before testing".
+* ``train_fn``: A function receives the current number of epoch and step index, and performs some operations at the beginning of training in this epoch. For example, the code above means "reset the epsilon to 0.1 in DQN before training".
+* ``test_fn``: A function receives the current number of epoch and step index, and performs some operations at the beginning of testing in this epoch. For example, the code above means "reset the epsilon to 0.05 in DQN before testing".
 * ``stop_fn``: A function receives the average undiscounted returns of the testing result, return a boolean which indicates whether reaching the goal.
 * ``writer``: See below.
 
