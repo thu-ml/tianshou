@@ -9,6 +9,7 @@ class SummaryWriter(tensorboard.SummaryWriter):
     You can get the same instance of summary writer everywhere after you
     created one.
     """
+
     _mutex_lock = threading.Lock()
     _default_key: str
     _instance: Optional[Dict[str, "SummaryWriter"]] = None
