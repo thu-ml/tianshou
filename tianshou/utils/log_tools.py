@@ -8,6 +8,20 @@ class SummaryWriter(tensorboard.SummaryWriter):
 
     You can get the same instance of summary writer everywhere after you
     created one.
+    ::
+
+        >>> writer1 = SummaryWriter.get_instance(
+            key="first", log_dir="log/test_sw/first")
+        >>> writer2 = SummaryWriter.get_instance()
+        >>> writer1 is writer2
+        True
+        >>> writer4 = SummaryWriter.get_instance(
+            key="second", log_dir="log/test_sw/second")
+        >>> writer5 = SummaryWriter.get_instance(key="second")
+        >>> writer1 is not writer4
+        True
+        >>> writer4 is writer5
+        True
     """
 
     _mutex_lock = threading.Lock()
@@ -23,6 +37,7 @@ class SummaryWriter(tensorboard.SummaryWriter):
                      max_queue: int = 10,
                      flush_secs: int = 120,
                      filename_suffix: str = '') -> "SummaryWriter":
+        """Get instance of torch.utils.tensorboard.SummaryWriter by key"""
         with SummaryWriter._mutex_lock:
             if key is None:
                 key = SummaryWriter._default_key
