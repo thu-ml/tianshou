@@ -2,11 +2,11 @@ import torch
 import numpy as np
 
 from tianshou.utils import MovAvg
-from tianshou.exploration import GaussianNoise, OUNoise
+from tianshou.utils import SummaryWriter
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import DQN
+from tianshou.exploration import GaussianNoise, OUNoise
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
-from tianshou.utils import SummaryWriter
 
 
 def test_noise():
