@@ -60,7 +60,7 @@ setup(
             "flake8",
             "pytest",
             "pytest-cov",
-            "ray>=0.8.0",
+            "ray>=1.0.0",
             "mypy",
             "pydocstyle",
             "doc8",

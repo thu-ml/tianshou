@@ -39,6 +39,7 @@ def gather_info(
     train_c: Collector,
     test_c: Collector,
     best_reward: float,
+    best_reward_std: float,
 ) -> Dict[str, Union[float, str]]:
     """A simple wrapper of gathering information from collectors.
 
@@ -72,5 +73,6 @@ def gather_info(
         "test_time": f"{test_c.collect_time:.2f}s",
         "test_speed": f"{test_speed:.2f} step/s",
         "best_reward": best_reward,
+        "best_result": f"{best_reward:.2f} ± {best_reward_std:.2f}",
         "duration": f"{duration:.2f}s",
     }

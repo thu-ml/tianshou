@@ -214,7 +214,7 @@ class Collector(object):
         # number of episodes, these envs will be recorded in this list, and
         # they will not be stepped.
         finished_env_ids = []
-        reward_total = 0.0
+        rewards = []
         whole_data = Batch()
         if isinstance(n_episode, list):
             assert len(n_episode) == self.get_env_num()
@@ -311,7 +311,8 @@ class Collector(object):
                     if not (isinstance(n_episode, list)
                             and episode_count[i] >= n_episode[i]):
                         episode_count[i] += 1
-                        reward_total += np.sum(self._cached_buf[i].rew, axis=0)
+                        rewards.append(self._rew_metric(
+                            np.sum(self._cached_buf[i].rew, axis=0)))
                         step_count += len(self._cached_buf[i])
                         if self.buffer is not None:
                             self.buffer.update(self._cached_buf[i])
@@ -361,16 +362,13 @@ class Collector(object):
         self.collect_step += step_count
         self.collect_episode += episode_count
         self.collect_time += duration
-        # average reward across the number of episodes
-        reward_avg = reward_total / episode_count
-        if np.asanyarray(reward_avg).size > 1:  # non-scalar reward_avg
-            reward_avg = self._rew_metric(reward_avg)  # type: ignore
         return {
             "n/ep": episode_count,
             "n/st": step_count,
             "v/st": step_count / duration,
             "v/ep": episode_count / duration,
-            "rew": reward_avg,
+            "rew": np.mean(rewards),
+            "rew_std": np.std(rewards),
             "len": step_count / episode_count,
         }
 
