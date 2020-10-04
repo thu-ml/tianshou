@@ -67,8 +67,7 @@ def test_sac_with_il(args=get_args()):
     # model
     net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = ActorProb(
-        net, args.action_shape,
-        args.max_action, args.device
+        net, args.action_shape, args.max_action, args.device, unbounded=True
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net = Net(args.layer_num, args.state_shape,
@@ -118,9 +117,10 @@ def test_sac_with_il(args=get_args()):
     policy.eval()
     if args.task == 'Pendulum-v0':
         env.spec.reward_threshold = -300  # lower the goal
-    net = Actor(Net(1, args.state_shape, device=args.device),
-                args.action_shape, args.max_action, args.device
-                ).to(args.device)
+    net = Actor(
+        Net(1, args.state_shape, device=args.device),
+        args.action_shape, args.max_action, args.device
+    ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(net, optim, mode='continuous')
     il_test_collector = Collector(

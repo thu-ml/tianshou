@@ -71,8 +71,8 @@ def offpolicy_trainer(
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
-    global_step = 0
-    best_epoch, best_reward = -1, -1.0
+    env_step, gradient_step = 0, 0
+    best_epoch, best_reward, best_reward_std = -1, -1.0, 0.0
     stat: Dict[str, MovAvg] = {}
     start_time = time.time()
     train_collector.reset_stat()
@@ -86,13 +86,26 @@ def offpolicy_trainer(
         ) as t:
             while t.n < t.total:
                 if train_fn:
-                    train_fn(epoch, global_step)
+                    train_fn(epoch, env_step)
                 result = train_collector.collect(n_step=collect_per_step)
-                data = {}
+                env_step += int(result["n/st"])
+                data = {
+                    "env_step": str(env_step),
+                    "rew": f"{result['rew']:.2f}",
+                    "len": str(int(result["len"])),
+                    "n/ep": str(int(result["n/ep"])),
+                    "n/st": str(int(result["n/st"])),
+                    "v/ep": f"{result['v/ep']:.2f}",
+                    "v/st": f"{result['v/st']:.2f}",
+                }
+                if writer and env_step % log_interval == 0:
+                    for k in result.keys():
+                        writer.add_scalar(
+                            "train/" + k, result[k], global_step=env_step)
                 if test_in_train and stop_fn and stop_fn(result["rew"]):
                     test_result = test_episode(
                         policy, test_collector, test_fn,
-                        epoch, episode_per_test, writer, global_step)
+                        epoch, episode_per_test, writer, env_step)
                     if stop_fn(test_result["rew"]):
                         if save_fn:
                             save_fn(policy)
@@ -101,42 +114,38 @@ def offpolicy_trainer(
                         t.set_postfix(**data)
                         return gather_info(
                             start_time, train_collector, test_collector,
-                            test_result["rew"])
+                            test_result["rew"], test_result["rew_std"])
                     else:
                         policy.train()
                 for i in range(update_per_step * min(
                         result["n/st"] // collect_per_step, t.total - t.n)):
-                    global_step += collect_per_step
+                    gradient_step += 1
                     losses = policy.update(batch_size, train_collector.buffer)
-                    for k in result.keys():
-                        data[k] = f"{result[k]:.2f}"
-                        if writer and global_step % log_interval == 0:
-                            writer.add_scalar("train/" + k, result[k],
-                                              global_step=global_step)
                     for k in losses.keys():
                         if stat.get(k) is None:
                             stat[k] = MovAvg()
                         stat[k].add(losses[k])
                         data[k] = f"{stat[k].get():.6f}"
-                        if writer and global_step % log_interval == 0:
+                        if writer and gradient_step % log_interval == 0:
                             writer.add_scalar(
-                                k, stat[k].get(), global_step=global_step)
+                                k, stat[k].get(), global_step=gradient_step)
                     t.update(1)
                     t.set_postfix(**data)
             if t.n <= t.total:
                 t.update()
         # test
         result = test_episode(policy, test_collector, test_fn, epoch,
-                              episode_per_test, writer, global_step)
+                              episode_per_test, writer, env_step)
         if best_epoch == -1 or best_reward < result["rew"]:
-            best_reward = result["rew"]
+            best_reward, best_reward_std = result["rew"], result["rew_std"]
             best_epoch = epoch
             if save_fn:
                 save_fn(policy)
         if verbose:
-            print(f"Epoch #{epoch}: test_reward: {result['rew']:.6f}, "
-                  f"best_reward: {best_reward:.6f} in #{best_epoch}")
+            print(f"Epoch #{epoch}: test_reward: {result['rew']:.6f} ± "
+                  f"{result['rew_std']:.6f}, best_reward: {best_reward:.6f} ± "
+                  f"{best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break
-    return gather_info(
-        start_time, train_collector, test_collector, best_reward)
+    return gather_info(start_time, train_collector, test_collector,
+                       best_reward, best_reward_std)
