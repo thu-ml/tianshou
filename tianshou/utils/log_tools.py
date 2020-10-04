@@ -44,19 +44,10 @@ class SummaryWriter(tensorboard.SummaryWriter):
             if key is None:
                 key = SummaryWriter._default_key
             if SummaryWriter._instance is None:
-                writer = SummaryWriter(
-                    log_dir=log_dir,
-                    comment=comment,
-                    purge_step=purge_step,
-                    max_queue=max_queue,
-                    flush_secs=flush_secs,
-                    filename_suffix=filename_suffix,
-                )
-                SummaryWriter._instance = {key: writer}
+                SummaryWriter._instance = {}
                 SummaryWriter._default_key = key
-            elif key not in SummaryWriter._instance.keys():
-                writer = SummaryWriter(
+            if key not in SummaryWriter._instance.keys():
+                SummaryWriter._instance[key] = SummaryWriter(
                     log_dir, comment, purge_step, max_queue,
                     flush_secs, filename_suffix)
-                SummaryWriter._instance.update({key: writer})
         return SummaryWriter._instance[key]
