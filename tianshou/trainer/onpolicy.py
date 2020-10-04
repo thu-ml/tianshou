@@ -89,7 +89,7 @@ def onpolicy_trainer(
                     train_fn(epoch, env_step)
                 result = train_collector.collect(n_episode=collect_per_step)
                 env_step += int(result["n/st"])
-                data = {"env_step": env_step}
+                data = {"env_step": str(env_step)}
                 for k in result.keys():
                     data[k] = f"{result[k]:.2f}"
                     if writer and env_step % log_interval == 0:
