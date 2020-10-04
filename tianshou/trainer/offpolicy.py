@@ -114,7 +114,7 @@ def offpolicy_trainer(
                         t.set_postfix(**data)
                         return gather_info(
                             start_time, train_collector, test_collector,
-                            test_result["rew"])
+                            test_result["rew"], test_result["rew_std"])
                     else:
                         policy.train()
                 for i in range(update_per_step * min(
@@ -147,5 +147,5 @@ def offpolicy_trainer(
                   f"{best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break
-    return gather_info(
-        start_time, train_collector, test_collector, best_reward)
+    return gather_info(start_time, train_collector, test_collector,
+                       best_reward, best_reward_std)
