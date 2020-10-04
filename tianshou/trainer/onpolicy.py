@@ -71,7 +71,7 @@ def onpolicy_trainer(
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
-    global_step = 0
+    env_step, gradient_step = 0, 0
     best_epoch, best_reward = -1, -1.0
     stat: Dict[str, MovAvg] = {}
     start_time = time.time()
@@ -86,13 +86,19 @@ def onpolicy_trainer(
         ) as t:
             while t.n < t.total:
                 if train_fn:
-                    train_fn(epoch, global_step)
+                    train_fn(epoch, env_step)
                 result = train_collector.collect(n_episode=collect_per_step)
-                data = {}
+                env_step += int(result["n/st"])
+                data = {"env_step": env_step}
+                for k in result.keys():
+                    data[k] = f"{result[k]:.2f}"
+                    if writer and env_step % log_interval == 0:
+                        writer.add_scalar(
+                            "train/" + k, result[k], global_step=env_step)
                 if test_in_train and stop_fn and stop_fn(result["rew"]):
                     test_result = test_episode(
                         policy, test_collector, test_fn,
-                        epoch, episode_per_test, writer, global_step)
+                        epoch, episode_per_test, writer, env_step)
                     if stop_fn(test_result["rew"]):
                         if save_fn:
                             save_fn(policy)
@@ -108,31 +114,24 @@ def onpolicy_trainer(
                     0, train_collector.buffer,
                     batch_size=batch_size, repeat=repeat_per_collect)
                 train_collector.reset_buffer()
-                step = 1
-                for v in losses.values():
-                    if isinstance(v, list):
-                        step = max(step, len(v))
-                global_step += step * collect_per_step
-                for k in result.keys():
-                    data[k] = f"{result[k]:.2f}"
-                    if writer and global_step % log_interval == 0:
-                        writer.add_scalar(
-                            "train/" + k, result[k], global_step=global_step)
+                step = max([1] + [
+                    len(v) for v in losses.values() if isinstance(v, list)])
+                gradient_step += step
                 for k in losses.keys():
                     if stat.get(k) is None:
                         stat[k] = MovAvg()
                     stat[k].add(losses[k])
                     data[k] = f"{stat[k].get():.6f}"
-                    if writer and global_step % log_interval == 0:
+                    if writer and gradient_step % log_interval == 0:
                         writer.add_scalar(
-                            k, stat[k].get(), global_step=global_step)
+                            k, stat[k].get(), global_step=gradient_step)
                 t.update(step)
                 t.set_postfix(**data)
             if t.n <= t.total:
                 t.update()
         # test
         result = test_episode(policy, test_collector, test_fn, epoch,
-                              episode_per_test, writer, global_step)
+                              episode_per_test, writer, env_step)
         if best_epoch == -1 or best_reward < result["rew"]:
             best_reward = result["rew"]
             best_epoch = epoch

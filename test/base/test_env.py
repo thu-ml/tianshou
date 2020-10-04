@@ -111,13 +111,12 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
             t = time.time() - t
             ids = Batch(info).env_id
             print(ids, t)
-            if cls != RayVectorEnv:  # ray-project/ray#10134
-                if not (len(ids) == len(res) and np.allclose(sorted(ids), res)
-                        and (t < timeout) == (len(res) == num - 1)):
-                    pass_check = 0
-                    break
+            if not (len(ids) == len(res) and np.allclose(sorted(ids), res)
+                    and (t < timeout) == (len(res) == num - 1)):
+                pass_check = 0
+                break
         total_pass += pass_check
-    assert total_pass >= 1  # should be modified when ray>=0.9.0 release
+    assert total_pass >= 2
 
 
 def test_vecenv(size=10, num=8, sleep=0.001):
