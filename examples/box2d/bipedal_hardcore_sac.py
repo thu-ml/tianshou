@@ -93,8 +93,7 @@ def test_sac_bipedal(args=get_args()):
     # model
     net_a = Net(args.layer_num, args.state_shape, device=args.device)
     actor = ActorProb(
-        net_a, args.action_shape,
-        args.max_action, args.device
+        net_a, args.action_shape, args.max_action, args.device, unbounded=True
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
