@@ -1,3 +1,4 @@
+import free_mjc
 import os
 import gym
 import torch
@@ -16,7 +17,7 @@ from tianshou.utils.net.continuous import ActorProb, Critic
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Ant-v3')
+    parser.add_argument('--task', type=str, default='HalfCheetah-v3')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=1000000)
     parser.add_argument('--actor-lr', type=float, default=3e-4)
@@ -24,17 +25,18 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.2)
+    parser.add_argument('--n-step', type=int, default=1)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=10000)
     parser.add_argument('--collect-per-step', type=int, default=256)
-    parser.add_argument('--update-per-step', type=int, default=256)
+    parser.add_argument('--update-per-step', type=int, default=40)
     parser.add_argument('--batch-size', type=int, default=256)
     parser.add_argument('--layer-num', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--rew-norm', action="store_true")
+    parser.add_argument('--log-interval', type=int, default=1000)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -74,7 +76,7 @@ def test_sac(args=get_args()):
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma, alpha=args.alpha,
-        reward_normalization=args.rew_norm)
+        estimation_step=args.n_step)
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
@@ -87,14 +89,15 @@ def test_sac(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+        return False
 
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, args.update_per_step,
-        stop_fn=stop_fn, save_fn=save_fn, writer=writer)
+        stop_fn=stop_fn, save_fn=save_fn, writer=writer,
+        log_interval=args.log_interval)
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':
