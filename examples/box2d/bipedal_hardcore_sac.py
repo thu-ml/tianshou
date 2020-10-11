@@ -25,7 +25,7 @@ def get_args():
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.1)
     parser.add_argument('--auto_alpha', type=int, default=1)
-    parser.add_argument('--alpha_lr', type=float, default=3e-4)
+    parser.add_argument('--alpha-lr', type=float, default=3e-4)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=10000)
     parser.add_argument('--collect-per-step', type=int, default=10)
@@ -35,13 +35,11 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--rew-norm', type=int, default=0)
-    parser.add_argument('--ignore-done', type=int, default=0)
     parser.add_argument('--n-step', type=int, default=4)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
-    parser.add_argument('--resume_path', type=str, default=None)
+    parser.add_argument('--resume-path', type=str, default=None)
     return parser.parse_args()
 
 
@@ -117,8 +115,6 @@ def test_sac_bipedal(args=get_args()):
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma, alpha=args.alpha,
-        reward_normalization=args.rew_norm,
-        ignore_done=args.ignore_done,
         estimation_step=args.n_step)
     # load a previous policy
     if args.resume_path:

@@ -25,6 +25,8 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.2)
+    parser.add_argument('--auto_alpha', type=int, default=1)
+    parser.add_argument('--alpha-lr', type=float, default=3e-4)
     parser.add_argument('--n-step', type=int, default=1)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=10000)
@@ -62,8 +64,7 @@ def test_sac(args=get_args()):
     # model
     net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = ActorProb(
-        net, args.action_shape,
-        args.max_action, args.device, unbounded=True
+        net, args.action_shape, args.max_action, args.device, unbounded=True
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net = Net(args.layer_num, args.state_shape,
@@ -72,6 +73,13 @@ def test_sac(args=get_args()):
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
     critic2 = Critic(net, args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+
+    if args.auto_alpha:
+        target_entropy = -np.prod(env.action_space.shape)
+        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
+        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
+        args.alpha = (target_entropy, log_alpha, alpha_optim)
+
     policy = SACPolicy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         action_range=[env.action_space.low[0], env.action_space.high[0]],
