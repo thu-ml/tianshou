@@ -1,9 +1,12 @@
+import free_mjc
 import gym
 import torch
 import pprint
 import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
+import datetime
+import os
 
 from tianshou.policy import DDPGPolicy
 from tianshou.env import SubprocVectorEnv
@@ -75,7 +78,8 @@ def test_ddpg(args=get_args()):
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'ddpg')
+    log_path = os.path.join(args.logdir, args.task, 'ddpg', 'seed_' + str(args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
+    writer = SummaryWriter(log_path)
 
     def stop_fn(mean_rewards):
         return mean_rewards >= env.spec.reward_threshold
