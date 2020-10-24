@@ -16,6 +16,67 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.continuous import Actor, Critic
 
+
+from typing import Dict, List, Union, Optional, Callable
+import time
+import warnings
+from numbers import Number
+from typing import Dict, List, Union, Optional, Callable
+
+from tianshou.policy import BasePolicy
+from tianshou.exploration import BaseNoise
+from tianshou.data.batch import _create_value
+from tianshou.env import BaseVectorEnv, DummyVectorEnv
+from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
+
+
+class step_Collector:
+    def __init__(self, policy, env, buffer, seed):
+        self.buffer = buffer
+        self.policy = policy
+        self.env = env
+        self.env.seed(seed)
+        self.buffer.reset()
+        self.data = Batch()
+        self.data.done = True
+        self.rew_keep = 0
+        self.len_keep = 0
+        self.rew = 0
+        self.len = 0
+    def collect(self, n_step = 1, random = False):
+        for i in range(n_step):
+            if self.data.done == True:
+                self.data.obs, self.data.done = np.expand_dims(self.env.reset(), axis=0), False
+                self.rew = 0
+                self.len = 0
+                self.rew_keep = self.rew
+                self.len_keep = self.len
+            if not random:
+                with torch.no_grad():
+                    # from IPython import embed;embed()
+                    self.data.update(self.policy(self.data))#h act
+                    self.data.act = to_numpy(self.data.act)
+            else:
+                self.data.update(act = np.expand_dims(self.env.action_space.sample(), axis=0))
+            obs_next, rew, done, info = self.env.step(to_numpy(self.data.act[0]))
+            self.rew += rew
+            self.len+=1
+            self.data.update(obs_next=np.expand_dims(obs_next, axis=0), rew=rew, done=done, info=info)
+            self.buffer.add(**self.data)
+            self.data.obs = self.data.obs_next
+
+        return {
+            "n/ep": 0,
+            "n/st": 1,
+            "v/st": 0,
+            "v/ep": 0,
+            "rew": self.rew_keep,
+            "rew_std": 0,
+            "len": self.len_keep,
+        }
+    def reset_stat(self):
+        return
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Ant-v2')
@@ -87,8 +148,12 @@ def test_td3(args=get_args()):
         noise_clip=args.noise_clip,
         reward_normalization=True, ignore_done=True)
     # collector
-    train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+    # train_collector = Collector(
+    #     policy, train_envs, ReplayBuffer(args.buffer_size))
+
+    train_collector = step_Collector(
+    policy, gym.make(args.task), ReplayBuffer(args.buffer_size), args.seed)
+
     test_collector = Collector(policy, test_envs)
     #args.start_timesteps = int(args.start_timesteps)
     train_collector.collect(n_step=args.start_timesteps, random = True)
