@@ -39,18 +39,19 @@ class step_Collector:
         self.buffer.reset()
         self.data = Batch()
         self.data.done = True
+        self.done = True
         self.rew_keep = 0
         self.len_keep = 0
         self.rew = 0
         self.len = 0
     def collect(self, n_step = 1, random = False):
         for i in range(n_step):
-            if self.data.done == True:
-                self.data.obs, self.data.done = np.expand_dims(self.env.reset(), axis=0), False
-                self.rew = 0
-                self.len = 0
+            if self.done == True:
+                self.data.obs, self.done = np.expand_dims(self.env.reset(), axis=0), False
                 self.rew_keep = self.rew
                 self.len_keep = self.len
+                self.rew = 0
+                self.len = 0
             if not random:
                 with torch.no_grad():
                     # from IPython import embed;embed()
@@ -58,10 +59,13 @@ class step_Collector:
                     self.data.act = to_numpy(self.data.act)
             else:
                 self.data.update(act = np.expand_dims(self.env.action_space.sample(), axis=0))
-            obs_next, rew, done, info = self.env.step(to_numpy(self.data.act[0]))
+            obs_next, rew, self.done, info = self.env.step(to_numpy(self.data.act[0]))
             self.rew += rew
             self.len+=1
-            self.data.update(obs_next=np.expand_dims(obs_next, axis=0), rew=rew, done=done, info=info)
+            self.data.update(obs_next=np.expand_dims(obs_next, axis=0), rew=rew,
+                                done= self.done if self.len < self.env._max_episode_steps else False, info=info)
+            # if not self.len < self.env._max_episode_steps:
+            #     from IPython import embed;embed()
             self.buffer.add(**self.data)
             self.data.obs = self.data.obs_next
 
@@ -83,7 +87,7 @@ def get_args():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=1000000)
     parser.add_argument('--actor-lr', type=float, default=3e-4)
-    parser.add_argument('--critic-lr', type=float, default=3e-4)
+    parser.add_argument('--critic-lr', type=float, default=1.5e-4)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--exploration-noise', type=float, default=0.1)
@@ -146,7 +150,7 @@ def test_td3(args=get_args()):
         policy_noise=args.policy_noise,
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
-        reward_normalization=True, ignore_done=True)
+        reward_normalization=False, ignore_done=False)
     # collector
     # train_collector = Collector(
     #     policy, train_envs, ReplayBuffer(args.buffer_size))

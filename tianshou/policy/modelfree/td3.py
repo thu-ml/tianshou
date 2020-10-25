@@ -103,9 +103,10 @@ class TD3Policy(DDPGPolicy):
     def _target_q(
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
+        assert(self.updating == True)
         batch = buffer[indice]  # batch.obs: s_{t+n}
         with torch.no_grad():
-            a_ = self(batch, model="actor_old", input="obs_next").act
+            a_ = self(batch, model="actor_old", input="obs_next").act   #something wrong here indice are terminal
             dev = a_.device
             noise = torch.randn(size=a_.shape, device=dev) * self._policy_noise
             if self._noise_clip > 0.0:
@@ -139,7 +140,7 @@ class TD3Policy(DDPGPolicy):
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
         if self._cnt % self._freq == 0:
             actor_loss = -self.critic1(
-                batch.obs, self(batch, eps=0.0).act).mean()
+                batch.obs, self(batch).act).mean()
             self.actor_optim.zero_grad()
             actor_loss.backward()
             self._last = actor_loss.item()

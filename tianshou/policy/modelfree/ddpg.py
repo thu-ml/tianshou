@@ -101,6 +101,7 @@ class DDPGPolicy(BasePolicy):
     def _target_q(
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
+        assert(1==2)
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         with torch.no_grad():
             target_q = self.critic_old(
