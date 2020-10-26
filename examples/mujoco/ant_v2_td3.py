@@ -59,7 +59,7 @@ class step_Collector:
                     self.data.update(self.policy(self.data))#h act
                     self.data.act = to_numpy(self.data.act)
                     if self.noise:
-                        self.data.act = (self.noise(self.data.act)+ self.data.act).clip(-1.0,1.0)
+                        self.data.act = (self.noise(self.data.act.shape)+ self.data.act).clip(-1.0,1.0)
             else:
                 self.data.update(act = np.expand_dims(self.env.action_space.sample(), axis=0))
 
