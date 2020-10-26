@@ -58,10 +58,11 @@ class step_Collector:
                     # from IPython import embed;embed()
                     self.data.update(self.policy(self.data))#h act
                     self.data.act = to_numpy(self.data.act)
+                    if self.noise:
+                        self.data.act = (self.noise(self.data.act)+ self.data.act).clip(-1.0,1.0)
             else:
                 self.data.update(act = np.expand_dims(self.env.action_space.sample(), axis=0))
-                if self.noise:
-                    self.data.update(act = (self.noise(self.data.act)+ self.data.act).clip(-1.0,1.0))
+
             obs_next, rew, self.done, info = self.env.step(to_numpy(self.data.act[0]))
             self.rew += rew
             self.len+=1
