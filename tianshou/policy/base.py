@@ -251,7 +251,7 @@ class BasePolicy(ABC, nn.Module):
         if rew_norm:
             bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
-            if np.isclose(std, 1, rtol = 1e-2):
+            if np.isclose(std, 1.0, rtol = 1e-2):
                 mean, std = 0.0, 1.0
         else:
             mean, std = 0.0, 1.0

@@ -31,7 +31,7 @@ from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, to_numpy
 
 
 class step_Collector:
-    def __init__(self, policy, env, buffer, seed):
+    def __init__(self, policy, env, buffer, seed, noise = None):
         self.buffer = buffer
         self.policy = policy
         self.env = env
@@ -44,6 +44,7 @@ class step_Collector:
         self.len_keep = 0
         self.rew = 0
         self.len = 0
+        self.noise = noise
     def collect(self, n_step = 1, random = False):
         for i in range(n_step):
             if self.done == True:
@@ -59,6 +60,8 @@ class step_Collector:
                     self.data.act = to_numpy(self.data.act)
             else:
                 self.data.update(act = np.expand_dims(self.env.action_space.sample(), axis=0))
+                if self.noise:
+                    self.data.update(act = (self.noise(self.data.act)+ self.data.act).clip(-1.0,1.0))
             obs_next, rew, self.done, info = self.env.step(to_numpy(self.data.act[0]))
             self.rew += rew
             self.len+=1
@@ -146,7 +149,7 @@ def test_td3(args=get_args()):
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma,
-        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
+        exploration_noise=None,
         policy_noise=args.policy_noise,
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
@@ -156,7 +159,7 @@ def test_td3(args=get_args()):
     #     policy, train_envs, ReplayBuffer(args.buffer_size))
 
     train_collector = step_Collector(
-    policy, gym.make(args.task), ReplayBuffer(args.buffer_size), args.seed)
+    policy, gym.make(args.task), ReplayBuffer(args.buffer_size), args.seed, noise = GaussianNoise(sigma=args.exploration_noise))
 
     test_collector = Collector(policy, test_envs)
     #args.start_timesteps = int(args.start_timesteps)

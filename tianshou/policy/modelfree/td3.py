@@ -103,7 +103,6 @@ class TD3Policy(DDPGPolicy):
     def _target_q(
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
-        assert(self.updating == True)
         batch = buffer[indice]  # batch.obs: s_{t+n}
         with torch.no_grad():
             a_ = self(batch, model="actor_old", input="obs_next").act   #something wrong here indice are terminal
