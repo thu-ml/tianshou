@@ -91,7 +91,7 @@ def get_args():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=1000000)
     parser.add_argument('--actor-lr', type=float, default=3e-4)
-    parser.add_argument('--critic-lr', type=float, default=1.5e-4)
+    parser.add_argument('--critic-lr', type=float, default=3e-4)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--exploration-noise', type=float, default=0.1)
@@ -140,12 +140,41 @@ def test_td3(args=get_args()):
         hidden_layer_size=args.hidden_layer_size
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net = Net(args.layer_num, args.state_shape,
+    net1 = Net(args.layer_num, args.state_shape,
               args.action_shape, concat=True, hidden_layer_size=args.hidden_layer_size, device=args.device)
-    critic1 = Critic(net, args.device, hidden_layer_size=args.hidden_layer_size).to(args.device)
+    net2 = Net(args.layer_num, args.state_shape,
+                args.action_shape, concat=True, hidden_layer_size=args.hidden_layer_size, device=args.device)
+    critic1 = Critic(net1, args.device, hidden_layer_size=args.hidden_layer_size).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = Critic(net, args.device, hidden_layer_size=args.hidden_layer_size).to(args.device)
+    critic2 = Critic(net2, args.device, hidden_layer_size=args.hidden_layer_size).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+    # filename = "./examples/mujoco/models/debug"
+    # c = torch.load(filename + "_critic")
+    # co = torch.load(filename + "_critic_optimizer")
+    # a = torch.load(filename + "_actor")
+    # ao = torch.load(filename + "_actor_optimizer")
+    # critic1s = critic1.state_dict()
+    # critic2s = critic2.state_dict()
+    # actors = actor.state_dict()
+    # critic1s['last.bias'].data.copy_(c['l3.bias'])
+    # critic1s['last.weight'].data.copy_(c['l3.weight'])
+    # critic1s['preprocess.model.0.bias'].data.copy_(c['l1.bias'])
+    # critic1s['preprocess.model.0.weight'].data.copy_(c['l1.weight'])
+    # critic1s['preprocess.model.2.bias'].data.copy_(c['l2.bias'])
+    # critic1s['preprocess.model.2.weight'].data.copy_(c['l2.weight'])
+    # critic2s['last.bias'].data.copy_(c['l6.bias'])
+    # critic2s['last.weight'].data.copy_(c['l6.weight'])
+    # critic2s['preprocess.model.0.bias'].data.copy_(c['l4.bias'])
+    # critic2s['preprocess.model.0.weight'].data.copy_(c['l4.weight'])
+    # critic2s['preprocess.model.2.bias'].data.copy_(c['l5.bias'])
+    # critic2s['preprocess.model.2.weight'].data.copy_(c['l5.weight'])    
+    # actors['last.bias'].data.copy_(a['l3.bias'])
+    # actors['last.weight'].data.copy_(a['l3.weight'])
+    # actors['preprocess.model.0.bias'].data.copy_(a['l1.bias'])
+    # actors['preprocess.model.0.weight'].data.copy_(a['l1.weight'])
+    # actors['preprocess.model.2.bias'].data.copy_(a['l2.bias'])
+    # actors['preprocess.model.2.weight'].data.copy_(a['l2.weight'])
+
     policy = TD3Policy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         action_range=[env.action_space.low[0], env.action_space.high[0]],
