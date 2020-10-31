@@ -17,7 +17,7 @@ from tianshou.utils.net.continuous import ActorProb, Critic
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='HalfCheetah-v3')
+    parser.add_argument('--task', type=str, default='Ant-v3')
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=1000000)
     parser.add_argument('--actor-lr', type=float, default=3e-4)
@@ -30,8 +30,8 @@ def get_args():
     parser.add_argument('--n-step', type=int, default=1)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=10000)
-    parser.add_argument('--collect-per-step', type=int, default=256)
-    parser.add_argument('--update-per-step', type=int, default=40)
+    parser.add_argument('--collect-per-step', type=int, default=10)
+    parser.add_argument('--update-per-step', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=256)
     parser.add_argument('--layer-num', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=8)
@@ -67,11 +67,13 @@ def test_sac(args=get_args()):
         net, args.action_shape, args.max_action, args.device, unbounded=True
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net = Net(args.layer_num, args.state_shape,
-              args.action_shape, concat=True, device=args.device)
-    critic1 = Critic(net, args.device).to(args.device)
+    net_c1 = Net(args.layer_num, args.state_shape,
+                 args.action_shape, concat=True, device=args.device)
+    critic1 = Critic(net_c1, args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = Critic(net, args.device).to(args.device)
+    net_c2 = Net(args.layer_num, args.state_shape,
+                 args.action_shape, concat=True, device=args.device)
+    critic2 = Critic(net_c2, args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:
