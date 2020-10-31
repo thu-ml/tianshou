@@ -1,6 +1,6 @@
 import threading
-from typing import Dict, Optional
 from torch.utils import tensorboard
+from typing import Any, Dict, Optional
 
 
 class SummaryWriter(tensorboard.SummaryWriter):
@@ -32,12 +32,8 @@ class SummaryWriter(tensorboard.SummaryWriter):
     def get_instance(
         cls,
         key: Optional[str] = None,
-        log_dir: Optional[str] = None,
-        comment: str = "",
-        purge_step: Optional[int] = None,
-        max_queue: int = 10,
-        flush_secs: int = 120,
-        filename_suffix: str = "",
+        *args: Any,
+        **kwargs: Any,
     ) -> "SummaryWriter":
         """Get instance of torch.utils.tensorboard.SummaryWriter by key."""
         with SummaryWriter._mutex_lock:
@@ -47,7 +43,5 @@ class SummaryWriter(tensorboard.SummaryWriter):
                 SummaryWriter._instance = {}
                 SummaryWriter._default_key = key
             if key not in SummaryWriter._instance.keys():
-                SummaryWriter._instance[key] = SummaryWriter(
-                    log_dir, comment, purge_step, max_queue,
-                    flush_secs, filename_suffix)
+                SummaryWriter._instance[key] = SummaryWriter(*args, **kwargs)
         return SummaryWriter._instance[key]
