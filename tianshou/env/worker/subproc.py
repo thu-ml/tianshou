@@ -32,7 +32,7 @@ class ShArray:
 
     def __init__(self, dtype: np.generic, shape: Tuple[int]) -> None:
         self.arr = Array(
-            _NP_TO_CT[dtype.type],  # type: ignore
+            _NP_TO_CT[dtype.type],
             int(np.prod(shape)),
         )
         self.dtype = dtype
