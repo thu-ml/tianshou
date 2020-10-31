@@ -124,6 +124,7 @@ def test_dqn(args=get_args()):
 def test_pdqn(args=get_args()):
     args.prioritized_replay = 1
     args.gamma = .95
+    args.seed = 1
     test_dqn(args)
 
 

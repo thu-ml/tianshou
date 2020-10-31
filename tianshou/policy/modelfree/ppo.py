@@ -178,10 +178,11 @@ class PPOPolicy(PGPolicy):
                 losses.append(loss.item())
                 self.optim.zero_grad()
                 loss.backward()
-                nn.utils.clip_grad_norm_(
-                    list(self.actor.parameters())
-                    + list(self.critic.parameters()),
-                    self._max_grad_norm)
+                if self._max_grad_norm:
+                    nn.utils.clip_grad_norm_(
+                        list(self.actor.parameters())
+                        + list(self.critic.parameters()),
+                        self._max_grad_norm)
                 self.optim.step()
         return {
             "loss": losses,
