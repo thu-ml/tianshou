@@ -19,7 +19,7 @@ class Actor(nn.Module):
         action_shape: Sequence[int],
         max_action: float = 1.0,
         device: Union[str, int, torch.device] = "cpu",
-        hidden_layer_size: int = 128,  # hidden layer should detect preprocess_net
+        hidden_layer_size: int = 128,  #TODO hidden layer should detect preprocess_net
     ) -> None:
         super().__init__()
         self.preprocess = preprocess_net

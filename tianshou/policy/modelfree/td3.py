@@ -105,7 +105,7 @@ class TD3Policy(DDPGPolicy):
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs: s_{t+n}
         with torch.no_grad():
-            a_ = self(batch, model="actor_old", input="obs_next").act   #something wrong here indice are terminal
+            a_ = self(batch, model="actor_old", input="obs_next").act
             dev = a_.device
             noise = torch.randn(size=a_.shape, device=dev) * self._policy_noise
             if self._noise_clip > 0.0:
