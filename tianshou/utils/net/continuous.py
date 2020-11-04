@@ -94,7 +94,8 @@ class ActorProb(nn.Module):
         self.preprocess = preprocess_net
         self.device = device
         self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
-        self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
+        self.sigma = nn.Linear(hidden_layer_size, np.prod(action_shape))
+        # self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
         self._max = max_action
         self._unbounded = unbounded
 
@@ -109,9 +110,10 @@ class ActorProb(nn.Module):
         mu = self.mu(logits)
         if not self._unbounded:
             mu = self._max * torch.tanh(mu)
-        shape = [1] * len(mu.shape)
-        shape[1] = -1
-        sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
+        sigma = torch.clamp(self.sigma(logits), min=-20, max=2).exp()
+        # shape = [1] * len(mu.shape)
+        # shape[1] = -1
+        # sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
         return (mu, sigma), state
 
 
