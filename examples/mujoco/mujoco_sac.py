@@ -11,7 +11,7 @@ from tianshou.policy import SACPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Batch, Collector, ReplayBuffer, to_numpy
+from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
@@ -32,9 +32,11 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=10000)
     parser.add_argument('--collect-per-step', type=int, default=1)
     parser.add_argument('--update-per-step', type=int, default=1)
+    parser.add_argument('--pre-collect-step', type=int, default=10000)
     parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--hidden-layer-size', type=int, default=256)
     parser.add_argument('--layer-num', type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--training-num', type=int, default=1)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -62,18 +64,26 @@ def test_sac(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, device=args.device, hidden_layer_size=256)
+    net = Net(args.layer_num, args.state_shape, device=args.device,
+              hidden_layer_size=args.hidden_layer_size)
     actor = ActorProb(
-        net, args.action_shape, args.max_action, args.device, unbounded=True, hidden_layer_size=256
+        net, args.action_shape, args.max_action, args.device, unbounded=True,
+        hidden_layer_size=args.hidden_layer_size, conditioned_sigma=True,
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net_c1 = Net(args.layer_num, args.state_shape,
-                 args.action_shape, concat=True, device=args.device, hidden_layer_size=256)
-    critic1 = Critic(net_c1, args.device, hidden_layer_size=256).to(args.device)
+    net_c1 = Net(args.layer_num, args.state_shape, args.action_shape,
+                 concat=True, device=args.device,
+                 hidden_layer_size=args.hidden_layer_size)
+    critic1 = Critic(
+        net_c1, args.device, hidden_layer_size=args.hidden_layer_size
+    ).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    net_c2 = Net(args.layer_num, args.state_shape,
-                 args.action_shape, concat=True, device=args.device, hidden_layer_size=256)
-    critic2 = Critic(net_c2, args.device, hidden_layer_size=256).to(args.device)
+    net_c2 = Net(args.layer_num, args.state_shape, args.action_shape,
+                 concat=True, device=args.device,
+                 hidden_layer_size=args.hidden_layer_size)
+    critic2 = Critic(
+        net_c2, args.device, hidden_layer_size=args.hidden_layer_size
+    ).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
     print(actor)
     print(critic1)
@@ -92,7 +102,7 @@ def test_sac(args=get_args()):
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
-    train_collector.collect(n_step=10000, random=True)
+    train_collector.collect(n_step=args.pre_collect_step, random=True)
     # log
     log_path = os.path.join(args.logdir, args.task, 'sac')
     writer = SummaryWriter(log_path)

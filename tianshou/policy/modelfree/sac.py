@@ -90,7 +90,7 @@ class SACPolicy(DDPGPolicy):
         else:
             self._alpha = alpha
 
-        self._eval_act_deterministic = deterministic_eval
+        self._deterministic_eval = deterministic_eval
         self.__eps = np.finfo(np.float32).eps.item()
 
     def train(self, mode: bool = True) -> "SACPolicy":
@@ -129,8 +129,8 @@ class SACPolicy(DDPGPolicy):
         log_prob = log_prob - torch.log(y).sum(-1, keepdim=True)
         if self._noise is not None and not self.updating:
             act += to_torch_as(self._noise(act.shape), act)
-        # act = act.clamp(self._range[0], self._range[1])
-        if self._eval_act_deterministic and not self.training:
+        act = act.clamp(self._range[0], self._range[1])
+        if self._deterministic_eval and not self.training:
             act = torch.tanh(logits[0]) * \
                 self._action_scale + self._action_bias
         return Batch(
