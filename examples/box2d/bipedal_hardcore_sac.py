@@ -6,11 +6,11 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.policy import SACPolicy
+from tianshou.utils.net.common import Net
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.policy import SACPolicy
-from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
@@ -46,27 +46,26 @@ def get_args():
 class EnvWrapper(object):
     """Env wrapper for reward scale, action repeat and action noise"""
 
-    def __init__(self, task, action_repeat=3, reward_scale=5, act_noise=0.0):
+    def __init__(self, task, action_repeat=3, reward_scale=5, rm_done=True):
         self._env = gym.make(task)
         self.action_repeat = action_repeat
         self.reward_scale = reward_scale
-        self.act_noise = act_noise
+        self.rm_done = rm_done
 
     def __getattr__(self, name):
         return getattr(self._env, name)
 
     def step(self, action):
-        # add action noise
-        action += self.act_noise * (-2 * np.random.random(4) + 1)
         r = 0.0
         for _ in range(self.action_repeat):
-            obs_, reward_, done_, info_ = self._env.step(action)
+            obs, reward, done, info = self._env.step(action)
             # remove done reward penalty
-            if done_:
+            if not done or not self.rm_done:
+                r = r + reward
+            if done:
                 break
-            r = r + reward_
         # scale reward
-        return obs_, self.reward_scale * r, done_, info_
+        return obs, self.reward_scale * r, done, info
 
 
 def test_sac_bipedal(args=get_args()):
@@ -79,8 +78,9 @@ def test_sac_bipedal(args=get_args()):
     train_envs = SubprocVectorEnv(
         [lambda: EnvWrapper(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv([lambda: EnvWrapper(args.task, reward_scale=1)
-                                  for _ in range(args.test_num)])
+    test_envs = SubprocVectorEnv([
+        lambda: EnvWrapper(args.task, reward_scale=1, rm_done=False)
+        for _ in range(args.test_num)])
 
     # seed
     np.random.seed(args.seed)
