@@ -33,7 +33,7 @@ def get_args():
     parser.add_argument('--noise-clip', type=float, default=0.5)
     parser.add_argument('--update-actor-freq', type=int, default=2)
     parser.add_argument("--start-timesteps", type=int, default=25000)
-    parser.add_argument('--epoch', type=int, default=200)
+    parser.add_argument('--epoch', type=int, default=250)
     parser.add_argument('--step-per-epoch', type=int, default=5000)
     parser.add_argument('--collect-per-step', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=256)
@@ -41,7 +41,7 @@ def get_args():
     parser.add_argument('--training-num', type=int, default=1)
     parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--log-interval', type=int, default=1000)
+    parser.add_argument('--log-interval', type=int, default=1)
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
         '--device', type=str,
@@ -90,11 +90,9 @@ def test_td3(args=get_args()):
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip)
     # collector
-    # train_collector = Collector(
-    #     policy, train_envs, ReplayBuffer(args.buffer_size))
+    train_collector = Collector(
+        policy, train_envs, ReplayBuffer(args.buffer_size), action_noise=GaussianNoise(sigma=args.exploration_noise))
 
-    train_collector = step_Collector(
-    policy, gym.make(args.task), ReplayBuffer(args.buffer_size), args.seed, noise = GaussianNoise(sigma=args.exploration_noise))
 
     test_collector = Collector(policy, test_envs)
     train_collector.collect(n_step=args.start_timesteps, random = True)
