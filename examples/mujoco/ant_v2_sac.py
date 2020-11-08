@@ -1,4 +1,3 @@
-import free_mjc
 import os
 import datetime
 
@@ -83,7 +82,9 @@ def test_sac(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'sac', 'seed_' + str(args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
+    log_path = os.path.join(args.logdir, args.task, 'sac', 'seed_' +
+                            str(args.seed) + '_' +
+                            datetime.datetime.now().strftime('%m%d-%H%M%S'))
     writer = SummaryWriter(log_path)
 
     def save_fn(policy):

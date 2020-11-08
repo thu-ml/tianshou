@@ -1,4 +1,3 @@
-import free_mjc
 import os
 import datetime
 
@@ -66,7 +65,8 @@ def test_td3(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, hidden_layer_size=args.hidden_layer_size, device=args.device)
+    net = Net(args.layer_num, args.state_shape,
+              hidden_layer_size=args.hidden_layer_size, device=args.device)
     actor = Actor(
         net, args.action_shape,
         args.max_action, args.device,
@@ -74,12 +74,18 @@ def test_td3(args=get_args()):
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net1 = Net(args.layer_num, args.state_shape,
-              args.action_shape, concat=True, hidden_layer_size=args.hidden_layer_size, device=args.device)
+               args.action_shape, concat=True,
+               hidden_layer_size=args.hidden_layer_size,
+               device=args.device)
     net2 = Net(args.layer_num, args.state_shape,
-                args.action_shape, concat=True, hidden_layer_size=args.hidden_layer_size, device=args.device)
-    critic1 = Critic(net1, args.device, hidden_layer_size=args.hidden_layer_size).to(args.device)
+               args.action_shape, concat=True,
+               hidden_layer_size=args.hidden_layer_size,
+               device=args.device)
+    critic1 = Critic(net1, args.device,
+                     hidden_layer_size=args.hidden_layer_size).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = Critic(net2, args.device, hidden_layer_size=args.hidden_layer_size).to(args.device)
+    critic2 = Critic(net2, args.device,
+                     hidden_layer_size=args.hidden_layer_size).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
     policy = TD3Policy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
@@ -91,24 +97,22 @@ def test_td3(args=get_args()):
         noise_clip=args.noise_clip)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size), action_noise=GaussianNoise(sigma=args.exploration_noise))
-
+        policy, train_envs, ReplayBuffer(args.buffer_size),
+        action_noise=GaussianNoise(sigma=args.exploration_noise))
 
     test_collector = Collector(policy, test_envs)
-    train_collector.collect(n_step=args.start_timesteps, random = True)
+    train_collector.collect(n_step=args.start_timesteps, random=True)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'td3', 'seed_' + str(args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
+    log_path = os.path.join(args.logdir, args.task, 'td3', 'seed_' + str(
+        args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
     writer = SummaryWriter(log_path)
-
-    def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
 
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
-        args.batch_size, stop_fn=stop_fn, writer=writer, log_interval = args.log_interval)
-    assert stop_fn(result['best_reward'])
+        args.batch_size, writer=writer, log_interval=args.log_interval)
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!

@@ -1,4 +1,3 @@
-import free_mjc
 import os
 import datetime
 
@@ -79,7 +78,9 @@ def test_ddpg(args=get_args()):
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'ddpg', 'seed_' + str(args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
+    log_path = os.path.join(args.logdir, args.task, 'ddpg', 'seed_' +
+                            str(args.seed) + '_' +
+                            datetime.datetime.now().strftime('%m%d-%H%M%S'))
     writer = SummaryWriter(log_path)
 
     def stop_fn(mean_rewards):
