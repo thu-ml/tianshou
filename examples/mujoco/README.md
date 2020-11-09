@@ -16,5 +16,10 @@ The best reward computes from 100 episodes returns in the test phase.
 
 ![](results/sac/all.png)
 
+### Which parts are important?
 
+0. DO NOT share the same network with two critic networks.
+1. The sigma (of the Gaussian policy) MUST be conditioned on input.
+2. The network size should not be less than 256.
+3. The deterministic evaluation helps a lot :)
 
