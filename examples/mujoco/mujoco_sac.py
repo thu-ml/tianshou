@@ -1,4 +1,3 @@
-import free_mjc
 import os
 import gym
 import torch
@@ -28,7 +27,7 @@ def get_args():
     parser.add_argument('--auto-alpha', type=int, default=0)
     parser.add_argument('--alpha-lr', type=float, default=3e-4)
     parser.add_argument('--n-step', type=int, default=2)
-    parser.add_argument('--epoch', type=int, default=67)  # 3M
+    parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=10000)
     parser.add_argument('--collect-per-step', type=int, default=4)
     parser.add_argument('--update-per-step', type=int, default=1)
