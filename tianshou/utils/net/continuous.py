@@ -6,6 +6,10 @@ from typing import Any, Dict, Tuple, Union, Optional, Sequence
 from tianshou.data import to_torch, to_torch_as
 
 
+SIGMA_MIN = -20
+SIGMA_MAX = 2
+
+
 class Actor(nn.Module):
     """Simple actor network with MLP.
 
@@ -89,12 +93,17 @@ class ActorProb(nn.Module):
         device: Union[str, int, torch.device] = "cpu",
         unbounded: bool = False,
         hidden_layer_size: int = 128,
+        conditioned_sigma: bool = False,
     ) -> None:
         super().__init__()
         self.preprocess = preprocess_net
         self.device = device
         self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
-        self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
+        self._c_sigma = conditioned_sigma
+        if conditioned_sigma:
+            self.sigma = nn.Linear(hidden_layer_size, np.prod(action_shape))
+        else:
+            self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
         self._max = max_action
         self._unbounded = unbounded
 
@@ -109,9 +118,14 @@ class ActorProb(nn.Module):
         mu = self.mu(logits)
         if not self._unbounded:
             mu = self._max * torch.tanh(mu)
-        shape = [1] * len(mu.shape)
-        shape[1] = -1
-        sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
+        if self._c_sigma:
+            sigma = torch.clamp(
+                self.sigma(logits), min=SIGMA_MIN, max=SIGMA_MAX
+            ).exp()
+        else:
+            shape = [1] * len(mu.shape)
+            shape[1] = -1
+            sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
         return (mu, sigma), state
 
 
@@ -131,6 +145,7 @@ class RecurrentActorProb(nn.Module):
         device: Union[str, int, torch.device] = "cpu",
         unbounded: bool = False,
         hidden_layer_size: int = 128,
+        conditioned_sigma: bool = False,
     ) -> None:
         super().__init__()
         self.device = device
@@ -141,7 +156,11 @@ class RecurrentActorProb(nn.Module):
             batch_first=True,
         )
         self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
-        self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
+        self._c_sigma = conditioned_sigma
+        if conditioned_sigma:
+            self.sigma = nn.Linear(hidden_layer_size, np.prod(action_shape))
+        else:
+            self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
         self._max = max_action
         self._unbounded = unbounded
 
@@ -170,9 +189,14 @@ class RecurrentActorProb(nn.Module):
         mu = self.mu(logits)
         if not self._unbounded:
             mu = self._max * torch.tanh(mu)
-        shape = [1] * len(mu.shape)
-        shape[1] = -1
-        sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
+        if self._c_sigma:
+            sigma = torch.clamp(
+                self.sigma(logits), min=SIGMA_MIN, max=SIGMA_MAX
+            ).exp()
+        else:
+            shape = [1] * len(mu.shape)
+            shape[1] = -1
+            sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
         # please ensure the first dim is batch size: [bsz, len, ...]
         return (mu, sigma), {"h": h.transpose(0, 1).detach(),
                              "c": c.transpose(0, 1).detach()}

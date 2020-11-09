@@ -6,11 +6,11 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.policy import SACPolicy
+from tianshou.utils.net.common import Net
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.policy import SACPolicy
-from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
@@ -24,8 +24,8 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.1)
-    parser.add_argument('--auto_alpha', type=int, default=1)
-    parser.add_argument('--alpha_lr', type=float, default=3e-4)
+    parser.add_argument('--auto-alpha', type=int, default=1)
+    parser.add_argument('--alpha-lr', type=float, default=3e-4)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=10000)
     parser.add_argument('--collect-per-step', type=int, default=10)
@@ -35,54 +35,50 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--rew-norm', type=int, default=0)
-    parser.add_argument('--ignore-done', type=int, default=0)
     parser.add_argument('--n-step', type=int, default=4)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
-    parser.add_argument('--resume_path', type=str, default=None)
+    parser.add_argument('--resume-path', type=str, default=None)
     return parser.parse_args()
 
 
-class EnvWrapper(object):
-    """Env wrapper for reward scale, action repeat and action noise"""
+class Wrapper(gym.Wrapper):
+    """Env wrapper for reward scale, action repeat and removing done penalty"""
 
-    def __init__(self, task, action_repeat=3, reward_scale=5, act_noise=0.0):
-        self._env = gym.make(task)
+    def __init__(self, env, action_repeat=3, reward_scale=5, rm_done=True):
+        super().__init__(env)
         self.action_repeat = action_repeat
         self.reward_scale = reward_scale
-        self.act_noise = act_noise
-
-    def __getattr__(self, name):
-        return getattr(self._env, name)
+        self.rm_done = rm_done
 
     def step(self, action):
-        # add action noise
-        action += self.act_noise * (-2 * np.random.random(4) + 1)
         r = 0.0
         for _ in range(self.action_repeat):
-            obs_, reward_, done_, info_ = self._env.step(action)
+            obs, reward, done, info = self.env.step(action)
             # remove done reward penalty
-            if done_:
+            if not done or not self.rm_done:
+                r = r + reward
+            if done:
                 break
-            r = r + reward_
         # scale reward
-        return obs_, self.reward_scale * r, done_, info_
+        return obs, self.reward_scale * r, done, info
 
 
 def test_sac_bipedal(args=get_args()):
-    env = EnvWrapper(args.task)
+    env = Wrapper(gym.make(args.task))
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
 
-    train_envs = SubprocVectorEnv(
-        [lambda: EnvWrapper(args.task) for _ in range(args.training_num)])
+    train_envs = SubprocVectorEnv([
+        lambda: Wrapper(gym.make(args.task))
+        for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv([lambda: EnvWrapper(args.task, reward_scale=1)
-                                  for _ in range(args.test_num)])
+    test_envs = SubprocVectorEnv([
+        lambda: Wrapper(gym.make(args.task), reward_scale=1, rm_done=False)
+        for _ in range(args.test_num)])
 
     # seed
     np.random.seed(args.seed)
@@ -117,8 +113,6 @@ def test_sac_bipedal(args=get_args()):
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma, alpha=args.alpha,
-        reward_normalization=args.rew_norm,
-        ignore_done=args.ignore_done,
         estimation_step=args.n_step)
     # load a previous policy
     if args.resume_path:

@@ -38,6 +38,9 @@ class SACPolicy(DDPGPolicy):
         defaults to False.
     :param BaseNoise exploration_noise: add a noise to action for exploration,
         defaults to None. This is useful when solving hard-exploration problem.
+    :param bool deterministic_eval: whether to use deterministic action (mean
+        of Gaussian policy) instead of stochastic action sampled by the policy,
+        defaults to True.
 
     .. seealso::
 
@@ -63,6 +66,7 @@ class SACPolicy(DDPGPolicy):
         ignore_done: bool = False,
         estimation_step: int = 1,
         exploration_noise: Optional[BaseNoise] = None,
+        deterministic_eval: bool = True,
         **kwargs: Any,
     ) -> None:
         super().__init__(None, None, None, None, action_range, tau, gamma,
@@ -86,6 +90,7 @@ class SACPolicy(DDPGPolicy):
         else:
             self._alpha = alpha
 
+        self._deterministic_eval = deterministic_eval
         self.__eps = np.finfo(np.float32).eps.item()
 
     def train(self, mode: bool = True) -> "SACPolicy":
@@ -116,13 +121,16 @@ class SACPolicy(DDPGPolicy):
         logits, h = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
         dist = Independent(Normal(*logits), 1)
-        x = dist.rsample()
+        if self._deterministic_eval and not self.training:
+            x = logits[0]
+        else:
+            x = dist.rsample()
         y = torch.tanh(x)
         act = y * self._action_scale + self._action_bias
         y = self._action_scale * (1 - y.pow(2)) + self.__eps
         log_prob = dist.log_prob(x).unsqueeze(-1)
         log_prob = log_prob - torch.log(y).sum(-1, keepdim=True)
-        if self._noise is not None and not self.updating:
+        if self._noise is not None and self.training and not self.updating:
             act += to_torch_as(self._noise(act.shape), act)
         act = act.clamp(self._range[0], self._range[1])
         return Batch(

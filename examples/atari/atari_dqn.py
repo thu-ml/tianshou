@@ -58,8 +58,8 @@ def test_dqn(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.env.action_space.shape or env.env.action_space.n
     # should be N_FRAMES x H x W
-    print("Observations shape: ", args.state_shape)
-    print("Actions shape: ", args.action_shape)
+    print("Observations shape:", args.state_shape)
+    print("Actions shape:", args.action_shape)
     # make environments
     train_envs = SubprocVectorEnv([lambda: make_atari_env(args)
                                    for _ in range(args.training_num)])
@@ -79,7 +79,9 @@ def test_dqn(args=get_args()):
                        target_update_freq=args.target_update_freq)
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(args.resume_path))
+        policy.load_state_dict(torch.load(
+            args.resume_path, map_location=args.device
+        ))
         print("Loaded agent from: ", args.resume_path)
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM

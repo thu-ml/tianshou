@@ -62,11 +62,11 @@ def test_discrete_sac(args=get_args()):
     net = Net(args.layer_num, args.state_shape, device=args.device)
     actor = Actor(net, args.action_shape, softmax_output=False).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net = Net(args.layer_num, args.state_shape, device=args.device)
-    critic1 = Critic(net, last_size=args.action_shape).to(args.device)
+    net_c1 = Net(args.layer_num, args.state_shape, device=args.device)
+    critic1 = Critic(net_c1, last_size=args.action_shape).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    net = Net(args.layer_num, args.state_shape, device=args.device)
-    critic2 = Critic(net, last_size=args.action_shape).to(args.device)
+    net_c2 = Net(args.layer_num, args.state_shape, device=args.device)
+    critic2 = Critic(net_c2, last_size=args.action_shape).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     # better not to use auto alpha in CartPole
