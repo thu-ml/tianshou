@@ -48,7 +48,6 @@ class Wrapper(gym.Wrapper):
 
     def __init__(self, env, action_repeat=3, reward_scale=5, rm_done=True):
         super().__init__(env)
-        self.env = env
         self.action_repeat = action_repeat
         self.reward_scale = reward_scale
         self.rm_done = rm_done
