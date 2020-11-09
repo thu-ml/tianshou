@@ -72,6 +72,8 @@ def test_td3(args=get_args()):
               args.action_shape, concat=True, device=args.device)
     critic1 = Critic(net, args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    net = Net(args.layer_num, args.state_shape,
+              args.action_shape, concat=True, device=args.device)
     critic2 = Critic(net, args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
     policy = TD3Policy(

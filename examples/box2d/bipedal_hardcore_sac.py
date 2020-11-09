@@ -43,22 +43,20 @@ def get_args():
     return parser.parse_args()
 
 
-class EnvWrapper(object):
-    """Env wrapper for reward scale, action repeat and action noise"""
+class Wrapper(gym.Wrapper):
+    """Env wrapper for reward scale, action repeat and removing done penalty"""
 
-    def __init__(self, task, action_repeat=3, reward_scale=5, rm_done=True):
-        self._env = gym.make(task)
+    def __init__(self, env, action_repeat=3, reward_scale=5, rm_done=True):
+        super().__init__(env)
+        self.env = env
         self.action_repeat = action_repeat
         self.reward_scale = reward_scale
         self.rm_done = rm_done
 
-    def __getattr__(self, name):
-        return getattr(self._env, name)
-
     def step(self, action):
         r = 0.0
         for _ in range(self.action_repeat):
-            obs, reward, done, info = self._env.step(action)
+            obs, reward, done, info = self.env.step(action)
             # remove done reward penalty
             if not done or not self.rm_done:
                 r = r + reward
@@ -69,17 +67,18 @@ class EnvWrapper(object):
 
 
 def test_sac_bipedal(args=get_args()):
-    env = EnvWrapper(args.task)
+    env = Wrapper(gym.make(args.task))
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
 
-    train_envs = SubprocVectorEnv(
-        [lambda: EnvWrapper(args.task) for _ in range(args.training_num)])
+    train_envs = SubprocVectorEnv([
+        lambda: Wrapper(gym.make(args.task))
+        for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv([
-        lambda: EnvWrapper(args.task, reward_scale=1, rm_done=False)
+        lambda: Wrapper(gym.make(args.task), reward_scale=1, rm_done=False)
         for _ in range(args.test_num)])
 
     # seed

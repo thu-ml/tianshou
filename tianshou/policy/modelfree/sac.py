@@ -39,8 +39,8 @@ class SACPolicy(DDPGPolicy):
     :param BaseNoise exploration_noise: add a noise to action for exploration,
         defaults to None. This is useful when solving hard-exploration problem.
     :param bool deterministic_eval: whether to use deterministic action (mean
-        of Gaussian policy) instead of random Gaussian policy, defaults to
-        True.
+        of Gaussian policy) instead of stochastic action sampled by the policy,
+        defaults to True.
 
     .. seealso::
 
@@ -121,7 +121,10 @@ class SACPolicy(DDPGPolicy):
         logits, h = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
         dist = Independent(Normal(*logits), 1)
-        x = dist.rsample()
+        if self._deterministic_eval and not self.training:
+            x = logits[0]
+        else:
+            x = dist.rsample()
         y = torch.tanh(x)
         act = y * self._action_scale + self._action_bias
         y = self._action_scale * (1 - y.pow(2)) + self.__eps
@@ -130,9 +133,6 @@ class SACPolicy(DDPGPolicy):
         if self._noise is not None and not self.updating:
             act += to_torch_as(self._noise(act.shape), act)
         act = act.clamp(self._range[0], self._range[1])
-        if self._deterministic_eval and not self.training:
-            act = torch.tanh(logits[0]) * \
-                self._action_scale + self._action_bias
         return Batch(
             logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
 

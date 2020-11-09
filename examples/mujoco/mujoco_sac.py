@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.2)
-    parser.add_argument('--auto-alpha', type=int, default=0)
+    parser.add_argument('--auto-alpha', default=False, action='store_true')
     parser.add_argument('--alpha-lr', type=float, default=3e-4)
     parser.add_argument('--n-step', type=int, default=2)
     parser.add_argument('--epoch', type=int, default=100)
@@ -43,6 +43,9 @@ def get_args():
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument('--watch', default=False, action='store_true',
+                        help='watch the play of pre-trained policy only')
     return parser.parse_args()
 
 
@@ -51,6 +54,10 @@ def test_sac(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
+    print("Observations shape:", args.state_shape)
+    print("Actions shape:", args.action_shape)
+    print("Action range:", np.min(env.action_space.low),
+          np.max(env.action_space.high))
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
@@ -96,14 +103,30 @@ def test_sac(args=get_args()):
         action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma, alpha=args.alpha,
         estimation_step=args.n_step)
+    # load a previous policy
+    if args.resume_path:
+        policy.load_state_dict(torch.load(
+            args.resume_path, map_location=args.device
+        ))
+        print("Loaded agent from: ", args.resume_path)
+
     # collector
     train_collector = Collector(
         policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
-    train_collector.collect(n_step=args.pre_collect_step, random=True)
     # log
     log_path = os.path.join(args.logdir, args.task, 'sac')
     writer = SummaryWriter(log_path)
+
+    def watch():
+        # watch agent's performance
+        print("Testing agent ...")
+        policy.eval()
+        test_envs.seed(args.seed)
+        test_collector.reset()
+        result = test_collector.collect(n_episode=[1] * args.test_num,
+                                        render=args.render)
+        pprint.pprint(result)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
@@ -111,23 +134,20 @@ def test_sac(args=get_args()):
     def stop_fn(mean_rewards):
         return False
 
+    if args.watch:
+        watch()
+        exit(0)
+
     # trainer
+    train_collector.collect(n_step=args.pre_collect_step, random=True)
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, args.update_per_step,
         stop_fn=stop_fn, save_fn=save_fn, writer=writer,
         log_interval=args.log_interval)
-
-    if __name__ == '__main__':
-        pprint.pprint(result)
-        # Let's watch its performance!
-        policy.eval()
-        test_envs.seed(args.seed)
-        test_collector.reset()
-        result = test_collector.collect(n_episode=[1] * args.test_num,
-                                        render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+    pprint.pprint(result)
+    watch()
 
 
 if __name__ == '__main__':

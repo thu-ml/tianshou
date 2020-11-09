@@ -6,6 +6,8 @@
 
 The best reward computes from 100 episodes returns in the test phase.
 
+SAC on Swimmer-v3 always stops at 47\~48.
+
 | task           | 3M best reward    | parameters                                              | time cost (3M) |
 | -------------- | ----------------- | ------------------------------------------------------- | -------------- |
 | HalfCheetah-v3 | 10157.70 ± 171.70 | `python3 mujoco_sac.py --task HalfCheetah-v3`           | 2~3h           |
