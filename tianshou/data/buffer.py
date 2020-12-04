@@ -383,6 +383,8 @@ class ReplayBuffer:
         """Loads only contents of the replay buffer from file."""
         with h5py.File(path, "r") as f:
             assert f.attrs["_maxsize"] == self._maxsize, f"Data size in '{path}' deviates from buffer size."
+            for k in ["_size", "_index"]:
+                self.__dict__[k] = f.attrs[k]
             self._copy_data_from_hdf5(f)
 
     @classmethod
