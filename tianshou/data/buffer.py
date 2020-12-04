@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union, Optional
+import h5py
 
 from tianshou.data import Batch, SegmentTree, to_numpy
 from tianshou.data.batch import _create_value
@@ -359,6 +360,44 @@ class ReplayBuffer:
             policy=self.get(index, "policy"),
         )
 
+    def save(self, path: str) -> None:
+        """Saves state of the replay buffer to file."""
+        #state = self._get_state()
+        with h5py.File(path, "w") as f:
+            for k, v in self.__dict__.items():
+                if k not in ["_meta", "_indices"]:
+                    f.attrs[k] = v
+
+            for k, v in self._meta.__dict__.items():
+                if isinstance(v, np.ndarray):
+                    f.create_dataset(k, data = v)
+
+    def _copy_data_from_hdf5(self, f: h5py.File) -> None:
+        for k, d in f.items():
+            if k in self._meta.__dict__:
+                d.read_direct(self._meta.__dict__[k])
+            else:
+                self._meta.__dict__[k] = np.array(d)
+
+    def load_contents(self, path: str) -> None:
+        """Loads only contents of the replay buffer from file."""
+        with h5py.File(path, "r") as f:
+            assert f.attrs["_maxsize"] == self._maxsize, f"Data size in '{path}' deviates from buffer size."
+            self._copy_data_from_hdf5(f)
+
+    @classmethod
+    def load(cls, path: str) -> "ReplayBuffer":
+        """Loads replay buffer from file."""
+        with h5py.File(path, "r") as f:
+            buf = cls(size = f.attrs["_maxsize"])
+            for k, v in f.attrs.items():
+                buf.__dict__[k] = v
+            buf._copy_data_from_hdf5(f)
+
+        return buf
+
+        
+
 
 class ListReplayBuffer(ReplayBuffer):
     """List-based replay buffer.
@@ -495,3 +534,4 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             policy=self.get(index, "policy"),
             weight=self.weight[index],
         )
+
