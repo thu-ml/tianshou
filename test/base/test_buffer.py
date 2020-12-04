@@ -304,7 +304,8 @@ def test_hdf5():
 
     assertions()
 
-    # load contents of replay buffer
+    # load only contents of replay buffer
+    _vbuf = ReplayBuffer(size, stack_num=2)
     _vbuf.load_contents(path)
 
     assertions()
