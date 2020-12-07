@@ -279,6 +279,7 @@ def test_pickle():
     assert np.allclose(_pbuf.weight[np.arange(len(_pbuf))],
                        pbuf.weight[np.arange(len(pbuf))])
 
+
 def test_hdf5():
     size = 100
     vbuf = ReplayBuffer(size, stack_num=2)
@@ -288,7 +289,7 @@ def test_hdf5():
         vbuf.add(obs=Batch(index=np.array([i])), act=i, rew=rew, done=0)
 
     # save
-    f, path = tempfile.mkstemp(suffix = '.hdf5')
+    f, path = tempfile.mkstemp(suffix='.hdf5')
     os.close(f)
     vbuf.save(path)
 
