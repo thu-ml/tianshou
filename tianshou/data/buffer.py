@@ -361,7 +361,7 @@ class ReplayBuffer:
         )
 
     def save(self, path: str) -> None:
-        """Saves state of the replay buffer to file."""
+        """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
             for k, v in self.__dict__.items():
                 if k not in ["_meta", "_indices"]:
@@ -379,7 +379,7 @@ class ReplayBuffer:
                 self._meta.__dict__[k] = np.array(d)
 
     def load_contents(self, path: str) -> None:
-        """Loads only contents of the replay buffer from file."""
+        """Load only contents of the replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             assert f.attrs["_maxsize"] == self._maxsize, \
                     f"Data size in '{path}' deviates from buffer size."
@@ -389,7 +389,7 @@ class ReplayBuffer:
 
     @classmethod
     def load(cls, path: str) -> "ReplayBuffer":
-        """Loads replay buffer from file."""
+        """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             buf = cls(size=f.attrs["_maxsize"])
             for k, v in f.attrs.items():
