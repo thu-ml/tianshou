@@ -286,7 +286,8 @@ def test_hdf5():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     rew = torch.tensor([1.]).to(device)
     for i in range(4):
-        vbuf.add(obs=Batch(index=np.array([i])), act=i, rew=rew, done=0)
+        vbuf.add(obs=Batch(index=np.array([i])), act=i, rew=rew, done=0, 
+                info={"number": i})
 
     # save
     f, path = tempfile.mkstemp(suffix='.hdf5')
@@ -296,20 +297,23 @@ def test_hdf5():
     # load replay buffer
     _vbuf = ReplayBuffer.load(path)
 
-    def assertions():
+    def assertions(vbuf, _vbuf):
         assert len(_vbuf) == len(vbuf) and np.allclose(_vbuf.act, vbuf.act)
         assert _vbuf.stack_num == vbuf.stack_num
         assert _vbuf._maxsize == vbuf._maxsize
         assert _vbuf._index == vbuf._index
         assert np.all(_vbuf._indices == vbuf._indices)
+        assert isinstance(vbuf.get(0, "info"), Batch)
+        assert isinstance(_vbuf.get(0, "info"), Batch)
+        assert np.all(vbuf[:]["info"]["number"]  == _vbuf[:]["info"]["number"])
 
-    assertions()
+    assertions(vbuf, _vbuf)
 
     # load only contents of replay buffer
     _vbuf = ReplayBuffer(size, stack_num=2)
     _vbuf.load_contents(path)
 
-    assertions()
+    assertions(vbuf, _vbuf)
 
     os.remove(path)
 

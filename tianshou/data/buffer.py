@@ -360,6 +360,36 @@ class ReplayBuffer:
             policy=self.get(index, "policy"),
         )
 
+    @classmethod
+    def _copy_to_hdf5(cls, k: str, v: Union[np.ndarray, Batch], grp: h5py.Group) -> None:
+        if isinstance(v, np.ndarray):
+            grp.create_dataset(k, data=v)
+        elif isinstance(v, torch.Tensor):
+            grp.create_dataset(k, data=v.numpy())
+        elif isinstance(v, Batch):
+            subgrp = grp.create_group(k)
+            for bk, bv in v.__dict__.items():
+                cls._copy_to_hdf5(bk, bv, subgrp)
+
+    @classmethod
+    def _copy_from_hdf5(cls, grp: h5py.Group, dst: Batch) -> None:
+        for k, v in grp.items():
+            if isinstance(v, h5py.Group):
+                if k not in dst.__dict__:
+                    dst.__dict__[k] = Batch()
+                cls._copy_from_hdf5(v, dst.__dict__[k])
+            elif isinstance(v, h5py.Dataset):
+                if k in dst.__dict__:
+                    if isinstance(dst.__dict__[k], np.ndarray):
+                        v.read_direct(dst.__dict__[k])
+                    elif isinstance(dst.__dict__[k], torch.Tensor):
+                        dst.__dict__[k] = torch.Tensor(v)
+                    else:
+                        raise Exception("Cannot copy HDF5 dataset into object" 
+                                    f"with type {type(dst.__dict__[k])}.")
+                else:
+                    dst.__dict__[k] = np.array(v)
+
     def save(self, path: str) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
@@ -368,15 +398,7 @@ class ReplayBuffer:
                     f.attrs[k] = v
 
             for k, v in self._meta.__dict__.items():
-                if isinstance(v, np.ndarray):
-                    f.create_dataset(k, data=v)
-
-    def _copy_data_from_hdf5(self, f: h5py.File) -> None:
-        for k, d in f.items():
-            if k in self._meta.__dict__:
-                d.read_direct(self._meta.__dict__[k])
-            else:
-                self._meta.__dict__[k] = np.array(d)
+                self._copy_to_hdf5(k, v, f)
 
     def load_contents(self, path: str) -> None:
         """Load only contents of the replay buffer from HDF5 file."""
@@ -385,7 +407,7 @@ class ReplayBuffer:
                     f"Data size in '{path}' deviates from buffer size."
             for k in ["_size", "_index"]:
                 self.__dict__[k] = f.attrs[k]
-            self._copy_data_from_hdf5(f)
+            self._copy_from_hdf5(f, self._meta)
 
     @classmethod
     def load(cls, path: str) -> "ReplayBuffer":
@@ -394,7 +416,7 @@ class ReplayBuffer:
             buf = cls(size=f.attrs["_maxsize"])
             for k, v in f.attrs.items():
                 buf.__dict__[k] = v
-            buf._copy_data_from_hdf5(f)
+            cls._copy_from_hdf5(f, buf._meta)
 
         return buf
 
