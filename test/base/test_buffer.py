@@ -286,7 +286,11 @@ def test_hdf5():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     rew = torch.tensor([1.]).to(device)
     for i in range(4):
-        vbuf.add(obs=Batch(index=np.array([i])), act=i, rew=rew, done=0, 
+        vbuf.add(
+                obs=Batch(index=np.array([i])), 
+                act=i, 
+                rew=rew, 
+                done=0, 
                 info={"number": i})
 
     # save
@@ -305,7 +309,7 @@ def test_hdf5():
         assert np.all(_vbuf._indices == vbuf._indices)
         assert isinstance(vbuf.get(0, "info"), Batch)
         assert isinstance(_vbuf.get(0, "info"), Batch)
-        assert np.all(vbuf[:]["info"]["number"]  == _vbuf[:]["info"]["number"])
+        assert np.all(vbuf[:]["info"]["number"] == _vbuf[:]["info"]["number"])
 
     assertions(vbuf, _vbuf)
 

@@ -361,7 +361,9 @@ class ReplayBuffer:
         )
 
     @classmethod
-    def _copy_to_hdf5(cls, k: str, v: Union[np.ndarray, Batch], grp: h5py.Group) -> None:
+    def _copy_to_hdf5(
+            cls, k: str, v: Union[np.ndarray, Batch], grp: h5py.Group
+            ) -> None:
         if isinstance(v, np.ndarray):
             grp.create_dataset(k, data=v)
         elif isinstance(v, torch.Tensor):
@@ -385,7 +387,7 @@ class ReplayBuffer:
                     elif isinstance(dst.__dict__[k], torch.Tensor):
                         dst.__dict__[k] = torch.Tensor(v)
                     else:
-                        raise Exception("Cannot copy HDF5 dataset into object" 
+                        raise Exception("Cannot copy HDF5 dataset into object"
                                     f"with type {type(dst.__dict__[k])}.")
                 else:
                     dst.__dict__[k] = np.array(v)
