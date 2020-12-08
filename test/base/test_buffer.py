@@ -287,10 +287,10 @@ def test_hdf5():
     rew = torch.tensor([1.]).to(device)
     for i in range(4):
         vbuf.add(
-                obs=Batch(index=np.array([i])), 
-                act=i, 
-                rew=rew, 
-                done=0, 
+                obs=Batch(index=np.array([i])),
+                act=i,
+                rew=rew,
+                done=0,
                 info={"number": i})
 
     # save

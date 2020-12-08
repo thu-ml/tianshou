@@ -374,7 +374,9 @@ class ReplayBuffer:
                 cls._copy_to_hdf5(bk, bv, subgrp)
 
     @classmethod
-    def _copy_from_hdf5(cls, grp: h5py.Group, dst: Batch) -> None:
+    def _copy_from_hdf5(
+            cls, grp: h5py.Group, dst: Batch, device: Optional[str] = None
+            ) -> None:
         for k, v in grp.items():
             if isinstance(v, h5py.Group):
                 if k not in dst.__dict__:
@@ -385,12 +387,13 @@ class ReplayBuffer:
                     if isinstance(dst.__dict__[k], np.ndarray):
                         v.read_direct(dst.__dict__[k])
                     elif isinstance(dst.__dict__[k], torch.Tensor):
-                        dst.__dict__[k] = torch.Tensor(v)
+                        dst.__dict__[k] = torch.tensor(v, device=device)
                     else:
                         raise Exception("Cannot copy HDF5 dataset into object"
-                                    f"with type {type(dst.__dict__[k])}.")
+                                        f"with type {type(dst.__dict__[k])}.")
                 else:
-                    dst.__dict__[k] = np.array(v)
+                    dst.__dict__[k] = np.empty(v.shape, dtype=v.dtype)
+                    v.read_direct(dst.__dict__[k])
 
     def save(self, path: str) -> None:
         """Save replay buffer to HDF5 file."""
@@ -402,23 +405,23 @@ class ReplayBuffer:
             for k, v in self._meta.__dict__.items():
                 self._copy_to_hdf5(k, v, f)
 
-    def load_contents(self, path: str) -> None:
+    def load_contents(self, path: str, device: Optional[str] = None) -> None:
         """Load only contents of the replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             assert f.attrs["_maxsize"] == self._maxsize, \
                     f"Data size in '{path}' deviates from buffer size."
             for k in ["_size", "_index"]:
                 self.__dict__[k] = f.attrs[k]
-            self._copy_from_hdf5(f, self._meta)
+            self._copy_from_hdf5(f, self._meta, device=device)
 
     @classmethod
-    def load(cls, path: str) -> "ReplayBuffer":
+    def load(cls, path: str, device: Optional[str] = None) -> "ReplayBuffer":
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             buf = cls(size=f.attrs["_maxsize"])
             for k, v in f.attrs.items():
                 buf.__dict__[k] = v
-            cls._copy_from_hdf5(f, buf._meta)
+            cls._copy_from_hdf5(f, buf._meta, device=device)
 
         return buf
 
