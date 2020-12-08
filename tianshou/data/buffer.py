@@ -408,7 +408,9 @@ class ReplayBuffer:
             for k, v in self._meta.__dict__.items():
                 self._copy_to_hdf5(k, v, f)
 
-    def load_contents(self, path: str, device: Optional[str] = "numpy") -> None:
+    def load_contents(
+            self, path: str, device: Optional[str] = "numpy"
+            ) -> None:
         """Load only contents of the replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             assert f.attrs["_maxsize"] == self._maxsize, \
@@ -418,7 +420,9 @@ class ReplayBuffer:
             self._copy_from_hdf5(f, self._meta, device=device)
 
     @classmethod
-    def load(cls, path: str, device: Optional[str] = "numpy") -> "ReplayBuffer":
+    def load(
+            cls, path: str, device: Optional[str] = "numpy"
+            ) -> "ReplayBuffer":
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             buf = cls(size=f.attrs["_maxsize"])
