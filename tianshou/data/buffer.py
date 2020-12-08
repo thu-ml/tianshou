@@ -375,7 +375,7 @@ class ReplayBuffer:
 
     @classmethod
     def _copy_from_hdf5(
-            cls, grp: h5py.Group, dst: Batch, device: Optional[str] = None
+            cls, grp: h5py.Group, dst: Batch, device: Optional[str] = "numpy"
             ) -> None:
         for k, v in grp.items():
             if isinstance(v, h5py.Group):
@@ -392,8 +392,11 @@ class ReplayBuffer:
                         raise Exception("Cannot copy HDF5 dataset into object"
                                         f"with type {type(dst.__dict__[k])}.")
                 else:
-                    dst.__dict__[k] = np.empty(v.shape, dtype=v.dtype)
-                    v.read_direct(dst.__dict__[k])
+                    if device == "numpy":
+                        dst.__dict__[k] = np.empty(v.shape, dtype=v.dtype)
+                        v.read_direct(dst.__dict__[k])
+                    else:
+                        dst.__dict__[k] = torch.tensor(v, device=device)
 
     def save(self, path: str) -> None:
         """Save replay buffer to HDF5 file."""
@@ -405,7 +408,7 @@ class ReplayBuffer:
             for k, v in self._meta.__dict__.items():
                 self._copy_to_hdf5(k, v, f)
 
-    def load_contents(self, path: str, device: Optional[str] = None) -> None:
+    def load_contents(self, path: str, device: Optional[str] = "numpy") -> None:
         """Load only contents of the replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             assert f.attrs["_maxsize"] == self._maxsize, \
@@ -415,7 +418,7 @@ class ReplayBuffer:
             self._copy_from_hdf5(f, self._meta, device=device)
 
     @classmethod
-    def load(cls, path: str, device: Optional[str] = None) -> "ReplayBuffer":
+    def load(cls, path: str, device: Optional[str] = "numpy") -> "ReplayBuffer":
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             buf = cls(size=f.attrs["_maxsize"])
