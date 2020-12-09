@@ -180,7 +180,7 @@ class ReplayBuffer:
         We need it because pickling buffer does not work out-of-the-box
         ("buffer.__getattr__" is customized).
         """
-        self.__init__(size=state["_maxsize"]) # type: ignore
+        self.__init__(size=state["_maxsize"])  # type: ignore
         for k, v in state.items():
             if isinstance(v, dict):
                 self.__dict__[k] = Batch(v)
