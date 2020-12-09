@@ -367,7 +367,7 @@ class ReplayBuffer:
         if isinstance(v, np.ndarray):
             grp.create_dataset(k, data=v)
         elif isinstance(v, torch.Tensor):
-            grp.create_dataset(k, data=v.numpy())
+            grp.create_dataset(k, data=v.cpu().numpy())
         elif isinstance(v, Batch):
             subgrp = grp.create_group(k)
             for bk, bv in v.__dict__.items():
