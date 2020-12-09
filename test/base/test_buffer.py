@@ -323,6 +323,7 @@ def test_hdf5():
 
 
 if __name__ == '__main__':
+    test_hdf5()
     test_replaybuffer()
     test_ignore_obs_next()
     test_stack()

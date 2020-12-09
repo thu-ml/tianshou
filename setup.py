@@ -51,7 +51,7 @@ setup(
         "tensorboard",
         "torch>=1.4.0",
         "numba>=0.51.0",
-        "h5py"
+        "h5py>=3.1.0"
     ],
     extras_require={
         "dev": [
