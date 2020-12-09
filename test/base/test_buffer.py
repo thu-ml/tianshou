@@ -291,7 +291,7 @@ def test_hdf5():
             act=i,
             rew=rew,
             done=0,
-            info={"number": i}
+            info={"number": {"n": i}},
         )
 
     # save
@@ -310,7 +310,7 @@ def test_hdf5():
         assert np.all(_vbuf._indices == vbuf._indices)
         assert isinstance(vbuf.get(0, "info"), Batch)
         assert isinstance(_vbuf.get(0, "info"), Batch)
-        assert np.all(vbuf[:]["info"]["number"] == _vbuf[:]["info"]["number"])
+        assert np.all(vbuf[:].info.number.n == _vbuf[:].info.number.n)
 
     assertions(vbuf, _vbuf)
 
