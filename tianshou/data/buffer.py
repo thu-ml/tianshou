@@ -421,8 +421,8 @@ class ReplayBuffer:
 
     @classmethod
     def load(
-            cls, path: str, device: Optional[str] = "numpy"
-            ) -> "ReplayBuffer":
+        cls, path: str, device: Optional[str] = "numpy"
+    ) -> "ReplayBuffer":
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             buf = cls(size=f.attrs["_maxsize"])
