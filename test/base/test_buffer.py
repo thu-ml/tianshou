@@ -1,10 +1,10 @@
+import os
 import torch
 import pickle
 import pytest
+import tempfile
 import numpy as np
 from timeit import timeit
-import tempfile
-import os
 
 from tianshou.data import Batch, SegmentTree, \
     ReplayBuffer, ListReplayBuffer, PrioritizedReplayBuffer
@@ -297,10 +297,10 @@ def test_hdf5():
     # save
     f, path = tempfile.mkstemp(suffix='.hdf5')
     os.close(f)
-    vbuf.save(path)
+    vbuf.save_hdf5(path)
 
     # load replay buffer
-    _vbuf = ReplayBuffer.load(path)
+    _vbuf = ReplayBuffer.load_hdf5(path)
 
     def assertions(vbuf, _vbuf):
         assert len(_vbuf) == len(vbuf) and np.allclose(_vbuf.act, vbuf.act)
@@ -316,7 +316,7 @@ def test_hdf5():
 
     # load only contents of replay buffer
     _vbuf = ReplayBuffer(size, stack_num=2)
-    _vbuf.load_contents(path)
+    _vbuf.load_contents_hdf5(path)
 
     assertions(vbuf, _vbuf)
 
