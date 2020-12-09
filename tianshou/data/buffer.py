@@ -39,7 +39,10 @@ class ReplayBuffer:
         >>> # but there are only three valid items, so len(buf) == 3.
         >>> len(buf)
         3
-        >>> pickle.dump(buf, open('buf.pkl', 'wb'))  # save to file "buf.pkl"
+        >>> # save to file "buf.pkl"
+        >>> pickle.dump(buf, open('buf.pkl', 'wb'))
+        >>> # save to HDF5 file
+        >>> buf.save_hdf5('buf.hdf5')
         >>> buf2 = ReplayBuffer(size=10)
         >>> for i in range(15):
         ...     buf2.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
@@ -55,13 +58,22 @@ class ReplayBuffer:
                 0.,  0.,  0.,  0.,  0.,  0.,  0.])
 
         >>> # get a random sample from buffer
-        >>> # the batch_data is equal to buf[incide].
+        >>> # the batch_data is equal to buf[indice].
         >>> batch_data, indice = buf.sample(batch_size=4)
         >>> batch_data.obs == buf[indice].obs
         array([ True,  True,  True,  True])
         >>> len(buf)
         13
         >>> buf = pickle.load(open('buf.pkl', 'rb'))  # load from "buf.pkl"
+        >>> len(buf)
+        3
+        >>> # load complete buffer from HDF5 file
+        >>> buf = ReplayBuffer.load_hdf5('buf.hdf5')
+        >>> len(buf)
+        3
+        >>> # load contents of HDF5 file into existing buffer
+        >>> # (only possible if size of buffer and data in file match)
+        >>> buf.load_contents_hdf5('buf.hdf5')
         >>> len(buf)
         3
 
