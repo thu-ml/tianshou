@@ -398,7 +398,7 @@ class ReplayBuffer:
                     else:
                         dst.__dict__[k] = torch.tensor(v, device=device)
 
-    def save(self, path: str) -> None:
+    def save_hdf5(self, path: str) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
             for k, v in self.__dict__.items():
@@ -408,7 +408,7 @@ class ReplayBuffer:
             for k, v in self._meta.__dict__.items():
                 self._copy_to_hdf5(k, v, f)
 
-    def load_contents(
+    def load_contents_hdf5(
         self, path: str, device: Optional[str] = "numpy"
     ) -> None:
         """Load only contents of the replay buffer from HDF5 file."""
@@ -420,7 +420,7 @@ class ReplayBuffer:
             self._copy_from_hdf5(f, self._meta, device=device)
 
     @classmethod
-    def load(
+    def load_hdf5(
         cls, path: str, device: Optional[str] = "numpy"
     ) -> "ReplayBuffer":
         """Load replay buffer from HDF5 file."""
