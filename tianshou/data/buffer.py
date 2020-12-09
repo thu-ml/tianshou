@@ -375,7 +375,7 @@ class ReplayBuffer:
 
     @classmethod
     def _copy_from_hdf5(
-        cls, grp: h5py.Group, dst: Batch, device: Optional[str] = "numpy"
+        cls, grp: h5py.Group, dst: Batch, device: str = "numpy"
     ) -> None:
         for k, v in grp.items():
             if isinstance(v, h5py.Group):
@@ -409,19 +409,19 @@ class ReplayBuffer:
                 self._copy_to_hdf5(k, v, f)
 
     def load_contents_hdf5(
-        self, path: str, device: Optional[str] = "numpy"
+        self, path: str, device: str = "numpy"
     ) -> None:
         """Load only contents of the replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             assert f.attrs["_maxsize"] == self._maxsize, \
-                    f"Data size in '{path}' deviates from buffer size."
+                f"Data size in '{path}' deviates from buffer size."
             for k in ["_size", "_index"]:
                 self.__dict__[k] = f.attrs[k]
             self._copy_from_hdf5(f, self._meta, device=device)
 
     @classmethod
     def load_hdf5(
-        cls, path: str, device: Optional[str] = "numpy"
+        cls, path: str, device: str = "numpy"
     ) -> "ReplayBuffer":
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
