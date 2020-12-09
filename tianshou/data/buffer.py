@@ -180,7 +180,23 @@ class ReplayBuffer:
         We need it because pickling buffer does not work out-of-the-box
         ("buffer.__getattr__" is customized).
         """
-        self.__dict__.update(state)
+        self.__init__(size=state["_maxsize"])
+        for k, v in state.items():
+            if isinstance(v, dict):
+                self.__dict__[k] = Batch(v)
+            else:
+                self.__dict__[k] = v
+
+    def __getstate__(self) -> None:
+        exclude = {"_indices"}
+        state = {}
+        for k, v in self.__dict__.items():
+            if k not in exclude:
+                if isinstance(v, Batch):
+                    state[k] = v.__getstate__()
+                else:
+                    state[k] = v
+        return state
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
@@ -374,62 +390,49 @@ class ReplayBuffer:
 
     @classmethod
     def _copy_to_hdf5(
-        cls, k: str, v: Union[np.ndarray, Batch], grp: h5py.Group
+        cls, d: dict, grp: h5py.Group
     ) -> None:
-        if isinstance(v, np.ndarray):
-            grp.create_dataset(k, data=v)
-        elif isinstance(v, torch.Tensor):
-            grp.create_dataset(k, data=v.cpu().numpy())
-        elif isinstance(v, Batch):
-            subgrp = grp.create_group(k)
-            for bk, bv in v.__dict__.items():
-                cls._copy_to_hdf5(bk, bv, subgrp)
+        for k, v in d.items():
+            if isinstance(v, dict):
+                subgrp = grp.create_group(k)
+                cls._copy_to_hdf5(v, subgrp)
+            elif isinstance(v, np.ndarray):
+                grp.create_dataset(k, data=v)
+            elif isinstance(v, torch.Tensor):
+                grp.create_dataset(k, data=v.cpu().numpy())
+            else:
+                try:
+                    grp.attrs[k] = v
+                except TypeError as e:
+                    print(f"Could not save object of type {type(v)} as HDF5 "
+                          "attribute.")
 
     @classmethod
     def _copy_from_hdf5(
-        cls, grp: h5py.Group, dst: Batch, device: str = "numpy"
+        cls, grp: h5py.Group, dst: Optional[dict] = None, device: str = "numpy"
     ) -> None:
+        if dst is None:
+            dst = {}
+        # copy attributes
+        for k, v in grp.attrs.items():
+            dst[k] = v
+        # copy subgroups and datasets
         for k, v in grp.items():
             if isinstance(v, h5py.Group):
-                if k not in dst.__dict__:
-                    dst.__dict__[k] = Batch()
-                cls._copy_from_hdf5(v, dst.__dict__[k])
+                dst[k] = {}
+                cls._copy_from_hdf5(v, dst[k])
             elif isinstance(v, h5py.Dataset):
-                if k in dst.__dict__:
-                    if isinstance(dst.__dict__[k], np.ndarray):
-                        v.read_direct(dst.__dict__[k])
-                    elif isinstance(dst.__dict__[k], torch.Tensor):
-                        dst.__dict__[k] = torch.tensor(v, device=device)
-                    else:
-                        raise Exception("Cannot copy HDF5 dataset into object"
-                                        f"with type {type(dst.__dict__[k])}.")
+                if device == "numpy":
+                    dst[k] = np.empty(v.shape, dtype=v.dtype)
+                    v.read_direct(dst[k])
                 else:
-                    if device == "numpy":
-                        dst.__dict__[k] = np.empty(v.shape, dtype=v.dtype)
-                        v.read_direct(dst.__dict__[k])
-                    else:
-                        dst.__dict__[k] = torch.tensor(v, device=device)
+                    dst[k] = torch.tensor(v, device=device)
+        return dst
 
     def save_hdf5(self, path: str) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
-            for k, v in self.__dict__.items():
-                if k not in ["_meta", "_indices"]:
-                    f.attrs[k] = v
-
-            for k, v in self._meta.__dict__.items():
-                self._copy_to_hdf5(k, v, f)
-
-    def load_contents_hdf5(
-        self, path: str, device: str = "numpy"
-    ) -> None:
-        """Load only contents of the replay buffer from HDF5 file."""
-        with h5py.File(path, "r") as f:
-            assert f.attrs["_maxsize"] == self._maxsize, \
-                f"Data size in '{path}' deviates from buffer size."
-            for k in ["_size", "_index"]:
-                self.__dict__[k] = f.attrs[k]
-            self._copy_from_hdf5(f, self._meta, device=device)
+            self._copy_to_hdf5(self.__getstate__(), f)
 
     @classmethod
     def load_hdf5(
@@ -437,11 +440,9 @@ class ReplayBuffer:
     ) -> "ReplayBuffer":
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
-            buf = cls(size=f.attrs["_maxsize"])
-            for k, v in f.attrs.items():
-                buf.__dict__[k] = v
-            cls._copy_from_hdf5(f, buf._meta, device=device)
-
+            buf = cls.__new__(cls)
+            buf_state = cls._copy_from_hdf5(f, device=device)
+            buf.__setstate__(buf_state)
         return buf
 
 
@@ -478,6 +479,17 @@ class ListReplayBuffer(ReplayBuffer):
         for k in list(self._meta.__dict__.keys()):
             if isinstance(self._meta.__dict__[k], list):
                 self._meta.__dict__[k] = []
+
+    def __getstate__(self) -> None:
+        return self.__dict__
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        """Unpickling interface.
+
+        We need it because pickling buffer does not work out-of-the-box
+        ("buffer.__getattr__" is customized).
+        """
+        self.__dict__.update(state)
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
@@ -580,3 +592,14 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             policy=self.get(index, "policy"),
             weight=self.weight[index],
         )
+
+    def __getstate__(self) -> None:
+        return self.__dict__
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        """Unpickling interface.
+
+        We need it because pickling buffer does not work out-of-the-box
+        ("buffer.__getattr__" is customized).
+        """
+        self.__dict__.update(state)

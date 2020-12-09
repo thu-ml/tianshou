@@ -302,23 +302,14 @@ def test_hdf5():
     # load replay buffer
     _vbuf = ReplayBuffer.load_hdf5(path)
 
-    def assertions(vbuf, _vbuf):
-        assert len(_vbuf) == len(vbuf) and np.allclose(_vbuf.act, vbuf.act)
-        assert _vbuf.stack_num == vbuf.stack_num
-        assert _vbuf._maxsize == vbuf._maxsize
-        assert _vbuf._index == vbuf._index
-        assert np.all(_vbuf._indices == vbuf._indices)
-        assert isinstance(vbuf.get(0, "info"), Batch)
-        assert isinstance(_vbuf.get(0, "info"), Batch)
-        assert np.all(vbuf[:].info.number.n == _vbuf[:].info.number.n)
-
-    assertions(vbuf, _vbuf)
-
-    # load only contents of replay buffer
-    _vbuf = ReplayBuffer(size, stack_num=2)
-    _vbuf.load_contents_hdf5(path)
-
-    assertions(vbuf, _vbuf)
+    assert len(_vbuf) == len(vbuf) and np.allclose(_vbuf.act, vbuf.act)
+    assert _vbuf.stack_num == vbuf.stack_num
+    assert _vbuf._maxsize == vbuf._maxsize
+    assert _vbuf._index == vbuf._index
+    assert np.all(_vbuf._indices == vbuf._indices)
+    assert isinstance(vbuf.get(0, "info"), Batch)
+    assert isinstance(_vbuf.get(0, "info"), Batch)
+    assert np.all(vbuf[:].info.number.n == _vbuf[:].info.number.n)
 
     os.remove(path)
 
