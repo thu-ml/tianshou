@@ -403,7 +403,7 @@ class ReplayBuffer:
             else:
                 try:
                     grp.attrs[k] = v
-                except TypeError as e:
+                except TypeError:
                     print(f"Could not save object of type {type(v)} as HDF5 "
                           "attribute.")
 
