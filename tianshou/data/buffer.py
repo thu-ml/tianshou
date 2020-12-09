@@ -375,8 +375,8 @@ class ReplayBuffer:
 
     @classmethod
     def _copy_from_hdf5(
-            cls, grp: h5py.Group, dst: Batch, device: Optional[str] = "numpy"
-            ) -> None:
+        cls, grp: h5py.Group, dst: Batch, device: Optional[str] = "numpy"
+    ) -> None:
         for k, v in grp.items():
             if isinstance(v, h5py.Group):
                 if k not in dst.__dict__:
