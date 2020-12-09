@@ -409,8 +409,8 @@ class ReplayBuffer:
                 self._copy_to_hdf5(k, v, f)
 
     def load_contents(
-            self, path: str, device: Optional[str] = "numpy"
-            ) -> None:
+        self, path: str, device: Optional[str] = "numpy"
+    ) -> None:
         """Load only contents of the replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             assert f.attrs["_maxsize"] == self._maxsize, \
