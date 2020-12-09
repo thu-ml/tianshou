@@ -180,14 +180,14 @@ class ReplayBuffer:
         We need it because pickling buffer does not work out-of-the-box
         ("buffer.__getattr__" is customized).
         """
-        self.__init__(size=state["_maxsize"])
+        self.__init__(size=state["_maxsize"]) # type: ignore
         for k, v in state.items():
             if isinstance(v, dict):
                 self.__dict__[k] = Batch(v)
             else:
                 self.__dict__[k] = v
 
-    def __getstate__(self) -> None:
+    def __getstate__(self) -> dict:
         exclude = {"_indices"}
         state = {}
         for k, v in self.__dict__.items():
@@ -410,7 +410,7 @@ class ReplayBuffer:
     @classmethod
     def _copy_from_hdf5(
         cls, grp: h5py.Group, dst: Optional[dict] = None, device: str = "numpy"
-    ) -> None:
+    ) -> dict:
         if dst is None:
             dst = {}
         # copy attributes
@@ -480,7 +480,7 @@ class ListReplayBuffer(ReplayBuffer):
             if isinstance(self._meta.__dict__[k], list):
                 self._meta.__dict__[k] = []
 
-    def __getstate__(self) -> None:
+    def __getstate__(self) -> dict:
         return self.__dict__
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
@@ -593,7 +593,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             weight=self.weight[index],
         )
 
-    def __getstate__(self) -> None:
+    def __getstate__(self) -> dict:
         return self.__dict__
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
