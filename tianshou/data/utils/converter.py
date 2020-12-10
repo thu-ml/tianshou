@@ -112,6 +112,7 @@ def to_hdf5(x: Any, y: h5py.Group) -> None:
             y.create_dataset(k, data=int_data, dtype="uint8")
             y[k].attrs["__data_type__"] = "pickle"
 
+
 def from_hdf5(
     x: h5py.Group, device: Optional[str] = None
 ) -> Any:
