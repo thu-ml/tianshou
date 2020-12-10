@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple, Union, Optional
 
 from tianshou.data import Batch, SegmentTree, to_numpy
 from tianshou.data.batch import _create_value
+from tianshou.data.utils.converter import to_hdf5, from_hdf5
 
 
 class ReplayBuffer:
@@ -181,21 +182,11 @@ class ReplayBuffer:
         ("buffer.__getattr__" is customized).
         """
         self.__init__(size=state["_maxsize"])  # type: ignore
-        for k, v in state.items():
-            if isinstance(v, dict):
-                self.__dict__[k] = Batch(v)
-            else:
-                self.__dict__[k] = v
+        self.__dict__.update(state)
 
     def __getstate__(self) -> dict:
         exclude = {"_indices"}
-        state = {}
-        for k, v in self.__dict__.items():
-            if k not in exclude:
-                if isinstance(v, Batch):
-                    state[k] = v.__getstate__()
-                else:
-                    state[k] = v
+        state = {k: v for k, v in self.__dict__.items() if k not in exclude}
         return state
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
@@ -388,60 +379,19 @@ class ReplayBuffer:
             policy=self.get(index, "policy"),
         )
 
-    @classmethod
-    def _copy_to_hdf5(
-        cls, d: dict, grp: h5py.Group
-    ) -> None:
-        for k, v in d.items():
-            if isinstance(v, dict):
-                subgrp = grp.create_group(k)
-                cls._copy_to_hdf5(v, subgrp)
-            elif isinstance(v, np.ndarray):
-                grp.create_dataset(k, data=v)
-            elif isinstance(v, torch.Tensor):
-                grp.create_dataset(k, data=v.cpu().numpy())
-            else:
-                try:
-                    grp.attrs[k] = v
-                except TypeError:
-                    print(f"Could not save object of type {type(v)} as HDF5 "
-                          "attribute.")
-
-    @classmethod
-    def _copy_from_hdf5(
-        cls, grp: h5py.Group, dst: Optional[dict] = None, device: str = "numpy"
-    ) -> dict:
-        if dst is None:
-            dst = {}
-        # copy attributes
-        for k, v in grp.attrs.items():
-            dst[k] = v
-        # copy subgroups and datasets
-        for k, v in grp.items():
-            if isinstance(v, h5py.Group):
-                dst[k] = {}
-                cls._copy_from_hdf5(v, dst[k])
-            elif isinstance(v, h5py.Dataset):
-                if device == "numpy":
-                    dst[k] = np.empty(v.shape, dtype=v.dtype)
-                    v.read_direct(dst[k])
-                else:
-                    dst[k] = torch.tensor(v, device=device)
-        return dst
-
     def save_hdf5(self, path: str) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
-            self._copy_to_hdf5(self.__getstate__(), f)
+            to_hdf5(self.__getstate__(), f)
 
     @classmethod
     def load_hdf5(
-        cls, path: str, device: str = "numpy"
+        cls, path: str, device: Optional[str] = None
     ) -> "ReplayBuffer":
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             buf = cls.__new__(cls)
-            buf_state = cls._copy_from_hdf5(f, device=device)
+            buf_state = from_hdf5(f, device=device)
             buf.__setstate__(buf_state)
         return buf
 
