@@ -2,7 +2,7 @@ import h5py
 import torch
 import numpy as np
 from numbers import Number
-from typing import Any, Dict, List, Tuple, Union, Optional
+from typing import Dict, List, Tuple, Union, Optional
 
 from tianshou.data import Batch, SegmentTree, to_numpy
 from tianshou.data.batch import _create_value

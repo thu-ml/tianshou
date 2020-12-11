@@ -83,11 +83,13 @@ def to_torch_as(
     assert isinstance(y, torch.Tensor)
     return to_torch(x, dtype=y.dtype, device=y.device)
 
+
 # Note: object is used as a proxy for objects that can be pickled
 Hdf5ConvertibleValues = Union[
     int, float, Batch, np.ndarray, torch.Tensor, object, 'Hdf5ConvertibleType'
 ]
 Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]
+
 
 def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
     """Copy object into HDF5 group."""

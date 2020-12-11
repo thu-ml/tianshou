@@ -334,7 +334,8 @@ def test_hdf5():
 
     # compare
     for k in buffers.keys():
-        assert len(_buffers[k]) == len(buffers[k]) and np.allclose(_buffers[k].act, buffers[k].act)
+        assert len(_buffers[k]) == len(buffers[k]) 
+        assert np.allclose(_buffers[k].act, buffers[k].act)
         assert _buffers[k].stack_num == buffers[k].stack_num
         assert _buffers[k]._maxsize == buffers[k]._maxsize
         assert _buffers[k]._index == buffers[k]._index
@@ -343,10 +344,12 @@ def test_hdf5():
         assert isinstance(buffers[k].get(0, "info"), Batch)
         assert isinstance(_buffers[k].get(0, "info"), Batch)
     for k in ["v"]:
-        assert np.all(buffers[k][:].info.number.n == _buffers[k][:].info.number.n)
+        assert np.all(buffers[k][:].info.number.n 
+                == _buffers[k][:].info.number.n)
 
     for path in paths.values():
         os.remove(path)
+
 
 if __name__ == '__main__':
     test_hdf5()
