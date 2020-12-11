@@ -283,6 +283,8 @@ def test_pickle():
 def test_hdf5():
     size = 100
     vbuf = ReplayBuffer(size, stack_num=2)
+    lbuf = ListReplayBuffer()
+    pbuf = PrioritizedReplayBuffer(size, 0.6, 0.4)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     rew = torch.tensor([1.]).to(device)
     for i in range(4):
@@ -293,26 +295,58 @@ def test_hdf5():
             done=0,
             info={"number": {"n": i}},
         )
+        lbuf.add(
+            obs=Batch(index=np.array([i])),
+            act=i,
+            rew=rew,
+            done=0,
+            info={"number": {"n": i}},
+        )
+        pbuf.add(
+            obs=Batch(index=np.array([i])),
+            act=i,
+            rew=rew,
+            done=0,
+            info={"number": {"n": i}},
+            weight=np.random.rand()
+        )
+    buffers = {
+            "v": vbuf,
+            "l": lbuf,
+            "p": pbuf
+            }
+    buffer_types = {
+            "v": ReplayBuffer,
+            "l": ListReplayBuffer,
+            "p": PrioritizedReplayBuffer
+            }
 
     # save
-    f, path = tempfile.mkstemp(suffix='.hdf5')
-    os.close(f)
-    vbuf.save_hdf5(path)
+    paths = {}
+    for k, buf in buffers.items():
+        f, path = tempfile.mkstemp(suffix='.hdf5')
+        os.close(f)
+        buf.save_hdf5(path)
+        paths[k] = path
 
     # load replay buffer
-    _vbuf = ReplayBuffer.load_hdf5(path)
+    _buffers = {k: buffer_types[k].load_hdf5(paths[k]) for k in paths.keys()}
 
-    assert len(_vbuf) == len(vbuf) and np.allclose(_vbuf.act, vbuf.act)
-    assert _vbuf.stack_num == vbuf.stack_num
-    assert _vbuf._maxsize == vbuf._maxsize
-    assert _vbuf._index == vbuf._index
-    assert np.all(_vbuf._indices == vbuf._indices)
-    assert isinstance(vbuf.get(0, "info"), Batch)
-    assert isinstance(_vbuf.get(0, "info"), Batch)
-    assert np.all(vbuf[:].info.number.n == _vbuf[:].info.number.n)
+    # compare
+    for k in buffers.keys():
+        assert len(_buffers[k]) == len(buffers[k]) and np.allclose(_buffers[k].act, buffers[k].act)
+        assert _buffers[k].stack_num == buffers[k].stack_num
+        assert _buffers[k]._maxsize == buffers[k]._maxsize
+        assert _buffers[k]._index == buffers[k]._index
+        assert np.all(_buffers[k]._indices == buffers[k]._indices)
+    for k in ["v", "p"]:
+        assert isinstance(buffers[k].get(0, "info"), Batch)
+        assert isinstance(_buffers[k].get(0, "info"), Batch)
+    for k in ["v"]:
+        assert np.all(buffers[k][:].info.number.n == _buffers[k][:].info.number.n)
 
-    os.remove(path)
-
+    for path in paths.values():
+        os.remove(path)
 
 if __name__ == '__main__':
     test_hdf5()

@@ -181,7 +181,7 @@ class ReplayBuffer:
         We need it because pickling buffer does not work out-of-the-box
         ("buffer.__getattr__" is customized).
         """
-        self.__init__(size=state["_maxsize"])  # type: ignore
+        self._indices = np.arange(state["_maxsize"])
         self.__dict__.update(state)
 
     def __getstate__(self) -> dict:
@@ -430,17 +430,6 @@ class ListReplayBuffer(ReplayBuffer):
             if isinstance(self._meta.__dict__[k], list):
                 self._meta.__dict__[k] = []
 
-    def __getstate__(self) -> dict:
-        return self.__dict__
-
-    def __setstate__(self, state: Dict[str, Any]) -> None:
-        """Unpickling interface.
-
-        We need it because pickling buffer does not work out-of-the-box
-        ("buffer.__getattr__" is customized).
-        """
-        self.__dict__.update(state)
-
 
 class PrioritizedReplayBuffer(ReplayBuffer):
     """Implementation of Prioritized Experience Replay. arXiv:1511.05952.
@@ -542,14 +531,3 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             policy=self.get(index, "policy"),
             weight=self.weight[index],
         )
-
-    def __getstate__(self) -> dict:
-        return self.__dict__
-
-    def __setstate__(self, state: Dict[str, Any]) -> None:
-        """Unpickling interface.
-
-        We need it because pickling buffer does not work out-of-the-box
-        ("buffer.__getattr__" is customized).
-        """
-        self.__dict__.update(state)

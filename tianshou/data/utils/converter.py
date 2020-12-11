@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from copy import deepcopy
 from numbers import Number
-from typing import Any, Union, Optional
+from typing import Any, Union, Optional, Dict
 
 from tianshou.data.batch import _parse_value, Batch
 
@@ -83,19 +83,24 @@ def to_torch_as(
     assert isinstance(y, torch.Tensor)
     return to_torch(x, dtype=y.dtype, device=y.device)
 
+# Note: object is used as a proxy for objects that can be pickled
+Hdf5ConvertibleValues = Union[
+    int, float, Batch, np.ndarray, torch.Tensor, object, 'Hdf5ConvertibleType'
+]
+Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]
 
-def to_hdf5(x: Any, y: h5py.Group) -> None:
+def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
     """Copy object into HDF5 group."""
     for k, v in x.items():
         # dicts and batches are both represented by groups
         if isinstance(v, (Batch, dict)):
             subgrp = y.create_group(k)
             if isinstance(v, dict):
-                data = v
+                subgrp_data = v
             else:
-                data = v.__getstate__()
+                subgrp_data = v.__getstate__()
                 subgrp.attrs["__convert_to__"] = "Batch"
-            to_hdf5(data, subgrp)
+            to_hdf5(subgrp_data, subgrp)
         # numpy arrays and pytorch tensors are written to datasets
         elif isinstance(v, np.ndarray):
             y.create_dataset(k, data=v)
@@ -115,7 +120,7 @@ def to_hdf5(x: Any, y: h5py.Group) -> None:
 
 def from_hdf5(
     x: h5py.Group, device: Optional[str] = None
-) -> Any:
+) -> Hdf5ConvertibleType:
     """Restore object from HDF5 group."""
     # handle datasets
     if isinstance(x, h5py.Dataset):
@@ -131,9 +136,8 @@ def from_hdf5(
         y = {k: v for k, v in x.attrs.items() if k != "__convert_to__"}
         for k, v in x.items():
             y[k] = from_hdf5(v, device)
-        # if dictionary represents Batch have to convert to Batch
-        if ("__convert_to__" in x. attrs
-                and x.attrs["__convert_to__"] == "Batch"):
-            y = Batch(y)
-
+        if "__convert_to__" in x. attrs:
+            # if dictionary represents Batch have to convert to Batch
+            if x.attrs["__convert_to__"] == "Batch":
+                y = Batch(y)
     return y
