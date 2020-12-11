@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from copy import deepcopy
 from numbers import Number
-from typing import Any, Union, Optional, Dict
+from typing import Union, Optional, Dict
 
 from tianshou.data.batch import _parse_value, Batch
 
@@ -101,7 +101,7 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
                 subgrp_data = v
             else:
                 subgrp_data = v.__getstate__()
-                subgrp.attrs["__convert_to__"] = "Batch"
+                subgrp.attrs["__data_type__"] = "Batch"
             to_hdf5(subgrp_data, subgrp)
         # numpy arrays and pytorch tensors are written to datasets
         elif isinstance(v, np.ndarray):
@@ -117,7 +117,7 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
         else:
             int_data = np.fromstring(pickle.dumps(v), dtype="uint8")
             y.create_dataset(k, data=int_data, dtype="uint8")
-            y[k].attrs["__data_type__"] = "pickle"
+            y[k].attrs["__data_type__"] = "object"
 
 
 def from_hdf5(
@@ -131,15 +131,15 @@ def from_hdf5(
             x.read_direct(y)
         elif x.attrs["__data_type__"] == "torch":
             y = torch.tensor(x, device=device)
-        elif x.attrs["__data_type__"] == "pickle":
+        elif x.attrs["__data_type__"] == "object":
             y = pickle.loads(x[()])
     # handle groups representing a dict or a batch
     else:
-        y = {k: v for k, v in x.attrs.items() if k != "__convert_to__"}
+        y = {k: v for k, v in x.attrs.items() if k != "__data_type__"}
         for k, v in x.items():
             y[k] = from_hdf5(v, device)
-        if "__convert_to__" in x. attrs:
-            # if dictionary represents Batch have to convert to Batch
-            if x.attrs["__convert_to__"] == "Batch":
+        # if dictionary represents Batch have to convert to Batch
+        if "__data_type__" in x.attrs:
+            if x.attrs["__data_type__"] == "Batch":
                 y = Batch(y)
     return y
