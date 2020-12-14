@@ -391,8 +391,7 @@ class ReplayBuffer:
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             buf = cls.__new__(cls)
-            buf_state = from_hdf5(f, device=device)
-            buf.__setstate__(buf_state)
+            buf.__setstate__(from_hdf5(f, device=device))
         return buf
 
 

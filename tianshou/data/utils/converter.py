@@ -97,27 +97,31 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
         # dicts and batches are both represented by groups
         if isinstance(v, (Batch, dict)):
             subgrp = y.create_group(k)
-            if isinstance(v, dict):
-                subgrp_data = v
-            else:
+            if isinstance(v, Batch):
                 subgrp_data = v.__getstate__()
-                subgrp.attrs["__data_type__"] = "Batch"
+            else:
+                subgrp_data = v
+            subgrp.attrs["__data_type__"] = v.__class__.__name__
             to_hdf5(subgrp_data, subgrp)
         # numpy arrays and pytorch tensors are written to datasets
-        elif isinstance(v, np.ndarray):
-            y.create_dataset(k, data=v)
-            y[k].attrs["__data_type__"] = "numpy"
-        elif isinstance(v, torch.Tensor):
-            y.create_dataset(k, data=v.cpu().numpy())
-            y[k].attrs["__data_type__"] = "torch"
+        elif isinstance(v, (np.ndarray, torch.Tensor)):
+            y.create_dataset(k, data=to_numpy(v))
+            y[k].attrs["__data_type__"] = v.__class__.__name__
         # ints and floats are stored as attributes of groups
         elif isinstance(v, (int, float)):
             y.attrs[k] = v
         # resort to pickle for any other type of object
         else:
-            int_data = np.fromstring(pickle.dumps(v), dtype="uint8")
+            try:
+                int_data = np.frombuffer(pickle.dumps(v), dtype="uint8")
+            except Exception as e:
+                raise NotImplementedError(
+                        "No coonversion to HDF5 for object of type "
+                        f"'{type(v)}' implemented and fallback to pickle "
+                        "failed.\n" + str(e)
+                )
             y.create_dataset(k, data=int_data, dtype="uint8")
-            y[k].attrs["__data_type__"] = "object"
+            y[k].attrs["__data_type__"] = v.__class__.__name__
 
 
 def from_hdf5(
@@ -126,20 +130,19 @@ def from_hdf5(
     """Restore object from HDF5 group."""
     # handle datasets
     if isinstance(x, h5py.Dataset):
-        if x.attrs["__data_type__"] == "numpy":
-            y = np.empty(x.shape, dtype=x.dtype)
-            x.read_direct(y)
-        elif x.attrs["__data_type__"] == "torch":
+        if x.attrs["__data_type__"] == "ndarray":
+            y = np.array(x)
+        elif x.attrs["__data_type__"] == "Tensor":
             y = torch.tensor(x, device=device)
-        elif x.attrs["__data_type__"] == "object":
+        else:
             y = pickle.loads(x[()])
     # handle groups representing a dict or a batch
     else:
         y = {k: v for k, v in x.attrs.items() if k != "__data_type__"}
         for k, v in x.items():
             y[k] = from_hdf5(v, device)
-        # if dictionary represents Batch have to convert to Batch
         if "__data_type__" in x.attrs:
+            # if dictionary represents Batch have to convert to Batch
             if x.attrs["__data_type__"] == "Batch":
                 y = Batch(y)
     return y
