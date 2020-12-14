@@ -116,7 +116,7 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
                 int_data = np.frombuffer(pickle.dumps(v), dtype="uint8")
             except Exception as e:
                 raise NotImplementedError(
-                        "No coonversion to HDF5 for object of type "
+                        "No conversion to HDF5 for object of type "
                         f"'{type(v)}' implemented and fallback to pickle "
                         "failed.\n" + str(e)
                 )
