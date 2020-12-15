@@ -70,6 +70,7 @@ autodoc_default_options = {
         ]
     )
 }
+bibtex_bibfiles = ['refs.bib']
 
 # -- Options for HTML output -------------------------------------------------
 
