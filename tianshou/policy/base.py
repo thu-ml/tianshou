@@ -165,6 +165,7 @@ class BasePolicy(ABC, nn.Module):
         """
         if buffer is None:
             return {}
+        print(buffer)
         batch, indice = buffer.sample(sample_size)
         self.updating = True
         batch = self.process_fn(batch, buffer, indice)

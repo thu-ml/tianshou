@@ -1,0 +1,3 @@
+#!/Users/jialu.zhu/Desktop/tianshou/zjlenv/bin/python3.7
+from numba.pycc import main
+main()
