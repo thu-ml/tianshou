@@ -17,25 +17,26 @@ from tianshou.data import Collector, ReplayBuffer, PrioritizedReplayBuffer
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--batch-size', type=int, default=2)
-    parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--test-num', type=int, default=1)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--buffer-size', type=int, default=10)
-    parser.add_argument('--hidden-dim', type=int, default=5)
-    parser.add_argument('--test-frequency', type=int, default=5)
-    parser.add_argument('--target-update-frequency', type=int, default=5)
-    parser.add_argument('--episode-per-test', type=int, default=5)
-    parser.add_argument('--tao', type=float, default=0.8)
-    parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--imitation_logits_penalty', type=float, default=0.1)
+    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--seed", type=int, default=1626)
+    parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--epoch", type=int, default=10)
+    parser.add_argument("--test-num", type=int, default=1)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--buffer-size", type=int, default=10)
+    parser.add_argument("--hidden-dim", type=int, default=5)
+    parser.add_argument("--test-frequency", type=int, default=5)
+    parser.add_argument("--target-update-frequency", type=int, default=5)
+    parser.add_argument("--episode-per-test", type=int, default=5)
+    parser.add_argument("--tao", type=float, default=0.8)
+    parser.add_argument("--gamma", type=float, default=0.9)
+    parser.add_argument("--imitation_logits_penalty", type=float, default=0.1)
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+    )
     args = parser.parse_known_args()[0]
     return args
+
 
 def test_bcq(args=get_args()):
     env = gym.make(args.task)
@@ -43,16 +44,32 @@ def test_bcq(args=get_args()):
     state_shape = state_shape[0]
     action_shape = env.action_space.shape or env.action_space.n
 
-    model = BCQN(state_shape,action_shape,args.hidden_dim,args.hidden_dim)
+    model = BCQN(state_shape, action_shape, args.hidden_dim, args.hidden_dim)
     optim = torch.optim.Adam(model.parameters(), lr=0.5)
-    policy = BCQPolicy(model, optim, args.tao, args.target_update_frequency, args.device, args.gamma, args.imitation_logits_penalty)
+    policy = BCQPolicy(
+        model,
+        optim,
+        args.tao,
+        args.target_update_frequency,
+        args.device,
+        args.gamma,
+        args.imitation_logits_penalty,
+    )
 
     buffer = ReplayBuffer(size=args.buffer_size)
     for i in range(args.buffer_size):
-        buffer.add(obs=torch.rand(state_shape), act=random.randint(0, action_shape-1), rew=1, done=False, obs_next=torch.rand(state_shape), info={})
+        buffer.add(
+            obs=torch.rand(state_shape),
+            act=random.randint(0, action_shape - 1),
+            rew=1,
+            done=False,
+            obs_next=torch.rand(state_shape),
+            info={},
+        )
 
     test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: gym.make(args.task) for _ in range(args.test_num)]
+    )
 
     # seed
     np.random.seed(args.seed)
@@ -61,25 +78,33 @@ def test_bcq(args=get_args()):
 
     test_collector = Collector(policy, test_envs)
 
-    log_path = os.path.join(args.logdir, 'writer')
+    log_path = os.path.join(args.logdir, "writer")
     writer = SummaryWriter(log_path)
     if not os.path.exists(log_path):
         os.makedirs(log_path)
 
-    res = offline_trainer(policy, buffer, test_collector, args.epoch, args.batch_size, args.episode_per_test, writer, args.test_frequency)
-    print('final best_reward', res['best_reward'])
-        
-if __name__ == '__main__':
+    res = offline_trainer(
+        policy,
+        buffer,
+        test_collector,
+        args.epoch,
+        args.batch_size,
+        args.episode_per_test,
+        writer,
+        args.test_frequency,
+    )
+    print("final best_reward", res["best_reward"])
+
+
+if __name__ == "__main__":
     test_bcq(get_args())
     # TODOzjl save policy torch.save(policy.state_dict(), os.path.join(best_policy_save_dir, 'policy.pth'))
-
 
     # # batch = buffer.sample(1)
     # print(buffer.obs)
     # print(buffer.rew)
     # buffer.rew = torch.Tensor([1,2])
     # print(buffer.rew)
-
 
     # buffer.obs = torch.Tensor([[1.0, 1.0, 1.0, 1.0], [2.0, 2.0, 2.0, 2.0]])
     # buffer.act = torch.Tensor([1, 2])
@@ -131,9 +156,8 @@ if __name__ == '__main__':
     #             # for k in result.keys():
     #             #     writer.add_scalar(
     #             #         "train/" + k, result[k], global_step=env_step)
-            
+
     #             if best_reward < result["rew"]:
     #                 best_reward = result["rew"]
     #                 best_policy = policy
     #             # epoch, args.episode_per_test, writer, env_step)
-        

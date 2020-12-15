@@ -31,24 +31,28 @@ def offline_trainer(
             total_iter += 1
             loss = policy.update(batch_size, buffer)
             if total_iter % test_frequency == 0:
-                writer.add_scalar(
-                    "train/loss", loss['loss'], global_step=total_iter)
+                writer.add_scalar("train/loss", loss["loss"], global_step=total_iter)
 
                 test_result = test_episode(
-                    policy, test_collector, None,
-                    epoch, episode_per_test, writer, total_iter)
-            
+                    policy,
+                    test_collector,
+                    None,
+                    epoch,
+                    episode_per_test,
+                    writer,
+                    total_iter,
+                )
+
                 if best_reward < test_result["rew"]:
                     best_reward = test_result["rew"]
                     best_policy = policy
-                
-                print(loss['loss'])
+
+                print(loss["loss"])
                 print(test_result)
                 print(best_reward)
-                print('---------------')
-    
-    
-    return {'best_reward': best_reward, 'best_policy': best_policy}
+                print("---------------")
+
+    return {"best_reward": best_reward, "best_policy": best_policy}
 
     # env_step, gradient_step = 0, 0
     # best_epoch, best_reward, best_reward_std = -1, -1.0, 0.0
