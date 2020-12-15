@@ -12,25 +12,12 @@ from tianshou.trainer import test_episode, gather_info
 def offline_trainer(
     policy: BasePolicy,
     buffer: ReplayBuffer,
-    # train_collector: Collector,
     test_collector: Collector,
-    # max_epoch: int,
     epochs: int,
-    # step_per_epoch: int,
-    # collect_per_step: int,
-    # episode_per_test: Union[int, List[int]],
     batch_size: int,
     episode_per_test: int,
-    # best_policy_save_dir: Optional[str],
-    # update_per_step: int = 1,
-    # train_fn: Optional[Callable[[int, int], None]] = None,
-    # test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
-    # stop_fn: Optional[Callable[[float], bool]] = None,
-    # save_fn: Optional[Callable[[BasePolicy], None]] = None,
     writer: Optional[SummaryWriter] = None,
     test_frequency: int = 1,
-    # verbose: bool = True,
-    # test_in_train: bool = True,
 ) -> Dict[str, Union[float, str]]:
 
     best_reward = -1
@@ -43,24 +30,22 @@ def offline_trainer(
         for iter in range(iter_per_epoch):
             total_iter += 1
             loss = policy.update(batch_size, buffer)
-            # batch = buffer.sample(args.batch_size)[0]
-            # batch.to_torch()
             if total_iter % test_frequency == 0:
                 writer.add_scalar(
                     "train/loss", loss['loss'], global_step=total_iter)
-                # test_collector = Collector(policy, test_envs)
 
                 test_result = test_episode(
                     policy, test_collector, None,
                     epoch, episode_per_test, writer, total_iter)
-                # for k in result.keys():
-                #     writer.add_scalar(
-                #         "train/" + k, result[k], global_step=env_step)
             
                 if best_reward < test_result["rew"]:
                     best_reward = test_result["rew"]
                     best_policy = policy
-                # epoch, args.episode_per_test, writer, env_step)
+                
+                print(loss['loss'])
+                print(test_result)
+                print(best_reward)
+                print('---------------')
     
     
     return {'best_reward': best_reward, 'best_policy': best_policy}

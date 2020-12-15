@@ -37,9 +37,6 @@ state_shape = env.observation_space.shape or env.observation_space.n
 state_shape = state_shape[0]
 action_shape = env.action_space.shape or env.action_space.n
 
-# print(state_shape)
-# print(action_shape)
-# exit()
 
 model = BCQN(state_shape,action_shape,args.hidden_dim,args.hidden_dim)
 optim = torch.optim.Adam(model.parameters(), lr=0.5)
@@ -48,26 +45,22 @@ policy = BCQPolicy(model, optim, args.tao, args.target_update_frequency, 'cpu')
 buffer = ReplayBuffer(size=args.buffer_size)
 for i in range(args.buffer_size):
     buffer.add(obs=torch.rand(state_shape), act=random.randint(0, action_shape-1), rew=1, done=False, obs_next=torch.rand(state_shape), info={})
-# buf.add(obs=[1.0, 1.0, 1.0, 1.0], act=[1], rew=1.0, done=False, obs_next=[1.0, 1.0, 1.0, 1.0], info={})
-
-
-# buffer.add(obs=torch.Tensor([1.0, 1.0, 1.0, 1.0]), act=1, rew=1, done=False, obs_next=torch.Tensor([2.0, 2.0, 2.0, 2.0]), info={})
-# buffer.add(obs=torch.Tensor([2.0, 2.0, 2.0, 2.0]), act=2, rew=2, done=True, obs_next=torch.Tensor([-1.0, -1.0, -1.0, -1.0]), info={})
 
 test_envs = DummyVectorEnv(
     [lambda: gym.make(args.task) for _ in range(args.test_num)])
+
 # seed
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
-# train_envs.seed(args.seed)
 test_envs.seed(args.seed)
 
 test_collector = Collector(policy, test_envs)
 
 log_path = os.path.join(args.logdir, 'writer')
 writer = SummaryWriter(log_path)
-
-best_policy_path = os.path.join(args.logdir, 'best_policy')
+if not os.path.exists(log_path):
+    os.makedirs(log_path)
+# best_policy_path = os.path.join(args.logdir, 'best_policy')
 
 res = offline_trainer(policy, buffer, test_collector, args.epoch, args.batch_size, args.episode_per_test, writer, args.test_frequency)
 print('zjlbest_reward', res['best_reward'])
