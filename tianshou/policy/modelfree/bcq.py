@@ -15,6 +15,7 @@ frameinfo = getframeinfo(currentframe())
 # def p(x):
 #     print(frameinfo.filename, frameinfo.lineno, x)
 
+
 class BCQN(nn.Module):
     """BCQ NN for dialogue policy. It includes a net for imitation and a net for Q-value"""
 
@@ -41,7 +42,7 @@ class BCQN(nn.Module):
 
 
 class BCQPolicy(BasePolicy):
-    """Implementation discrete BCQ algorithm. Some code is from 
+    """Implementation discrete BCQ algorithm. Some code is from
     https://github.com/sfujim/BCQ/tree/master/discrete_BCQ
 
     :param torch.nn.Module model: a model following the rules in
@@ -63,8 +64,8 @@ class BCQPolicy(BasePolicy):
         tao: float,
         target_update_frequency: int,
         device: str,
-        gamma: float = 0.9,
-        imitation_logits_penalty: float=0.1,
+        gamma: float,
+        imitation_logits_penalty: float,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -123,17 +124,14 @@ class BCQPolicy(BasePolicy):
                 q, imt, _ = self._policy_net(non_final_next_states)
                 imt = imt.exp()
                 imt = (imt / imt.max(1, keepdim=True)[0] > self._tao).float()
-                
+
                 # Use large negative number to mask actions from argmax
                 next_action = (imt * q + (1 - imt) * -1e8).argmax(1, keepdim=True)
 
                 q, _, _ = self._target_net(non_final_next_states)
                 q = q.gather(1, next_action).reshape(-1, 1)
 
-                next_state_values = (
-                    torch.zeros(len(batch), device=self._device)
-                    .float()
-                )
+                next_state_values = torch.zeros(len(batch), device=self._device).float()
 
                 next_state_values[non_final_mask] = q.squeeze()
                 expected_state_action_values += next_state_values * self._gamma
@@ -154,7 +152,6 @@ class BCQPolicy(BasePolicy):
         self._optimizer.step()
 
         return {"loss": Q_loss.item()}
-
 
         # if self._target and self._cnt % self._freq == 0:
         #     self.sync_weight()

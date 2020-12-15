@@ -431,7 +431,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         **kwargs: Any,
     ) -> None:
         """Add a batch of data into replay buffer."""
-        print('zjlobs',obs)
         if weight is None:
             weight = self._max_prio
         else:

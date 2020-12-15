@@ -165,19 +165,14 @@ class DQNPolicy(BasePolicy):
         if self._target and self._cnt % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
-        print('zjlbatch', batch)
         weight = batch.pop("weight", 1.0)
         q = self(batch).logits
-        print('zjlq1', q)
         q = q[np.arange(len(q)), batch.act]
-        print('zjlq2', q)
         r = to_torch_as(batch.returns.flatten(), q)
-        print('zjlr', r)
         td = r - q
         loss = (td.pow(2) * weight).mean()
         batch.weight = td  # prio-buffer
         loss.backward()
         self.optim.step()
         self._cnt += 1
-        exit()
         return {"loss": loss.item()}
