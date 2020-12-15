@@ -296,7 +296,7 @@ def test_hdf5():
             'act': i,
             'rew': rew,
             'done': 0,
-            'info': {"number": {"n": i}},
+            'info': {"number": {"n": str(i)}},
         }
         buffers["array"].add(**kwargs)
         buffers["list"].add(**kwargs)

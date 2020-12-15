@@ -1,6 +1,6 @@
 import h5py
-import pickle
 import torch
+import pickle
 import numpy as np
 from copy import deepcopy
 from numbers import Number
@@ -118,10 +118,9 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
                 int_data = np.frombuffer(pickle.dumps(v), dtype="uint8")
             except Exception as e:
                 raise NotImplementedError(
-                    "No conversion to HDF5 for object of type "
-                    f"'{type(v)}' implemented and fallback to pickle "
-                    "failed.\n" + str(e)
-                )
+                    f"No conversion to HDF5 for object of type '{type(v)}' "
+                    "implemented and fallback to pickle failed."
+                ) from e
             y.create_dataset(k, data=int_data, dtype="uint8")
             y[k].attrs["__data_type__"] = v.__class__.__name__
 
