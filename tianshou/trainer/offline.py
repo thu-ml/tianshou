@@ -19,13 +19,11 @@ def offline_trainer(
     writer: Optional[SummaryWriter] = None,
     test_frequency: int = 1,
 ) -> Dict[str, Union[float, str]]:
-
     best_reward = -1
     best_policy = policy
-
     total_iter = 0
-
     iter_per_epoch = len(buffer) // batch_size
+
     for epoch in range(1, 1 + epochs):
         for iter in range(iter_per_epoch):
             total_iter += 1
@@ -45,11 +43,11 @@ def offline_trainer(
 
                 if best_reward < test_result["rew"]:
                     best_reward = test_result["rew"]
-                    best_policy = policy
+                    best_policy.load_state_dict(policy.state_dict())
 
+                print(f"------- epoch: {epoch}, iter: {total_iter} --------")
                 print("loss:", loss["loss"])
                 print("test_result:", test_result)
                 print("best_reward:", best_reward)
-                print(f"------- epoch: {epoch}, iter: {total_iter} --------")
 
     return {"best_reward": best_reward, "best_policy": best_policy}

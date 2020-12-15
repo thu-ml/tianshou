@@ -42,9 +42,6 @@ class BCQPolicy(BasePolicy):
     def __init__(
         self,
         model: torch.nn.Module,
-        # state_dim: int,
-        # action_dim: int,
-        # hidden_dim: int,
         optim: torch.optim.Optimizer,
         tau: float,
         target_update_frequency: int,
