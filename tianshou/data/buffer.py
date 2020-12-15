@@ -4,8 +4,8 @@ import numpy as np
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union, Optional
 
-from tianshou.data import Batch, SegmentTree, to_numpy
 from tianshou.data.batch import _create_value
+from tianshou.data import Batch, SegmentTree, to_numpy
 from tianshou.data.utils.converter import to_hdf5, from_hdf5
 
 

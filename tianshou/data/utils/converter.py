@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from copy import deepcopy
 from numbers import Number
-from typing import Union, Optional, Dict
+from typing import Dict, Union, Optional
 
 from tianshou.data.batch import _parse_value, Batch
 
@@ -85,17 +85,20 @@ def to_torch_as(
 
 
 # Note: object is used as a proxy for objects that can be pickled
-Hdf5ConvertibleValues = Union[
-    int, float, Batch, np.ndarray, torch.Tensor, object, 'Hdf5ConvertibleType'
+# Note: mypy does not support cyclic definition currently
+Hdf5ConvertibleValues = Union[  # type: ignore
+    int, float, Batch, np.ndarray, torch.Tensor, object,
+    'Hdf5ConvertibleType',  # type: ignore
 ]
-Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]
+
+Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]  # type: ignore
 
 
 def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
     """Copy object into HDF5 group."""
     for k, v in x.items():
-        # dicts and batches are both represented by groups
         if isinstance(v, (Batch, dict)):
+            # dicts and batches are both represented by groups
             subgrp = y.create_group(k)
             if isinstance(v, Batch):
                 subgrp_data = v.__getstate__()
@@ -103,22 +106,21 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
                 subgrp_data = v
             subgrp.attrs["__data_type__"] = v.__class__.__name__
             to_hdf5(subgrp_data, subgrp)
-        # numpy arrays and pytorch tensors are written to datasets
         elif isinstance(v, (np.ndarray, torch.Tensor)):
+            # NumPy arrays and PyTorch tensors are written to datasets
             y.create_dataset(k, data=to_numpy(v))
             y[k].attrs["__data_type__"] = v.__class__.__name__
-        # ints and floats are stored as attributes of groups
         elif isinstance(v, (int, float)):
+            # ints and floats are stored as attributes of groups
             y.attrs[k] = v
-        # resort to pickle for any other type of object
-        else:
+        else:  # resort to pickle for any other type of object
             try:
                 int_data = np.frombuffer(pickle.dumps(v), dtype="uint8")
             except Exception as e:
                 raise NotImplementedError(
-                        "No conversion to HDF5 for object of type "
-                        f"'{type(v)}' implemented and fallback to pickle "
-                        "failed.\n" + str(e)
+                    "No conversion to HDF5 for object of type "
+                    f"'{type(v)}' implemented and fallback to pickle "
+                    "failed.\n" + str(e)
                 )
             y.create_dataset(k, data=int_data, dtype="uint8")
             y[k].attrs["__data_type__"] = v.__class__.__name__
@@ -128,21 +130,21 @@ def from_hdf5(
     x: h5py.Group, device: Optional[str] = None
 ) -> Hdf5ConvertibleType:
     """Restore object from HDF5 group."""
-    # handle datasets
     if isinstance(x, h5py.Dataset):
+        # handle datasets
         if x.attrs["__data_type__"] == "ndarray":
             y = np.array(x)
         elif x.attrs["__data_type__"] == "Tensor":
             y = torch.tensor(x, device=device)
         else:
             y = pickle.loads(x[()])
-    # handle groups representing a dict or a batch
     else:
+        # handle groups representing a dict or a Batch
         y = {k: v for k, v in x.attrs.items() if k != "__data_type__"}
         for k, v in x.items():
             y[k] = from_hdf5(v, device)
         if "__data_type__" in x.attrs:
-            # if dictionary represents Batch have to convert to Batch
+            # if dictionary represents Batch, convert to Batch
             if x.attrs["__data_type__"] == "Batch":
                 y = Batch(y)
     return y

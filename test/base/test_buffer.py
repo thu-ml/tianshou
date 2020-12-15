@@ -283,36 +283,24 @@ def test_pickle():
 def test_hdf5():
     size = 100
     buffers = {
-            "array": ReplayBuffer(size, stack_num=2),
-            "list": ListReplayBuffer(),
-            "prioritized": PrioritizedReplayBuffer(size, 0.6, 0.4)
-            }
+        "array": ReplayBuffer(size, stack_num=2),
+        "list": ListReplayBuffer(),
+        "prioritized": PrioritizedReplayBuffer(size, 0.6, 0.4)
+    }
     buffer_types = {k: b.__class__ for k, b in buffers.items()}
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     rew = torch.tensor([1.]).to(device)
     for i in range(4):
-        buffers["array"].add(
-            obs=Batch(index=np.array([i])),
-            act=i,
-            rew=rew,
-            done=0,
-            info={"number": {"n": i}},
-        )
-        buffers["list"].add(
-            obs=Batch(index=np.array([i])),
-            act=i,
-            rew=rew,
-            done=0,
-            info={"number": {"n": i}},
-        )
-        buffers["prioritized"].add(
-            obs=Batch(index=np.array([i])),
-            act=i,
-            rew=rew,
-            done=0,
-            info={"number": {"n": i}},
-            weight=np.random.rand()
-        )
+        kwargs = {
+            'obs': Batch(index=np.array([i])),
+            'act': i,
+            'rew': rew,
+            'done': 0,
+            'info': {"number": {"n": i}},
+        }
+        buffers["array"].add(**kwargs)
+        buffers["list"].add(**kwargs)
+        buffers["prioritized"].add(weight=np.random.rand(), **kwargs)
 
     # save
     paths = {}
@@ -337,8 +325,8 @@ def test_hdf5():
         assert isinstance(buffers[k].get(0, "info"), Batch)
         assert isinstance(_buffers[k].get(0, "info"), Batch)
     for k in ["array"]:
-        assert np.all(buffers[k][:].info.number.n
-                      == _buffers[k][:].info.number.n)
+        assert np.all(
+            buffers[k][:].info.number.n == _buffers[k][:].info.number.n)
 
     for path in paths.values():
         os.remove(path)

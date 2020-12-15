@@ -47,7 +47,7 @@ setup(
     install_requires=[
         "gym>=0.15.4",
         "tqdm",
-        "numpy",
+        "numpy!=1.16.0",  # https://github.com/numpy/numpy/issues/12793
         "tensorboard",
         "torch>=1.4.0",
         "numba>=0.51.0",
