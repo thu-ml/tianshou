@@ -3,11 +3,13 @@ import torch
 import pickle
 import pytest
 import tempfile
+import h5py
 import numpy as np
 from timeit import timeit
 
 from tianshou.data import Batch, SegmentTree, \
     ReplayBuffer, ListReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data.utils.converter import to_hdf5
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -327,9 +329,22 @@ def test_hdf5():
     for k in ["array"]:
         assert np.all(
             buffers[k][:].info.number.n == _buffers[k][:].info.number.n)
+        assert np.all(
+            buffers[k][:].info.extra == _buffers[k][:].info.extra)
 
     for path in paths.values():
         os.remove(path)
+
+    # raise exception when object cannot be pickled
+    data = {"not_supported": lambda x: x*x}
+    grp = h5py.Group
+    with pytest.raises(NotImplementedError):
+        to_hdf5(data, grp)
+    # ndarray with data type not supported by HDF5 that cannot be pickled
+    data = {"not_supported": np.array(lambda x: x*x)}
+    grp = h5py.Group
+    with pytest.raises(NotImplementedError):
+        to_hdf5(data, grp)
 
 
 if __name__ == '__main__':

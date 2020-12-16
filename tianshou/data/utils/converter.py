@@ -94,6 +94,12 @@ Hdf5ConvertibleValues = Union[  # type: ignore
 Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]  # type: ignore
 
 
+def to_hdf5_via_pickle(x: object, y: h5py.Group, key: str) -> None:
+    """Pickle, convert byte stream to numpy array and write to HDF5 dataset."""
+    data = np.frombuffer(pickle.dumps(x), dtype=np.byte)
+    y.create_dataset(key, data=data)
+
+
 def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
     """Copy object into HDF5 group."""
     for k, v in x.items():
@@ -107,21 +113,32 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
             subgrp.attrs["__data_type__"] = v.__class__.__name__
             to_hdf5(subgrp_data, subgrp)
         elif isinstance(v, (np.ndarray, torch.Tensor)):
-            # NumPy arrays and PyTorch tensors are written to datasets
-            y.create_dataset(k, data=to_numpy(v))
-            y[k].attrs["__data_type__"] = v.__class__.__name__
+            try:
+                # NumPy arrays and PyTorch tensors are written to datasets
+                y.create_dataset(k, data=to_numpy(v))
+                y[k].attrs["__data_type__"] = v.__class__.__name__
+            except TypeError:
+                # if data type is not supported by HDF5 fall back to pickle
+                try:
+                    to_hdf5_via_pickle(v, y, k)
+                except Exception as e:
+                    raise NotImplementedError(
+                        f"Attempted to pickle {v.__class__.__name__} with key"
+                        f" '{k}' due to data type not supported by HDF5 and "
+                        "failed."
+                    ) from e
+                y[k].attrs["__data_type__"] = "pickled_" + v.__class__.__name__
         elif isinstance(v, (int, float)):
             # ints and floats are stored as attributes of groups
             y.attrs[k] = v
         else:  # resort to pickle for any other type of object
             try:
-                int_data = np.frombuffer(pickle.dumps(v), dtype="uint8")
+                to_hdf5_via_pickle(v, y, k)
             except Exception as e:
                 raise NotImplementedError(
                     f"No conversion to HDF5 for object of type '{type(v)}' "
                     "implemented and fallback to pickle failed."
                 ) from e
-            y.create_dataset(k, data=int_data, dtype="uint8")
             y[k].attrs["__data_type__"] = v.__class__.__name__
 
 
