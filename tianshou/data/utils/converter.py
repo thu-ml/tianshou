@@ -112,20 +112,25 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
                 subgrp_data = v
             subgrp.attrs["__data_type__"] = v.__class__.__name__
             to_hdf5(subgrp_data, subgrp)
-        elif isinstance(v, (np.ndarray, torch.Tensor)):
+        elif isinstance(v, torch.Tensor):
+            # PyTorch tensors are written to datasets
+            y.create_dataset(k, data=to_numpy(v))
+            y[k].attrs["__data_type__"] = v.__class__.__name__
+        elif isinstance(v, np.ndarray):
             try:
-                # NumPy arrays and PyTorch tensors are written to datasets
-                y.create_dataset(k, data=to_numpy(v))
+                # NumPy arrays are written to datasets
+                y.create_dataset(k, data=v)
                 y[k].attrs["__data_type__"] = v.__class__.__name__
             except TypeError:
-                # if data type is not supported by HDF5 fall back to pickle
+                # If data type is not supported by HDF5 fall back to pickle.
+                # This happens if dtype=object (e.g. due to entries being None)
+                # and possibly in other cases like structured arrays.
                 try:
                     to_hdf5_via_pickle(v, y, k)
                 except Exception as e:
-                    raise NotImplementedError(
-                        f"Attempted to pickle {v.__class__.__name__} with key"
-                        f" '{k}' due to data type not supported by HDF5 and "
-                        "failed."
+                    raise RuntimeError(
+                        f"Attempted to pickle {v.__class__.__name__} due to "
+                        "data type not supported by HDF5 and failed."
                     ) from e
                 y[k].attrs["__data_type__"] = "pickled_" + v.__class__.__name__
         elif isinstance(v, (int, float)):

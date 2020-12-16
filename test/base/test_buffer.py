@@ -335,7 +335,7 @@ def test_hdf5():
     for path in paths.values():
         os.remove(path)
 
-    # raise exception when object cannot be pickled
+    # raise exception when value cannot be pickled
     data = {"not_supported": lambda x: x*x}
     grp = h5py.Group
     with pytest.raises(NotImplementedError):
@@ -343,7 +343,7 @@ def test_hdf5():
     # ndarray with data type not supported by HDF5 that cannot be pickled
     data = {"not_supported": np.array(lambda x: x*x)}
     grp = h5py.Group
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(RuntimeError):
         to_hdf5(data, grp)
 
 
