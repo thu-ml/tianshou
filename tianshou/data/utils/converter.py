@@ -108,19 +108,19 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
             subgrp = y.create_group(k)
             if isinstance(v, Batch):
                 subgrp_data = v.__getstate__()
+                subgrp.attrs["__data_type__"] = "Batch"
             else:
                 subgrp_data = v
-            subgrp.attrs["__data_type__"] = v.__class__.__name__
             to_hdf5(subgrp_data, subgrp)
         elif isinstance(v, torch.Tensor):
             # PyTorch tensors are written to datasets
             y.create_dataset(k, data=to_numpy(v))
-            y[k].attrs["__data_type__"] = v.__class__.__name__
+            y[k].attrs["__data_type__"] = "Tensor"
         elif isinstance(v, np.ndarray):
             try:
                 # NumPy arrays are written to datasets
                 y.create_dataset(k, data=v)
-                y[k].attrs["__data_type__"] = v.__class__.__name__
+                y[k].attrs["__data_type__"] = "ndarray"
             except TypeError:
                 # If data type is not supported by HDF5 fall back to pickle.
                 # This happens if dtype=object (e.g. due to entries being None)
@@ -132,7 +132,7 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
                         f"Attempted to pickle {v.__class__.__name__} due to "
                         "data type not supported by HDF5 and failed."
                     ) from e
-                y[k].attrs["__data_type__"] = "pickled_" + v.__class__.__name__
+                y[k].attrs["__data_type__"] = "pickled_ndarray"
         elif isinstance(v, (int, float)):
             # ints and floats are stored as attributes of groups
             y.attrs[k] = v
