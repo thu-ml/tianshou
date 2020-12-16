@@ -94,14 +94,14 @@ Hdf5ConvertibleValues = Union[  # type: ignore
 Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]  # type: ignore
 
 
-def to_hdf5_via_pickle(x: object, y: h5py.Group, key: str) -> None:
-    """Pickle, convert byte stream to numpy array and write to HDF5 dataset."""
-    data = np.frombuffer(pickle.dumps(x), dtype=np.byte)
-    y.create_dataset(key, data=data)
-
-
 def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
     """Copy object into HDF5 group."""
+
+    def to_hdf5_via_pickle(x: object, y: h5py.Group, key: str) -> None:
+        """Pickle, convert to numpy array and write to HDF5 dataset."""
+        data = np.frombuffer(pickle.dumps(x), dtype=np.byte)
+        y.create_dataset(key, data=data)
+
     for k, v in x.items():
         if isinstance(v, (Batch, dict)):
             # dicts and batches are both represented by groups
