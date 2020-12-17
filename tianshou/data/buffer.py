@@ -1,10 +1,12 @@
+import h5py
 import torch
 import numpy as np
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union, Optional
 
-from tianshou.data import Batch, SegmentTree, to_numpy
 from tianshou.data.batch import _create_value
+from tianshou.data import Batch, SegmentTree, to_numpy
+from tianshou.data.utils.converter import to_hdf5, from_hdf5
 
 
 class ReplayBuffer:
@@ -38,7 +40,10 @@ class ReplayBuffer:
         >>> # but there are only three valid items, so len(buf) == 3.
         >>> len(buf)
         3
-        >>> pickle.dump(buf, open('buf.pkl', 'wb'))  # save to file "buf.pkl"
+        >>> # save to file "buf.pkl"
+        >>> pickle.dump(buf, open('buf.pkl', 'wb'))
+        >>> # save to HDF5 file
+        >>> buf.save_hdf5('buf.hdf5')
         >>> buf2 = ReplayBuffer(size=10)
         >>> for i in range(15):
         ...     buf2.add(obs=i, act=i, rew=i, done=i, obs_next=i + 1, info={})
@@ -54,13 +59,22 @@ class ReplayBuffer:
                 0.,  0.,  0.,  0.,  0.,  0.,  0.])
 
         >>> # get a random sample from buffer
-        >>> # the batch_data is equal to buf[incide].
+        >>> # the batch_data is equal to buf[indice].
         >>> batch_data, indice = buf.sample(batch_size=4)
         >>> batch_data.obs == buf[indice].obs
         array([ True,  True,  True,  True])
         >>> len(buf)
         13
         >>> buf = pickle.load(open('buf.pkl', 'rb'))  # load from "buf.pkl"
+        >>> len(buf)
+        3
+        >>> # load complete buffer from HDF5 file
+        >>> buf = ReplayBuffer.load_hdf5('buf.hdf5')
+        >>> len(buf)
+        3
+        >>> # load contents of HDF5 file into existing buffer
+        >>> # (only possible if size of buffer and data in file match)
+        >>> buf.load_contents_hdf5('buf.hdf5')
         >>> len(buf)
         3
 
@@ -167,7 +181,13 @@ class ReplayBuffer:
         We need it because pickling buffer does not work out-of-the-box
         ("buffer.__getattr__" is customized).
         """
+        self._indices = np.arange(state["_maxsize"])
         self.__dict__.update(state)
+
+    def __getstate__(self) -> dict:
+        exclude = {"_indices"}
+        state = {k: v for k, v in self.__dict__.items() if k not in exclude}
+        return state
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
@@ -358,6 +378,21 @@ class ReplayBuffer:
             info=self.get(index, "info"),
             policy=self.get(index, "policy"),
         )
+
+    def save_hdf5(self, path: str) -> None:
+        """Save replay buffer to HDF5 file."""
+        with h5py.File(path, "w") as f:
+            to_hdf5(self.__getstate__(), f)
+
+    @classmethod
+    def load_hdf5(
+        cls, path: str, device: Optional[str] = None
+    ) -> "ReplayBuffer":
+        """Load replay buffer from HDF5 file."""
+        with h5py.File(path, "r") as f:
+            buf = cls.__new__(cls)
+            buf.__setstate__(from_hdf5(f, device=device))
+        return buf
 
 
 class ListReplayBuffer(ReplayBuffer):
