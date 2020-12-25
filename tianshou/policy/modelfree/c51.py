@@ -53,7 +53,8 @@ class C51Policy(DQNPolicy):
         self._v_min = v_min
         self._v_max = v_max
         self.device = model.device
-        self.support = torch.linspace(self._v_min, self._v_max, self._num_atoms, device=self.device)
+        self.support = torch.linspace(self._v_min, self._v_max, 
+                                      self._num_atoms, device=self.device)
         self.delta_z = (v_max - v_min) / (num_atoms - 1)
 
     @staticmethod
@@ -173,12 +174,14 @@ class C51Policy(DQNPolicy):
         done = to_torch_as(batch.done, next_dist).unsqueeze(1)
 
         # Compute the projection of bellman update Tz onto the support z.
-        target_support = reward + (self._gamma ** self._n_step) * (1.0 - done) * self.support.unsqueeze(0)
+        target_support = reward + (self._gamma ** self._n_step
+                                  ) * (1.0 - done) * self.support.unsqueeze(0)
         target_support = target_support.clamp(self._v_min, self._v_max)
 
         # An amazing trick for calculating the projection gracefully.
         # ref: https://github.com/ShangtongZhang/DeepRL
-        target_dist = (1 - (target_support.unsqueeze(1) - self.support.view(1, -1, 1)).abs() / self.delta_z
+        target_dist = (1 - (target_support.unsqueeze(1) - 
+                            self.support.view(1, -1, 1)).abs() / self.delta_z
                        ).clamp(0, 1) * next_dist.unsqueeze(1)
         target_dist = target_dist.sum(-1)
         return target_dist
