@@ -114,7 +114,7 @@ class C51Policy(DQNPolicy):
             self._gamma, self._n_step, self._rew_norm)
         return batch
 
-    def forward(  # type: ignore
+    def forward(
         self,
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
