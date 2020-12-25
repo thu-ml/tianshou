@@ -52,9 +52,8 @@ class C51Policy(DQNPolicy):
         self._num_atoms = num_atoms
         self._v_min = v_min
         self._v_max = v_max
-        self.device = model.device
         self.support = torch.linspace(self._v_min, self._v_max,
-                                      self._num_atoms, device=self.device)
+                                      self._num_atoms)
         self.delta_z = (v_max - v_min) / (num_atoms - 1)
 
     @staticmethod
@@ -138,7 +137,7 @@ class C51Policy(DQNPolicy):
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
         dist, h = model(obs_, state=state, info=batch.info)
-        q = (dist * self.support).sum(2)
+        q = (dist * to_torch_as(self.support, dist)).sum(2)
         act: np.ndarray = to_numpy(q.max(dim=1)[1])
         if hasattr(obs, "mask"):
             # some of actions are masked, they cannot be selected
@@ -169,19 +168,21 @@ class C51Policy(DQNPolicy):
             next_dist = next_b.logits
         batch_size = len(a)
         next_dist = next_dist[np.arange(batch_size), a, :]
-
-        reward = to_torch_as(batch.rew, next_dist).unsqueeze(1)
-        done = to_torch_as(batch.done, next_dist).unsqueeze(1)
+        
+        device = next_dist.device
+        reward = torch.from_numpy(batch.rew).to(device).unsqueeze(1)
+        done = torch.from_numpy(batch.rew).to(device).float().unsqueeze(1)
+        support = self.support.to(device)
 
         # Compute the projection of bellman update Tz onto the support z.
         target_support = reward + (self._gamma ** self._n_step
-                                   ) * (1.0 - done) * self.support.unsqueeze(0)
+                                   ) * (1.0 - done) * support.unsqueeze(0)
         target_support = target_support.clamp(self._v_min, self._v_max)
 
         # An amazing trick for calculating the projection gracefully.
         # ref: https://github.com/ShangtongZhang/DeepRL
         target_dist = (1 - (target_support.unsqueeze(1) -
-                            self.support.view(1, -1, 1)).abs() / self.delta_z
+                            support.view(1, -1, 1)).abs() / self.delta_z
                        ).clamp(0, 1) * next_dist.unsqueeze(1)
         target_dist = target_dist.sum(-1)
         return target_dist
