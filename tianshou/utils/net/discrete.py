@@ -130,3 +130,75 @@ class DQN(nn.Module):
         if not isinstance(x, torch.Tensor):
             x = to_torch(x, device=self.device, dtype=torch.float32)
         return self.net(x), state
+
+
+class C51(nn.Module):
+    """Reference: A distributional perspective on reinforcement learning.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
+    def __init__(
+        self,
+        c: int,
+        h: int,
+        w: int,
+        action_shape: Sequence[int],
+        num_atoms: int,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
+        super().__init__()
+        self.device = device
+        self.action_shape = action_shape
+        self.num_atoms = num_atoms
+
+        def conv2d_size_out(
+            size: int, kernel_size: int = 5, stride: int = 2
+        ) -> int:
+            return (size - (kernel_size - 1) - 1) // stride + 1
+
+        def conv2d_layers_size_out(
+            size: int,
+            kernel_size_1: int = 8,
+            stride_1: int = 4,
+            kernel_size_2: int = 4,
+            stride_2: int = 2,
+            kernel_size_3: int = 3,
+            stride_3: int = 1,
+        ) -> int:
+            size = conv2d_size_out(size, kernel_size_1, stride_1)
+            size = conv2d_size_out(size, kernel_size_2, stride_2)
+            size = conv2d_size_out(size, kernel_size_3, stride_3)
+            return size
+
+        convw = conv2d_layers_size_out(w)
+        convh = conv2d_layers_size_out(h)
+        linear_input_size = convw * convh * 64
+
+        self.net = nn.Sequential(
+            nn.Conv2d(c, 32, kernel_size=8, stride=4),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU(inplace=True),
+            nn.Flatten(),
+            nn.Linear(linear_input_size, 512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, np.prod(action_shape) * num_atoms),
+        )
+
+    def forward(
+        self,
+        x: Union[np.ndarray, torch.Tensor],
+        state: Optional[Any] = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[torch.Tensor, Any]:
+        r"""Mapping: x -> Z(x, \*)."""
+        if not isinstance(x, torch.Tensor):
+            x = to_torch(x, device=self.device, dtype=torch.float32)
+        x = self.net(x)
+        x = x.view(-1, self.num_atoms).softmax(dim=-1).\
+            view(-1, np.prod(self.action_shape), self.num_atoms)
+        return x, state
