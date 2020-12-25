@@ -8,7 +8,7 @@ from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
 
 class C51Policy(DQNPolicy):
-    """Implementation of Categorical Deep Q-network. arXiv:1707.06887.
+    """Implementation of Categorical Deep Q-Network. arXiv:1707.06887.
 
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
@@ -153,9 +153,7 @@ class C51Policy(DQNPolicy):
                     act[i] = q_.argmax()
         return Batch(logits=dist, act=act, state=h)
 
-    def _target_dist(
-            self, batch: Batch
-    ) -> torch.Tensor:
+    def _target_dist(self, batch: Batch) -> torch.Tensor:
         if self._target:
             a = self(batch, input="obs_next").act
             next_dist = self(
@@ -173,8 +171,8 @@ class C51Policy(DQNPolicy):
         support = self.support.to(device)
 
         # Compute the projection of bellman update Tz onto the support z.
-        target_support = reward + (self._gamma ** self._n_step
-                                   ) * (1.0 - done) * support.unsqueeze(0)
+        target_support = reward + (
+            self._gamma ** self._n_step) * (1.0 - done) * support.unsqueeze(0)
         target_support = target_support.clamp(self._v_min, self._v_max)
 
         # An amazing trick for calculating the projection gracefully.
