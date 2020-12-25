@@ -65,7 +65,7 @@ class C51Policy(DQNPolicy):
         n_step: int = 1,
         rew_norm: bool = False,
     ) -> Batch:
-        """ Modify the obs_next, done and rew in batch for computing n-step return.
+        r""" Modify the obs_next, done and rew in batch for computing n-step return.
 
         :param batch: a data batch, which is equal to buffer[indice].
         :type batch: :class:`~tianshou.data.Batch`
