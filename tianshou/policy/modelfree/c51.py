@@ -174,8 +174,8 @@ class C51Policy(DQNPolicy):
         done = to_torch_as(batch.done, next_dist).unsqueeze(1)
 
         # Compute the projection of bellman update Tz onto the support z.
-        target_support = reward + (self._gamma ** self._n_step) * \
-                         (1.0 - done) * self.support.unsqueeze(0)
+        target_support = reward + (self._gamma ** self._n_step
+                                   ) * (1.0 - done) * self.support.unsqueeze(0)
         target_support = target_support.clamp(self._v_min, self._v_max)
 
         # An amazing trick for calculating the projection gracefully.
