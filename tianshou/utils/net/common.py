@@ -65,7 +65,8 @@ class Net(nn.Module):
 
         if dueling is None:
             if action_shape and not concat:
-                model += [nn.Linear(hidden_layer_size, num_atoms * np.prod(action_shape))]
+                model += [nn.Linear(
+                        hidden_layer_size, num_atoms * np.prod(action_shape))]
         else:  # dueling DQN
             q_layer_num, v_layer_num = dueling
             Q, V = [], []
@@ -78,7 +79,8 @@ class Net(nn.Module):
                     hidden_layer_size, hidden_layer_size, norm_layer)
 
             if action_shape and not concat:
-                Q += [nn.Linear(hidden_layer_size, num_atoms * np.prod(action_shape))]
+                Q += [nn.Linear(
+                    hidden_layer_size, num_atoms * np.prod(action_shape))]
                 V += [nn.Linear(hidden_layer_size, num_atoms)]
 
             self.Q = nn.Sequential(*Q)
@@ -210,7 +212,7 @@ class CategoricalNet(Net):
             q = q.view(-1, np.prod(self.action_shape), self.num_atoms)
             logits = q - q.mean(dim=1, keepdim=True) + v
         else:
-            logits = logits.view(-1, np.prod(self.action_shape), self.num_atoms)
+            logits = logits.view(
+                -1, np.prod(self.action_shape), self.num_atoms)
         logits = torch.softmax(logits, dim=-1)
         return logits, state
-
