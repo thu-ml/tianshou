@@ -181,15 +181,17 @@ class C51Policy(DQNPolicy):
                             support.view(1, -1, 1)).abs() / self.delta_z
                        ).clamp(0, 1) * next_dist.unsqueeze(1)
         target_dist = target_dist.sum(-1)
+        if hasattr(batch, "weight"):  # prio buffer update
+            batch.weight = to_torch_as(batch.weight, target_dist)
         return target_dist
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._target and self._cnt % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
-        weight = batch.pop("weight", 1.0)
         with torch.no_grad():
             target_dist = self._target_dist(batch)
+        weight = batch.pop("weight", 1.0)
         curr_dist = self(batch).logits
         act = batch.act
         curr_dist = curr_dist[np.arange(len(act)), act, :]
