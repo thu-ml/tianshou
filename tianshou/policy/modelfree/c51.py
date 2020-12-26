@@ -167,7 +167,7 @@ class C51Policy(DQNPolicy):
         next_dist = next_dist[np.arange(batch_size), a, :]
         device = next_dist.device
         reward = torch.from_numpy(batch.rew).to(device).unsqueeze(1)
-        done = torch.from_numpy(batch.rew).to(device).float().unsqueeze(1)
+        done = torch.from_numpy(batch.done).to(device).float().unsqueeze(1)
         support = self.support.to(device)
 
         # Compute the projection of bellman update Tz onto the support z.
