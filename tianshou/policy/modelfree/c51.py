@@ -163,8 +163,7 @@ class C51Policy(DQNPolicy):
             next_b = self(batch, input="obs_next")
             a = next_b.act
             next_dist = next_b.logits
-        batch_size = len(a)
-        next_dist = next_dist[np.arange(batch_size), a, :]
+        next_dist = next_dist[np.arange(len(a)), a, :]
         device = next_dist.device
         reward = torch.from_numpy(batch.rew).to(device).unsqueeze(1)
         done = torch.from_numpy(batch.done).to(device).float().unsqueeze(1)
