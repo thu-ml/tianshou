@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import C51Policy
 from tianshou.env import DummyVectorEnv
-from tianshou.utils.net.common import CategoricalNet
+from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer, PrioritizedReplayBuffer
 
@@ -63,9 +63,8 @@ def test_c51(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = CategoricalNet(args.layer_num, args.state_shape,
-                         args.action_shape, args.device,  # dueling=(1, 1)
-                         num_atoms=args.num_atoms).to(args.device)
+    net = Net(args.layer_num, args.state_shape, args.action_shape, args.device,
+              softmax=True, num_atoms=args.num_atoms).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = C51Policy(net, optim, args.gamma, args.num_atoms,
                        args.v_min, args.v_max, args.n_step,
