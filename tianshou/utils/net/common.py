@@ -175,7 +175,7 @@ class CategoricalNet(Net):
     .. seealso::
 
         Please refer to :class:`~tianshou.utils.net.common.Net` for
-         more detailed explanation.
+        more detailed explanation.
     """
 
     def __init__(

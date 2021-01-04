@@ -1,7 +1,6 @@
 import torch
 import numpy as np
-from numba import njit
-from typing import Any, Dict, Union, Optional, Tuple
+from typing import Any, Dict, Union, Optional
 
 from tianshou.policy import DQNPolicy
 from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
@@ -19,7 +18,7 @@ class C51Policy(DQNPolicy):
     :param float v_min: the value of the smallest atom in the support set,
         defaults to -10.0.
     :param float v_max: the value of the largest atom in the support set,
-        defaults to -10.0.
+        defaults to 10.0.
     :param int estimation_step: greater than 1, the number of steps to look
         ahead.
     :param int target_update_freq: the target network update frequency (0 if
@@ -30,7 +29,7 @@ class C51Policy(DQNPolicy):
     .. seealso::
 
         Please refer to :class:`~tianshou.policy.DQNPolicy` for more detailed
-         explanation.
+        explanation.
     """
 
     def __init__(
@@ -46,9 +45,10 @@ class C51Policy(DQNPolicy):
         reward_normalization: bool = False,
         **kwargs: Any,
     ) -> None:
-        super().__init__(model, optim, discount_factor,
-                         estimation_step, target_update_freq,
-                         reward_normalization, **kwargs)
+        super().__init__(model, optim, discount_factor, estimation_step,
+                         target_update_freq, reward_normalization, **kwargs)
+        assert num_atoms > 1, "num_atoms should be greater than 1"
+        assert v_min < v_max, "v_max should be larger than v_min"
         self._num_atoms = num_atoms
         self._v_min = v_min
         self._v_max = v_max
@@ -56,61 +56,10 @@ class C51Policy(DQNPolicy):
                                       self._num_atoms)
         self.delta_z = (v_max - v_min) / (num_atoms - 1)
 
-    @staticmethod
-    def prepare_n_step(
-        batch: Batch,
-        buffer: ReplayBuffer,
-        indice: np.ndarray,
-        gamma: float = 0.99,
-        n_step: int = 1,
-        rew_norm: bool = False,
-    ) -> Batch:
-        """Modify the obs_next, done and rew in batch for computing n-step return.
-
-        :param batch: a data batch, which is equal to buffer[indice].
-        :type batch: :class:`~tianshou.data.Batch`
-        :param buffer: a data buffer which contains several full-episode data
-            chronologically.
-        :type buffer: :class:`~tianshou.data.ReplayBuffer`
-        :param indice: sampled timestep.
-        :type indice: numpy.ndarray
-        :param float gamma: the discount factor, should be in [0, 1], defaults
-            to 0.99.
-        :param int n_step: the number of estimation step, should be an int
-            greater than 0, defaults to 1.
-        :param bool rew_norm: normalize the reward to Normal(0, 1), defaults
-            to False.
-
-        :return: a Batch with modified obs_next, done and rew.
-        """
-        buf_len = len(buffer)
-        if rew_norm:
-            bfr = buffer.rew[: min(buf_len, 1000)]  # avoid large buffer
-            mean, std = bfr.mean(), bfr.std()
-            if np.isclose(std, 0, 1e-2):
-                mean, std = 0.0, 1.0
-        else:
-            mean, std = 0.0, 1.0
-        buffer_n = buffer[(indice + n_step - 1) % buf_len]
-        batch.obs_next = buffer_n.obs_next
-        rew_n, done_n = _nstep_batch(buffer.rew, buffer.done,
-                                     indice, gamma, n_step, buf_len, mean, std)
-        batch.rew = rew_n
-        batch.done = done_n
-        return batch
-
-    def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> Batch:
-        """Prepare the batch for calculating the n-step return.
-
-        More details can be found at
-        :meth:`~tianshou.policy.C51Policy.prepare_n_step`.
-        """
-        batch = self.prepare_n_step(
-            batch, buffer, indice,
-            self._gamma, self._n_step, self._rew_norm)
-        return batch
+    def _target_q(
+        self, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> torch.Tensor:
+        return self.support.repeat(len(indice), 1)  # shape: [bsz, num_atoms]
 
     def forward(
         self,
@@ -164,25 +113,15 @@ class C51Policy(DQNPolicy):
             a = next_b.act
             next_dist = next_b.logits
         next_dist = next_dist[np.arange(len(a)), a, :]
-        device = next_dist.device
-        reward = torch.from_numpy(batch.rew).to(device).unsqueeze(1)
-        done = torch.from_numpy(batch.done).to(device).float().unsqueeze(1)
-        support = self.support.to(device)
-
-        # Compute the projection of bellman update Tz onto the support z.
-        target_support = reward + (
-            self._gamma ** self._n_step) * (1.0 - done) * support.unsqueeze(0)
-        target_support = target_support.clamp(self._v_min, self._v_max)
-
+        support = self.support.to(next_dist.device)
+        target_support = batch.returns.clamp(
+            self._v_min, self._v_max).to(next_dist.device)
         # An amazing trick for calculating the projection gracefully.
         # ref: https://github.com/ShangtongZhang/DeepRL
         target_dist = (1 - (target_support.unsqueeze(1) -
                             support.view(1, -1, 1)).abs() / self.delta_z
                        ).clamp(0, 1) * next_dist.unsqueeze(1)
-        target_dist = target_dist.sum(-1)
-        if hasattr(batch, "weight"):  # prio buffer update
-            batch.weight = to_torch_as(batch.weight, target_dist)
-        return target_dist
+        return target_dist.sum(-1)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._target and self._cnt % self._freq == 0:
@@ -201,24 +140,3 @@ class C51Policy(DQNPolicy):
         self.optim.step()
         self._cnt += 1
         return {"loss": loss.item()}
-
-
-@njit
-def _nstep_batch(
-    rew: np.ndarray,
-    done: np.ndarray,
-    indice: np.ndarray,
-    gamma: float,
-    n_step: int,
-    buf_len: int,
-    mean: float,
-    std: float,
-) -> Tuple[np.ndarray, np.ndarray]:
-    rew_n = np.zeros(indice.shape)
-    done_n = done[indice]
-    for n in range(n_step - 1, -1, -1):
-        now = (indice + n) % buf_len
-        done_t = done[now]
-        done_n = np.bitwise_or(done_n, done_t)
-        rew_n = (rew[now] - mean) / std + (1.0 - done_t) * gamma * rew_n
-    return rew_n, done_n
