@@ -3,7 +3,7 @@ import numpy as np
 from typing import Any, Dict, Union, Optional
 
 from tianshou.policy import DQNPolicy
-from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
+from tianshou.data import Batch, ReplayBuffer, to_numpy
 
 
 class C51Policy(DQNPolicy):
@@ -52,8 +52,10 @@ class C51Policy(DQNPolicy):
         self._num_atoms = num_atoms
         self._v_min = v_min
         self._v_max = v_max
-        self.support = torch.linspace(self._v_min, self._v_max,
-                                      self._num_atoms)
+        self.support = torch.nn.Parameter(
+            torch.linspace(self._v_min, self._v_max, self._num_atoms),
+            requires_grad=False,
+        )
         self.delta_z = (v_max - v_min) / (num_atoms - 1)
 
     def _target_q(
@@ -85,7 +87,7 @@ class C51Policy(DQNPolicy):
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
         dist, h = model(obs_, state=state, info=batch.info)
-        q = (dist * to_torch_as(self.support, dist)).sum(2)
+        q = (dist * self.support).sum(2)
         act: np.ndarray = to_numpy(q.max(dim=1)[1])
         if hasattr(obs, "mask"):
             # some of actions are masked, they cannot be selected
@@ -113,13 +115,11 @@ class C51Policy(DQNPolicy):
             a = next_b.act
             next_dist = next_b.logits
         next_dist = next_dist[np.arange(len(a)), a, :]
-        support = self.support.to(next_dist.device)
-        target_support = batch.returns.clamp(
-            self._v_min, self._v_max).to(next_dist.device)
+        target_support = batch.returns.clamp(self._v_min, self._v_max)
         # An amazing trick for calculating the projection gracefully.
         # ref: https://github.com/ShangtongZhang/DeepRL
         target_dist = (1 - (target_support.unsqueeze(1) -
-                            support.view(1, -1, 1)).abs() / self.delta_z
+                            self.support.view(1, -1, 1)).abs() / self.delta_z
                        ).clamp(0, 1) * next_dist.unsqueeze(1)
         return target_dist.sum(-1)
 
@@ -135,6 +135,7 @@ class C51Policy(DQNPolicy):
         curr_dist = curr_dist[np.arange(len(act)), act, :]
         cross_entropy = - (target_dist * torch.log(curr_dist + 1e-8)).sum(1)
         loss = (cross_entropy * weight).mean()
+        # ref: https://github.com/Kaixhin/Rainbow/blob/master/agent.py L94-100
         batch.weight = cross_entropy.detach()  # prio-buffer
         loss.backward()
         self.optim.step()

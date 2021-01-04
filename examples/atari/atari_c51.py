@@ -75,12 +75,13 @@ def test_c51(args=get_args()):
     test_envs.seed(args.seed)
     # define model
     net = C51(*args.state_shape, args.action_shape,
-              args.num_atoms, args.device).to(args.device)
+              args.num_atoms, args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = C51Policy(net, optim, args.gamma, args.num_atoms,
-                       args.v_min, args.v_max, args.n_step,
-                       target_update_freq=args.target_update_freq)
+    policy = C51Policy(
+        net, optim, args.gamma, args.num_atoms, args.v_min, args.v_max,
+        args.n_step, target_update_freq=args.target_update_freq
+    ).to(args.device)
     # load a previous policy
     if args.resume_path:
         policy.load_state_dict(torch.load(
