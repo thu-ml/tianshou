@@ -28,6 +28,5 @@ __all__ = [
     "DiscreteSACPolicy",
     "PSRLPolicy",
     "MultiAgentPolicyManager",
-    "BCQManager",
     "BCQPolicy",
 ]

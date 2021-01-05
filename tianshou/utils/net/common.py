@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
+import torch.nn.functional as F
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Sequence
 
 from tianshou.data import to_torch
@@ -159,3 +160,28 @@ class Recurrent(nn.Module):
         # please ensure the first dim is batch size: [bsz, len, ...]
         return s, {"h": h.transpose(0, 1).detach(),
                    "c": c.transpose(0, 1).detach()}
+
+
+class BCQN(nn.Module):
+    """BCQ NN for dialogue policy. It includes a net for imitation and a net for Q-value"""
+
+    def __init__(
+        self, input_size, n_actions, imitation_model_hidden_dim, policy_model_hidden_dim
+    ):
+        super().__init__()
+        self.q1 = nn.Linear(input_size, policy_model_hidden_dim)
+        self.q2 = nn.Linear(policy_model_hidden_dim, policy_model_hidden_dim)
+        self.q3 = nn.Linear(policy_model_hidden_dim, n_actions)
+
+        self.i1 = nn.Linear(input_size, imitation_model_hidden_dim)
+        self.i2 = nn.Linear(imitation_model_hidden_dim, imitation_model_hidden_dim)
+        self.i3 = nn.Linear(imitation_model_hidden_dim, n_actions)
+
+    def forward(self, state):
+        q = F.relu(self.q1(state))
+        q = F.relu(self.q2(q))
+
+        i = F.relu(self.i1(state))
+        i = F.relu(self.i2(i))
+        i = F.relu(self.i3(i))
+        return self.q3(q), F.log_softmax(i, dim=1), i

@@ -10,6 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import offline_trainer
 from tianshou.data import Collector, ReplayBuffer, PrioritizedReplayBuffer
+from tianshou.utils.net.common import BCQN
 
 
 def get_args():
@@ -41,7 +42,7 @@ def test_bcq(args=get_args()):
     state_shape = env.observation_space.shape or env.observation_space.n
     state_shape = state_shape[0]
     action_shape = env.action_space.shape or env.action_space.n
-    model = BCQPolicy.BCQN(state_shape, action_shape, args.hidden_dim, args.hidden_dim)
+    model = BCQN(state_shape, action_shape, args.hidden_dim, args.hidden_dim)
     optim = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
     policy = BCQPolicy(
