@@ -163,10 +163,14 @@ class Recurrent(nn.Module):
 
 
 class BCQN(nn.Module):
-    """BCQ NN for dialogue policy. It includes a net for imitation and a net for Q-value"""
+    """A net imitation and a net for Q-value"""
 
     def __init__(
-        self, input_size, n_actions, imitation_model_hidden_dim, policy_model_hidden_dim
+        self,
+        input_size: int,
+        n_actions: int,
+        imitation_model_hidden_dim: int,
+        policy_model_hidden_dim: int,
     ):
         super().__init__()
         self.q1 = nn.Linear(input_size, policy_model_hidden_dim)
@@ -174,7 +178,10 @@ class BCQN(nn.Module):
         self.q3 = nn.Linear(policy_model_hidden_dim, n_actions)
 
         self.i1 = nn.Linear(input_size, imitation_model_hidden_dim)
-        self.i2 = nn.Linear(imitation_model_hidden_dim, imitation_model_hidden_dim)
+        self.i2 = nn.Linear(
+            imitation_model_hidden_dim,
+            imitation_model_hidden_dim,
+        )
         self.i3 = nn.Linear(imitation_model_hidden_dim, n_actions)
 
     def forward(self, state):

@@ -3,9 +3,8 @@ import torch.nn.functional as F
 import numpy as np
 from typing import Any, Dict, Union, Optional
 
-from tianshou.data import Batch, to_torch
+from tianshou.data import Batch
 from tianshou.policy import BasePolicy
-import torch.nn as nn
 from copy import deepcopy
 
 
@@ -86,24 +85,32 @@ class BCQPolicy(BasePolicy):
                 imt = (imt / imt.max(1, keepdim=True)[0] > self._tau).float()
 
                 # Use large negative number to mask actions from argmax
-                next_action = (imt * q + (1 - imt) * -1e8).argmax(1, keepdim=True)
+                next_action = (imt * q + (1 - imt) * -1e8).argmax(
+                    1, keepdim=True
+                )
                 q, _, _ = self._target_net(non_final_next_states)
                 q = q.gather(1, next_action).reshape(-1, 1)
 
-                next_state_values = torch.zeros(len(batch), device=self._device).float()
+                next_state_values = torch.zeros(
+                    len(batch), device=self._device
+                ).float()
                 next_state_values[non_final_mask] = q.squeeze()
 
                 expected_state_action_values += next_state_values * self._gamma
 
         # Get current Q estimate
         current_Q, imt, i = self._policy_net(batch.obs.to(self._device))
-        current_Q = current_Q.gather(1, batch.act.unsqueeze(1).to(self._device)).squeeze()
+        current_Q = current_Q.gather(
+            1, batch.act.unsqueeze(1).to(self._device)
+        ).squeeze()
 
         # Compute Q loss
         q_loss = F.smooth_l1_loss(current_Q, expected_state_action_values)
         i_loss = F.nll_loss(imt, batch.act.reshape(-1).to(self._device))
 
-        Q_loss = q_loss + i_loss + self._imitation_logits_penalty * i.pow(2).mean()
+        Q_loss = (
+            q_loss + i_loss + self._imitation_logits_penalty * i.pow(2).mean()
+        )
 
         self._optimizer.zero_grad()
         Q_loss.backward()

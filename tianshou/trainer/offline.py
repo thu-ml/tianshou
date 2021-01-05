@@ -1,12 +1,9 @@
-import time
-import tqdm
 from torch.utils.tensorboard import SummaryWriter
-from typing import Dict, List, Union, Callable, Optional
+from typing import Dict, Union, Optional
 
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
-from tianshou.utils import tqdm_config, MovAvg
-from tianshou.trainer import test_episode, gather_info
+from tianshou.trainer import test_episode
 
 
 def offline_trainer(
@@ -29,7 +26,11 @@ def offline_trainer(
             total_iter += 1
             loss = policy.update(batch_size, buffer)
             if total_iter % test_frequency == 0:
-                writer.add_scalar("train/loss", loss["loss"], global_step=total_iter)
+                writer.add_scalar(
+                    "train/loss",
+                    loss["loss"],
+                    global_step=total_iter,
+                )
 
                 test_result = test_episode(
                     policy,

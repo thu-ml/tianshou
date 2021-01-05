@@ -2,14 +2,13 @@ from tianshou.policy import BCQPolicy
 import os
 import gym
 import torch
-import pprint
 import argparse
 import random
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import offline_trainer
-from tianshou.data import Collector, ReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.common import BCQN
 
 
@@ -31,7 +30,9 @@ def get_args():
     parser.add_argument("--learning-rate", type=float, default=0.01)
     parser.add_argument("--imitation_logits_penalty", type=float, default=0.1)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     args = parser.parse_known_args()[0]
     return args
