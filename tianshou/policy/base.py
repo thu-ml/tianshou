@@ -245,7 +245,7 @@ class BasePolicy(ABC, nn.Module):
             to False.
 
         :return: a Batch. The result will be stored in batch.returns as a
-            torch.Tensor with shape (bsz, ).
+            torch.Tensor with the same shape as target_q_fn's return tensor.
         """
         rew = buffer.rew
         if rew_norm:
@@ -257,12 +257,11 @@ class BasePolicy(ABC, nn.Module):
             mean, std = 0.0, 1.0
         buf_len = len(buffer)
         terminal = (indice + n_step - 1) % buf_len
-        target_q_torch = target_q_fn(buffer, terminal).flatten()  # (bsz, )
+        target_q_torch = target_q_fn(buffer, terminal)  # (bsz, ?)
         target_q = to_numpy(target_q_torch)
 
         target_q = _nstep_return(rew, buffer.done, target_q, indice,
                                  gamma, n_step, len(buffer), mean, std)
-
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
             batch.weight = to_torch_as(batch.weight, target_q_torch)
@@ -275,7 +274,7 @@ class BasePolicy(ABC, nn.Module):
         i64 = np.array([0, 1], dtype=np.int64)
         _episodic_return(f64, f64, b, 0.1, 0.1)
         _episodic_return(f32, f64, b, 0.1, 0.1)
-        _nstep_return(f64, b, f32, i64, 0.1, 1, 4, 1.0, 0.0)
+        _nstep_return(f64, b, f32, i64, 0.1, 1, 4, 0.0, 1.0)
 
 
 @njit
@@ -311,13 +310,18 @@ def _nstep_return(
     std: float,
 ) -> np.ndarray:
     """Numba speedup: 0.3s -> 0.15s."""
-    returns = np.zeros(indice.shape)
+    target_shape = target_q.shape
+    bsz = target_shape[0]
+    # change target_q to 2d array
+    target_q = target_q.reshape(bsz, -1)
+    returns = np.zeros(target_q.shape)
     gammas = np.full(indice.shape, n_step)
     for n in range(n_step - 1, -1, -1):
         now = (indice + n) % buf_len
         gammas[done[now] > 0] = n
         returns[done[now] > 0] = 0.0
-        returns = (rew[now] - mean) / std + gamma * returns
+        returns = (rew[now].reshape(-1, 1) - mean) / std + gamma * returns
     target_q[gammas != n_step] = 0.0
+    gammas = gammas.reshape(-1, 1)
     target_q = target_q * (gamma ** gammas) + returns
-    return target_q
+    return target_q.reshape(target_shape)

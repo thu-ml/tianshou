@@ -1,11 +1,15 @@
+import os
 import torch
 import pickle
 import pytest
+import tempfile
+import h5py
 import numpy as np
 from timeit import timeit
 
 from tianshou.data import Batch, SegmentTree, \
     ReplayBuffer, ListReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data.utils.converter import to_hdf5
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -278,7 +282,73 @@ def test_pickle():
                        pbuf.weight[np.arange(len(pbuf))])
 
 
+def test_hdf5():
+    size = 100
+    buffers = {
+        "array": ReplayBuffer(size, stack_num=2),
+        "list": ListReplayBuffer(),
+        "prioritized": PrioritizedReplayBuffer(size, 0.6, 0.4)
+    }
+    buffer_types = {k: b.__class__ for k, b in buffers.items()}
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    rew = torch.tensor([1.]).to(device)
+    for i in range(4):
+        kwargs = {
+            'obs': Batch(index=np.array([i])),
+            'act': i,
+            'rew': rew,
+            'done': 0,
+            'info': {"number": {"n": i}, 'extra': None},
+        }
+        buffers["array"].add(**kwargs)
+        buffers["list"].add(**kwargs)
+        buffers["prioritized"].add(weight=np.random.rand(), **kwargs)
+
+    # save
+    paths = {}
+    for k, buf in buffers.items():
+        f, path = tempfile.mkstemp(suffix='.hdf5')
+        os.close(f)
+        buf.save_hdf5(path)
+        paths[k] = path
+
+    # load replay buffer
+    _buffers = {k: buffer_types[k].load_hdf5(paths[k]) for k in paths.keys()}
+
+    # compare
+    for k in buffers.keys():
+        assert len(_buffers[k]) == len(buffers[k])
+        assert np.allclose(_buffers[k].act, buffers[k].act)
+        assert _buffers[k].stack_num == buffers[k].stack_num
+        assert _buffers[k]._maxsize == buffers[k]._maxsize
+        assert _buffers[k]._index == buffers[k]._index
+        assert np.all(_buffers[k]._indices == buffers[k]._indices)
+    for k in ["array", "prioritized"]:
+        assert isinstance(buffers[k].get(0, "info"), Batch)
+        assert isinstance(_buffers[k].get(0, "info"), Batch)
+    for k in ["array"]:
+        assert np.all(
+            buffers[k][:].info.number.n == _buffers[k][:].info.number.n)
+        assert np.all(
+            buffers[k][:].info.extra == _buffers[k][:].info.extra)
+
+    for path in paths.values():
+        os.remove(path)
+
+    # raise exception when value cannot be pickled
+    data = {"not_supported": lambda x: x*x}
+    grp = h5py.Group
+    with pytest.raises(NotImplementedError):
+        to_hdf5(data, grp)
+    # ndarray with data type not supported by HDF5 that cannot be pickled
+    data = {"not_supported": np.array(lambda x: x*x)}
+    grp = h5py.Group
+    with pytest.raises(RuntimeError):
+        to_hdf5(data, grp)
+
+
 if __name__ == '__main__':
+    test_hdf5()
     test_replaybuffer()
     test_ignore_obs_next()
     test_stack()

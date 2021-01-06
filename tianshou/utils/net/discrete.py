@@ -130,3 +130,36 @@ class DQN(nn.Module):
         if not isinstance(x, torch.Tensor):
             x = to_torch(x, device=self.device, dtype=torch.float32)
         return self.net(x), state
+
+
+class C51(DQN):
+    """Reference: A distributional perspective on reinforcement learning.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
+    def __init__(
+        self,
+        c: int,
+        h: int,
+        w: int,
+        action_shape: Sequence[int],
+        num_atoms: int = 51,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
+        super().__init__(c, h, w, [np.prod(action_shape) * num_atoms], device)
+        self.action_shape = action_shape
+        self.num_atoms = num_atoms
+
+    def forward(
+        self,
+        x: Union[np.ndarray, torch.Tensor],
+        state: Optional[Any] = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[torch.Tensor, Any]:
+        r"""Mapping: x -> Z(x, \*)."""
+        x, state = super().forward(x)
+        x = x.view(-1, self.num_atoms).softmax(dim=-1)
+        x = x.view(-1, np.prod(self.action_shape), self.num_atoms)
+        return x, state
