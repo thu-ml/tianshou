@@ -33,6 +33,8 @@ class Net(nn.Module):
         (for Dueling DQN), defaults to False.
     :param norm_layer: use which normalization before ReLU, e.g.,
         ``nn.LayerNorm`` and ``nn.BatchNorm1d``, defaults to None.
+    :param int num_atoms: in order to expand to the net of distributional RL,
+         defaults to 1.
     """
 
     def __init__(
@@ -46,11 +48,14 @@ class Net(nn.Module):
         hidden_layer_size: int = 128,
         dueling: Optional[Tuple[int, int]] = None,
         norm_layer: Optional[Callable[[int], nn.modules.Module]] = None,
+        num_atoms: int = 1,
     ) -> None:
         super().__init__()
         self.device = device
         self.dueling = dueling
         self.softmax = softmax
+        self.num_atoms = num_atoms
+        self.action_num = np.prod(action_shape)
         input_size = np.prod(state_shape)
         if concat:
             input_size += np.prod(action_shape)
@@ -63,7 +68,8 @@ class Net(nn.Module):
 
         if dueling is None:
             if action_shape and not concat:
-                model += [nn.Linear(hidden_layer_size, np.prod(action_shape))]
+                model += [nn.Linear(
+                    hidden_layer_size, num_atoms * self.action_num)]
         else:  # dueling DQN
             q_layer_num, v_layer_num = dueling
             Q, V = [], []
@@ -76,8 +82,9 @@ class Net(nn.Module):
                     hidden_layer_size, hidden_layer_size, norm_layer)
 
             if action_shape and not concat:
-                Q += [nn.Linear(hidden_layer_size, np.prod(action_shape))]
-                V += [nn.Linear(hidden_layer_size, 1)]
+                Q += [nn.Linear(
+                    hidden_layer_size, num_atoms * self.action_num)]
+                V += [nn.Linear(hidden_layer_size, num_atoms)]
 
             self.Q = nn.Sequential(*Q)
             self.V = nn.Sequential(*V)
@@ -95,7 +102,12 @@ class Net(nn.Module):
         logits = self.model(s)
         if self.dueling is not None:  # Dueling DQN
             q, v = self.Q(logits), self.V(logits)
+            if self.num_atoms > 1:
+                v = v.view(-1, 1, self.num_atoms)
+                q = q.view(-1, self.action_num, self.num_atoms)
             logits = q - q.mean(dim=1, keepdim=True) + v
+        elif self.num_atoms > 1:
+            logits = logits.view(-1, self.action_num, self.num_atoms)
         if self.softmax:
             logits = torch.softmax(logits, dim=-1)
         return logits, state

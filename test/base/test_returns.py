@@ -76,6 +76,10 @@ def target_q_fn(buffer, indice):
     return torch.tensor(-buffer.rew[indice], dtype=torch.float32)
 
 
+def target_q_fn_multidim(buffer, indice):
+    return target_q_fn(buffer, indice).unsqueeze(1).repeat(1, 51)
+
+
 def compute_nstep_return_base(nstep, gamma, buffer, indice):
     returns = np.zeros_like(indice, dtype=np.float)
     buf_len = len(buffer)
@@ -108,6 +112,10 @@ def test_nstep_returns(size=10000):
     assert np.allclose(returns, [2.6, 4, 4.4, 5.3, 6.2, 8, 8, 8.9, 9.8, 12])
     r_ = compute_nstep_return_base(1, .1, buf, indice)
     assert np.allclose(returns, r_), (r_, returns)
+    returns_multidim = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn_multidim, gamma=.1, n_step=1
+    ).pop('returns'))
+    assert np.allclose(returns_multidim, returns[:, np.newaxis])
     # test nstep = 2
     returns = to_numpy(BasePolicy.compute_nstep_return(
         batch, buf, indice, target_q_fn, gamma=.1, n_step=2).pop('returns'))
@@ -115,6 +123,10 @@ def test_nstep_returns(size=10000):
         3.4, 4, 5.53, 6.62, 7.8, 8, 9.89, 10.98, 12.2, 12])
     r_ = compute_nstep_return_base(2, .1, buf, indice)
     assert np.allclose(returns, r_)
+    returns_multidim = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn_multidim, gamma=.1, n_step=2
+    ).pop('returns'))
+    assert np.allclose(returns_multidim, returns[:, np.newaxis])
     # test nstep = 10
     returns = to_numpy(BasePolicy.compute_nstep_return(
         batch, buf, indice, target_q_fn, gamma=.1, n_step=10).pop('returns'))
@@ -122,6 +134,10 @@ def test_nstep_returns(size=10000):
         3.4, 4, 5.678, 6.78, 7.8, 8, 10.122, 11.22, 12.2, 12])
     r_ = compute_nstep_return_base(10, .1, buf, indice)
     assert np.allclose(returns, r_)
+    returns_multidim = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn_multidim, gamma=.1, n_step=10
+    ).pop('returns'))
+    assert np.allclose(returns_multidim, returns[:, np.newaxis])
 
     if __name__ == '__main__':
         buf = ReplayBuffer(size)
