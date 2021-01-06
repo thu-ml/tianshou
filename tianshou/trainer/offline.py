@@ -15,8 +15,8 @@ def offline_trainer(
     episode_per_test: int,
     writer: Optional[SummaryWriter] = None,
     test_frequency: int = 1,
-) -> Dict[str, Union[float, str]]:
-    best_reward = -1
+) -> Dict[str, Union[float, BasePolicy]]:
+    best_reward = -1.0
     best_policy = policy
     total_iter = 0
     iter_per_epoch = len(buffer) // batch_size
@@ -26,11 +26,12 @@ def offline_trainer(
             total_iter += 1
             loss = policy.update(batch_size, buffer)
             if total_iter % test_frequency == 0:
-                writer.add_scalar(
-                    "train/loss",
-                    loss["loss"],
-                    global_step=total_iter,
-                )
+                if writer is not None:
+                    writer.add_scalar(
+                        "train/loss",
+                        loss["loss"],
+                        global_step=total_iter,
+                    )
 
                 test_result = test_episode(
                     policy,

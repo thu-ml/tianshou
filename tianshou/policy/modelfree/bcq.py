@@ -66,13 +66,14 @@ class BCQPolicy(BasePolicy):
             dtype=torch.bool,
         )
 
+        non_final_next_states = None
         try:
             non_final_next_states = torch.cat(
                 [s.obs.unsqueeze(0) for s in batch if not s.done], dim=0
             )
             non_final_next_states = non_final_next_states.to(self._device)
         except Exception:
-            non_final_next_states = None
+            pass
 
         # Compute the target Q value
         with torch.no_grad():
