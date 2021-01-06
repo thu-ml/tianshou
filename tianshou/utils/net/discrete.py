@@ -145,7 +145,7 @@ class C51(DQN):
         h: int,
         w: int,
         action_shape: Sequence[int],
-        num_atoms: int,
+        num_atoms: int = 51,
         device: Union[str, int, torch.device] = "cpu",
     ) -> None:
         super().__init__(c, h, w, [np.prod(action_shape) * num_atoms], device)

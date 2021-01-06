@@ -4,7 +4,7 @@ import numpy as np
 from tianshou.utils import MovAvg
 from tianshou.utils import SummaryWriter
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.discrete import DQN
+from tianshou.utils.net.discrete import DQN, C51
 from tianshou.exploration import GaussianNoise, OUNoise
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
 
@@ -60,6 +60,10 @@ def test_net():
     data = np.random.rand(bsz, *state_shape)
     expect_output_shape = [bsz, *action_shape]
     net = DQN(*state_shape, action_shape)
+    assert list(net(data)[0].shape) == expect_output_shape
+    num_atoms = 51
+    net = C51(*state_shape, action_shape, num_atoms)
+    expect_output_shape = [bsz, *action_shape, num_atoms]
     assert list(net(data)[0].shape) == expect_output_shape
 
 
