@@ -1,15 +1,16 @@
-from tianshou.policy import BCQPolicy
 import os
 import gym
 import torch
-import argparse
 import random
+import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
+
+from tianshou.policy import BCQPolicy
 from tianshou.env import DummyVectorEnv
+from tianshou.utils.net.common import BCQN
 from tianshou.trainer import offline_trainer
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.utils.net.common import BCQN
 
 
 def get_args():

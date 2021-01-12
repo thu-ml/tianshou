@@ -113,6 +113,46 @@ class Net(nn.Module):
         return logits, state
 
 
+class BCQN(nn.Module):
+    """A double-head MLP (imitation and q-value) for BCQ algorithm."""
+
+    def __init__(
+        self,
+        state_shape: tuple,
+        action_shape: Union[tuple, int],
+        policy_model_hidden_dim: List[int] = [256, 256],
+        imitation_model_hidden_dim: List[int] = [256, 256],
+        device: Union[str, int, torch.device] = "cpu",
+        norm_layer: Optional[Callable[[int], nn.modules.Module]] = None,
+    ) -> None:
+        super().__init__()
+        self.device = device
+        policy_dim = [np.prod(state_shape)] + policy_model_hidden_dim
+        imitation_dim = [np.prod(state_shape)] + \
+            imitation_model_hidden_dim + [np.prod(action_shape)]
+        self.Q = nn.Sequential(*[
+            layer
+            for (inp, oup) in zip(policy_dim[:-1], policy_dim[1:])
+            for layer in miniblock(inp, oup, norm_layer)
+        ], nn.Linear(policy_dim[-1], np.prod(action_shape)))
+        self.imitation = nn.Sequential(*[
+            layer
+            for (inp, oup) in zip(imitation_dim[:-1], imitation_dim[1:])
+            for layer in miniblock(inp, oup, norm_layer)
+        ])
+
+    def forward(
+        self,
+        s: Union[np.ndarray, torch.Tensor],
+        state: Optional[Dict[str, torch.Tensor]] = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        s = to_torch(s, device=self.device, dtype=torch.float32)
+        s = s.reshape(s.size(0), -1)
+        i = self.imitation(s)
+        return (self.Q(s), F.log_softmax(i, dim=1), i), state
+
+
 class Recurrent(nn.Module):
     """Simple Recurrent network based on LSTM.
 
@@ -172,35 +212,3 @@ class Recurrent(nn.Module):
         # please ensure the first dim is batch size: [bsz, len, ...]
         return s, {"h": h.transpose(0, 1).detach(),
                    "c": c.transpose(0, 1).detach()}
-
-
-class BCQN(nn.Module):
-    """A net imitation and a net for Q-value"""
-
-    def __init__(
-        self,
-        input_size: int,
-        n_actions: int,
-        imitation_model_hidden_dim: int,
-        policy_model_hidden_dim: int,
-    ):
-        super().__init__()
-        self.q1 = nn.Linear(input_size, policy_model_hidden_dim)
-        self.q2 = nn.Linear(policy_model_hidden_dim, policy_model_hidden_dim)
-        self.q3 = nn.Linear(policy_model_hidden_dim, n_actions)
-
-        self.i1 = nn.Linear(input_size, imitation_model_hidden_dim)
-        self.i2 = nn.Linear(
-            imitation_model_hidden_dim,
-            imitation_model_hidden_dim,
-        )
-        self.i3 = nn.Linear(imitation_model_hidden_dim, n_actions)
-
-    def forward(self, state):
-        q = F.relu(self.q1(state))
-        q = F.relu(self.q2(q))
-
-        i = F.relu(self.i1(state))
-        i = F.relu(self.i2(i))
-        i = F.relu(self.i3(i))
-        return self.q3(q), F.log_softmax(i, dim=1), i

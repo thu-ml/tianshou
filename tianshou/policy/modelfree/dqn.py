@@ -54,7 +54,7 @@ class DQNPolicy(BasePolicy):
         self._n_step = estimation_step
         self._target = target_update_freq > 0
         self._freq = target_update_freq
-        self._cnt = 0
+        self._iter = 0
         if self._target:
             self.model_old = deepcopy(self.model)
             self.model_old.eval()
@@ -162,7 +162,7 @@ class DQNPolicy(BasePolicy):
         return Batch(logits=q, act=act, state=h)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        if self._target and self._cnt % self._freq == 0:
+        if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
@@ -174,5 +174,5 @@ class DQNPolicy(BasePolicy):
         batch.weight = td  # prio-buffer
         loss.backward()
         self.optim.step()
-        self._cnt += 1
+        self._iter += 1
         return {"loss": loss.item()}
