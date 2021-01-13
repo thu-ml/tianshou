@@ -1,5 +1,6 @@
 import time
 import tqdm
+from collections import defaultdict
 from torch.utils.tensorboard import SummaryWriter
 from typing import Dict, List, Union, Callable, Optional
 
@@ -73,7 +74,7 @@ def offpolicy_trainer(
     """
     env_step, gradient_step = 0, 0
     best_epoch, best_reward, best_reward_std = -1, -1.0, 0.0
-    stat: Dict[str, MovAvg] = {}
+    stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     train_collector.reset_stat()
     test_collector.reset_stat()
@@ -122,8 +123,6 @@ def offpolicy_trainer(
                     gradient_step += 1
                     losses = policy.update(batch_size, train_collector.buffer)
                     for k in losses.keys():
-                        if stat.get(k) is None:
-                            stat[k] = MovAvg()
                         stat[k].add(losses[k])
                         data[k] = f"{stat[k].get():.6f}"
                         if writer and gradient_step % log_interval == 0:

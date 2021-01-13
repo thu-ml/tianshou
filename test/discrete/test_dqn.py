@@ -1,6 +1,7 @@
 import os
 import gym
 import torch
+import pickle
 import pprint
 import argparse
 import numpy as np
@@ -36,6 +37,9 @@ def get_args():
     parser.add_argument('--prioritized-replay', type=int, default=0)
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
+    parser.add_argument(
+        '--save-buffer-name', type=str,
+        default="./expert_DQN_CartPole-v0.pkl")
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -110,6 +114,9 @@ def test_dqn(args=get_args()):
         stop_fn=stop_fn, save_fn=save_fn, writer=writer)
 
     assert stop_fn(result['best_reward'])
+    # save buffer in pickle format, for imitation learning unittest
+    pickle.dump(buf, open(args.save_buffer_name, "wb"))
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
