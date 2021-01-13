@@ -114,8 +114,6 @@ def test_dqn(args=get_args()):
         stop_fn=stop_fn, save_fn=save_fn, writer=writer)
 
     assert stop_fn(result['best_reward'])
-    # save buffer in pickle format, for imitation learning unittest
-    pickle.dump(buf, open(args.save_buffer_name, "wb"))
 
     if __name__ == '__main__':
         pprint.pprint(result)
@@ -126,6 +124,12 @@ def test_dqn(args=get_args()):
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+
+    # save buffer in pickle format, for imitation learning unittest
+    buf = ReplayBuffer(args.buffer_size)
+    collector = Collector(policy, test_envs, buf)
+    collector.collect(n_step=args.buffer_size)
+    pickle.dump(buf, open(args.save_buffer_name, "wb"))
 
 
 def test_pdqn(args=get_args()):

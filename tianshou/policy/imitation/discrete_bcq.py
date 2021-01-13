@@ -24,7 +24,6 @@ class DiscreteBCQPolicy(DQNPolicy):
     ) -> None:
         super().__init__(model, optim, discount_factor, estimation_step,
                          target_update_freq, **kwargs)
-        self._iter = 0
         assert (
             0.0 <= unlikely_action_threshold < 1.0
         ), "unlikely_action_threshold should be in [0, 1)"
@@ -78,7 +77,6 @@ class DiscreteBCQPolicy(DQNPolicy):
         target_q = batch.returns.flatten()
         (current_q, imt, i), _ = self.model(batch.obs)
         current_q = current_q[np.arange(len(target_q)), batch.act]
-
         act = to_torch(batch.act, dtype=torch.long, device=target_q.device)
         q_loss = F.smooth_l1_loss(current_q, target_q)
         i_loss = F.nll_loss(imt, act)  # type: ignore

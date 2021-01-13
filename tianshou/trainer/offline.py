@@ -63,18 +63,20 @@ def offline_trainer(
 
     for epoch in range(1, 1 + max_epoch):
         policy.train()
-        for i in tqdm.trange(
+        with tqdm.trange(
             step_per_epoch, desc=f"Epoch #{epoch}", **tqdm_config
-        ):
-            gradient_step += 1
-            losses = policy.update(batch_size, buffer)
-            data = {"gradient_step": str(gradient_step)}
-            for k in losses.keys():
-                stat[k].add(losses[k])
-                data[k] = f"{stat[k].get():.6f}"
-                if writer and gradient_step % log_interval == 0:
-                    writer.add_scalar(
-                        k, stat[k].get(), global_step=gradient_step)
+        ) as t:
+            for i in t:
+                gradient_step += 1
+                losses = policy.update(batch_size, buffer)
+                data = {"gradient_step": str(gradient_step)}
+                for k in losses.keys():
+                    stat[k].add(losses[k])
+                    data[k] = f"{stat[k].get():.6f}"
+                    if writer and gradient_step % log_interval == 0:
+                        writer.add_scalar(
+                            k, stat[k].get(), global_step=gradient_step)
+                t.set_postfix(**data)
         # test
         result = test_episode(policy, test_collector, test_fn, epoch,
                               episode_per_test, writer, gradient_step)
