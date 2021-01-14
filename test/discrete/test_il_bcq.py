@@ -72,8 +72,8 @@ def test_discrete_bcq(args=get_args()):
 
     policy = DiscreteBCQPolicy(
         policy_net, imitation_net, optim, args.gamma, args.n_step,
-        args.target_update_freq, args.eps_test, args.unlikely_action_threshold,
-        args.imitation_logits_penalty,
+        args.target_update_freq, args.eps_test,
+        args.unlikely_action_threshold, args.imitation_logits_penalty,
     )
     # buffer
     assert os.path.exists(args.load_buffer_name), \

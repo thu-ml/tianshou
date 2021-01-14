@@ -51,13 +51,14 @@ class DiscreteBCQPolicy(DQNPolicy):
         super().__init__(model, optim, discount_factor, estimation_step,
                          target_update_freq, reward_normalization, **kwargs)
         assert target_update_freq > 0, "BCQ needs target network setting."
+        self.imitator = imitator
         assert (
             0.0 <= unlikely_action_threshold < 1.0
         ), "unlikely_action_threshold should be in [0, 1)"
-        self.imitator = imitator
         self._log_tau = math.log(unlikely_action_threshold)
+        assert 0.0 <= eval_eps < 1.0
         self._eps = eval_eps
-        self._w_imitation = imitation_logits_penalty
+        self._weight_reg = imitation_logits_penalty
 
     def train(self, mode: bool = True) -> "DiscreteBCQPolicy":
         self.training = mode
@@ -88,10 +89,11 @@ class DiscreteBCQPolicy(DQNPolicy):
             eps = self._eps
         obs = batch[input]
         q_value, state = self.model(obs, state=state, info=batch.info)
-        imt, _ = self.imitator(obs, state=state, info=batch.info)
+        imitation_logits, _ = self.imitator(obs, state=state, info=batch.info)
 
         # mask actions for argmax
-        ratio = imt - imt.max(dim=-1, keepdim=True).values
+        ratio = imitation_logits - imitation_logits.max(
+            dim=-1, keepdim=True).values
         mask = (ratio < self._log_tau).float()
         action = (q_value - np.inf * mask).argmax(dim=-1)
 
@@ -100,7 +102,8 @@ class DiscreteBCQPolicy(DQNPolicy):
             bsz, action_num = q_value.shape
             action = np.random.randint(action_num, size=bsz)
 
-        return Batch(logits=q_value, act=action, state=state, imt=imt)
+        return Batch(act=action, state=state, q_value=q_value,
+                     imitation_logits=imitation_logits)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._iter % self._freq == 0:
@@ -109,13 +112,14 @@ class DiscreteBCQPolicy(DQNPolicy):
 
         target_q = batch.returns.flatten()
         result = self(batch, eps=0.0)
-        imt = result.imt
-        current_q = result.logits[np.arange(len(target_q)), batch.act]
+        imitation_logits = result.imitation_logits
+        current_q = result.q_value[np.arange(len(target_q)), batch.act]
         act = to_torch(batch.act, dtype=torch.long, device=target_q.device)
         q_loss = F.smooth_l1_loss(current_q, target_q)
-        i_loss = F.nll_loss(F.log_softmax(imt, dim=-1), act)  # type: ignore
-        reg_loss = imt.pow(2).mean()
-        loss = q_loss + i_loss + self._w_imitation * reg_loss
+        i_loss = F.nll_loss(
+            F.log_softmax(imitation_logits, dim=-1), act)  # type: ignore
+        reg_loss = imitation_logits.pow(2).mean()
+        loss = q_loss + i_loss + self._weight_reg * reg_loss
 
         self.optim.zero_grad()
         loss.backward()

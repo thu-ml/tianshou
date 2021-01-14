@@ -39,10 +39,10 @@ def onpolicy_trainer(
     :type train_collector: :class:`~tianshou.data.Collector`
     :param test_collector: the collector used for testing.
     :type test_collector: :class:`~tianshou.data.Collector`
-    :param int max_epoch: the maximum of epochs for training. The training
-        process might be finished before reaching the ``max_epoch``.
-    :param int step_per_epoch: the number of step for updating policy network
-        in one epoch.
+    :param int max_epoch: the maximum number of epochs for training. The
+        training process might be finished before reaching the ``max_epoch``.
+    :param int step_per_epoch: the number of policy network updates, so-called
+        gradient steps, per epoch.
     :param int collect_per_step: the number of episodes the collector would
         collect before the network update. In other words, collect some
         episodes and do one policy network update.
@@ -53,19 +53,20 @@ def onpolicy_trainer(
     :type episode_per_test: int or list of ints
     :param int batch_size: the batch size of sample data, which is going to
         feed in the policy network.
-    :param function train_fn: a function receives the current number of epoch
-        and step index, and performs some operations at the beginning of
-        training in this poch.
-    :param function test_fn: a function receives the current number of epoch
-        and step index, and performs some operations at the beginning of
-        testing in this epoch.
-    :param function save_fn: a function for saving policy when the undiscounted
-        average mean reward in evaluation phase gets better.
-    :param function stop_fn: a function receives the average undiscounted
-        returns of the testing result, return a boolean which indicates whether
-        reaching the goal.
+    :param function train_fn: a hook called at the beginning of training in
+        each epoch. It can be used to perform custom additional operations,
+        with the signature ``f(num_epoch: int, step_idx: int) -> None``.
+    :param function test_fn: a hook called at the beginning of testing in each
+        epoch. It can be used to perform custom additional operations, with the
+        signature ``f(num_epoch: int, step_idx: int) -> None``.
+    :param function save_fn: a hook called when the undiscounted average mean
+        reward in evaluation phase gets better, with the signature ``f(policy:
+        BasePolicy) -> None``.
+    :param function stop_fn: a function with signature ``f(mean_rewards: float)
+        -> bool``, receives the average undiscounted returns of the testing
+        result, returns a boolean which indicates whether reaching the goal.
     :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard
-        SummaryWriter.
+        SummaryWriter; if None is given, it will not write logs to TensorBoard.
     :param int log_interval: the log interval of the writer.
     :param bool verbose: whether to print the information.
     :param bool test_in_train: whether to test in the training phase.
