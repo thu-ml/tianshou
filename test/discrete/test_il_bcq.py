@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector
 from tianshou.env import DummyVectorEnv
-from tianshou.utils.net.common import BCQN
+from tianshou.utils.net.common import Net
 from tianshou.trainer import offline_trainer
 from tianshou.policy import DiscreteBCQPolicy
 
@@ -28,14 +28,8 @@ def get_args():
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument(
-        "--policy-model-hidden-dim", type=int, nargs="*",
-        default=[256, 256],
-    )
-    parser.add_argument(
-        "--imitation-model-hidden-dim", type=int, nargs="*",
-        default=[256, 256],
-    )
+    parser.add_argument("--layer-num", type=int, default=2)
+    parser.add_argument("--hidden-layer-size", type=int, default=128)
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
@@ -63,20 +57,27 @@ def test_discrete_bcq(args=get_args()):
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = BCQN(
-        args.state_shape, args.action_shape, args.policy_model_hidden_dim,
-        args.imitation_model_hidden_dim, args.device,
+    policy_net = Net(
+        args.layer_num, args.state_shape, args.action_shape, args.device,
+        hidden_layer_size=args.hidden_layer_size,
     ).to(args.device)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    imitation_net = Net(
+        args.layer_num, args.state_shape, args.action_shape, args.device,
+        hidden_layer_size=args.hidden_layer_size,
+    ).to(args.device)
+    optim = torch.optim.Adam(
+        list(policy_net.parameters()) + list(imitation_net.parameters()),
+        lr=args.lr
+    )
 
     policy = DiscreteBCQPolicy(
-        net, optim, args.gamma, args.n_step, args.target_update_freq,
-        args.eps_test, args.unlikely_action_threshold,
+        policy_net, imitation_net, optim, args.gamma, args.n_step,
+        args.target_update_freq, args.eps_test, args.unlikely_action_threshold,
         args.imitation_logits_penalty,
     )
     # buffer
     assert os.path.exists(args.load_buffer_name), \
-        "Please run test_dqn.py first to get expert data buffer."
+        "Please run test_dqn.py first to get expert's data buffer."
     buffer = pickle.load(open(args.load_buffer_name, "rb"))
 
     # collector

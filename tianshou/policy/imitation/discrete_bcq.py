@@ -1,3 +1,4 @@
+import math
 import torch
 import numpy as np
 import torch.nn.functional as F
@@ -8,11 +9,35 @@ from tianshou.data import Batch, ReplayBuffer, to_torch
 
 
 class DiscreteBCQPolicy(DQNPolicy):
-    """Implementation of discrete BCQ algorithm. arXiv:1910.01708."""
+    """Implementation of discrete BCQ algorithm. arXiv:1910.01708.
+
+    :param torch.nn.Module model: a model following the rules in
+        :class:`~tianshou.policy.BasePolicy`. (s -> q_value)
+    :param torch.nn.Module imitator: a model following the rules in
+        :class:`~tianshou.policy.BasePolicy`. (s -> imtation_logits)
+    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
+    :param float discount_factor: in [0, 1].
+    :param int estimation_step: greater than 1, the number of steps to look
+        ahead.
+    :param int target_update_freq: the target network update frequency.
+    :param float eval_eps: the epsilon-greedy noise added in evaluation.
+    :param float unlikely_action_threshold: the threshold (tau) for unlikely
+        actions, as shown in Equ. (17) in the paper, defaults to 0.3.
+    :param float imitation_logits_penalty: reguralization weight for imitation
+        logits, defaults to 1e-2.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1),
+        defaults to False.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
+        explanation.
+    """
 
     def __init__(
         self,
         model: torch.nn.Module,
+        imitator: torch.nn.Module,
         optim: torch.optim.Optimizer,
         discount_factor: float = 0.99,
         estimation_step: int = 1,
@@ -20,16 +45,25 @@ class DiscreteBCQPolicy(DQNPolicy):
         eval_eps: float = 1e-3,
         unlikely_action_threshold: float = 0.3,
         imitation_logits_penalty: float = 1e-2,
+        reward_normalization: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(model, optim, discount_factor, estimation_step,
-                         target_update_freq, **kwargs)
+                         target_update_freq, reward_normalization, **kwargs)
+        assert target_update_freq > 0, "BCQ needs target network setting."
         assert (
             0.0 <= unlikely_action_threshold < 1.0
         ), "unlikely_action_threshold should be in [0, 1)"
-        self._thres = unlikely_action_threshold
+        self.imitator = imitator
+        self._log_tau = math.log(unlikely_action_threshold)
         self._eps = eval_eps
         self._w_imitation = imitation_logits_penalty
+
+    def train(self, mode: bool = True) -> "DiscreteBCQPolicy":
+        self.training = mode
+        self.model.train(mode)
+        self.imitator.train(mode)
+        return self
 
     def _target_q(
         self, buffer: ReplayBuffer, indice: np.ndarray
@@ -38,17 +72,14 @@ class DiscreteBCQPolicy(DQNPolicy):
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
         with torch.no_grad():
             act = self(batch, input="obs_next", eps=0.0).act
-            target_q = self(
-                batch, model="model_old", input="obs_next", eps=0.0
-            ).logits
+            target_q, _ = self.model_old(batch.obs_next)
             target_q = target_q[np.arange(len(act)), act]
         return target_q
 
-    def forward(
+    def forward(  # type: ignore
         self,
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
-        model: str = "model",
         input: str = "obs",
         eps: Optional[float] = None,
         **kwargs: Any,
@@ -56,18 +87,20 @@ class DiscreteBCQPolicy(DQNPolicy):
         if eps is None:
             eps = self._eps
         obs = batch[input]
-        (q, imt, i), state = self.model(obs, state=state, info=batch.info)
-        imt = imt.exp()
-        imt = (imt / imt.max(1, keepdim=True)[0] > self._thres).float()
+        q_value, state = self.model(obs, state=state, info=batch.info)
+        imt, _ = self.imitator(obs, state=state, info=batch.info)
+
         # mask actions for argmax
-        action = (imt * q + (1.0 - imt) * -np.inf).argmax(-1)
+        ratio = imt - imt.max(dim=-1, keepdim=True).values
+        mask = (ratio < self._log_tau).float()
+        action = (q_value - np.inf * mask).argmax(dim=-1)
 
         # add eps to act
         if not np.isclose(eps, 0.0) and np.random.rand() < eps:
-            bsz, action_num = q.shape
+            bsz, action_num = q_value.shape
             action = np.random.randint(action_num, size=bsz)
 
-        return Batch(logits=q, act=action, state=state)
+        return Batch(logits=q_value, act=action, state=state, imt=imt)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._iter % self._freq == 0:
@@ -75,12 +108,13 @@ class DiscreteBCQPolicy(DQNPolicy):
         self._iter += 1
 
         target_q = batch.returns.flatten()
-        (current_q, imt, i), _ = self.model(batch.obs)
-        current_q = current_q[np.arange(len(target_q)), batch.act]
+        result = self(batch, eps=0.0)
+        imt = result.imt
+        current_q = result.logits[np.arange(len(target_q)), batch.act]
         act = to_torch(batch.act, dtype=torch.long, device=target_q.device)
         q_loss = F.smooth_l1_loss(current_q, target_q)
-        i_loss = F.nll_loss(imt, act)  # type: ignore
-        reg_loss = i.pow(2).mean()
+        i_loss = F.nll_loss(F.log_softmax(imt, dim=-1), act)  # type: ignore
+        reg_loss = imt.pow(2).mean()
         loss = q_loss + i_loss + self._w_imitation * reg_loss
 
         self.optim.zero_grad()

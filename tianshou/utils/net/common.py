@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 from torch import nn
-import torch.nn.functional as F
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Sequence
 
 from tianshou.data import to_torch
@@ -111,45 +110,6 @@ class Net(nn.Module):
         if self.softmax:
             logits = torch.softmax(logits, dim=-1)
         return logits, state
-
-
-class BCQN(nn.Module):
-    """A double-head MLP (imitation and q-value) for BCQ algorithm."""
-
-    def __init__(
-        self,
-        state_shape: tuple,
-        action_shape: Union[tuple, int],
-        policy_model_hidden_dim: List[int] = [256, 256],
-        imitation_model_hidden_dim: List[int] = [256, 256],
-        device: Union[str, int, torch.device] = "cpu",
-        norm_layer: Optional[Callable[[int], nn.modules.Module]] = None,
-    ) -> None:
-        super().__init__()
-        self.device = device
-        policy_dim = [np.prod(state_shape)] + policy_model_hidden_dim
-        imitation_dim = [np.prod(state_shape)] + imitation_model_hidden_dim
-        self.Q = nn.Sequential(*[
-            layer
-            for (inp, oup) in zip(policy_dim[:-1], policy_dim[1:])
-            for layer in miniblock(inp, oup, norm_layer)
-        ], nn.Linear(policy_dim[-1], np.prod(action_shape)))
-        self.imitation = nn.Sequential(*[
-            layer
-            for (inp, oup) in zip(imitation_dim[:-1], imitation_dim[1:])
-            for layer in miniblock(inp, oup, norm_layer)
-        ], nn.Linear(imitation_dim[-1], np.prod(action_shape)))
-
-    def forward(
-        self,
-        s: Union[np.ndarray, torch.Tensor],
-        state: Optional[Dict[str, torch.Tensor]] = None,
-        info: Dict[str, Any] = {},
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
-        s = to_torch(s, device=self.device, dtype=torch.float32)
-        s = s.reshape(s.size(0), -1)
-        i = self.imitation(s)
-        return (self.Q(s), F.log_softmax(i, dim=1), i), state
 
 
 class Recurrent(nn.Module):

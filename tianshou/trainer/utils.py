@@ -69,6 +69,7 @@ def gather_info(
         "best_reward": best_reward,
         "best_result": f"{best_reward:.2f} ± {best_reward_std:.2f}",
         "duration": f"{duration:.2f}s",
+        "train_time/model": f"{model_time:.2f}s",
     }
     if train_c is not None:
         model_time -= train_c.collect_time
