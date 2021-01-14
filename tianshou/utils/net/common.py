@@ -128,8 +128,7 @@ class BCQN(nn.Module):
         super().__init__()
         self.device = device
         policy_dim = [np.prod(state_shape)] + policy_model_hidden_dim
-        imitation_dim = [np.prod(state_shape)] + \
-            imitation_model_hidden_dim + [np.prod(action_shape)]
+        imitation_dim = [np.prod(state_shape)] + imitation_model_hidden_dim
         self.Q = nn.Sequential(*[
             layer
             for (inp, oup) in zip(policy_dim[:-1], policy_dim[1:])
@@ -139,7 +138,7 @@ class BCQN(nn.Module):
             layer
             for (inp, oup) in zip(imitation_dim[:-1], imitation_dim[1:])
             for layer in miniblock(inp, oup, norm_layer)
-        ])
+        ], nn.Linear(imitation_dim[-1], np.prod(action_shape)))
 
     def forward(
         self,

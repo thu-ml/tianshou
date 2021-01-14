@@ -8,7 +8,7 @@ from tianshou.data import Batch, ReplayBuffer, to_torch
 
 
 class DiscreteBCQPolicy(DQNPolicy):
-    """Implementation of discrete BCQ algorithm. arXiv:1812.02900."""
+    """Implementation of discrete BCQ algorithm. arXiv:1910.01708."""
 
     def __init__(
         self,
@@ -80,10 +80,16 @@ class DiscreteBCQPolicy(DQNPolicy):
         act = to_torch(batch.act, dtype=torch.long, device=target_q.device)
         q_loss = F.smooth_l1_loss(current_q, target_q)
         i_loss = F.nll_loss(imt, act)  # type: ignore
-        loss = q_loss + i_loss + self._w_imitation * i.pow(2).mean()
+        reg_loss = i.pow(2).mean()
+        loss = q_loss + i_loss + self._w_imitation * reg_loss
 
         self.optim.zero_grad()
         loss.backward()
         self.optim.step()
 
-        return {"loss": loss.item()}
+        return {
+            "loss": loss.item(),
+            "q_loss": q_loss.item(),
+            "i_loss": i_loss.item(),
+            "reg_loss": reg_loss.item(),
+        }
