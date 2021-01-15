@@ -55,7 +55,10 @@ class DiscreteBCQPolicy(DQNPolicy):
         assert (
             0.0 <= unlikely_action_threshold < 1.0
         ), "unlikely_action_threshold should be in [0, 1)"
-        self._log_tau = math.log(unlikely_action_threshold)
+        if unlikely_action_threshold > 0:
+            self._log_tau = math.log(unlikely_action_threshold)
+        else:
+            self._log_tau = -np.inf
         assert 0.0 <= eval_eps < 1.0
         self._eps = eval_eps
         self._weight_reg = imitation_logits_penalty

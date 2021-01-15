@@ -67,7 +67,7 @@ def test_discrete_bcq(args=get_args()):
     ).to(args.device)
     optim = torch.optim.Adam(
         list(policy_net.parameters()) + list(imitation_net.parameters()),
-        lr=args.lr
+        lr=args.lr,
     )
 
     policy = DiscreteBCQPolicy(

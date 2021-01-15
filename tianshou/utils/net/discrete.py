@@ -80,6 +80,7 @@ class DQN(nn.Module):
         w: int,
         action_shape: Sequence[int],
         device: Union[str, int, torch.device] = "cpu",
+        features_only: bool = False,
     ) -> None:
         super().__init__()
         self.device = device
@@ -107,18 +108,22 @@ class DQN(nn.Module):
         convh = conv2d_layers_size_out(h)
         linear_input_size = convw * convh * 64
 
-        self.net = nn.Sequential(
+        layers = [
             nn.Conv2d(c, 32, kernel_size=8, stride=4),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, 64, kernel_size=3, stride=1),
             nn.ReLU(inplace=True),
-            nn.Flatten(),
-            nn.Linear(linear_input_size, 512),
-            nn.ReLU(inplace=True),
-            nn.Linear(512, np.prod(action_shape)),
-        )
+            nn.Flatten()
+        ]
+        if not features_only:
+            layers += [
+                nn.Linear(linear_input_size, 512),
+                nn.ReLU(inplace=True),
+                nn.Linear(512, np.prod(action_shape)),
+            ]
+        self.net = nn.Sequential(*layers)
 
     def forward(
         self,
