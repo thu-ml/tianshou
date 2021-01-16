@@ -101,9 +101,11 @@ class DiscreteBCQPolicy(DQNPolicy):
         action = (q_value - np.inf * mask).argmax(dim=-1)
 
         # add eps to act
-        if not np.isclose(eps, 0.0) and np.random.rand() < eps:
+        if not np.isclose(eps, 0.0):
             bsz, action_num = q_value.shape
-            action = np.random.randint(action_num, size=bsz)
+            mask = np.random.rand(bsz) < eps
+            action_rand = np.random.randint(action_num, size=bsz)
+            action[mask] = action_rand[mask]
 
         return Batch(act=action, state=state, q_value=q_value,
                      imitation_logits=imitation_logits)

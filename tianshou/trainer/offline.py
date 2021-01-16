@@ -76,7 +76,8 @@ def offline_trainer(
                     data[k] = f"{stat[k].get():.6f}"
                     if writer and gradient_step % log_interval == 0:
                         writer.add_scalar(
-                            k, stat[k].get(), global_step=gradient_step)
+                            "train/" + k, stat[k].get(),
+                            global_step=gradient_step)
                 t.set_postfix(**data)
         # test
         result = test_episode(policy, test_collector, test_fn, epoch,
