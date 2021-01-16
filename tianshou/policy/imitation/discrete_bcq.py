@@ -104,7 +104,8 @@ class DiscreteBCQPolicy(DQNPolicy):
         if not np.isclose(eps, 0.0):
             bsz, action_num = q_value.shape
             mask = np.random.rand(bsz) < eps
-            action_rand = np.random.randint(action_num, size=bsz)
+            action_rand = torch.randint(
+                action_num, size=[bsz], device=action.device)
             action[mask] = action_rand[mask]
 
         return Batch(act=action, state=state, q_value=q_value,
