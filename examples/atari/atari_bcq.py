@@ -1,5 +1,4 @@
 import os
-import gym
 import torch
 import pickle
 import pprint
@@ -24,7 +23,7 @@ def get_args():
     parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=6.25e-5)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--n-step", type=int, default=1)
+    parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--target-update-freq", type=int, default=8000)
     parser.add_argument("--unlikely-action-threshold", type=float, default=0.3)
     parser.add_argument("--imitation-logits-penalty", type=float, default=0.01)
@@ -33,10 +32,14 @@ def get_args():
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--layer-num", type=int, default=2)
     parser.add_argument("--hidden-layer-size", type=int, default=512)
-    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument('--frames_stack', type=int, default=4)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--watch", default=False, action="store_true",
+                        help="watch the play of pre-trained policy only")
+    parser.add_argument("--log-interval", type=int, default=1000)
     parser.add_argument(
         "--load-buffer-name", type=str,
         default="./expert_DQN_PongNoFrameskip-v4.hdf5",
@@ -95,18 +98,22 @@ def test_discrete_bcq(args=get_args()):
                      args.hidden_layer_size).to(args.device)
     imitation_net = Net(feature_net, args.action_shape,
                         args.hidden_layer_size).to(args.device)
-    print(feature_net)
-    print(policy_net)
-    print(imitation_net)
     optim = torch.optim.Adam(
-        list(set(policy_net).union(imitation_net)), lr=args.lr
+        set(policy_net.parameters()).union(imitation_net.parameters()),
+        lr=args.lr,
     )
-
+    # define policy
     policy = DiscreteBCQPolicy(
         policy_net, imitation_net, optim, args.gamma, args.n_step,
         args.target_update_freq, args.eps_test,
         args.unlikely_action_threshold, args.imitation_logits_penalty,
     )
+    # load a previous policy
+    if args.resume_path:
+        policy.load_state_dict(torch.load(
+            args.resume_path, map_location=args.device
+        ))
+        print("Loaded agent from: ", args.resume_path)
     # buffer
     assert os.path.exists(args.load_buffer_name), \
         "Please run atari_dqn.py first to get expert's data buffer."
@@ -130,21 +137,31 @@ def test_discrete_bcq(args=get_args()):
     def stop_fn(mean_rewards):
         return False
 
+    # watch agent's performance
+    def watch():
+        print("Setup test envs ...")
+        policy.eval()
+        policy.set_eps(args.eps_test)
+        test_envs.seed(args.seed)
+        print("Testing agent ...")
+        test_collector.reset()
+        result = test_collector.collect(n_episode=[1] * args.test_num,
+                                        render=args.render)
+        pprint.pprint(result)
+
+    if args.watch:
+        watch()
+        exit(0)
+
     result = offline_trainer(
         policy, buffer, test_collector,
         args.epoch, args.step_per_epoch, args.test_num, args.batch_size,
         stop_fn=stop_fn, save_fn=save_fn, writer=writer,
+        log_interval=args.log_interval,
     )
 
-    if __name__ == '__main__':
-        pprint.pprint(result)
-        # Let's watch its performance!
-        env = gym.make(args.task)
-        policy.eval()
-        policy.set_eps(args.eps_test)
-        collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+    pprint.pprint(result)
+    watch()
 
 
 if __name__ == "__main__":
