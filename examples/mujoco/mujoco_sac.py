@@ -73,18 +73,16 @@ def test_sac(args=get_args()):
     net = Net(args.hidden_layer_size, args.state_shape, device=args.device)
     actor = ActorProb(
         net, args.action_shape, args.max_action, args.device, unbounded=True,
-        conditioned_sigma=True,
+        conditioned_sigma=True
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c1 = Net(args.hidden_layer_size, args.state_shape, args.action_shape,
                  concat=True, device=args.device)
-    critic1 = Critic(
-        net_c1, args.device).to(args.device)
+    critic1 = Critic(net_c1, args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
     net_c2 = Net(args.hidden_layer_size, args.state_shape, args.action_shape,
                  concat=True, device=args.device)
-    critic2 = Critic(
-        net_c2, args.device).to(args.device)
+    critic2 = Critic(net_c2, args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:

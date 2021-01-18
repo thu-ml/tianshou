@@ -3,7 +3,7 @@ import numpy as np
 from torch import nn
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
-from tianshou.data import to_torch, to_torch_as
+from tianshou.utils.net.common import MLP, Net
 
 
 SIGMA_MIN = -20
@@ -17,10 +17,6 @@ class Actor(nn.Module):
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
 
-    :param int hidden_layer_size: hidden_layer_size specifies the dimension
-        of last layer in preprocess_net. If not given, Actor will look for
-        out_dim in preprocess_net.
-
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
 
@@ -32,18 +28,18 @@ class Actor(nn.Module):
 
     def __init__(
         self,
-        preprocess_net: nn.Module,
+        preprocess_net: Net,
         action_shape: Sequence[int],
+        hidden_sizes: Sequence[int] = [],
         max_action: float = 1.0,
         device: Union[str, int, torch.device] = "cpu",
-        hidden_layer_size: Optional[int] = None,
     ) -> None:
         super().__init__()
-        if not hidden_layer_size:
-            hidden_layer_size = preprocess_net.out_dim
         self.device = device
         self.preprocess = preprocess_net
-        self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
+        self.output_dim = np.prod(action_shape)
+        self.head = MLP(
+            preprocess_net.output_dim, self.output_dim, hidden_sizes)
         self._max = max_action
 
     def forward(
@@ -54,7 +50,7 @@ class Actor(nn.Module):
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: s -> logits -> action."""
         logits, h = self.preprocess(s, state)
-        logits = self._max * torch.tanh(self.last(logits))
+        logits = self._max * torch.tanh(self.head(logits))
         return logits, h
 
 
@@ -65,10 +61,6 @@ class Critic(nn.Module):
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
 
-    :param int hidden_layer_size: hidden_layer_size specifies the dimension
-        of last layer in preprocess_net. If not given, Actor will look for
-        out_dim in preprocess_net.
-
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
 
@@ -80,16 +72,15 @@ class Critic(nn.Module):
 
     def __init__(
         self,
-        preprocess_net: nn.Module,
+        preprocess_net: Net,
+        hidden_sizes: Sequence[int] = [],
         device: Union[str, int, torch.device] = "cpu",
-        hidden_layer_size: Optional[int] = None,
     ) -> None:
         super().__init__()
-        if not hidden_layer_size:
-            hidden_layer_size = preprocess_net.out_dim
         self.device = device
         self.preprocess = preprocess_net
-        self.last = nn.Linear(hidden_layer_size, 1)
+        self.output_dim = 1
+        self.head = MLP(preprocess_net.output_dim, 1, hidden_sizes)
 
     def forward(
         self,
@@ -98,14 +89,16 @@ class Critic(nn.Module):
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Mapping: (s, a) -> logits -> Q(s, a)."""
-        s = to_torch(s, device=self.device, dtype=torch.float32)
-        s = s.flatten(1)
+        s = torch.as_tensor(
+            s, device=self.device, dtype=torch.float32  # type: ignore
+        ).flatten(1)
         if a is not None:
-            a = to_torch_as(a, s)
-            a = a.flatten(1)
+            a = torch.as_tensor(
+                a, device=self.device, dtype=torch.float32  # type: ignore
+            ).flatten(1)
             s = torch.cat([s, a], dim=1)
         logits, h = self.preprocess(s)
-        logits = self.last(logits)
+        logits = self.head(logits)
         return logits
 
 
@@ -115,10 +108,6 @@ class ActorProb(nn.Module):
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
 
-    :param int hidden_layer_size: hidden_layer_size specifies the dimension
-        of last layer in preprocess_net. If not given, Actor will look for
-        out_dim in preprocess_net.
-
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
 
@@ -130,25 +119,25 @@ class ActorProb(nn.Module):
 
     def __init__(
         self,
-        preprocess_net: nn.Module,
+        preprocess_net: Net,
         action_shape: Sequence[int],
+        hidden_sizes: Sequence[int] = [],
         max_action: float = 1.0,
         device: Union[str, int, torch.device] = "cpu",
         unbounded: bool = False,
-        hidden_layer_size: Optional[int] = None,
         conditioned_sigma: bool = False,
     ) -> None:
         super().__init__()
-        if not hidden_layer_size:
-            hidden_layer_size = preprocess_net.out_dim
         self.preprocess = preprocess_net
         self.device = device
-        self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
+        self.output_dim = np.prod(action_shape)
+        self.mu = MLP(preprocess_net.output_dim, self.output_dim, hidden_sizes)
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
-            self.sigma = nn.Linear(hidden_layer_size, np.prod(action_shape))
+            self.sigma = MLP(
+                preprocess_net.output_dim, self.output_dim, hidden_sizes)
         else:
-            self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
+            self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
         self._max = max_action
         self._unbounded = unbounded
 
@@ -170,7 +159,7 @@ class ActorProb(nn.Module):
         else:
             shape = [1] * len(mu.shape)
             shape[1] = -1
-            sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
+            sigma = (self.sigma_param.view(shape) + torch.zeros_like(mu)).exp()
         return (mu, sigma), state
 
 
@@ -186,10 +175,10 @@ class RecurrentActorProb(nn.Module):
         layer_num: int,
         state_shape: Sequence[int],
         action_shape: Sequence[int],
+        hidden_layer_size: int = 128,
         max_action: float = 1.0,
         device: Union[str, int, torch.device] = "cpu",
         unbounded: bool = False,
-        hidden_layer_size: int = 128,
         conditioned_sigma: bool = False,
     ) -> None:
         super().__init__()
@@ -200,12 +189,13 @@ class RecurrentActorProb(nn.Module):
             num_layers=layer_num,
             batch_first=True,
         )
-        self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
+        output_dim = np.prod(action_shape)
+        self.mu = nn.Linear(hidden_layer_size, output_dim)
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
-            self.sigma = nn.Linear(hidden_layer_size, np.prod(action_shape))
+            self.sigma = nn.Linear(hidden_layer_size, output_dim)
         else:
-            self.sigma = nn.Parameter(torch.zeros(np.prod(action_shape), 1))
+            self.sigma_param = nn.Parameter(torch.zeros(output_dim, 1))
         self._max = max_action
         self._unbounded = unbounded
 
@@ -216,7 +206,8 @@ class RecurrentActorProb(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict[str, torch.Tensor]]:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        s = to_torch(s, device=self.device, dtype=torch.float32)
+        s = torch.as_tensor(
+            s, device=self.device, dtype=torch.float32)  # type: ignore
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -241,7 +232,7 @@ class RecurrentActorProb(nn.Module):
         else:
             shape = [1] * len(mu.shape)
             shape[1] = -1
-            sigma = (self.sigma.view(shape) + torch.zeros_like(mu)).exp()
+            sigma = (self.sigma_param.view(shape) + torch.zeros_like(mu)).exp()
         # please ensure the first dim is batch size: [bsz, len, ...]
         return (mu, sigma), {"h": h.transpose(0, 1).detach(),
                              "c": c.transpose(0, 1).detach()}
@@ -281,7 +272,8 @@ class RecurrentCritic(nn.Module):
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        s = to_torch(s, device=self.device, dtype=torch.float32)
+        s = torch.as_tensor(
+            s, device=self.device, dtype=torch.float32)  # type: ignore
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -290,7 +282,8 @@ class RecurrentCritic(nn.Module):
         s, (h, c) = self.nn(s)
         s = s[:, -1]
         if a is not None:
-            a = to_torch_as(a, s)
+            a = torch.as_tensor(
+                a, device=self.device, dtype=torch.float32)  # type: ignore
             s = torch.cat([s, a], dim=1)
         s = self.fc2(s)
         return s
