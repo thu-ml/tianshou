@@ -26,7 +26,6 @@ class Actor(nn.Module):
         action_shape: Sequence[int],
         hidden_layer_size: Optional[int] = None,
         softmax_output: bool = True,
-        
     ) -> None:
         super().__init__()
         if not hidden_layer_size:
