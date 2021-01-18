@@ -8,7 +8,7 @@ from tianshou.data import to_torch
 
 
 class Actor(nn.Module):
-    """Simple actor network. Will create an actor operated in discrete action
+    """Simple actor network. Will create an actor operated in discrete action \
     space with structure of preprocess_net ---> action_shape.
 
     For advanced usage (how to customize the network), please refer to
@@ -49,8 +49,8 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """Simple critic network. Will create an actor operated in discrete action
-    space with structure of preprocess_net ---> 1(q value).
+    """Simple critic network. Will create an actor operated in discrete \
+    action space with structure of preprocess_net ---> 1(q value).
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.

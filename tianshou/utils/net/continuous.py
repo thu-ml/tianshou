@@ -11,15 +11,15 @@ SIGMA_MAX = 2
 
 
 class Actor(nn.Module):
-    """Simple actor network. Will create an actor operated in continuous action
-    space with structure of preprocess_net ---> action_shape.
+    """Simple actor network. Will create an actor operated in continuous \
+    action space with structure of preprocess_net ---> action_shape.
 
     :param preprocess_net: a self-defined preprocess_net which output a
-    flattened hidden state.
+        flattened hidden state.
 
     :param int hidden_layer_size: hidden_layer_size specifies the dimension
-    of last layer in preprocess_net. If not given, Actor will look for
-    out_dim in preprocess_net.
+        of last layer in preprocess_net. If not given, Actor will look for
+        out_dim in preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -59,15 +59,15 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """Simple critic network. Will create an actor operated in continuous action
-    space with structure of preprocess_net ---> 1(q value).
+    """Simple critic network. Will create an actor operated in continuous \
+    action space with structure of preprocess_net ---> 1(q value).
 
     :param preprocess_net: a self-defined preprocess_net which output a
-    flattened hidden state.
+        flattened hidden state.
 
     :param int hidden_layer_size: hidden_layer_size specifies the dimension
-    of last layer in preprocess_net. If not given, Actor will look for
-    out_dim in preprocess_net.
+        of last layer in preprocess_net. If not given, Actor will look for
+        out_dim in preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -113,11 +113,11 @@ class ActorProb(nn.Module):
     """Simple actor network (output with a Gauss distribution).
 
     :param preprocess_net: a self-defined preprocess_net which output a
-    flattened hidden state.
+        flattened hidden state.
 
     :param int hidden_layer_size: hidden_layer_size specifies the dimension
-    of last layer in preprocess_net. If not given, Actor will look for
-    out_dim in preprocess_net.
+        of last layer in preprocess_net. If not given, Actor will look for
+        out_dim in preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.

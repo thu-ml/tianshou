@@ -22,6 +22,7 @@ def miniblock(
 
 class MLP(nn.Module):
     """Simple MLP backbone.
+
     Create a MLP of size inp_shape*hidden_layer_size[0]*hidden_layer_size[1]...
 
     :param hidden_layer_size: shape of MLP passed in as a list, not incluing
@@ -62,14 +63,14 @@ class MLP(nn.Module):
                     "length of norm_layer should match the "
                     "length of hidden_layer_size.")
             else:
-                norm_layer = [norm_layer]*(len(layer_size) - 1)
+                norm_layer = [norm_layer] * (len(layer_size) - 1)
         if activation:
             if isinstance(activation, list):
                 assert len(activation) == len(layer_size) - 1, (
                     "length of activation should match the "
                     "length of hidden_layer_size.")
             else:
-                activation = [activation]*(len(layer_size) - 1)
+                activation = [activation] * (len(layer_size) - 1)
         model = []
         kwargs = {}
         for i in range(len(layer_size) - 1):
@@ -78,7 +79,7 @@ class MLP(nn.Module):
             if activation:
                 kwargs["activation"] = activation[i]
             model += miniblock(
-                layer_size[i], layer_size[i+1], **kwargs)
+                layer_size[i], layer_size[i + 1], **kwargs)
         self.model = nn.Sequential(*model)
 
     def forward(self, inp):
@@ -169,8 +170,8 @@ class Net(nn.Module):
                          device=device, **q_layer_kwargs)
             self.V = MLP(inp_shape=self.model.out_dim,
                          device=device, **v_layer_kwargs)
-            assert self.V.out_dim == self.Q.out_dim, (
-                                        "Q/V output shape mismatch.")
+            assert self.V.out_dim == self.Q.out_dim, \
+                "Q/V output shape mismatch."
             self.out_dim = self.V.out_dim
             if action_shape and not concat:
                 # net serves as an actor
