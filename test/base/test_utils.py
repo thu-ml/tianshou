@@ -40,9 +40,13 @@ def test_net():
     action_shape = (5, )
     data = torch.rand([bsz, *state_shape])
     expect_output_shape = [bsz, *action_shape]
-    net = Net(3, state_shape, action_shape, norm_layer=torch.nn.LayerNorm)
+    net = Net([128, 128, 128, 128], state_shape,
+              action_shape, norm_layer=torch.nn.LayerNorm)
     assert list(net(data)[0].shape) == expect_output_shape
-    net = Net(3, state_shape, action_shape, dueling=(2, 2))
+    dueling = (({"hidden_layer_size": [128, 128]},
+                {"hidden_layer_size": [128, 128]}))
+    net = Net([128, 128, 128, 128], state_shape,
+              action_shape, dueling=dueling)
     assert list(net(data)[0].shape) == expect_output_shape
     # recurrent actor/critic
     data = data.flatten(1)

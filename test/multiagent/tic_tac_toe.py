@@ -31,7 +31,8 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--step-per-epoch', type=int, default=500)
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--layer-num', type=int, default=3)
+    parser.add_argument('--hidden-layer-size', type=int,
+                        nargs='*', default=[128, 128, 128, 128])
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -75,7 +76,7 @@ def get_agents(
     args.action_shape = env.action_space.shape or env.action_space.n
     if agent_learn is None:
         # model
-        net = Net(args.layer_num, args.state_shape, args.action_shape,
+        net = Net(args.hidden_layer_size, args.state_shape, args.action_shape,
                   args.device).to(args.device)
         if optim is None:
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)

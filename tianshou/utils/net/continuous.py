@@ -11,10 +11,23 @@ SIGMA_MAX = 2
 
 
 class Actor(nn.Module):
-    """Simple actor network with MLP.
+    """Simple actor network. Will create an actor operated in discrete action
+    space with structure of preprocess_net ---> action_shape.
+
+    :param preprocess_net: a self-defined preprocess_net which output a
+    flattened hidden state.
+
+    :param int hidden_layer_size: hidden_layer_size specifies the dimension
+    of last layer in preprocess_net. If not given, Actor will look for
+    out_dim in preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
+        of how preprocess_net is suggested to be defined.
     """
 
     def __init__(
@@ -23,9 +36,11 @@ class Actor(nn.Module):
         action_shape: Sequence[int],
         max_action: float = 1.0,
         device: Union[str, int, torch.device] = "cpu",
-        hidden_layer_size: int = 128,
+        hidden_layer_size: Optional[int] = None,
     ) -> None:
         super().__init__()
+        if not hidden_layer_size:
+            hidden_layer_size = preprocess_net.out_dim
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self._max = max_action
@@ -43,19 +58,34 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """Simple critic network with MLP.
+    """Simple critic network. Will create an actor operated in discrete action
+    space with structure of preprocess_net ---> 1(q value).
+
+    :param preprocess_net: a self-defined preprocess_net which output a
+    flattened hidden state.
+
+    :param int hidden_layer_size: hidden_layer_size specifies the dimension
+    of last layer in preprocess_net. If not given, Actor will look for
+    out_dim in preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
+        of how preprocess_net is suggested to be defined.
     """
 
     def __init__(
         self,
         preprocess_net: nn.Module,
         device: Union[str, int, torch.device] = "cpu",
-        hidden_layer_size: int = 128,
+        hidden_layer_size: Optional[int] = None,
     ) -> None:
         super().__init__()
+        if not hidden_layer_size:
+            hidden_layer_size = preprocess_net.out_dim
         self.device = device
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, 1)
@@ -79,10 +109,22 @@ class Critic(nn.Module):
 
 
 class ActorProb(nn.Module):
-    """Simple actor network (output with a Gauss distribution) with MLP.
+    """Simple actor network (output with a Gauss distribution).
+
+    :param preprocess_net: a self-defined preprocess_net which output a
+    flattened hidden state.
+
+    :param int hidden_layer_size: hidden_layer_size specifies the dimension
+    of last layer in preprocess_net. If not given, Actor will look for
+    out_dim in preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
+        of how preprocess_net is suggested to be defined.
     """
 
     def __init__(
@@ -92,10 +134,12 @@ class ActorProb(nn.Module):
         max_action: float = 1.0,
         device: Union[str, int, torch.device] = "cpu",
         unbounded: bool = False,
-        hidden_layer_size: int = 128,
+        hidden_layer_size: Optional[int] = None,
         conditioned_sigma: bool = False,
     ) -> None:
         super().__init__()
+        if not hidden_layer_size:
+            hidden_layer_size = preprocess_net.out_dim
         self.preprocess = preprocess_net
         self.device = device
         self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
