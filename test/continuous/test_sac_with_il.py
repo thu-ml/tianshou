@@ -121,7 +121,7 @@ def test_sac_with_il(args=get_args()):
     if args.task == 'Pendulum-v0':
         env.spec.reward_threshold = -300  # lower the goal
     net = Actor(
-        Net(1, args.state_shape, device=args.device),
+        Net([128, 128], args.state_shape, device=args.device),
         args.action_shape, args.max_action, args.device
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
