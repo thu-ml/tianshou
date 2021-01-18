@@ -8,20 +8,29 @@ from tianshou.data import to_torch
 
 
 class Actor(nn.Module):
-    """Simple actor network with MLP.
+    """Simple actor network. Will create an actor operated in discrete action
+    space with structure of preprocess_net ---> action_shape.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
+        of how preprocess_net is suggested to be defined.
     """
 
     def __init__(
         self,
         preprocess_net: nn.Module,
         action_shape: Sequence[int],
-        hidden_layer_size: int = 128,
+        hidden_layer_size: Optional[int] = None,
         softmax_output: bool = True,
+        
     ) -> None:
         super().__init__()
+        if not hidden_layer_size:
+            hidden_layer_size = preprocess_net.out_dim
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self.softmax_output = softmax_output
@@ -41,19 +50,27 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """Simple critic network with MLP.
+    """Simple critic network. Will create an actor operated in discrete action
+    space with structure of preprocess_net ---> 1(q value).
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
+        of how preprocess_net is suggested to be defined.
     """
 
     def __init__(
         self,
         preprocess_net: nn.Module,
-        hidden_layer_size: int = 128,
+        hidden_layer_size: Optional[int] = None,
         last_size: int = 1
     ) -> None:
         super().__init__()
+        if not hidden_layer_size:
+            hidden_layer_size = preprocess_net.out_dim
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, last_size)
 
