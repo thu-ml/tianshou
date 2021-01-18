@@ -60,7 +60,8 @@ class MLP(nn.Module):
                     "length of hidden_sizes.")
                 norm_layer_list = norm_layer
             else:
-                norm_layer_list = [norm_layer] * len(hidden_sizes)
+                norm_layer_list = [
+                    norm_layer for i in range(len(hidden_sizes))]
         if activation:
             if isinstance(activation, list):
                 assert len(activation) == len(hidden_sizes), (
@@ -68,7 +69,8 @@ class MLP(nn.Module):
                     "length of hidden_sizes.")
                 activation_list = activation
             else:
-                activation_list = [activation] * len(hidden_sizes)
+                activation_list = [
+                    activation for i in range(len(hidden_sizes))]
         hidden_sizes = [input_dim] + list(hidden_sizes)
         model = []
         for i in range(len(hidden_sizes) - 1):
