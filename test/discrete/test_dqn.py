@@ -34,7 +34,8 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--prioritized-replay', type=int, default=0)
+    parser.add_argument('--prioritized-replay',
+                        action="store_true", default=False)
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
     parser.add_argument(
@@ -71,7 +72,7 @@ def test_dqn(args=get_args()):
         net, optim, args.gamma, args.n_step,
         target_update_freq=args.target_update_freq)
     # buffer
-    if args.prioritized_replay > 0:
+    if args.prioritized_replay:
         buf = PrioritizedReplayBuffer(
             args.buffer_size, alpha=args.alpha, beta=args.beta)
     else:
@@ -125,7 +126,7 @@ def test_dqn(args=get_args()):
 
 
 def test_pdqn(args=get_args()):
-    args.prioritized_replay = 1
+    args.prioritized_replay = True
     args.gamma = .95
     args.seed = 1
     test_dqn(args)

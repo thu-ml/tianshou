@@ -37,8 +37,8 @@ def get_args():
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
-    parser.add_argument('--frames_stack', type=int, default=4)
-    parser.add_argument('--resume_path', type=str, default=None)
+    parser.add_argument('--frames-stack', type=int, default=4)
+    parser.add_argument('--resume-path', type=str, default=None)
     parser.add_argument('--watch', default=False, action='store_true',
                         help='watch the play of pre-trained policy only')
     return parser.parse_args()

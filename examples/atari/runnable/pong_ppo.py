@@ -41,7 +41,7 @@ def get_args():
     parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
-    parser.add_argument('--max_episode_steps', type=int, default=2000)
+    parser.add_argument('--max-episode-steps', type=int, default=2000)
     return parser.parse_args()
 
 
