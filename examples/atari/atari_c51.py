@@ -7,10 +7,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import C51Policy
 from tianshou.env import SubprocVectorEnv
-from tianshou.utils.net.discrete import C51
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
+from network import C51
 from atari_wrapper import wrap_deepmind
 
 

@@ -7,10 +7,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import A2CPolicy
 from tianshou.env import SubprocVectorEnv
+from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.discrete import Actor, Critic
-from tianshou.utils.net.common import Net
 
 from atari import create_atari_environment, preprocess_fn
 
