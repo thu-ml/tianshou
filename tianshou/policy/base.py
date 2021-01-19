@@ -182,7 +182,8 @@ class BasePolicy(ABC, nn.Module):
 
         See https://en.wikipedia.org/wiki/Huber_loss
         """
-        return torch.where(x.abs() < k, 0.5 * x.pow(2), k * (x.abs() - 0.5 * k))
+        return torch.where(
+            x.abs() < k, 0.5 * x.pow(2), k * (x.abs() - 0.5 * k))
 
     @staticmethod
     def compute_episodic_return(
