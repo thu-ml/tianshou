@@ -30,7 +30,7 @@ class Actor(nn.Module):
         self,
         preprocess_net: nn.Module,
         action_shape: Sequence[int],
-        hidden_sizes: Sequence[int] = [],
+        hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
         device: Union[str, int, torch.device] = "cpu",
         preprocess_net_output_dim: Optional[int] = None,
@@ -75,7 +75,7 @@ class Critic(nn.Module):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        hidden_sizes: Sequence[int] = [],
+        hidden_sizes: Sequence[int] = (),
         device: Union[str, int, torch.device] = "cpu",
         preprocess_net_output_dim: Optional[int] = None,
     ) -> None:
@@ -126,7 +126,7 @@ class ActorProb(nn.Module):
         self,
         preprocess_net: nn.Module,
         action_shape: Sequence[int],
-        hidden_sizes: Sequence[int] = [],
+        hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
         device: Union[str, int, torch.device] = "cpu",
         unbounded: bool = False,

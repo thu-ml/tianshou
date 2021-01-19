@@ -47,7 +47,7 @@ class MLP(nn.Module):
         self,
         input_dim: int,
         output_dim: int = 0,
-        hidden_sizes: Sequence[int] = [],
+        hidden_sizes: Sequence[int] = (),
         norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
         activation: Optional[Union[ModuleType, Sequence[ModuleType]]]
         = nn.ReLU,
@@ -126,7 +126,7 @@ class Net(nn.Module):
         self,
         state_shape: Union[int, Sequence[int]],
         action_shape: Optional[Union[int, Sequence[int]]] = 0,
-        hidden_sizes: List[int] = [],
+        hidden_sizes: Sequence[int] = (),
         norm_layer: Optional[ModuleType] = None,
         activation: Optional[ModuleType] = nn.ReLU,
         device: Union[str, int, torch.device] = "cpu",

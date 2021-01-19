@@ -250,7 +250,7 @@ Here it is:
         args.action_shape = env.action_space.shape or env.action_space.n
 
         if agent_learn is None:
-            net = Net(args.state_shape, args.action_shape, 
+            net = Net(args.state_shape, args.action_shape,
                       hidden_sizes=args.hidden_sizes, device=args.device).to(args.device)
             if optim is None:
                 optim = torch.optim.Adam(net.parameters(), lr=args.lr)

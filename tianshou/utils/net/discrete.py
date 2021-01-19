@@ -26,7 +26,7 @@ class Actor(nn.Module):
         self,
         preprocess_net: nn.Module,
         action_shape: Sequence[int],
-        hidden_sizes: Sequence[int] = [],
+        hidden_sizes: Sequence[int] = (),
         softmax_output: bool = True,
         preprocess_net_output_dim: Optional[int] = None,
     ) -> None:
@@ -68,7 +68,7 @@ class Critic(nn.Module):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        hidden_sizes: Sequence[int] = [],
+        hidden_sizes: Sequence[int] = (),
         last_size: int = 1,
         preprocess_net_output_dim: Optional[int] = None,
     ) -> None:
