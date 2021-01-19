@@ -194,6 +194,5 @@ class QRDQN(DQN):
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
         x, state = super().forward(x)
-        x = x.view(-1, self.num_quantiles)
         x = x.view(-1, np.prod(self.action_shape), self.num_quantiles)
         return x, state
