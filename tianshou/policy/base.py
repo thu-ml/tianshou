@@ -176,7 +176,7 @@ class BasePolicy(ABC, nn.Module):
     @staticmethod
     def huber(
         x: torch.Tensor,
-        k: int = 1.0
+        k: float = 1.0
     ) -> torch.Tensor:
         """Calculate huber loss element-wisely depending on kappa k.
 
