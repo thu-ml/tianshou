@@ -92,5 +92,3 @@ class QRDQNPolicy(DQNPolicy):
         self.optim.step()
         self._cnt += 1
         return {"loss": loss.item()}
-
-
