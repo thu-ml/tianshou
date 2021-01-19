@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-layer-size', type=int,
+    parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128, 128, 128])
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
@@ -60,10 +60,11 @@ def test_dqn(args=get_args()):
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
-    # dueling = ({"hidden_layer_size": [128]}, {"hidden_layer_size": [128]})
+    # Q_param = V_param = {"hidden_sizes": [128]}
     # model
-    net = Net(args.hidden_layer_size, args.state_shape,
-              args.action_shape, args.device,  # dueling=dueling
+    net = Net(args.state_shape, args.action_shape,
+              hidden_sizes=args.hidden_sizes, device=args.device,
+              # dueling=(Q_param, V_param),
               ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(

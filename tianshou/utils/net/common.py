@@ -24,16 +24,17 @@ def miniblock(
 class MLP(nn.Module):
     """Simple MLP backbone.
 
-    Create a MLP of size input_shape * hidden_sizes[0] * hidden_sizes[1] * ...
+    Create a MLP of size input_dim * hidden_sizes[0] * hidden_sizes[1] * ...
+    * hidden_sizes[-1] * output_dim
 
     :param int input_dim: dimension of the input vector.
     :param int output_dim: dimension of the output vector. If set to 0, there
         is no final linear layer.
     :param hidden_sizes: shape of MLP passed in as a list, not incluing
-        input_shape and output_shape.
+        input_dim and output_dim.
     :param norm_layer: use which normalization before activation, e.g.,
         ``nn.LayerNorm`` and ``nn.BatchNorm1d``, defaults to no normalization.
-        You can also pass in a list of hidden_layer_number-1 normalization
+        You can also pass in a list of len(hidden_sizes) normalization
         modules to use different normalization module in different layers.
         Default to empty list (no normalization).
     :param activation: which activation to use after each layer, can be both
@@ -50,7 +51,7 @@ class MLP(nn.Module):
         norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
         activation: Optional[Union[ModuleType, Sequence[ModuleType]]]
         = nn.ReLU,
-        device: Union[str, int, torch.device] = "cpu",
+        device: Optional[Union[str, int, torch.device]] = None,
     ) -> None:
         super().__init__()
         self.device = device
@@ -158,8 +159,7 @@ class Net(nn.Module):
             v_kwargs: Dict[str, Any] = {
                 **v_kwargs, "input_dim": self.output_dim,
                 "output_dim": v_output_dim}
-            self.Q = MLP(**q_kwargs)
-            self.V = MLP(**v_kwargs)
+            self.Q, self.V = MLP(**q_kwargs), MLP(**v_kwargs)
             self.output_dim = self.Q.output_dim
 
     def forward(
