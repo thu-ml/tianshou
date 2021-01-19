@@ -3,7 +3,7 @@ import numpy as np
 from torch import nn
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
-from tianshou.utils.net.common import MLP, Net
+from tianshou.utils.net.common import MLP
 
 
 SIGMA_MIN = -20
@@ -28,18 +28,20 @@ class Actor(nn.Module):
 
     def __init__(
         self,
-        preprocess_net: Net,
+        preprocess_net: nn.Module,
         action_shape: Sequence[int],
         hidden_sizes: Sequence[int] = [],
         max_action: float = 1.0,
         device: Union[str, int, torch.device] = "cpu",
+        preprocess_net_output_dim: Optional[int] = None,
     ) -> None:
         super().__init__()
         self.device = device
         self.preprocess = preprocess_net
         self.output_dim = np.prod(action_shape)
-        self.head = MLP(
-            preprocess_net.output_dim, self.output_dim, hidden_sizes)
+        input_dim = getattr(preprocess_net, "output_dim",
+                            preprocess_net_output_dim)
+        self.last = MLP(input_dim, self.output_dim, hidden_sizes)
         self._max = max_action
 
     def forward(
@@ -50,7 +52,7 @@ class Actor(nn.Module):
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: s -> logits -> action."""
         logits, h = self.preprocess(s, state)
-        logits = self._max * torch.tanh(self.head(logits))
+        logits = self._max * torch.tanh(self.last(logits))
         return logits, h
 
 
@@ -72,15 +74,18 @@ class Critic(nn.Module):
 
     def __init__(
         self,
-        preprocess_net: Net,
+        preprocess_net: nn.Module,
         hidden_sizes: Sequence[int] = [],
         device: Union[str, int, torch.device] = "cpu",
+        preprocess_net_output_dim: Optional[int] = None,
     ) -> None:
         super().__init__()
         self.device = device
         self.preprocess = preprocess_net
         self.output_dim = 1
-        self.head = MLP(preprocess_net.output_dim, 1, hidden_sizes)
+        input_dim = getattr(preprocess_net, "output_dim",
+                            preprocess_net_output_dim)
+        self.last = MLP(input_dim, 1, hidden_sizes)
 
     def forward(
         self,
@@ -98,7 +103,7 @@ class Critic(nn.Module):
             ).flatten(1)
             s = torch.cat([s, a], dim=1)
         logits, h = self.preprocess(s)
-        logits = self.head(logits)
+        logits = self.last(logits)
         return logits
 
 
@@ -119,23 +124,25 @@ class ActorProb(nn.Module):
 
     def __init__(
         self,
-        preprocess_net: Net,
+        preprocess_net: nn.Module,
         action_shape: Sequence[int],
         hidden_sizes: Sequence[int] = [],
         max_action: float = 1.0,
         device: Union[str, int, torch.device] = "cpu",
         unbounded: bool = False,
         conditioned_sigma: bool = False,
+        preprocess_net_output_dim: Optional[int] = None,
     ) -> None:
         super().__init__()
         self.preprocess = preprocess_net
         self.device = device
         self.output_dim = np.prod(action_shape)
-        self.mu = MLP(preprocess_net.output_dim, self.output_dim, hidden_sizes)
+        input_dim = getattr(preprocess_net, "output_dim",
+                            preprocess_net_output_dim)
+        self.mu = MLP(input_dim, self.output_dim, hidden_sizes)
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
-            self.sigma = MLP(
-                preprocess_net.output_dim, self.output_dim, hidden_sizes)
+            self.sigma = MLP(input_dim, self.output_dim, hidden_sizes)
         else:
             self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
         self._max = max_action

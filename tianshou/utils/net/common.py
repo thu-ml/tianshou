@@ -8,7 +8,7 @@ ModuleType = Type[nn.Module]
 
 def miniblock(
     input_size: int,
-    output_size: int,
+    output_size: int = 0,
     norm_layer: Optional[ModuleType] = None,
     activation: Optional[ModuleType] = None,
 ) -> List[nn.Module]:
@@ -27,7 +27,8 @@ class MLP(nn.Module):
     Create a MLP of size input_shape * hidden_sizes[0] * hidden_sizes[1] * ...
 
     :param int input_dim: dimension of the input vector.
-    :param int output_dim: dimension of the output vector.
+    :param int output_dim: dimension of the output vector. If set to 0, there
+        is no final linear layer.
     :param hidden_sizes: shape of MLP passed in as a list, not incluing
         input_shape and output_shape.
     :param norm_layer: use which normalization before activation, e.g.,
@@ -44,7 +45,7 @@ class MLP(nn.Module):
     def __init__(
         self,
         input_dim: int,
-        output_dim: int,
+        output_dim: int = 0,
         hidden_sizes: Sequence[int] = [],
         norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
         activation: Optional[Union[ModuleType, Sequence[ModuleType]]]
@@ -55,31 +56,28 @@ class MLP(nn.Module):
         self.device = device
         if norm_layer:
             if isinstance(norm_layer, list):
-                assert len(norm_layer) == len(hidden_sizes), (
-                    "length of norm_layer should match the "
-                    "length of hidden_sizes.")
+                assert len(norm_layer) == len(hidden_sizes)
                 norm_layer_list = norm_layer
             else:
                 norm_layer_list = [
                     norm_layer for i in range(len(hidden_sizes))]
+        else:
+            norm_layer_list = [None] * len(hidden_sizes)
         if activation:
             if isinstance(activation, list):
-                assert len(activation) == len(hidden_sizes), (
-                    "length of activation should match the "
-                    "length of hidden_sizes.")
+                assert len(activation) == len(hidden_sizes)
                 activation_list = activation
             else:
                 activation_list = [
                     activation for i in range(len(hidden_sizes))]
+        else:
+            activation_list = [None] * len(hidden_sizes)
         hidden_sizes = [input_dim] + list(hidden_sizes)
         model = []
-        for i in range(len(hidden_sizes) - 1):
-            kwargs = {}
-            if norm_layer:
-                kwargs["norm_layer"] = norm_layer_list[i]
-            if activation:
-                kwargs["activation"] = activation_list[i]
-            model += miniblock(hidden_sizes[i], hidden_sizes[i + 1], **kwargs)
+        for in_dim, out_dim, norm, activ in zip(
+                hidden_sizes[:-1], hidden_sizes[1:],
+                norm_layer_list, activation_list):
+            model += miniblock(in_dim, out_dim, norm, activ)
         if output_dim > 0:
             model += [nn.Linear(hidden_sizes[-1], output_dim)]
         self.output_dim = output_dim or hidden_sizes[-1]
@@ -106,11 +104,12 @@ class Net(nn.Module):
         and action_shape. If it is True, ``action_shape`` is not the output
         shape, but affects the input shape.
     :param int num_atoms: in order to expand to the net of distributional RL,
-         defaults to 1 (no use).
-    :param bool use_dueling: whether to use dueling network to calculate Q
-        values (for Dueling DQN). Default to False.
-    :param dueling_q_hidden_sizes: the MLP hidden sizes for Q value head.
-    :param dueling_v_hidden_sizes: the MLP hidden sizes for V value head.
+         defaults to 1 (not use).
+    :param bool dueling_param: whether to use dueling network to calculate Q
+        values (for Dueling DQN). If you want to use dueling option, you should
+        pass a tuple of two dict (first for Q and second for V) stating
+        self-defined arguments as stated in
+        class:`~tianshou.utils.net.common.MLP`. Defaults to None.
 
     .. seealso::
 
@@ -127,39 +126,40 @@ class Net(nn.Module):
         state_shape: Union[int, Sequence[int]],
         action_shape: Optional[Union[int, Sequence[int]]] = 0,
         hidden_sizes: List[int] = [],
+        norm_layer: Optional[ModuleType] = None,
+        activation: Optional[ModuleType] = nn.ReLU,
         device: Union[str, int, torch.device] = "cpu",
         softmax: bool = False,
         concat: bool = False,
-        norm_layer: Optional[ModuleType] = None,
-        activation: Optional[ModuleType] = nn.ReLU,
         num_atoms: int = 1,
-        use_dueling: bool = False,
-        dueling_q_hidden_sizes: List[int] = [],
-        dueling_v_hidden_sizes: List[int] = [],
+        dueling_param: Optional[Tuple[Dict[str, Any], Dict[str, Any]]] = None,
     ) -> None:
         super().__init__()
         self.device = device
-        self.use_dueling = use_dueling
         self.softmax = softmax
         self.num_atoms = num_atoms
         input_dim = np.prod(state_shape)
         action_dim = np.prod(action_shape) * num_atoms
         if concat:
             input_dim += action_dim
-        output_dim = action_dim if not use_dueling and not concat else 0
+        self.use_dueling = dueling_param is not None
+        output_dim = action_dim if not self.use_dueling and not concat else 0
         self.model = MLP(input_dim, output_dim, hidden_sizes,
                          norm_layer, activation, device)
         self.output_dim = self.model.output_dim
-        if use_dueling:  # dueling DQN
+        if self.use_dueling:  # dueling DQN
+            q_kwargs, v_kwargs = dueling_param  # type: ignore
             q_output_dim, v_output_dim = 0, 0
             if not concat:
                 q_output_dim, v_output_dim = action_dim, num_atoms
-            self.Q = MLP(
-                self.output_dim, q_output_dim, dueling_q_hidden_sizes,
-                norm_layer, activation, device)
-            self.V = MLP(
-                self.output_dim, v_output_dim, dueling_v_hidden_sizes,
-                norm_layer, activation, device)
+            q_kwargs: Dict[str, Any] = {
+                **q_kwargs, "input_dim": self.output_dim,
+                "output_dim": q_output_dim}
+            v_kwargs: Dict[str, Any] = {
+                **v_kwargs, "input_dim": self.output_dim,
+                "output_dim": v_output_dim}
+            self.Q = MLP(**q_kwargs)
+            self.V = MLP(**v_kwargs)
             self.output_dim = self.Q.output_dim
 
     def forward(
@@ -175,7 +175,7 @@ class Net(nn.Module):
             q, v = self.Q(logits), self.V(logits)
             if self.num_atoms > 1:
                 q = q.view(bsz, -1, self.num_atoms)
-                v = v.view(bsz, 1, self.num_atoms)
+                v = v.view(bsz, -1, self.num_atoms)
             logits = q - q.mean(dim=1, keepdim=True) + v
         elif self.num_atoms > 1:
             logits = logits.view(bsz, -1, self.num_atoms)

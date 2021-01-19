@@ -4,7 +4,7 @@ from torch import nn
 import torch.nn.functional as F
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
-from tianshou.utils.net.common import MLP, Net
+from tianshou.utils.net.common import MLP
 
 
 class Actor(nn.Module):
@@ -24,16 +24,18 @@ class Actor(nn.Module):
 
     def __init__(
         self,
-        preprocess_net: Net,
+        preprocess_net: nn.Module,
         action_shape: Sequence[int],
         hidden_sizes: Sequence[int] = [],
         softmax_output: bool = True,
+        preprocess_net_output_dim: Optional[int] = None,
     ) -> None:
         super().__init__()
         self.preprocess = preprocess_net
         self.output_dim = np.prod(action_shape)
-        self.head = MLP(
-            preprocess_net.output_dim, self.output_dim, hidden_sizes)
+        input_dim = getattr(preprocess_net, "output_dim",
+                            preprocess_net_output_dim)
+        self.last = MLP(input_dim, self.output_dim, hidden_sizes)
         self.softmax_output = softmax_output
 
     def forward(
@@ -44,7 +46,7 @@ class Actor(nn.Module):
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
         logits, h = self.preprocess(s, state)
-        logits = self.head(logits)
+        logits = self.last(logits)
         if self.softmax_output:
             logits = F.softmax(logits, dim=-1)
         return logits, h
@@ -65,21 +67,24 @@ class Critic(nn.Module):
 
     def __init__(
         self,
-        preprocess_net: Net,
+        preprocess_net: nn.Module,
         hidden_sizes: Sequence[int] = [],
-        last_size: int = 1
+        last_size: int = 1,
+        preprocess_net_output_dim: Optional[int] = None,
     ) -> None:
         super().__init__()
         self.preprocess = preprocess_net
         self.output_dim = last_size
-        self.head = MLP(preprocess_net.output_dim, last_size, hidden_sizes)
+        input_dim = getattr(preprocess_net, "output_dim",
+                            preprocess_net_output_dim)
+        self.last = MLP(input_dim, last_size, hidden_sizes)
 
     def forward(
         self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
     ) -> torch.Tensor:
         """Mapping: s -> V(s)."""
         logits, _ = self.preprocess(s, state=kwargs.get("state", None))
-        return self.head(logits)
+        return self.last(logits)
 
 
 class DQN(nn.Module):
