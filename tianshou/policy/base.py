@@ -174,6 +174,17 @@ class BasePolicy(ABC, nn.Module):
         return result
 
     @staticmethod
+    def huber(
+        x: torch.Tensor,
+        k: int = 1.0
+    ) -> torch.Tensor:
+        """Calculate huber loss element-wisely depending on kappa k.
+
+        See https://en.wikipedia.org/wiki/Huber_loss
+        """
+        return torch.where(x.abs() < k, 0.5 * x.pow(2), k * (x.abs() - 0.5 * k))
+
+    @staticmethod
     def compute_episodic_return(
         batch: Batch,
         v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
