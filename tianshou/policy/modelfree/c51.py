@@ -64,8 +64,7 @@ class C51Policy(DQNPolicy):
         return self.support.repeat(len(indice), 1)  # shape: [bsz, num_atoms]
 
     def compute_q(self, logits: torch.Tensor) -> torch.Tensor:
-        """Compute the q value based on the network's raw output logits.
-        """
+        """Compute the q value based on the network's raw output logits."""
         return (logits * self.support).sum(2)
 
     def _target_dist(self, batch: Batch) -> torch.Tensor:
