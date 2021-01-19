@@ -10,7 +10,7 @@ from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
-from network import C51
+from atari_network import C51
 from atari_wrapper import wrap_deepmind
 
 
