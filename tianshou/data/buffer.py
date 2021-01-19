@@ -11,7 +11,8 @@ from tianshou.data.utils.converter import to_hdf5, from_hdf5
 
 class ReplayBuffer:
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from \
-    interaction between the policy and environment.
+    interaction between the policy and environment. ReplayBuffer can be \
+    considered as a specialized form(management) of Batch.
 
     The current implementation of Tianshou typically use 7 reserved keys in
     :class:`~tianshou.data.Batch`:
@@ -138,6 +139,7 @@ class ReplayBuffer:
         index when using frame-stack sampling method, defaults to False.
         This feature is not supported in Prioritized Replay Buffer currently.
     """
+    _reserved_keys = {'obs', 'act', 'rew', 'done', 'obs_next', 'info', 'policy'}
 
     def __init__(
         self,
@@ -148,8 +150,10 @@ class ReplayBuffer:
         sample_avail: bool = False,
     ) -> None:
         super().__init__()
+        #TODO _maxsize == 0 handle
         self._maxsize = size
         self._indices = np.arange(size)
+        # consider move stacking option to another
         self.stack_num = stack_num
         self._avail = sample_avail and stack_num > 1
         self._avail_index: List[int] = []
@@ -189,18 +193,18 @@ class ReplayBuffer:
         state = {k: v for k, v in self.__dict__.items() if k not in exclude}
         return state
 
+    def __setattr__(self, key: str, value: Any) -> None:
+        """Set self.key = value."""
+        assert key not in self._reserved_keys, (
+                "key '{}' is reserved and cannot be assigned".format(key))
+        super().__setattr__(key, value)
+
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
             value = self._meta.__dict__[name]
         except KeyError:
             self._meta.__dict__[name] = _create_value(inst, self._maxsize)
             value = self._meta.__dict__[name]
-        if isinstance(inst, (torch.Tensor, np.ndarray)):
-            if inst.shape != value.shape[1:]:
-                raise ValueError(
-                    "Cannot add data to a buffer with different shape with key"
-                    f" {name}, expect {value.shape[1:]}, given {inst.shape}."
-                )
         try:
             value[self._index] = inst
         except KeyError:
@@ -219,6 +223,10 @@ class ReplayBuffer:
 
     def update(self, buffer: "ReplayBuffer") -> None:
         """Move the data from the given buffer to self."""
+         # TODO 'one by one copying' can be greatly improved.
+         # Can we move data as a whole batch to save time?
+         # what if self._maxsize << buffer._maxize, can we detect that 
+         # and just ignore those element to be rewrite?
         if len(buffer) == 0:
             return
         i = begin = buffer._index % len(buffer)
@@ -242,7 +250,9 @@ class ReplayBuffer:
         policy: Optional[Union[dict, Batch]] = {},
         **kwargs: Any,
     ) -> None:
-        """Add a batch of data into replay buffer."""
+        """Add a batch of data into replay buffer.
+        Expect all input to be batch, dict, or numpy array"""
+        # TODO should we consider to support batch input?
         assert isinstance(
             info, (dict, Batch)
         ), "You should return a dict in the last argument of env.step()."
@@ -379,6 +389,32 @@ class ReplayBuffer:
             policy=self.get(index, "policy"),
         )
 
+    def set_batch(self, batch: "Batch"):
+        """Manually choose the batch you want the ReplayBuffer to manage. This 
+        method should be called instantly after the ReplayBuffer is initialised.
+        """
+        assert self._meta.is_empty(), "This method cannot be called after add() method"
+        self._meta = batch
+        assert not self._is_meta_corrupted(), (
+            "Input batch doesn't meet ReplayBuffer's data form requirement.")
+
+    def _is_meta_corrupted(self)-> bool:
+        """Assert if self._meta: Batch is still in legal form.
+        """
+        #TODO do we need to check the chlid? is cache
+        if set(self._meta.keys()) != self._reserved_keys:
+            return True
+        for v in self._meta.values():
+            if isinstance(v, Batch):
+                if not v.is_empty() and v.shape[0]!= self._maxsize:
+                    return True
+            elif isinstance(v, np.ndarray):
+                if v.shape[0]!= self._maxsize:
+                    return True
+            else:
+                return True
+        return False
+
     def save_hdf5(self, path: str) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
@@ -393,6 +429,37 @@ class ReplayBuffer:
             buf = cls.__new__(cls)
             buf.__setstate__(from_hdf5(f, device=device))
         return buf
+
+    def start(self, index):
+        """return start indices of given indices"""
+        assert index < len(self) and index >= 0, "Input index illegal."
+        sorted_starts = np.sort(self.starts())
+        ret = np.searchsorted(sorted_starts, index, side="right") - 1
+        ret[ret < 0] = sorted_starts[-1]
+        return ret
+
+    def next(self, index):
+        """return next n step indices"""
+        assert index < len(self) and index >= 0, "Input index illegal."
+        return (index + ~(self.done[index]|index==self._index))%len(self)
+
+    def starts(self):
+        """return indices of all episodes"""
+        if len(self) > 0:
+            return (self.ends()+1)%len(self)
+        else:
+            return np.array([], dtype = np.int)
+
+    def ends(self):
+        """return unfinished indices."""
+        if len(self) > 0:
+            last_write_in = int((self._index - 1)%len(self))
+            if self.done[last_write_in]:
+                return np.where(self.done[:len(self)])[0]
+            else:
+                return np.append(np.where(self.done[:len(self)])[0], last_write_in)
+        else:
+            return np.array([], dtype = np.int)
 
 
 class ListReplayBuffer(ReplayBuffer):
@@ -505,7 +572,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def update_weight(
         self,
         indice: Union[np.ndarray],
-        new_weight: Union[np.ndarray, torch.Tensor]
+        new_weight: np.ndarray
     ) -> None:
         """Update priority weight by indice in this buffer.
 
@@ -530,3 +597,254 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             policy=self.get(index, "policy"),
             weight=self.weight[index],
         )
+
+class CachedReplayBuffer(ReplayBuffer):
+    """CachedReplayBuffer can be considered as a combination of one main buffer
+    and a list of cached_buffers. It's designed to used by collector to allow
+    parallel collecting in collector. In CachedReplayBuffer is not organized
+    chronologically, but standard API like start()/starts()/ends/next() are provided
+    to help CachedReplayBuffer to be used just like ReplayBuffer.
+    """
+    def __init__(
+        self,
+        size: int,
+        cached_buf_n: int,
+        max_length: int,
+        **kwargs: Any,
+    ) -> None:
+        """
+        TODO support stack in the future
+        """
+        assert cached_buf_n > 0
+        # TODO what if people don't care about how buffer is organized
+        assert max_length > 0
+        if cached_buf_n == 1:
+            import warnings
+            warnings.warn(
+                "CachedReplayBuffer with cached_buf_n = 1 will cause low efficiency. "
+                "Please consider using ReplayBuffer which is not in cached form.",
+                Warning)
+        
+        _maxsize = size+cached_buf_n*max_length
+        self.cached_bufs_n = cached_buf_n
+        # TODO see if we can generalize to all kinds of buufer
+        self.main_buf = ReplayBuffer(size, **kwargs)
+        # TODO cached_bufs can be consider to be replced by vector 
+        # buffer in the future
+        self.cached_bufs = np.array([ReplayBuffer(max_length, **kwargs)
+                                        for _ in range(cached_buf_n)])
+        super().__init__(size= _maxsize, **kwargs)
+        # TODO support, or just delete stack_num option from Replay buffer for now
+        assert self.stack_num == 1
+        
+    def __len__(self) -> int:
+        """Return len(self)."""
+        return len(self.main_buf) + np.sum([len(b) for b in self.cached_bufs])
+
+    def update(self, buffer: "ReplayBuffer") -> int:
+        """CachedReplayBuffer will only update data from buffer which is in
+        episode form. Return an integer which indicates the number of steps
+        being ignored."""
+        # For now update method copy element one by one, which is too slow.
+        if isinstance(buffer, CachedReplayBuffer):
+            buffer = buffer.main_buf
+        # now treat buffer like a normal ReplayBuffer and remove those incomplete steps
+        if len(buffer) == 0:
+            return 0
+        diposed_count = 0
+        # TODO use standard API now
+        end = (buffer._index - 1) % len(buffer)
+        begin = buffer._index % len(buffer)
+        while True:
+            if buffer.done[end] > 0:
+                break
+            else:
+                diposed_count = diposed_count + 1
+                if end == begin:
+                    assert diposed_count == len(self)
+                    return diposed_count
+                end = (end - 1) % len(buffer)
+        while True:
+            self.main_buf.add(**buffer[begin])
+            if begin == end:
+                return diposed_count
+            begin = (begin + 1) % len(buffer)
+
+    def add(
+        self,
+        obs: Any,
+        act: Any,
+        rew: Union[Number, np.number, np.ndarray],
+        done: Union[Number, np.number, np.bool_],
+        obs_next: Any = None,
+        info: Optional[Union[dict, Batch]] = {},
+        policy: Optional[Union[dict, Batch]] = {},
+        index: Optional[Union[int, np.integer, np.ndarray, List[int]]] = None,
+        **kwargs: Any
+        ) -> None:
+        """
+        
+        """
+        if index is None:
+            index = range(self.cached_bufs_n)
+        index = np.atleast_1d(index).astype(np.int)
+        assert(index.ndim == 1)
+
+        obs = np.atleast_1d(obs)
+        act = np.atleast_1d(act)
+        rew = np.atleast_1d(rew)
+        done = np.atleast_1d(done)
+        # TODO ugly code 
+        if isinstance(obs_next, Batch) and obs_next.is_empty():
+            obs_next = None
+        if isinstance(info, Batch) and info.is_empty():
+            info = {}
+        if isinstance(policy, Batch) and policy.is_empty():
+            policy = {}
+        obs_next = np.atleast_1d([None]*len(index)) if obs_next is None else np.atleast_1d(obs_next)
+        info = np.atleast_1d([{}]*len(index)) if info == {} else np.atleast_1d(info)
+        policy = np.atleast_1d([{}]*len(index)) if policy == {} else np.atleast_1d(policy)
+
+        # TODO what if data is already in episodes, what if i want to add mutiple data ?
+        # can accelerate
+        if self._meta.is_empty():
+            self._cache_initialise(obs[0], act[0], rew[0], done[0], obs_next[0],
+                                    info[0], policy[0])
+        # now we add data to selected cached_bufs one by one
+        cached_bufs_slice = self.cached_bufs[index]
+        for i, b in enumerate(cached_bufs_slice):
+            b.add(obs[i], act[i], rew[i], done[i],
+                    obs_next[i], info[i], policy[i])
+        return self._main_buf_update()
+
+    def _main_buf_update(self):
+        lens = np.zeros((self.cached_bufs_n, ), dtype = np.int)
+        rews = np.zeros((self.cached_bufs_n, ))
+        start_indexs = np.zeros((self.cached_bufs_n, ), dtype = np.int)
+        for i, buf in enumerate(self.cached_bufs):
+            if buf.done[buf._index - 1] > 0:
+                lens[i] = len(buf)
+                rews[i] = np.sum(buf.rew[:lens[i]])
+                start_indexs[i] = self.main_buf._index
+                if self.main_buf._maxsize > 0:
+                    # _maxsize of main_buf might be 0 in test collector.
+                    self.main_buf.update(buf)
+                buf.reset()
+        return lens, rews, start_indexs
+
+    def reset(self) -> None:
+        for buf in self.cached_bufs:
+            buf.reset()
+        self.main_buf.reset()
+        self._avail_index = []
+        #TODO finish
+
+    def sample(self, batch_size: int,
+               is_from_main_buf = False) -> Tuple[Batch, np.ndarray]:
+        if is_from_main_buf:
+            return self.main_buf.sample(batch_size)
+
+        _all = np.arange(len(self), dtype=np.int)
+        start = len(self.main_buf)
+        add = self.main_buf._maxsize - len(self.main_buf)
+        for buf in self.cached_bufs:
+            end = start + len(buf)
+            _all[start:end] =  _all[start:end] + add
+            start = end
+            add = add + buf._maxsize - len(buf)
+        indice = np.random.choice(_all, batch_size)
+        assert len(indice) > 0, "No available indice can be sampled."
+        return self[indice], indice
+
+    def get(
+        self,
+        indice: Union[slice, int, np.integer, np.ndarray],
+        key: str,
+        stack_num: Optional[int] = None,
+    ) -> Union[Batch, np.ndarray]:
+        if stack_num is None:
+            stack_num = self.stack_num
+        assert(stack_num == 1)
+        #TODO support stack
+        return super().get(indice, key, stack_num)
+
+    def _cache_initialise(
+        self,
+        obs: Any,
+        act: Any,
+        rew: Union[Number, np.number, np.ndarray],
+        done: Union[Number, np.number, np.bool_],
+        obs_next: Any = None,
+        info: Optional[Union[dict, Batch]] = {},
+        policy: Optional[Union[dict, Batch]] = {}
+    ) -> None:
+        assert(self._meta.is_empty())
+        # to initialise self._meta
+        super().add(obs, act, rew, done, obs_next, info, policy)
+        super().reset() #TODO delete useless varible?
+        del self._index
+        del self._size
+        self.main_buf.set_batch(self._meta[:self.main_buf._maxsize])
+        start = self.main_buf._maxsize
+        for buf in self.cached_bufs:
+            end = start + buf._maxsize
+            buf.set_batch(self._meta[start: end])
+            start = end
+    
+    def ends(self):
+        return np.concatenate(
+            [self.main_buf.ends(), *[b.ends() for b in self.cached_bufs]])
+
+    def starts(self):
+        return np.concatenate(
+            [self.main_buf.starts(), *[b.starts() for b in self.cached_bufs]])
+
+    def next(self, index):
+        assert index >= 0 and index < self._maxsize, "Input index illegal."
+        all_buffer = [self.main_buf, *self.cached_bufs]
+        ret = index.copy()
+        upper = 0
+        lower = 0
+        for b in all_buffer:
+            lower = upper
+            upper += b._maxsize
+            mask = ret>=lower and ret<upper
+            ret[mask] = b.next(ret[mask]-lower)+lower
+        return ret
+
+    def start(self, index):
+        """return start indices of given indices"""
+        all_buffer = [self.main_buf, *self.cached_bufs]
+        ret = np.full(index.shape, -1)
+        upper = 0
+        lower = 0
+        for b in all_buffer:
+            lower = upper
+            upper += b._maxsize
+            mask = ret>=lower and ret<upper
+            ret[mask] = b.start(ret[mask]-lower)+lower
+        return ret
+
+    def _global2local(self, global_index):
+        assert (global_index>=0 and global_index<self._maxsize).all()
+        all_buffer = [self.main_buf, *self.cached_bufs]
+        local_index = global_index.copy()
+        group_index = np.full(global_index.shape, -1)
+        upper = 0
+        lower = 0
+        for i, b in enumerate(all_buffer):
+            lower = upper
+            upper += b._maxsize
+            mask = global_index>=lower and global_index<upper
+            group_index[mask] = i
+            local_index[mask]-=lower
+        return local_index, group_index
+
+    def _local2global(self, local_index, group_index):
+        global_index = local_index.copy()
+        lowers = [0, self.main_buf._maxsize]
+        for i in range(self.cached_bufs_n -1):
+            lowers.append(lowers[-1] + self.cached_bufs[0]._max_size)
+        for i in range(len(lowers)):
+            global_index[group_index == i]+=lowers[i]
+        return global_index
