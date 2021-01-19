@@ -66,8 +66,7 @@ class QRDQNPolicy(DQNPolicy):
         return next_dist  # shape: [bsz, num_quantiles]
 
     def compute_q(self, logits: torch.Tensor) -> torch.Tensor:
-        """Compute the q value based on the network's raw output logits.
-        """
+        """Compute the q value based on the network's raw output logits."""
         return logits.mean(2)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
