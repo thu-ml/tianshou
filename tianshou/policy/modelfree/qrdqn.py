@@ -3,7 +3,7 @@ import numpy as np
 from typing import Any, Dict
 
 from tianshou.policy import DQNPolicy
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import Batch, ReplayBuffer
 
 
 class QRDQNPolicy(DQNPolicy):
@@ -78,7 +78,7 @@ class QRDQNPolicy(DQNPolicy):
         curr_dist = self(batch).logits
         act = batch.act
         curr_dist = curr_dist[np.arange(len(act)), act, :]
-        target_dist = to_torch_as(batch.returns, curr_dist)
+        target_dist = batch.returns
         u = target_dist.unsqueeze(1) - curr_dist.unsqueeze(2)
         huber_loss = (
                 self.huber(u) * (self.tau_hat.view(1, -1, 1) -
