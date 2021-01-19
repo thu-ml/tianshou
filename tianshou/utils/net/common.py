@@ -12,7 +12,8 @@ def miniblock(
     norm_layer: Optional[ModuleType] = None,
     activation: Optional[ModuleType] = None,
 ) -> List[nn.Module]:
-    """Construct a miniblock with given input/output-size and norm layer."""
+    """Construct a miniblock with given input/output-size, norm layer and \
+    activation."""
     layers: List[nn.Module] = [nn.Linear(input_size, output_size)]
     if norm_layer is not None:
         layers += [norm_layer(output_size)]  # type: ignore
@@ -34,13 +35,13 @@ class MLP(nn.Module):
         input_dim and output_dim.
     :param norm_layer: use which normalization before activation, e.g.,
         ``nn.LayerNorm`` and ``nn.BatchNorm1d``, defaults to no normalization.
-        You can also pass in a list of len(hidden_sizes) normalization
-        modules to use different normalization module in different layers.
-        Default to empty list (no normalization).
+        You can also pass a list of normalization modules with the same length
+        of hidden_sizes, to use different normalization module in different
+        layers. Default to no normalization.
     :param activation: which activation to use after each layer, can be both
         the same actvition for all layers if passed in nn.Module, or different
-        activation for different Modules if passed in a list.
-        Default to nn.ReLU.
+        activation for different Modules if passed in a list. Default to
+        nn.ReLU.
     """
 
     def __init__(
@@ -98,12 +99,25 @@ class Net(nn.Module):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
 
-    :param state_shape: int or a list of int of the shape of state.
-    :param action_shape: int or a list of int of the shape of action.
+    :param state_shape: int or a sequence of int of the shape of state.
+    :param action_shape: int or a sequence of int of the shape of action.
     :param hidden_sizes: shape of MLP passed in as a list.
+    :param norm_layer: use which normalization before activation, e.g.,
+        ``nn.LayerNorm`` and ``nn.BatchNorm1d``, defaults to no normalization.
+        You can also pass a list of normalization modules with the same length
+        of hidden_sizes, to use different normalization module in different
+        layers. Default to no normalization.
+    :param activation: which activation to use after each layer, can be both
+        the same actvition for all layers if passed in nn.Module, or different
+        activation for different Modules if passed in a list. Default to
+        nn.ReLU.
+    :param device: specify the device when the network actually runs. Default
+        to "cpu".
+    :param bool softmax: whether to apply a softmax layer over the last layer's
+        output.
     :param bool concat: whether the input shape is concatenated by state_shape
         and action_shape. If it is True, ``action_shape`` is not the output
-        shape, but affects the input shape.
+        shape, but affects the input shape only.
     :param int num_atoms: in order to expand to the net of distributional RL,
          defaults to 1 (not use).
     :param bool dueling_param: whether to use dueling network to calculate Q

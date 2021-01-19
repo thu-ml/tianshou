@@ -16,6 +16,14 @@ class Actor(nn.Module):
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
+    :param action_shape: a sequence of int for the shape of action.
+    :param hidden_sizes: a sequence of int for constructing the MLP after
+        preprocess_net. Default to empty sequence (where the MLP now contains
+        only a single linear layer).
+    :param float max_action: the scale for the final action logits. Default to
+        1.
+    :param int preprocess_net_output_dim: the output dimension of
+        preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -62,6 +70,11 @@ class Critic(nn.Module):
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
+    :param hidden_sizes: a sequence of int for constructing the MLP after
+        preprocess_net. Default to empty sequence (where the MLP now contains
+        only a single linear layer).
+    :param int preprocess_net_output_dim: the output dimension of
+        preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -112,6 +125,18 @@ class ActorProb(nn.Module):
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
+    :param action_shape: a sequence of int for the shape of action.
+    :param hidden_sizes: a sequence of int for constructing the MLP after
+        preprocess_net. Default to empty sequence (where the MLP now contains
+        only a single linear layer).
+    :param float max_action: the scale for the final action logits. Default to
+        1.
+    :param bool unbounded: whether to apply tanh activation on final logits.
+        Default to False.
+    :param bool conditioned_sigma: True when sigma is calculated from the
+        input, False when sigma is an independent parameter. Default to False.
+    :param int preprocess_net_output_dim: the output dimension of
+        preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.

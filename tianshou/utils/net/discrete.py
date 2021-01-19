@@ -13,6 +13,17 @@ class Actor(nn.Module):
     Will create an actor operated in discrete action space with structure of
     preprocess_net ---> action_shape.
 
+    :param preprocess_net: a self-defined preprocess_net which output a
+        flattened hidden state.
+    :param action_shape: a sequence of int for the shape of action.
+    :param hidden_sizes: a sequence of int for constructing the MLP after
+        preprocess_net. Default to empty sequence (where the MLP now contains
+        only a single linear layer).
+    :param bool softmax_output: whether to apply a softmax layer over the last
+        layer's output.
+    :param int preprocess_net_output_dim: the output dimension of
+        preprocess_net.
+
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
 
@@ -55,6 +66,15 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Simple critic network. Will create an actor operated in discrete \
     action space with structure of preprocess_net ---> 1(q value).
+
+    :param preprocess_net: a self-defined preprocess_net which output a
+        flattened hidden state.
+    :param hidden_sizes: a sequence of int for constructing the MLP after
+        preprocess_net. Default to empty sequence (where the MLP now contains
+        only a single linear layer).
+    :param int last_size: the output dimension of Critic network. Default to 1.
+    :param int preprocess_net_output_dim: the output dimension of
+        preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
