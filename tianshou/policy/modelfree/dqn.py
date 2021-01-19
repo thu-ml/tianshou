@@ -105,8 +105,7 @@ class DQNPolicy(BasePolicy):
         return batch
 
     def compute_q(self, logits: torch.Tensor) -> torch.Tensor:
-        """Compute the q value based on the network's raw output logits.
-        """
+        """Compute the q value based on the network's raw output logits."""
         return logits
 
     def forward(
