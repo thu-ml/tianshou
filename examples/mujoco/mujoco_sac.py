@@ -33,8 +33,8 @@ def get_args():
     parser.add_argument('--update-per-step', type=int, default=1)
     parser.add_argument('--pre-collect-step', type=int, default=10000)
     parser.add_argument('--batch-size', type=int, default=256)
-    parser.add_argument('--hidden-layer-size', type=int, default=256)
-    parser.add_argument('--layer-num', type=int, default=1)
+    parser.add_argument('--hidden-sizes', type=int,
+                        nargs='*', default=[128, 128])
     parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -70,26 +70,22 @@ def test_sac(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, device=args.device,
-              hidden_layer_size=args.hidden_layer_size)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
+              device=args.device)
     actor = ActorProb(
-        net, args.action_shape, args.max_action, args.device, unbounded=True,
-        hidden_layer_size=args.hidden_layer_size, conditioned_sigma=True,
+        net, args.action_shape, max_action=args.max_action,
+        device=args.device, unbounded=True, conditioned_sigma=True
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net_c1 = Net(args.layer_num, args.state_shape, args.action_shape,
-                 concat=True, device=args.device,
-                 hidden_layer_size=args.hidden_layer_size)
-    critic1 = Critic(
-        net_c1, args.device, hidden_layer_size=args.hidden_layer_size
-    ).to(args.device)
+    net_c1 = Net(args.state_shape, args.action_shape,
+                 hidden_sizes=args.hidden_sizes,
+                 concat=True, device=args.device)
+    critic1 = Critic(net_c1, device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    net_c2 = Net(args.layer_num, args.state_shape, args.action_shape,
-                 concat=True, device=args.device,
-                 hidden_layer_size=args.hidden_layer_size)
-    critic2 = Critic(
-        net_c2, args.device, hidden_layer_size=args.hidden_layer_size
-    ).to(args.device)
+    net_c2 = Net(args.state_shape, args.action_shape,
+                 hidden_sizes=args.hidden_sizes,
+                 concat=True, device=args.device)
+    critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:

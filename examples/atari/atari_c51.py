@@ -7,10 +7,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import C51Policy
 from tianshou.env import SubprocVectorEnv
-from tianshou.utils.net.discrete import C51
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 
+from atari_network import C51
 from atari_wrapper import wrap_deepmind
 
 
@@ -40,8 +40,8 @@ def get_args():
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
-    parser.add_argument('--frames_stack', type=int, default=4)
-    parser.add_argument('--resume_path', type=str, default=None)
+    parser.add_argument('--frames-stack', type=int, default=4)
+    parser.add_argument('--resume-path', type=str, default=None)
     parser.add_argument('--watch', default=False, action='store_true',
                         help='watch the play of pre-trained policy only')
     return parser.parse_args()
