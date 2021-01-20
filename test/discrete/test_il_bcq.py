@@ -65,8 +65,7 @@ def test_discrete_bcq(args=get_args()):
         hidden_sizes=args.hidden_sizes, device=args.device).to(args.device)
     optim = torch.optim.Adam(
         set(policy_net.parameters()).union(imitation_net.parameters()),
-        lr=args.lr,
-    )
+        lr=args.lr)
 
     policy = DiscreteBCQPolicy(
         policy_net, imitation_net, optim, args.gamma, args.n_step,
@@ -93,8 +92,8 @@ def test_discrete_bcq(args=get_args()):
     result = offline_trainer(
         policy, buffer, test_collector,
         args.epoch, args.step_per_epoch, args.test_num, args.batch_size,
-        stop_fn=stop_fn, save_fn=save_fn, writer=writer,
-    )
+        stop_fn=stop_fn, save_fn=save_fn, writer=writer)
+
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':
