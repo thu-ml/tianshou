@@ -31,6 +31,10 @@ def get_args():
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128])
+    parser.add_argument('--dueling-q-hidden-sizes', type=int,
+                        nargs='*', default=[128, 128])
+    parser.add_argument('--dueling-v-hidden-sizes', type=int,
+                        nargs='*', default=[128, 128])
     parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -58,7 +62,8 @@ def test_dqn(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    Q_param = V_param = {"hidden_sizes": [128, 128]}
+    Q_param = {"hidden_sizes": args.dueling_q_hidden_sizes}
+    V_param = {"hidden_sizes": args.dueling_v_hidden_sizes}
     net = Net(args.state_shape, args.action_shape,
               hidden_sizes=args.hidden_sizes, device=args.device,
               dueling_param=(Q_param, V_param)).to(args.device)

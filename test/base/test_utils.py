@@ -51,7 +51,7 @@ def test_net():
     assert list(net(data)[0].shape) == expect_output_shape
     assert str(net).count("LayerNorm") == 2
     assert str(net).count("ReLU") == 0
-    V_param = Q_param = {"hidden_sizes": [128, 128]}
+    Q_param = V_param = {"hidden_sizes": [128, 128]}
     net = Net(state_shape, action_shape, hidden_sizes=[128, 128],
               dueling_param=(Q_param, V_param))
     assert list(net(data)[0].shape) == expect_output_shape
