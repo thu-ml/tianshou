@@ -1,5 +1,6 @@
 import time
 import tqdm
+from collections import defaultdict
 from torch.utils.tensorboard import SummaryWriter
 from typing import Dict, List, Union, Callable, Optional
 
@@ -38,10 +39,10 @@ def offpolicy_trainer(
     :type train_collector: :class:`~tianshou.data.Collector`
     :param test_collector: the collector used for testing.
     :type test_collector: :class:`~tianshou.data.Collector`
-    :param int max_epoch: the maximum of epochs for training. The training
-        process might be finished before reaching the ``max_epoch``.
-    :param int step_per_epoch: the number of step for updating policy network
-        in one epoch.
+    :param int max_epoch: the maximum number of epochs for training. The
+        training process might be finished before reaching the ``max_epoch``.
+    :param int step_per_epoch: the number of policy network updates, so-called
+        gradient steps, per epoch.
     :param int collect_per_step: the number of frames the collector would
         collect before the network update. In other words, collect some frames
         and do some policy network update.
@@ -52,19 +53,20 @@ def offpolicy_trainer(
         be updated after frames are collected, for example, set it to 256 means
         it updates policy 256 times once after ``collect_per_step`` frames are
         collected.
-    :param function train_fn: a function receives the current number of epoch
-        and step index, and performs some operations at the beginning of
-        training in this epoch.
-    :param function test_fn: a function receives the current number of epoch
-        and step index, and performs some operations at the beginning of
-        testing in this epoch.
-    :param function save_fn: a function for saving policy when the undiscounted
-        average mean reward in evaluation phase gets better.
-    :param function stop_fn: a function receives the average undiscounted
-        returns of the testing result, return a boolean which indicates whether
-        reaching the goal.
+    :param function train_fn: a hook called at the beginning of training in
+        each epoch. It can be used to perform custom additional operations,
+        with the signature ``f(num_epoch: int, step_idx: int) -> None``.
+    :param function test_fn: a hook called at the beginning of testing in each
+        epoch. It can be used to perform custom additional operations, with the
+        signature ``f(num_epoch: int, step_idx: int) -> None``.
+    :param function save_fn: a hook called when the undiscounted average mean
+        reward in evaluation phase gets better, with the signature ``f(policy:
+        BasePolicy) -> None``.
+    :param function stop_fn: a function with signature ``f(mean_rewards: float)
+        -> bool``, receives the average undiscounted returns of the testing
+        result, returns a boolean which indicates whether reaching the goal.
     :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard
-        SummaryWriter.
+        SummaryWriter; if None is given, it will not write logs to TensorBoard.
     :param int log_interval: the log interval of the writer.
     :param bool verbose: whether to print the information.
     :param bool test_in_train: whether to test in the training phase.
@@ -73,7 +75,7 @@ def offpolicy_trainer(
     """
     env_step, gradient_step = 0, 0
     best_epoch, best_reward, best_reward_std = -1, -1.0, 0.0
-    stat: Dict[str, MovAvg] = {}
+    stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     train_collector.reset_stat()
     test_collector.reset_stat()
@@ -122,8 +124,6 @@ def offpolicy_trainer(
                     gradient_step += 1
                     losses = policy.update(batch_size, train_collector.buffer)
                     for k in losses.keys():
-                        if stat.get(k) is None:
-                            stat[k] = MovAvg()
                         stat[k].add(losses[k])
                         data[k] = f"{stat[k].get():.6f}"
                         if writer and gradient_step % log_interval == 0:

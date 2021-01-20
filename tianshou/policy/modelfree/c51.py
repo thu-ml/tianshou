@@ -87,7 +87,7 @@ class C51Policy(DQNPolicy):
         return target_dist.sum(-1)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        if self._target and self._cnt % self._freq == 0:
+        if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
         with torch.no_grad():
@@ -102,5 +102,5 @@ class C51Policy(DQNPolicy):
         batch.weight = cross_entropy.detach()  # prio-buffer
         loss.backward()
         self.optim.step()
-        self._cnt += 1
+        self._iter += 1
         return {"loss": loss.item()}

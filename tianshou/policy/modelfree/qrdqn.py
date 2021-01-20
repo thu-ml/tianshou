@@ -70,7 +70,7 @@ class QRDQNPolicy(DQNPolicy):
         return logits.mean(2)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        if self._target and self._cnt % self._freq == 0:
+        if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
@@ -89,5 +89,5 @@ class QRDQNPolicy(DQNPolicy):
         batch.weight = u.detach().abs().sum(-1).mean(1)  # prio-buffer
         loss.backward()
         self.optim.step()
-        self._cnt += 1
+        self._iter += 1
         return {"loss": loss.item()}

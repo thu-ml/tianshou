@@ -54,7 +54,7 @@ class DQNPolicy(BasePolicy):
         self._n_step = estimation_step
         self._target = target_update_freq > 0
         self._freq = target_update_freq
-        self._cnt = 0
+        self._iter = 0
         if self._target:
             self.model_old = deepcopy(self.model)
             self.model_old.eval()
@@ -78,16 +78,15 @@ class DQNPolicy(BasePolicy):
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
-        if self._target:
-            # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-            a = self(batch, input="obs_next").act
-            with torch.no_grad():
+        # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
+        with torch.no_grad():
+            if self._target:
+                a = self(batch, input="obs_next").act
                 target_q = self(
                     batch, model="model_old", input="obs_next"
                 ).logits
-            target_q = target_q[np.arange(len(a)), a]
-        else:
-            with torch.no_grad():
+                target_q = target_q[np.arange(len(a)), a]
+            else:
                 target_q = self(batch, input="obs_next").logits.max(dim=1)[0]
         return target_q
 
@@ -167,7 +166,7 @@ class DQNPolicy(BasePolicy):
         return Batch(logits=logits, act=act, state=h)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        if self._target and self._cnt % self._freq == 0:
+        if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
@@ -179,5 +178,5 @@ class DQNPolicy(BasePolicy):
         batch.weight = td  # prio-buffer
         loss.backward()
         self.optim.step()
-        self._cnt += 1
+        self._iter += 1
         return {"loss": loss.item()}

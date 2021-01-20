@@ -44,8 +44,7 @@ class DQN(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Q(x, \*)."""
-        x = torch.as_tensor(
-            x, device=self.device, dtype=torch.float32)  # type: ignore
+        x = torch.as_tensor(x, device=self.device, dtype=torch.float32)
         return self.net(x), state
 
 
