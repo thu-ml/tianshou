@@ -62,7 +62,7 @@ class MLP(nn.Module):
                 norm_layer_list = norm_layer
             else:
                 norm_layer_list = [
-                    norm_layer for i in range(len(hidden_sizes))]
+                    norm_layer for _ in range(len(hidden_sizes))]
         else:
             norm_layer_list = [None] * len(hidden_sizes)
         if activation:
@@ -71,7 +71,7 @@ class MLP(nn.Module):
                 activation_list = activation
             else:
                 activation_list = [
-                    activation for i in range(len(hidden_sizes))]
+                    activation for _ in range(len(hidden_sizes))]
         else:
             activation_list = [None] * len(hidden_sizes)
         hidden_sizes = [input_dim] + list(hidden_sizes)
@@ -86,11 +86,11 @@ class MLP(nn.Module):
         self.model = nn.Sequential(*model)
 
     def forward(
-        self, features: Union[np.ndarray, torch.Tensor]
+        self, x: Union[np.ndarray, torch.Tensor]
     ) -> torch.Tensor:
-        features = torch.as_tensor(
-            features, device=self.device, dtype=torch.float32)  # type: ignore
-        return self.model(features.flatten(1))
+        x = torch.as_tensor(
+            x, device=self.device, dtype=torch.float32)  # type: ignore
+        return self.model(x.flatten(1))
 
 
 class Net(nn.Module):
