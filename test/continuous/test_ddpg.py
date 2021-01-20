@@ -30,7 +30,8 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=2400)
     parser.add_argument('--collect-per-step', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--layer-num', type=int, default=1)
+    parser.add_argument('--hidden-sizes', type=int,
+                        nargs='*', default=[128, 128])
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -66,15 +67,14 @@ def test_ddpg(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, device=args.device)
-    actor = Actor(
-        net, args.action_shape,
-        args.max_action, args.device
-    ).to(args.device)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
+              device=args.device)
+    actor = Actor(net, args.action_shape, max_action=args.max_action,
+                  device=args.device).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net = Net(args.layer_num, args.state_shape,
-              args.action_shape, concat=True, device=args.device)
-    critic = Critic(net, args.device).to(args.device)
+    net = Net(args.state_shape, args.action_shape,
+              hidden_sizes=args.hidden_sizes, concat=True, device=args.device)
+    critic = Critic(net, device=args.device).to(args.device)
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
     policy = DDPGPolicy(
         actor, actor_optim, critic, critic_optim,

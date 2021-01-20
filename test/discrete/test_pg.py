@@ -25,7 +25,8 @@ def get_args():
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--layer-num', type=int, default=3)
+    parser.add_argument('--hidden-sizes', type=int,
+                        nargs='*', default=[128, 128, 128, 128])
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -55,9 +56,9 @@ def test_pg(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(
-        args.layer_num, args.state_shape, args.action_shape,
-        device=args.device, softmax=True).to(args.device)
+    net = Net(args.state_shape, args.action_shape,
+              hidden_sizes=args.hidden_sizes,
+              device=args.device, softmax=True).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = PGPolicy(net, optim, dist, args.gamma,

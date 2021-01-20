@@ -7,10 +7,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import A2CPolicy
 from tianshou.env import SubprocVectorEnv
+from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.utils.net.discrete import Actor, Critic
-from tianshou.utils.net.common import Net
 
 from atari import create_atari_environment, preprocess_fn
 
@@ -27,7 +27,8 @@ def get_args():
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--layer-num', type=int, default=2)
+    parser.add_argument('--hidden-sizes', type=int,
+                        nargs='*', default=[128, 128, 128])
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=8)
     parser.add_argument('--logdir', type=str, default='log')
@@ -40,7 +41,7 @@ def get_args():
     parser.add_argument('--vf-coef', type=float, default=0.5)
     parser.add_argument('--ent-coef', type=float, default=0.001)
     parser.add_argument('--max-grad-norm', type=float, default=None)
-    parser.add_argument('--max_episode_steps', type=int, default=2000)
+    parser.add_argument('--max-episode-steps', type=int, default=2000)
     return parser.parse_args()
 
 
@@ -62,11 +63,12 @@ def test_a2c(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, device=args.device)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
+              device=args.device)
     actor = Actor(net, args.action_shape).to(args.device)
     critic = Critic(net).to(args.device)
-    optim = torch.optim.Adam(list(
-        actor.parameters()) + list(critic.parameters()), lr=args.lr)
+    optim = torch.optim.Adam(set(
+        actor.parameters()).union(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
         actor, critic, optim, dist, args.gamma, vf_coef=args.vf_coef,
