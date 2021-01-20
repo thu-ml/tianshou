@@ -26,7 +26,8 @@ def get_args():
     parser.add_argument('--collect-per-step', type=int, default=20)
     parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--layer-num', type=int, default=1)
+    parser.add_argument('--hidden-sizes', type=int,
+                        nargs='*', default=[128, 128])
     parser.add_argument('--training-num', type=int, default=20)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -65,7 +66,8 @@ def test_ppo(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, device=args.device)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
+              device=args.device)
     actor = Actor(net, args.action_shape).to(args.device)
     critic = Critic(net).to(args.device)
     # orthogonal initialization
@@ -73,8 +75,8 @@ def test_ppo(args=get_args()):
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
-    optim = torch.optim.Adam(list(
-        actor.parameters()) + list(critic.parameters()), lr=args.lr)
+    optim = torch.optim.Adam(set(
+        actor.parameters()).union(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = PPOPolicy(
         actor, critic, optim, dist, args.gamma,

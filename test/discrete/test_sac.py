@@ -30,7 +30,8 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=5)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--layer-num', type=int, default=1)
+    parser.add_argument('--hidden-sizes', type=int,
+                        nargs='*', default=[128, 128])
     parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -59,13 +60,16 @@ def test_discrete_sac(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, device=args.device)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
+              device=args.device)
     actor = Actor(net, args.action_shape, softmax_output=False).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net_c1 = Net(args.layer_num, args.state_shape, device=args.device)
+    net_c1 = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
+                 device=args.device)
     critic1 = Critic(net_c1, last_size=args.action_shape).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    net_c2 = Net(args.layer_num, args.state_shape, device=args.device)
+    net_c2 = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
+                 device=args.device)
     critic2 = Critic(net_c2, last_size=args.action_shape).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 

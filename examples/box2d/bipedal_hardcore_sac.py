@@ -30,7 +30,8 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=10000)
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--layer-num', type=int, default=1)
+    parser.add_argument('--hidden-sizes', type=int,
+                        nargs='*', default=[128, 128])
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -87,20 +88,23 @@ def test_sac_bipedal(args=get_args()):
     test_envs.seed(args.seed)
 
     # model
-    net_a = Net(args.layer_num, args.state_shape, device=args.device)
+    net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
+                device=args.device)
     actor = ActorProb(
-        net_a, args.action_shape, args.max_action, args.device, unbounded=True
-    ).to(args.device)
+        net_a, args.action_shape, max_action=args.max_action,
+        device=args.device, unbounded=True).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
-    net_c1 = Net(args.layer_num, args.state_shape,
-                 args.action_shape, concat=True, device=args.device)
-    critic1 = Critic(net_c1, args.device).to(args.device)
+    net_c1 = Net(args.state_shape, args.action_shape,
+                 hidden_sizes=args.hidden_sizes,
+                 concat=True, device=args.device)
+    critic1 = Critic(net_c1, device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
 
-    net_c2 = Net(args.layer_num, args.state_shape,
-                 args.action_shape, concat=True, device=args.device)
-    critic2 = Critic(net_c2, args.device).to(args.device)
+    net_c2 = Net(args.state_shape, args.action_shape,
+                 hidden_sizes=args.hidden_sizes,
+                 concat=True, device=args.device)
+    critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:

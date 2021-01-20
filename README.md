@@ -214,7 +214,7 @@ from tianshou.utils.net.common import Net
 env = gym.make(task)
 state_shape = env.observation_space.shape or env.observation_space.n
 action_shape = env.action_space.shape or env.action_space.n
-net = Net(layer_num=2, state_shape=state_shape, action_shape=action_shape)
+net = Net(state_shape=state_shape, action_shape=action_shape, hidden_sizes=[128, 128, 128])
 optim = torch.optim.Adam(net.parameters(), lr=lr)
 ```
 
