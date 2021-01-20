@@ -139,7 +139,8 @@ class ReplayBuffer:
         index when using frame-stack sampling method, defaults to False.
         This feature is not supported in Prioritized Replay Buffer currently.
     """
-    _reserved_keys = {'obs', 'act', 'rew', 'done', 'obs_next', 'info', 'policy'}
+    _reserved_keys = {'obs', 'act', 'rew',
+                      'done', 'obs_next', 'info', 'policy'}
 
     def __init__(
         self,
@@ -150,7 +151,7 @@ class ReplayBuffer:
         sample_avail: bool = False,
     ) -> None:
         super().__init__()
-        #TODO _maxsize == 0 handle
+        # TODO _maxsize == 0 handle
         self._maxsize = size
         self._indices = np.arange(size)
         # consider move stacking option to another
@@ -196,7 +197,7 @@ class ReplayBuffer:
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
         assert key not in self._reserved_keys, (
-                "key '{}' is reserved and cannot be assigned".format(key))
+            "key '{}' is reserved and cannot be assigned".format(key))
         super().__setattr__(key, value)
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
@@ -223,10 +224,10 @@ class ReplayBuffer:
 
     def update(self, buffer: "ReplayBuffer") -> None:
         """Move the data from the given buffer to self."""
-         # TODO 'one by one copying' can be greatly improved.
-         # Can we move data as a whole batch to save time?
-         # what if self._maxsize << buffer._maxize, can we detect that 
-         # and just ignore those element to be rewrite?
+        # TODO 'one by one copying' can be greatly improved.
+        # Can we move data as a whole batch to save time?
+        # what if self._maxsize << buffer._maxize, can we detect that
+        # and just ignore those element to be rewrite?
         if len(buffer) == 0:
             return
         i = begin = buffer._index % len(buffer)
@@ -398,18 +399,18 @@ class ReplayBuffer:
         assert not self._is_meta_corrupted(), (
             "Input batch doesn't meet ReplayBuffer's data form requirement.")
 
-    def _is_meta_corrupted(self)-> bool:
+    def _is_meta_corrupted(self) -> bool:
         """Assert if self._meta: Batch is still in legal form.
         """
-        #TODO do we need to check the chlid? is cache
+        # TODO do we need to check the chlid? is cache
         if set(self._meta.keys()) != self._reserved_keys:
             return True
         for v in self._meta.values():
             if isinstance(v, Batch):
-                if not v.is_empty() and v.shape[0]!= self._maxsize:
+                if not v.is_empty() and v.shape[0] != self._maxsize:
                     return True
             elif isinstance(v, np.ndarray):
-                if v.shape[0]!= self._maxsize:
+                if v.shape[0] != self._maxsize:
                     return True
             else:
                 return True
@@ -441,25 +442,25 @@ class ReplayBuffer:
     def next(self, index):
         """return next n step indices"""
         assert index < len(self) and index >= 0, "Input index illegal."
-        return (index + ~(self.done[index]|index==self._index))%len(self)
+        return (index + ~(self.done[index] | index == self._index)) % len(self)
 
     def starts(self):
         """return indices of all episodes"""
         if len(self) > 0:
-            return (self.ends()+1)%len(self)
+            return (self.ends()+1) % len(self)
         else:
-            return np.array([], dtype = np.int)
+            return np.array([], dtype=np.int)
 
     def ends(self):
         """return last indices of finished episodes. """
         if len(self) > 0:
-            last_write_in = int((self._index - 1)%len(self))
+            last_write_in = int((self._index - 1) % len(self))
             if self.done[last_write_in]:
                 return np.where(self.done[:len(self)])[0]
             else:
                 return np.append(np.where(self.done[:len(self)])[0], last_write_in)
         else:
-            return np.array([], dtype = np.int)
+            return np.array([], dtype=np.int)
 
 
 class ListReplayBuffer(ReplayBuffer):
@@ -598,6 +599,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             weight=self.weight[index],
         )
 
+
 class VecReplayBuffer(ReplayBuffer):
     def __init__(
         self,
@@ -605,7 +607,7 @@ class VecReplayBuffer(ReplayBuffer):
         buf_n: int,
         **kwargs: Any,
     ) -> None:
-    # TODO can size==0?
+        # TODO can size==0?
     assert size > 0
     assert buf_n > 0
     if buf_n == 1:
@@ -617,9 +619,9 @@ class VecReplayBuffer(ReplayBuffer):
     _maxsize = buf_n*size
     self.buf_n = buf_n
     self.bufs = np.array([ReplayBuffer(size, **kwargs)
-                                        for _ in range(buf_n)])
-    super().__init__(size= _maxsize, **kwargs)
-    
+                          for _ in range(buf_n)])
+    super().__init__(size=_maxsize, **kwargs)
+
     def __len__(self) -> int:
         return np.sum([len(b) for b in self.bufs])
 
@@ -638,7 +640,7 @@ class VecReplayBuffer(ReplayBuffer):
         index: Optional[Union[int, np.integer, np.ndarray, List[int]]] = None,
         type_check: bool = True,
         **kwargs: Any
-        ) -> None:
+    ) -> None:
         if type_check:
             if index is None:
                 index = range(self.cached_bufs_n)
@@ -649,27 +651,30 @@ class VecReplayBuffer(ReplayBuffer):
             act = np.atleast_1d(act)
             rew = np.atleast_1d(rew)
             done = np.atleast_1d(done)
-            # TODO ugly code 
+            # TODO ugly code
             if isinstance(obs_next, Batch) and obs_next.is_empty():
                 obs_next = None
             if isinstance(info, Batch) and info.is_empty():
                 info = {}
             if isinstance(policy, Batch) and policy.is_empty():
                 policy = {}
-            obs_next = np.atleast_1d([None]*len(index)) if obs_next is None else np.atleast_1d(obs_next)
-            info = np.atleast_1d([{}]*len(index)) if info == {} else np.atleast_1d(info)
-            policy = np.atleast_1d([{}]*len(index)) if policy == {} else np.atleast_1d(policy)
+            obs_next = np.atleast_1d(
+                [None]*len(index)) if obs_next is None else np.atleast_1d(obs_next)
+            info = np.atleast_1d(
+                [{}]*len(index)) if info == {} else np.atleast_1d(info)
+            policy = np.atleast_1d(
+                [{}]*len(index)) if policy == {} else np.atleast_1d(policy)
 
         # can accelerate
         if self._meta.is_empty():
             self._initialise(obs[0], act[0], rew[0], done[0], obs_next[0],
-                                    info[0], policy[0])
+                             info[0], policy[0])
         # now we add data to selected bufs one by one
         bufs_slice = self.bufs[index]
         for i, b in enumerate(bufs_slice):
             b.add(obs[i], act[i], rew[i], done[i],
-                    obs_next[i], info[i], policy[i])
-    
+                  obs_next[i], info[i], policy[i])
+
     def _initialise(
         self,
         obs: Any,
@@ -683,7 +688,7 @@ class VecReplayBuffer(ReplayBuffer):
         assert(self._meta.is_empty())
         # to initialise self._meta
         super().add(obs, act, rew, done, obs_next, info, policy)
-        super().reset() #TODO delete useless varible?
+        super().reset()  # TODO delete useless varible?
         del self._index
         del self._size
         del self._avail_index
@@ -709,7 +714,7 @@ class VecReplayBuffer(ReplayBuffer):
     def reset(self) -> None:
         for buf in self.bufs:
             buf.reset()
-        #TODO finish
+        # TODO finish
 
     def sample(self, batch_size: int, return_only_indice: bool = False) -> Tuple[Batch, np.ndarray]:
         _all = np.arange(len(self), dtype=np.int)
@@ -717,7 +722,7 @@ class VecReplayBuffer(ReplayBuffer):
         add = 0
         for buf in self.bufs:
             end = start + len(buf)
-            _all[start:end] =  _all[start:end] + add
+            _all[start:end] = _all[start:end] + add
             start = end
             add = add + buf._maxsize - len(buf)
         # TODO consider making _all a seperate method
@@ -737,7 +742,7 @@ class VecReplayBuffer(ReplayBuffer):
         if stack_num is None:
             stack_num = self.stack_num
         assert(stack_num == 1)
-        #TODO support stack
+        # TODO support stack
         return super().get(indice, key, stack_num)
 
     def ends(self):
@@ -754,7 +759,7 @@ class VecReplayBuffer(ReplayBuffer):
         for b in self.bufs:
             lower = upper
             upper += b._maxsize
-            mask = next_indices>=lower and next_indices<upper
+            mask = next_indices >= lower and next_indices < upper
             next_indices[mask] = b.next(next_indices[mask]-lower)+lower
         return next_indices
 
@@ -766,7 +771,7 @@ class VecReplayBuffer(ReplayBuffer):
         for b in self.bufs:
             lower = upper
             upper += b._maxsize
-            mask = start_indices>=lower and start_indices<upper
+            mask = start_indices >= lower and start_indices < upper
             start_indices[mask] = b.start(start_indices[mask]-lower)+lower
         return start_indices
 
@@ -778,6 +783,7 @@ class CachedReplayBuffer(ReplayBuffer):
     chronologically, but standard API like start()/starts()/ends/next() are provided
     to help CachedReplayBuffer to be used just like ReplayBuffer.
     """
+
     def __init__(
         self,
         size: int,
@@ -797,18 +803,19 @@ class CachedReplayBuffer(ReplayBuffer):
                 "CachedReplayBuffer with cached_buffer_n = 1 will cause low efficiency. "
                 "Please consider using ReplayBuffer which is not in cached form.",
                 Warning)
-        
+
         _maxsize = size+cached_buffer_n*max_length
         self.cached_bufs_n = cached_buffer_n
         # TODO see if we can generalize to all kinds of buffer
         self.main_buffer = ReplayBuffer(size, **kwargs)
-        # TODO cached_buffer can be consider to be replced by vector 
+        # TODO cached_buffer can be consider to be replced by vector
         # buffer in the future
-        self.cached_buffer = VecReplayBuffer(max_length, cached_buffer_n, **kwargs)   
-        super().__init__(size= _maxsize, **kwargs)
+        self.cached_buffer = VecReplayBuffer(
+            max_length, cached_buffer_n, **kwargs)
+        super().__init__(size=_maxsize, **kwargs)
         # TODO support, or just delete stack_num option from Replay buffer for now
         assert self.stack_num == 1
-        
+
     def __len__(self) -> int:
         """Return len(self)."""
         return len(self.main_buffer) + len(self.cached_buffer)
@@ -853,9 +860,9 @@ class CachedReplayBuffer(ReplayBuffer):
         policy: Optional[Union[dict, Batch]] = {},
         index: Optional[Union[int, np.integer, np.ndarray, List[int]]] = None,
         **kwargs: Any
-        ) -> None:
+    ) -> None:
         """
-        
+
         """
         if index is None:
             index = range(self.cached_bufs_n)
@@ -866,31 +873,34 @@ class CachedReplayBuffer(ReplayBuffer):
         act = np.atleast_1d(act)
         rew = np.atleast_1d(rew)
         done = np.atleast_1d(done)
-        # TODO ugly code 
+        # TODO ugly code
         if isinstance(obs_next, Batch) and obs_next.is_empty():
             obs_next = None
         if isinstance(info, Batch) and info.is_empty():
             info = {}
         if isinstance(policy, Batch) and policy.is_empty():
             policy = {}
-        obs_next = np.atleast_1d([None]*len(index)) if obs_next is None else np.atleast_1d(obs_next)
-        info = np.atleast_1d([{}]*len(index)) if info == {} else np.atleast_1d(info)
-        policy = np.atleast_1d([{}]*len(index)) if policy == {} else np.atleast_1d(policy)
+        obs_next = np.atleast_1d(
+            [None]*len(index)) if obs_next is None else np.atleast_1d(obs_next)
+        info = np.atleast_1d(
+            [{}]*len(index)) if info == {} else np.atleast_1d(info)
+        policy = np.atleast_1d(
+            [{}]*len(index)) if policy == {} else np.atleast_1d(policy)
 
         # TODO what if data is already in episodes, what if i want to add mutiple data ?
         # can accelerate
         if self._meta.is_empty():
             self._initialise(obs[0], act[0], rew[0], done[0], obs_next[0],
-                                    info[0], policy[0])
+                             info[0], policy[0])
 
         self.cached_buffer.add(obs, act, rew, done, obs_next,
                                info, policy, index, False, **kwargs)
         return self._main_buf_update()
 
     def _main_buf_update(self):
-        lens = np.zeros((self.cached_bufs_n, ), dtype = np.int)
+        lens = np.zeros((self.cached_bufs_n, ), dtype=np.int)
         rews = np.zeros((self.cached_bufs_n, ))
-        start_indexs = np.zeros((self.cached_bufs_n, ), dtype = np.int)
+        start_indexs = np.zeros((self.cached_bufs_n, ), dtype=np.int)
         for i, buf in enumerate(self.cached_buffer.bufs):
             if buf.done[buf._index - 1] > 0:
                 lens[i] = len(buf)
@@ -906,13 +916,13 @@ class CachedReplayBuffer(ReplayBuffer):
         self.cached_buffer.reset()
         self.main_buffer.reset()
         self._avail_index = []
-        #TODO finish
+        # TODO finish
 
     def sample(self, batch_size: int,
-               is_from_main_buf = False) -> Tuple[Batch, np.ndarray]:
+               is_from_main_buf=False) -> Tuple[Batch, np.ndarray]:
         if is_from_main_buf:
             return self.main_buffer.sample(batch_size)
-        
+
         # TODO use all() method to replace
 
         _all = np.arange(len(self), dtype=np.int)
@@ -920,7 +930,7 @@ class CachedReplayBuffer(ReplayBuffer):
         add = self.main_buffer._maxsize - len(self.main_buffer)
         for buf in self.cached_buffer.bufs:
             end = start + len(buf)
-            _all[start:end] =  _all[start:end] + add
+            _all[start:end] = _all[start:end] + add
             start = end
             add = add + buf._maxsize - len(buf)
         indice = np.random.choice(_all, batch_size)
@@ -936,7 +946,7 @@ class CachedReplayBuffer(ReplayBuffer):
         if stack_num is None:
             stack_num = self.stack_num
         assert(stack_num == 1)
-        #TODO support stack
+        # TODO support stack
         return super().get(indice, key, stack_num)
 
     def _initialise(
@@ -952,15 +962,14 @@ class CachedReplayBuffer(ReplayBuffer):
         assert(self._meta.is_empty())
         # to initialise self._meta
         super().add(obs, act, rew, done, obs_next, info, policy)
-        super().reset() #TODO delete useless varible?
+        super().reset()  # TODO delete useless varible?
         del self._index
         del self._size
         self.main_buffer.set_batch(self._meta[:self.main_buffer._maxsize])
         self.cached_buffer.set_batch(self._meta[self.main_buffer._maxsize:])
 
+    # TODO add standard API for vec buffer and use vec buffer to replace self.cached_buffer.bufs
 
-
-    #TODO add standard API for vec buffer and use vec buffer to replace self.cached_buffer.bufs
     def ends(self):
         return np.concatenate(
             [self.main_buffer.ends(), self.cached_buffer.ends()])
@@ -972,7 +981,7 @@ class CachedReplayBuffer(ReplayBuffer):
     def next(self, index):
         assert index >= 0 and index < self._maxsize, "Input index illegal."
         next_indices = np.full(index.shape, -1)
-        mask = index<self.main_buffer._maxsize
+        mask = index < self.main_buffer._maxsize
         next_indices[mask] = self.main_buffer.next(index[mask])
         next_indices[~mask] = self.cached_buffer.next(index[~mask])
         return next_indices
@@ -981,11 +990,10 @@ class CachedReplayBuffer(ReplayBuffer):
         """return start indices of given indices"""
         assert index >= 0 and index < self._maxsize, "Input index illegal."
         start_indices = np.full(index.shape, -1)
-        mask = index<self.main_buffer._maxsize
+        mask = index < self.main_buffer._maxsize
         start_indices[mask] = self.main_buffer.start(index[mask])
         start_indices[~mask] = self.cached_buffer.start(index[~mask])
         return start_indices
-
 
     # def _global2local(self, global_index):
     #     assert (global_index>=0 and global_index<self._maxsize).all()
