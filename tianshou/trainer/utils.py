@@ -36,7 +36,7 @@ def test_episode(
 
 def gather_info(
     start_time: float,
-    train_c: Collector,
+    train_c: Optional[Collector],
     test_c: Collector,
     best_reward: float,
     best_reward_std: float,
@@ -59,15 +59,9 @@ def gather_info(
         * ``duration`` the total elapsed time.
     """
     duration = time.time() - start_time
-    model_time = duration - train_c.collect_time - test_c.collect_time
-    train_speed = train_c.collect_step / (duration - test_c.collect_time)
+    model_time = duration - test_c.collect_time
     test_speed = test_c.collect_step / test_c.collect_time
-    return {
-        "train_step": train_c.collect_step,
-        "train_episode": train_c.collect_episode,
-        "train_time/collector": f"{train_c.collect_time:.2f}s",
-        "train_time/model": f"{model_time:.2f}s",
-        "train_speed": f"{train_speed:.2f} step/s",
+    result: Dict[str, Union[float, str]] = {
         "test_step": test_c.collect_step,
         "test_episode": test_c.collect_episode,
         "test_time": f"{test_c.collect_time:.2f}s",
@@ -75,4 +69,16 @@ def gather_info(
         "best_reward": best_reward,
         "best_result": f"{best_reward:.2f} ± {best_reward_std:.2f}",
         "duration": f"{duration:.2f}s",
+        "train_time/model": f"{model_time:.2f}s",
     }
+    if train_c is not None:
+        model_time -= train_c.collect_time
+        train_speed = train_c.collect_step / (duration - test_c.collect_time)
+        result.update({
+            "train_step": train_c.collect_step,
+            "train_episode": train_c.collect_episode,
+            "train_time/collector": f"{train_c.collect_time:.2f}s",
+            "train_time/model": f"{model_time:.2f}s",
+            "train_speed": f"{train_speed:.2f} step/s",
+        })
+    return result
