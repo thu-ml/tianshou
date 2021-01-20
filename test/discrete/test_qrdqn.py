@@ -29,12 +29,14 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--layer-num', type=int, default=3)
+    parser.add_argument('--hidden-sizes', type=int,
+                        nargs='*', default=[128, 128, 128, 128])
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--prioritized-replay', type=int, default=0)
+    parser.add_argument('--prioritized-replay',
+                        action="store_true", default=False)
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
     parser.add_argument(
@@ -61,7 +63,8 @@ def test_qrdqn(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.layer_num, args.state_shape, args.action_shape, args.device,
+    net = Net(args.state_shape, args.action_shape,
+              hidden_sizes=args.hidden_sizes, device=args.device,
               softmax=False, num_atoms=args.num_quantiles)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = QRDQNPolicy(
@@ -69,7 +72,7 @@ def test_qrdqn(args=get_args()):
         args.n_step, target_update_freq=args.target_update_freq
     ).to(args.device)
     # buffer
-    if args.prioritized_replay > 0:
+    if args.prioritized_replay:
         buf = PrioritizedReplayBuffer(
             args.buffer_size, alpha=args.alpha, beta=args.beta)
     else:
@@ -123,7 +126,7 @@ def test_qrdqn(args=get_args()):
 
 
 def test_pqrdqn(args=get_args()):
-    args.prioritized_replay = 1
+    args.prioritized_replay = True
     args.gamma = .95
     args.seed = 1
     test_qrdqn(args)
