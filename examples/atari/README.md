@@ -39,3 +39,14 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 | SpaceInvadersNoFrameskip-v4 | 988.5      | ![](results/c51/SpaceInvader_rew.png) | `python3 atari_c51.py --task "SpaceInvadersNoFrameskip-v4"`  |
 
 Note: The selection of `n_step` is based on Figure 6 in the [Rainbow](https://arxiv.org/abs/1710.02298) paper.
+
+# BCQ
+
+TODO: after the `done` issue fixed, the result should be re-tuned and place here.
+
+To running BCQ algorithm on Atari, you need to do the following things:
+
+- Train an expert, by using the command listed in the above DQN section;
+- Generate buffer with noise: `python3 atari_dqn.py --task {your_task} --watch --resume-path log/{your_task}/dqn/policy.pth --eps-test 0.2 --buffer-size 1000000 --save-buffer-name expert.hdf5` (note that 1M Atari buffer cannot be saved as `.pkl` format because it is too large and will cause error);
+- Train BCQ: `python3 atari_bcq.py --task {your_task} --load-buffer-name expert.hdf5`.
+

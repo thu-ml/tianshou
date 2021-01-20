@@ -68,8 +68,8 @@ class PPOPolicy(PGPolicy):
         super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
         self._max_grad_norm = max_grad_norm
         self._eps_clip = eps_clip
-        self._w_vf = vf_coef
-        self._w_ent = ent_coef
+        self._weight_vf = vf_coef
+        self._weight_ent = ent_coef
         self._range = action_range
         self.actor = actor
         self.critic = critic
@@ -174,7 +174,8 @@ class PPOPolicy(PGPolicy):
                 vf_losses.append(vf_loss.item())
                 e_loss = dist.entropy().mean()
                 ent_losses.append(e_loss.item())
-                loss = clip_loss + self._w_vf * vf_loss - self._w_ent * e_loss
+                loss = clip_loss + self._weight_vf * vf_loss - \
+                    self._weight_ent * e_loss
                 losses.append(loss.item())
                 self.optim.zero_grad()
                 loss.backward()
