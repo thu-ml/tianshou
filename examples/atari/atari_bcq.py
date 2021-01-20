@@ -4,15 +4,15 @@ import pickle
 import pprint
 import argparse
 import numpy as np
-from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import SubprocVectorEnv
-from tianshou.utils.net.discrete import DQN
 from tianshou.trainer import offline_trainer
+from tianshou.utils.net.discrete import Actor
 from tianshou.policy import DiscreteBCQPolicy
 from tianshou.data import Collector, ReplayBuffer
 
+from atari_network import DQN
 from atari_wrapper import wrap_deepmind
 
 
@@ -30,13 +30,13 @@ def get_args():
     parser.add_argument("--epoch", type=int, default=100)
     parser.add_argument("--step-per-epoch", type=int, default=10000)
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--layer-num", type=int, default=2)
-    parser.add_argument("--hidden-layer-size", type=int, default=512)
+    parser.add_argument('--hidden-sizes', type=int,
+                        nargs='*', default=[512])
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument('--frames_stack', type=int, default=4)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
-    parser.add_argument("--resume_path", type=str, default=None)
+    parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--watch", default=False, action="store_true",
                         help="watch the play of pre-trained policy only")
     parser.add_argument("--log-interval", type=int, default=1000)
@@ -61,21 +61,6 @@ def make_atari_env_watch(args):
                          episode_life=False, clip_rewards=False)
 
 
-class Net(nn.Module):
-    def __init__(self, preprocess_net, action_shape, hidden_layer_size):
-        super().__init__()
-        self.preprocess = preprocess_net
-        self.last = nn.Sequential(
-            nn.Linear(3136, hidden_layer_size),
-            nn.ReLU(inplace=True),
-            nn.Linear(hidden_layer_size, np.prod(action_shape))
-        )
-
-    def forward(self, s, state=None, **kwargs):
-        feature, h = self.preprocess(s, state)
-        return self.last(feature), h
-
-
 def test_discrete_bcq(args=get_args()):
     # envs
     env = make_atari_env(args)
@@ -93,11 +78,11 @@ def test_discrete_bcq(args=get_args()):
     test_envs.seed(args.seed)
     # model
     feature_net = DQN(*args.state_shape, args.action_shape,
-                      args.device, features_only=True).to(args.device)
-    policy_net = Net(feature_net, args.action_shape,
-                     args.hidden_layer_size).to(args.device)
-    imitation_net = Net(feature_net, args.action_shape,
-                        args.hidden_layer_size).to(args.device)
+                      device=args.device, features_only=True).to(args.device)
+    policy_net = Actor(feature_net, args.action_shape,
+                       hidden_sizes=args.hidden_sizes).to(args.device)
+    imitation_net = Actor(feature_net, args.action_shape,
+                          hidden_sizes=args.hidden_sizes).to(args.device)
     optim = torch.optim.Adam(
         set(policy_net.parameters()).union(imitation_net.parameters()),
         lr=args.lr,
