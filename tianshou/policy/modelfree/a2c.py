@@ -58,8 +58,8 @@ class A2CPolicy(PGPolicy):
         self.critic = critic
         assert 0.0 <= gae_lambda <= 1.0, "GAE lambda should be in [0, 1]."
         self._lambda = gae_lambda
-        self._w_vf = vf_coef
-        self._w_ent = ent_coef
+        self._weight_vf = vf_coef
+        self._weight_ent = ent_coef
         self._grad_norm = max_grad_norm
         self._batch = max_batchsize
         self._rew_norm = reward_normalization
@@ -122,7 +122,8 @@ class A2CPolicy(PGPolicy):
                 a_loss = -(log_prob * (r - v).detach()).mean()
                 vf_loss = F.mse_loss(r, v)  # type: ignore
                 ent_loss = dist.entropy().mean()
-                loss = a_loss + self._w_vf * vf_loss - self._w_ent * ent_loss
+                loss = a_loss + self._weight_vf * vf_loss - \
+                    self._weight_ent * ent_loss
                 loss.backward()
                 if self._grad_norm is not None:
                     nn.utils.clip_grad_norm_(

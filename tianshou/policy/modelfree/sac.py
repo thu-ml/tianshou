@@ -143,7 +143,6 @@ class SACPolicy(DDPGPolicy):
         with torch.no_grad():
             obs_next_result = self(batch, input='obs_next')
             a_ = obs_next_result.act
-            batch.act = to_torch_as(batch.act, a_)
             target_q = torch.min(
                 self.critic1_old(batch.obs_next, a_),
                 self.critic2_old(batch.obs_next, a_),

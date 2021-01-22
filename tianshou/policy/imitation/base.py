@@ -57,7 +57,7 @@ class ImitationPolicy(BasePolicy):
             a_ = to_torch(batch.act, dtype=torch.float32, device=a.device)
             loss = F.mse_loss(a, a_)  # type: ignore
         elif self.mode == "discrete":  # classification
-            a = self(batch).logits
+            a = F.log_softmax(self(batch).logits, dim=-1)
             a_ = to_torch(batch.act, dtype=torch.long, device=a.device)
             loss = F.nll_loss(a, a_)  # type: ignore
         loss.backward()

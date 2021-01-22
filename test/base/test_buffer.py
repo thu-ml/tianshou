@@ -38,11 +38,11 @@ def test_replaybuffer(size=10, bufsize=20):
     assert (data.obs < size).all()
     assert (0 <= data.done).all() and (data.done <= 1).all()
     b = ReplayBuffer(size=10)
-    b.add(1, 1, 1, 'str', 1, {'a': 3, 'b': {'c': 5.0}})
+    b.add(1, 1, 1, 1, 'str', {'a': 3, 'b': {'c': 5.0}})
     assert b.obs[0] == 1
-    assert b.done[0] == 'str'
+    assert b.obs_next[0] == 'str'
     assert np.all(b.obs[1:] == 0)
-    assert np.all(b.done[1:] == np.array(None))
+    assert np.all(b.obs_next[1:] == np.array(None))
     assert b.info.a[0] == 3 and b.info.a.dtype == np.integer
     assert np.all(b.info.a[1:] == 0)
     assert b.info.b.c[0] == 5.0 and b.info.b.c.dtype == np.inexact
@@ -320,7 +320,7 @@ def test_hdf5():
         assert len(_buffers[k]) == len(buffers[k])
         assert np.allclose(_buffers[k].act, buffers[k].act)
         assert _buffers[k].stack_num == buffers[k].stack_num
-        assert _buffers[k]._maxsize == buffers[k]._maxsize
+        assert _buffers[k].maxsize == buffers[k].maxsize
         assert _buffers[k]._index == buffers[k]._index
         assert np.all(_buffers[k]._indices == buffers[k]._indices)
     for k in ["array", "prioritized"]:
@@ -336,12 +336,12 @@ def test_hdf5():
         os.remove(path)
 
     # raise exception when value cannot be pickled
-    data = {"not_supported": lambda x: x*x}
+    data = {"not_supported": lambda x: x * x}
     grp = h5py.Group
     with pytest.raises(NotImplementedError):
         to_hdf5(data, grp)
     # ndarray with data type not supported by HDF5 that cannot be pickled
-    data = {"not_supported": np.array(lambda x: x*x)}
+    data = {"not_supported": np.array(lambda x: x * x)}
     grp = h5py.Group
     with pytest.raises(RuntimeError):
         to_hdf5(data, grp)
@@ -351,9 +351,9 @@ if __name__ == '__main__':
     test_hdf5()
     test_replaybuffer()
     test_ignore_obs_next()
+    test_update()
     test_stack()
     test_pickle()
     test_segtree()
     test_priortized_replaybuffer()
     test_priortized_replaybuffer(233333, 200000)
-    test_update()

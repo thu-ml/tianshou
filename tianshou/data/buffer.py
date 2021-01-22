@@ -139,8 +139,8 @@ class ReplayBuffer:
         index when using frame-stack sampling method, defaults to False.
         This feature is not supported in Prioritized Replay Buffer currently.
     """
-    _reserved_keys = {'obs', 'act', 'rew',
-                      'done', 'obs_next', 'info', 'policy'}
+    _reserved_keys = {"obs", "act", "rew", "done",
+                      "obs_next", "info", "policy"}
 
     def __init__(
         self,
@@ -151,17 +151,15 @@ class ReplayBuffer:
         sample_avail: bool = False,
     ) -> None:
         super().__init__()
-        # TODO _maxsize == 0 handle
-        self._maxsize = size
-        self._indices = np.arange(size)
-        # consider move stacking option to another
+        self.maxsize = size
+        assert stack_num > 0, "stack_num should greater than 0"
         self.stack_num = stack_num
+        self._indices = np.arange(size)
+        self._save_obs_next = not ignore_obs_next
+        self._save_only_last_obs = save_only_last_obs
         self._avail = sample_avail and stack_num > 1
-        self._avail_index: List[int] = []
-        self._save_s_ = not ignore_obs_next
-        self._last_obs = save_only_last_obs
-        self._index = 0
-        self._size = 0
+        self._index = 0  # current index
+        self._size = 0  # current buffer size
         self._meta: Batch = Batch()
         self.reset()
 
@@ -186,13 +184,7 @@ class ReplayBuffer:
         We need it because pickling buffer does not work out-of-the-box
         ("buffer.__getattr__" is customized).
         """
-        self._indices = np.arange(state["_maxsize"])
         self.__dict__.update(state)
-
-    def __getstate__(self) -> dict:
-        exclude = {"_indices"}
-        state = {k: v for k, v in self.__dict__.items() if k not in exclude}
-        return state
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
@@ -204,41 +196,60 @@ class ReplayBuffer:
         try:
             value = self._meta.__dict__[name]
         except KeyError:
-            self._meta.__dict__[name] = _create_value(inst, self._maxsize)
+            self._meta.__dict__[name] = _create_value(inst, self.maxsize)
             value = self._meta.__dict__[name]
+        if isinstance(inst, (torch.Tensor, np.ndarray)):
+            if inst.shape != value.shape[1:]:
+                raise ValueError(
+                    "Cannot add data to a buffer with different shape with key"
+                    f" {name}, expect {value.shape[1:]}, given {inst.shape}."
+                )
         try:
             value[self._index] = inst
-        except KeyError:
+        except KeyError:  # inst is a dict/Batch
             for key in set(inst.keys()).difference(value.__dict__.keys()):
-                value.__dict__[key] = _create_value(inst[key], self._maxsize)
+                value.__dict__[key] = _create_value(inst[key], self.maxsize)
             value[self._index] = inst
 
-    @property
-    def stack_num(self) -> int:
-        return self._stack
+    def unfinished_index(self) -> int:
+        return (self._index - 1) % self._size
 
-    @stack_num.setter
-    def stack_num(self, num: int) -> None:
-        assert num > 0, "stack_num should greater than 0"
-        self._stack = num
+    def prev(
+        self,
+        index: Union[int, np.integer, np.ndarray],
+        within_episode: bool = False,
+    ) -> np.ndarray:
+        """Return one step previous index."""
+        index = self._indices[:self._size][index]
+        prev_index = (index - 1) % self._size
+        if within_episode:
+            done = self.done[prev_index] | \
+                (prev_index == self.unfinished_index())
+            prev_index = (prev_index + done) % self._size
+        return prev_index
+
+    def next(
+        self,
+        index: Union[int, np.integer, np.ndarray],
+        within_episode: bool = False,
+    ) -> np.ndarray:
+        """Return one step next index."""
+        index = self._indices[:self._size][index]
+        if within_episode:
+            done = self.done[index] | (index == self.unfinished_index())
+            return (index + (1 - done)) % self._size
+        else:
+            return (index + 1) % self._size
 
     def update(self, buffer: "ReplayBuffer") -> None:
-        """Move the data from the given buffer to self."""
-        # TODO 'one by one copying' can be greatly improved.
-        # Can we move data as a whole batch to save time?
-        # what if self._maxsize << buffer._maxize, can we detect that
-        # and just ignore those element to be rewrite?
+        """Move the data from the given buffer to current buffer."""
         if len(buffer) == 0:
             return
-        i = begin = buffer._index % len(buffer)
-        stack_num_orig = buffer.stack_num
-        buffer.stack_num = 1
-        while True:
-            self.add(**buffer[i])  # type: ignore
-            i = (i + 1) % len(buffer)
-            if i == begin:
-                break
+        stack_num_orig, buffer.stack_num = buffer.stack_num, 1
+        batch, _ = buffer.sample(0)
         buffer.stack_num = stack_num_orig
+        for b in batch:
+            self.add(**b)
 
     def add(
         self,
@@ -251,55 +262,35 @@ class ReplayBuffer:
         policy: Optional[Union[dict, Batch]] = {},
         **kwargs: Any,
     ) -> None:
-        """Add a batch of data into replay buffer.
-        Expect all input to be batch, dict, or numpy array"""
-        # TODO should we consider to support batch input?
+        """Add a batch of data into replay buffer."""
         assert isinstance(
             info, (dict, Batch)
         ), "You should return a dict in the last argument of env.step()."
-        if self._last_obs:
+        if self._save_only_last_obs:
             obs = obs[-1]
         self._add_to_buffer("obs", obs)
         self._add_to_buffer("act", act)
-        # make sure the reward is a float instead of an int
+        # make sure the data type of reward is float instead of int
         self._add_to_buffer("rew", rew * 1.0)  # type: ignore
-        self._add_to_buffer("done", done)
-        if self._save_s_:
+        self._add_to_buffer("done", bool(done))  # done should be a bool scalar
+        if self._save_obs_next:
             if obs_next is None:
                 obs_next = Batch()
-            elif self._last_obs:
+            elif self._save_only_last_obs:
                 obs_next = obs_next[-1]
             self._add_to_buffer("obs_next", obs_next)
         self._add_to_buffer("info", info)
         self._add_to_buffer("policy", policy)
 
-        # maintain available index for frame-stack sampling
-        if self._avail:
-            # update current frame
-            avail = sum(self.done[i] for i in range(
-                self._index - self.stack_num + 1, self._index)) == 0
-            if self._size < self.stack_num - 1:
-                avail = False
-            if avail and self._index not in self._avail_index:
-                self._avail_index.append(self._index)
-            elif not avail and self._index in self._avail_index:
-                self._avail_index.remove(self._index)
-            # remove the later available frame because of broken storage
-            t = (self._index + self.stack_num - 1) % self._maxsize
-            if t in self._avail_index:
-                self._avail_index.remove(t)
-
-        if self._maxsize > 0:
-            self._size = min(self._size + 1, self._maxsize)
-            self._index = (self._index + 1) % self._maxsize
-        else:
-            self._size = self._index = self._index + 1
+        if self.maxsize > 0:
+            self._size = min(self._size + 1, self.maxsize)
+            self._index = (self._index + 1) % self.maxsize
+        else:  # TODO: remove this after deleting ListReplayBuffer
+            self._size = self._index = self._size + 1
 
     def reset(self) -> None:
         """Clear all the data in replay buffer."""
-        self._index = 0
-        self._size = 0
-        self._avail_index = []
+        self._index = self._size = 0
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         """Get a random sample from buffer with size equal to batch_size.
@@ -309,60 +300,36 @@ class ReplayBuffer:
         :return: Sample data and its corresponding index inside the buffer.
         """
         if batch_size > 0:
-            _all = self._avail_index if self._avail else self._size
-            indice = np.random.choice(_all, batch_size)
-        else:
-            if self._avail:
-                indice = np.array(self._avail_index)
-            else:
-                indice = np.concatenate([
-                    np.arange(self._index, self._size),
-                    np.arange(0, self._index),
-                ])
+            indice = np.random.choice(self._size, batch_size)
+        else:  # construct current available indices
+            indice = np.concatenate([
+                np.arange(self._index, self._size),
+                np.arange(0, self._index),
+            ])
         assert len(indice) > 0, "No available indice can be sampled."
         return self[indice], indice
 
     def get(
         self,
-        indice: Union[slice, int, np.integer, np.ndarray],
+        indice: Union[int, np.integer, np.ndarray],
         key: str,
         stack_num: Optional[int] = None,
     ) -> Union[Batch, np.ndarray]:
         """Return the stacked result.
 
         E.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t], where s is self.key, t is the
-        indice. The stack_num (here equals to 4) is given from buffer
-        initialization procedure.
+        indice.
         """
         if stack_num is None:
             stack_num = self.stack_num
-        if stack_num == 1:  # the most often case
-            if key != "obs_next" or self._save_s_:
-                val = self._meta.__dict__[key]
-                try:
-                    return val[indice]
-                except IndexError as e:
-                    if not (isinstance(val, Batch) and val.is_empty()):
-                        raise e  # val != Batch()
-                    return Batch()
-        indice = self._indices[:self._size][indice]
-        done = self._meta.__dict__["done"]
-        if key == "obs_next" and not self._save_s_:
-            indice += 1 - done[indice].astype(np.int)
-            indice[indice == self._size] = 0
-            key = "obs"
-        val = self._meta.__dict__[key]
+        val = self._meta[key]
         try:
-            if stack_num == 1:
+            if stack_num == 1:  # the most often case
                 return val[indice]
             stack: List[Any] = []
             for _ in range(stack_num):
                 stack = [val[indice]] + stack
-                pre_indice = np.asarray(indice - 1)
-                pre_indice[pre_indice == -1] = self._size - 1
-                indice = np.asarray(
-                    pre_indice + done[pre_indice].astype(np.int))
-                indice[indice == self._size] = 0
+                indice = self.prev(indice, within_episode=True)
             if isinstance(val, Batch):
                 return Batch.stack(stack, axis=indice.ndim)
             else:
@@ -380,46 +347,40 @@ class ReplayBuffer:
         If stack_num is larger than 1, return the stacked obs and obs_next with
         shape (batch, len, ...).
         """
+        index = self._indices[:self._size][index]  # change slice to np array
+        if self._save_obs_next:
+            obs_next = self.get(index, "obs_next", self.stack_num)
+        else:
+            next_index = self.next(index, within_episode=True)
+            obs_next = self.get(next_index, "obs", self.stack_num)
         return Batch(
-            obs=self.get(index, "obs"),
+            obs=self.get(index, "obs", self.stack_num),
             act=self.act[index],
             rew=self.rew[index],
             done=self.done[index],
-            obs_next=self.get(index, "obs_next"),
-            info=self.get(index, "info"),
-            policy=self.get(index, "policy"),
+            obs_next=obs_next,
+            info=self.get(index, "info", self.stack_num),
+            policy=self.get(index, "policy", self.stack_num),
         )
 
-    def set_batch(self, batch: "Batch"):
-        """Manually choose the batch you want the ReplayBuffer to manage. This 
-        method should be called instantly after the ReplayBuffer is initialised.
-        """
-        assert self._meta.is_empty(), "This method cannot be called after add() method"
-        self._meta = batch
-        assert not self._is_meta_corrupted(), (
+    def set_batch(self, batch: Batch):
+        """Manually choose the batch you want the ReplayBuffer to manage."""
+        assert self._is_legal_batch(batch), (
             "Input batch doesn't meet ReplayBuffer's data form requirement.")
+        self._meta = batch
 
-    def _is_meta_corrupted(self) -> bool:
-        """Assert if self._meta: Batch is still in legal form.
-        """
-        # TODO do we need to check the chlid? is cache
+    def _is_legal_batch(self, batch: Batch) -> bool:
+        """Check the given batch is in legal form."""
         if set(self._meta.keys()) != self._reserved_keys:
+            return False
+        if self._meta.is_empty(recurse=True):
             return True
-        for v in self._meta.values():
-            if isinstance(v, Batch):
-                if not v.is_empty() and v.shape[0] != self._maxsize:
-                    return True
-            elif isinstance(v, np.ndarray):
-                if v.shape[0] != self._maxsize:
-                    return True
-            else:
-                return True
-        return False
+        return len(self._meta) == self.maxsize
 
     def save_hdf5(self, path: str) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
-            to_hdf5(self.__getstate__(), f)
+            to_hdf5(self.__dict__, f)
 
     @classmethod
     def load_hdf5(
@@ -430,37 +391,6 @@ class ReplayBuffer:
             buf = cls.__new__(cls)
             buf.__setstate__(from_hdf5(f, device=device))
         return buf
-
-    def start(self, index):
-        """return start indices of given indices"""
-        assert index < len(self) and index >= 0, "Input index illegal."
-        sorted_starts = np.sort(self.starts())
-        start_indices = np.searchsorted(sorted_starts, index, side="right") - 1
-        start_indices[start_indices < 0] = sorted_starts[-1]
-        return start_indices
-
-    def next(self, index):
-        """return next n step indices"""
-        assert index < len(self) and index >= 0, "Input index illegal."
-        return (index + ~(self.done[index] | index == self._index)) % len(self)
-
-    def starts(self):
-        """return indices of all episodes"""
-        if len(self) > 0:
-            return (self.ends()+1) % len(self)
-        else:
-            return np.array([], dtype=np.int)
-
-    def ends(self):
-        """return last indices of finished episodes. """
-        if len(self) > 0:
-            last_write_in = int((self._index - 1) % len(self))
-            if self.done[last_write_in]:
-                return np.where(self.done[:len(self)])[0]
-            else:
-                return np.append(np.where(self.done[:len(self)])[0], last_write_in)
-        else:
-            return np.array([], dtype=np.int)
 
 
 class ListReplayBuffer(ReplayBuffer):
@@ -588,15 +518,20 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def __getitem__(
         self, index: Union[slice, int, np.integer, np.ndarray]
     ) -> Batch:
+        index = self._indices[:self._size][index]  # change slice to np array
+        if self._save_obs_next:
+            obs_next = self.get(index, "obs_next", self.stack_num)
+        else:
+            next_index = self.next(index, within_episode=True)
+            obs_next = self.get(next_index, "obs", self.stack_num)
         return Batch(
-            obs=self.get(index, "obs"),
+            obs=self.get(index, "obs", self.stack_num),
             act=self.act[index],
             rew=self.rew[index],
             done=self.done[index],
-            obs_next=self.get(index, "obs_next"),
-            info=self.get(index, "info"),
-            policy=self.get(index, "policy"),
-            weight=self.weight[index],
+            obs_next=obs_next,
+            info=self.get(index, "info", self.stack_num),
+            policy=self.get(index, "policy", self.stack_num),
         )
 
 
@@ -608,19 +543,19 @@ class VecReplayBuffer(ReplayBuffer):
         **kwargs: Any,
     ) -> None:
         # TODO can size==0?
-    assert size > 0
-    assert buf_n > 0
-    if buf_n == 1:
-        import warnings
-        warnings.warn(
-            "VecReplayBuffer with buf_n = 1 will cause low efficiency. "
-            "Please consider using ReplayBuffer which is not in vector form.",
-            Warning)
-    _maxsize = buf_n*size
-    self.buf_n = buf_n
-    self.bufs = np.array([ReplayBuffer(size, **kwargs)
-                          for _ in range(buf_n)])
-    super().__init__(size=_maxsize, **kwargs)
+        assert size > 0
+        assert buf_n > 0
+        if buf_n == 1:
+            import warnings
+            warnings.warn(
+                "VecReplayBuffer with buf_n = 1 will cause low efficiency. "
+                "Please consider using ReplayBuffer which is not in vector form.",
+                Warning)
+        _maxsize = buf_n * size
+        self.buf_n = buf_n
+        self.bufs = np.array([ReplayBuffer(size, **kwargs)
+                              for _ in range(buf_n)])
+        super().__init__(size=_maxsize, **kwargs)
 
     def __len__(self) -> int:
         return np.sum([len(b) for b in self.bufs])
@@ -659,11 +594,11 @@ class VecReplayBuffer(ReplayBuffer):
             if isinstance(policy, Batch) and policy.is_empty():
                 policy = {}
             obs_next = np.atleast_1d(
-                [None]*len(index)) if obs_next is None else np.atleast_1d(obs_next)
+                [None] * len(index)) if obs_next is None else np.atleast_1d(obs_next)
             info = np.atleast_1d(
-                [{}]*len(index)) if info == {} else np.atleast_1d(info)
+                [{}] * len(index)) if info == {} else np.atleast_1d(info)
             policy = np.atleast_1d(
-                [{}]*len(index)) if policy == {} else np.atleast_1d(policy)
+                [{}] * len(index)) if policy == {} else np.atleast_1d(policy)
 
         # can accelerate
         if self._meta.is_empty():
@@ -760,7 +695,7 @@ class VecReplayBuffer(ReplayBuffer):
             lower = upper
             upper += b._maxsize
             mask = next_indices >= lower and next_indices < upper
-            next_indices[mask] = b.next(next_indices[mask]-lower)+lower
+            next_indices[mask] = b.next(next_indices[mask] - lower) + lower
         return next_indices
 
     def start(self, index):
@@ -772,7 +707,7 @@ class VecReplayBuffer(ReplayBuffer):
             lower = upper
             upper += b._maxsize
             mask = start_indices >= lower and start_indices < upper
-            start_indices[mask] = b.start(start_indices[mask]-lower)+lower
+            start_indices[mask] = b.start(start_indices[mask] - lower) + lower
         return start_indices
 
 
@@ -804,7 +739,7 @@ class CachedReplayBuffer(ReplayBuffer):
                 "Please consider using ReplayBuffer which is not in cached form.",
                 Warning)
 
-        _maxsize = size+cached_buffer_n*max_length
+        _maxsize = size + cached_buffer_n * max_length
         self.cached_bufs_n = cached_buffer_n
         # TODO see if we can generalize to all kinds of buffer
         self.main_buffer = ReplayBuffer(size, **kwargs)
@@ -881,11 +816,11 @@ class CachedReplayBuffer(ReplayBuffer):
         if isinstance(policy, Batch) and policy.is_empty():
             policy = {}
         obs_next = np.atleast_1d(
-            [None]*len(index)) if obs_next is None else np.atleast_1d(obs_next)
+            [None] * len(index)) if obs_next is None else np.atleast_1d(obs_next)
         info = np.atleast_1d(
-            [{}]*len(index)) if info == {} else np.atleast_1d(info)
+            [{}] * len(index)) if info == {} else np.atleast_1d(info)
         policy = np.atleast_1d(
-            [{}]*len(index)) if policy == {} else np.atleast_1d(policy)
+            [{}] * len(index)) if policy == {} else np.atleast_1d(policy)
 
         # TODO what if data is already in episodes, what if i want to add mutiple data ?
         # can accelerate

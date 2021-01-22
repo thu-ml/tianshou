@@ -145,3 +145,5 @@ MUJOCO_LOG.TXT
 *.zip
 *.pstats
 *.swp
+*.pkl
+*.hdf5
