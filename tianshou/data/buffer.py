@@ -983,7 +983,7 @@ class CachedReplayBuffer(ReplayBuffer):
         next_indices = np.full(index.shape, -1)
         mask = index < self.main_buffer._maxsize
         next_indices[mask] = self.main_buffer.next(index[mask])
-        next_indices[~mask] = self.cached_buffer.next(index[~mask])
+        next_indices[~mask] = self.cached_buffer.next(index[~mask]) + self.main_buffer._maxsize
         return next_indices
 
     def start(self, index):
@@ -992,7 +992,7 @@ class CachedReplayBuffer(ReplayBuffer):
         start_indices = np.full(index.shape, -1)
         mask = index < self.main_buffer._maxsize
         start_indices[mask] = self.main_buffer.start(index[mask])
-        start_indices[~mask] = self.cached_buffer.start(index[~mask])
+        start_indices[~mask] = self.cached_buffer.start(index[~mask]) + self.main_buffer._maxsize
         return start_indices
 
     # def _global2local(self, global_index):
