@@ -1,5 +1,4 @@
 import h5py
-import torch
 import numpy as np
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union, Optional
@@ -534,9 +533,9 @@ class VecReplayBuffer(ReplayBuffer):
         if buf_n == 1:
             import warnings
             warnings.warn(
-                "VecReplayBuffer with buf_n = 1 will cause low efficiency. "
-                "Please consider using ReplayBuffer which is not in vector form.",
-                Warning)
+              "VecReplayBuffer with buf_n = 1 will cause low efficiency. "
+              "Please consider using ReplayBuffer which is not in vector"
+              "form.", Warning)
         _maxsize = buf_n * size
         self.buf_n = buf_n
         self.bufs = np.array([ReplayBuffer(size, **kwargs)
@@ -629,8 +628,8 @@ class VecReplayBuffer(ReplayBuffer):
                 info = {}
             if isinstance(policy, Batch) and policy.is_empty():
                 policy = {}
-            obs_next = np.atleast_1d(
-                [None] * len(index)) if obs_next is None else np.atleast_1d(obs_next)
+            obs_next = np.atleast_1d([None] * len(index)) \
+                if obs_next is None else np.atleast_1d(obs_next)
             info = np.atleast_1d(
                 [{}] * len(index)) if info == {} else np.atleast_1d(info)
             policy = np.atleast_1d(
@@ -701,8 +700,8 @@ class CachedReplayBuffer(ReplayBuffer):
     """CachedReplayBuffer can be considered as a combination of one main buffer
     and a list of cached_buffers. It's designed to used by collector to allow
     parallel collecting in collector. In CachedReplayBuffer is not organized
-    chronologically, but standard API like start()/starts()/ends/next() are provided
-    to help CachedReplayBuffer to be used just like ReplayBuffer.
+    chronologically, but standard API like start()/starts()/ends/next() are
+    provided to help CachedReplayBuffer to be used just like ReplayBuffer.
     #TODO finsih doc
     """
 
@@ -721,8 +720,9 @@ class CachedReplayBuffer(ReplayBuffer):
         if cached_buffer_n == 1:
             import warnings
             warnings.warn(
-                "CachedReplayBuffer with cached_buffer_n = 1 will cause low efficiency. "
-                "Please consider using ReplayBuffer which is not in cached form.",
+                "CachedReplayBuffer with cached_buffer_n = 1 will"
+                "cause low efficiency. Please consider using ReplayBuffer"
+                "which is not in cached form.",
                 Warning)
 
         _maxsize = size + cached_buffer_n * max_length
@@ -734,7 +734,8 @@ class CachedReplayBuffer(ReplayBuffer):
         self.cached_buffer = VecReplayBuffer(
             max_length, cached_buffer_n, **kwargs)
         super().__init__(size=_maxsize, **kwargs)
-        # TODO support, or just delete stack_num option from Replay buffer for now
+        # TODO support, or just delete stack_num option from
+        # Replay buffer for now
         assert self.stack_num == 1
 
     def __len__(self) -> int:
@@ -796,7 +797,8 @@ class CachedReplayBuffer(ReplayBuffer):
         # For now update method copy element one by one, which is too slow.
         if isinstance(buffer, CachedReplayBuffer):
             buffer = buffer.main_buffer
-        # now treat buffer like a normal ReplayBuffer and remove those incomplete steps
+        # now treat buffer like a normal ReplayBuffer and
+        # remove those incomplete steps
         if len(buffer) == 0:
             return 0
         diposed_count = 0
@@ -846,15 +848,15 @@ class CachedReplayBuffer(ReplayBuffer):
             info = {}
         if isinstance(policy, Batch) and policy.is_empty():
             policy = {}
-        obs_next = np.atleast_1d(
-            [None] * len(index)) if obs_next is None else np.atleast_1d(obs_next)
+        obs_next = np.atleast_1d([None] * len(index)) \
+            if obs_next is None else np.atleast_1d(obs_next)
         info = np.atleast_1d(
             [{}] * len(index)) if info == {} else np.atleast_1d(info)
         policy = np.atleast_1d(
             [{}] * len(index)) if policy == {} else np.atleast_1d(policy)
 
-        # TODO what if data is already in episodes, what if i want to add mutiple data ?
-        # can accelerate
+        # TODO what if data is already in episodes,
+        # what if i want to add mutiple data ?
         if self._meta.is_empty():
             self._initialise(obs[0], act[0], rew[0], done[0], obs_next[0],
                              info[0], policy[0])
