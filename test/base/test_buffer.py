@@ -7,8 +7,9 @@ import h5py
 import numpy as np
 from timeit import timeit
 
-from tianshou.data import Batch, SegmentTree, \
-    ReplayBuffer, ListReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data import Batch, SegmentTree, ReplayBuffer
+from tianshou.data import ListReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data import VectorReplayBuffer
 from tianshou.data.utils.converter import to_hdf5
 
 if __name__ == '__main__':
@@ -94,13 +95,11 @@ def test_ignore_obs_next(size=10):
 def test_stack(size=5, bufsize=9, stack_num=4):
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
-    buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
     buf3 = ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True)
     obs = env.reset(1)
     for i in range(16):
         obs_next, rew, done, info = env.step(1)
         buf.add(obs, 1, rew, done, None, info)
-        buf2.add(obs, 1, rew, done, None, info)
         buf3.add([None, None, obs], 1, rew, done, [None, obs], info)
         obs = obs_next
         if done:
@@ -112,10 +111,6 @@ def test_stack(size=5, bufsize=9, stack_num=4):
         [1, 2, 3, 4], [4, 4, 4, 4], [1, 1, 1, 1]])
     assert np.allclose(buf.get(indice, 'obs'), buf3.get(indice, 'obs'))
     assert np.allclose(buf.get(indice, 'obs'), buf3.get(indice, 'obs_next'))
-    _, indice = buf2.sample(0)
-    assert indice.tolist() == [2, 6]
-    _, indice = buf2.sample(1)
-    assert indice in [2, 6]
     with pytest.raises(IndexError):
         buf[bufsize * 2]
 
@@ -347,7 +342,62 @@ def test_hdf5():
         to_hdf5(data, grp)
 
 
+def test_vectorbuffer():
+    buf = VectorReplayBuffer(5, 4)
+    buf.add(obs=[1, 2, 3], act=[1, 2, 3], rew=[1, 2, 3],
+            done=[0, 0, 1], buffer_index=[0, 1, 2])
+    batch, indice = buf.sample(10)
+    batch, indice = buf.sample(0)
+    assert np.allclose(indice, [0, 5, 10])
+    indice_prev = buf.prev(indice)
+    assert np.allclose(indice_prev, indice), indice_prev
+    indice_next = buf.next(indice)
+    assert np.allclose(indice_next, indice), indice_next
+    buf.add(obs=[4], act=[4], rew=[4], done=[1], buffer_index=[3])
+    batch, indice = buf.sample(10)
+    batch, indice = buf.sample(0)
+    assert np.allclose(indice, [0, 5, 10, 15])
+    indice_prev = buf.prev(indice)
+    assert np.allclose(indice_prev, indice), indice_prev
+    indice_next = buf.next(indice)
+    assert np.allclose(indice_next, indice), indice_next
+    data = np.array([0, 0, 0, 0])
+    buf.add(obs=data, act=data, rew=data, done=data, buffer_index=[0, 1, 2, 3])
+    buf.add(obs=data, act=data, rew=data, done=1 - data,
+            buffer_index=[0, 1, 2, 3])
+    assert len(buf) == 12
+    buf.add(obs=data, act=data, rew=data, done=data, buffer_index=[0, 1, 2, 3])
+    buf.add(obs=data, act=data, rew=data, done=[0, 1, 0, 1],
+            buffer_index=[0, 1, 2, 3])
+    assert len(buf) == 20
+    batch, indice = buf.sample(10)
+    indice = buf.sample_index(0)
+    assert np.allclose(indice, np.arange(len(buf)))
+    assert np.allclose(buf.done, [
+        0, 0, 1, 0, 0,
+        0, 0, 1, 0, 1,
+        1, 0, 1, 0, 0,
+        1, 0, 1, 0, 1,
+    ])
+    indice_prev = buf.prev(indice)
+    assert np.allclose(indice_prev, [
+        0, 0, 1, 3, 3,
+        5, 5, 6, 8, 8,
+        10, 11, 11, 13, 13,
+        15, 16, 16, 18, 18,
+    ])
+    indice_next = buf.next(indice)
+    assert np.allclose(indice_next, [
+        1, 2, 2, 4, 4,
+        6, 7, 7, 9, 9,
+        10, 12, 12, 14, 14,
+        15, 17, 17, 19, 19,
+    ])
+    # TODO: prev/next/stack/hdf5
+
+
 if __name__ == '__main__':
+    test_vectorbuffer()
     test_hdf5()
     test_replaybuffer()
     test_ignore_obs_next()
