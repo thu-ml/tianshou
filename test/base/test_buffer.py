@@ -9,7 +9,7 @@ from timeit import timeit
 
 from tianshou.data import Batch, SegmentTree, ReplayBuffer
 from tianshou.data import ListReplayBuffer, PrioritizedReplayBuffer
-from tianshou.data import VectorReplayBuffer
+from tianshou.data import VectorReplayBuffer, CachedReplayBuffer
 from tianshou.data.utils.converter import to_hdf5
 
 if __name__ == '__main__':
@@ -282,7 +282,8 @@ def test_hdf5():
     buffers = {
         "array": ReplayBuffer(size, stack_num=2),
         "list": ListReplayBuffer(),
-        "prioritized": PrioritizedReplayBuffer(size, 0.6, 0.4)
+        "prioritized": PrioritizedReplayBuffer(size, 0.6, 0.4),
+        "vector": VectorReplayBuffer(size, buffer_num=4),
     }
     buffer_types = {k: b.__class__ for k, b in buffers.items()}
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -298,6 +299,8 @@ def test_hdf5():
         buffers["array"].add(**kwargs)
         buffers["list"].add(**kwargs)
         buffers["prioritized"].add(weight=np.random.rand(), **kwargs)
+        buffers["vector"].add(**Batch.cat([[kwargs], [kwargs], [kwargs]]),
+                              env_ids=[0, 1, 2])
 
     # save
     paths = {}
@@ -345,7 +348,7 @@ def test_hdf5():
 def test_vectorbuffer():
     buf = VectorReplayBuffer(5, 4)
     buf.add(obs=[1, 2, 3], act=[1, 2, 3], rew=[1, 2, 3],
-            done=[0, 0, 1], buffer_index=[0, 1, 2])
+            done=[0, 0, 1], env_ids=[0, 1, 2])
     batch, indice = buf.sample(10)
     batch, indice = buf.sample(0)
     assert np.allclose(indice, [0, 5, 10])
@@ -353,7 +356,7 @@ def test_vectorbuffer():
     assert np.allclose(indice_prev, indice), indice_prev
     indice_next = buf.next(indice)
     assert np.allclose(indice_next, indice), indice_next
-    buf.add(obs=[4], act=[4], rew=[4], done=[1], buffer_index=[3])
+    buf.add(obs=[4], act=[4], rew=[4], done=[1], env_ids=[3])
     batch, indice = buf.sample(10)
     batch, indice = buf.sample(0)
     assert np.allclose(indice, [0, 5, 10, 15])
@@ -362,13 +365,13 @@ def test_vectorbuffer():
     indice_next = buf.next(indice)
     assert np.allclose(indice_next, indice), indice_next
     data = np.array([0, 0, 0, 0])
-    buf.add(obs=data, act=data, rew=data, done=data, buffer_index=[0, 1, 2, 3])
+    buf.add(obs=data, act=data, rew=data, done=data, env_ids=[0, 1, 2, 3])
     buf.add(obs=data, act=data, rew=data, done=1 - data,
-            buffer_index=[0, 1, 2, 3])
+            env_ids=[0, 1, 2, 3])
     assert len(buf) == 12
-    buf.add(obs=data, act=data, rew=data, done=data, buffer_index=[0, 1, 2, 3])
+    buf.add(obs=data, act=data, rew=data, done=data, env_ids=[0, 1, 2, 3])
     buf.add(obs=data, act=data, rew=data, done=[0, 1, 0, 1],
-            buffer_index=[0, 1, 2, 3])
+            env_ids=[0, 1, 2, 3])
     assert len(buf) == 20
     batch, indice = buf.sample(10)
     indice = buf.sample_index(0)
@@ -394,6 +397,11 @@ def test_vectorbuffer():
         15, 17, 17, 19, 19,
     ])
     # TODO: prev/next/stack/hdf5
+    # CachedReplayBuffer
+    buf = CachedReplayBuffer(10, 4, 5)
+    assert buf.sample_index(0).tolist() == []
+    buf.add(obs=[1], act=[1], rew=[1], done=[1], env_ids=[1])
+    print(buf)
 
 
 if __name__ == '__main__':
