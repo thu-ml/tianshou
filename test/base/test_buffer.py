@@ -419,6 +419,8 @@ def test_vectorbuffer():
     ep_len, ep_rew = buf.add(obs=[1, 2, 3], act=[1, 2, 3], rew=[1, 2, 3],
                              done=[0, 0, 1], buffer_ids=[0, 1, 2])
     assert np.allclose(ep_len, [0, 0, 1]) and np.allclose(ep_rew, [0, 0, 3])
+    with pytest.raises(NotImplementedError):
+        buf.update(buf)
     indice = buf.sample_index(11000)
     assert np.bincount(indice)[[0, 5, 10]].min() >= 3000
     batch, indice = buf.sample(0)
@@ -488,6 +490,14 @@ def test_vectorbuffer():
         10, 12, 12, 14, 10,
         15, 17, 17, 19, 19,
     ])
+    # corner case: list, int and -1
+    assert buf.prev(-1) == buf.prev([buf.maxsize - 1])[0]
+    assert buf.next(-1) == buf.next([buf.maxsize - 1])[0]
+    batch = buf._meta
+    batch.info.n = np.ones(buf.maxsize)
+    buf.set_batch(batch)
+    assert np.allclose(buf.buffers[-1].info.n, [1] * 5)
+    assert buf.sample_index(-1).tolist() == []
 
     # CachedReplayBuffer
     buf = CachedReplayBuffer(10, 4, 5)

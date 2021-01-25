@@ -586,7 +586,7 @@ class ReplayBuffers(ReplayBuffer):
             buf.unfinished_index() + buf.offset for buf in self.buffers])
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
-        index = np.asarray(index)
+        index = np.asarray(index) % self.maxsize
         prev_indices = np.zeros_like(index)
         for buf in self.buffers:
             mask = (buf.offset <= index) & (index < buf.offset + buf.maxsize)
@@ -596,7 +596,7 @@ class ReplayBuffers(ReplayBuffer):
         return prev_indices
 
     def next(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
-        index = np.asarray(index)
+        index = np.asarray(index) % self.maxsize
         next_indices = np.zeros_like(index)
         for buf in self.buffers:
             mask = (buf.offset <= index) & (index < buf.offset + buf.maxsize)
