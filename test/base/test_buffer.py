@@ -9,7 +9,7 @@ from timeit import timeit
 
 from tianshou.data import Batch, SegmentTree, ReplayBuffer
 from tianshou.data import ListReplayBuffer, PrioritizedReplayBuffer
-from tianshou.data import VectorReplayBuffer, CachedReplayBuffer
+from tianshou.data import ReplayBuffers, CachedReplayBuffer
 from tianshou.data.utils.converter import to_hdf5
 
 if __name__ == '__main__':
@@ -283,7 +283,8 @@ def test_hdf5():
         "array": ReplayBuffer(size, stack_num=2),
         "list": ListReplayBuffer(),
         "prioritized": PrioritizedReplayBuffer(size, 0.6, 0.4),
-        "vector": VectorReplayBuffer(size, buffer_num=4),
+        "vector": ReplayBuffers([ReplayBuffer(size) for i in range(4)]),
+        "cached": CachedReplayBuffer(size, 4, size)
     }
     buffer_types = {k: b.__class__ for k, b in buffers.items()}
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -293,14 +294,16 @@ def test_hdf5():
             'obs': Batch(index=np.array([i])),
             'act': i,
             'rew': rew,
-            'done': 0,
+            'done': i % 3 == 2,
             'info': {"number": {"n": i}, 'extra': None},
         }
         buffers["array"].add(**kwargs)
         buffers["list"].add(**kwargs)
         buffers["prioritized"].add(weight=np.random.rand(), **kwargs)
         buffers["vector"].add(**Batch.cat([[kwargs], [kwargs], [kwargs]]),
-                              env_ids=[0, 1, 2])
+                              buffer_ids=[0, 1, 2])
+        buffers["cached"].add(**Batch.cat([[kwargs], [kwargs], [kwargs]]),
+                              cached_buffer_ids=[0, 1, 2])
 
     # save
     paths = {}
@@ -329,6 +332,33 @@ def test_hdf5():
             buffers[k][:].info.number.n == _buffers[k][:].info.number.n)
         assert np.all(
             buffers[k][:].info.extra == _buffers[k][:].info.extra)
+    # check shallow copy in ReplayBuffers
+    for k in ["vector", "cached"]:
+        buffers[k].info.number.n[0] = -100
+        assert buffers[k].buffers[0].info.number.n[0] == -100
+    # check if still behave normally
+    for k in ["vector", "cached"]:
+        kwargs = {
+            'obs': Batch(index=np.array([5])),
+            'act': 5,
+            'rew': rew,
+            'done': False,
+            'info': {"number": {"n": i}, 'Timelimit.truncate': True},
+        }
+        buffers[k].add(**Batch.cat([[kwargs], [kwargs], [kwargs], [kwargs]]))
+        act = np.zeros(buffers[k].maxsize)
+        if k == "vector":
+            act[np.arange(5)] = np.array([0, 1, 2, 3, 5])
+            act[np.arange(5) + size] = np.array([0, 1, 2, 3, 5])
+            act[np.arange(5) + size * 2] = np.array([0, 1, 2, 3, 5])
+            act[size * 3] = 5
+        elif k == "cached":
+            act[np.arange(9)] = np.array([0, 1, 2, 0, 1, 2, 0, 1, 2])
+            act[np.arange(3) + size] = np.array([3, 5, 2])
+            act[np.arange(3) + size * 2] = np.array([3, 5, 2])
+            act[np.arange(3) + size * 3] = np.array([3, 5, 2])
+            act[size * 4] = 5
+        assert np.allclose(buffers[k].act, act)
 
     for path in paths.values():
         os.remove(path)
@@ -346,9 +376,9 @@ def test_hdf5():
 
 
 def test_vectorbuffer():
-    buf = VectorReplayBuffer(5, 4)
+    buf = ReplayBuffers([ReplayBuffer(size=5) for i in range(4)])
     buf.add(obs=[1, 2, 3], act=[1, 2, 3], rew=[1, 2, 3],
-            done=[0, 0, 1], env_ids=[0, 1, 2])
+            done=[0, 0, 1], buffer_ids=[0, 1, 2])
     batch, indice = buf.sample(10)
     batch, indice = buf.sample(0)
     assert np.allclose(indice, [0, 5, 10])
@@ -356,7 +386,9 @@ def test_vectorbuffer():
     assert np.allclose(indice_prev, indice), indice_prev
     indice_next = buf.next(indice)
     assert np.allclose(indice_next, indice), indice_next
-    buf.add(obs=[4], act=[4], rew=[4], done=[1], env_ids=[3])
+    assert np.allclose(buf.unfinished_index(), [0, 5])
+    buf.add(obs=[4], act=[4], rew=[4], done=[1], buffer_ids=[3])
+    assert np.allclose(buf.unfinished_index(), [0, 5])
     batch, indice = buf.sample(10)
     batch, indice = buf.sample(0)
     assert np.allclose(indice, [0, 5, 10, 15])
@@ -365,13 +397,13 @@ def test_vectorbuffer():
     indice_next = buf.next(indice)
     assert np.allclose(indice_next, indice), indice_next
     data = np.array([0, 0, 0, 0])
-    buf.add(obs=data, act=data, rew=data, done=data, env_ids=[0, 1, 2, 3])
+    buf.add(obs=data, act=data, rew=data, done=data, buffer_ids=[0, 1, 2, 3])
     buf.add(obs=data, act=data, rew=data, done=1 - data,
-            env_ids=[0, 1, 2, 3])
+            buffer_ids=[0, 1, 2, 3])
     assert len(buf) == 12
-    buf.add(obs=data, act=data, rew=data, done=data, env_ids=[0, 1, 2, 3])
+    buf.add(obs=data, act=data, rew=data, done=data, buffer_ids=[0, 1, 2, 3])
     buf.add(obs=data, act=data, rew=data, done=[0, 1, 0, 1],
-            env_ids=[0, 1, 2, 3])
+            buffer_ids=[0, 1, 2, 3])
     assert len(buf) == 20
     batch, indice = buf.sample(10)
     indice = buf.sample_index(0)
@@ -396,11 +428,12 @@ def test_vectorbuffer():
         10, 12, 12, 14, 14,
         15, 17, 17, 19, 19,
     ])
+    assert np.allclose(buf.unfinished_index(), [4, 14])
     # TODO: prev/next/stack/hdf5
     # CachedReplayBuffer
     buf = CachedReplayBuffer(10, 4, 5)
     assert buf.sample_index(0).tolist() == []
-    buf.add(obs=[1], act=[1], rew=[1], done=[1], env_ids=[1])
+    buf.add(obs=[1], act=[1], rew=[1], done=[1], cached_buffer_ids=[1])
     print(buf)
 
 

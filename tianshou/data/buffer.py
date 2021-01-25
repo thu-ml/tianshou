@@ -2,7 +2,7 @@ import h5py
 import warnings
 import numpy as np
 from numbers import Number
-from typing import Any, Dict, List, Tuple, Union, Callable, Optional
+from typing import Any, Dict, List, Tuple, Union, Optional
 
 from tianshou.data.batch import _create_value
 from tianshou.data import Batch, SegmentTree, to_numpy
@@ -146,8 +146,6 @@ class ReplayBuffer:
         stack_num: int = 1,
         ignore_obs_next: bool = False,
         save_only_last_obs: bool = False,
-        alloc_fn: Optional[Callable[["ReplayBuffer", List[str], Any], None]]
-        = None,
         sample_avail: bool = False,
     ) -> None:
         super().__init__()
@@ -163,7 +161,8 @@ class ReplayBuffer:
         self._index = 0  # current index
         self._size = 0  # current buffer size
         self._meta: Batch = Batch()
-        self._alloc = alloc_fn or ReplayBuffer.default_alloc_fn
+        self._episode_reward = 0.0
+        self._episode_length = 0
         self.reset()
 
     def __len__(self) -> int:
@@ -215,19 +214,21 @@ class ReplayBuffer:
 
     def reset(self) -> None:
         """Clear all the data in replay buffer."""
-        self._index = self._size = 0
+        self._index = self._size = self._episode_length = 0
+        self._episode_reward = 0.0
 
     def set_batch(self, batch: Batch) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage."""
         assert len(batch) == self.maxsize and \
-               set(batch.keys()).issubset(self._reserved_key), \
+            set(batch.keys()).issubset(self._reserved_keys), \
             "Input batch doesn't meet ReplayBuffer's data form requirement."
         self._meta = batch
 
     def unfinished_index(self) -> np.ndarray:
         """Return the index of unfinished episode."""
         last = (self._index - 1) % self._size if self._size else 0
-        return np.array([last] if not self.done[last] else [], np.int)
+        return np.array(
+            [last] if not self.done[last] and self._size else [], np.int)
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         """Return the index of previous transition.
@@ -256,28 +257,25 @@ class ReplayBuffer:
             self.add(**buffer[i])  # type: ignore
         buffer.stack_num = stack_num_orig
 
-    @staticmethod
-    def default_alloc_fn(
-        buffer: "ReplayBuffer", key: List[str], value: Any
-    ) -> None:
+    def alloc_fn(self, key: List[str], value: Any) -> None:
         """Allocate memory on buffer._meta for new (key, value) pair."""
-        data = buffer._meta
+        data = self._meta
         for k in key[:-1]:
             data = data[k]
-        data[key[-1]] = _create_value(value, buffer.maxsize)
+        data[key[-1]] = _create_value(value, self.maxsize)
 
     def _add_to_buffer(self, name: str, inst: Any) -> None:
         try:
             value = self._meta.__dict__[name]
         except KeyError:
-            self._alloc(self, [name], inst)
+            self.alloc_fn([name], inst)
             value = self._meta[name]
         try:
             value[self._index] = inst
         except KeyError:  # inst is a dict/Batch
             for key in set(inst.keys()).difference(value.keys()):
-                self._alloc(self, [name, key], inst)
-            value[self._index] = inst
+                self.alloc_fn([name, key], inst[key])
+            self._meta[name][self._index] = inst
 
     def add(
         self,
@@ -289,8 +287,12 @@ class ReplayBuffer:
         info: Optional[Union[dict, Batch]] = {},
         policy: Optional[Union[dict, Batch]] = {},
         **kwargs: Any,
-    ) -> None:
-        """Add a batch of data into replay buffer."""
+    ) -> Tuple[int, float]:
+        """Add a batch of data into replay buffer.
+
+        Return (episode_length, episode_reward) if one episode is terminated,
+        otherwise return (0, 0.0).
+        """
         assert isinstance(
             info, (dict, Batch)
         ), "You should return a dict in the last argument of env.step()."
@@ -299,7 +301,8 @@ class ReplayBuffer:
         self._add_to_buffer("obs", obs)
         self._add_to_buffer("act", act)
         # make sure the data type of reward is float instead of int
-        self._add_to_buffer("rew", rew * 1.0)  # type: ignore
+        rew = rew * 1.0  # type: ignore
+        self._add_to_buffer("rew", rew)
         self._add_to_buffer("done", bool(done))  # done should be a bool scalar
         if self._save_obs_next:
             if obs_next is None:
@@ -310,11 +313,21 @@ class ReplayBuffer:
         self._add_to_buffer("info", info)
         self._add_to_buffer("policy", policy)
 
+        self._episode_reward += rew
+        self._episode_length += 1
+
         if self.maxsize > 0:
             self._size = min(self._size + 1, self.maxsize)
             self._index = (self._index + 1) % self.maxsize
         else:  # TODO: remove this after deleting ListReplayBuffer
             self._size = self._index = self._size + 1
+
+        if done:
+            result = (self._episode_length, self._episode_reward)
+            self._episode_length, self._episode_reward = 0, 0.0
+            return result
+        else:
+            return (0, 0.0)
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
@@ -361,13 +374,14 @@ class ReplayBuffer:
             if stack_num == 1:  # the most often case
                 return val[indice]
             stack: List[Any] = []
+            indice = np.asarray(indice)
             for _ in range(stack_num):
                 stack = [val[indice]] + stack
                 indice = self.prev(indice)
             if isinstance(val, Batch):
-                return Batch.stack(stack, axis=1)
+                return Batch.stack(stack, axis=indice.ndim)
             else:
-                return np.stack(stack, axis=1)
+                return np.stack(stack, axis=indice.ndim)
         except IndexError as e:
             if not (isinstance(val, Batch) and val.is_empty()):
                 raise e  # val != Batch()
@@ -414,7 +428,7 @@ class ListReplayBuffer(ReplayBuffer):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        warnings.warn("ListReplayBuffer will be replaced soon.")
+        warnings.warn("ListReplayBuffer will be replaced in version 0.4.0.")
         super().__init__(size=0, ignore_obs_next=False, **kwargs)
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
@@ -468,7 +482,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         policy: Optional[Union[dict, Batch]] = {},
         weight: Optional[Union[Number, np.number]] = None,
         **kwargs: Any,
-    ) -> None:
+    ) -> Tuple[int, float]:
         """Add a batch of data into replay buffer."""
         if weight is None:
             weight = self._max_prio
@@ -477,7 +491,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             self._max_prio = max(self._max_prio, weight)
             self._min_prio = min(self._min_prio, weight)
         self.weight[self._index] = weight ** self._alpha
-        super().add(obs, act, rew, done, obs_next, info, policy, **kwargs)
+        return super().add(obs, act, rew, done, obs_next,
+                           info, policy, **kwargs)
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         assert self._size > 0, "Cannot sample a buffer with 0 size."
@@ -529,12 +544,13 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         return batch
 
 
-class VectorReplayBuffer(ReplayBuffer):
-    """VectorReplayBuffer contains n ReplayBuffer with the given size, where \
-    n equals to buffer_num.
+class ReplayBuffers(ReplayBuffer):
+    """ReplayBuffers contains a list of ReplayBuffer.
 
-    :param int size: the size of each ReplayBuffer.
-    :param int buffer_num: number of ReplayBuffer needs to be handled.
+    These replay buffers have contiguous memory layout, and the storage space
+    each buffer has is a shallow copy of the topmost memory.
+
+    :param int buffer_list: a list of ReplayBuffers needed to be handled.
 
     .. seealso::
 
@@ -542,25 +558,15 @@ class VectorReplayBuffer(ReplayBuffer):
         explanation.
     """
 
-    def __init__(
-        self, size: int, buffer_num: int, **kwargs: Any
-    ) -> None:
-
-        def buffer_alloc_fn(
-            buffer: ReplayBuffer, key: List[str], value: Any
-        ) -> None:
-            data = self._meta
-            for k in key[:-1]:
-                data = data[k]
-            data[key[-1]] = _create_value(value, self.maxsize)
-            self._set_batch_for_children()
-
-        assert size > 0 and buffer_num > 0
-        self.buffer_num = buffer_num
-        kwargs["alloc_fn"] = kwargs.get("alloc_fn", buffer_alloc_fn)
-        self.buffers = np.array([ReplayBuffer(size, **kwargs)
-                                 for _ in range(buffer_num)])
-        super().__init__(size=buffer_num * size, **kwargs)
+    def __init__(self, buffer_list: List[ReplayBuffer]) -> None:
+        self.buffer_num = len(buffer_list)
+        self.buffers = np.array(buffer_list)
+        offset = 0
+        for buf in self.buffers:
+            buf.alloc_fn = self.alloc_fn
+            buf.offset = offset
+            offset += buf.maxsize
+        super().__init__(size=offset)
 
     def __len__(self) -> int:
         return sum([len(buf) for buf in self.buffers])
@@ -571,55 +577,64 @@ class VectorReplayBuffer(ReplayBuffer):
 
     def _set_batch_for_children(self) -> None:
         for i, buf in enumerate(self.buffers):
-            start, end = buf.maxsize * i, buf.maxsize * (i + 1)
-            buf.set_batch(self._meta[start:end])
+            buf.set_batch(self._meta[buf.offset:buf.offset + buf.maxsize])
 
     def set_batch(self, batch: Batch) -> None:
         super().set_batch(batch)
         self._set_batch_for_children()
 
     def unfinished_index(self) -> np.ndarray:
-        return np.concatenate([buf.unfinished_index() for buf in self.buffers])
+        return np.concatenate([
+            buf.unfinished_index() + buf.offset for buf in self.buffers])
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         index = np.asarray(index)
         prev_indices = np.zeros_like(index)
-        for i, buf in enumerate(self.buffers):
-            lower, upper = buf.maxsize * i, buf.maxsize * (i + 1)
-            mask = (lower <= index) & (index < upper)
+        for buf in self.buffers:
+            mask = (buf.offset <= index) & (index < buf.offset + buf.maxsize)
             if np.any(mask):
-                prev_indices[mask] = buf.prev(index[mask] - lower) + lower
+                prev_indices[mask] = buf.prev(
+                    index[mask] - buf.offset) + buf.offset
         return prev_indices
 
     def next(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         index = np.asarray(index)
         next_indices = np.zeros_like(index)
-        for i, buf in enumerate(self.buffers):
-            lower, upper = buf.maxsize * i, buf.maxsize * (i + 1)
-            mask = (lower <= index) & (index < upper)
+        for buf in self.buffers:
+            mask = (buf.offset <= index) & (index < buf.offset + buf.maxsize)
             if np.any(mask):
-                next_indices[mask] = buf.next(index[mask] - lower) + lower
+                next_indices[mask] = buf.next(
+                    index[mask] - buf.offset) + buf.offset
         return next_indices
 
     def update(self, buffer: ReplayBuffer) -> None:
         """The VectorReplayBuffer cannot be updated by any buffer."""
         raise NotImplementedError
 
+    def alloc_fn(self, key: List[str], value: Any) -> None:
+        super().alloc_fn(key, value)
+        self._set_batch_for_children()
+
     def add(  # type: ignore
         self,
         obs: Any,
         act: Any,
-        rew: Union[np.ndarray],
-        done: Union[np.ndarray],
+        rew: np.ndarray,
+        done: np.ndarray,
         obs_next: Any = Batch(),
         info: Optional[Batch] = Batch(),
         policy: Optional[Batch] = Batch(),
         buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
         **kwargs: Any
-    ) -> None:
-        """Add a batch of data into VectorReplayBuffer.
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Add a batch of data into ReplayBuffers.
+
         Each of the data's length (first dimension) must equal to the length of
-        buffer_ids. TODO buffer_ids default to all buffers in sequential order.
+        buffer_ids. By default buffer_ids is [0, 1, ..., buffer_num - 1].
+
+        Return the array of episode_length and episode_reward with shape
+        (len(buffer_ids), ...), where (episode_length[i], episode_reward[i])
+        refers to the buffer_ids[i]'s corresponding episode result.
         """
         if buffer_ids is None:
             buffer_ids = np.arange(self.buffer_num)
@@ -628,8 +643,13 @@ class VectorReplayBuffer(ReplayBuffer):
         batch = Batch(obs=obs, act=act, rew=rew, done=done,
                       obs_next=obs_next, info=info, policy=policy)
         assert len(buffer_ids) == len(batch)
+        episode_lengths = []
+        episode_rewards = []
         for batch_idx, env_id in enumerate(buffer_ids):
-            self.buffers[env_id].add(**batch[batch_idx])
+            length, reward = self.buffers[env_id].add(**batch[batch_idx])
+            episode_lengths.append(length)
+            episode_rewards.append(reward)
+        return np.array(episode_lengths), np.array(episode_rewards)
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         if batch_size < 0:
@@ -644,17 +664,18 @@ class VectorReplayBuffer(ReplayBuffer):
             # avoid batch_size > 0 and sample_num == 0 -> get child's all data
             sample_num[sample_num == 0] = -1
 
-        indices = []
-        for i, (buf, bsz) in enumerate(zip(self.buffers, sample_num)):
-            offset = buf.maxsize * i
-            indices.append(buf.sample_index(bsz) + offset)
-        return np.concatenate(indices)
+        return np.concatenate([
+            buf.sample_index(bsz) + buf.offset
+            for buf, bsz in zip(self.buffers, sample_num)
+        ])
 
 
-class CachedReplayBuffer(ReplayBuffer):
-    """CachedReplayBuffer contains a ReplayBuffer with the given size as the \
-    main buffer, and a VectorReplayBuffer with cached_buffer_num * \
-    ReplayBuffer(size=max_episode_length) as the cached buffer.
+class CachedReplayBuffer(ReplayBuffers):
+    """CachedReplayBuffer contains a ReplayBuffers with given size and n \
+    cached buffers, cached_buffer_num * ReplayBuffer(size=max_episode_length).
+
+    The memory layout is: ``| main_buffer | cached_buffer[0] | cached_buffer[1]
+    | ... | cached_buffer[cached_buffer_num - 1]``.
 
     The data is first stored in cached buffers. When the episode is
     terminated, the data will move to the main buffer and the corresponding
@@ -669,7 +690,7 @@ class CachedReplayBuffer(ReplayBuffer):
     .. seealso::
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` or
-        :class:`~tianshou.data.VectorReplayBuffer` for more detailed
+        :class:`~tianshou.data.ReplayBuffers` for more detailed
         explanation.
     """
 
@@ -680,107 +701,47 @@ class CachedReplayBuffer(ReplayBuffer):
         max_episode_length: int,
         **kwargs: Any,
     ) -> None:
-
-        def buffer_alloc_fn(
-            buffer: ReplayBuffer, key: List[str], value: Any
-        ) -> None:
-            data = self._meta
-            for k in key[:-1]:
-                data = data[k]
-            data[key[-1]] = _create_value(value, self.maxsize)
-            self._set_batch_for_children()
-
         assert cached_buffer_num > 0 and max_episode_length > 0
-        self.offset = size
         self.cached_buffer_num = cached_buffer_num
-        kwargs["alloc_fn"] = kwargs.get("alloc_fn", buffer_alloc_fn)
-        self.main_buffer = ReplayBuffer(size, **kwargs)
-        self.cached_buffer = VectorReplayBuffer(
-            max_episode_length, cached_buffer_num, **kwargs)
-        maxsize = size + cached_buffer_num * max_episode_length
-        super().__init__(size=maxsize, **kwargs)
-
-    def __len__(self) -> int:
-        return len(self.main_buffer) + len(self.cached_buffer)
-
-    def reset(self) -> None:
-        self.cached_buffer.reset()
-        self.main_buffer.reset()
-
-    def _set_batch_for_children(self) -> None:
-        self.main_buffer.set_batch(self._meta[:self.offset])
-        self.cached_buffer.set_batch(self._meta[self.offset:])
-
-    def set_batch(self, batch: Batch) -> None:
-        super().set_batch(batch)
-        self._set_batch_for_children()
-
-    def unfinished_index(self) -> np.ndarray:
-        return np.concatenate([self.main_buffer.unfinished_index(),
-                               self.cached_buffer.unfinished_index()])
-
-    def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
-        index = np.asarray(index)
-        prev_indices = np.zeros_like(index)
-        mask = index < self.offset
-        prev_indices[mask] = self.main_buffer.prev(index[mask])
-        prev_indices[~mask] = self.cached_buffer.prev(
-            index[~mask] - self.offset) + self.offset
-        return prev_indices
-
-    def next(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
-        index = np.asarray(index)
-        next_indices = np.zeros_like(index)
-        mask = index < self.offset
-        next_indices[mask] = self.main_buffer.next(index[mask])
-        next_indices[~mask] = self.cached_buffer.next(
-            index[~mask] - self.offset) + self.offset
-        return next_indices
-
-    def update(self, buffer: ReplayBuffer) -> None:
-        raise NotImplementedError
+        main_buffer = ReplayBuffer(size, **kwargs)
+        buffers = [main_buffer] + [ReplayBuffer(max_episode_length, **kwargs)
+                                   for _ in range(cached_buffer_num)]
+        super().__init__(buffer_list=buffers)
 
     def add(  # type: ignore
         self,
         obs: Any,
         act: Any,
-        rew: Union[Number, np.number, np.ndarray],
-        done: Union[Number, np.number, np.bool_],
+        rew: np.ndarray,
+        done: np.ndarray,
         obs_next: Any = Batch(),
         info: Optional[Batch] = Batch(),
         policy: Optional[Batch] = Batch(),
-        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
+        cached_buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
         **kwargs: Any,
-    ) -> None:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Add a batch of data into CachedReplayBuffer.
 
         Each of the data's length (first dimension) must equal to the length of
-        buffer_ids.
+        cached_buffer_ids. By default the cached_buffer_ids is [0, 1, ...,
+        cached_buffer_num - 1].
+
+        Return the array of episode_length and episode_reward with shape
+        (len(cached_buffer_ids), ...), where (episode_length[i],
+        episode_reward[i]) refers to the cached_buffer_ids[i]'s corresponding
+        episode result.
         """
-        # if buffer_ids is None, an exception will raise from cached_buffer
-        self.cached_buffer.add(obs, act, rew, done, obs_next,
-                               info, policy, buffer_ids, **kwargs)
+        if cached_buffer_ids is None:
+            cached_buffer_ids = np.arange(self.buffer_num - 1)
+        # in self.buffers, the first buffer is main_buffer
+        buffer_ids = np.asarray(cached_buffer_ids) + 1
+
+        result = super().add(obs, act, rew, done, obs_next,
+                             info, policy, buffer_ids=buffer_ids, **kwargs)
+
         # find the terminated episode, move data from cached buf to main buf
         for buffer_idx in np.asarray(buffer_ids)[np.asarray(done) > 0]:
-            self.main_buffer.update(self.cached_buffer.buffers[buffer_idx])
-            self.cached_buffer.buffers[buffer_idx].reset()
-        # TODO retrun to previous version
+            self.buffers[0].update(self.buffers[buffer_idx])
+            self.buffers[buffer_idx].reset()
 
-    def sample_index(self, batch_size: int) -> np.ndarray:
-        if batch_size < 0:
-            return np.array([], np.int)
-        if batch_size == 0:  # get all available indices
-            sample_num = np.array([0, 0], np.int)
-        else:
-            buffer_lens = np.array([
-                len(self.main_buffer), len(self.cached_buffer)])
-            buffer_idx = np.random.choice(2, batch_size,
-                                          p=buffer_lens / buffer_lens.sum())
-            sample_num = np.bincount(buffer_idx, minlength=2)
-            # avoid batch_size > 0 and sample_num == 0 -> get child's all data
-            sample_num[sample_num == 0] = -1
-
-        return np.concatenate([
-            self.main_buffer.sample_index(sample_num[0]),
-            self.cached_buffer.sample_index(sample_num[1]) + self.offset,
-        ])
+        return result
