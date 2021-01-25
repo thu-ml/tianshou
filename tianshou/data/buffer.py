@@ -198,32 +198,29 @@ class ReplayBuffer:
             "key '{}' is reserved and cannot be assigned".format(key))
         super().__setattr__(key, value)
 
-    @staticmethod
-    def default_alloc_fn(
-        buffer: "ReplayBuffer", key: List[str], value: Any
-    ) -> None:
-        """Allocate memory on buffer._meta for new (key, value) pair."""
-        data = buffer._meta
-        for k in key[:-1]:
-            data = data[k]
-        data[key[-1]] = _create_value(value, buffer.maxsize)
+    def save_hdf5(self, path: str) -> None:
+        """Save replay buffer to HDF5 file."""
+        with h5py.File(path, "w") as f:
+            to_hdf5(self.__getstate__(), f)
 
-    def _add_to_buffer(self, name: str, inst: Any) -> None:
-        try:
-            value = self._meta.__dict__[name]
-        except KeyError:
-            self._alloc(self, [name], inst)
-            value = self._meta[name]
-        try:
-            value[self._index] = inst
-        except KeyError:  # inst is a dict/Batch
-            for key in set(inst.keys()).difference(value.keys()):
-                self._alloc(self, [name, key], inst)
-            value[self._index] = inst
+    @classmethod
+    def load_hdf5(
+        cls, path: str, device: Optional[str] = None
+    ) -> "ReplayBuffer":
+        """Load replay buffer from HDF5 file."""
+        with h5py.File(path, "r") as f:
+            buf = cls.__new__(cls)
+            buf.__setstate__(from_hdf5(f, device=device))
+        return buf
+
+    def reset(self) -> None:
+        """Clear all the data in replay buffer."""
+        self._index = self._size = 0
 
     def set_batch(self, batch: Batch) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage."""
-        assert len(batch) == self.maxsize, \
+        assert len(batch) == self.maxsize and \
+               set(batch.keys()).issubset(self._reserved_key), \
             "Input batch doesn't meet ReplayBuffer's data form requirement."
         self._meta = batch
 
@@ -258,6 +255,29 @@ class ReplayBuffer:
         for i in indices:
             self.add(**buffer[i])  # type: ignore
         buffer.stack_num = stack_num_orig
+
+    @staticmethod
+    def default_alloc_fn(
+        buffer: "ReplayBuffer", key: List[str], value: Any
+    ) -> None:
+        """Allocate memory on buffer._meta for new (key, value) pair."""
+        data = buffer._meta
+        for k in key[:-1]:
+            data = data[k]
+        data[key[-1]] = _create_value(value, buffer.maxsize)
+
+    def _add_to_buffer(self, name: str, inst: Any) -> None:
+        try:
+            value = self._meta.__dict__[name]
+        except KeyError:
+            self._alloc(self, [name], inst)
+            value = self._meta[name]
+        try:
+            value[self._index] = inst
+        except KeyError:  # inst is a dict/Batch
+            for key in set(inst.keys()).difference(value.keys()):
+                self._alloc(self, [name, key], inst)
+            value[self._index] = inst
 
     def add(
         self,
@@ -295,10 +315,6 @@ class ReplayBuffer:
             self._index = (self._index + 1) % self.maxsize
         else:  # TODO: remove this after deleting ListReplayBuffer
             self._size = self._index = self._size + 1
-
-    def reset(self) -> None:
-        """Clear all the data in replay buffer."""
-        self._index = self._size = 0
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
@@ -380,21 +396,6 @@ class ReplayBuffer:
             info=self.get(index, "info"),
             policy=self.get(index, "policy"),
         )
-
-    def save_hdf5(self, path: str) -> None:
-        """Save replay buffer to HDF5 file."""
-        with h5py.File(path, "w") as f:
-            to_hdf5(self.__getstate__(), f)
-
-    @classmethod
-    def load_hdf5(
-        cls, path: str, device: Optional[str] = None
-    ) -> "ReplayBuffer":
-        """Load replay buffer from HDF5 file."""
-        with h5py.File(path, "r") as f:
-            buf = cls.__new__(cls)
-            buf.__setstate__(from_hdf5(f, device=device))
-        return buf
 
 
 class ListReplayBuffer(ReplayBuffer):
@@ -564,6 +565,19 @@ class VectorReplayBuffer(ReplayBuffer):
     def __len__(self) -> int:
         return sum([len(buf) for buf in self.buffers])
 
+    def reset(self) -> None:
+        for buf in self.buffers:
+            buf.reset()
+
+    def _set_batch_for_children(self) -> None:
+        for i, buf in enumerate(self.buffers):
+            start, end = buf.maxsize * i, buf.maxsize * (i + 1)
+            buf.set_batch(self._meta[start:end])
+
+    def set_batch(self, batch: Batch) -> None:
+        super().set_batch(batch)
+        self._set_batch_for_children()
+
     def unfinished_index(self) -> np.ndarray:
         return np.concatenate([buf.unfinished_index() for buf in self.buffers])
 
@@ -600,36 +614,22 @@ class VectorReplayBuffer(ReplayBuffer):
         obs_next: Any = Batch(),
         info: Optional[Batch] = Batch(),
         policy: Optional[Batch] = Batch(),
-        env_ids: Optional[Union[np.ndarray, List[int]]] = None,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
         **kwargs: Any
     ) -> None:
         """Add a batch of data into VectorReplayBuffer.
-
         Each of the data's length (first dimension) must equal to the length of
-        env_ids.
+        buffer_ids. TODO buffer_ids default to all buffers in sequential order.
         """
-        assert env_ids is not None, \
-            "env_ids is required in VectorReplayBuffer.add()"
-        # assume each element in env_ids is unique
-        assert np.bincount(env_ids).max() == 1
+        if buffer_ids is None:
+            buffer_ids = np.arange(self.buffer_num)
+        # assume each element in buffer_ids is unique
+        assert np.bincount(buffer_ids).max() == 1
         batch = Batch(obs=obs, act=act, rew=rew, done=done,
                       obs_next=obs_next, info=info, policy=policy)
-        assert len(env_ids) == len(batch)
-        for batch_idx, env_id in enumerate(env_ids):
+        assert len(buffer_ids) == len(batch)
+        for batch_idx, env_id in enumerate(buffer_ids):
             self.buffers[env_id].add(**batch[batch_idx])
-
-    def _set_batch_for_children(self) -> None:
-        for i, buf in enumerate(self.buffers):
-            start, end = buf.maxsize * i, buf.maxsize * (i + 1)
-            buf.set_batch(self._meta[start:end])
-
-    def set_batch(self, batch: Batch) -> None:
-        super().set_batch(batch)
-        self._set_batch_for_children()
-
-    def reset(self) -> None:
-        for buf in self.buffers:
-            buf.reset()
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         if batch_size < 0:
@@ -703,6 +703,18 @@ class CachedReplayBuffer(ReplayBuffer):
     def __len__(self) -> int:
         return len(self.main_buffer) + len(self.cached_buffer)
 
+    def reset(self) -> None:
+        self.cached_buffer.reset()
+        self.main_buffer.reset()
+
+    def _set_batch_for_children(self) -> None:
+        self.main_buffer.set_batch(self._meta[:self.offset])
+        self.cached_buffer.set_batch(self._meta[self.offset:])
+
+    def set_batch(self, batch: Batch) -> None:
+        super().set_batch(batch)
+        self._set_batch_for_children()
+
     def unfinished_index(self) -> np.ndarray:
         return np.concatenate([self.main_buffer.unfinished_index(),
                                self.cached_buffer.unfinished_index()])
@@ -726,7 +738,7 @@ class CachedReplayBuffer(ReplayBuffer):
         return next_indices
 
     def update(self, buffer: ReplayBuffer) -> None:
-        self.main_buffer.update(buffer)
+        raise NotImplementedError
 
     def add(  # type: ignore
         self,
@@ -737,33 +749,22 @@ class CachedReplayBuffer(ReplayBuffer):
         obs_next: Any = Batch(),
         info: Optional[Batch] = Batch(),
         policy: Optional[Batch] = Batch(),
-        env_ids: Optional[Union[np.ndarray, List[int]]] = None,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
         **kwargs: Any,
     ) -> None:
         """Add a batch of data into CachedReplayBuffer.
 
         Each of the data's length (first dimension) must equal to the length of
-        env_ids.
+        buffer_ids.
         """
-        # if env_ids is None, an exception will raise from cached_buffer
+        # if buffer_ids is None, an exception will raise from cached_buffer
         self.cached_buffer.add(obs, act, rew, done, obs_next,
-                               info, policy, env_ids, **kwargs)
+                               info, policy, buffer_ids, **kwargs)
         # find the terminated episode, move data from cached buf to main buf
-        for buffer_idx in np.asarray(env_ids)[np.asarray(done) > 0]:
+        for buffer_idx in np.asarray(buffer_ids)[np.asarray(done) > 0]:
             self.main_buffer.update(self.cached_buffer.buffers[buffer_idx])
             self.cached_buffer.buffers[buffer_idx].reset()
-
-    def reset(self) -> None:
-        self.cached_buffer.reset()
-        self.main_buffer.reset()
-
-    def _set_batch_for_children(self) -> None:
-        self.main_buffer.set_batch(self._meta[:self.offset])
-        self.cached_buffer.set_batch(self._meta[self.offset:])
-
-    def set_batch(self, batch: Batch) -> None:
-        super().set_batch(batch)
-        self._set_batch_for_children()
+        # TODO retrun to previous version
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         if batch_size < 0:
