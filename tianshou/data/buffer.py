@@ -150,8 +150,8 @@ class ReplayBuffer:
     ) -> None:
         super().__init__()
         if sample_avail:
-            warnings.warn("sample_avail is deprecated. Please check out "
-                          "tianshou version <= 0.3.1 if you want to use it.")
+            warnings.warn("sample_avail is deprecated in 0.4.0. Please check "
+                          "out version <= 0.3.1 if you want to use it.")
         self.maxsize = size
         assert stack_num > 0, "stack_num should greater than 0"
         self.stack_num = stack_num
@@ -214,8 +214,8 @@ class ReplayBuffer:
 
     def reset(self) -> None:
         """Clear all the data in replay buffer."""
-        self._index = self._size = self._episode_length = 0
-        self._episode_reward = 0.0
+        self._index = self._size = 0
+        self._episode_length, self._episode_reward = 0, 0.0
 
     def set_batch(self, batch: Batch) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage."""
@@ -434,9 +434,7 @@ class ListReplayBuffer(ReplayBuffer):
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         raise NotImplementedError("ListReplayBuffer cannot be sampled!")
 
-    def _add_to_buffer(
-        self, name: str, inst: Union[dict, Batch, np.ndarray, float, int, bool]
-    ) -> None:
+    def _add_to_buffer(self, name: str, inst: Any) -> None:
         if self._meta.get(name) is None:
             self._meta.__dict__[name] = []
         self._meta[name].append(inst)
@@ -558,15 +556,15 @@ class ReplayBuffers(ReplayBuffer):
         explanation.
     """
 
-    def __init__(self, buffer_list: List[ReplayBuffer]) -> None:
+    def __init__(self, buffer_list: List[ReplayBuffer], **kwargs: Any) -> None:
         self.buffer_num = len(buffer_list)
-        self.buffers = np.array(buffer_list)
+        self.buffers = buffer_list
         offset = 0
         for buf in self.buffers:
-            buf.alloc_fn = self.alloc_fn
+            buf.alloc_fn = self.alloc_fn  # type: ignore
             buf.offset = offset
             offset += buf.maxsize
-        super().__init__(size=offset)
+        super().__init__(size=offset, **kwargs)
 
     def __len__(self) -> int:
         return sum([len(buf) for buf in self.buffers])
@@ -608,7 +606,7 @@ class ReplayBuffers(ReplayBuffer):
         return next_indices
 
     def update(self, buffer: ReplayBuffer) -> None:
-        """The VectorReplayBuffer cannot be updated by any buffer."""
+        """The ReplayBuffers cannot be updated by any buffer."""
         raise NotImplementedError
 
     def alloc_fn(self, key: List[str], value: Any) -> None:
@@ -643,8 +641,8 @@ class ReplayBuffers(ReplayBuffer):
         batch = Batch(obs=obs, act=act, rew=rew, done=done,
                       obs_next=obs_next, info=info, policy=policy)
         assert len(buffer_ids) == len(batch)
-        episode_lengths = []
-        episode_rewards = []
+        episode_lengths = []  # (len(buffer_ids),)
+        episode_rewards = []  # (len(buffer_ids), ...)
         for batch_idx, env_id in enumerate(buffer_ids):
             length, reward = self.buffers[env_id].add(**batch[batch_idx])
             episode_lengths.append(length)
@@ -702,11 +700,10 @@ class CachedReplayBuffer(ReplayBuffers):
         **kwargs: Any,
     ) -> None:
         assert cached_buffer_num > 0 and max_episode_length > 0
-        self.cached_buffer_num = cached_buffer_num
         main_buffer = ReplayBuffer(size, **kwargs)
         buffers = [main_buffer] + [ReplayBuffer(max_episode_length, **kwargs)
                                    for _ in range(cached_buffer_num)]
-        super().__init__(buffer_list=buffers)
+        super().__init__(buffer_list=buffers, **kwargs)
 
     def add(  # type: ignore
         self,
@@ -728,8 +725,8 @@ class CachedReplayBuffer(ReplayBuffers):
 
         Return the array of episode_length and episode_reward with shape
         (len(cached_buffer_ids), ...), where (episode_length[i],
-        episode_reward[i]) refers to the cached_buffer_ids[i]'s corresponding
-        episode result.
+        episode_reward[i]) refers to the cached_buffer_ids[i]th cached buffer's
+        corresponding episode result.
         """
         if cached_buffer_ids is None:
             cached_buffer_ids = np.arange(self.buffer_num - 1)

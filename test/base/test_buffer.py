@@ -92,27 +92,66 @@ def test_ignore_obs_next(size=10):
     assert data.obs_next
 
 
-def test_stack(size=5, bufsize=9, stack_num=4):
+def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
     buf3 = ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True)
+    buf4 = CachedReplayBuffer(bufsize, cached_num, size,
+                              stack_num=stack_num, ignore_obs_next=True)
     obs = env.reset(1)
-    for i in range(16):
+    for i in range(18):
         obs_next, rew, done, info = env.step(1)
         buf.add(obs, 1, rew, done, None, info)
         buf3.add([None, None, obs], 1, rew, done, [None, obs], info)
+        obs_list = np.array([obs + size * i for i in range(cached_num)])
+        act_list = [1] * cached_num
+        rew_list = [rew] * cached_num
+        done_list = [done] * cached_num
+        obs_next_list = -obs_list
+        info_list = [info] * cached_num
+        buf4.add(obs_list, act_list, rew_list, done_list,
+                 obs_next_list, info_list)
         obs = obs_next
         if done:
             obs = env.reset(1)
     indice = np.arange(len(buf))
     assert np.allclose(buf.get(indice, 'obs')[..., 0], [
-        [1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
+        [2, 2, 2, 2], [2, 2, 2, 3], [2, 2, 3, 4],
         [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
-        [1, 2, 3, 4], [4, 4, 4, 4], [1, 1, 1, 1]])
+        [1, 2, 3, 4], [1, 1, 1, 1], [1, 1, 1, 2]])
     assert np.allclose(buf.get(indice, 'obs'), buf3.get(indice, 'obs'))
     assert np.allclose(buf.get(indice, 'obs'), buf3.get(indice, 'obs_next'))
     with pytest.raises(IndexError):
         buf[bufsize * 2]
+    assert np.allclose(buf4.obs.reshape(-1), [
+        12, 13, 14, 4, 6, 7, 8, 9, 11,
+        1, 2, 3, 4, 0,
+        6, 7, 8, 9, 0,
+        11, 12, 13, 14, 0,
+    ]), buf4.obs
+    assert np.allclose(buf4.done, [
+        0, 0, 1, 1, 0, 0, 0, 1, 0,
+        0, 0, 0, 1, 0,
+        0, 0, 0, 1, 0,
+        0, 0, 0, 1, 0,
+    ]), buf4.done
+    assert np.allclose(buf4.unfinished_index(), [10, 15, 20])
+    indice = sorted(buf4.sample_index(0))
+    assert np.allclose(indice, list(range(bufsize)) + [9, 10, 14, 15, 19, 20])
+    assert np.allclose(buf4[indice].obs[..., 0], [
+        [11, 11, 11, 12], [11, 11, 12, 13], [11, 12, 13, 14],
+        [4, 4, 4, 4], [6, 6, 6, 6], [6, 6, 6, 7],
+        [6, 6, 7, 8], [6, 7, 8, 9], [11, 11, 11, 11],
+        [1, 1, 1, 1], [1, 1, 1, 2], [6, 6, 6, 6],
+        [6, 6, 6, 7], [11, 11, 11, 11], [11, 11, 11, 12],
+    ])
+    assert np.allclose(buf4[indice].obs_next[..., 0], [
+        [11, 11, 12, 13], [11, 12, 13, 14], [11, 12, 13, 14],
+        [4, 4, 4, 4], [6, 6, 6, 7], [6, 6, 7, 8],
+        [6, 7, 8, 9], [6, 7, 8, 9], [11, 11, 11, 12],
+        [1, 1, 1, 2], [1, 1, 1, 2], [6, 6, 6, 7],
+        [6, 6, 6, 7], [11, 11, 11, 12], [11, 11, 11, 12],
+    ])
 
 
 def test_priortized_replaybuffer(size=32, bufsize=15):
@@ -377,9 +416,11 @@ def test_hdf5():
 
 def test_vectorbuffer():
     buf = ReplayBuffers([ReplayBuffer(size=5) for i in range(4)])
-    buf.add(obs=[1, 2, 3], act=[1, 2, 3], rew=[1, 2, 3],
-            done=[0, 0, 1], buffer_ids=[0, 1, 2])
-    batch, indice = buf.sample(10)
+    ep_len, ep_rew = buf.add(obs=[1, 2, 3], act=[1, 2, 3], rew=[1, 2, 3],
+                             done=[0, 0, 1], buffer_ids=[0, 1, 2])
+    assert np.allclose(ep_len, [0, 0, 1]) and np.allclose(ep_rew, [0, 0, 3])
+    indice = buf.sample_index(11000)
+    assert np.bincount(indice)[[0, 5, 10]].min() >= 3000
     batch, indice = buf.sample(0)
     assert np.allclose(indice, [0, 5, 10])
     indice_prev = buf.prev(indice)
@@ -405,6 +446,8 @@ def test_vectorbuffer():
     buf.add(obs=data, act=data, rew=data, done=[0, 1, 0, 1],
             buffer_ids=[0, 1, 2, 3])
     assert len(buf) == 20
+    indice = buf.sample_index(120000)
+    assert np.bincount(indice).min() >= 5000
     batch, indice = buf.sample(10)
     indice = buf.sample_index(0)
     assert np.allclose(indice, np.arange(len(buf)))
@@ -414,27 +457,75 @@ def test_vectorbuffer():
         1, 0, 1, 0, 0,
         1, 0, 1, 0, 1,
     ])
-    indice_prev = buf.prev(indice)
-    assert np.allclose(indice_prev, [
+    assert np.allclose(buf.prev(indice), [
         0, 0, 1, 3, 3,
         5, 5, 6, 8, 8,
         10, 11, 11, 13, 13,
         15, 16, 16, 18, 18,
     ])
-    indice_next = buf.next(indice)
-    assert np.allclose(indice_next, [
+    assert np.allclose(buf.next(indice), [
         1, 2, 2, 4, 4,
         6, 7, 7, 9, 9,
         10, 12, 12, 14, 14,
         15, 17, 17, 19, 19,
     ])
     assert np.allclose(buf.unfinished_index(), [4, 14])
-    # TODO: prev/next/stack/hdf5
+    ep_len, ep_rew = buf.add(obs=[1], act=[1], rew=[1], done=[1],
+                             buffer_ids=[2])
+    assert np.allclose(ep_len, [3]) and np.allclose(ep_rew, [1])
+    assert np.allclose(buf.unfinished_index(), [4])
+    indice = list(sorted(buf.sample_index(0)))
+    assert np.allclose(indice, np.arange(len(buf)))
+    assert np.allclose(buf.prev(indice), [
+        0, 0, 1, 3, 3,
+        5, 5, 6, 8, 8,
+        14, 11, 11, 13, 13,
+        15, 16, 16, 18, 18,
+    ])
+    assert np.allclose(buf.next(indice), [
+        1, 2, 2, 4, 4,
+        6, 7, 7, 9, 9,
+        10, 12, 12, 14, 10,
+        15, 17, 17, 19, 19,
+    ])
+
     # CachedReplayBuffer
     buf = CachedReplayBuffer(10, 4, 5)
     assert buf.sample_index(0).tolist() == []
-    buf.add(obs=[1], act=[1], rew=[1], done=[1], cached_buffer_ids=[1])
-    print(buf)
+    ep_len, ep_rew = buf.add(obs=[1], act=[1], rew=[1], done=[0],
+                             cached_buffer_ids=[1])
+    obs = np.zeros(buf.maxsize)
+    obs[15] = 1
+    indice = buf.sample_index(0)
+    assert np.allclose(indice, [15])
+    assert np.allclose(buf.prev(indice), [15])
+    assert np.allclose(buf.next(indice), [15])
+    assert np.allclose(buf.obs, obs)
+    assert np.allclose(ep_len, [0]) and np.allclose(ep_rew, [0.0])
+    ep_len, ep_rew = buf.add(obs=[2], act=[2], rew=[2], done=[1],
+                             cached_buffer_ids=[3])
+    obs[[0, 25]] = 2
+    indice = buf.sample_index(0)
+    assert np.allclose(indice, [0, 15])
+    assert np.allclose(buf.prev(indice), [0, 15])
+    assert np.allclose(buf.next(indice), [0, 15])
+    assert np.allclose(buf.obs, obs)
+    assert np.allclose(ep_len, [1]) and np.allclose(ep_rew, [2.0])
+    assert np.allclose(buf.unfinished_index(), [15])
+    assert np.allclose(buf.sample_index(0), [0, 15])
+    ep_len, ep_rew = buf.add(obs=[3, 4], act=[3, 4], rew=[3, 4],
+                             done=[0, 1], cached_buffer_ids=[3, 1])
+    assert np.allclose(ep_len, [0, 2]) and np.allclose(ep_rew, [0, 5.0])
+    obs[[0, 1, 2, 15, 16, 25]] = [2, 1, 4, 1, 4, 3]
+    assert np.allclose(buf.obs, obs)
+    assert np.allclose(buf.unfinished_index(), [25])
+    indice = buf.sample_index(0)
+    assert np.allclose(indice, [0, 1, 2, 25])
+    assert np.allclose(buf.done[indice], [1, 0, 1, 0])
+    assert np.allclose(buf.prev(indice), [0, 1, 1, 25])
+    assert np.allclose(buf.next(indice), [0, 2, 2, 25])
+    indice = buf.sample_index(10000)
+    assert np.bincount(indice)[[0, 1, 2, 25]].min() > 2000
 
 
 if __name__ == '__main__':
@@ -442,9 +533,9 @@ if __name__ == '__main__':
     test_hdf5()
     test_replaybuffer()
     test_ignore_obs_next()
-    test_update()
     test_stack()
     test_pickle()
     test_segtree()
     test_priortized_replaybuffer()
     test_priortized_replaybuffer(233333, 200000)
+    test_update()
