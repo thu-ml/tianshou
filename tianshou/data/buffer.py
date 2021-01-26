@@ -1,4 +1,5 @@
 import h5py
+import torch
 import warnings
 import numpy as np
 from numbers import Number
@@ -393,8 +394,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
                            info, policy, **kwargs)
 
     def sample_index(self, batch_size: int) -> np.ndarray:
-        assert self._size > 0, "Cannot sample a buffer with 0 size."
-        if batch_size > 0:
+        if batch_size > 0 and self._size > 0:
             scalar = np.random.rand(batch_size) * self.weight.reduce()
             return self.weight.get_prefix_sum_idx(scalar)
         else:
@@ -422,7 +422,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def update_weight(
         self,
         indice: Union[np.ndarray],
-        new_weight: np.ndarray
+        new_weight: Union[np.ndarray, torch.Tensor],
     ) -> None:
         """Update priority weight by indice in this buffer.
 
@@ -459,10 +459,13 @@ class ReplayBuffers(ReplayBuffer):
     def __init__(self, buffer_list: List[ReplayBuffer], **kwargs: Any) -> None:
         self.buffer_num = len(buffer_list)
         self.buffers = buffer_list
+        self._offset = []
         offset = 0
         for buf in self.buffers:
+            # overwrite sub-buffers' alloc_fn so that the top buffer can
+            # allocate new memory for all buffers
             buf.alloc_fn = self.alloc_fn  # type: ignore
-            buf.offset = offset
+            self._offset.append(offset)
             offset += buf.maxsize
         super().__init__(size=offset, **kwargs)
 
@@ -474,8 +477,8 @@ class ReplayBuffers(ReplayBuffer):
             buf.reset()
 
     def _set_batch_for_children(self) -> None:
-        for i, buf in enumerate(self.buffers):
-            buf.set_batch(self._meta[buf.offset:buf.offset + buf.maxsize])
+        for offset, buf in zip(self._offset, self.buffers):
+            buf.set_batch(self._meta[offset:offset + buf.maxsize])
 
     def set_batch(self, batch: Batch) -> None:
         super().set_batch(batch)
@@ -483,26 +486,25 @@ class ReplayBuffers(ReplayBuffer):
 
     def unfinished_index(self) -> np.ndarray:
         return np.concatenate([
-            buf.unfinished_index() + buf.offset for buf in self.buffers])
+            buf.unfinished_index() + offset
+            for offset, buf in zip(self._offset, self.buffers)])
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         index = np.asarray(index) % self.maxsize
         prev_indices = np.zeros_like(index)
-        for buf in self.buffers:
-            mask = (buf.offset <= index) & (index < buf.offset + buf.maxsize)
+        for offset, buf in zip(self._offset, self.buffers):
+            mask = (offset <= index) & (index < offset + buf.maxsize)
             if np.any(mask):
-                prev_indices[mask] = buf.prev(
-                    index[mask] - buf.offset) + buf.offset
+                prev_indices[mask] = buf.prev(index[mask] - offset) + offset
         return prev_indices
 
     def next(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         index = np.asarray(index) % self.maxsize
         next_indices = np.zeros_like(index)
-        for buf in self.buffers:
-            mask = (buf.offset <= index) & (index < buf.offset + buf.maxsize)
+        for offset, buf in zip(self._offset, self.buffers):
+            mask = (offset <= index) & (index < offset + buf.maxsize)
             if np.any(mask):
-                next_indices[mask] = buf.next(
-                    index[mask] - buf.offset) + buf.offset
+                next_indices[mask] = buf.next(index[mask] - offset) + offset
         return next_indices
 
     def update(self, buffer: ReplayBuffer) -> None:
@@ -554,7 +556,8 @@ class ReplayBuffers(ReplayBuffer):
             return np.array([], np.int)
         if self._sample_avail and self.stack_num > 1:
             all_indices = np.concatenate([
-                buf.sample_index(0) + buf.offset for buf in self.buffers])
+                buf.sample_index(0) + offset
+                for offset, buf in zip(self._offset, self.buffers)])
             if batch_size == 0:
                 return all_indices
             else:
@@ -570,8 +573,8 @@ class ReplayBuffers(ReplayBuffer):
             sample_num[sample_num == 0] = -1
 
         return np.concatenate([
-            buf.sample_index(bsz) + buf.offset
-            for buf, bsz in zip(self.buffers, sample_num)
+            buf.sample_index(bsz) + offset
+            for offset, buf, bsz in zip(self._offset, self.buffers, sample_num)
         ])
 
 
