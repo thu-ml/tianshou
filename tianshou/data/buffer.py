@@ -135,6 +135,9 @@ class ReplayBuffer:
     :param bool save_only_last_obs: only save the last obs/obs_next when it has
         a shape of (timestep, ...)  because of temporal stacking, defaults to
         False.
+    :param bool sample_avail: the parameter indicating sampling only available
+        index when using frame-stack sampling method, defaults to False.
+        This feature is not supported in Prioritized Replay Buffer currently.
     """
 
     _reserved_keys = ("obs", "act", "rew", "done",
@@ -149,15 +152,13 @@ class ReplayBuffer:
         sample_avail: bool = False,
     ) -> None:
         super().__init__()
-        if sample_avail:
-            warnings.warn("sample_avail is deprecated in 0.4.0. Please check "
-                          "out version <= 0.3.1 if you want to use it.")
         self.maxsize = size
         assert stack_num > 0, "stack_num should greater than 0"
         self.stack_num = stack_num
         self._indices = np.arange(size)
         self._save_obs_next = not ignore_obs_next
         self._save_only_last_obs = save_only_last_obs
+        self._sample_avail = sample_avail
         self._index = 0  # current index
         self._size = 0  # current buffer size
         self._meta: Batch = Batch()
@@ -251,11 +252,11 @@ class ReplayBuffer:
         """Move the data from the given buffer to current buffer."""
         if len(buffer) == 0 or self.maxsize == 0:
             return
-        stack_num_orig, buffer.stack_num = buffer.stack_num, 1
+        stack_num, buffer.stack_num = buffer.stack_num, 1
         indices = buffer.sample_index(0)  # get all available indices
         for i in indices:
             self.add(**buffer[i])  # type: ignore
-        buffer.stack_num = stack_num_orig
+        buffer.stack_num = stack_num
 
     def alloc_fn(self, key: List[str], value: Any) -> None:
         """Allocate memory on buffer._meta for new (key, value) pair."""
@@ -336,15 +337,27 @@ class ReplayBuffer:
         an empty numpy array if batch_size < 0 or no available index can be
         sampled.
         """
-        if batch_size > 0:
-            return np.random.choice(self._size, batch_size)
-        elif batch_size == 0:  # construct current available indices
-            return np.concatenate([
-                np.arange(self._index, self._size),
-                np.arange(0, self._index),
-            ])
+        if self.stack_num == 1 or not self._sample_avail:  # most often case
+            if batch_size > 0:
+                return np.random.choice(self._size, batch_size)
+            elif batch_size == 0:  # construct current available indices
+                return np.concatenate([
+                    np.arange(self._index, self._size),
+                    np.arange(self._index)])
+            else:
+                return np.array([], np.int)
         else:
-            return np.array([], np.int)
+            if batch_size < 0:
+                return np.array([], np.int)
+            all_indices = prev_indices = np.concatenate([
+                np.arange(self._index, self._size), np.arange(self._index)])
+            for _ in range(self.stack_num - 2):
+                prev_indices = self.prev(prev_indices)
+            all_indices = all_indices[prev_indices != self.prev(prev_indices)]
+            if batch_size > 0:
+                return np.random.choice(all_indices, batch_size)
+            else:
+                return all_indices
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         """Get a random sample from buffer with size = batch_size.
@@ -397,12 +410,13 @@ class ReplayBuffer:
         """
         if isinstance(index, slice):  # change slice to np array
             index = self._indices[:len(self)][index]
+        obs = self.get(index, "obs")
         if self._save_obs_next:
             obs_next = self.get(index, "obs_next")
         else:
             obs_next = self.get(self.next(index), "obs")
         return Batch(
-            obs=self.get(index, "obs"),
+            obs=obs,
             act=self.act[index],
             rew=self.rew[index],
             done=self.done[index],
@@ -652,6 +666,13 @@ class ReplayBuffers(ReplayBuffer):
     def sample_index(self, batch_size: int) -> np.ndarray:
         if batch_size < 0:
             return np.array([], np.int)
+        if self._sample_avail and self.stack_num > 1:
+            all_indices = np.concatenate([
+                buf.sample_index(0) + buf.offset for buf in self.buffers])
+            if batch_size == 0:
+                return all_indices
+            else:
+                return np.random.choice(all_indices, batch_size)
         if batch_size == 0:  # get all available indices
             sample_num = np.zeros(self.buffer_num, np.int)
         else:

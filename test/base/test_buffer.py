@@ -95,13 +95,17 @@ def test_ignore_obs_next(size=10):
 def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
     env = MyTestEnv(size)
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
+    buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
     buf3 = ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True)
     buf4 = CachedReplayBuffer(bufsize, cached_num, size,
                               stack_num=stack_num, ignore_obs_next=True)
+    buf5 = CachedReplayBuffer(bufsize, cached_num, size, stack_num=stack_num,
+                              ignore_obs_next=True, sample_avail=True)
     obs = env.reset(1)
     for i in range(18):
         obs_next, rew, done, info = env.step(1)
         buf.add(obs, 1, rew, done, None, info)
+        buf2.add(obs, 1, rew, done, None, info)
         buf3.add([None, None, obs], 1, rew, done, [None, obs], info)
         obs_list = np.array([obs + size * i for i in range(cached_num)])
         act_list = [1] * cached_num
@@ -110,6 +114,8 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
         obs_next_list = -obs_list
         info_list = [info] * cached_num
         buf4.add(obs_list, act_list, rew_list, done_list,
+                 obs_next_list, info_list)
+        buf5.add(obs_list, act_list, rew_list, done_list,
                  obs_next_list, info_list)
         obs = obs_next
         if done:
@@ -121,6 +127,10 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
         [1, 2, 3, 4], [1, 1, 1, 1], [1, 1, 1, 2]])
     assert np.allclose(buf.get(indice, 'obs'), buf3.get(indice, 'obs'))
     assert np.allclose(buf.get(indice, 'obs'), buf3.get(indice, 'obs_next'))
+    _, indice = buf2.sample(0)
+    assert indice.tolist() == [6]
+    _, indice = buf2.sample(1)
+    assert indice.tolist() == [6]
     with pytest.raises(IndexError):
         buf[bufsize * 2]
     assert np.allclose(buf4.obs.reshape(-1), [
@@ -152,6 +162,16 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
         [1, 1, 1, 2], [1, 1, 1, 2], [6, 6, 6, 7],
         [6, 6, 6, 7], [11, 11, 11, 12], [11, 11, 11, 12],
     ])
+    assert np.all(buf4.done == buf5.done)
+    indice = buf5.sample_index(0)
+    assert np.allclose(sorted(indice), [2, 7])
+    assert np.all(np.isin(buf5.sample_index(100), indice))
+    # manually change the stack num
+    buf5.stack_num = 2
+    for buf in buf5.buffers:
+        buf.stack_num = 2
+    indice = buf5.sample_index(0)
+    assert np.allclose(sorted(indice), [0, 1, 2, 5, 6, 7, 10, 15, 20])
 
 
 def test_priortized_replaybuffer(size=32, bufsize=15):
@@ -498,7 +518,7 @@ def test_vectorbuffer():
     buf.set_batch(batch)
     assert np.allclose(buf.buffers[-1].info.n, [1] * 5)
     assert buf.sample_index(-1).tolist() == []
-
+    assert np.array([ReplayBuffer(0, ignore_obs_next=True)]).dtype == np.object
     # CachedReplayBuffer
     buf = CachedReplayBuffer(10, 4, 5)
     assert buf.sample_index(0).tolist() == []
@@ -536,6 +556,24 @@ def test_vectorbuffer():
     assert np.allclose(buf.next(indice), [0, 2, 2, 25])
     indice = buf.sample_index(10000)
     assert np.bincount(indice)[[0, 1, 2, 25]].min() > 2000
+    # cached buffer with main_buffer size == 0
+    buf = CachedReplayBuffer(0, 4, 5, sample_avail=True)  # no effect
+    data = np.array([0, 0, 0, 0])
+    buf.add(obs=data, act=data, rew=data, done=[0, 0, 1, 1], obs_next=data)
+    buf.add(obs=data, act=data, rew=data, done=[0, 0, 0, 0], obs_next=data)
+    buf.add(obs=data, act=data, rew=data, done=[1, 1, 1, 1], obs_next=data)
+    buf.add(obs=data, act=data, rew=data, done=[0, 0, 0, 0], obs_next=data)
+    buf.add(obs=data, act=data, rew=data, done=[0, 1, 0, 1], obs_next=data)
+    assert np.allclose(buf.done, [
+        0, 0, 1, 0, 0,
+        0, 1, 1, 0, 0,
+        0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0,
+    ])
+    indice = buf.sample_index(0)
+    assert np.allclose(indice, [0, 1, 10, 11])
+    assert np.allclose(buf.prev(indice), [0, 0, 10, 10])
+    assert np.allclose(buf.next(indice), [1, 1, 11, 11])
 
 
 if __name__ == '__main__':
