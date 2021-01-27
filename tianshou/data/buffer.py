@@ -475,6 +475,7 @@ class ReplayBuffers(ReplayBuffer):
             # overwrite sub-buffers' alloc_fn so that the top buffer can
             # allocate new memory for all buffers
             buf.alloc_fn = self.alloc_fn  # type: ignore
+            assert buf._meta.is_empty()
             self._offset.append(offset)
             offset += buf.maxsize
         super().__init__(size=offset, **kwargs)
