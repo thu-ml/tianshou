@@ -5,7 +5,11 @@ from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
 
 class DQN(nn.Module):
-    """Reference: Human-level control through deep reinforcement learning."""
+    """Reference: Human-level control through deep reinforcement learning.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
 
     def __init__(
         self,
@@ -45,7 +49,11 @@ class DQN(nn.Module):
 
 
 class C51(DQN):
-    """Reference: A distributional perspective on reinforcement learning."""
+    """Reference: A distributional perspective on reinforcement learning.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
 
     def __init__(
         self,
@@ -75,7 +83,11 @@ class C51(DQN):
 
 class QRDQN(DQN):
     """Reference: Distributional Reinforcement Learning with Quantile \
-    Regression."""
+    Regression.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
 
     def __init__(
         self,
