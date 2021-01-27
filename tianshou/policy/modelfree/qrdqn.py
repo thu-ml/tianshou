@@ -1,10 +1,11 @@
 import torch
+import warnings
 import numpy as np
 from typing import Any, Dict
+import torch.nn.functional as F
 
 from tianshou.policy import DQNPolicy
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.utils.loss import huber_loss as huber
 
 
 class QRDQNPolicy(DQNPolicy):
@@ -46,7 +47,8 @@ class QRDQNPolicy(DQNPolicy):
         self._num_quantiles = num_quantiles
         tau = torch.linspace(0, 1, self._num_quantiles + 1)
         self.tau_hat = torch.nn.Parameter(
-            (tau[:-1] + tau[1:]) / 2, requires_grad=False)
+            ((tau[:-1] + tau[1:]) / 2).view(1, -1, 1), requires_grad=False)
+        warnings.filterwarnings("ignore", message="Using a target size")
 
     def _target_q(
         self, buffer: ReplayBuffer, indice: np.ndarray
@@ -75,13 +77,13 @@ class QRDQNPolicy(DQNPolicy):
         weight = batch.pop("weight", 1.0)
         curr_dist = self(batch).logits
         act = batch.act
-        curr_dist = curr_dist[np.arange(len(act)), act, :]
-        target_dist = batch.returns
-        u = target_dist.unsqueeze(1) - curr_dist.unsqueeze(2)
-        huber_loss = (
-            huber(u) * (self.tau_hat.view(1, -1, 1) -
-                        u.detach().le(0.).float()).abs()
-        ).sum(-1).mean(1)
+        curr_dist = curr_dist[np.arange(len(act)), act, :].unsqueeze(2)
+        target_dist = batch.returns.unsqueeze(1)
+        # calculate each element's difference between curr_dist and target_dist
+        u = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
+        huber_loss = (u * (
+            self.tau_hat - (target_dist - curr_dist).detach().le(0.).float()
+        ).abs()).sum(-1).mean(1)
         loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
