@@ -102,10 +102,9 @@ class DDPGPolicy(BasePolicy):
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
-        with torch.no_grad():
-            target_q = self.critic_old(
-                batch.obs_next,
-                self(batch, model='actor_old', input='obs_next').act)
+        target_q = self.critic_old(
+            batch.obs_next,
+            self(batch, model='actor_old', input='obs_next').act)
         return target_q
 
     def process_fn(

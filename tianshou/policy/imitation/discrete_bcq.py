@@ -74,10 +74,9 @@ class DiscreteBCQPolicy(DQNPolicy):
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-        with torch.no_grad():
-            act = self(batch, input="obs_next", eps=0.0).act
-            target_q, _ = self.model_old(batch.obs_next)
-            target_q = target_q[np.arange(len(act)), act]
+        act = self(batch, input="obs_next", eps=0.0).act
+        target_q, _ = self.model_old(batch.obs_next)
+        target_q = target_q[np.arange(len(act)), act]
         return target_q
 
     def forward(  # type: ignore

@@ -5,11 +5,7 @@ from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
 
 class DQN(nn.Module):
-    """Reference: Human-level control through deep reinforcement learning.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
-    """
+    """Reference: Human-level control through deep reinforcement learning."""
 
     def __init__(
         self,
@@ -49,11 +45,7 @@ class DQN(nn.Module):
 
 
 class C51(DQN):
-    """Reference: A distributional perspective on reinforcement learning.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
-    """
+    """Reference: A distributional perspective on reinforcement learning."""
 
     def __init__(
         self,
@@ -64,8 +56,8 @@ class C51(DQN):
         num_atoms: int = 51,
         device: Union[str, int, torch.device] = "cpu",
     ) -> None:
-        super().__init__(c, h, w, [np.prod(action_shape) * num_atoms], device)
-        self.action_shape = action_shape
+        self.action_num = np.prod(action_shape)
+        super().__init__(c, h, w, [self.action_num * num_atoms], device)
         self.num_atoms = num_atoms
 
     def forward(
@@ -77,17 +69,13 @@ class C51(DQN):
         r"""Mapping: x -> Z(x, \*)."""
         x, state = super().forward(x)
         x = x.view(-1, self.num_atoms).softmax(dim=-1)
-        x = x.view(-1, np.prod(self.action_shape), self.num_atoms)
+        x = x.view(-1, self.action_num, self.num_atoms)
         return x, state
 
 
 class QRDQN(DQN):
     """Reference: Distributional Reinforcement Learning with Quantile \
-    Regression.
-
-    For advanced usage (how to customize the network), please refer to
-    :ref:`build_the_network`.
-    """
+    Regression."""
 
     def __init__(
         self,
@@ -98,9 +86,8 @@ class QRDQN(DQN):
         num_quantiles: int = 200,
         device: Union[str, int, torch.device] = "cpu",
     ) -> None:
-        super().__init__(c, h, w,
-                         [np.prod(action_shape) * num_quantiles], device)
-        self.action_shape = action_shape
+        self.action_num = np.prod(action_shape)
+        super().__init__(c, h, w, [self.action_num * num_quantiles], device)
         self.num_quantiles = num_quantiles
 
     def forward(
@@ -111,5 +98,5 @@ class QRDQN(DQN):
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
         x, state = super().forward(x)
-        x = x.view(-1, np.prod(self.action_shape), self.num_quantiles)
+        x = x.view(-1, self.action_num, self.num_quantiles)
         return x, state

@@ -78,14 +78,13 @@ class DiscreteSACPolicy(SACPolicy):
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs: s_{t+n}
-        with torch.no_grad():
-            obs_next_result = self(batch, input="obs_next")
-            dist = obs_next_result.dist
-            target_q = dist.probs * torch.min(
-                self.critic1_old(batch.obs_next),
-                self.critic2_old(batch.obs_next),
-            )
-            target_q = target_q.sum(dim=-1) + self._alpha * dist.entropy()
+        obs_next_result = self(batch, input="obs_next")
+        dist = obs_next_result.dist
+        target_q = dist.probs * torch.min(
+            self.critic1_old(batch.obs_next),
+            self.critic2_old(batch.obs_next),
+        )
+        target_q = target_q.sum(dim=-1) + self._alpha * dist.entropy()
         return target_q
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:

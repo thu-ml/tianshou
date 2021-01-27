@@ -140,13 +140,12 @@ class SACPolicy(DDPGPolicy):
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs: s_{t+n}
-        with torch.no_grad():
-            obs_next_result = self(batch, input='obs_next')
-            a_ = obs_next_result.act
-            target_q = torch.min(
-                self.critic1_old(batch.obs_next, a_),
-                self.critic2_old(batch.obs_next, a_),
-            ) - self._alpha * obs_next_result.log_prob
+        obs_next_result = self(batch, input='obs_next')
+        a_ = obs_next_result.act
+        target_q = torch.min(
+            self.critic1_old(batch.obs_next, a_),
+            self.critic2_old(batch.obs_next, a_),
+        ) - self._alpha * obs_next_result.log_prob
         return target_q
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:

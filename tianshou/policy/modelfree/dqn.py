@@ -79,15 +79,14 @@ class DQNPolicy(BasePolicy):
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-        with torch.no_grad():
-            if self._target:
-                a = self(batch, input="obs_next").act
-                target_q = self(
-                    batch, model="model_old", input="obs_next"
-                ).logits
-                target_q = target_q[np.arange(len(a)), a]
-            else:
-                target_q = self(batch, input="obs_next").logits.max(dim=1)[0]
+        if self._target:
+            a = self(batch, input="obs_next").act
+            target_q = self(
+                batch, model="model_old", input="obs_next"
+            ).logits
+            target_q = target_q[np.arange(len(a)), a]
+        else:
+            target_q = self(batch, input="obs_next").logits.max(dim=1)[0]
         return target_q
 
     def process_fn(
@@ -103,7 +102,7 @@ class DQNPolicy(BasePolicy):
             self._gamma, self._n_step, self._rew_norm)
         return batch
 
-    def compute_q(self, logits: torch.Tensor) -> torch.Tensor:
+    def compute_q_value(self, logits: torch.Tensor) -> torch.Tensor:
         """Compute the q value based on the network's raw output logits."""
         return logits
 
@@ -148,7 +147,7 @@ class DQNPolicy(BasePolicy):
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
         logits, h = model(obs_, state=state, info=batch.info)
-        q = self.compute_q(logits)
+        q = self.compute_q_value(logits)
         act: np.ndarray = to_numpy(q.max(dim=1)[1])
         if hasattr(obs, "mask"):
             # some of actions are masked, they cannot be selected
