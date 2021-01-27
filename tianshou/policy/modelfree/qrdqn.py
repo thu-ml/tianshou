@@ -4,6 +4,7 @@ from typing import Any, Dict
 
 from tianshou.policy import DQNPolicy
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.utils.loss import huber_loss as huber
 
 
 class QRDQNPolicy(DQNPolicy):
@@ -43,11 +44,9 @@ class QRDQNPolicy(DQNPolicy):
                          target_update_freq, reward_normalization, **kwargs)
         assert num_quantiles > 1, "num_quantiles should be greater than 1"
         self._num_quantiles = num_quantiles
-        self.tau = torch.linspace(0, 1, self._num_quantiles + 1)
+        tau = torch.linspace(0, 1, self._num_quantiles + 1)
         self.tau_hat = torch.nn.Parameter(
-            (self.tau[:-1] + self.tau[1:]) / 2,
-            requires_grad=False,
-        )
+            (tau[:-1] + tau[1:]) / 2, requires_grad=False)
 
     def _target_q(
         self, buffer: ReplayBuffer, indice: np.ndarray
@@ -80,8 +79,8 @@ class QRDQNPolicy(DQNPolicy):
         target_dist = batch.returns
         u = target_dist.unsqueeze(1) - curr_dist.unsqueeze(2)
         huber_loss = (
-                self.huber(u) * (self.tau_hat.view(1, -1, 1) -
-                                 u.detach().le(0.).float()).abs()
+            huber(u) * (self.tau_hat.view(1, -1, 1) -
+                        u.detach().le(0.).float()).abs()
         ).sum(-1).mean(1)
         loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
