@@ -7,10 +7,10 @@ import h5py
 import numpy as np
 from timeit import timeit
 
+from tianshou.data.utils.converter import to_hdf5
 from tianshou.data import Batch, SegmentTree, ReplayBuffer
 from tianshou.data import ListReplayBuffer, PrioritizedReplayBuffer
 from tianshou.data import ReplayBuffers, CachedReplayBuffer
-from tianshou.data.utils.converter import to_hdf5
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -97,10 +97,13 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
     buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
     buf3 = ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True)
-    buf4 = CachedReplayBuffer(bufsize, cached_num, size,
-                              stack_num=stack_num, ignore_obs_next=True)
-    buf5 = CachedReplayBuffer(bufsize, cached_num, size, stack_num=stack_num,
-                              ignore_obs_next=True, sample_avail=True)
+    buf4 = CachedReplayBuffer(
+        ReplayBuffer(bufsize, stack_num=stack_num, ignore_obs_next=True),
+        cached_num, size)
+    buf5 = CachedReplayBuffer(
+        PrioritizedReplayBuffer(bufsize, 0.6, 0.4, stack_num=stack_num,
+                                ignore_obs_next=True, sample_avail=True),
+        cached_num, size)
     obs = env.reset(1)
     for i in range(18):
         obs_next, rew, done, info = env.step(1)
@@ -172,6 +175,30 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
         buf.stack_num = 2
     indice = buf5.sample_index(0)
     assert np.allclose(sorted(indice), [0, 1, 2, 5, 6, 7, 10, 15, 20])
+    batch, _ = buf5.sample(0)
+    assert np.allclose(buf5[np.arange(buf5.maxsize)].weight, 1)
+    buf5.update_weight(indice, batch.weight * 0)
+    weight = buf5[np.arange(buf5.maxsize)].weight
+    modified_weight = weight[[0, 1, 2, 5, 6, 7]]
+    assert modified_weight.min() == modified_weight.max()
+    assert modified_weight.max() < 1
+    unmodified_weight = weight[[3, 4, 8]]
+    assert unmodified_weight.min() == unmodified_weight.max()
+    assert unmodified_weight.max() < 1
+    cached_weight = weight[9:]
+    assert cached_weight.min() == cached_weight.max() == 1
+    # test Atari
+    buf6 = CachedReplayBuffer(
+        ReplayBuffer(bufsize, stack_num=stack_num,
+                     save_only_last_obs=True, ignore_obs_next=True),
+        cached_num, size)
+    obs = np.random.rand(size, 4, 84, 84)
+    buf6.add(obs=[obs[2], obs[0]], act=[1, 1], rew=[0, 0], done=[0, 1],
+             obs_next=[obs[3], obs[1]], cached_buffer_ids=[1, 2])
+    assert buf6.obs.shape == (buf6.maxsize, 84, 84)
+    assert np.allclose(buf6.obs[0], obs[0, -1])
+    assert np.allclose(buf6.obs[14], obs[2, -1])
+    assert np.allclose(buf6.obs[19], obs[0, -1])
 
 
 def test_priortized_replaybuffer(size=32, bufsize=15):
@@ -314,8 +341,7 @@ def test_pickle():
     vbuf = ReplayBuffer(size, stack_num=2)
     lbuf = ListReplayBuffer()
     pbuf = PrioritizedReplayBuffer(size, 0.6, 0.4)
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    rew = torch.tensor([1.]).to(device)
+    rew = np.array([1, 1])
     for i in range(4):
         vbuf.add(obs=Batch(index=np.array([i])), act=0, rew=rew, done=0)
     for i in range(3):
@@ -343,18 +369,18 @@ def test_hdf5():
         "list": ListReplayBuffer(),
         "prioritized": PrioritizedReplayBuffer(size, 0.6, 0.4),
         "vector": ReplayBuffers([ReplayBuffer(size) for i in range(4)]),
-        "cached": CachedReplayBuffer(size, 4, size)
+        "cached": CachedReplayBuffer(ReplayBuffer(size), 4, size)
     }
     buffer_types = {k: b.__class__ for k, b in buffers.items()}
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    rew = torch.tensor([1.]).to(device)
+    info_t = torch.tensor([1.]).to(device)
     for i in range(4):
         kwargs = {
             'obs': Batch(index=np.array([i])),
             'act': i,
-            'rew': rew,
+            'rew': np.array([1, 2]),
             'done': i % 3 == 2,
-            'info': {"number": {"n": i}, 'extra': None},
+            'info': {"number": {"n": i, "t": info_t}, 'extra': None},
         }
         buffers["array"].add(**kwargs)
         buffers["list"].add(**kwargs)
@@ -400,7 +426,7 @@ def test_hdf5():
         kwargs = {
             'obs': Batch(index=np.array([5])),
             'act': 5,
-            'rew': rew,
+            'rew': np.array([2, 1]),
             'done': False,
             'info': {"number": {"n": i}, 'Timelimit.truncate': True},
         }
@@ -520,7 +546,7 @@ def test_vectorbuffer():
     assert buf.sample_index(-1).tolist() == []
     assert np.array([ReplayBuffer(0, ignore_obs_next=True)]).dtype == np.object
     # CachedReplayBuffer
-    buf = CachedReplayBuffer(10, 4, 5)
+    buf = CachedReplayBuffer(ReplayBuffer(10), 4, 5)
     assert buf.sample_index(0).tolist() == []
     ep_len, ep_rew = buf.add(obs=[1], act=[1], rew=[1], done=[0],
                              cached_buffer_ids=[1])
@@ -557,13 +583,14 @@ def test_vectorbuffer():
     indice = buf.sample_index(10000)
     assert np.bincount(indice)[[0, 1, 2, 25]].min() > 2000
     # cached buffer with main_buffer size == 0
-    buf = CachedReplayBuffer(0, 4, 5, sample_avail=True)  # no effect
-    data = np.array([0, 0, 0, 0])
-    buf.add(obs=data, act=data, rew=data, done=[0, 0, 1, 1], obs_next=data)
-    buf.add(obs=data, act=data, rew=data, done=[0, 0, 0, 0], obs_next=data)
-    buf.add(obs=data, act=data, rew=data, done=[1, 1, 1, 1], obs_next=data)
-    buf.add(obs=data, act=data, rew=data, done=[0, 0, 0, 0], obs_next=data)
-    buf.add(obs=data, act=data, rew=data, done=[0, 1, 0, 1], obs_next=data)
+    buf = CachedReplayBuffer(ReplayBuffer(0, sample_avail=True), 4, 5)
+    data = np.zeros(4)
+    rew = np.ones([4, 4])
+    buf.add(obs=data, act=data, rew=rew, done=[0, 0, 1, 1], obs_next=data)
+    buf.add(obs=data, act=data, rew=rew, done=[0, 0, 0, 0], obs_next=data)
+    buf.add(obs=data, act=data, rew=rew, done=[1, 1, 1, 1], obs_next=data)
+    buf.add(obs=data, act=data, rew=rew, done=[0, 0, 0, 0], obs_next=data)
+    buf.add(obs=data, act=data, rew=rew, done=[0, 1, 0, 1], obs_next=data)
     assert np.allclose(buf.done, [
         0, 0, 1, 0, 0,
         0, 1, 1, 0, 0,
@@ -577,8 +604,6 @@ def test_vectorbuffer():
 
 
 if __name__ == '__main__':
-    test_vectorbuffer()
-    test_hdf5()
     test_replaybuffer()
     test_ignore_obs_next()
     test_stack()
@@ -587,3 +612,5 @@ if __name__ == '__main__':
     test_priortized_replaybuffer()
     test_priortized_replaybuffer(233333, 200000)
     test_update()
+    test_vectorbuffer()
+    test_hdf5()

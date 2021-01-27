@@ -15,7 +15,7 @@ class ReplayBuffer:
     interaction between the policy and environment. ReplayBuffer can be \
     considered as a specialized form (or management) of Batch.
 
-    :param int size: the size of replay buffer.
+    :param int size: the maximum size of replay buffer.
     :param int stack_num: the frame-stack sampling argument, should be greater
         than or equal to 1, defaults to 1 (no stacking).
     :param bool ignore_obs_next: whether to store obs_next, defaults to False.
@@ -24,7 +24,6 @@ class ReplayBuffer:
         False.
     :param bool sample_avail: the parameter indicating sampling only available
         index when using frame-stack sampling method, defaults to False.
-        This feature is not supported in Prioritized Replay Buffer currently.
     """
 
     _reserved_keys = ("obs", "act", "rew", "done",
@@ -38,6 +37,12 @@ class ReplayBuffer:
         save_only_last_obs: bool = False,
         sample_avail: bool = False,
     ) -> None:
+        self.options: Dict[str, Any] = {
+            "stack_num": stack_num,
+            "ignore_obs_next": ignore_obs_next,
+            "save_only_last_obs": save_only_last_obs,
+            "sample_avail": sample_avail,
+        }
         super().__init__()
         self.maxsize = size
         assert stack_num > 0, "stack_num should greater than 0"
@@ -140,10 +145,13 @@ class ReplayBuffer:
         if len(buffer) == 0 or self.maxsize == 0:
             return
         stack_num, buffer.stack_num = buffer.stack_num, 1
+        save_only_last_obs, self._save_only_last_obs = \
+            self._save_only_last_obs, False
         indices = buffer.sample_index(0)  # get all available indices
         for i in indices:
             self.add(**buffer[i])  # type: ignore
         buffer.stack_num = stack_num
+        self._save_only_last_obs = save_only_last_obs
 
     def alloc_fn(self, key: List[str], value: Any) -> None:
         """Allocate memory on buffer._meta for new (key, value) pair."""
@@ -158,6 +166,12 @@ class ReplayBuffer:
         except KeyError:
             self.alloc_fn([name], inst)
             value = self._meta[name]
+        if isinstance(inst, (torch.Tensor, np.ndarray)):
+            if inst.shape != value.shape[1:]:
+                raise ValueError(
+                    "Cannot add data to a buffer with different shape with key"
+                    f" {name}, expect {value.shape[1:]}, given {inst.shape}."
+                )
         try:
             value[self._index] = inst
         except KeyError:  # inst is a dict/Batch
@@ -175,7 +189,7 @@ class ReplayBuffer:
         info: Optional[Union[dict, Batch]] = {},
         policy: Optional[Union[dict, Batch]] = {},
         **kwargs: Any,
-    ) -> Tuple[int, float]:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Add a batch of data into replay buffer.
 
         Return (episode_length, episode_reward) if one episode is terminated,
@@ -211,11 +225,13 @@ class ReplayBuffer:
             self._size = self._index = self._size + 1
 
         if done:
-            result = (self._episode_length, self._episode_reward)
+            result = np.array(self._episode_length), \
+                np.array(self._episode_reward)
             self._episode_length, self._episode_reward = 0, 0.0
             return result
         else:
-            return (0, 0.0)
+            return np.zeros_like(self._episode_length), \
+                np.zeros_like(self._episode_reward)
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
@@ -258,7 +274,7 @@ class ReplayBuffer:
 
     def get(
         self,
-        indice: Union[int, np.integer, np.ndarray],
+        index: Union[int, np.integer, np.ndarray],
         key: str,
         stack_num: Optional[int] = None,
     ) -> Union[Batch, np.ndarray]:
@@ -272,9 +288,9 @@ class ReplayBuffer:
         val = self._meta[key]
         try:
             if stack_num == 1:  # the most often case
-                return val[indice]
+                return val[index]
             stack: List[Any] = []
-            indice = np.asarray(indice)
+            indice = np.asarray(index)
             for _ in range(stack_num):
                 stack = [val[indice]] + stack
                 indice = self.prev(indice)
@@ -381,8 +397,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         policy: Optional[Union[dict, Batch]] = {},
         weight: Optional[Union[Number, np.number]] = None,
         **kwargs: Any,
-    ) -> Tuple[int, float]:
-        """Add a batch of data into replay buffer."""
+    ) -> Tuple[np.ndarray, np.ndarray]:
         if weight is None:
             weight = self._max_prio
         else:
@@ -400,37 +415,32 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         else:
             return super().sample_index(batch_size)
 
-    def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
-        """Get a random sample from buffer with priority probability.
-
-        Return all the data in the buffer if batch_size is 0.
-
-        :return: Sample data and its corresponding index inside the buffer.
+    def get_weight(
+        self, index: Union[slice, int, np.integer, np.ndarray]
+    ) -> np.ndarray:
+        """Get the importance sampling weight.
 
         The "weight" in the returned Batch is the weight on loss function
         to de-bias the sampling process (some transition tuples are sampled
         more often so their losses are weighted less).
         """
-        indice = self.sample_index(batch_size)
-        batch = self[indice]
         # important sampling weight calculation
         # original formula: ((p_j/p_sum*N)**(-beta))/((p_min/p_sum*N)**(-beta))
         # simplified formula: (p_j/p_min)**(-beta)
-        batch.weight = (batch.weight / self._min_prio) ** (-self._beta)
-        return batch, indice
+        return (self.weight[index] / self._min_prio) ** (-self._beta)
 
     def update_weight(
         self,
-        indice: Union[np.ndarray],
+        index: np.ndarray,
         new_weight: Union[np.ndarray, torch.Tensor],
     ) -> None:
-        """Update priority weight by indice in this buffer.
+        """Update priority weight by index in this buffer.
 
-        :param np.ndarray indice: indice you want to update weight.
+        :param np.ndarray index: index you want to update weight.
         :param np.ndarray new_weight: new priority weight you want to update.
         """
         weight = np.abs(to_numpy(new_weight)) + self.__eps
-        self.weight[indice] = weight ** self._alpha
+        self.weight[index] = weight ** self._alpha
         self._max_prio = max(self._max_prio, weight.max())
         self._min_prio = min(self._min_prio, weight.min())
 
@@ -438,7 +448,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self, index: Union[slice, int, np.integer, np.ndarray]
     ) -> Batch:
         batch = super().__getitem__(index)
-        batch.weight = self.weight[index]
+        batch.weight = self.get_weight(index)
         return batch
 
 
@@ -549,7 +559,7 @@ class ReplayBuffers(ReplayBuffer):
             length, reward = self.buffers[env_id].add(**batch[batch_idx])
             episode_lengths.append(length)
             episode_rewards.append(reward)
-        return np.array(episode_lengths), np.array(episode_rewards)
+        return np.stack(episode_lengths), np.stack(episode_rewards)
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         if batch_size < 0:
@@ -579,8 +589,8 @@ class ReplayBuffers(ReplayBuffer):
 
 
 class CachedReplayBuffer(ReplayBuffers):
-    """CachedReplayBuffer contains a ReplayBuffers with given size and n \
-    cached buffers, cached_buffer_num * ReplayBuffer(size=max_episode_length).
+    """CachedReplayBuffer contains a given main buffer and n cached buffers, \
+    cached_buffer_num * ReplayBuffer(size=max_episode_length).
 
     The memory layout is: ``| main_buffer | cached_buffer[0] | cached_buffer[1]
     | ... | cached_buffer[cached_buffer_num - 1]``.
@@ -589,7 +599,8 @@ class CachedReplayBuffer(ReplayBuffers):
     terminated, the data will move to the main buffer and the corresponding
     cached buffer will be reset.
 
-    :param int size: the size of main buffer.
+    :param ReplayBuffer main_buffer: the main buffer whose ``.update()``
+        function behaves normally.
     :param int cached_buffer_num: number of ReplayBuffer needs to be created
         for cached buffer.
     :param int max_episode_length: the maximum length of one episode, used in
@@ -604,13 +615,14 @@ class CachedReplayBuffer(ReplayBuffers):
 
     def __init__(
         self,
-        size: int,
+        main_buffer: ReplayBuffer,
         cached_buffer_num: int,
         max_episode_length: int,
-        **kwargs: Any,
     ) -> None:
         assert cached_buffer_num > 0 and max_episode_length > 0
-        main_buffer = ReplayBuffer(size, **kwargs)
+        self.main_buffer = main_buffer
+        self._is_prioritized = isinstance(main_buffer, PrioritizedReplayBuffer)
+        kwargs = self.main_buffer.options
         buffers = [main_buffer] + [ReplayBuffer(max_episode_length, **kwargs)
                                    for _ in range(cached_buffer_num)]
         super().__init__(buffer_list=buffers, **kwargs)
@@ -643,12 +655,36 @@ class CachedReplayBuffer(ReplayBuffers):
         # in self.buffers, the first buffer is main_buffer
         buffer_ids = np.asarray(cached_buffer_ids) + 1
 
-        result = super().add(obs, act, rew, done, obs_next,
-                             info, policy, buffer_ids=buffer_ids, **kwargs)
+        result = super().add(obs, act, rew, done, obs_next, info,
+                             policy, buffer_ids=buffer_ids, **kwargs)
 
         # find the terminated episode, move data from cached buf to main buf
         for buffer_idx in np.asarray(buffer_ids)[np.asarray(done) > 0]:
-            self.buffers[0].update(self.buffers[buffer_idx])
+            self.main_buffer.update(self.buffers[buffer_idx])
             self.buffers[buffer_idx].reset()
-
         return result
+
+    def __getitem__(
+        self, index: Union[slice, int, np.integer, np.ndarray]
+    ) -> Batch:
+        batch = super().__getitem__(index)
+        if self._is_prioritized:
+            indice = self._indices[index]
+            mask = indice < self.main_buffer.maxsize
+            batch.weight = np.ones(len(indice))
+            batch.weight[mask] = self.main_buffer.get_weight(indice[mask])
+        return batch
+
+    def update_weight(
+        self,
+        index: np.ndarray,
+        new_weight: Union[np.ndarray, torch.Tensor],
+    ) -> None:
+        """Update priority weight by index in main buffer.
+
+        :param np.ndarray index: index you want to update weight.
+        :param np.ndarray new_weight: new priority weight you want to update.
+        """
+        if self._is_prioritized:
+            mask = index < self.main_buffer.maxsize
+            self.main_buffer.update_weight(index[mask], new_weight[mask])
