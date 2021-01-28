@@ -602,8 +602,8 @@ class CachedReplayBuffer(ReplayBuffers):
     """CachedReplayBuffer contains a given main buffer and n cached buffers, \
     cached_buffer_num * ReplayBuffer(size=max_episode_length).
 
-    The memory layout is: ``| main_buffer | cached_buffers[0] | cached_buffers[1]
-    | ... | cached_buffers[cached_buffer_num - 1]``.
+    The memory layout is: ``| main_buffer | cached_buffers[0] |
+    cached_buffers[1] | ... | cached_buffers[cached_buffer_num - 1]``.
 
     The data is first stored in cached buffers. When the episode is
     terminated, the data will move to the main buffer and the corresponding
