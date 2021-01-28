@@ -79,15 +79,14 @@ class DQNPolicy(BasePolicy):
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-        with torch.no_grad():
-            if self._target:
-                a = self(batch, input="obs_next").act
-                target_q = self(
-                    batch, model="model_old", input="obs_next"
-                ).logits
-                target_q = target_q[np.arange(len(a)), a]
-            else:
-                target_q = self(batch, input="obs_next").logits.max(dim=1)[0]
+        if self._target:
+            a = self(batch, input="obs_next").act
+            target_q = self(
+                batch, model="model_old", input="obs_next"
+            ).logits
+            target_q = target_q[np.arange(len(a)), a]
+        else:
+            target_q = self(batch, input="obs_next").logits.max(dim=1)[0]
         return target_q
 
     def process_fn(
@@ -102,6 +101,10 @@ class DQNPolicy(BasePolicy):
             batch, buffer, indice, self._target_q,
             self._gamma, self._n_step, self._rew_norm)
         return batch
+
+    def compute_q_value(self, logits: torch.Tensor) -> torch.Tensor:
+        """Compute the q value based on the network's raw output logits."""
+        return logits
 
     def forward(
         self,
@@ -143,7 +146,8 @@ class DQNPolicy(BasePolicy):
         model = getattr(self, model)
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
-        q, h = model(obs_, state=state, info=batch.info)
+        logits, h = model(obs_, state=state, info=batch.info)
+        q = self.compute_q_value(logits)
         act: np.ndarray = to_numpy(q.max(dim=1)[1])
         if hasattr(obs, "mask"):
             # some of actions are masked, they cannot be selected
@@ -158,7 +162,7 @@ class DQNPolicy(BasePolicy):
                     if hasattr(obs, "mask"):
                         q_[~obs.mask[i]] = -np.inf
                     act[i] = q_.argmax()
-        return Batch(logits=q, act=act, state=h)
+        return Batch(logits=logits, act=act, state=h)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:

@@ -257,7 +257,8 @@ class BasePolicy(ABC, nn.Module):
             mean, std = 0.0, 1.0
         buf_len = len(buffer)
         terminal = (indice + n_step - 1) % buf_len
-        target_q_torch = target_q_fn(buffer, terminal)  # (bsz, ?)
+        with torch.no_grad():
+            target_q_torch = target_q_fn(buffer, terminal)  # (bsz, ?)
         target_q = to_numpy(target_q_torch)
 
         target_q = _nstep_return(rew, buffer.done, target_q, indice,
