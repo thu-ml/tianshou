@@ -10,7 +10,7 @@ from timeit import timeit
 from tianshou.data.utils.converter import to_hdf5
 from tianshou.data import Batch, SegmentTree, ReplayBuffer
 from tianshou.data import ListReplayBuffer, PrioritizedReplayBuffer
-from tianshou.data import ReplayBuffers, CachedReplayBuffer
+from tianshou.data import ReplayBufferManager, CachedReplayBuffer
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -43,6 +43,7 @@ def test_replaybuffer(size=10, bufsize=20):
     assert b.sample_index(-1).tolist() == []
     b.add(1, 1, 1, 1, 'str', {'a': 3, 'b': {'c': 5.0}})
     assert b.obs[0] == 1
+    assert b.done[0]
     assert b.obs_next[0] == 'str'
     assert np.all(b.obs[1:] == 0)
     assert np.all(b.obs_next[1:] == np.array(None))
@@ -101,9 +102,12 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
     buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
     buf3 = ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True)
+    # test if CachedReplayBuffer can handle stack_num + ignore_obs_next
     buf4 = CachedReplayBuffer(
         ReplayBuffer(bufsize, stack_num=stack_num, ignore_obs_next=True),
         cached_num, size)
+    # test if CachedReplayBuffer can handle super corner case:
+    # prio-buffer + stack_num + ignore_obs_next + sample_avail
     buf5 = CachedReplayBuffer(
         PrioritizedReplayBuffer(bufsize, 0.6, 0.4, stack_num=stack_num,
                                 ignore_obs_next=True, sample_avail=True),
@@ -140,17 +144,18 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
     assert indice.tolist() == [6]
     with pytest.raises(IndexError):
         buf[bufsize * 2]
+    # check the `add` order is correct
     assert np.allclose(buf4.obs.reshape(-1), [
-        12, 13, 14, 4, 6, 7, 8, 9, 11,
-        1, 2, 3, 4, 0,
-        6, 7, 8, 9, 0,
-        11, 12, 13, 14, 0,
+        12, 13, 14, 4, 6, 7, 8, 9, 11,  # main_buffer
+        1, 2, 3, 4, 0,  # cached_buffer[0]
+        6, 7, 8, 9, 0,  # cached_buffer[1]
+        11, 12, 13, 14, 0,  # cached_buffer[2]
     ]), buf4.obs
     assert np.allclose(buf4.done, [
-        0, 0, 1, 1, 0, 0, 0, 1, 0,
-        0, 0, 0, 1, 0,
-        0, 0, 0, 1, 0,
-        0, 0, 0, 1, 0,
+        0, 0, 1, 1, 0, 0, 0, 1, 0,  # main_buffer
+        0, 0, 0, 1, 0,  # cached_buffer[0]
+        0, 0, 0, 1, 0,  # cached_buffer[1]
+        0, 0, 0, 1, 0,  # cached_buffer[2]
     ]), buf4.done
     assert np.allclose(buf4.unfinished_index(), [10, 15, 20])
     indice = sorted(buf4.sample_index(0))
@@ -191,7 +196,7 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
     assert unmodified_weight.max() < 1
     cached_weight = weight[9:]
     assert cached_weight.min() == cached_weight.max() == 1
-    # test Atari
+    # test Atari with CachedReplayBuffer, save_only_last_obs + ignore_obs_next
     buf6 = CachedReplayBuffer(
         ReplayBuffer(bufsize, stack_num=stack_num,
                      save_only_last_obs=True, ignore_obs_next=True),
@@ -372,7 +377,7 @@ def test_hdf5():
         "array": ReplayBuffer(size, stack_num=2),
         "list": ListReplayBuffer(),
         "prioritized": PrioritizedReplayBuffer(size, 0.6, 0.4),
-        "vector": ReplayBuffers([ReplayBuffer(size) for i in range(4)]),
+        "vector": ReplayBufferManager([ReplayBuffer(size) for i in range(4)]),
         "cached": CachedReplayBuffer(ReplayBuffer(size), 4, size)
     }
     buffer_types = {k: b.__class__ for k, b in buffers.items()}
@@ -421,7 +426,7 @@ def test_hdf5():
             buffers[k][:].info.number.n == _buffers[k][:].info.number.n)
         assert np.all(
             buffers[k][:].info.extra == _buffers[k][:].info.extra)
-    # check shallow copy in ReplayBuffers
+    # check shallow copy in ReplayBufferManager
     for k in ["vector", "cached"]:
         buffers[k].info.number.n[0] = -100
         assert buffers[k].buffers[0].info.number.n[0] == -100
@@ -464,12 +469,13 @@ def test_hdf5():
         to_hdf5(data, grp)
 
 
-def test_vectorbuffer():
-    buf = ReplayBuffers([ReplayBuffer(size=5) for i in range(4)])
+def test_replaybuffermanager():
+    buf = ReplayBufferManager([ReplayBuffer(size=5) for i in range(4)])
     ep_len, ep_rew = buf.add(obs=[1, 2, 3], act=[1, 2, 3], rew=[1, 2, 3],
                              done=[0, 0, 1], buffer_ids=[0, 1, 2])
     assert np.allclose(ep_len, [0, 0, 1]) and np.allclose(ep_rew, [0, 0, 3])
     with pytest.raises(NotImplementedError):
+        # ReplayBufferManager cannot be updated
         buf.update(buf)
     indice = buf.sample_index(11000)
     assert np.bincount(indice)[[0, 5, 10]].min() >= 3000
@@ -549,7 +555,9 @@ def test_vectorbuffer():
     assert np.allclose(buf.buffers[-1].info.n, [1] * 5)
     assert buf.sample_index(-1).tolist() == []
     assert np.array([ReplayBuffer(0, ignore_obs_next=True)]).dtype == np.object
-    # CachedReplayBuffer
+
+
+def test_cachedbuffer():
     buf = CachedReplayBuffer(ReplayBuffer(10), 4, 5)
     assert buf.sample_index(0).tolist() == []
     ep_len, ep_rew = buf.add(obs=[1], act=[1], rew=[1], done=[0],
@@ -616,5 +624,6 @@ if __name__ == '__main__':
     test_priortized_replaybuffer()
     test_priortized_replaybuffer(233333, 200000)
     test_update()
-    test_vectorbuffer()
+    test_replaybuffermanager()
+    test_cachedbuffer()
     test_hdf5()

@@ -56,11 +56,7 @@ class ReplayBuffer:
         self._save_obs_next = not ignore_obs_next
         self._save_only_last_obs = save_only_last_obs
         self._sample_avail = sample_avail
-        self._index = 0  # current index
-        self._size = 0  # current buffer size
         self._meta: Batch = Batch()
-        self._episode_reward = 0.0
-        self._episode_length = 0
         self.reset()
 
     def __len__(self) -> int:
@@ -110,7 +106,7 @@ class ReplayBuffer:
         return buf
 
     def reset(self) -> None:
-        """Clear all the data in replay buffer."""
+        """Clear all the data in replay buffer and episode statistics."""
         self._index = self._size = 0
         self._episode_length, self._episode_reward = 0, 0.0
 
@@ -149,15 +145,15 @@ class ReplayBuffer:
         if len(buffer) == 0 or self.maxsize == 0:
             return
         stack_num, buffer.stack_num = buffer.stack_num, 1
-        save_only_last_obs, self._save_only_last_obs = \
-            self._save_only_last_obs, False
+        save_only_last_obs = self._save_only_last_obs
+        self._save_only_last_obs = False
         indices = buffer.sample_index(0)  # get all available indices
         for i in indices:
             self.add(**buffer[i])  # type: ignore
         buffer.stack_num = stack_num
         self._save_only_last_obs = save_only_last_obs
 
-    def alloc_fn(self, key: List[str], value: Any) -> None:
+    def _buffer_allocator(self, key: List[str], value: Any) -> None:
         """Allocate memory on buffer._meta for new (key, value) pair."""
         data = self._meta
         for k in key[:-1]:
@@ -168,7 +164,7 @@ class ReplayBuffer:
         try:
             value = self._meta.__dict__[name]
         except KeyError:
-            self.alloc_fn([name], inst)
+            self._buffer_allocator([name], inst)
             value = self._meta[name]
         if isinstance(inst, (torch.Tensor, np.ndarray)):
             if inst.shape != value.shape[1:]:
@@ -180,7 +176,7 @@ class ReplayBuffer:
             value[self._index] = inst
         except KeyError:  # inst is a dict/Batch
             for key in set(inst.keys()).difference(value.keys()):
-                self.alloc_fn([name, key], inst[key])
+                self._buffer_allocator([name, key], inst[key])
             self._meta[name][self._index] = inst
 
     def add(
@@ -193,7 +189,7 @@ class ReplayBuffer:
         info: Optional[Union[dict, Batch]] = {},
         policy: Optional[Union[dict, Batch]] = {},
         **kwargs: Any,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[int, Union[float, np.ndarray]]:
         """Add a batch of data into replay buffer.
 
         Return (episode_length, episode_reward) if one episode is terminated,
@@ -230,12 +226,11 @@ class ReplayBuffer:
         self._episode_length += 1
 
         if done:
-            result = np.asarray(self._episode_length), \
-                np.asarray(self._episode_reward)
+            result = self._episode_length, self._episode_reward
             self._episode_length, self._episode_reward = 0, 0.0
             return result
         else:
-            return self._episode_length * 0, self._episode_reward * 0.
+            return self._episode_length * 0, self._episode_reward * 0.0
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
@@ -362,7 +357,7 @@ class ListReplayBuffer(ReplayBuffer):
         self._meta[name].append(inst)
 
     def reset(self) -> None:
-        self._index = self._size = 0
+        super().reset()
         for k in self._meta.keys():
             if isinstance(self._meta[k], list):
                 self._meta.__dict__[k] = []
@@ -406,7 +401,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         policy: Optional[Union[dict, Batch]] = {},
         weight: Optional[Union[Number, np.number]] = None,
         **kwargs: Any,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[int, Union[float, np.ndarray]]:
         if weight is None:
             weight = self._max_prio
         else:
@@ -461,8 +456,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         return batch
 
 
-class ReplayBuffers(ReplayBuffer):
-    """ReplayBuffers contains a list of ReplayBuffer.
+class ReplayBufferManager(ReplayBuffer):
+    """ReplayBufferManager contains a list of ReplayBuffer.
 
     These replay buffers have contiguous memory layout, and the storage space
     each buffer has is a shallow copy of the topmost memory.
@@ -481,15 +476,13 @@ class ReplayBuffers(ReplayBuffer):
         self._offset = []
         offset = 0
         for buf in self.buffers:
-            # overwrite sub-buffers' alloc_fn so that
+            # overwrite sub-buffers' _buffer_allocator so that
             # the top buffer can allocate new memory for all sub-buffers
-            buf.alloc_fn = self.alloc_fn  # type: ignore
+            buf._buffer_allocator = self._buffer_allocator  # type: ignore
             assert buf._meta.is_empty()
             self._offset.append(offset)
             offset += buf.maxsize
         super().__init__(size=offset, **kwargs)
-        # delete useless variables in ReplayBuffer
-        del self._index, self._size, self._episode_reward, self._episode_length
 
     def __len__(self) -> int:
         return sum([len(buf) for buf in self.buffers])
@@ -530,11 +523,11 @@ class ReplayBuffers(ReplayBuffer):
         return next_indices
 
     def update(self, buffer: ReplayBuffer) -> None:
-        """The ReplayBuffers cannot be updated by any buffer."""
+        """The ReplayBufferManager cannot be updated by any buffer."""
         raise NotImplementedError
 
-    def alloc_fn(self, key: List[str], value: Any) -> None:
-        super().alloc_fn(key, value)
+    def _buffer_allocator(self, key: List[str], value: Any) -> None:
+        super()._buffer_allocator(key, value)
         self._set_batch_for_children()
 
     def add(  # type: ignore
@@ -549,7 +542,7 @@ class ReplayBuffers(ReplayBuffer):
         buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
         **kwargs: Any
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Add a batch of data into ReplayBuffers.
+        """Add a batch of data into ReplayBufferManager.
 
         Each of the data's length (first dimension) must equal to the length of
         buffer_ids. By default buffer_ids is [0, 1, ..., buffer_num - 1].
@@ -600,7 +593,7 @@ class ReplayBuffers(ReplayBuffer):
         ])
 
 
-class CachedReplayBuffer(ReplayBuffers):
+class CachedReplayBuffer(ReplayBufferManager):
     """CachedReplayBuffer contains a given main buffer and n cached buffers, \
     cached_buffer_num * ReplayBuffer(size=max_episode_length).
 
@@ -621,7 +614,7 @@ class CachedReplayBuffer(ReplayBuffers):
     .. seealso::
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` or
-        :class:`~tianshou.data.ReplayBuffers` for more detailed
+        :class:`~tianshou.data.ReplayBufferManager` for more detailed
         explanation.
     """
 
