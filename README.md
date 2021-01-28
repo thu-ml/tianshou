@@ -24,6 +24,7 @@
 - [Double DQN](https://arxiv.org/pdf/1509.06461.pdf)
 - [Dueling DQN](https://arxiv.org/pdf/1511.06581.pdf)
 - [C51](https://arxiv.org/pdf/1707.06887.pdf)
+- [Quantile Regression DQN (QRDQN)](https://arxiv.org/pdf/1710.10044.pdf)
 - [Advantage Actor-Critic (A2C)](https://openai.com/blog/baselines-acktr-a2c/)
 - [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf)
 - [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf)
