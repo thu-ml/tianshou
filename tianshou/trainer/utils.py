@@ -22,8 +22,8 @@ def test_episode(
     policy.eval()
     if test_fn:
         test_fn(epoch, global_step)
-    if collector.get_env_num() > 1 and isinstance(n_episode, int):
-        n = collector.get_env_num()
+    if collector.env_num > 1 and isinstance(n_episode, int):
+        n = collector.env_num
         n_ = np.zeros(n) + n_episode // n
         n_[:n_episode % n] += 1
         n_episode = list(n_)
