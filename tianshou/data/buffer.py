@@ -227,8 +227,8 @@ class ReplayBuffer:
             self._size = self._index = self._size + 1
 
         if done:
-            result = np.array(self._episode_length), \
-                np.array(self._episode_reward)
+            result = np.asarray(self._episode_length), \
+                np.asarray(self._episode_reward)
             self._episode_length, self._episode_reward = 0, 0.0
             return result
         else:
@@ -315,6 +315,7 @@ class ReplayBuffer:
         """
         if isinstance(index, slice):  # change slice to np array
             index = self._indices[:len(self)][index]
+        # raise KeyError first instead of AttributeError, to support np.array
         obs = self.get(index, "obs")
         if self._save_obs_next:
             obs_next = self.get(index, "obs_next")
@@ -478,14 +479,14 @@ class ReplayBuffers(ReplayBuffer):
         self._offset = []
         offset = 0
         for buf in self.buffers:
-            # overwrite sub-buffers' alloc_fn so that the top buffer can
-            # allocate new memory for all buffers
+            # overwrite sub-buffers' alloc_fn so that
+            # the top buffer can allocate new memory for all sub-buffers
             buf.alloc_fn = self.alloc_fn  # type: ignore
             assert buf._meta.is_empty()
             self._offset.append(offset)
             offset += buf.maxsize
         super().__init__(size=offset, **kwargs)
-        # delete useless variables
+        # delete useless variables in ReplayBuffer
         del self._index, self._size, self._episode_reward, self._episode_length
 
     def __len__(self) -> int:
@@ -631,11 +632,11 @@ class CachedReplayBuffer(ReplayBuffers):
         assert cached_buffer_num > 0 and max_episode_length > 0
         self._is_prioritized = isinstance(main_buffer, PrioritizedReplayBuffer)
         kwargs = main_buffer.options
-        self.main_buffer = main_buffer
-        self.cached_buffer = [ReplayBuffer(max_episode_length, **kwargs)
-                              for _ in range(cached_buffer_num)]
-        buffers = [main_buffer] + self.cached_buffer
+        buffers = [main_buffer] + [ReplayBuffer(max_episode_length, **kwargs)
+                                   for _ in range(cached_buffer_num)]
         super().__init__(buffer_list=buffers, **kwargs)
+        self.main_buffer = self.buffers[0]
+        self.cached_buffer = self.buffers[1:]
 
     def add(  # type: ignore
         self,
@@ -669,7 +670,7 @@ class CachedReplayBuffer(ReplayBuffers):
                              policy, buffer_ids=buffer_ids, **kwargs)
 
         # find the terminated episode, move data from cached buf to main buf
-        for buffer_idx in np.asarray(buffer_ids)[np.asarray(done) > 0]:
+        for buffer_idx in buffer_ids[np.asarray(done) > 0]:
             self.main_buffer.update(self.buffers[buffer_idx])
             self.buffers[buffer_idx].reset()
         return result
