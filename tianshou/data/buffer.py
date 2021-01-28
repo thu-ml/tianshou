@@ -12,8 +12,13 @@ from tianshou.data.utils.converter import to_hdf5, from_hdf5
 
 class ReplayBuffer:
     """:class:`~tianshou.data.ReplayBuffer` stores data generated from \
-    interaction between the policy and environment. ReplayBuffer can be \
-    considered as a specialized form (or management) of Batch.
+    interaction between the policy and environment.
+
+    ReplayBuffer can be considered as a specialized form (or management) of
+    Batch. It stores all the data in a batch with circular-queue style.
+
+    For the example usage of ReplayBuffer, please check out Section Buffer in
+    :doc:`/tutorials/concepts`.
 
     :param int size: the maximum size of replay buffer.
     :param int stack_num: the frame-stack sampling argument, should be greater
@@ -80,11 +85,8 @@ class ReplayBuffer:
         ("buffer.__getattr__" is customized).
         """
         self.__dict__.update(state)
-        # compatible with previous version HDF5
+        # compatible with version == 0.3.1's HDF5 data format
         self._indices = np.arange(self.maxsize)
-
-    def __getstate__(self) -> Dict[str, Any]:
-        return self.__dict__
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
@@ -95,7 +97,7 @@ class ReplayBuffer:
     def save_hdf5(self, path: str) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
-            to_hdf5(self.__getstate__(), f)
+            to_hdf5(self.__dict__, f)
 
     @classmethod
     def load_hdf5(
@@ -205,6 +207,7 @@ class ReplayBuffer:
         self._add_to_buffer("obs", obs)
         self._add_to_buffer("act", act)
         # make sure the data type of reward is float instead of int
+        # but rew may be np.ndarray, so that we cannot use float(rew)
         rew = rew * 1.0  # type: ignore
         self._add_to_buffer("rew", rew)
         self._add_to_buffer("done", bool(done))  # done should be a bool scalar
@@ -217,14 +220,14 @@ class ReplayBuffer:
         self._add_to_buffer("info", info)
         self._add_to_buffer("policy", policy)
 
-        self._episode_reward += rew
-        self._episode_length += 1
-
         if self.maxsize > 0:
             self._size = min(self._size + 1, self.maxsize)
             self._index = (self._index + 1) % self.maxsize
         else:  # TODO: remove this after deleting ListReplayBuffer
             self._size = self._index = self._size + 1
+
+        self._episode_reward += rew
+        self._episode_length += 1
 
         if done:
             result = np.asarray(self._episode_length), \
@@ -282,7 +285,7 @@ class ReplayBuffer:
         """Return the stacked result.
 
         E.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t], where s is self.key, t is the
-        indice.
+        index.
         """
         if stack_num is None:
             stack_num = self.stack_num

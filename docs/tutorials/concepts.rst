@@ -53,7 +53,7 @@ In short, you can define a :class:`~tianshou.data.Batch` with any key-value pair
 Buffer
 ------
 
-:class:`~tianshou.data.ReplayBuffer` stores data generated from interaction between the policy and environment. ReplayBuffer can be considered as a specialized form (or management) of Batch.
+:class:`~tianshou.data.ReplayBuffer` stores data generated from interaction between the policy and environment. ReplayBuffer can be considered as a specialized form (or management) of Batch. It stores all the data in a batch with circular-queue style.
 
 The current implementation of Tianshou typically use 7 reserved keys in
 :class:`~tianshou.data.Batch`:
@@ -66,7 +66,13 @@ The current implementation of Tianshou typically use 7 reserved keys in
 * ``info`` the info of step :math:`t` (in ``gym.Env``, the ``env.step()`` function returns 4 arguments, and the last one is ``info``);
 * ``policy`` the data computed by policy in step :math:`t`;
 
-The following code snippet illustrates its usage:
+The following code snippet illustrates its usage, including:
+
+- the basic data storage: ``add()``;
+- get attribute, get slicing data, ...;
+- sample from buffer: ``sample_index(batch_size)`` and ``sample(batch_size)``;
+- get previous/next transition index within episodes: ``prev(index)`` and ``next(index)``;
+- save/load data from buffer: pickle and HDF5;
 
 ::
 
