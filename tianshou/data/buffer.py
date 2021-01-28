@@ -80,6 +80,8 @@ class ReplayBuffer:
         ("buffer.__getattr__" is customized).
         """
         self.__dict__.update(state)
+        # compatible with previous version HDF5
+        self._indices = np.arange(self.maxsize)
 
     def __getstate__(self) -> Dict[str, Any]:
         return self.__dict__
@@ -362,6 +364,10 @@ class ListReplayBuffer(ReplayBuffer):
             if isinstance(self._meta[k], list):
                 self._meta.__dict__[k] = []
 
+    def update(self, buffer: ReplayBuffer) -> None:
+        """The ListReplayBuffer cannot be updated by any buffer."""
+        raise NotImplementedError
+
 
 class PrioritizedReplayBuffer(ReplayBuffer):
     """Implementation of Prioritized Experience Replay. arXiv:1511.05952.
@@ -479,6 +485,8 @@ class ReplayBuffers(ReplayBuffer):
             self._offset.append(offset)
             offset += buf.maxsize
         super().__init__(size=offset, **kwargs)
+        # delete useless variables
+        del self._index, self._size, self._episode_reward, self._episode_length
 
     def __len__(self) -> int:
         return sum([len(buf) for buf in self.buffers])
@@ -556,8 +564,8 @@ class ReplayBuffers(ReplayBuffer):
         assert len(buffer_ids) == len(batch)
         episode_lengths = []  # (len(buffer_ids),)
         episode_rewards = []  # (len(buffer_ids), ...)
-        for batch_idx, env_id in enumerate(buffer_ids):
-            length, reward = self.buffers[env_id].add(**batch[batch_idx])
+        for batch_idx, buffer_id in enumerate(buffer_ids):
+            length, reward = self.buffers[buffer_id].add(**batch[batch_idx])
             episode_lengths.append(length)
             episode_rewards.append(reward)
         return np.stack(episode_lengths), np.stack(episode_rewards)
@@ -621,11 +629,12 @@ class CachedReplayBuffer(ReplayBuffers):
         max_episode_length: int,
     ) -> None:
         assert cached_buffer_num > 0 and max_episode_length > 0
-        self.main_buffer = main_buffer
         self._is_prioritized = isinstance(main_buffer, PrioritizedReplayBuffer)
-        kwargs = self.main_buffer.options
-        buffers = [main_buffer] + [ReplayBuffer(max_episode_length, **kwargs)
-                                   for _ in range(cached_buffer_num)]
+        kwargs = main_buffer.options
+        self.main_buffer = main_buffer
+        self.cached_buffer = [ReplayBuffer(max_episode_length, **kwargs)
+                              for _ in range(cached_buffer_num)]
+        buffers = [main_buffer] + self.cached_buffer
         super().__init__(buffer_list=buffers, **kwargs)
 
     def add(  # type: ignore

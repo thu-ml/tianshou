@@ -53,6 +53,8 @@ def test_replaybuffer(size=10, bufsize=20):
     b = ListReplayBuffer()
     with pytest.raises(NotImplementedError):
         b.sample(0)
+    with pytest.raises(NotImplementedError):
+        b.update(b)
 
 
 def test_ignore_obs_next(size=10):
@@ -407,9 +409,9 @@ def test_hdf5():
         assert np.allclose(_buffers[k].act, buffers[k].act)
         assert _buffers[k].stack_num == buffers[k].stack_num
         assert _buffers[k].maxsize == buffers[k].maxsize
-        assert _buffers[k]._index == buffers[k]._index
         assert np.all(_buffers[k]._indices == buffers[k]._indices)
     for k in ["array", "prioritized"]:
+        assert _buffers[k]._index == buffers[k]._index
         assert isinstance(buffers[k].get(0, "info"), Batch)
         assert isinstance(_buffers[k].get(0, "info"), Batch)
     for k in ["array"]:
