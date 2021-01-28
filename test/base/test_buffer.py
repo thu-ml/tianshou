@@ -39,6 +39,8 @@ def test_replaybuffer(size=10, bufsize=20):
     assert (data.obs < size).all()
     assert (0 <= data.done).all() and (data.done <= 1).all()
     b = ReplayBuffer(size=10)
+    # neg bsz should return empty index
+    assert b.sample_index(-1).tolist() == []
     b.add(1, 1, 1, 1, 'str', {'a': 3, 'b': {'c': 5.0}})
     assert b.obs[0] == 1
     assert b.obs_next[0] == 'str'
