@@ -232,8 +232,7 @@ class ReplayBuffer:
             self._episode_length, self._episode_reward = 0, 0.0
             return result
         else:
-            return np.zeros_like(self._episode_length), \
-                np.zeros_like(self._episode_reward)
+            return self._episode_length * 0, self._episode_reward * 0.
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
