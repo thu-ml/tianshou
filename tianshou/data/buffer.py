@@ -664,12 +664,14 @@ class CachedReplayBuffer(ReplayBuffers):
         """
         if cached_buffer_ids is None:
             cached_buffer_ids = np.arange(self.cached_buffer_num)
+        else:  # make sure it is np.ndarray
+            cached_buffer_ids = np.asarray(cached_buffer_ids)
         # in self.buffers, the first buffer is main_buffer
-        buffer_ids = np.asarray(cached_buffer_ids) + 1
+        buffer_ids = cached_buffer_ids + 1  # type: ignore
         result = super().add(obs, act, rew, done, obs_next, info,
                              policy, buffer_ids=buffer_ids, **kwargs)
         # find the terminated episode, move data from cached buf to main buf
-        for buffer_idx in cached_buffer_ids[np.asarray(done) > 0]:
+        for buffer_idx in cached_buffer_ids[np.asarray(done, np.bool_)]:
             self.main_buffer.update(self.cached_buffers[buffer_idx])
             self.cached_buffers[buffer_idx].reset()
         return result
