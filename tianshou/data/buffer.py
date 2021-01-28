@@ -602,8 +602,8 @@ class CachedReplayBuffer(ReplayBuffers):
     """CachedReplayBuffer contains a given main buffer and n cached buffers, \
     cached_buffer_num * ReplayBuffer(size=max_episode_length).
 
-    The memory layout is: ``| main_buffer | cached_buffer[0] | cached_buffer[1]
-    | ... | cached_buffer[cached_buffer_num - 1]``.
+    The memory layout is: ``| main_buffer | cached_buffers[0] | cached_buffers[1]
+    | ... | cached_buffers[cached_buffer_num - 1]``.
 
     The data is first stored in cached buffers. When the episode is
     terminated, the data will move to the main buffer and the corresponding
@@ -636,7 +636,8 @@ class CachedReplayBuffer(ReplayBuffers):
                                    for _ in range(cached_buffer_num)]
         super().__init__(buffer_list=buffers, **kwargs)
         self.main_buffer = self.buffers[0]
-        self.cached_buffer = self.buffers[1:]
+        self.cached_buffers = self.buffers[1:]
+        self.cached_buffer_num = cached_buffer_num
 
     def add(  # type: ignore
         self,
@@ -662,17 +663,15 @@ class CachedReplayBuffer(ReplayBuffers):
         corresponding episode result.
         """
         if cached_buffer_ids is None:
-            cached_buffer_ids = np.arange(self.buffer_num - 1)
+            cached_buffer_ids = np.arange(self.cached_buffer_num)
         # in self.buffers, the first buffer is main_buffer
         buffer_ids = np.asarray(cached_buffer_ids) + 1
-
         result = super().add(obs, act, rew, done, obs_next, info,
                              policy, buffer_ids=buffer_ids, **kwargs)
-
         # find the terminated episode, move data from cached buf to main buf
-        for buffer_idx in buffer_ids[np.asarray(done) > 0]:
-            self.main_buffer.update(self.buffers[buffer_idx])
-            self.buffers[buffer_idx].reset()
+        for buffer_idx in cached_buffer_ids[np.asarray(done) > 0]:
+            self.main_buffer.update(self.cached_buffers[buffer_idx])
+            self.cached_buffers[buffer_idx].reset()
         return result
 
     def __getitem__(
