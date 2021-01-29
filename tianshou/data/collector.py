@@ -12,7 +12,7 @@ from tianshou.exploration import BaseNoise
 from tianshou.data.batch import _create_value
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, \
-                          CachedReplayBuffer, to_numpy
+                          ReplayBufferManager, CachedReplayBuffer, to_numpy
 
 
 class Collector(object):
@@ -81,14 +81,13 @@ class Collector(object):
         self,
         policy: BasePolicy,
         env: Union[gym.Env, BaseVectorEnv],
-        buffer: Optional[CachedReplayBuffer] = None,
+        buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
         training = False,
         reward_metric: Optional[Callable[[np.ndarray], float]] = None,
     ) -> None:
         # TODO determine whether we need start_idxs
         # TODO support not only cacahedbuffer,(maybe auto change)
-        # TODO remove listreplaybuffer
         # TODO update training in all test/examples, remove action noise
         # TODO buffer need to be CachedReplayBuffer now, update
         # examples/docs/ after supporting all types of buffers
@@ -111,31 +110,35 @@ class Collector(object):
 
     def _check_buffer(self):
         max_episode_steps = self.env._max_episode_steps[0]
-        # TODO default to Replay_buffers
-        # TODO support replaybuffer when self.env_num == 1
-        # TODO support Replay_buffers when self.env_num == 0
         if self.buffer is None:
-            self.buffer = CachedReplayBuffer(size = 0,
-            cached_buf_n = self.env_num, max_length = max_episode_steps)
-        else:
-            assert isinstance(self.buffer, CachedReplayBuffer), \
-            "BasicCollector reuqires CachedReplayBuffer as buffer input."
-            assert self.buffer.cached_bufs_n == self.env_num
-
-            if self.buffer.main_buffer.maxsize < self.buffer.maxsize//2:
+            if self.training:
+                    warnings.warn("ReplayBufferManager is not suggested to be used"
+                    "in training mode, consider using CachedReplayBuffer, instead.")
+            self.buffer = ReplayBufferManager(
+                [ReplayBuffer(max_episode_steps)] * self.env_num)
+        elif isinstance(self.buffer, ReplayBufferManager):
+            if type(self.buffer) == ReplayBufferManager:
+                if self.training:
+                    warnings.warn("ReplayBufferManager is not suggested to be used"
+                    "in training mode, make sure you know how it works.")
+                self.buffer.cached_buffers = self.buffer.buffers
+                self.buffer.cached_buffer_num = self.buffer.buffer_num
+            assert self.buffer.cached_buffer_num == self.env_num
+            if self.buffer.cached_buffers[0].maxsize < max_episode_steps:
                 warnings.warn(
-                    "The size of buffer is suggested to be larger than "
-                    "(cached buffer number) * max_length. Otherwise you might"
-                    "loss data of episodes you just collected, and statistics "
-                    "might even be incorrect.",
-                    Warning)
-            if self.buffer.cached_buffer[0].maxsize < max_episode_steps:
-                warnings.warn(
-                    "The size of cached_buf is suggested to be larger than "
+                    "The size of cached_buffer is suggested to be larger than "
                     "max episode length. Otherwise you might"
                     "loss data of episodes you just collected, and statistics "
-                    "might even be incorrect.",
-                    Warning)
+                    "might even be incorrect.", Warning)
+        else: #type ReplayBuffer
+            assert self.buffer.maxsize > 0
+            if self.env_num != 1:
+                warnings.warn(
+                    "CachedReplayBuffer/ReplayBufferManager rather than ReplayBuffer"
+                    "is required in collector when #env > 1. Input buffer is switched"
+                    "to CachedReplayBuffer.", Warning)
+                self.buffer = CachedReplayBuffer(self.buffer,
+                                                 self.env_num, max_episode_steps)
 
     @staticmethod
     def _default_rew_metric(
@@ -173,9 +176,9 @@ class Collector(object):
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get("obs", obs)
         self.data.obs = obs
-        # TODO different kind of buffers, 
-        for buf in self.buffer.cached_buffer:
-            buf.reset()
+        if hasattr(self.buffer, "cached_buffers"):
+            for buf in self.buffer.cached_buffers:
+                buf.reset()
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
         """Reset the hidden state: self.data.state[id]."""
@@ -300,8 +303,15 @@ class Collector(object):
             data_t = self.data
             if n_episode and len(cached_buffer_ids) < self.env_num:
                 data_t  = self.data[cached_buffer_ids]
+            if type(self.buffer) == ReplayBuffer:
+                data_t = data_t[0]
             # lens, rews, idxs = self.buffer.add(**data_t, index = cached_buffer_ids)
+            # rews need to be array for ReplayBuffer
             lens, rews = self.buffer.add(**data_t, index = cached_buffer_ids)
+            if type(self.buffer) == ReplayBuffer:
+                lens = np.asarray(lens)
+                rews = np.asarray(rews)
+                # idxs = np.asarray(idxs)
             # collect statistics
             step_count += len(cached_buffer_ids)
             for i in cached_buffer_ids(np.where(lens == 0)[0]):
