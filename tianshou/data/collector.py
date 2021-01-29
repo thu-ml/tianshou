@@ -87,7 +87,7 @@ class Collector(object):
         reward_metric: Optional[Callable[[np.ndarray], float]] = None,
     ) -> None:
         # TODO determine whether we need start_idxs
-        # TODO support not only cacahedbuffer
+        # TODO support not only cacahedbuffer,(maybe auto change)
         # TODO remove listreplaybuffer
         # TODO update training in all test/examples, remove action noise
         # TODO buffer need to be CachedReplayBuffer now, update
@@ -169,7 +169,6 @@ class Collector(object):
 
     def reset_env(self) -> None:
         """Reset all of the environment(s)' states and the cache buffers."""
-        #should not be exposed
         obs = self.env.reset()
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get("obs", obs)
