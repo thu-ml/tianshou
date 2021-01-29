@@ -120,6 +120,8 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
     assert indice.tolist() == [2, 6]
     _, indice = buf2.sample(1)
     assert indice[0] in [2, 6]
+    batch, indice = buf2.sample(-1)  # neg bsz -> no data
+    assert indice.tolist() == [] and len(batch) == 0
     with pytest.raises(IndexError):
         buf[bufsize * 2]
 
