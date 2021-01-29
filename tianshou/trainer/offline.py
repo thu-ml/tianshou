@@ -82,14 +82,14 @@ def offline_trainer(
         # test
         result = test_episode(policy, test_collector, test_fn, epoch,
                               episode_per_test, writer, gradient_step)
-        if best_epoch == -1 or best_reward < result["rew"]:
-            best_reward, best_reward_std = result["rew"], result["rew_std"]
+        if best_epoch == -1 or best_reward < result["rews"].mean():
+            best_reward, best_reward_std = result["rews"].mean(), result['rews'].std()
             best_epoch = epoch
             if save_fn:
                 save_fn(policy)
         if verbose:
             print(f"Epoch #{epoch}: test_reward: {result['rew']:.6f} ± "
-                  f"{result['rew_std']:.6f}, best_reward: {best_reward:.6f} ± "
+                  f"{result['rews'].std():.6f}, best_reward: {best_reward:.6f} ± "
                   f"{best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break

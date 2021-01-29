@@ -93,22 +93,20 @@ def onpolicy_trainer(
                 env_step += int(result["n/st"])
                 data = {
                     "env_step": str(env_step),
-                    "rew": f"{result['rew']:.2f}",
-                    "len": str(int(result["len"])),
+                    "rew": f"{result["rews"].mean():.2f}",
+                    "len": str(int(result["lens"].mean())),
                     "n/ep": str(int(result["n/ep"])),
                     "n/st": str(int(result["n/st"])),
-                    "v/ep": f"{result['v/ep']:.2f}",
-                    "v/st": f"{result['v/st']:.2f}",
                 }
                 if writer and env_step % log_interval == 0:
                     for k in result.keys():
                         writer.add_scalar(
                             "train/" + k, result[k], global_step=env_step)
-                if test_in_train and stop_fn and stop_fn(result["rew"]):
+                if test_in_train and stop_fn and stop_fn(result["rews"].mean()):
                     test_result = test_episode(
                         policy, test_collector, test_fn,
                         epoch, episode_per_test, writer, env_step)
-                    if stop_fn(test_result["rew"]):
+                    if stop_fn(test_result["rews"].mean()):
                         if save_fn:
                             save_fn(policy)
                         for k in result.keys():
@@ -116,7 +114,7 @@ def onpolicy_trainer(
                         t.set_postfix(**data)
                         return gather_info(
                             start_time, train_collector, test_collector,
-                            test_result["rew"], test_result["rew_std"])
+                            test_result["rews"].mean(), test_result["rew_std"])
                     else:
                         policy.train()
                 losses = policy.update(
@@ -139,14 +137,14 @@ def onpolicy_trainer(
         # test
         result = test_episode(policy, test_collector, test_fn, epoch,
                               episode_per_test, writer, env_step)
-        if best_epoch == -1 or best_reward < result["rew"]:
-            best_reward, best_reward_std = result["rew"], result["rew_std"]
+        if best_epoch == -1 or best_reward < result["rews"].mean():
+            best_reward, best_reward_std = result["rews"].mean(), result["rew_std"]
             best_epoch = epoch
             if save_fn:
                 save_fn(policy)
         if verbose:
-            print(f"Epoch #{epoch}: test_reward: {result['rew']:.6f} ± "
-                  f"{result['rew_std']:.6f}, best_reward: {best_reward:.6f} ± "
+            print(f"Epoch #{epoch}: test_reward: {result['rews'].mean():.6f} ± "
+                  f"{result["rews"].std():.6f}, best_reward: {best_reward:.6f} ± "
                   f"{best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break

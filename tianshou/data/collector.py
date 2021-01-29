@@ -161,7 +161,7 @@ class Collector(object):
 
     def reset_stat(self) -> None:
         """Reset the statistic variables."""
-        self.collect_step, self.collect_episode = 0, 0
+        self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
 
     def reset_buffer(self) -> None:
         """Reset the main data buffer."""
@@ -233,6 +233,7 @@ class Collector(object):
             "n_step must not be 0, and should be an integral multiple of #envs"
         else:
             assert isinstance(n_episode, int) and n_episode > 0
+        start_time = time.time()
 
         step_count = 0
         # episode of each environment
@@ -336,6 +337,7 @@ class Collector(object):
         # generate the statistics
         self.collect_step += step_count
         self.collect_episode += episode_count
+        self.collect_time += max(time.time() - start_time, 1e-9)
         if n_episode:
             self.reset_env()
         # TODO change api in trainer and other collector usage
