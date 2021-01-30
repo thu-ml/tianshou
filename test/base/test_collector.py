@@ -223,18 +223,18 @@ def test_collector_with_ma():
     c0 = Collector(policy, env, ReplayBuffer(size=100),
                    Logger.single_preprocess_fn, reward_metric=reward_metric)
     # n_step=3 will collect a full episode
-    r = c0.collect(n_step=3)['rew']
+    r = c0.collect(n_step=3)['rews'].mean()
     assert np.asanyarray(r).size == 1 and r == 4.
-    r = c0.collect(n_episode=2)['rew']
+    r = c0.collect(n_episode=2)['rews'].mean()
     assert np.asanyarray(r).size == 1 and r == 4.
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4)
                for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     c1 = Collector(policy, envs, ReplayBuffer(size=100),
                    Logger.single_preprocess_fn, reward_metric=reward_metric)
-    r = c1.collect(n_step=10)['rew']
+    r = c1.collect(n_step=10)['rews'].mean()
     assert np.asanyarray(r).size == 1 and r == 4.
-    r = c1.collect(n_episode=[2, 1, 1, 2])['rew']
+    r = c1.collect(n_episode=[2, 1, 1, 2])['rews'].mean()
     assert np.asanyarray(r).size == 1 and r == 4.
     batch, _ = c1.buffer.sample(10)
     print(batch)
@@ -250,7 +250,7 @@ def test_collector_with_ma():
                        [[x] * 4 for x in rew])
     c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
                    Logger.single_preprocess_fn, reward_metric=reward_metric)
-    r = c2.collect(n_episode=[0, 0, 0, 10])['rew']
+    r = c2.collect(n_episode=[0, 0, 0, 10])['rews'].mean()
     assert np.asanyarray(r).size == 1 and r == 4.
     batch, _ = c2.buffer.sample(10)
 

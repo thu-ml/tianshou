@@ -102,7 +102,7 @@ def test_ppo(args=get_args()):
         env = create_atari_environment(args.task)
         collector = Collector(policy, env, preprocess_fn=preprocess_fn)
         result = collector.collect(n_step=2000, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
 
 
 if __name__ == '__main__':
