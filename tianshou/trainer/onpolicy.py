@@ -93,7 +93,7 @@ def onpolicy_trainer(
                 env_step += int(result["n/st"])
                 data = {
                     "env_step": str(env_step),
-                    "rew": f"{result["rews"].mean():.2f}",
+                    "rew": f"{result['rews'].mean():.2f}",
                     "len": str(int(result["lens"].mean())),
                     "n/ep": str(int(result["n/ep"])),
                     "n/st": str(int(result["n/st"])),
@@ -144,7 +144,7 @@ def onpolicy_trainer(
                 save_fn(policy)
         if verbose:
             print(f"Epoch #{epoch}: test_reward: {result['rews'].mean():.6f} ± "
-                  f"{result["rews"].std():.6f}, best_reward: {best_reward:.6f} ± "
+                  f"{result['rews'].std():.6f}, best_reward: {best_reward:.6f} ± "
                   f"{best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break

@@ -12,7 +12,7 @@ from tianshou.exploration import BaseNoise
 from tianshou.data.batch import _create_value
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.data import Batch, ReplayBuffer, ListReplayBuffer, \
-                          ReplayBufferManager, CachedReplayBuffer, to_numpy
+    ReplayBufferManager, CachedReplayBuffer, to_numpy
 
 
 class Collector(object):
@@ -83,7 +83,7 @@ class Collector(object):
         env: Union[gym.Env, BaseVectorEnv],
         buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
-        training = False,
+        training: bool = False,
         reward_metric: Optional[Callable[[np.ndarray], float]] = None,
     ) -> None:
         # TODO determine whether we need start_idxs
@@ -95,28 +95,28 @@ class Collector(object):
         if not isinstance(env, BaseVectorEnv):
             env = DummyVectorEnv([lambda: env])
         # TODO support or seperate async
-        assert env.is_async == False
+        assert env.is_async is False
         self.env = env
         self.env_num = len(env)
-        self.buffer = buffer
-        self._check_buffer()
+        self.training = training
+        self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
         self._action_space = env.action_space
         self._rew_metric = reward_metric or BasicCollector._default_rew_metric
-        self.training = training
         # avoid creating attribute outside __init__
         self.reset()
 
-    def _check_buffer(self):
-        max_episode_steps = self.env._max_episode_steps[0]
-        if self.buffer is None:
-            if self.training:
-                    warnings.warn("ReplayBufferManager is not suggested to be used"
-                    "in training mode, consider using CachedReplayBuffer, instead.")
-            self.buffer = ReplayBufferManager(
-                [ReplayBuffer(max_episode_steps)] * self.env_num)
-        elif isinstance(self.buffer, ReplayBufferManager):
+    def _assign_buffer(self, buffer: Optional[ReplayBuffer]) -> None:
+        if not hasattr(self.env, "_max_episode_steps"):
+            warnings.warn("No time limit found in given env, set to 100000.")
+            max_episode_steps = 100000
+        else:
+            max_episode_steps = self.env._max_episode_steps[0]
+        if buffer is None:
+            self.buffer = CachedReplayBuffer(
+                ReplayBuffer(0), self.env_num, max_episode_steps)
+        elif isinstance(buffer, ReplayBufferManager):
             if type(self.buffer) == ReplayBufferManager:
                 if self.training:
                     warnings.warn("ReplayBufferManager is not suggested to be used"
@@ -130,14 +130,14 @@ class Collector(object):
                     "max episode length. Otherwise you might"
                     "loss data of episodes you just collected, and statistics "
                     "might even be incorrect.", Warning)
-        else: #type ReplayBuffer
+        else:  # type ReplayBuffer
             assert self.buffer.maxsize > 0
             if self.env_num != 1:
                 warnings.warn(
                     "CachedReplayBuffer/ReplayBufferManager rather than ReplayBuffer"
                     "is required in collector when #env > 1. Input buffer is switched"
                     "to CachedReplayBuffer.", Warning)
-                self.buffer = CachedReplayBuffer(self.buffer,
+                self.buffer = CachedReplayBuffer(buffer,
                                                  self.env_num, max_episode_steps)
 
     @staticmethod
