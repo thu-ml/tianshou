@@ -294,7 +294,7 @@ With the above preparation, we are close to the first learned agent. The followi
         policy.policies[args.agent_id - 1].set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
     if args.watch:
         watch(args)
         exit(0)

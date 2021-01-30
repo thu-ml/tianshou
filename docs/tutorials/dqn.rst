@@ -215,11 +215,11 @@ Tianshou supports user-defined training code. Here is the code snippet:
 
         # once if the collected episodes' mean returns reach the threshold,
         # or every 1000 steps, we test it on test_collector
-        if collect_result['rew'] >= env.spec.reward_threshold or i % 1000 == 0:
+        if collect_result['rews'].mean() >= env.spec.reward_threshold or i % 1000 == 0:
             policy.set_eps(0.05)
             result = test_collector.collect(n_episode=100)
-            if result['rew'] >= env.spec.reward_threshold:
-                print(f'Finished training! Test mean returns: {result["rew"]}')
+            if result['rews'].mean() >= env.spec.reward_threshold:
+                print(f'Finished training! Test mean returns: {result["rews"].mean()}')
                 break
             else:
                 # back to training eps

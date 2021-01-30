@@ -88,7 +88,7 @@ def test_psrl(args=get_args()):
         test_collector.reset()
         result = test_collector.collect(n_episode=[1] * args.test_num,
                                         render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
     elif env.spec.reward_threshold:
         assert result["best_reward"] >= env.spec.reward_threshold
 

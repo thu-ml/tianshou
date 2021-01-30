@@ -87,10 +87,7 @@ class Collector(object):
         reward_metric: Optional[Callable[[np.ndarray], float]] = None,
     ) -> None:
         # TODO determine whether we need start_idxs
-        # TODO support not only cacahedbuffer,(maybe auto change)
         # TODO update training in all test/examples, remove action noise
-        # TODO buffer need to be CachedReplayBuffer now, update
-        # examples/docs/ after supporting all types of buffers
         super().__init__()
         if not isinstance(env, BaseVectorEnv):
             env = DummyVectorEnv([lambda: env])
@@ -222,8 +219,6 @@ class Collector(object):
 
             * ``n/ep`` the collected number of episodes.
             * ``n/st`` the collected number of steps.
-            * ``v/st`` the speed of steps per second.
-            * ``v/ep`` the speed of episode per second.
             * ``rew`` the mean reward over collected episodes.
             * ``len`` the mean length over collected episodes.
         """
@@ -324,7 +319,6 @@ class Collector(object):
                 finised_env_ind = np.where(done)[0]
                 # now we copy obs_next to obs, but since there might be finished episodes,
                 # we have to reset finished envs first.
-                # TODO might auto reset help?
                 obs_reset = self.env.reset(finised_env_ind)
                 if self.preprocess_fn:
                     obs_reset = self.preprocess_fn(
@@ -349,7 +343,6 @@ class Collector(object):
         self.collect_time += max(time.time() - start_time, 1e-9)
         if n_episode:
             self.reset_env()
-        # TODO change api in trainer and other collector usage
         return {
             "n/ep": episode_count,
             "n/st": step_count,

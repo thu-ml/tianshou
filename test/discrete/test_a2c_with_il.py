@@ -105,7 +105,7 @@ def test_a2c_with_il(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
 
     policy.eval()
     # here we define an imitation collector with a trivial policy
@@ -134,7 +134,7 @@ def test_a2c_with_il(args=get_args()):
         il_policy.eval()
         collector = Collector(il_policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
 
 
 if __name__ == '__main__':

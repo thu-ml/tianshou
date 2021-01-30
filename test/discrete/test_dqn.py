@@ -127,7 +127,7 @@ def test_dqn(args=get_args()):
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
 
     # save buffer in pickle format, for imitation learning unittest
     buf = ReplayBuffer(args.buffer_size)
