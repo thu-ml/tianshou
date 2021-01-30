@@ -140,21 +140,31 @@ class ReplayBuffer:
         end_flag = self.done[index] | np.isin(index, self.unfinished_index())
         return (index + (1 - end_flag)) % self._size
 
-    def update(self, buffer: "ReplayBuffer") -> None:
+    def update(self, buffer: "ReplayBuffer") -> np.ndarray:
         """Move the data from the given buffer to current buffer."""
         if len(buffer) == 0 or self.maxsize == 0:
             return
         stack_num, buffer.stack_num = buffer.stack_num, 1
-        save_only_last_obs = self._save_only_last_obs
-        self._save_only_last_obs = False
-        indices = buffer.sample_index(0)  # get all available indices
-        for i in indices:
-            self.add(**buffer[i])  # type: ignore
+        from_indices = buffer.sample_index(0)  # get all available indices
         buffer.stack_num = stack_num
-        self._save_only_last_obs = save_only_last_obs
+        if len(from_indices) == 0:
+            return
+        to_indices = []
+        for _ in range(len(from_indices)):
+            to_indices.append(self._index)
+            self._index = (self._index + 1) % self.maxsize
+            self._size = min(self._size + 1, self.maxsize)
+        to_indices = np.array(to_indices)
+        if self._meta.is_empty():
+            self._buffer_allocator([], buffer._meta[from_indices[0]])
+        self._meta[to_indices] = buffer._meta[from_indices]
+        return to_indices
 
     def _buffer_allocator(self, key: List[str], value: Any) -> None:
         """Allocate memory on buffer._meta for new (key, value) pair."""
+        if key == []:
+            self._meta = _create_value(value, self.maxsize)
+            return
         data = self._meta
         for k in key[:-1]:
             data = data[k]
@@ -363,7 +373,7 @@ class ListReplayBuffer(ReplayBuffer):
             if isinstance(self._meta[k], list):
                 self._meta.__dict__[k] = []
 
-    def update(self, buffer: ReplayBuffer) -> None:
+    def update(self, buffer: ReplayBuffer) -> np.ndarray:
         """The ListReplayBuffer cannot be updated by any buffer."""
         raise NotImplementedError
 
@@ -390,6 +400,10 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         # save weight directly in this class instead of self._meta
         self.weight = SegmentTree(size)
         self.__eps = np.finfo(np.float32).eps.item()
+
+    def update(self, buffer: ReplayBuffer) -> np.ndarray:
+        indices = super().update(buffer)
+        self.weight[indices] = self._max_prio ** self._alpha
 
     def add(
         self,
@@ -523,7 +537,7 @@ class ReplayBufferManager(ReplayBuffer):
                 next_indices[mask] = buf.next(index[mask] - offset) + offset
         return next_indices
 
-    def update(self, buffer: ReplayBuffer) -> None:
+    def update(self, buffer: ReplayBuffer) -> np.ndarray:
         """The ReplayBufferManager cannot be updated by any buffer."""
         raise NotImplementedError
 
@@ -554,18 +568,28 @@ class ReplayBufferManager(ReplayBuffer):
         """
         if buffer_ids is None:
             buffer_ids = np.arange(self.buffer_num)
-        # assume each element in buffer_ids is unique
-        assert np.bincount(buffer_ids).max() == 1
-        batch = Batch(obs=obs, act=act, rew=rew, done=done,
-                      obs_next=obs_next, info=info, policy=policy)
-        assert len(buffer_ids) == len(batch)
         episode_lengths = []  # (len(buffer_ids),)
         episode_rewards = []  # (len(buffer_ids), ...)
+        is_obs_next_empty = isinstance(obs_next, Batch) and obs_next.is_empty()
+        is_info_empty = isinstance(info, Batch) and info.is_empty()
+        is_policy_empty = isinstance(policy, Batch) and policy.is_empty()
         for batch_idx, buffer_id in enumerate(buffer_ids):
-            length, reward = self.buffers[buffer_id].add(**batch[batch_idx])
+            kwargs = {
+                "obs": obs[batch_idx],
+                "act": act[batch_idx],
+                "rew": rew[batch_idx],
+                "done": done[batch_idx],
+            }
+            if not is_obs_next_empty:
+                kwargs["obs_next"] = obs_next[batch_idx]
+            if not is_info_empty:
+                kwargs["info"] = info[batch_idx]
+            if not is_policy_empty:
+                kwargs["policy"] = policy[batch_idx]
+            length, reward = self.buffers[buffer_id].add(**kwargs)
             episode_lengths.append(length)
             episode_rewards.append(reward)
-        return np.stack(episode_lengths), np.stack(episode_rewards)
+        return np.array(episode_lengths), np.array(episode_rewards)
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         if batch_size < 0:

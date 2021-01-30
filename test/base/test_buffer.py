@@ -534,6 +534,8 @@ def test_multibuf_stack():
                  obs_next_list, info_list)
         buf5.add(obs_list, act_list, rew_list, done_list,
                  obs_next_list, info_list)
+        assert np.all(buf4.obs == buf5.obs)
+        assert np.all(buf4.done == buf5.done)
         obs = obs_next
         if done:
             obs = env.reset(1)
@@ -567,7 +569,6 @@ def test_multibuf_stack():
         [1, 1, 1, 2], [1, 1, 1, 2], [6, 6, 6, 7],
         [6, 6, 6, 7], [11, 11, 11, 12], [11, 11, 11, 12],
     ])
-    assert np.all(buf4.done == buf5.done)
     indice = buf5.sample_index(0)
     assert np.allclose(sorted(indice), [2, 7])
     assert np.all(np.isin(buf5.sample_index(100), indice))
