@@ -9,7 +9,7 @@ from timeit import timeit
 
 from tianshou.data.utils.converter import to_hdf5
 from tianshou.data import Batch, SegmentTree, ReplayBuffer
-from tianshou.data import ListReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data import PrioritizedReplayBuffer
 from tianshou.data import ReplayBufferManager, CachedReplayBuffer
 
 if __name__ == '__main__':
@@ -27,7 +27,7 @@ def test_replaybuffer(size=10, bufsize=20):
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, a in enumerate(action_list):
         obs_next, rew, done, info = env.step(a)
-        buf.add(obs, [a], rew, done, obs_next, info)
+        buf.add(Batch(obs=obs, act=[a], rew=rew, done=done, obs_next=obs_next, info=info))
         obs = obs_next
         assert len(buf) == min(bufsize, i + 1)
     with pytest.raises(ValueError):
@@ -53,9 +53,6 @@ def test_replaybuffer(size=10, bufsize=20):
     assert np.all(b.info.b.c[1:] == 0.0)
     with pytest.raises(IndexError):
         b[22]
-    b = ListReplayBuffer()
-    with pytest.raises(NotImplementedError):
-        b.sample(0)
 
 
 def test_ignore_obs_next(size=10):
@@ -158,9 +155,6 @@ def test_update():
     assert len(buf1) == len(buf2)
     assert (buf2[0].obs == buf1[1].obs).all()
     assert (buf2[-1].obs == buf1[0].obs).all()
-    b = ListReplayBuffer()
-    with pytest.raises(NotImplementedError):
-        b.update(b)
     b = CachedReplayBuffer(ReplayBuffer(10), 4, 5)
     with pytest.raises(NotImplementedError):
         b.update(b)
@@ -270,22 +264,17 @@ def test_segtree():
 def test_pickle():
     size = 100
     vbuf = ReplayBuffer(size, stack_num=2)
-    lbuf = ListReplayBuffer()
     pbuf = PrioritizedReplayBuffer(size, 0.6, 0.4)
     rew = np.array([1, 1])
     for i in range(4):
         vbuf.add(obs=Batch(index=np.array([i])), act=0, rew=rew, done=0)
-    for i in range(3):
-        lbuf.add(obs=Batch(index=np.array([i])), act=1, rew=rew, done=0)
     for i in range(5):
         pbuf.add(obs=Batch(index=np.array([i])),
                  act=2, rew=rew, done=0, weight=np.random.rand())
     # save & load
     _vbuf = pickle.loads(pickle.dumps(vbuf))
-    _lbuf = pickle.loads(pickle.dumps(lbuf))
     _pbuf = pickle.loads(pickle.dumps(pbuf))
     assert len(_vbuf) == len(vbuf) and np.allclose(_vbuf.act, vbuf.act)
-    assert len(_lbuf) == len(lbuf) and np.allclose(_lbuf.act, lbuf.act)
     assert len(_pbuf) == len(pbuf) and np.allclose(_pbuf.act, pbuf.act)
     # make sure the meta var is identical
     assert _vbuf.stack_num == vbuf.stack_num
@@ -297,7 +286,6 @@ def test_hdf5():
     size = 100
     buffers = {
         "array": ReplayBuffer(size, stack_num=2),
-        "list": ListReplayBuffer(),
         "prioritized": PrioritizedReplayBuffer(size, 0.6, 0.4),
     }
     buffer_types = {k: b.__class__ for k, b in buffers.items()}
