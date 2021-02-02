@@ -621,9 +621,9 @@ def test_multibuf_hdf5():
             'done': i % 3 == 2,
             'info': {"number": {"n": i, "t": info_t}, 'extra': None},
         }
-        buffers["vector"].add(**Batch.cat([[kwargs], [kwargs], [kwargs]]),
+        buffers["vector"].add(**Batch.stack([kwargs, kwargs, kwargs]),
                               buffer_ids=[0, 1, 2])
-        buffers["cached"].add(**Batch.cat([[kwargs], [kwargs], [kwargs]]),
+        buffers["cached"].add(**Batch.stack([kwargs, kwargs, kwargs]),
                               cached_buffer_ids=[0, 1, 2])
 
     # save
@@ -657,7 +657,7 @@ def test_multibuf_hdf5():
             'done': False,
             'info': {"number": {"n": i}, 'Timelimit.truncate': True},
         }
-        buffers[k].add(**Batch.cat([[kwargs], [kwargs], [kwargs], [kwargs]]))
+        buffers[k].add(**Batch.stack([kwargs, kwargs, kwargs, kwargs]))
         act = np.zeros(buffers[k].maxsize)
         if k == "vector":
             act[np.arange(5)] = np.array([0, 1, 2, 3, 5])

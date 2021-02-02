@@ -174,7 +174,7 @@ class ReplayBuffer:
                 )
         try:
             value[self._index] = inst
-        except KeyError:  # inst is a dict/Batch
+        except ValueError:  # inst is a dict/Batch
             for key in set(inst.keys()).difference(value.keys()):
                 self._buffer_allocator([name, key], inst[key])
             self._meta[name][self._index] = inst
