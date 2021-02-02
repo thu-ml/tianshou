@@ -250,7 +250,7 @@ class Batch:
         if isinstance(index, str):
             self.__dict__[index] = value
             return
-        if not isinstance(value, (dict, Batch)):
+        if not isinstance(value, Batch):
             raise ValueError("Batch does not supported tensor assignment. "
                              "Use a compatible Batch or dict instead.")
         if not set(value.keys()).issubset(self.__dict__.keys()):
