@@ -143,8 +143,10 @@ def test_batch():
     assert batch3.a.d.e[0] == 4.0
     batch3.a.d[0] = Batch(f=5.0)
     assert batch3.a.d.f[0] == 5.0
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         batch3.a.d[0] = Batch(f=5.0, g=0.0)
+    with pytest.raises(ValueError):
+        batch3[0] = Batch(a={"c": 2, "e": 1})
     # auto convert
     batch4 = Batch(a=np.array(['a', 'b']))
     assert batch4.a.dtype == np.object  # auto convert to np.object
