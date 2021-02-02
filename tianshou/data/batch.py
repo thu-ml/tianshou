@@ -445,6 +445,8 @@ class Batch:
         """Concatenate a list of (or one) Batch objects into current batch."""
         if isinstance(batches, Batch):
             batches = [batches]
+        batches = [x for x in batches if isinstance(
+            x, dict) and x or isinstance(x, Batch) and not x.is_empty()]
         if len(batches) == 0:
             return
         batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
