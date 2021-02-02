@@ -337,6 +337,10 @@ def test_batch_cat_and_stack():
     assert torch.allclose(test.b, ans.b)
     assert np.allclose(test.common.c, ans.common.c)
 
+    # test with illegal input format
+    assert Batch.cat([[Batch(a=1)], [Batch(a=1)]]).is_empty()
+    assert Batch.stack([[Batch(a=1)], [Batch(a=1)]]).is_empty()
+
     # exceptions
     assert Batch.cat([]).is_empty()
     assert Batch.stack([]).is_empty()
