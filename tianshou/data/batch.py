@@ -446,15 +446,21 @@ class Batch:
         """Concatenate a list of (or one) Batch objects into current batch."""
         if isinstance(batches, Batch):
             batches = [batches]
-        # filter out illegal input format, i.e., [[Batch(...)], [Batch(...)]]
-        batches = [x for x in batches if isinstance(
-            x, dict) and x or isinstance(x, Batch) and not x.is_empty()]
-        if len(batches) == 0:
+        # check input format
+        batch_list = []
+        for b in batches:
+            if isinstance(b, dict):
+                if len(b) > 0:
+                    batch_list.append(Batch(b))
+            elif isinstance(b, Batch):
+                # x.is_empty() means that x is Batch() and should be ignored
+                if not b.is_empty():
+                    batch_list.append(b)
+            else:
+                raise ValueError(f"Cannot concatenate {type(b)} in Batch.cat_")
+        if len(batch_list) == 0:
             return
-        batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
-
-        # x.is_empty() means that x is Batch() and should be ignored
-        batches = [x for x in batches if not x.is_empty()]
+        batches = batch_list
         try:
             # x.is_empty(recurse=True) here means x is a nested empty batch
             # like Batch(a=Batch), and we have to treat it as length zero and
@@ -496,12 +502,22 @@ class Batch:
         self, batches: Sequence[Union[dict, "Batch"]], axis: int = 0
     ) -> None:
         """Stack a list of Batch object into current batch."""
-        # filter out illegal input format, i.e., [[Batch(...)], [Batch(...)]]
-        batches = [x for x in batches if isinstance(
-            x, dict) and x or isinstance(x, Batch) and not x.is_empty()]
-        if len(batches) == 0:
+        # check input format
+        batch_list = []
+        for b in batches:
+            if isinstance(b, dict):
+                if len(b) > 0:
+                    batch_list.append(Batch(b))
+            elif isinstance(b, Batch):
+                # x.is_empty() means that x is Batch() and should be ignored
+                if not b.is_empty():
+                    batch_list.append(b)
+            else:
+                raise ValueError(
+                    f"Cannot concatenate {type(b)} in Batch.stack_")
+        if len(batch_list) == 0:
             return
-        batches = [x if isinstance(x, Batch) else Batch(x) for x in batches]
+        batches = batch_list
         if not self.is_empty():
             batches = [self] + batches
         # collect non-empty keys

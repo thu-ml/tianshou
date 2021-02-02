@@ -338,8 +338,10 @@ def test_batch_cat_and_stack():
     assert np.allclose(test.common.c, ans.common.c)
 
     # test with illegal input format
-    assert Batch.cat([[Batch(a=1)], [Batch(a=1)]]).is_empty()
-    assert Batch.stack([[Batch(a=1)], [Batch(a=1)]]).is_empty()
+    with pytest.raises(ValueError):
+        Batch.cat([[Batch(a=1)], [Batch(a=1)]])
+    with pytest.raises(ValueError):
+        Batch.stack([[Batch(a=1)], [Batch(a=1)]])
 
     # exceptions
     assert Batch.cat([]).is_empty()
