@@ -246,8 +246,9 @@ class Batch:
         value: Any,
     ) -> None:
         """Assign value to self[index]."""
+        value = _parse_value(value)
         if isinstance(index, str):
-            self.__dict__[index] = _parse_value(value)
+            self.__dict__[index] = value
             return
         if not isinstance(value, (dict, Batch)):
             raise ValueError("Batch does not supported tensor assignment. "
