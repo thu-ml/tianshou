@@ -177,18 +177,17 @@ class Batch:
         copy: bool = False,
         **kwargs: Any,
     ) -> None:
-        if batch_dict is None:
-            if len(kwargs) == 0:
-                return
-            batch_dict = kwargs
         if copy:
             batch_dict = deepcopy(batch_dict)
-        if isinstance(batch_dict, (dict, Batch)):
-            _assert_type_keys(batch_dict.keys())
-            for k, v in batch_dict.items():
-                self.__dict__[k] = _parse_value(v)
-        elif _is_batch_set(batch_dict):
-            self.stack_(batch_dict)
+        if batch_dict is not None:
+            if isinstance(batch_dict, (dict, Batch)):
+                _assert_type_keys(batch_dict.keys())
+                for k, v in batch_dict.items():
+                    self.__dict__[k] = _parse_value(v)
+            elif _is_batch_set(batch_dict):
+                self.stack_(batch_dict)
+        if len(kwargs) > 0:
+            self.__init__(kwargs, copy=copy)  # type: ignore
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""

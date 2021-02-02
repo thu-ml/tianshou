@@ -19,6 +19,8 @@ def test_batch():
     assert not Batch(a=np.float64(1.0)).is_empty()
     assert len(Batch(a=[1, 2, 3], b={'c': {}})) == 3
     assert not Batch(a=[1, 2, 3]).is_empty()
+    b = Batch({'a': [4, 4], 'b': [5, 5]}, c=[None, None])
+    assert b.c.dtype == np.object
     b = Batch()
     b.update()
     assert b.is_empty()
