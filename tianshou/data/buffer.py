@@ -577,6 +577,17 @@ class VectorReplayBuffer(ReplayBufferManager):
         super().__init__(buffer_list)
 
 
+class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
+    def __init__(
+        self, total_size: int, buffer_num: int, **kwargs: Any
+    ) -> None:
+        sizes = [total_size // buffer_num + (i < total_size % buffer_num)
+                 for i in range(buffer_num)]
+        buffer_list = [PrioritizedReplayBuffer(size, **kwargs)
+                       for size in sizes]
+        super().__init__(buffer_list)
+
+
 class CachedReplayBuffer(ReplayBufferManager):
     """CachedReplayBuffer contains a given main buffer and n cached buffers, \
     cached_buffer_num * ReplayBuffer(size=max_episode_length).

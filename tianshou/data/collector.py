@@ -11,8 +11,10 @@ from tianshou.policy import BasePolicy
 from tianshou.exploration import BaseNoise
 from tianshou.data.batch import _create_value
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
-from tianshou.data import Batch, ReplayBuffer, \
-    ReplayBufferManager, CachedReplayBuffer, to_numpy
+from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, \
+    ReplayBufferManager, PrioritizedReplayBufferManager, \
+    VectorReplayBuffer, PrioritizedVectorReplayBuffer, CachedReplayBuffer, \
+    to_numpy
 
 
 class Collector(object):

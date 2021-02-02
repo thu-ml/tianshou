@@ -10,7 +10,7 @@ from timeit import timeit
 from tianshou.data.utils.converter import to_hdf5
 from tianshou.data import Batch, SegmentTree, ReplayBuffer
 from tianshou.data import PrioritizedReplayBuffer
-from tianshou.data import ReplayBufferManager, CachedReplayBuffer
+from tianshou.data import VectorReplayBuffer, CachedReplayBuffer
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -352,7 +352,7 @@ def test_hdf5():
 
 
 def test_replaybuffermanager():
-    buf = ReplayBufferManager([ReplayBuffer(size=5) for i in range(4)])
+    buf = VectorReplayBuffer(20, 4)
     batch = Batch(obs=[1, 2, 3], act=[1, 2, 3], rew=[1, 2, 3], done=[0, 0, 1])
     ptr, ep_rew, ep_len, ep_idx = buf.add(batch, buffer_ids=[0, 1, 2])
     assert np.all(ep_len == [0, 0, 1]) and np.all(ep_rew == [0, 0, 3])
@@ -617,7 +617,7 @@ def test_multibuf_stack():
 def test_multibuf_hdf5():
     size = 100
     buffers = {
-        "vector": ReplayBufferManager([ReplayBuffer(size) for i in range(4)]),
+        "vector": VectorReplayBuffer(size * 4, 4),
         "cached": CachedReplayBuffer(ReplayBuffer(size), 4, size)
     }
     buffer_types = {k: b.__class__ for k, b in buffers.items()}
@@ -654,7 +654,7 @@ def test_multibuf_hdf5():
         assert _buffers[k].stack_num == buffers[k].stack_num
         assert _buffers[k].maxsize == buffers[k].maxsize
         assert np.all(_buffers[k]._indices == buffers[k]._indices)
-    # check shallow copy in ReplayBufferManager
+    # check shallow copy in VectorReplayBuffer
     for k in ["vector", "cached"]:
         buffers[k].info.number.n[0] = -100
         assert buffers[k].buffers[0].info.number.n[0] == -100
