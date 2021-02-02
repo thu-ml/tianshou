@@ -85,6 +85,7 @@ def _create_value(
     has_shape = isinstance(inst, (np.ndarray, torch.Tensor))
     is_scalar = _is_scalar(inst)
     if not stack and is_scalar:
+        # _create_value(Batch(a={}, b=[1, 2, 3]), 10, False) will fail here
         if isinstance(inst, Batch) and inst.is_empty(recurse=True):
             return inst
         # should never hit since it has already checked in Batch.cat_
@@ -445,6 +446,7 @@ class Batch:
         """Concatenate a list of (or one) Batch objects into current batch."""
         if isinstance(batches, Batch):
             batches = [batches]
+        # filter out illegal input format, i.e., [[Batch(...)], [Batch(...)]]
         batches = [x for x in batches if isinstance(
             x, dict) and x or isinstance(x, Batch) and not x.is_empty()]
         if len(batches) == 0:
@@ -494,6 +496,7 @@ class Batch:
         self, batches: Sequence[Union[dict, "Batch"]], axis: int = 0
     ) -> None:
         """Stack a list of Batch object into current batch."""
+        # filter out illegal input format, i.e., [[Batch(...)], [Batch(...)]]
         batches = [x for x in batches if isinstance(
             x, dict) and x or isinstance(x, Batch) and not x.is_empty()]
         if len(batches) == 0:
