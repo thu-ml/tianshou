@@ -197,9 +197,17 @@ class ReplayBuffer:
             return ptr, self._ep_rew * 0.0, 0, self._ep_idx
 
     def add(
-        self, batch: Batch
-    ) -> Tuple[int, Union[float, np.ndarray], int, int]:
+        self,
+        batch: Batch,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into replay buffer.
+
+        :param Batch batch: the input data batch. Its keys must belong to the 7
+            reserved keys, and "obs", "act", "rew", "done" is required.
+        :param buffer_ids: to make consistent with other buffer's add function;
+            if it is not None, we assume the input batch's first dimension is
+            always 1.
 
         Return (current_index, episode_reward, episode_length,
         episode_start_index). If the episode is not finished, the return value
@@ -208,23 +216,33 @@ class ReplayBuffer:
         # preprocess batch
         assert set(batch.keys()).issubset(self._reserved_keys)
         assert set(["obs", "act", "rew", "done"]).issubset(batch.keys())
+        stacked_batch = buffer_ids is not None
+        if stacked_batch:
+            assert len(batch) == 1
         if self._save_only_last_obs:
-            batch.obs = batch.obs[-1]
-        batch.rew = batch.rew.astype(np.float)
-        batch.done = batch.done.astype(np.bool_)
+            batch.obs = batch.obs[:, -1] if stacked_batch else batch.obs[-1]
         if not self._save_obs_next:
             batch.pop("obs_next", None)
         elif self._save_only_last_obs:
-            batch.obs_next = batch.obs_next[-1]
+            batch.obs_next = \
+                batch.obs_next[:, -1] if stacked_batch else batch.obs_next[-1]
         # get ptr
-        ptr, ep_rew, ep_len, ep_idx = self._add_index(batch.rew, batch.done)
+        if stacked_batch:
+            rew, done = batch.rew[0], batch.done[0]
+        else:
+            rew, done = batch.rew, batch.done
+        ptr, ep_rew, ep_len, ep_idx = list(map(
+            lambda x: np.array([x]), self._add_index(rew, done)))
         try:
             self._meta[ptr] = batch
         except ValueError:
+            stack = not stacked_batch
+            batch.rew = batch.rew.astype(np.float)
+            batch.done = batch.done.astype(np.bool_)
             if self._meta.is_empty():
-                self._meta = _create_value(batch, self.maxsize)
+                self._meta = _create_value(batch, self.maxsize, stack)
             else:  # dynamic key pops up in batch
-                _alloc_by_keys_diff(self._meta, batch, self.maxsize)
+                _alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
             self._meta[ptr] = batch
         return ptr, ep_rew, ep_len, ep_idx
 
@@ -360,9 +378,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.init_weight(indices)
 
     def add(
-        self, batch: Batch
-    ) -> Tuple[int, Union[float, np.ndarray], int, int]:
-        ptr, ep_rew, ep_len, ep_idx = super().add(batch)
+        self,
+        batch: Batch,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        ptr, ep_rew, ep_len, ep_idx = super().add(batch, buffer_ids)
         self.init_weight(ptr)
         return ptr, ep_rew, ep_len, ep_idx
 
@@ -500,8 +520,6 @@ class ReplayBufferManager(ReplayBuffer):
         assert set(["obs", "act", "rew", "done"]).issubset(batch.keys())
         if self._save_only_last_obs:
             batch.obs = batch.obs[:, -1]
-        batch.rew = batch.rew.astype(np.float)
-        batch.done = batch.done.astype(np.bool_)
         if not self._save_obs_next:
             batch.pop("obs_next", None)
         elif self._save_only_last_obs:
@@ -521,6 +539,8 @@ class ReplayBufferManager(ReplayBuffer):
         try:
             self._meta[ptrs] = batch
         except ValueError:
+            batch.rew = batch.rew.astype(np.float)
+            batch.done = batch.done.astype(np.bool_)
             if self._meta.is_empty():
                 self._meta = _create_value(batch, self.maxsize, stack=False)
             else:  # dynamic key pops up in batch
@@ -632,36 +652,35 @@ class CachedReplayBuffer(ReplayBufferManager):
     def add(
         self,
         batch: Batch,
-        cached_buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into CachedReplayBuffer.
 
         Each of the data's length (first dimension) must equal to the length of
-        cached_buffer_ids. By default the cached_buffer_ids is [0, 1, ...,
-        cached_buffer_num - 1].
+        buffer_ids. By default the buffer_ids is [0, 1, ..., cached_buffer_num
+        - 1].
 
         Return (current_index, episode_reward, episode_length,
-        episode_start_index) with each of the shape (len(cached_buffer_ids),
-        ...), where (current_index[i], episode_reward[i], episode_length[i],
+        episode_start_index) with each of the shape (len(buffer_ids), ...),
+        where (current_index[i], episode_reward[i], episode_length[i],
         episode_start_index[i]) refers to the cached_buffer_ids[i]th cached
         buffer's corresponding episode result.
         """
-        if cached_buffer_ids is None:
-            cached_buffer_ids = np.arange(self.cached_buffer_num)
+        if buffer_ids is None:
+            buffer_ids = np.arange(1, 1 + self.cached_buffer_num)
         else:  # make sure it is np.ndarray
-            cached_buffer_ids = np.asarray(cached_buffer_ids)
-        # in self.buffers, the first buffer is main_buffer
-        buffer_ids = cached_buffer_ids + 1  # type: ignore
+            buffer_ids = np.asarray(buffer_ids) + 1
         ptr, ep_rew, ep_len, ep_idx = super().add(batch, buffer_ids=buffer_ids)
         # find the terminated episode, move data from cached buf to main buf
         updated_ptr, updated_ep_idx = [], []
-        for buffer_idx in cached_buffer_ids[batch.done]:
-            index = self.main_buffer.update(self.cached_buffers[buffer_idx])
+        done = batch.done.astype(np.bool_)
+        for buffer_idx in buffer_ids[done]:
+            index = self.main_buffer.update(self.buffers[buffer_idx])
             if len(index) == 0:  # unsuccessful move, replace with -1
                 index = [-1]
             updated_ep_idx.append(index[0])
             updated_ptr.append(index[-1])
-            self.cached_buffers[buffer_idx].reset()
-        ptr[batch.done] = updated_ptr
-        ep_idx[batch.done] = updated_ep_idx
+            self.buffers[buffer_idx].reset()
+        ptr[done] = updated_ptr
+        ep_idx[done] = updated_ep_idx
         return ptr, ep_rew, ep_len, ep_idx

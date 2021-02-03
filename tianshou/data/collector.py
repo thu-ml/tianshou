@@ -12,13 +12,11 @@ from tianshou.exploration import BaseNoise
 from tianshou.data.batch import _create_value
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer, \
-    ReplayBufferManager, PrioritizedReplayBufferManager, \
-    VectorReplayBuffer, PrioritizedVectorReplayBuffer, CachedReplayBuffer, \
-    to_numpy
+    ReplayBufferManager, CachedReplayBuffer, to_numpy
 
 
 class Collector(object):
-    #TODO change doc
+    # TODO change doc
     """Collector enables the policy to interact with different types of envs.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
@@ -79,16 +77,15 @@ class Collector(object):
 
         Please make sure the given environment has a time limitation.
     """
+
     def __init__(
         self,
         policy: BasePolicy,
         env: Union[gym.Env, BaseVectorEnv],
         buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
-        training: bool = False,
         reward_metric: Optional[Callable[[np.ndarray], float]] = None,
     ) -> None:
-        # TODO determine whether we need start_idxs
         # TODO update training in all test/examples, remove action noise
         super().__init__()
         if not isinstance(env, BaseVectorEnv):
@@ -97,7 +94,7 @@ class Collector(object):
         assert env.is_async is False
         self.env = env
         self.env_num = len(env)
-        self.training = training
+        self._save_data = buffer is not None
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
@@ -107,37 +104,27 @@ class Collector(object):
         self.reset()
 
     def _assign_buffer(self, buffer: Optional[ReplayBuffer]) -> None:
-        if not hasattr(self.env, "_max_episode_steps"):
-            warnings.warn("No time limit found in given env, set to 100000.")
-            max_episode_steps = 100000
-        else:
-            max_episode_steps = self.env._max_episode_steps[0]
         if buffer is None:
-            self.buffer = CachedReplayBuffer(
-                ReplayBuffer(0), self.env_num, max_episode_steps)
+            self.buffer = VectorReplayBuffer(self.env_num, self.env_num)
         elif isinstance(buffer, ReplayBufferManager):
-            if type(self.buffer) == ReplayBufferManager:
-                if self.training:
-                    warnings.warn("ReplayBufferManager is not suggested to be used"
-                    "in training mode, make sure you know how it works.")
-                self.buffer.cached_buffers = self.buffer.buffers
-                self.buffer.cached_buffer_num = self.buffer.buffer_num
-            assert self.buffer.cached_buffer_num == self.env_num
-            if self.buffer.cached_buffers[0].maxsize < max_episode_steps:
-                warnings.warn(
-                    "The size of cached_buffer is suggested to be larger than "
-                    "max episode length. Otherwise you might"
-                    "loss data of episodes you just collected, and statistics "
-                    "might even be incorrect.", Warning)
-        else:  # type ReplayBuffer
+            assert self.buffer.buffer_num >= self.env_num
+            if isinstance(buffer, CachedReplayBuffer):
+                assert self.buffer.cached_buffer_num >= self.env_num
+        else:  # ReplayBuffer or PrioritizedReplayBuffer
             assert self.buffer.maxsize > 0
-            if self.env_num != 1:
-                warnings.warn(
-                    "CachedReplayBuffer/ReplayBufferManager rather than ReplayBuffer"
-                    "is required in collector when #env > 1. Input buffer is switched"
-                    "to CachedReplayBuffer.", Warning)
-                self.buffer = CachedReplayBuffer(buffer,
-                                                 self.env_num, max_episode_steps)
+            if self.env_num > 1:
+                if type(buffer) == ReplayBuffer:
+                    buffer_type = "ReplayBuffer"
+                    vector_type = "VectorReplayBuffer"
+                else:
+                    buffer_type = "PrioritizedReplayBuffer"
+                    vector_type = "PrioritizedVectorReplayBuffer"
+                raise TypeError(
+                    f"Cannot use {buffer_type}(size={buffer.maxsize}, ...) to "
+                    f"collect {self.env_num} envs, please use {vector_type}("
+                    f"total_size={buffer.maxsize}, buffer_num={self.env_num}, "
+                    "...) instead.")
+            self.buffer = buffer
 
     @staticmethod
     def _default_rew_metric(
@@ -147,16 +134,15 @@ class Collector(object):
         # for multi-agent RL, a reward_metric must be provided
         assert np.asanyarray(x).size == 1, (
             "Please specify the reward_metric "
-            "since the reward is not a scalar."
-        )
+            "since the reward is not a scalar.")
         return x
 
     def reset(self) -> None:
         """Reset all related variables in the collector."""
-        # use empty Batch for ``state`` so that ``self.data`` supports slicing
+        # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
-        self.data = Batch(state={}, obs={}, act={}, rew={}, done={}, info={},
-                          obs_next={}, policy={})
+        self.data = Batch(obs={}, act={}, rew={}, done={}, obs_next={},
+                          info={}, policy={})
         self.reset_env()
         self.reset_buffer()
         self.reset_stat()
@@ -166,7 +152,7 @@ class Collector(object):
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
 
     def reset_buffer(self) -> None:
-        """Reset the main data buffer."""
+        """Reset the data buffer."""
         self.buffer.reset()
 
     def reset_env(self) -> None:
@@ -175,7 +161,7 @@ class Collector(object):
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get("obs", obs)
         self.data.obs = obs
-        if hasattr(self.buffer, "cached_buffers"):
+        if isinstance(self.buffer, CachedReplayBuffer):
             for buf in self.buffer.cached_buffers:
                 buf.reset()
 
@@ -188,7 +174,7 @@ class Collector(object):
             state[id] = None if state.dtype == np.object else 0
         elif isinstance(state, Batch):
             state.empty_(id)
-    
+
     def collect(
         self,
         n_step: Optional[int] = None,
@@ -197,20 +183,16 @@ class Collector(object):
         render: Optional[float] = None,
         no_grad: bool = True,
     ) -> Dict[str, float]:
-        #TODO doc update
         """Collect a specified number of step or episode.
 
         :param int n_step: how many steps you want to collect.
-        :param n_episode: how many episodes you want to collect. If it is an
-            int, it means to collect at lease ``n_episode`` episodes; if it is
-            a list, it means to collect exactly ``n_episode[i]`` episodes in
-            the i-th environment
-        :param bool random: whether to use random policy for collecting data,
-            defaults to False.
+        :param n_episode: how many episodes you want to collect.
+        :param bool random: whether to use random policy for collecting data.
+            Default to False.
         :param float render: the sleep time between rendering consecutive
-            frames, defaults to None (no rendering).
-        :param bool no_grad: whether to retain gradient in policy.forward,
-            defaults to True (no gradient retaining).
+            frames. Default to None (no rendering).
+        :param bool no_grad: whether to retain gradient in policy.forward.
+            Default to True (no gradient retaining).
 
         .. note::
 
@@ -221,17 +203,21 @@ class Collector(object):
 
             * ``n/ep`` the collected number of episodes.
             * ``n/st`` the collected number of steps.
-            * ``rew`` the mean reward over collected episodes.
-            * ``len`` the mean length over collected episodes.
+            * ``rews`` the list of episode reward over collected episodes.
+            * ``lens`` the list of episode length over collected episodes.
         """
-        #collect at least n_step or n_episode
+        # collect at least n_step or n_episode
         if n_step is not None:
-            assert n_episode is None, "Only one of n_step or n_episode is allowed "
-            f"in Collector.collect, got n_step = {n_step}, n_episode = {n_episode}."
-            assert n_step > 0 and n_step % self.env_num == 0, \
-            "n_step must not be 0, and should be an integral multiple of #envs"
+            assert n_episode is None, (
+                "Only one of n_step or n_episode is allowed in "
+                f"Collector.collect, got n_step = {n_step}, "
+                f"n_episode = {n_episode}.")
+            assert n_step > 0
+            assert n_step % self.env_num == 0, \
+                "n_step should be a multiple of #envs"
         else:
             assert isinstance(n_episode, int) and n_episode > 0
+
         start_time = time.time()
 
         step_count = 0
@@ -239,35 +225,27 @@ class Collector(object):
         episode_count = 0
         episode_rews = []
         episode_lens = []
-        # start_idxs = []
-        cached_buffer_ids = [i for i in range(self.env_num)]
+        episode_start_indices = []
+        buffer_ids = list(range(self.env_num))
 
         while True:
-            if step_count >= 100000 and episode_count == 0:
-                warnings.warn(
-                    "There are already many steps in an episode. "
-                    "You should add a time limitation to your environment!",
-                    Warning)
-
             # restore the state and the input data
             last_state = self.data.state
             if isinstance(last_state, Batch) and last_state.is_empty():
                 last_state = None
 
-            # calculate the next action and update state, act & policy into self.data
+            # calc the next action / update state / act / policy into self.data
             if random:
-                spaces = self._action_space
-                result = Batch(
-                    act=[spaces[i].sample() for i in range(self.env_num)])
+                result = Batch(act=[a.sample() for a in self._action_space])
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than retain_grad version
-                        # self.data.obs will be used by agent to get result(mainly action)
+                        # self.data.obs will be used by agent to get result
                         result = self.policy(self.data, last_state)
                 else:
                     result = self.policy(self.data, last_state)
 
-            state = result.get("state", Batch())
+            state = result.get("state", None)
             policy = result.get("policy", Batch())
             act = to_numpy(result.act)
             if state is None:
@@ -276,16 +254,17 @@ class Collector(object):
             if not (isinstance(state, Batch) and state.is_empty()):
                 # save hidden state to policy._state, in order to save into buffer
                 policy._state = state
-            
+
             # TODO discuss and change policy's add_exp_noise behavior
             if self.training and not random and hasattr(self.policy, 'add_exp_noise'):
                 act = self.policy.add_exp_noise(act)
-            self.data.update(state=state, policy = policy, act = act)
+            self.data.update(state=state, policy=policy, act=act)
 
             # step in env
             obs_next, rew, done, info = self.env.step(act)
 
-            result = {"obs_next":obs_next, "rew":rew, "done":done, "info":info}
+            result = {"obs_next": obs_next,
+                      "rew": rew, "done": done, "info": info}
             if self.preprocess_fn:
                 result = self.preprocess_fn(**result)  # type: ignore
 
@@ -299,12 +278,12 @@ class Collector(object):
             # add data into the buffer
             data_t = self.data
             if n_episode and len(cached_buffer_ids) < self.env_num:
-                data_t  = self.data[cached_buffer_ids]
+                data_t = self.data[cached_buffer_ids]
             if type(self.buffer) == ReplayBuffer:
                 data_t = data_t[0]
             # lens, rews, idxs = self.buffer.add(**data_t, index = cached_buffer_ids)
             # rews need to be array for ReplayBuffer
-            lens, rews = self.buffer.add(**data_t, index = cached_buffer_ids)
+            lens, rews = self.buffer.add(**data_t, index=cached_buffer_ids)
             if type(self.buffer) == ReplayBuffer:
                 lens = np.asarray(lens)
                 rews = np.asarray(rews)
@@ -337,7 +316,7 @@ class Collector(object):
 
             if (n_step and step_count >= n_step) or \
                (n_episode and episode_count >= n_episode):
-               break
+                break
 
         # generate the statistics
         self.collect_step += step_count

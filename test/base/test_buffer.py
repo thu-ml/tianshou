@@ -40,8 +40,9 @@ def test_replaybuffer(size=10, bufsize=20):
     b = ReplayBuffer(size=10)
     # neg bsz should return empty index
     assert b.sample_index(-1).tolist() == []
-    b.add(Batch(obs=1, act=1, rew=1, done=1,
-                obs_next='str', info={'a': 3, 'b': {'c': 5.0}}))
+    ptr, ep_rew, ep_len, ep_idx = b.add(
+        Batch(obs=1, act=1, rew=1, done=1, obs_next='str',
+              info={'a': 3, 'b': {'c': 5.0}}))
     assert b.obs[0] == 1
     assert b.done[0]
     assert b.obs_next[0] == 'str'
@@ -51,13 +52,29 @@ def test_replaybuffer(size=10, bufsize=20):
     assert np.all(b.info.a[1:] == 0)
     assert b.info.b.c[0] == 5.0 and b.info.b.c.dtype == np.inexact
     assert np.all(b.info.b.c[1:] == 0.0)
+    assert ptr.shape == (1,) and ptr[0] == 0
+    assert ep_rew.shape == (1,) and ep_rew[0] == 1
+    assert ep_len.shape == (1,) and ep_len[0] == 1
+    assert ep_idx.shape == (1,) and ep_idx[0] == 0
     # test extra keys pop up, the buffer should handle it dynamically
-    b.add(Batch(obs=2, act=2, rew=2, done=0, obs_next="str2",
-                info={"a": 4, "d": {"e": -np.inf}}))
+    batch = Batch(obs=2, act=2, rew=2, done=0, obs_next="str2",
+                  info={"a": 4, "d": {"e": -np.inf}})
+    b.add(batch)
     info_keys = ["a", "b", "d"]
     assert set(b.info.keys()) == set(info_keys)
     assert b.info.a[1] == 4 and b.info.b.c[1] == 0
     assert b.info.d.e[1] == -np.inf
+    # test batch-style adding method, where len(batch) == 1
+    batch.done = 1
+    batch.info.e = np.zeros([1, 4])
+    batch = Batch.stack([batch])
+    ptr, ep_rew, ep_len, ep_idx = b.add(batch, buffer_ids=[0])
+    assert ptr.shape == (1,) and ptr[0] == 2
+    assert ep_rew.shape == (1,) and ep_rew[0] == 4
+    assert ep_len.shape == (1,) and ep_len[0] == 2
+    assert ep_idx.shape == (1,) and ep_idx[0] == 1
+    assert set(b.info.keys()) == set(info_keys + ["e"])
+    assert b.info.e.shape == (b.maxsize, 1, 4)
     with pytest.raises(IndexError):
         b[22]
 
@@ -138,8 +155,9 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, a in enumerate(action_list):
         obs_next, rew, done, info = env.step(a)
-        buf.add(Batch(obs=obs, act=a, rew=rew, done=done, obs_next=obs_next,
-                      info=info, policy=np.random.randn() - 0.5))
+        batch = Batch(obs=obs, act=a, rew=rew, done=done, obs_next=obs_next,
+                      info=info, policy=np.random.randn() - 0.5)
+        buf.add(Batch.stack([batch]), buffer_ids=[0])
         obs = obs_next
         data, indice = buf.sample(len(buf) // 2)
         if len(buf) // 2 == 0:
@@ -147,6 +165,9 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
         else:
             assert len(data) == len(buf) // 2
         assert len(buf) == min(bufsize, i + 1)
+    assert buf.info.key.shape == (buf.maxsize,)
+    assert buf.rew.dtype == np.float
+    assert buf.done.dtype == np.bool_
     data, indice = buf.sample(len(buf) // 2)
     buf.update_weight(indice, -data.weight / 2)
     assert np.allclose(
@@ -450,7 +471,7 @@ def test_cachedbuffer():
     assert buf.sample_index(0).tolist() == []
     # check the normal function/usage/storage in CachedReplayBuffer
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[1], act=[1], rew=[1], done=[0]), cached_buffer_ids=[1])
+        Batch(obs=[1], act=[1], rew=[1], done=[0]), buffer_ids=[1])
     obs = np.zeros(buf.maxsize)
     obs[15] = 1
     indice = buf.sample_index(0)
@@ -461,7 +482,7 @@ def test_cachedbuffer():
     assert np.all(ep_len == [0]) and np.all(ep_rew == [0.0])
     assert np.all(ptr == [15]) and np.all(ep_idx == [15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[2], act=[2], rew=[2], done=[1]), cached_buffer_ids=[3])
+        Batch(obs=[2], act=[2], rew=[2], done=[1]), buffer_ids=[3])
     obs[[0, 25]] = 2
     indice = buf.sample_index(0)
     assert np.allclose(indice, [0, 15])
@@ -474,7 +495,7 @@ def test_cachedbuffer():
     assert np.allclose(buf.sample_index(0), [0, 15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
         Batch(obs=[3, 4], act=[3, 4], rew=[3, 4], done=[0, 1]),
-        cached_buffer_ids=[3, 1])
+        buffer_ids=[3, 1])
     assert np.all(ep_len == [0, 2]) and np.all(ep_rew == [0, 5.0])
     assert np.all(ptr == [25, 2]) and np.all(ep_idx == [25, 1])
     obs[[0, 1, 2, 15, 16, 25]] = [2, 1, 4, 1, 4, 3]
@@ -606,7 +627,7 @@ def test_multibuf_stack():
         cached_num, size)
     obs = np.random.rand(size, 4, 84, 84)
     buf6.add(Batch(obs=[obs[2], obs[0]], act=[1, 1], rew=[0, 0], done=[0, 1],
-                   obs_next=[obs[3], obs[1]]), cached_buffer_ids=[1, 2])
+                   obs_next=[obs[3], obs[1]]), buffer_ids=[1, 2])
     assert buf6.obs.shape == (buf6.maxsize, 84, 84)
     assert np.allclose(buf6.obs[0], obs[0, -1])
     assert np.allclose(buf6.obs[14], obs[2, -1])
@@ -634,7 +655,7 @@ def test_multibuf_hdf5():
         buffers["vector"].add(Batch.stack([kwargs, kwargs, kwargs]),
                               buffer_ids=[0, 1, 2])
         buffers["cached"].add(Batch.stack([kwargs, kwargs, kwargs]),
-                              cached_buffer_ids=[0, 1, 2])
+                              buffer_ids=[0, 1, 2])
 
     # save
     paths = {}
