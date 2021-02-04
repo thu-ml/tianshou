@@ -92,7 +92,6 @@ class Collector(object):
         self.env = env
         self.env_num = len(env)
         self.training = training
-        self._save_data = buffer is not None
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
@@ -101,13 +100,14 @@ class Collector(object):
         self.reset()
 
     def _assign_buffer(self, buffer: Optional[ReplayBuffer]) -> None:
+        max_episode_steps = self.env._max_episode_steps[0]
         if buffer is None:
-            self.buffer = VectorReplayBuffer(self.env_num, self.env_num)
+            buffer = VectorReplayBuffer(
+                self.env_num * 1, self.env_num)
         elif isinstance(buffer, ReplayBufferManager):
             assert buffer.buffer_num >= self.env_num
             if isinstance(buffer, CachedReplayBuffer):
                 assert buffer.cached_buffer_num >= self.env_num
-            self.buffer = buffer
         else:  # ReplayBuffer or PrioritizedReplayBuffer
             assert buffer.maxsize > 0
             if self.env_num > 1:
@@ -122,7 +122,7 @@ class Collector(object):
                     f"collect {self.env_num} envs,\n\tplease use {vector_type}"
                     f"(total_size={buffer.maxsize}, buffer_num={self.env_num},"
                     " ...) instead.")
-            self.buffer = buffer
+        self.buffer =buffer
 
     # TODO move to trainer
     # @staticmethod
@@ -156,7 +156,6 @@ class Collector(object):
 
     def reset_env(self) -> None:
         """Reset all of the environment(s)' states and the cache buffers."""
-        self._ready_env_ids = np.arange(self.env_num)
         obs = self.env.reset()
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get("obs", obs)
@@ -218,26 +217,27 @@ class Collector(object):
             assert n_step % self.env_num == 0, \
                 "n_step should be a multiple of #envs"
         else:
-            assert isinstance(n_episode, int) and n_episode >= self.env_num
-
+            assert n_episode > 0
         start_time = time.time()
 
         step_count = 0
-        # episode of each environment
         episode_count = 0
         episode_rews = []
         episode_lens = []
         episode_start_indices = []
 
+        ready_env_ids = np.arange(min(self.env_num, n_episode))
+        self.data = self.data[:min(self.env_num, n_episode)]
+
         while True:
-            assert len(self.data) == len(self._ready_env_ids)
+            assert len(self.data) == len(ready_env_ids)
             # restore the state: if the last state is None, it won't store
             last_state = self.data.policy.pop("hidden_state", None)
 
             # get the next action
             if random:
                 result = Batch(act=[self._action_space[i].sample()
-                                    for i in self._ready_env_ids])
+                                    for i in ready_env_ids])
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than retain_grad version
@@ -258,7 +258,7 @@ class Collector(object):
 
             # step in env
             obs_next, rew, done, info = self.env.step(
-                act, id=self._ready_env_ids)
+                act, id=ready_env_ids)
 
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
             if self.preprocess_fn:
@@ -276,14 +276,14 @@ class Collector(object):
 
             # add data into the buffer
             ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
-                self.data, buffer_ids=self._ready_env_ids)
+                self.data, buffer_ids=ready_env_ids)
 
             # collect statistics
-            step_count += len(self._ready_env_ids)
+            step_count += len(ready_env_ids)
 
             if np.any(done):
                 env_ind_local = np.where(done)[0]
-                env_ind_global = self._ready_env_ids[env_ind_local]
+                env_ind_global = ready_env_ids[env_ind_local]
                 episode_count += len(env_ind_local)
                 episode_lens.append(ep_len[env_ind_local])
                 episode_rews.append(ep_rew[env_ind_local])
@@ -297,16 +297,12 @@ class Collector(object):
                 self.data.obs_next[env_ind_local] = obs_reset
                 for i in env_ind_local:
                     self._reset_state(i)
-                if n_episode:
-                    diff = episode_count + self.env_num - n_episode
-                    if diff > 0:
-                        if len(env_ind_global) > diff:
-                            env_ind_global = np.random.choice(
-                                env_ind_global, diff, replace=False)
-                        mask = ~np.isin(self._ready_env_ids, env_ind_global)
-                        self._ready_env_ids = self._ready_env_ids[mask]
-                        self.data = self.data[mask]
-
+                surplus_env_n = len(ready_env_ids) - (n_episode - episode_count)
+                if n_episode and surplus_env_n > 0:
+                    mask = np.ones_like(ready_env_ids, np.bool)
+                    mask[env_ind_local[:surplus_env_n]] = False
+                    ready_env_ids = ready_env_ids[mask]
+                    self.data = self.data[mask]
             self.data.obs = self.data.obs_next
 
             if (n_step and step_count >= n_step) or \
