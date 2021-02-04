@@ -1,8 +1,6 @@
 import h5py
 import torch
-import warnings
 import numpy as np
-from numbers import Number
 from typing import Any, Dict, List, Tuple, Union, Optional
 
 from tianshou.data.batch import _create_value

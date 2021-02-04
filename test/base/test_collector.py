@@ -387,7 +387,7 @@ def test_collector_with_atari_setting():
     buf = ReplayBuffer(100, stack_num=4, ignore_obs_next=True,
                        save_only_last_obs=True)
     c5 = Collector(policy, envs, CachedReplayBuffer(buf, 4, 10))
-    c5.collect(n_step=12)
+    result_ = c5.collect(n_step=12)
     assert len(buf) == 5 and len(c5.buffer) == 12
     result = c5.collect(n_episode=9)
     assert result["n/ep"] == 9 and result["n/st"] == 23
@@ -399,6 +399,15 @@ def test_collector_with_atari_setting():
         1, 1, 1, 2, 2, 1, 1, 1, 2, 3, 3, 1, 2, 3, 4, 4,
         1, 1, 1, 2, 2, 1, 1, 1, 2, 3, 3, 1, 2, 2, 1, 2, 3, 4, 4]])
     assert len(buf) == len(c5.buffer)
+
+    # test buffer=None
+    c6 = Collector(policy, envs)
+    result1 = c6.collect(n_step=12)
+    for key in ["n/ep", "n/st", "rews", "lens"]:
+        assert np.allclose(result1[key], result_[key])
+    result2 = c6.collect(n_episode=9)
+    for key in ["n/ep", "n/st", "rews", "lens"]:
+        assert np.allclose(result2[key], result[key])
 
 
 if __name__ == '__main__':
