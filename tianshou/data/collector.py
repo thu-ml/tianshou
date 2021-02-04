@@ -119,9 +119,9 @@ class Collector(object):
                     vector_type = "PrioritizedVectorReplayBuffer"
                 raise TypeError(
                     f"Cannot use {buffer_type}(size={buffer.maxsize}, ...) to "
-                    f"collect {self.env_num} envs, please use {vector_type}("
-                    f"total_size={buffer.maxsize}, buffer_num={self.env_num}, "
-                    "...) instead.")
+                    f"collect {self.env_num} envs,\n\tplease use {vector_type}"
+                    f"(total_size={buffer.maxsize}, buffer_num={self.env_num},"
+                    " ...) instead.")
             self.buffer = buffer
 
     # TODO move to trainer
@@ -209,6 +209,7 @@ class Collector(object):
             * ``idxs`` the list of episode start index over collected episodes.
         """
         # collect at least n_step or n_episode
+        # TODO: modify docs, tell the constraints
         if n_step is not None:
             assert n_episode is None, (
                 "Only one of n_step or n_episode is allowed in Collector."
@@ -217,7 +218,7 @@ class Collector(object):
             assert n_step % self.env_num == 0, \
                 "n_step should be a multiple of #envs"
         else:
-            assert isinstance(n_episode, int) and n_episode > 0
+            assert isinstance(n_episode, int) and n_episode >= self.env_num
 
         start_time = time.time()
 
@@ -256,13 +257,17 @@ class Collector(object):
             self.data.update(policy=policy, act=act)
 
             # step in env
-            obs_next, rew, done, info = self.env.step(act)
+            obs_next, rew, done, info = self.env.step(
+                act, id=self._ready_env_ids)
 
-            result = {"obs_next": obs_next, "rew": rew,
-                      "done": done, "info": info}
+            self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
             if self.preprocess_fn:
-                result.update(self.preprocess_fn(**result))
-            self.data.update(result)
+                self.data.update(self.preprocess_fn(
+                    obs_next=self.data.obs_next,
+                    rew=self.data.rew,
+                    done=self.data.done,
+                    info=self.data.info,
+                ))
 
             if render:
                 self.env.render()
@@ -314,10 +319,12 @@ class Collector(object):
                               obs_next={}, info={}, policy={})
             self.reset_env()
 
+        rews = np.concatenate(episode_rews) if episode_rews else np.array([])
+        lens = np.concatenate(episode_lens) if episode_lens else np.array([])
+        idxs = np.concatenate(episode_start_indices) if episode_start_indices \
+            else np.array([])
+
         return {
-            "n/ep": episode_count,
-            "n/st": step_count,
-            "rews": np.concatenate(episode_rews),
-            "lens": np.concatenate(episode_lens),
-            "idxs": np.concatenate(episode_start_indices),
+            "n/ep": episode_count, "n/st": step_count,
+            "rews": rews, "lens": lens, "idxs": idxs,
         }

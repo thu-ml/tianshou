@@ -331,7 +331,10 @@ class ReplayBuffer:
         shape (batch, len, ...).
         """
         if isinstance(index, slice):  # change slice to np array
-            index = self._indices[:len(self)][index]
+            if index == slice(None):  # buffer[:] will get all available data
+                index = self.sample_index(0)
+            else:
+                index = self._indices[:len(self)][index]
         # raise KeyError first instead of AttributeError, to support np.array
         obs = self.get(index, "obs")
         if self._save_obs_next:
