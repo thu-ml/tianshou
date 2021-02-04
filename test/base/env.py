@@ -10,15 +10,16 @@ class MyTestEnv(gym.Env):
     """
 
     def __init__(self, size, sleep=0, dict_state=False, recurse_state=False,
-                 ma_rew=0, multidiscrete_action=False, random_sleep=False):
-        assert not (
-            dict_state and recurse_state), \
-            "dict_state and recurse_state cannot both be true"
+                 ma_rew=0, multidiscrete_action=False, random_sleep=False,
+                 array_state=False):
+        assert dict_state + recurse_state + array_state <= 1, \
+            "dict_state / recurse_state / array_state can be only one true"
         self.size = size
         self.sleep = sleep
         self.random_sleep = random_sleep
         self.dict_state = dict_state
         self.recurse_state = recurse_state
+        self.array_state = array_state
         self.ma_rew = ma_rew
         self._md_action = multidiscrete_action
         # how many steps this env has stepped
@@ -36,6 +37,8 @@ class MyTestEnv(gym.Env):
                      "rand": Box(shape=(1, 2), low=0, high=1,
                                  dtype=np.float64)})
                  })
+        elif array_state:
+            self.observation_space = Box(shape=(4, 84, 84), low=0, high=255)
         else:
             self.observation_space = Box(shape=(1, ), low=0, high=size - 1)
         if multidiscrete_action:
@@ -72,6 +75,13 @@ class MyTestEnv(gym.Env):
                     'dict': {"tuple": (np.array([1],
                                        dtype=np.int64), self.rng.rand(2)),
                              "rand": self.rng.rand(1, 2)}}
+        elif self.array_state:
+            img = np.zeros([4, 84, 84], np.int)
+            img[3, np.arange(84), np.arange(84)] = self.index
+            img[2, np.arange(84)] = self.index
+            img[1, :, np.arange(84)] = self.index
+            img[0] = self.index
+            return img
         else:
             return np.array([self.index], dtype=np.float32)
 

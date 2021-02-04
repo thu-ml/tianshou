@@ -284,6 +284,10 @@ class Collector(object):
             if np.any(done):
                 env_ind_local = np.where(done)[0]
                 env_ind_global = self._ready_env_ids[env_ind_local]
+                episode_count += len(env_ind_local)
+                episode_lens.append(ep_len[env_ind_local])
+                episode_rews.append(ep_rew[env_ind_local])
+                episode_start_indices.append(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
                 obs_reset = self.env.reset(env_ind_global)
@@ -294,21 +298,14 @@ class Collector(object):
                 for i in env_ind_local:
                     self._reset_state(i)
                 if n_episode:
-                    total = episode_count + len(env_ind_local) + self.env_num
-                    if n_episode < total:
-                        if len(env_ind_global) > total - n_episode:
+                    diff = episode_count + self.env_num - n_episode
+                    if diff > 0:
+                        if len(env_ind_global) > diff:
                             env_ind_global = np.random.choice(
-                                env_ind_global,
-                                total - n_episode,
-                                replace=False)
-                        mask = np.isin(self._ready_env_ids, env_ind_global)
-                        self._ready_env_ids = self._ready_env_ids[~mask]
-                        self.data = self.data[~mask]
-
-                episode_count += len(env_ind_local)
-                episode_lens.append(ep_len[env_ind_local])
-                episode_rews.append(ep_rew[env_ind_local])
-                episode_start_indices.append(ep_idx[env_ind_local])
+                                env_ind_global, diff, replace=False)
+                        mask = ~np.isin(self._ready_env_ids, env_ind_global)
+                        self._ready_env_ids = self._ready_env_ids[mask]
+                        self.data = self.data[mask]
 
             self.data.obs = self.data.obs_next
 
@@ -326,10 +323,12 @@ class Collector(object):
                               obs_next={}, info={}, policy={})
             self.reset_env()
 
-        rews = np.concatenate(episode_rews) if episode_rews else np.array([])
-        lens = np.concatenate(episode_lens) if episode_lens else np.array([])
-        idxs = np.concatenate(episode_start_indices) if episode_start_indices \
-            else np.array([])
+        if episode_count > 0:
+            rews, lens, idxs = list(map(np.concatenate, [
+                episode_rews, episode_lens, episode_start_indices]))
+        else:
+            rews, lens, idxs = \
+                np.array([]), np.array([], np.int), np.array([], np.int)
 
         return {
             "n/ep": episode_count, "n/st": step_count,

@@ -4,7 +4,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import BasePolicy
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
-from tianshou.data import Collector, Batch, ReplayBuffer, VectorReplayBuffer
+from tianshou.data import Collector, Batch, ReplayBuffer, VectorReplayBuffer, \
+    CachedReplayBuffer
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -277,6 +278,7 @@ def test_collector_with_ma():
             0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
         ]
     assert np.all(c0.buffer[:].rew == [[x] * 4 for x in rew])
+    assert np.all(c0.buffer[:].done == rew)
     c2 = Collector(
         policy, envs,
         VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
@@ -286,8 +288,122 @@ def test_collector_with_ma():
     batch, _ = c2.buffer.sample(10)
 
 
+def test_collector_with_atari_setting():
+    reference_obs = np.zeros([6, 4, 84, 84])
+    for i in range(6):
+        reference_obs[i, 3, np.arange(84), np.arange(84)] = i
+        reference_obs[i, 2, np.arange(84)] = i
+        reference_obs[i, 1, :, np.arange(84)] = i
+        reference_obs[i, 0] = i
+
+    # atari single buffer
+    env = MyTestEnv(size=5, sleep=0, array_state=True)
+    policy = MyPolicy()
+    c0 = Collector(policy, env, ReplayBuffer(size=100))
+    c0.collect(n_step=6)
+    c0.collect(n_episode=2)
+    assert c0.buffer.obs.shape == (100, 4, 84, 84)
+    assert c0.buffer.obs_next.shape == (100, 4, 84, 84)
+    assert len(c0.buffer) == 15
+    obs = np.zeros_like(c0.buffer.obs)
+    obs[np.arange(15)] = reference_obs[np.arange(15) % 5]
+    assert np.all(obs == c0.buffer.obs)
+
+    c1 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=True))
+    c1.collect(n_episode=3)
+    assert np.allclose(c0.buffer.obs, c1.buffer.obs)
+    with pytest.raises(AttributeError):
+        c1.buffer.obs_next
+    assert np.all(reference_obs[[1, 2, 3, 4, 4] * 3] == c1.buffer[:].obs_next)
+
+    c2 = Collector(
+        policy, env,
+        ReplayBuffer(size=100, ignore_obs_next=True, save_only_last_obs=True))
+    c2.collect(n_step=8)
+    assert c2.buffer.obs.shape == (100, 84, 84)
+    obs = np.zeros_like(c2.buffer.obs)
+    obs[np.arange(8)] = reference_obs[[0, 1, 2, 3, 4, 0, 1, 2], -1]
+    assert np.all(c2.buffer.obs == obs)
+    assert np.allclose(c2.buffer[:].obs_next,
+                       reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1])
+
+    # atari multi buffer
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, array_state=True)
+               for i in [2, 3, 4, 5]]
+    envs = DummyVectorEnv(env_fns)
+    c3 = Collector(
+        policy, envs,
+        VectorReplayBuffer(total_size=100, buffer_num=4))
+    c3.collect(n_step=12)
+    result = c3.collect(n_episode=9)
+    assert result["n/ep"] == 9 and result["n/st"] == 23
+    assert c3.buffer.obs.shape == (100, 4, 84, 84)
+    obs = np.zeros_like(c3.buffer.obs)
+    obs[np.arange(8)] = reference_obs[[0, 1, 0, 1, 0, 1, 0, 1]]
+    obs[np.arange(25, 34)] = reference_obs[[0, 1, 2, 0, 1, 2, 0, 1, 2]]
+    obs[np.arange(50, 58)] = reference_obs[[0, 1, 2, 3, 0, 1, 2, 3]]
+    obs[np.arange(75, 85)] = reference_obs[[0, 1, 2, 3, 4, 0, 1, 2, 3, 4]]
+    assert np.all(obs == c3.buffer.obs)
+    obs_next = np.zeros_like(c3.buffer.obs_next)
+    obs_next[np.arange(8)] = reference_obs[[1, 2, 1, 2, 1, 2, 1, 2]]
+    obs_next[np.arange(25, 34)] = reference_obs[[1, 2, 3, 1, 2, 3, 1, 2, 3]]
+    obs_next[np.arange(50, 58)] = reference_obs[[1, 2, 3, 4, 1, 2, 3, 4]]
+    obs_next[np.arange(75, 85)] = reference_obs[[1, 2, 3, 4, 5, 1, 2, 3, 4, 5]]
+    assert np.all(obs_next == c3.buffer.obs_next)
+    c4 = Collector(
+        policy, envs,
+        VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4,
+                           ignore_obs_next=True, save_only_last_obs=True))
+    c4.collect(n_step=12)
+    result = c4.collect(n_episode=9)
+    assert result["n/ep"] == 9 and result["n/st"] == 23
+    assert c4.buffer.obs.shape == (100, 84, 84)
+    obs = np.zeros_like(c4.buffer.obs)
+    slice_obs = reference_obs[:, -1]
+    obs[np.arange(8)] = slice_obs[[0, 1, 0, 1, 0, 1, 0, 1]]
+    obs[np.arange(25, 34)] = slice_obs[[0, 1, 2, 0, 1, 2, 0, 1, 2]]
+    obs[np.arange(50, 58)] = slice_obs[[0, 1, 2, 3, 0, 1, 2, 3]]
+    obs[np.arange(75, 85)] = slice_obs[[0, 1, 2, 3, 4, 0, 1, 2, 3, 4]]
+    assert np.all(c4.buffer.obs == obs)
+    obs_next = np.zeros([len(c4.buffer), 4, 84, 84])
+    ref_index = np.array([
+        1, 1, 1, 1, 1, 1, 1, 1,
+        1, 2, 2, 1, 2, 2, 1, 2, 2,
+        1, 2, 3, 3, 1, 2, 3, 3,
+        1, 2, 3, 4, 4, 1, 2, 3, 4, 4,
+    ])
+    obs_next[:, -1] = slice_obs[ref_index]
+    ref_index -= 1
+    ref_index[ref_index < 0] = 0
+    obs_next[:, -2] = slice_obs[ref_index]
+    ref_index -= 1
+    ref_index[ref_index < 0] = 0
+    obs_next[:, -3] = slice_obs[ref_index]
+    ref_index -= 1
+    ref_index[ref_index < 0] = 0
+    obs_next[:, -4] = slice_obs[ref_index]
+    assert np.all(obs_next == c4.buffer[:].obs_next)
+
+    buf = ReplayBuffer(100, stack_num=4, ignore_obs_next=True,
+                       save_only_last_obs=True)
+    c5 = Collector(policy, envs, CachedReplayBuffer(buf, 4, 10))
+    c5.collect(n_step=12)
+    assert len(buf) == 5 and len(c5.buffer) == 12
+    result = c5.collect(n_episode=9)
+    assert result["n/ep"] == 9 and result["n/st"] == 23
+    assert len(buf) == 35
+    assert np.all(buf.obs[:len(buf)] == slice_obs[[
+        0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4,
+        0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3, 0, 1, 2, 0, 1, 2, 3, 4]])
+    assert np.all(buf[:].obs_next[:, -1] == slice_obs[[
+        1, 1, 1, 2, 2, 1, 1, 1, 2, 3, 3, 1, 2, 3, 4, 4,
+        1, 1, 1, 2, 2, 1, 1, 1, 2, 3, 3, 1, 2, 2, 1, 2, 3, 4, 4]])
+    assert len(buf) == len(c5.buffer)
+
+
 if __name__ == '__main__':
     test_collector()
     test_collector_with_dict_state()
     test_collector_with_ma()
+    test_collector_with_atari_setting()
     # test_collector_with_async()
