@@ -67,6 +67,12 @@ class BasePolicy(ABC, nn.Module):
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
+    def exploration_noise(
+        self, act: Union[np.ndarray, Batch]
+    ) -> Union[np.ndarray, Batch]:
+        """Modify the action from policy.forward with exploration noise."""
+        return act
+
     @abstractmethod
     def forward(
         self,

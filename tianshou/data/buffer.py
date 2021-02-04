@@ -214,7 +214,10 @@ class ReplayBuffer:
         of episode_length and episode_reward is 0.
         """
         # preprocess batch
-        assert set(batch.keys()).issubset(self._reserved_keys)
+        b = Batch()
+        for key in set(self._reserved_keys).intersection(batch.keys()):
+            b.__dict__[key] = batch[key]
+        batch = b
         assert set(["obs", "act", "rew", "done"]).issubset(batch.keys())
         stacked_batch = buffer_ids is not None
         if stacked_batch:
@@ -516,7 +519,10 @@ class ReplayBufferManager(ReplayBuffer):
         of episode_length and episode_reward is 0.
         """
         # preprocess batch
-        assert set(batch.keys()).issubset(self._reserved_keys)
+        b = Batch()
+        for key in set(self._reserved_keys).intersection(batch.keys()):
+            b.__dict__[key] = batch[key]
+        batch = b
         assert set(["obs", "act", "rew", "done"]).issubset(batch.keys())
         if self._save_only_last_obs:
             batch.obs = batch.obs[:, -1]

@@ -43,15 +43,16 @@ class Logger:
     def preprocess_fn(self, **kwargs):
         # modify info before adding into the buffer, and recorded into tfb
         # if only obs exist -> reset
-        # if obs/act/rew/done/... exist -> normal step
+        # if obs_next/rew/done/info exist -> normal step
         if 'rew' in kwargs:
-            n = len(kwargs['obs'])
+            n = len(kwargs['rew'])
             info = kwargs['info']
             for i in range(n):
                 info[i].update(rew=kwargs['rew'][i])
-            if 'key' in info.keys():
-                self.writer.add_scalar('key', np.mean(
-                    info['key']), global_step=self.cnt)
+            if 'key' in info[0].keys():
+                key = np.array([i['key'] for i in info])
+                self.writer.add_scalar(
+                    'key', np.mean(key), global_step=self.cnt)
             self.cnt += 1
             return Batch(info=info)
         else:
@@ -61,7 +62,7 @@ class Logger:
     def single_preprocess_fn(**kwargs):
         # same as above, without tfb
         if 'rew' in kwargs:
-            n = len(kwargs['obs'])
+            n = len(kwargs['rew'])
             info = kwargs['info']
             for i in range(n):
                 info[i].update(rew=kwargs['rew'][i])
@@ -82,8 +83,8 @@ def test_collector():
     c0 = Collector(policy, env, ReplayBuffer(size=100, ignore_obs_next=False),
                    logger.preprocess_fn)
     c0.collect(n_step=3)
-    assert np.allclose(c0.buffer.obs[:4, 0], [0, 1, 0, 1])
-    assert np.allclose(c0.buffer[:4].obs_next[..., 0], [1, 2, 1, 2])
+    assert np.allclose(c0.buffer.obs[:4, 0], [0, 1, 0, 0])
+    assert np.allclose(c0.buffer[:].obs_next[..., 0], [1, 2, 1])
     c0.collect(n_episode=3)
     assert np.allclose(c0.buffer.obs[:10, 0], [0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
     assert np.allclose(c0.buffer[:10].obs_next[..., 0],

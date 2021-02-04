@@ -60,8 +60,6 @@ class Collector(object):
 
         # collect 3 episodes
         collector.collect(n_episode=3)
-        # collect 1 episode for the first env, 3 for the third env
-        collector.collect(n_episode=[1, 0, 3])
         # collect at least 2 steps
         collector.collect(n_step=2)
         # collect episodes with visual rendering (the render argument is the
@@ -84,22 +82,21 @@ class Collector(object):
         env: Union[gym.Env, BaseVectorEnv],
         buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
-        reward_metric: Optional[Callable[[np.ndarray], float]] = None,
+        training: bool = True,
     ) -> None:
         # TODO update training in all test/examples, remove action noise
         super().__init__()
         if not isinstance(env, BaseVectorEnv):
             env = DummyVectorEnv([lambda: env])
-        # TODO support or seperate async
-        assert env.is_async is False
+        assert env.is_async is False, "Please use AsyncCollector if ..."
         self.env = env
         self.env_num = len(env)
+        self.training = training
         self._save_data = buffer is not None
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
         self._action_space = env.action_space
-        self._rew_metric = reward_metric or BasicCollector._default_rew_metric
         # avoid creating attribute outside __init__
         self.reset()
 
@@ -107,11 +104,12 @@ class Collector(object):
         if buffer is None:
             self.buffer = VectorReplayBuffer(self.env_num, self.env_num)
         elif isinstance(buffer, ReplayBufferManager):
-            assert self.buffer.buffer_num >= self.env_num
+            assert buffer.buffer_num >= self.env_num
             if isinstance(buffer, CachedReplayBuffer):
-                assert self.buffer.cached_buffer_num >= self.env_num
+                assert buffer.cached_buffer_num >= self.env_num
+            self.buffer = buffer
         else:  # ReplayBuffer or PrioritizedReplayBuffer
-            assert self.buffer.maxsize > 0
+            assert buffer.maxsize > 0
             if self.env_num > 1:
                 if type(buffer) == ReplayBuffer:
                     buffer_type = "ReplayBuffer"
@@ -126,23 +124,24 @@ class Collector(object):
                     "...) instead.")
             self.buffer = buffer
 
-    @staticmethod
-    def _default_rew_metric(
-        x: Union[Number, np.number]
-    ) -> Union[Number, np.number]:
-        # this internal function is designed for single-agent RL
-        # for multi-agent RL, a reward_metric must be provided
-        assert np.asanyarray(x).size == 1, (
-            "Please specify the reward_metric "
-            "since the reward is not a scalar.")
-        return x
+    # TODO move to trainer
+    # @staticmethod
+    # def _default_rew_metric(
+    #     x: Union[Number, np.number]
+    # ) -> Union[Number, np.number]:
+    #     # this internal function is designed for single-agent RL
+    #     # for multi-agent RL, a reward_metric must be provided
+    #     assert np.asanyarray(x).size == 1, (
+    #         "Please specify the reward_metric "
+    #         "since the reward is not a scalar.")
+    #     return x
 
     def reset(self) -> None:
         """Reset all related variables in the collector."""
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
-        self.data = Batch(obs={}, act={}, rew={}, done={}, obs_next={},
-                          info={}, policy={})
+        self.data = Batch(obs={}, act={}, rew={}, done={},
+                          obs_next={}, info={}, policy={})
         self.reset_env()
         self.reset_buffer()
         self.reset_stat()
@@ -157,6 +156,7 @@ class Collector(object):
 
     def reset_env(self) -> None:
         """Reset all of the environment(s)' states and the cache buffers."""
+        self._ready_env_ids = np.arange(self.env_num)
         obs = self.env.reset()
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get("obs", obs)
@@ -167,13 +167,14 @@ class Collector(object):
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
         """Reset the hidden state: self.data.state[id]."""
-        state = self.data.state  # it is a reference
-        if isinstance(state, torch.Tensor):
-            state[id].zero_()
-        elif isinstance(state, np.ndarray):
-            state[id] = None if state.dtype == np.object else 0
-        elif isinstance(state, Batch):
-            state.empty_(id)
+        if hasattr(self.data.policy, "hidden_state"):
+            state = self.data.policy.hidden_state  # it is a reference
+            if isinstance(state, torch.Tensor):
+                state[id].zero_()
+            elif isinstance(state, np.ndarray):
+                state[id] = None if state.dtype == np.object else 0
+            elif isinstance(state, Batch):
+                state.empty_(id)
 
     def collect(
         self,
@@ -205,13 +206,13 @@ class Collector(object):
             * ``n/st`` the collected number of steps.
             * ``rews`` the list of episode reward over collected episodes.
             * ``lens`` the list of episode length over collected episodes.
+            * ``idxs`` the list of episode start index over collected episodes.
         """
         # collect at least n_step or n_episode
         if n_step is not None:
             assert n_episode is None, (
-                "Only one of n_step or n_episode is allowed in "
-                f"Collector.collect, got n_step = {n_step}, "
-                f"n_episode = {n_episode}.")
+                "Only one of n_step or n_episode is allowed in Collector."
+                f"collect, got n_step={n_step}, n_episode={n_episode}.")
             assert n_step > 0
             assert n_step % self.env_num == 0, \
                 "n_step should be a multiple of #envs"
@@ -226,17 +227,16 @@ class Collector(object):
         episode_rews = []
         episode_lens = []
         episode_start_indices = []
-        buffer_ids = list(range(self.env_num))
 
         while True:
-            # restore the state and the input data
-            last_state = self.data.state
-            if isinstance(last_state, Batch) and last_state.is_empty():
-                last_state = None
+            assert len(self.data) == len(self._ready_env_ids)
+            # restore the state: if the last state is None, it won't store
+            last_state = self.data.policy.pop("hidden_state", None)
 
-            # calc the next action / update state / act / policy into self.data
+            # get the next action
             if random:
-                result = Batch(act=[a.sample() for a in self._action_space])
+                result = Batch(act=[self._action_space[i].sample()
+                                    for i in self._ready_env_ids])
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than retain_grad version
@@ -244,90 +244,80 @@ class Collector(object):
                         result = self.policy(self.data, last_state)
                 else:
                     result = self.policy(self.data, last_state)
-
-            state = result.get("state", None)
+            # update state / act / policy into self.data
             policy = result.get("policy", Batch())
+            assert isinstance(policy, Batch)
+            state = result.get("state", None)
+            if state is not None:
+                policy.hidden_state = state  # save state into buffer
             act = to_numpy(result.act)
-            if state is None:
-                # convert None to Batch(), since None is reserved for 0-init
-                state = Batch()
-            if not (isinstance(state, Batch) and state.is_empty()):
-                # save hidden state to policy._state, in order to save into buffer
-                policy._state = state
-
-            # TODO discuss and change policy's add_exp_noise behavior
-            if self.training and not random and hasattr(self.policy, 'add_exp_noise'):
-                act = self.policy.add_exp_noise(act)
-            self.data.update(state=state, policy=policy, act=act)
+            if self.training and not random:
+                act = self.policy.exploration_noise(act)
+            self.data.update(policy=policy, act=act)
 
             # step in env
             obs_next, rew, done, info = self.env.step(act)
 
-            result = {"obs_next": obs_next,
-                      "rew": rew, "done": done, "info": info}
+            result = {"obs_next": obs_next, "rew": rew,
+                      "done": done, "info": info}
             if self.preprocess_fn:
-                result = self.preprocess_fn(**result)  # type: ignore
-
-            # update obs_next, rew, done, & info into self.data
+                result.update(self.preprocess_fn(**result))
             self.data.update(result)
 
             if render:
                 self.env.render()
-                time.sleep(render)
+                if render > 0 and not np.isclose(render, 0):
+                    time.sleep(render)
 
             # add data into the buffer
-            data_t = self.data
-            if n_episode and len(cached_buffer_ids) < self.env_num:
-                data_t = self.data[cached_buffer_ids]
-            if type(self.buffer) == ReplayBuffer:
-                data_t = data_t[0]
-            # lens, rews, idxs = self.buffer.add(**data_t, index = cached_buffer_ids)
-            # rews need to be array for ReplayBuffer
-            lens, rews = self.buffer.add(**data_t, index=cached_buffer_ids)
-            if type(self.buffer) == ReplayBuffer:
-                lens = np.asarray(lens)
-                rews = np.asarray(rews)
-                # idxs = np.asarray(idxs)
-            # collect statistics
-            step_count += len(cached_buffer_ids)
-            for i in cached_buffer_ids(np.where(lens == 0)[0]):
-                episode_count += 1
-                episode_lens.append(lens[i])
-                episode_rews.append(self._rew_metric(rews[i]))
-                # start_idxs.append(idxs[i])
+            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
+                self.data, buffer_ids=self._ready_env_ids)
 
-            if sum(done):
-                finised_env_ind = np.where(done)[0]
-                # now we copy obs_next to obs, but since there might be finished episodes,
-                # we have to reset finished envs first.
-                obs_reset = self.env.reset(finised_env_ind)
+            # collect statistics
+            step_count += len(self._ready_env_ids)
+
+            if np.any(done):
+                env_ind_local = np.where(done)[0]
+                episode_count += len(env_ind_local)
+                episode_lens.append(ep_len[env_ind_local])
+                episode_rews.append(ep_rew[env_ind_local])
+                episode_start_indices.append(ep_idx[env_ind_local])
+
+                # now we copy obs_next to obs, but since there might be
+                # finished episodes, we have to reset finished envs first.
+                env_ind_global = self._ready_env_ids[env_ind_local]
+                obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
                     obs_reset = self.preprocess_fn(
                         obs=obs_reset).get("obs", obs_reset)
-                self.data.obs_next[finised_env_ind] = obs_reset
-                for i in finised_env_ind:
+                self.data.obs_next[env_ind_local] = obs_reset
+                for i in env_ind_local:
                     self._reset_state(i)
-                    if n_episode and n_episode - episode_count < self.env_num:
-                        try:
-                            cached_buffer_ids.remove(i)
-                        except ValueError:
-                            pass
-            self.data.obs[:] = self.data.obs_next
+                if n_episode and n_episode - episode_count < self.env_num:
+                    mask = ~np.isin(self._ready_env_ids, env_ind_global)
+                    self._ready_env_ids = self._ready_env_ids[mask]
+                    self.data = self.data[mask]
+
+            self.data.obs = self.data.obs_next
 
             if (n_step and step_count >= n_step) or \
                (n_episode and episode_count >= n_episode):
                 break
 
-        # generate the statistics
+        # generate statistics
         self.collect_step += step_count
         self.collect_episode += episode_count
         self.collect_time += max(time.time() - start_time, 1e-9)
+
         if n_episode:
+            self.data = Batch(obs={}, act={}, rew={}, done={},
+                              obs_next={}, info={}, policy={})
             self.reset_env()
+
         return {
             "n/ep": episode_count,
             "n/st": step_count,
-            "rews": np.array(episode_rews),
-            "lens": np.array(episode_lens),
-            # "idxs": np.array(start_idxs)
+            "rews": np.concatenate(episode_rews),
+            "lens": np.concatenate(episode_lens),
+            "idxs": np.concatenate(episode_start_indices),
         }
