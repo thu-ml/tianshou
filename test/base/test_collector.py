@@ -113,40 +113,28 @@ def test_collector():
         VectorReplayBuffer(total_size=100, buffer_num=4),
         logger.preprocess_fn)
     c2.collect(n_episode=7)
-    assert np.allclose(c2.buffer.obs_next[:26, 0], [
-        1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5,
-        1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5])
+    obs1 = obs.copy()
+    obs1[[4, 5, 28, 29, 30]] = [0, 1, 0, 1, 2]
+    obs2 = obs.copy()
+    obs2[[28, 29, 30, 54, 55, 56, 57]] = [0, 1, 2, 0, 1, 2, 3]
+    c2obs = c2.buffer.obs[:, 0]
+    assert np.all(c2obs == obs1) or np.all(c2obs == obs2)
     c2.reset_env()
-    c2.collect(n_episode=8)
-    assert np.allclose(c2.buffer.obs_next[26:54, 0], [
-        1, 2, 1, 2, 3, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4, 5,
-        1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5])
+    c2.reset_buffer()
+    assert c2.collect(n_episode=8)['n/ep'] == 8
+    obs[[4, 5, 28, 29, 30, 54, 55, 56, 57]] = [0, 1, 0, 1, 2, 0, 1, 2, 3]
+    assert np.all(c2.buffer.obs[:, 0] == obs)
     c2.collect(n_episode=4, random=True)
-
-
-def test_collector_with_exact_episodes():
-    env_lens = [2, 6, 3, 10]
-    writer = SummaryWriter('log/exact_collector')
-    logger = Logger(writer)
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.1, random_sleep=True)
-               for i in env_lens]
-
-    venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
-    policy = MyPolicy()
-    c1 = Collector(policy, venv,
-                   ReplayBuffer(size=1000, ignore_obs_next=False),
-                   logger.preprocess_fn)
-    n_episode1 = [2, 0, 5, 1]
-    n_episode2 = [1, 3, 2, 0]
-    c1.collect(n_episode=n_episode1)
-    expected_steps = sum([a * b for a, b in zip(env_lens, n_episode1)])
-    actual_steps = sum(venv.steps)
-    assert expected_steps == actual_steps
-    c1.collect(n_episode=n_episode2)
-    expected_steps = sum(
-        [a * (b + c) for a, b, c in zip(env_lens, n_episode1, n_episode2)])
-    actual_steps = sum(venv.steps)
-    assert expected_steps == actual_steps
+    env_fns = [lambda x=i: MyTestEnv(size=x) for i in np.arange(2, 11)]
+    dum = DummyVectorEnv(env_fns)
+    num = len(env_fns)
+    c3 = Collector(policy, dum,
+                   VectorReplayBuffer(total_size=40000, buffer_num=num))
+    for i in range(num, 400):
+        c3.reset()
+        result = c3.collect(n_episode=i)
+        assert result['n/ep'] == i
+        assert result['n/st'] == len(c3.buffer)
 
 
 def test_collector_with_async():
@@ -201,26 +189,49 @@ def test_collector_with_dict_state():
                    Logger.single_preprocess_fn)
     c0.collect(n_step=3)
     c0.collect(n_episode=2)
+    assert len(c0.buffer) == 10
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True)
                for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     envs.seed(666)
     obs = envs.reset()
     assert not np.isclose(obs[0]['rand'], obs[1]['rand'])
-    c1 = Collector(policy, envs, ReplayBuffer(size=100),
-                   Logger.single_preprocess_fn)
-    c1.collect(n_step=10)
-    c1.collect(n_episode=[2, 1, 1, 2])
+    c1 = Collector(
+        policy, envs,
+        VectorReplayBuffer(total_size=100, buffer_num=4),
+        Logger.single_preprocess_fn)
+    with pytest.raises(AssertionError):
+        c1.collect(n_step=10)
+    c1.collect(n_step=12)
+    result = c1.collect(n_episode=8)
+    assert result['n/ep'] == 8
+    lens = np.bincount(result['lens'])
+    assert result['n/st'] == 21 and np.all(lens == [0, 0, 2, 2, 2, 2]) or \
+        result['n/st'] == 20 and np.all(lens == [0, 0, 3, 1, 2, 2])
     batch, _ = c1.buffer.sample(10)
-    print(batch)
     c0.buffer.update(c1.buffer)
-    assert np.allclose(c0.buffer[:len(c0.buffer)].obs.index[..., 0], [
-        0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1.,
-        0., 1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4., 0., 1., 0.,
-        1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.])
-    c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
-                   Logger.single_preprocess_fn)
-    c2.collect(n_episode=[0, 0, 0, 10])
+    assert len(c0.buffer) in [42, 43]
+    if len(c0.buffer) == 42:
+        assert np.all(c0.buffer[:].obs.index[..., 0] == [
+            0, 1, 2, 3, 4, 0, 1, 2, 3, 4,
+            0, 1, 0, 1, 0, 1, 0, 1,
+            0, 1, 2, 0, 1, 2,
+            0, 1, 2, 3, 0, 1, 2, 3,
+            0, 1, 2, 3, 4, 0, 1, 2, 3, 4,
+        ]), c0.buffer[:].obs.index[..., 0]
+    else:
+        assert np.all(c0.buffer[:].obs.index[..., 0] == [
+            0, 1, 2, 3, 4, 0, 1, 2, 3, 4,
+            0, 1, 0, 1, 0, 1,
+            0, 1, 2, 0, 1, 2, 0, 1, 2,
+            0, 1, 2, 3, 0, 1, 2, 3,
+            0, 1, 2, 3, 4, 0, 1, 2, 3, 4,
+        ]), c0.buffer[:].obs.index[..., 0]
+    c2 = Collector(
+        policy, envs,
+        VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
+        Logger.single_preprocess_fn)
+    c2.collect(n_episode=10)
     batch, _ = c2.buffer.sample(10)
 
 
@@ -230,35 +241,48 @@ def test_collector_with_ma():
     c0 = Collector(policy, env, ReplayBuffer(size=100),
                    Logger.single_preprocess_fn)
     # n_step=3 will collect a full episode
-    r = c0.collect(n_step=3)['rews'].mean()
-    assert np.asanyarray(r).size == 1 and r == 4.
-    r = c0.collect(n_episode=2)['rews'].mean()
-    assert np.asanyarray(r).size == 1 and r == 4.
+    r = c0.collect(n_step=3)['rews']
+    assert len(r) == 0
+    r = c0.collect(n_episode=2)['rews']
+    assert r.shape == (2, 4) and np.all(r == 1)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4)
                for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
-    c1 = Collector(policy, envs, ReplayBuffer(size=100),
-                   Logger.single_preprocess_fn)
-    r = c1.collect(n_step=10)['rews'].mean()
-    assert np.asanyarray(r).size == 1 and r == 4.
-    r = c1.collect(n_episode=[2, 1, 1, 2])['rews'].mean()
-    assert np.asanyarray(r).size == 1 and r == 4.
+    c1 = Collector(
+        policy, envs,
+        VectorReplayBuffer(total_size=100, buffer_num=4),
+        Logger.single_preprocess_fn)
+    r = c1.collect(n_step=12)['rews']
+    assert r.shape == (2, 4) and np.all(r == 1), r
+    r = c1.collect(n_episode=8)['rews']
+    assert r.shape == (8, 4) and np.all(r == 1)
     batch, _ = c1.buffer.sample(10)
     print(batch)
     c0.buffer.update(c1.buffer)
-    assert np.allclose(c0.buffer[:len(c0.buffer)].obs[..., 0], [
-        0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1., 2., 3., 4., 0., 1.,
-        0., 1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4., 0., 1., 0.,
-        1., 2., 0., 1., 0., 1., 2., 3., 0., 1., 2., 3., 4.])
-    rew = [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1,
-           0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0,
-           0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1]
-    assert np.allclose(c0.buffer[:len(c0.buffer)].rew,
-                       [[x] * 4 for x in rew])
-    c2 = Collector(policy, envs, ReplayBuffer(size=100, stack_num=4),
-                   Logger.single_preprocess_fn)
-    r = c2.collect(n_episode=[0, 0, 0, 10])['rews'].mean()
-    assert np.asanyarray(r).size == 1 and r == 4.
+    assert len(c0.buffer) in [42, 43]
+    if len(c0.buffer) == 42:
+        rew = [
+            0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
+            0, 1, 0, 1, 0, 1, 0, 1,
+            0, 0, 1, 0, 0, 1,
+            0, 0, 0, 1, 0, 0, 0, 1,
+            0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
+        ]
+    else:
+        rew = [
+            0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
+            0, 1, 0, 1, 0, 1,
+            0, 0, 1, 0, 0, 1, 0, 0, 1,
+            0, 0, 0, 1, 0, 0, 0, 1,
+            0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
+        ]
+    assert np.all(c0.buffer[:].rew == [[x] * 4 for x in rew])
+    c2 = Collector(
+        policy, envs,
+        VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
+        Logger.single_preprocess_fn)
+    r = c2.collect(n_episode=10)['rews']
+    assert r.shape == (10, 4) and np.all(r == 1)
     batch, _ = c2.buffer.sample(10)
 
 
@@ -266,5 +290,4 @@ if __name__ == '__main__':
     test_collector()
     test_collector_with_dict_state()
     test_collector_with_ma()
-    test_collector_with_async()
-    test_collector_with_exact_episodes()
+    # test_collector_with_async()

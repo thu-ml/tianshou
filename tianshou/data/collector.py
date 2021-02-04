@@ -283,14 +283,9 @@ class Collector(object):
 
             if np.any(done):
                 env_ind_local = np.where(done)[0]
-                episode_count += len(env_ind_local)
-                episode_lens.append(ep_len[env_ind_local])
-                episode_rews.append(ep_rew[env_ind_local])
-                episode_start_indices.append(ep_idx[env_ind_local])
-
+                env_ind_global = self._ready_env_ids[env_ind_local]
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                env_ind_global = self._ready_env_ids[env_ind_local]
                 obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
                     obs_reset = self.preprocess_fn(
@@ -298,10 +293,22 @@ class Collector(object):
                 self.data.obs_next[env_ind_local] = obs_reset
                 for i in env_ind_local:
                     self._reset_state(i)
-                if n_episode and n_episode - episode_count < self.env_num:
-                    mask = ~np.isin(self._ready_env_ids, env_ind_global)
-                    self._ready_env_ids = self._ready_env_ids[mask]
-                    self.data = self.data[mask]
+                if n_episode:
+                    total = episode_count + len(env_ind_local) + self.env_num
+                    if n_episode < total:
+                        if len(env_ind_global) > total - n_episode:
+                            env_ind_global = np.random.choice(
+                                env_ind_global,
+                                total - n_episode,
+                                replace=False)
+                        mask = np.isin(self._ready_env_ids, env_ind_global)
+                        self._ready_env_ids = self._ready_env_ids[~mask]
+                        self.data = self.data[~mask]
+
+                episode_count += len(env_ind_local)
+                episode_lens.append(ep_len[env_ind_local])
+                episode_rews.append(ep_rew[env_ind_local])
+                episode_start_indices.append(ep_idx[env_ind_local])
 
             self.data.obs = self.data.obs_next
 
