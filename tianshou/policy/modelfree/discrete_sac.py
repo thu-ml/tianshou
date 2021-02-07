@@ -145,3 +145,10 @@ class DiscreteSACPolicy(SACPolicy):
             result["alpha"] = self._alpha.item()  # type: ignore
 
         return result
+
+    def exploration_noise(
+        self,
+        act: Union[np.ndarray, Batch],
+        batch: Batch,
+    ) -> Union[np.ndarray, Batch]:
+        return act

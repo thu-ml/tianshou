@@ -249,7 +249,7 @@ class Collector(object):
                 policy.hidden_state = state  # save state into buffer
             act = to_numpy(result.act)
             if self.training and not random:
-                act = self.policy.exploration_noise(act)
+                act = self.policy.exploration_noise(act, self.data)
             self.data.update(policy=policy, act=act)
 
             # step in env
