@@ -56,7 +56,8 @@ class PGPolicy(BasePolicy):
         # batch.returns = self._vanilla_returns(batch)
         # batch.returns = self._vectorized_returns(batch)
         return self.compute_episodic_return(
-            batch, gamma=self._gamma, gae_lambda=1.0, rew_norm=self._rew_norm)
+            batch, buffer, indice, gamma=self._gamma,
+            gae_lambda=1.0, rew_norm=self._rew_norm)
 
     def forward(
         self,

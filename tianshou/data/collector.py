@@ -13,6 +13,7 @@ from tianshou.data import Batch, ReplayBuffer, ReplayBufferManager, \
 
 class Collector(object):
     # TODO change doc
+    # TODO change all test to ensure api
     """Collector enables the policy to interact with different types of envs.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`

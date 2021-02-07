@@ -190,22 +190,30 @@ class BasePolicy(ABC, nn.Module):
         return result
 
     @staticmethod
+    def value_mask(batch):
+        # TODO doc
+        return ~batch.done
+
+    @staticmethod
     def compute_episodic_return(
         batch: Batch,
+        buffer: ReplayBuffer,
+        indice: np.ndarray,
         v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
         rew_norm: bool = False,
     ) -> Batch:
+        # TODO change doc
         """Compute returns over given full-length episodes.
 
         Implementation of Generalized Advantage Estimator (arXiv:1506.02438).
 
         :param batch: a data batch which contains several full-episode data
-            chronologically.
+            chronologically. TODO generalize
         :type batch: :class:`~tianshou.data.Batch`
         :param v_s_: the value function of all next states :math:`V(s')`.
-        :type v_s_: numpy.ndarray
+        :type v_s_: numpy.ndarray #TODO n+1 value shape
         :param float gamma: the discount factor, should be in [0, 1], defaults
             to 0.99.
         :param float gae_lambda: the parameter for Generalized Advantage
@@ -217,8 +225,15 @@ class BasePolicy(ABC, nn.Module):
             array with shape (bsz, ).
         """
         rew = batch.rew
-        v_s_ = np.zeros_like(rew) if v_s_ is None else to_numpy(v_s_.flatten())
-        returns = _episodic_return(v_s_, rew, batch.done, gamma, gae_lambda)
+        if v_s_ is None:
+            assert np.isclose(gae_lambda, 1.0)
+            v_s_ = np.zeros_like(rew)
+        else:
+            v_s_ = to_numpy(v_s_.flatten()) * BasePolicy.value_mask(batch)
+
+        end_flag = batch.done.copy()
+        end_flag[np.isin(indice, buffer.unfinished_index())] = True
+        returns = _episodic_return(v_s_, rew, end_flag, gamma, gae_lambda)
         if rew_norm and not np.isclose(returns.std(), 0.0, 1e-2):
             returns = (returns - returns.mean()) / returns.std()
         batch.returns = returns
@@ -234,6 +249,7 @@ class BasePolicy(ABC, nn.Module):
         n_step: int = 1,
         rew_norm: bool = False,
     ) -> Batch:
+        # TODO, doc
         r"""Compute n-step return for Q-learning targets.
 
         .. math::
@@ -246,8 +262,7 @@ class BasePolicy(ABC, nn.Module):
 
         :param batch: a data batch, which is equal to buffer[indice].
         :type batch: :class:`~tianshou.data.Batch`
-        :param buffer: a data buffer which contains several full-episode data
-            chronologically.
+        :param buffer: the data buffer.
         :type buffer: :class:`~tianshou.data.ReplayBuffer`
         :param indice: sampled timestep.
         :type indice: numpy.ndarray
@@ -264,6 +279,7 @@ class BasePolicy(ABC, nn.Module):
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """
         rew = buffer.rew
+        # TODO this rew_norm will cause unstablity in training
         if rew_norm:
             bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
@@ -271,14 +287,22 @@ class BasePolicy(ABC, nn.Module):
                 mean, std = 0.0, 1.0
         else:
             mean, std = 0.0, 1.0
-        buf_len = len(buffer)
-        terminal = (indice + n_step - 1) % buf_len
+        indices = [indice]
+        for _ in range(n_step - 1):
+            indices.append(buffer.next(indices[-1]))
+        indices = np.stack(indices)
+
+        # terminal indicates buffer indexes nstep after 'indice',
+        # and are truncated at the end of each episode
+        terminal = indices[-1]
         with torch.no_grad():
             target_q_torch = target_q_fn(buffer, terminal)  # (bsz, ?)
-        target_q = to_numpy(target_q_torch)
+        target_q = to_numpy(target_q_torch) * BasePolicy.value_mask(batch)
+        end_flag = buffer.done.copy()
+        end_flag[buffer.unfinished_index()] = True
+        target_q = _nstep_return(rew, end_flag, target_q, indices,
+                                 gamma, n_step, mean, std)
 
-        target_q = _nstep_return(rew, buffer.done, target_q, indice,
-                                 gamma, n_step, len(buffer), mean, std)
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
             batch.weight = to_torch_as(batch.weight, target_q_torch)
@@ -288,57 +312,69 @@ class BasePolicy(ABC, nn.Module):
         f64 = np.array([0, 1], dtype=np.float64)
         f32 = np.array([0, 1], dtype=np.float32)
         b = np.array([False, True], dtype=np.bool_)
-        i64 = np.array([0, 1], dtype=np.int64)
+        i64 = np.array([[0, 1]], dtype=np.int64)
+        _gae_return(f64, f64, f64, b, 0.1, 0.1)
+        _gae_return(f32, f32, f64, b, 0.1, 0.1)
         _episodic_return(f64, f64, b, 0.1, 0.1)
         _episodic_return(f32, f64, b, 0.1, 0.1)
-        _nstep_return(f64, b, f32, i64, 0.1, 1, 4, 0.0, 1.0)
+        _nstep_return(f64, b, f32, i64, 0.1, 1, 0.0, 1.0)
 
+@njit
+def _gae_return(
+    v_s: np.ndarray,
+    v_s_: np.ndarray,
+    rew: np.ndarray,
+    end_flag: np.ndarray,
+    gamma: float,
+    gae_lambda: float,
+) -> np.ndarray:
+    returns = np.zeros(rew.shape)
+    delta = rew + v_s_ * gamma - v_s
+    m = (1.0 - end_flag) * (gamma * gae_lambda)
+    gae = 0.0
+    for i in range(len(rew) - 1, -1, -1):
+        gae = delta[i] + m[i] * gae
+        returns[i] = gae
+    return returns
 
 @njit
 def _episodic_return(
     v_s_: np.ndarray,
     rew: np.ndarray,
-    done: np.ndarray,
+    end_flag: np.ndarray,
     gamma: float,
     gae_lambda: float,
 ) -> np.ndarray:
     """Numba speedup: 4.1s -> 0.057s."""
-    returns = np.roll(v_s_, 1)
-    m = (1.0 - done) * gamma
-    delta = rew + v_s_ * m - returns
-    m *= gae_lambda
-    gae = 0.0
-    for i in range(len(rew) - 1, -1, -1):
-        gae = delta[i] + m[i] * gae
-        returns[i] += gae
-    return returns
+    v_s = np.roll(v_s_, 1)
+    return _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda) + v_s
 
 
 @njit
 def _nstep_return(
     rew: np.ndarray,
-    done: np.ndarray,
+    end_flag: np.ndarray,
     target_q: np.ndarray,
-    indice: np.ndarray,
+    indices: np.ndarray,
     gamma: float,
     n_step: int,
-    buf_len: int,
     mean: float,
     std: float,
 ) -> np.ndarray:
-    """Numba speedup: 0.3s -> 0.15s."""
+    gamma_buffer = np.ones(n_step+1)
+    for i in range(1, n_step+1):
+        gamma_buffer[i] = gamma_buffer[i-1]*gamma
     target_shape = target_q.shape
     bsz = target_shape[0]
     # change target_q to 2d array
     target_q = target_q.reshape(bsz, -1)
     returns = np.zeros(target_q.shape)
-    gammas = np.full(indice.shape, n_step)
+    gammas = np.full(indices[0].shape, n_step)
     for n in range(n_step - 1, -1, -1):
-        now = (indice + n) % buf_len
-        gammas[done[now] > 0] = n
-        returns[done[now] > 0] = 0.0
+        now = indices[n]
+        gammas[end_flag[now] > 0] = n
+        returns[end_flag[now] > 0] = 0.0
         returns = (rew[now].reshape(-1, 1) - mean) / std + gamma * returns
-    target_q[gammas != n_step] = 0.0
     gammas = gammas.reshape(-1, 1)
-    target_q = target_q * (gamma ** gammas) + returns
+    target_q = target_q * gamma_buffer[gammas] + returns
     return target_q.reshape(target_shape)

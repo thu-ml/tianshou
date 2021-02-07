@@ -17,7 +17,7 @@ def compute_episodic_return_base(batch, gamma):
     batch.returns = returns
     return batch
 
-
+# TODO need to change
 def test_episodic_returns(size=2560):
     fn = BasePolicy.compute_episodic_return
     batch = Batch(
