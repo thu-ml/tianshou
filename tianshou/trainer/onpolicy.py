@@ -99,9 +99,10 @@ def onpolicy_trainer(
                     "n/st": str(int(result["n/st"])),
                 }
                 if writer and env_step % log_interval == 0:
-                    for k in result.keys():
-                        writer.add_scalar(
-                            "train/" + k, result[k], global_step=env_step)
+                    writer.add_scalar(
+                        "train/rew", result['rews'].mean(), global_step=env_step)
+                    writer.add_scalar(
+                        "train/len", result['lens'].mean(), global_step=env_step)
                 if test_in_train and stop_fn and stop_fn(result["rews"].mean()):
                     test_result = test_episode(
                         policy, test_collector, test_fn,
