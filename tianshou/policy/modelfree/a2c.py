@@ -80,7 +80,6 @@ class A2CPolicy(PGPolicy):
             batch, buffer, indice,
             v_, gamma=self._gamma,
             gae_lambda=self._lambda, rew_norm=self._rew_norm)
-            
 
     def forward(
         self,

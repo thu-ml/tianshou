@@ -11,8 +11,8 @@ from tianshou.data import Batch, ReplayBuffer, ReplayBufferManager, \
     VectorReplayBuffer, CachedReplayBuffer, to_numpy
 
 
+# TODO change doc
 class Collector(object):
-    # TODO change doc
     """Collector enables the policy to interact with different types of envs.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
@@ -20,13 +20,13 @@ class Collector(object):
     :param env: a ``gym.Env`` environment or an instance of the
         :class:`~tianshou.env.BaseVectorEnv` class.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer`
-        class. If set to ``None`` (testing phase), it will not store the data.
+        class. If set to None (testing phase), it will not store the data.
     :param function preprocess_fn: a function called before the data has been
-        added to the buffer, see issue #42 and :ref:`preprocess_fn`, defaults
+        added to the buffer, see issue #42 and :ref:`preprocess_fn`. Default
         to None.
-    :param exploration_noise: a flag which determines when the collector is used for 
-        training. If so, function exploration_noise() in policy will be called
-        automatically to add exploration noise. Default to True.
+    :param exploration_noise: a flag which determines when the collector is
+        used for training. If so, function exploration_noise() in policy will
+        be called automatically to add exploration noise. Default to True.
 
     The ``preprocess_fn`` is a function called before the data has been added
     to the buffer with batch format, which receives up to 7 keys as listed in
@@ -40,7 +40,7 @@ class Collector(object):
 
         policy = PGPolicy(...)  # or other policies if you wish
         env = gym.make('CartPole-v0')
-        
+
         replay_buffer = ReplayBuffer(size=10000)
 
         # here we set up a collector with a single environment
@@ -48,7 +48,7 @@ class Collector(object):
 
         # the collector supports vectorized environments as well
         vec_buffer = VectorReplayBuffer(total_size=10000, buffer_num = 3)
-        # buffer_num should be equal(suggested) to or larger than envs number
+        # buffer_num should be equal (suggested) to or larger than #envs
         envs = DummyVectorEnv([lambda: gym.make('CartPole-v0')
                                for _ in range(3)])
         collector = Collector(policy, envs, buffer=vec_buffer)
@@ -58,17 +58,13 @@ class Collector(object):
         # collect at least 2 steps
         collector.collect(n_step=2)
         # collect episodes with visual rendering (the render argument is the
-        #   sleep time between rendering consecutive frames)
+        # sleep time between rendering consecutive frames)
         collector.collect(n_episode=1, render=0.03)
-
-    Collected data always consist of full episodes. So if only ``n_step``
-    argument is give, the collector may return the data more than the
-    ``n_step`` limitation. Same as ``n_episode`` for the multiple environment
-    case.
 
     .. note::
 
-        Please make sure the given environment has a time limitation.
+        Please make sure the given environment has a time limitation if using
+        n_episode collect option.
     """
 
     def __init__(
@@ -115,7 +111,7 @@ class Collector(object):
                     f"collect {self.env_num} envs,\n\tplease use {vector_type}"
                     f"(total_size={buffer.maxsize}, buffer_num={self.env_num},"
                     " ...) instead.")
-        self.buffer =buffer
+        self.buffer = buffer
 
     # TODO move to trainer
     # @staticmethod
@@ -229,8 +225,8 @@ class Collector(object):
 
             # get the next action
             if random:
-                result = Batch(act=[self._action_space[i].sample()
-                                    for i in ready_env_ids])
+                self.data.update(act=[self._action_space[i].sample()
+                                 for i in ready_env_ids])
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than retain_grad version
@@ -238,20 +234,20 @@ class Collector(object):
                         result = self.policy(self.data, last_state)
                 else:
                     result = self.policy(self.data, last_state)
-            # update state / act / policy into self.data
-            policy = result.get("policy", Batch())
-            assert isinstance(policy, Batch)
-            state = result.get("state", None)
-            if state is not None:
-                policy.hidden_state = state  # save state into buffer
-            act = to_numpy(result.act)
-            if self.exploration_noise and not random:
-                act = self.policy.exploration_noise(act, self.data)
-            self.data.update(policy=policy, act=act)
+                # update state / act / policy into self.data
+                policy = result.get("policy", Batch())
+                assert isinstance(policy, Batch)
+                state = result.get("state", None)
+                if state is not None:
+                    policy.hidden_state = state  # save state into buffer
+                act = to_numpy(result.act)
+                if self.exploration_noise:
+                    act = self.policy.exploration_noise(act, self.data)
+                self.data.update(policy=policy, act=act)
 
             # step in env
             obs_next, rew, done, info = self.env.step(
-                act, id=ready_env_ids)
+                self.data.act, id=ready_env_ids)
 
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
             if self.preprocess_fn:
@@ -290,16 +286,18 @@ class Collector(object):
                 self.data.obs_next[env_ind_local] = obs_reset
                 for i in env_ind_local:
                     self._reset_state(i)
-                
-                # remove surplus env id from ready_env_ids to avoid bias in
+
+                # Remove surplus env id from ready_env_ids to avoid bias in
                 # selecting environments.
                 if n_episode:
-                    surplus_env_n = len(ready_env_ids) - (n_episode - episode_count)
-                    if surplus_env_n > 0:
+                    episode_to_collect = n_episode - episode_count
+                    surplus_env_num = len(ready_env_ids) - episode_to_collect
+                    if surplus_env_num > 0:
                         mask = np.ones_like(ready_env_ids, np.bool)
-                        mask[env_ind_local[:surplus_env_n]] = False
+                        mask[env_ind_local[:surplus_env_num]] = False
                         ready_env_ids = ready_env_ids[mask]
                         self.data = self.data[mask]
+
             self.data.obs = self.data.obs_next
 
             if (n_step and step_count >= n_step) or \
