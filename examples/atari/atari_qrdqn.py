@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.policy import QRDQNPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 
 from atari_network import QRDQN
 from atari_wrapper import wrap_deepmind
@@ -88,8 +88,10 @@ def test_qrdqn(args=get_args()):
         print("Loaded agent from: ", args.resume_path)
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
-    buffer = ReplayBuffer(args.buffer_size, ignore_obs_next=True,
-                          save_only_last_obs=True, stack_num=args.frames_stack)
+    buffer = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs),
+                                ignore_obs_next=True,
+                                save_only_last_obs=True,
+                                stack_num=args.frames_stack)
     # collector
     train_collector = Collector(policy, train_envs, buffer)
     test_collector = Collector(policy, test_envs)

@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import BasePolicy, DQNPolicy, RandomPolicy, \
     MultiAgentPolicyManager
 
@@ -124,7 +124,7 @@ def train_agent(
 
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs)))
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size)

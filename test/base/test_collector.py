@@ -128,7 +128,7 @@ def test_collector():
     dum = DummyVectorEnv(env_fns)
     num = len(env_fns)
     c3 = Collector(policy, dum,
-                   VectorReplayBuffer(total_size=90000, buffer_num=num))
+                   VectorReplayBuffer(total_size=40000, buffer_num=num))
     for i in range(num, 400):
         c3.reset()
         result = c3.collect(n_episode=i)

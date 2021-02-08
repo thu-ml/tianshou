@@ -10,7 +10,7 @@ from tianshou.policy import C51Policy
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer, PrioritizedVectorReplayBuffer
 
 
 def get_args():
@@ -75,10 +75,11 @@ def test_c51(args=get_args()):
     ).to(args.device)
     # buffer
     if args.prioritized_replay:
-        buf = PrioritizedReplayBuffer(
-            args.buffer_size, alpha=args.alpha, beta=args.beta)
+        buf = PrioritizedVectorReplayBuffer(
+            args.buffer_size, buffer_num = len(train_envs),
+            alpha=args.alpha, beta=args.beta)
     else:
-        buf = ReplayBuffer(args.buffer_size)
+        buf = VectorReplayBuffer(args.buffer_size, buffer_num = len(train_envs))
     # collector
     train_collector = Collector(policy, train_envs, buf)
     test_collector = Collector(policy, test_envs)

@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import SACPolicy
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import OUNoise
 from tianshou.utils.net.common import Net
@@ -94,7 +94,7 @@ def test_sac(args=get_args()):
         exploration_noise=OUNoise(0.0, args.noise_std))
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs)))
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log

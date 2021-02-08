@@ -9,7 +9,7 @@ from tianshou.policy import A2CPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.discrete import Actor, Critic
 
 from atari import create_atari_environment, preprocess_fn
@@ -75,7 +75,8 @@ def test_a2c(args=get_args()):
         ent_coef=args.ent_coef, max_grad_norm=args.max_grad_norm)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size),
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs)),
         preprocess_fn=preprocess_fn)
     test_collector = Collector(policy, test_envs, preprocess_fn=preprocess_fn)
     # log

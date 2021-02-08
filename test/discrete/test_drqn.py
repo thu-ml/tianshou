@@ -10,7 +10,7 @@ from tianshou.policy import DQNPolicy
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils.net.common import Recurrent
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 
 
 def get_args():
@@ -66,8 +66,9 @@ def test_drqn(args=get_args()):
         target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(
-            args.buffer_size, stack_num=args.stack_num, ignore_obs_next=True))
+        policy, train_envs, VectorReplayBuffer(
+            args.buffer_size,  buffer_num = len(train_envs),
+            stack_num=args.stack_num, ignore_obs_next=True))
     # the stack_num is for RNN training: sample framestack obs
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)

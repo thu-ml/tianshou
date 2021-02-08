@@ -11,7 +11,7 @@ from tianshou.policy import DQNPolicy
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer, PrioritizedReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer, PrioritizedVectorReplayBuffer
 
 
 def get_args():
@@ -77,10 +77,11 @@ def test_dqn(args=get_args()):
         target_update_freq=args.target_update_freq)
     # buffer
     if args.prioritized_replay:
-        buf = PrioritizedReplayBuffer(
-            args.buffer_size, alpha=args.alpha, beta=args.beta)
+        buf = PrioritizedVectorReplayBuffer(
+            args.buffer_size, buffer_num = len(train_envs),
+            alpha=args.alpha, beta=args.beta)
     else:
-        buf = ReplayBuffer(args.buffer_size)
+        buf = VectorReplayBuffer(args.buffer_size, buffer_num = len(train_envs))
     # collector
     train_collector = Collector(policy, train_envs, buf)
     test_collector = Collector(policy, test_envs)
@@ -130,7 +131,7 @@ def test_dqn(args=get_args()):
         print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
 
     # save buffer in pickle format, for imitation learning unittest
-    buf = ReplayBuffer(args.buffer_size)
+    buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
     collector = Collector(policy, test_envs, buf)
     collector.collect(n_step=args.buffer_size)
     pickle.dump(buf, open(args.save_buffer_name, "wb"))

@@ -46,14 +46,18 @@ class Collector(object):
 
         policy = PGPolicy(...)  # or other policies if you wish
         env = gym.make('CartPole-v0')
+        
         replay_buffer = ReplayBuffer(size=10000)
+
         # here we set up a collector with a single environment
         collector = Collector(policy, env, buffer=replay_buffer)
 
         # the collector supports vectorized environments as well
+        vec_buffer = VectorReplayBuffer(total_size=10000, buffer_num = 3)
+        # buffer_num should be equal(suggested) or larger than envs number
         envs = DummyVectorEnv([lambda: gym.make('CartPole-v0')
                                for _ in range(3)])
-        collector = Collector(policy, envs, buffer=replay_buffer)
+        collector = Collector(policy, envs, buffer=vec_buffer)
 
         # collect 3 episodes
         collector.collect(n_episode=3)

@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.discrete import Actor, Critic
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
@@ -79,7 +79,7 @@ def test_a2c_with_il(args=get_args()):
         max_grad_norm=args.max_grad_norm, reward_normalization=args.rew_norm)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs)))
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'a2c')

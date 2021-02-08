@@ -4,7 +4,7 @@ import pytest
 from gym.spaces.discrete import Discrete
 from gym.utils import seeding
 
-from tianshou.data import Batch, Collector, ReplayBuffer
+from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
 
@@ -63,10 +63,13 @@ def data():
         [lambda: SimpleEnv() for _ in range(8)])
     env_subproc_init.seed(np.random.randint(1000, size=100).tolist())
     buffer = ReplayBuffer(50000)
+    vec_buffer = VectorReplayBuffer(50000, 100)
     policy = SimplePolicy()
     collector = Collector(policy, env, ReplayBuffer(50000))
-    collector_vec = Collector(policy, env_vec, ReplayBuffer(50000))
-    collector_subproc = Collector(policy, env_subproc, ReplayBuffer(50000))
+    collector_vec = Collector(policy, env_vec,
+                              VectorReplayBuffer(50000, env_vec.env_num))
+    collector_subproc = Collector(policy, env_subproc,
+                                  VectorReplayBuffer(50000, env_subproc.env_num))
     return {
         "env": env,
         "env_vec": env_vec,
@@ -74,6 +77,7 @@ def data():
         "env_subproc_init": env_subproc_init,
         "policy": policy,
         "buffer": buffer,
+        "vec_buffer": vec_buffer,
         "collector": collector,
         "collector_vec": collector_vec,
         "collector_subproc": collector_subproc,
@@ -102,7 +106,7 @@ def test_collect_ep(data):
 
 def test_init_vec_env(data):
     for _ in range(5000):
-        Collector(data["policy"], data["env_vec"], data["buffer"])
+        Collector(data["policy"], data["env_vec"], data["vec_buffer"])
 
 
 def test_reset_vec_env(data):
@@ -122,7 +126,7 @@ def test_collect_vec_env_ep(data):
 
 def test_init_subproc_env(data):
     for _ in range(5000):
-        Collector(data["policy"], data["env_subproc_init"], data["buffer"])
+        Collector(data["policy"], data["env_subproc_init"], data["vec_buffer"])
 
 
 def test_reset_subproc_env(data):

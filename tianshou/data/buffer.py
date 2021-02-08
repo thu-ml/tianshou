@@ -598,8 +598,8 @@ class VectorReplayBuffer(ReplayBufferManager):
     def __init__(
         self, total_size: int, buffer_num: int, **kwargs: Any
     ) -> None:
-        assert buffer_num > 0 and total_size % buffer_num == 0
-        size = total_size // buffer_num
+        assert buffer_num > 0
+        size = int(np.ceil(total_size / buffer_num))
         buffer_list = [ReplayBuffer(size, **kwargs) for _ in range(buffer_num)]
         super().__init__(buffer_list)
 
@@ -608,8 +608,8 @@ class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
     def __init__(
         self, total_size: int, buffer_num: int, **kwargs: Any
     ) -> None:
-        assert buffer_num > 0 and total_size % buffer_num == 0
-        size = total_size // buffer_num
+        assert buffer_num > 0
+        size = int(np.ceil(total_size / buffer_num))
         buffer_list = [PrioritizedReplayBuffer(size, **kwargs)
                                                     for _ in range(buffer_num)]
         super().__init__(buffer_list)

@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import onpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 
 
@@ -61,7 +61,7 @@ def test_psrl(args=get_args()):
         args.add_done_loop)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs)))
     test_collector = Collector(policy, test_envs)
     # log
     writer = SummaryWriter(args.logdir + '/' + args.task)
