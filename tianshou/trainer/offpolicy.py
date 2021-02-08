@@ -94,30 +94,29 @@ def offpolicy_trainer(
                 data = {
                     "env_step": str(env_step),
                     "rew": f"{result['rews'].mean():.2f}",
-                    "len": str(int(result["lens"].mean())),
+                    "len": str(result["lens"].mean()),
                     "n/ep": str(int(result["n/ep"])),
                     "n/st": str(int(result["n/st"])),
                 }
-                if writer and env_step % log_interval == 0:
-                    writer.add_scalar(
-                        "train/rew", result['rews'].mean(), global_step=env_step)
-                    writer.add_scalar(
-                        "train/len", result['lens'].mean(), global_step=env_step)
-                if test_in_train and stop_fn and stop_fn(result["rews"].mean()):
-                    test_result = test_episode(
-                        policy, test_collector, test_fn,
-                        epoch, episode_per_test, writer, env_step)
-                    if stop_fn(test_result["rews"].mean()):
-                        if save_fn:
-                            save_fn(policy)
-                        for k in result.keys():
-                            data[k] = f"{result[k]:.2f}"
-                        t.set_postfix(**data)
-                        return gather_info(
-                            start_time, train_collector, test_collector,
-                            test_result["rews"].mean(), test_result["rew_std"].std())
-                    else:
-                        policy.train()
+                if result["n/ep"] > 0:
+                    if writer and env_step % log_interval == 0:
+                        writer.add_scalar(
+                            "train/rew", result['rews'].mean(), global_step=env_step)
+                        writer.add_scalar(
+                            "train/len", result['lens'].mean(), global_step=env_step)
+                    if test_in_train and stop_fn and stop_fn(result["rews"].mean()):
+                        test_result = test_episode(
+                            policy, test_collector, test_fn,
+                            epoch, episode_per_test, writer, env_step)
+                        if stop_fn(test_result["rews"].mean()):
+                            if save_fn:
+                                save_fn(policy)
+                            t.set_postfix(**data)
+                            return gather_info(
+                                start_time, train_collector, test_collector,
+                                test_result["rews"].mean(), test_result["rews"].std())
+                        else:
+                            policy.train()
                 for i in range(update_per_step * min(
                         result["n/st"] // collect_per_step, t.total - t.n)):
                     gradient_step += 1

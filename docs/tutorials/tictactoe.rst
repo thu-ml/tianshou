@@ -202,7 +202,7 @@ The explanation of each Tianshou class/function will be deferred to their first 
         parser.add_argument('--target-update-freq', type=int, default=320)
         parser.add_argument('--epoch', type=int, default=10)
         parser.add_argument('--step-per-epoch', type=int, default=1000)
-        parser.add_argument('--collect-per-step', type=int, default=10)
+        parser.add_argument('--collect-per-step', type=int, default=8)
         parser.add_argument('--batch-size', type=int, default=64)
         parser.add_argument('--hidden-sizes', type=int,
                             nargs='*', default=[128, 128, 128, 128])

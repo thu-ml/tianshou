@@ -297,7 +297,8 @@ class BasePolicy(ABC, nn.Module):
         terminal = indices[-1]
         with torch.no_grad():
             target_q_torch = target_q_fn(buffer, terminal)  # (bsz, ?)
-        target_q = to_numpy(target_q_torch) * BasePolicy.value_mask(batch)
+        target_q = to_numpy(target_q_torch) * \
+                   BasePolicy.value_mask(batch).reshape(-1, 1)
         end_flag = buffer.done.copy()
         end_flag[buffer.unfinished_index()] = True
         target_q = _nstep_return(rew, end_flag, target_q, indices,
