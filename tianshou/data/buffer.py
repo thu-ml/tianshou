@@ -15,6 +15,8 @@ def _alloc_by_keys_diff(
         if key in meta.keys():
             if isinstance(meta[key], Batch) and isinstance(batch[key], Batch):
                 _alloc_by_keys_diff(meta[key], batch[key], size, stack)
+            elif isinstance(meta[key], Batch) and meta[key].is_empty():
+                meta[key] = _create_value(batch[key], size, stack)
         else:
             meta[key] = _create_value(batch[key], size, stack)
 

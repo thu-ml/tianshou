@@ -4,7 +4,7 @@ from tianshou.data.utils.segtree import SegmentTree
 from tianshou.data.buffer import ReplayBuffer, PrioritizedReplayBuffer, \
     ReplayBufferManager, PrioritizedReplayBufferManager, \
     VectorReplayBuffer, PrioritizedVectorReplayBuffer, CachedReplayBuffer
-from tianshou.data.collector import Collector
+from tianshou.data.collector import Collector, AsyncCollector
 
 __all__ = [
     "Batch",
@@ -20,4 +20,5 @@ __all__ = [
     "PrioritizedVectorReplayBuffer",
     "CachedReplayBuffer",
     "Collector",
+    "AsyncCollector",
 ]

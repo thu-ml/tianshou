@@ -4,8 +4,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import BasePolicy
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
-from tianshou.data import Collector, Batch, ReplayBuffer, VectorReplayBuffer, \
-    CachedReplayBuffer
+from tianshou.data import Batch, Collector, AsyncCollector
+from tianshou.data import ReplayBuffer, VectorReplayBuffer, CachedReplayBuffer
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -145,40 +145,13 @@ def test_collector_with_async():
 
     venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
     policy = MyPolicy()
-    c1 = Collector(
-        policy, venv, ReplayBuffer(size=1000, ignore_obs_next=False),
+    c1 = AsyncCollector(
+        policy, venv,
+        VectorReplayBuffer(total_size=100, buffer_num=4),
         logger.preprocess_fn)
-    c1.collect(n_episode=10)
-    # check if the data in the buffer is chronological
-    # i.e. data in the buffer are full episodes, and each episode is
-    # returned by the same environment
-    env_id = c1.buffer.info['env_id']
-    size = len(c1.buffer)
-    obs = c1.buffer.obs[:size]
-    done = c1.buffer.done[:size]
-    obs_ground_truth = []
-    i = 0
-    while i < size:
-        # i is the start of an episode
-        if done[i]:
-            # this episode has one transition
-            assert env_lens[env_id[i]] == 1
-            i += 1
-            continue
-        j = i
-        while True:
-            j += 1
-            # in one episode, the environment id is the same
-            assert env_id[j] == env_id[i]
-            if done[j]:
-                break
-        j = j + 1  # j is the start of the next episode
-        assert j - i == env_lens[env_id[i]]
-        obs_ground_truth += list(range(j - i))
-        i = j
-    obs_ground_truth = np.expand_dims(
-        np.array(obs_ground_truth), axis=-1)
-    assert np.allclose(obs, obs_ground_truth)
+    result = c1.collect(n_episode=10)
+    print(result)
+    print(c1.buffer)
 
 
 def test_collector_with_dict_state():
@@ -413,4 +386,4 @@ if __name__ == '__main__':
     test_collector_with_dict_state()
     test_collector_with_ma()
     test_collector_with_atari_setting()
-    # test_collector_with_async()
+    test_collector_with_async()
