@@ -97,7 +97,6 @@ class Collector(object):
         self.reset()
 
     def _assign_buffer(self, buffer: Optional[ReplayBuffer]) -> None:
-        max_episode_steps = self.env._max_episode_steps[0]
         if buffer is None:
             buffer = VectorReplayBuffer(
                 self.env_num * 1, self.env_num)
@@ -213,8 +212,11 @@ class Collector(object):
             assert n_step > 0
             assert n_step % self.env_num == 0, \
                 "n_step should be a multiple of #envs"
+            ready_env_ids = np.arange(self.env_num)
         else:
             assert n_episode > 0
+            ready_env_ids = np.arange(min(self.env_num, n_episode))
+            self.data = self.data[:min(self.env_num, n_episode)]
         start_time = time.time()
 
         step_count = 0
@@ -222,9 +224,6 @@ class Collector(object):
         episode_rews = []
         episode_lens = []
         episode_start_indices = []
-
-        ready_env_ids = np.arange(min(self.env_num, n_episode))
-        self.data = self.data[:min(self.env_num, n_episode)]
 
         while True:
             assert len(self.data) == len(ready_env_ids)
@@ -294,12 +293,16 @@ class Collector(object):
                 self.data.obs_next[env_ind_local] = obs_reset
                 for i in env_ind_local:
                     self._reset_state(i)
-                surplus_env_n = len(ready_env_ids) - (n_episode - episode_count)
-                if n_episode and surplus_env_n > 0:
-                    mask = np.ones_like(ready_env_ids, np.bool)
-                    mask[env_ind_local[:surplus_env_n]] = False
-                    ready_env_ids = ready_env_ids[mask]
-                    self.data = self.data[mask]
+                
+                # remove surplus env id from ready_env_ids to avoid bias in
+                # selecting environments.
+                if n_episode:
+                    surplus_env_n = len(ready_env_ids) - (n_episode - episode_count)
+                    if surplus_env_n > 0:
+                        mask = np.ones_like(ready_env_ids, np.bool)
+                        mask[env_ind_local[:surplus_env_n]] = False
+                        ready_env_ids = ready_env_ids[mask]
+                        self.data = self.data[mask]
             self.data.obs = self.data.obs_next
 
             if (n_step and step_count >= n_step) or \

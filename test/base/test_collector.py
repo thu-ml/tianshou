@@ -100,8 +100,6 @@ def test_collector():
 
     assert np.allclose(c1.buffer.obs[:, 0], obs)
     assert np.allclose(c1.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 1, 2])
-    with pytest.raises(AssertionError):
-        c1.collect(n_episode=2)
     c1.collect(n_episode=4)
     assert len(c1.buffer) == 16
     obs[[2, 3, 27, 52, 53, 77, 78, 79]] = [0, 1, 2, 2, 3, 2, 3, 4]
@@ -130,7 +128,7 @@ def test_collector():
     dum = DummyVectorEnv(env_fns)
     num = len(env_fns)
     c3 = Collector(policy, dum,
-                   VectorReplayBuffer(total_size=40000, buffer_num=num))
+                   VectorReplayBuffer(total_size=90000, buffer_num=num))
     for i in range(num, 400):
         c3.reset()
         result = c3.collect(n_episode=i)

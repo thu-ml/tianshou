@@ -349,7 +349,6 @@ def _episodic_return(
     v_s = np.roll(v_s_, 1)
     return _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda) + v_s
 
-
 @njit
 def _nstep_return(
     rew: np.ndarray,
@@ -361,9 +360,9 @@ def _nstep_return(
     mean: float,
     std: float,
 ) -> np.ndarray:
-    gamma_buffer = np.ones(n_step+1)
-    for i in range(1, n_step+1):
-        gamma_buffer[i] = gamma_buffer[i-1]*gamma
+    gamma_buffer = np.ones(n_step + 1)
+    for i in range(1, n_step + 1):
+        gamma_buffer[i] = gamma_buffer[i - 1]*gamma
     target_shape = target_q.shape
     bsz = target_shape[0]
     # change target_q to 2d array
@@ -374,7 +373,6 @@ def _nstep_return(
         now = indices[n]
         gammas[end_flag[now] > 0] = n
         returns[end_flag[now] > 0] = 0.0
-        returns = (rew[now].reshape(-1, 1) - mean) / std + gamma * returns
-    gammas = gammas.reshape(-1, 1)
-    target_q = target_q * gamma_buffer[gammas] + returns
+        returns = (rew[now].reshape(bsz, 1) - mean) / std + gamma * returns
+    target_q = target_q * gamma_buffer[gammas].reshape(bsz, 1) + returns
     return target_q.reshape(target_shape)
