@@ -482,12 +482,15 @@ class AsyncCollector(Collector):
                 whole_data.info[ready_env_ids] = self.data.info
             except ValueError:
                 _alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
+                self.data.obs = self.data.obs_next
                 whole_data[ready_env_ids] = self.data  # lots of overhead
             self.data = whole_data
 
             if (n_step and step_count >= n_step) or \
                (n_episode and episode_count >= n_episode):
                 break
+
+        self._ready_env_ids = ready_env_ids
 
         # generate statistics
         self.collect_step += step_count
