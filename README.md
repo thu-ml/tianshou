@@ -158,7 +158,7 @@ Currently, the overall code of Tianshou platform is less than 2500 lines. Most o
 ```python
 result = collector.collect(n_step=n)
 ```
-
+# TODO remove this
 If you have 3 environments in total and want to collect 1 episode in the first environment, 3 for the third environment:
 
 ```python

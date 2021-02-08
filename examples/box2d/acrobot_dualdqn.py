@@ -72,7 +72,9 @@ def test_dqn(args=get_args()):
         target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(
-        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs)))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size)
@@ -114,7 +116,7 @@ def test_dqn(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=[1] * args.test_num,
+        result = test_collector.collect(n_episode=args.test_num,
                                         render=args.render)
         print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
 

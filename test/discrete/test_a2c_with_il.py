@@ -79,7 +79,9 @@ def test_a2c_with_il(args=get_args()):
         max_grad_norm=args.max_grad_norm, reward_normalization=args.rew_norm)
     # collector
     train_collector = Collector(
-        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs)))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'a2c')

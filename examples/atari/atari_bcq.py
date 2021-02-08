@@ -130,7 +130,7 @@ def test_discrete_bcq(args=get_args()):
         test_envs.seed(args.seed)
         print("Testing agent ...")
         test_collector.reset()
-        result = test_collector.collect(n_episode=[1] * args.test_num,
+        result = test_collector.collect(n_episode=args.test_num,
                                         render=args.render)
         pprint.pprint(result)
 

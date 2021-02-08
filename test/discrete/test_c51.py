@@ -81,7 +81,7 @@ def test_c51(args=get_args()):
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num = len(train_envs))
     # collector
-    train_collector = Collector(policy, train_envs, buf)
+    train_collector = Collector(policy, train_envs, buf, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size)

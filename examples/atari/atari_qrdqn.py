@@ -93,7 +93,7 @@ def test_qrdqn(args=get_args()):
                                 save_only_last_obs=True,
                                 stack_num=args.frames_stack)
     # collector
-    train_collector = Collector(policy, train_envs, buffer)
+    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'qrdqn')
@@ -130,7 +130,7 @@ def test_qrdqn(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=[1] * args.test_num,
+        result = test_collector.collect(n_episode=args.test_num,
                                         render=args.render)
         pprint.pprint(result)
 

@@ -91,7 +91,7 @@ def test_dqn(args=get_args()):
                                 save_only_last_obs=True,
                                 stack_num=args.frames_stack)
     # collector
-    train_collector = Collector(policy, train_envs, buffer)
+    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'dqn')
@@ -142,8 +142,8 @@ def test_dqn(args=get_args()):
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(n_episode=[1] * args.test_num,
-                                            render=args.render)
+            result = test_collector.collect(n_episode=args.test_num,
+                                        render=args.render)
         pprint.pprint(result)
 
     if args.watch:

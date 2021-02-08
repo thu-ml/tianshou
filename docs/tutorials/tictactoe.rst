@@ -128,6 +128,7 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
     >>>
     >>> # use collectors to collect a episode of trajectories
     >>> # the reward is a vector, so we need a scalar metric to monitor the training
+    # TODO remove reward_metric
     >>> collector = Collector(policy, env, reward_metric=lambda x: x[0])
     >>>
     >>> # you will see a long trajectory showing the board status at each timestep

@@ -108,7 +108,9 @@ def test_sac(args=get_args()):
 
     # collector
     train_collector = Collector(
-        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs)))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'sac')
@@ -120,7 +122,7 @@ def test_sac(args=get_args()):
         policy.eval()
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=[1] * args.test_num,
+        result = test_collector.collect(n_episode=args.test_num,
                                         render=args.render)
         pprint.pprint(result)
 

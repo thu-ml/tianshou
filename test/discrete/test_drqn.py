@@ -68,7 +68,8 @@ def test_drqn(args=get_args()):
     train_collector = Collector(
         policy, train_envs, VectorReplayBuffer(
             args.buffer_size,  buffer_num = len(train_envs),
-            stack_num=args.stack_num, ignore_obs_next=True))
+            stack_num=args.stack_num, ignore_obs_next=True),
+            exploration_noise=True)
     # the stack_num is for RNN training: sample framestack obs
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)

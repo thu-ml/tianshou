@@ -81,7 +81,7 @@ def test_ppo(args=get_args()):
     train_collector = Collector(
         policy, train_envs,
         VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs)),
-        preprocess_fn=preprocess_fn)
+        preprocess_fn=preprocess_fn, exploration_noise=True)
     test_collector = Collector(policy, test_envs, preprocess_fn=preprocess_fn)
     # log
     writer = SummaryWriter(os.path.join(args.logdir, args.task, 'ppo'))

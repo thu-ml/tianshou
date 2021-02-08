@@ -13,7 +13,6 @@ from tianshou.data import Batch, ReplayBuffer, ReplayBufferManager, \
 
 class Collector(object):
     # TODO change doc
-    # TODO change all test to ensure api
     """Collector enables the policy to interact with different types of envs.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
@@ -25,14 +24,9 @@ class Collector(object):
     :param function preprocess_fn: a function called before the data has been
         added to the buffer, see issue #42 and :ref:`preprocess_fn`, defaults
         to None.
-    :param BaseNoise action_noise: add a noise to continuous action. Normally
-        a policy already has a noise param for exploration in training phase,
-        so this is recommended to use in test collector for some purpose.
-    :param function reward_metric: to be used in multi-agent RL. The reward to
-        report is of shape [agent_num], but we need to return a single scalar
-        to monitor training. This function specifies what is the desired
-        metric, e.g., the reward of agent 1 or the average reward over all
-        agents. By default, the behavior is to select the reward of agent 1.
+    :param exploration_noise: a flag which determines when the collector is used for 
+        training. If so, function exploration_noise() in policy will be called
+        automatically to add exploration noise. Default to True.
 
     The ``preprocess_fn`` is a function called before the data has been added
     to the buffer with batch format, which receives up to 7 keys as listed in
@@ -54,7 +48,7 @@ class Collector(object):
 
         # the collector supports vectorized environments as well
         vec_buffer = VectorReplayBuffer(total_size=10000, buffer_num = 3)
-        # buffer_num should be equal(suggested) or larger than envs number
+        # buffer_num should be equal(suggested) to or larger than envs number
         envs = DummyVectorEnv([lambda: gym.make('CartPole-v0')
                                for _ in range(3)])
         collector = Collector(policy, envs, buffer=vec_buffer)
@@ -83,16 +77,15 @@ class Collector(object):
         env: Union[gym.Env, BaseVectorEnv],
         buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
-        training: bool = True,
+        exploration_noise: bool = False,
     ) -> None:
-        # TODO update training in all test/examples, remove action noise
         super().__init__()
         if not isinstance(env, BaseVectorEnv):
             env = DummyVectorEnv([lambda: env])
         assert env.is_async is False, "Please use AsyncCollector if ..."
         self.env = env
         self.env_num = len(env)
-        self.training = training
+        self.exploration_noise = exploration_noise
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
@@ -252,7 +245,7 @@ class Collector(object):
             if state is not None:
                 policy.hidden_state = state  # save state into buffer
             act = to_numpy(result.act)
-            if self.training and not random:
+            if self.exploration_noise and not random:
                 act = self.policy.exploration_noise(act, self.data)
             self.data.update(policy=policy, act=act)
 
