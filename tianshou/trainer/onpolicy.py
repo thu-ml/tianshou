@@ -110,12 +110,10 @@ def onpolicy_trainer(
                     if stop_fn(test_result["rews"].mean()):
                         if save_fn:
                             save_fn(policy)
-                        for k in result.keys():
-                            data[k] = f"{result[k]:.2f}"
                         t.set_postfix(**data)
                         return gather_info(
                             start_time, train_collector, test_collector,
-                            test_result["rews"].mean(), test_result["rew_std"])
+                            test_result["rews"].mean(), test_result["rews"].std())
                     else:
                         policy.train()
                 losses = policy.update(

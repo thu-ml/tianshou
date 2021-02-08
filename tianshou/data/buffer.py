@@ -52,6 +52,8 @@ class ReplayBuffer:
         ignore_obs_next: bool = False,
         save_only_last_obs: bool = False,
         sample_avail: bool = False,
+        # TODO talk about
+        **kwargs,
     ) -> None:
         self.options: Dict[str, Any] = {
             "stack_num": stack_num,
