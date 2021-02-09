@@ -353,7 +353,7 @@ def _episodic_return(
     return _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda) + v_s
 
 
-# @njit
+@njit
 def _nstep_return(
     rew: np.ndarray,
     end_flag: np.ndarray,
