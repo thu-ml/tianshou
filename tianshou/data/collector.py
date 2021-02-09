@@ -11,29 +11,29 @@ from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.data import Batch, ReplayBuffer, ReplayBufferManager, VectorReplayBuffer, CachedReplayBuffer, to_numpy
 
 
-# TODO change doc
 class Collector(object):
-    """Collector enables the policy to interact with different types of envs.
+    """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param env: a ``gym.Env`` environment or an instance of the :class:`~tianshou.env.BaseVectorEnv` class.
-    :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class. If set to None (testing phase), it
-        will not store the data.
+    :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class. If set to None, it will not store
+        the data. Default to None.
     :param function preprocess_fn: a function called before the data has been added to the buffer, see issue #42 and
         :ref:`preprocess_fn`. Default to None.
-    :param exploration_noise: a flag which determines when the collector is used for training. If so, function
-        exploration_noise() in policy will be called automatically to add exploration noise. Default to True.
+    :param bool exploration_noise: determine whether the action needs to be modified with corresponding policy's
+        exploration noise. If so, "policy.exploration_noise(act, batch)" will be called automatically to add the
+        exploration noise into action. Default to False.
 
-    The ``preprocess_fn`` is a function called before the data has been added to the buffer with batch format, which
-    receives up to 7 keys as listed in :class:`~tianshou.data.Batch`. It will receive with only ``obs`` when the
-    collector resets the environment. It returns either a dict or a :class:`~tianshou.data.Batch` with the modified
-    keys and values. Examples are in "test/base/test_collector.py".
+    The "preprocess_fn" is a function called before the data has been added to the buffer with batch format.
+    It will receive with only "obs" when the collector resets the environment, and will receive four keys "obs_next",
+    "rew", "done", "info" in a normal env step. It returns either a dict or a :class:`~tianshou.data.Batch` with the
+    modified keys and values. Examples are in "test/base/test_collector.py".
 
-    Here is the example:
+    Here are some example usages:
     ::
 
         policy = PGPolicy(...)  # or other policies if you wish
-        env = gym.make('CartPole-v0')
+        env = gym.make("CartPole-v0")
 
         replay_buffer = ReplayBuffer(size=10000)
 
@@ -41,9 +41,9 @@ class Collector(object):
         collector = Collector(policy, env, buffer=replay_buffer)
 
         # the collector supports vectorized environments as well
-        vec_buffer = VectorReplayBuffer(total_size=10000, buffer_num = 3)
-        # buffer_num should be equal (suggested) to or larger than #envs
-        envs = DummyVectorEnv([lambda: gym.make('CartPole-v0') for _ in range(3)])
+        vec_buffer = VectorReplayBuffer(total_size=10000, buffer_num=3)
+        # buffer_num should be equal to (suggested) or larger than #envs
+        envs = DummyVectorEnv([lambda: gym.make("CartPole-v0") for _ in range(3)])
         collector = Collector(policy, envs, buffer=vec_buffer)
 
         # collect 3 episodes
@@ -80,13 +80,14 @@ class Collector(object):
         self.reset()
 
     def _assign_buffer(self, buffer: Optional[ReplayBuffer]) -> None:
+        """Check if the buffer matches the constraint."""
         if buffer is None:
             buffer = VectorReplayBuffer(self.env_num * 1, self.env_num)
         elif isinstance(buffer, ReplayBufferManager):
             assert buffer.buffer_num >= self.env_num
             if isinstance(buffer, CachedReplayBuffer):
                 assert buffer.cached_buffer_num >= self.env_num
-        else:  # ReplayBuffer or PrioritizedReplayBuffer
+        else:  # ReplayBuffer or PrioritizedReplayBuffer cannot be used collecting with multi environments.
             assert buffer.maxsize > 0
             if self.env_num > 1:
                 if type(buffer) == ReplayBuffer:
@@ -160,18 +161,14 @@ class Collector(object):
         """Collect a specified number of step or episode.
 
         :param int n_step: how many steps you want to collect.
-        :param n_episode: how many episodes you want to collect.
-        :param bool random: whether to use random policy for collecting data.
-            Default to False.
-        :param float render: the sleep time between rendering consecutive
-            frames. Default to None (no rendering).
-        :param bool no_grad: whether to retain gradient in policy.forward.
-            Default to True (no gradient retaining).
+        :param int n_episode: how many episodes you want to collect.
+        :param bool random: whether to use random policy for collecting data. Default to False.
+        :param float render: the sleep time between rendering consecutive frames. Default to None (no rendering).
+        :param bool no_grad: whether to retain gradient in policy.forward(). Default to True (no gradient retaining).
 
         .. note::
 
-            One and only one collection number specification is permitted,
-            either ``n_step`` or ``n_episode``.
+            One and only one collection number specification is permitted, either ``n_step`` or ``n_episode``.
 
         :return: A dict including the following keys
 
@@ -179,10 +176,13 @@ class Collector(object):
             * ``n/st`` the collected number of steps.
             * ``rews`` the list of episode reward over collected episodes.
             * ``lens`` the list of episode length over collected episodes.
-            * ``idxs`` the list of episode start index over collected episodes.
+            * ``idxs`` the list of episode start index in buffer over collected episodes.
+
+        .. note::
+
+            To ensure unbiased sampling result with n_episode option, this function will first collect ``n_episode -
+            env_num`` episodes, then for the last ``env_num`` episodes, they will be collected evenly from each env.
         """
-        # collect at least n_step or n_episode
-        # TODO: modify docs, tell the constraints
         assert self.env.is_async is False, "Please use AsyncCollector if ..."
         if n_step is not None:
             assert n_episode is None, (
@@ -190,6 +190,9 @@ class Collector(object):
                 f"collect, got n_step={n_step}, n_episode={n_episode}."
             )
             assert n_step > 0
+            if not n_step % self.env_num == 0:
+                warnings.warn(f"n_step={n_step} is not a multiple of #env ({self.env_num}), "
+                              "which may cause extra frame collected into the buffer.")
             ready_env_ids = np.arange(self.env_num)
         else:
             assert n_episode > 0
@@ -236,7 +239,7 @@ class Collector(object):
             if self.preprocess_fn:
                 self.data.update(
                     self.preprocess_fn(
-                        obs_next=self.data.obs_next, rew=self.data.rew, done=self.data.done, info=self.data.info,
+                        obs_next=self.data.obs_next, rew=self.data.rew, done=self.data.done, info=self.data.info
                     )
                 )
 
@@ -267,8 +270,7 @@ class Collector(object):
                 for i in env_ind_local:
                     self._reset_state(i)
 
-                # Remove surplus env id from ready_env_ids to avoid bias in
-                # selecting environments.
+                # Remove surplus env id from ready_env_ids to avoid bias in selecting environments.
                 if n_episode:
                     surplus_env_num = len(ready_env_ids) - (n_episode - episode_count)
                     if surplus_env_num > 0:
@@ -323,15 +325,14 @@ class AsyncCollector(Collector):
         """Collect a specified number of step or episode.
 
         :param int n_step: how many steps you want to collect.
-        :param n_episode: how many episodes you want to collect.
+        :param int n_episode: how many episodes you want to collect.
         :param bool random: whether to use random policy for collecting data. Default to False.
         :param float render: the sleep time between rendering consecutive frames. Default to None (no rendering).
-        :param bool no_grad: whether to retain gradient in policy.forward. Default to True (no gradient retaining).
+        :param bool no_grad: whether to retain gradient in policy.forward(). Default to True (no gradient retaining).
 
         .. note::
 
-            One and only one collection number specification is permitted,
-            either ``n_step`` or ``n_episode``.
+            One and only one collection number specification is permitted, either ``n_step`` or ``n_episode``.
 
         :return: A dict including the following keys
 
@@ -339,10 +340,9 @@ class AsyncCollector(Collector):
             * ``n/st`` the collected number of steps.
             * ``rews`` the list of episode reward over collected episodes.
             * ``lens`` the list of episode length over collected episodes.
-            * ``idxs`` the list of episode start index over collected episodes.
+            * ``idxs`` the list of episode start index in buffer over collected episodes.
         """
         # collect at least n_step or n_episode
-        # TODO: modify docs, tell the constraints
         if n_step is not None:
             assert n_episode is None, (
                 "Only one of n_step or n_episode is allowed in Collector."
@@ -351,7 +351,7 @@ class AsyncCollector(Collector):
             assert n_step > 0
         else:
             assert n_episode > 0
-            warnings.warn("Using n_episode under async setting may collect extra frames into buffer.")
+        warnings.warn("Using async setting may collect extra frames into buffer.")
 
         ready_env_ids = self._ready_env_ids
 
@@ -410,7 +410,7 @@ class AsyncCollector(Collector):
             if self.preprocess_fn:
                 self.data.update(
                     self.preprocess_fn(
-                        obs_next=self.data.obs_next, rew=self.data.rew, done=self.data.done, info=self.data.info,
+                        obs_next=self.data.obs_next, rew=self.data.rew, done=self.data.done, info=self.data.info
                     )
                 )
 

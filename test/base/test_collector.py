@@ -93,8 +93,6 @@ def test_collector():
         policy, venv,
         VectorReplayBuffer(total_size=100, buffer_num=4),
         logger.preprocess_fn)
-    with pytest.raises(AssertionError):
-        c1.collect(n_step=6)
     c1.collect(n_step=8)
     obs = np.zeros(100)
     obs[[0, 1, 25, 26, 50, 51, 75, 76]] = [0, 1, 0, 1, 0, 1, 0, 1]
@@ -141,7 +139,7 @@ def test_collector_with_async():
     env_lens = [2, 3, 4, 5]
     writer = SummaryWriter('log/async_collector')
     logger = Logger(writer)
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.01, random_sleep=True)
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True)
                for i in env_lens]
 
     venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
@@ -199,8 +197,6 @@ def test_collector_with_dict_state():
         policy, envs,
         VectorReplayBuffer(total_size=100, buffer_num=4),
         Logger.single_preprocess_fn)
-    with pytest.raises(AssertionError):
-        c1.collect(n_step=10)
     c1.collect(n_step=12)
     result = c1.collect(n_episode=8)
     assert result['n/ep'] == 8
