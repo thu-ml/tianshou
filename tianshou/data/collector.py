@@ -3,7 +3,7 @@ import time
 import torch
 import warnings
 import numpy as np
-from typing import Any, Dict, List, Union, Optional, Callable
+from typing import Dict, List, Union, Optional, Callable
 
 from tianshou.policy import BasePolicy
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
@@ -16,25 +16,19 @@ from tianshou.data.buffer import _alloc_by_keys_diff
 class Collector(object):
     """Collector enables the policy to interact with different types of envs.
 
-    :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
-        class.
-    :param env: a ``gym.Env`` environment or an instance of the
-        :class:`~tianshou.env.BaseVectorEnv` class.
-    :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer`
-        class. If set to None (testing phase), it will not store the data.
-    :param function preprocess_fn: a function called before the data has been
-        added to the buffer, see issue #42 and :ref:`preprocess_fn`. Default
-        to None.
-    :param exploration_noise: a flag which determines when the collector is
-        used for training. If so, function exploration_noise() in policy will
-        be called automatically to add exploration noise. Default to True.
+    :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
+    :param env: a ``gym.Env`` environment or an instance of the :class:`~tianshou.env.BaseVectorEnv` class.
+    :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class. If set to None (testing phase), it
+        will not store the data.
+    :param function preprocess_fn: a function called before the data has been added to the buffer, see issue #42 and
+        :ref:`preprocess_fn`. Default to None.
+    :param exploration_noise: a flag which determines when the collector is used for training. If so, function
+        exploration_noise() in policy will be called automatically to add exploration noise. Default to True.
 
-    The ``preprocess_fn`` is a function called before the data has been added
-    to the buffer with batch format, which receives up to 7 keys as listed in
-    :class:`~tianshou.data.Batch`. It will receive with only ``obs`` when the
-    collector resets the environment. It returns either a dict or a
-    :class:`~tianshou.data.Batch` with the modified keys and values. Examples
-    are in "test/base/test_collector.py".
+    The ``preprocess_fn`` is a function called before the data has been added to the buffer with batch format, which
+    receives up to 7 keys as listed in :class:`~tianshou.data.Batch`. It will receive with only ``obs`` when the
+    collector resets the environment. It returns either a dict or a :class:`~tianshou.data.Batch` with the modified
+    keys and values. Examples are in "test/base/test_collector.py".
 
     Here is the example:
     ::
@@ -50,22 +44,19 @@ class Collector(object):
         # the collector supports vectorized environments as well
         vec_buffer = VectorReplayBuffer(total_size=10000, buffer_num = 3)
         # buffer_num should be equal (suggested) to or larger than #envs
-        envs = DummyVectorEnv([lambda: gym.make('CartPole-v0')
-                               for _ in range(3)])
+        envs = DummyVectorEnv([lambda: gym.make('CartPole-v0') for _ in range(3)])
         collector = Collector(policy, envs, buffer=vec_buffer)
 
         # collect 3 episodes
         collector.collect(n_episode=3)
         # collect at least 2 steps
         collector.collect(n_step=2)
-        # collect episodes with visual rendering (the render argument is the
-        # sleep time between rendering consecutive frames)
+        # collect episodes with visual rendering ("render" is the sleep time between rendering consecutive frames)
         collector.collect(n_episode=1, render=0.03)
 
     .. note::
 
-        Please make sure the given environment has a time limitation if using
-        n_episode collect option.
+        Please make sure the given environment has a time limitation if using n_episode collect option.
     """
 
     def __init__(
@@ -91,8 +82,7 @@ class Collector(object):
 
     def _assign_buffer(self, buffer: Optional[ReplayBuffer]) -> None:
         if buffer is None:
-            buffer = VectorReplayBuffer(
-                self.env_num * 1, self.env_num)
+            buffer = VectorReplayBuffer(self.env_num * 1, self.env_num)
         elif isinstance(buffer, ReplayBufferManager):
             assert buffer.buffer_num >= self.env_num
             if isinstance(buffer, CachedReplayBuffer):
@@ -107,10 +97,8 @@ class Collector(object):
                     buffer_type = "PrioritizedReplayBuffer"
                     vector_type = "PrioritizedVectorReplayBuffer"
                 raise TypeError(
-                    f"Cannot use {buffer_type}(size={buffer.maxsize}, ...) to "
-                    f"collect {self.env_num} envs,\n\tplease use {vector_type}"
-                    f"(total_size={buffer.maxsize}, buffer_num={self.env_num},"
-                    " ...) instead.")
+                    f"Cannot use {buffer_type}(size={buffer.maxsize}, ...) to collect {self.env_num} envs,\n\t"
+                    f"please use {vector_type}(total_size={buffer.maxsize}, buffer_num={self.env_num}, ...) instead.")
         self.buffer = buffer
 
     # TODO move to trainer
@@ -129,8 +117,7 @@ class Collector(object):
         """Reset all related variables in the collector."""
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
-        self.data = Batch(obs={}, act={}, rew={}, done={},
-                          obs_next={}, info={}, policy={})
+        self.data = Batch(obs={}, act={}, rew={}, done={}, obs_next={}, info={}, policy={})
         self.reset_env()
         self.reset_buffer()
         self.reset_stat()
@@ -199,7 +186,7 @@ class Collector(object):
         assert self.env.is_async is False, "Please use AsyncCollector if ..."
         if n_step is not None:
             assert n_episode is None, (
-                "Only one of n_step or n_episode is allowed in Collector."
+                f"Only one of n_step or n_episode is allowed in Collector."
                 f"collect, got n_step={n_step}, n_episode={n_episode}.")
             assert n_step > 0
             ready_env_ids = np.arange(self.env_num)
@@ -222,8 +209,7 @@ class Collector(object):
 
             # get the next action
             if random:
-                self.data.update(act=[self._action_space[i].sample()
-                                      for i in ready_env_ids])
+                self.data.update(act=[self._action_space[i].sample() for i in ready_env_ids])
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than retain_grad version
@@ -243,8 +229,7 @@ class Collector(object):
                 self.data.update(policy=policy, act=act)
 
             # step in env
-            obs_next, rew, done, info = self.env.step(
-                self.data.act, id=ready_env_ids)
+            obs_next, rew, done, info = self.env.step(self.data.act, id=ready_env_ids)
 
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
             if self.preprocess_fn:
@@ -261,8 +246,7 @@ class Collector(object):
                     time.sleep(render)
 
             # add data into the buffer
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
-                self.data, buffer_ids=ready_env_ids)
+            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(self.data, buffer_ids=ready_env_ids)
 
             # collect statistics
             step_count += len(ready_env_ids)
@@ -278,8 +262,7 @@ class Collector(object):
                 # finished episodes, we have to reset finished envs first.
                 obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
-                    obs_reset = self.preprocess_fn(
-                        obs=obs_reset).get("obs", obs_reset)
+                    obs_reset = self.preprocess_fn(obs=obs_reset).get("obs", obs_reset)
                 self.data.obs_next[env_ind_local] = obs_reset
                 for i in env_ind_local:
                     self._reset_state(i)
@@ -287,8 +270,7 @@ class Collector(object):
                 # Remove surplus env id from ready_env_ids to avoid bias in
                 # selecting environments.
                 if n_episode:
-                    episode_to_collect = n_episode - episode_count
-                    surplus_env_num = len(ready_env_ids) - episode_to_collect
+                    surplus_env_num = len(ready_env_ids) - (n_episode - episode_count)
                     if surplus_env_num > 0:
                         mask = np.ones_like(ready_env_ids, np.bool)
                         mask[env_ind_local[:surplus_env_num]] = False
@@ -297,8 +279,7 @@ class Collector(object):
 
             self.data.obs = self.data.obs_next
 
-            if (n_step and step_count >= n_step) or \
-               (n_episode and episode_count >= n_episode):
+            if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
                 break
 
         # generate statistics
@@ -307,21 +288,15 @@ class Collector(object):
         self.collect_time += max(time.time() - start_time, 1e-9)
 
         if n_episode:
-            self.data = Batch(obs={}, act={}, rew={}, done={},
-                              obs_next={}, info={}, policy={})
+            self.data = Batch(obs={}, act={}, rew={}, done={}, obs_next={}, info={}, policy={})
             self.reset_env()
 
         if episode_count > 0:
-            rews, lens, idxs = list(map(np.concatenate, [
-                episode_rews, episode_lens, episode_start_indices]))
+            rews, lens, idxs = list(map(np.concatenate, [episode_rews, episode_lens, episode_start_indices]))
         else:
-            rews, lens, idxs = \
-                np.array([]), np.array([], np.int), np.array([], np.int)
+            rews, lens, idxs = np.array([]), np.array([], np.int), np.array([], np.int)
 
-        return {
-            "n/ep": episode_count, "n/st": step_count,
-            "rews": rews, "lens": lens, "idxs": idxs,
-        }
+        return {"n/ep": episode_count, "n/st": step_count, "rews": rews, "lens": lens, "idxs": idxs}
 
 
 class AsyncCollector(Collector):
@@ -349,12 +324,9 @@ class AsyncCollector(Collector):
 
         :param int n_step: how many steps you want to collect.
         :param n_episode: how many episodes you want to collect.
-        :param bool random: whether to use random policy for collecting data.
-            Default to False.
-        :param float render: the sleep time between rendering consecutive
-            frames. Default to None (no rendering).
-        :param bool no_grad: whether to retain gradient in policy.forward.
-            Default to True (no gradient retaining).
+        :param bool random: whether to use random policy for collecting data. Default to False.
+        :param float render: the sleep time between rendering consecutive frames. Default to None (no rendering).
+        :param bool no_grad: whether to retain gradient in policy.forward. Default to True (no gradient retaining).
 
         .. note::
 
@@ -378,10 +350,8 @@ class AsyncCollector(Collector):
             assert n_step > 0
         else:
             assert n_episode > 0
-            warnings.warn("Using n_episode under async setting may collect "
-                          "extra frames into buffer.")
+            warnings.warn("Using n_episode under async setting may collect extra frames into buffer.")
 
-        finished_env_ids = []
         ready_env_ids = self._ready_env_ids
 
         start_time = time.time()
@@ -401,8 +371,7 @@ class AsyncCollector(Collector):
 
             # get the next action
             if random:
-                self.data.update(act=[self._action_space[i].sample()
-                                      for i in ready_env_ids])
+                self.data.update(act=[self._action_space[i].sample() for i in ready_env_ids])
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than retain_grad version
@@ -452,8 +421,7 @@ class AsyncCollector(Collector):
                     time.sleep(render)
 
             # add data into the buffer
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
-                self.data, buffer_ids=ready_env_ids)
+            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(self.data, buffer_ids=ready_env_ids)
 
             # collect statistics
             step_count += len(ready_env_ids)
@@ -469,8 +437,7 @@ class AsyncCollector(Collector):
                 # finished episodes, we have to reset finished envs first.
                 obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
-                    obs_reset = self.preprocess_fn(
-                        obs=obs_reset).get("obs", obs_reset)
+                    obs_reset = self.preprocess_fn(obs=obs_reset).get("obs", obs_reset)
                 self.data.obs_next[env_ind_local] = obs_reset
                 for i in env_ind_local:
                     self._reset_state(i)
@@ -486,8 +453,7 @@ class AsyncCollector(Collector):
                 whole_data[ready_env_ids] = self.data  # lots of overhead
             self.data = whole_data
 
-            if (n_step and step_count >= n_step) or \
-               (n_episode and episode_count >= n_episode):
+            if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
                 break
 
         self._ready_env_ids = ready_env_ids
@@ -498,13 +464,8 @@ class AsyncCollector(Collector):
         self.collect_time += max(time.time() - start_time, 1e-9)
 
         if episode_count > 0:
-            rews, lens, idxs = list(map(np.concatenate, [
-                episode_rews, episode_lens, episode_start_indices]))
+            rews, lens, idxs = list(map(np.concatenate, [episode_rews, episode_lens, episode_start_indices]))
         else:
-            rews, lens, idxs = \
-                np.array([]), np.array([], np.int), np.array([], np.int)
+            rews, lens, idxs = np.array([]), np.array([], np.int), np.array([], np.int)
 
-        return {
-            "n/ep": episode_count, "n/st": step_count,
-            "rews": rews, "lens": lens, "idxs": idxs,
-        }
+        return {"n/ep": episode_count, "n/st": step_count, "rews": rews, "lens": lens, "idxs": idxs}
