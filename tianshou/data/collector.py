@@ -6,10 +6,9 @@ import numpy as np
 from typing import Dict, List, Union, Optional, Callable
 
 from tianshou.policy import BasePolicy
-from tianshou.env import BaseVectorEnv, DummyVectorEnv
-from tianshou.data import Batch, ReplayBuffer, ReplayBufferManager, \
-    VectorReplayBuffer, CachedReplayBuffer, to_numpy
 from tianshou.data.buffer import _alloc_by_keys_diff
+from tianshou.env import BaseVectorEnv, DummyVectorEnv
+from tianshou.data import Batch, ReplayBuffer, ReplayBufferManager, VectorReplayBuffer, CachedReplayBuffer, to_numpy
 
 
 # TODO change doc
@@ -98,7 +97,8 @@ class Collector(object):
                     vector_type = "PrioritizedVectorReplayBuffer"
                 raise TypeError(
                     f"Cannot use {buffer_type}(size={buffer.maxsize}, ...) to collect {self.env_num} envs,\n\t"
-                    f"please use {vector_type}(total_size={buffer.maxsize}, buffer_num={self.env_num}, ...) instead.")
+                    f"please use {vector_type}(total_size={buffer.maxsize}, buffer_num={self.env_num}, ...) instead."
+                )
         self.buffer = buffer
 
     # TODO move to trainer
@@ -187,7 +187,8 @@ class Collector(object):
         if n_step is not None:
             assert n_episode is None, (
                 f"Only one of n_step or n_episode is allowed in Collector."
-                f"collect, got n_step={n_step}, n_episode={n_episode}.")
+                f"collect, got n_step={n_step}, n_episode={n_episode}."
+            )
             assert n_step > 0
             ready_env_ids = np.arange(self.env_num)
         else:
@@ -233,12 +234,11 @@ class Collector(object):
 
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
             if self.preprocess_fn:
-                self.data.update(self.preprocess_fn(
-                    obs_next=self.data.obs_next,
-                    rew=self.data.rew,
-                    done=self.data.done,
-                    info=self.data.info,
-                ))
+                self.data.update(
+                    self.preprocess_fn(
+                        obs_next=self.data.obs_next, rew=self.data.rew, done=self.data.done, info=self.data.info,
+                    )
+                )
 
             if render:
                 self.env.render()
@@ -346,7 +346,8 @@ class AsyncCollector(Collector):
         if n_step is not None:
             assert n_episode is None, (
                 "Only one of n_step or n_episode is allowed in Collector."
-                f"collect, got n_step={n_step}, n_episode={n_episode}.")
+                f"collect, got n_step={n_step}, n_episode={n_episode}."
+            )
             assert n_step > 0
         else:
             assert n_episode > 0
@@ -399,8 +400,7 @@ class AsyncCollector(Collector):
                 whole_data[ready_env_ids] = self.data  # lots of overhead
 
             # step in env
-            obs_next, rew, done, info = self.env.step(
-                self.data.act, id=ready_env_ids)
+            obs_next, rew, done, info = self.env.step(self.data.act, id=ready_env_ids)
 
             # change self.data here because ready_env_ids has changed
             ready_env_ids = np.array([i["env_id"] for i in info])
@@ -408,12 +408,11 @@ class AsyncCollector(Collector):
 
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
             if self.preprocess_fn:
-                self.data.update(self.preprocess_fn(
-                    obs_next=self.data.obs_next,
-                    rew=self.data.rew,
-                    done=self.data.done,
-                    info=self.data.info,
-                ))
+                self.data.update(
+                    self.preprocess_fn(
+                        obs_next=self.data.obs_next, rew=self.data.rew, done=self.data.done, info=self.data.info,
+                    )
+                )
 
             if render:
                 self.env.render()

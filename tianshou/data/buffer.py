@@ -30,7 +30,7 @@ class ReplayBuffer:
     :param int size: the maximum size of replay buffer.
     :param int stack_num: the frame-stack sampling argument, should be greater than or equal to 1.
         Default to 1 (no stacking).
-    :param bool ignore_obs_next: whether to store obs_next, defaults to False.
+    :param bool ignore_obs_next: whether to store obs_next. Default to False.
     :param bool save_only_last_obs: only save the last obs/obs_next when it has a shape of (timestep, ...) because of
         temporal stacking. Default to False.
     :param bool sample_avail: the parameter indicating sampling only available index when using frame-stack sampling
@@ -271,7 +271,7 @@ class ReplayBuffer:
         index: Union[int, np.integer, np.ndarray],
         key: str,
         default_value: Optional[Any] = None,
-        stack_num: Optional[int] = None
+        stack_num: Optional[int] = None,
     ) -> Union[Batch, np.ndarray]:
         """Return the stacked result.
 
@@ -439,9 +439,7 @@ class ReplayBufferManager(ReplayBuffer):
         self._set_batch_for_children()
 
     def unfinished_index(self) -> np.ndarray:
-        return np.concatenate([
-            buf.unfinished_index() + offset
-            for offset, buf in zip(self._offset, self.buffers)])
+        return np.concatenate([buf.unfinished_index() + offset for offset, buf in zip(self._offset, self.buffers)])
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         index = np.asarray(index) % self.maxsize
@@ -517,9 +515,9 @@ class ReplayBufferManager(ReplayBuffer):
         if batch_size < 0:
             return np.array([], np.int)
         if self._sample_avail and self.stack_num > 1:
-            all_indices = np.concatenate([
-                buf.sample_index(0) + offset
-                for offset, buf in zip(self._offset, self.buffers)])
+            all_indices = np.concatenate(
+                [buf.sample_index(0) + offset for offset, buf in zip(self._offset, self.buffers)]
+            )
             if batch_size == 0:
                 return all_indices
             else:
@@ -528,16 +526,14 @@ class ReplayBufferManager(ReplayBuffer):
             sample_num = np.zeros(self.buffer_num, np.int)
         else:
             buffer_lens = np.array([len(buf) for buf in self.buffers])
-            buffer_idx = np.random.choice(self.buffer_num, batch_size,
-                                          p=buffer_lens / buffer_lens.sum())
+            buffer_idx = np.random.choice(self.buffer_num, batch_size, p=buffer_lens / buffer_lens.sum())
             sample_num = np.bincount(buffer_idx, minlength=self.buffer_num)
             # avoid batch_size > 0 and sample_num == 0 -> get child's all data
             sample_num[sample_num == 0] = -1
 
-        return np.concatenate([
-            buf.sample_index(bsz) + offset
-            for offset, buf, bsz in zip(self._offset, self.buffers, sample_num)
-        ])
+        return np.concatenate(
+            [buf.sample_index(bsz) + offset for offset, buf, bsz in zip(self._offset, self.buffers, sample_num)]
+        )
 
 
 class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManager):
