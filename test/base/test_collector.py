@@ -123,16 +123,6 @@ def test_collector():
     obs[[4, 5, 28, 29, 30, 54, 55, 56, 57]] = [0, 1, 0, 1, 2, 0, 1, 2, 3]
     assert np.all(c2.buffer.obs[:, 0] == obs)
     c2.collect(n_episode=4, random=True)
-    env_fns = [lambda x=i: MyTestEnv(size=x) for i in np.arange(2, 11)]
-    dum = DummyVectorEnv(env_fns)
-    num = len(env_fns)
-    c3 = Collector(policy, dum,
-                   VectorReplayBuffer(total_size=40000, buffer_num=num))
-    for i in tqdm.trange(num, 400, desc="test step collector n_episode"):
-        c3.reset()
-        result = c3.collect(n_episode=i)
-        assert result['n/ep'] == i
-        assert result['n/st'] == len(c3.buffer)
 
 
 def test_collector_with_async():
@@ -144,13 +134,13 @@ def test_collector_with_async():
 
     venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
     policy = MyPolicy()
-    bufsize = 300
+    bufsize = 60
     c1 = AsyncCollector(
         policy, venv,
         VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
         logger.preprocess_fn)
     ptr = [0, 0, 0, 0]
-    for n_episode in tqdm.trange(1, 100, desc="test async n_episode"):
+    for n_episode in tqdm.trange(1, 30, desc="test async n_episode"):
         result = c1.collect(n_episode=n_episode)
         assert result["n/ep"] >= n_episode
         # check buffer data, obs and obs_next, env_id
@@ -167,7 +157,7 @@ def test_collector_with_async():
             assert np.all(buf.obs_next[indices].reshape(
                 count, env_len) == seq + 1)
     # test async n_step, for now the buffer should be full of data
-    for n_step in tqdm.trange(1, 150, desc="test async n_step"):
+    for n_step in tqdm.trange(1, 15, desc="test async n_step"):
         result = c1.collect(n_step=n_step)
         assert result["n/st"] >= n_step
         for i in range(4):

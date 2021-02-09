@@ -1,148 +1,109 @@
-import gym
+import tqdm
 import numpy as np
-import pytest
-from gym.spaces.discrete import Discrete
-from gym.utils import seeding
 
-from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
-from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
+from tianshou.env import DummyVectorEnv, SubprocVectorEnv
+from tianshou.data import Batch, Collector, AsyncCollector, VectorReplayBuffer
+
+if __name__ == '__main__':
+    from env import MyTestEnv
+else:  # pytest
+    from test.base.env import MyTestEnv
 
 
-class SimpleEnv(gym.Env):
-    """A simplest example of self-defined env, used to minimize
-    data collect time and profile collector."""
+class MyPolicy(BasePolicy):
+    def __init__(self, dict_state=False, need_state=True):
+        """
+        :param bool dict_state: if the observation of the environment is a dict
+        :param bool need_state: if the policy needs the hidden state (for RNN)
+        """
+        super().__init__()
+        self.dict_state = dict_state
+        self.need_state = need_state
 
-    def __init__(self):
-        self.action_space = Discrete(200)
-        self._fake_data = np.ones((10, 10, 1))
-        self.seed(0)
-        self.reset()
+    def forward(self, batch, state=None):
+        if self.need_state:
+            if state is None:
+                state = np.zeros((len(batch.obs), 2))
+            else:
+                state += 1
+        if self.dict_state:
+            return Batch(act=np.ones(len(batch.obs['index'])), state=state)
+        return Batch(act=np.ones(len(batch.obs)), state=state)
 
-    def reset(self):
-        self._index = 0
-        self.done = np.random.randint(3, high=200)
-        return {'observable': np.zeros((10, 10, 1)), 'hidden': self._index}
-
-    def step(self, action):
-        if self._index == self.done:
-            raise ValueError('step after done !!!')
-        self._index += 1
-        return {'observable': self._fake_data, 'hidden': self._index}, -1, \
-            self._index == self.done, {}
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
+    def learn(self):
+        pass
 
 
-class SimplePolicy(BasePolicy):
-    """A simplest example of self-defined policy, used
-    to minimize data collect time."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def learn(self, batch, **kwargs):
-        return super().learn(batch, **kwargs)
-
-    def forward(self, batch, state=None, **kwargs):
-        return Batch(act=np.array([30] * len(batch)), state=None, logits=None)
-
-
-@pytest.fixture(scope="module")
-def data():
-    np.random.seed(0)
-    env = SimpleEnv()
-    env.seed(0)
-    env_vec = DummyVectorEnv([lambda: SimpleEnv() for _ in range(100)])
-    env_vec.seed(np.random.randint(1000, size=100).tolist())
-    env_subproc = SubprocVectorEnv([lambda: SimpleEnv() for _ in range(8)])
-    env_subproc.seed(np.random.randint(1000, size=100).tolist())
-    env_subproc_init = SubprocVectorEnv(
-        [lambda: SimpleEnv() for _ in range(8)])
-    env_subproc_init.seed(np.random.randint(1000, size=100).tolist())
-    buffer = ReplayBuffer(50000)
-    vec_buffer = VectorReplayBuffer(50000, 100)
-    policy = SimplePolicy()
-    collector = Collector(policy, env, ReplayBuffer(50000))
-    collector_vec = Collector(policy, env_vec,
-                              VectorReplayBuffer(50000, env_vec.env_num))
-    collector_subproc = Collector(policy, env_subproc,
-                                  VectorReplayBuffer(50000, env_subproc.env_num))
-    return {
-        "env": env,
-        "env_vec": env_vec,
-        "env_subproc": env_subproc,
-        "env_subproc_init": env_subproc_init,
-        "policy": policy,
-        "buffer": buffer,
-        "vec_buffer": vec_buffer,
-        "collector": collector,
-        "collector_vec": collector_vec,
-        "collector_subproc": collector_subproc,
-    }
+def test_collector_nstep():
+    policy = MyPolicy()
+    env_fns = [lambda x=i: MyTestEnv(size=x) for i in np.arange(2, 11)]
+    dum = DummyVectorEnv(env_fns)
+    num = len(env_fns)
+    c3 = Collector(policy, dum,
+                   VectorReplayBuffer(total_size=40000, buffer_num=num))
+    for i in tqdm.trange(1, 400, desc="test step collector n_step"):
+        c3.reset()
+        result = c3.collect(n_step=i * len(env_fns))
+        assert result['n/st'] >= i
 
 
-def test_init(data):
-    for _ in range(5000):
-        Collector(data["policy"], data["env"], data["buffer"])
+def test_collector_nepisode():
+    policy = MyPolicy()
+    env_fns = [lambda x=i: MyTestEnv(size=x) for i in np.arange(2, 11)]
+    dum = DummyVectorEnv(env_fns)
+    num = len(env_fns)
+    c3 = Collector(policy, dum,
+                   VectorReplayBuffer(total_size=40000, buffer_num=num))
+    for i in tqdm.trange(1, 400, desc="test step collector n_episode"):
+        c3.reset()
+        result = c3.collect(n_episode=i)
+        assert result['n/ep'] == i
+        assert result['n/st'] == len(c3.buffer)
 
 
-def test_reset(data):
-    for _ in range(5000):
-        data["collector"].reset()
+def test_asynccollector():
+    env_lens = [2, 3, 4, 5]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True)
+               for i in env_lens]
 
-
-def test_collect_st(data):
-    for _ in range(50):
-        data["collector"].collect(n_step=1000)
-
-
-def test_collect_ep(data):
-    for _ in range(50):
-        data["collector"].collect(n_episode=10)
-
-
-def test_init_vec_env(data):
-    for _ in range(5000):
-        Collector(data["policy"], data["env_vec"], data["vec_buffer"])
-
-
-def test_reset_vec_env(data):
-    for _ in range(5000):
-        data["collector_vec"].reset()
-
-
-def test_collect_vec_env_st(data):
-    for _ in range(50):
-        data["collector_vec"].collect(n_step=1000)
-
-
-def test_collect_vec_env_ep(data):
-    for _ in range(50):
-        data["collector_vec"].collect(n_episode=10)
-
-
-def test_init_subproc_env(data):
-    for _ in range(5000):
-        Collector(data["policy"], data["env_subproc_init"], data["vec_buffer"])
-
-
-def test_reset_subproc_env(data):
-    for _ in range(5000):
-        data["collector_subproc"].reset()
-
-
-def test_collect_subproc_env_st(data):
-    for _ in range(50):
-        data["collector_subproc"].collect(n_step=1000)
-
-
-def test_collect_subproc_env_ep(data):
-    for _ in range(50):
-        data["collector_subproc"].collect(n_episode=10)
+    venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
+    policy = MyPolicy()
+    bufsize = 300
+    c1 = AsyncCollector(
+        policy, venv,
+        VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4))
+    ptr = [0, 0, 0, 0]
+    for n_episode in tqdm.trange(1, 100, desc="test async n_episode"):
+        result = c1.collect(n_episode=n_episode)
+        assert result["n/ep"] >= n_episode
+        # check buffer data, obs and obs_next, env_id
+        for i, count in enumerate(
+                np.bincount(result["lens"], minlength=6)[2:]):
+            env_len = i + 2
+            total = env_len * count
+            indices = np.arange(ptr[i], ptr[i] + total) % bufsize
+            ptr[i] = (ptr[i] + total) % bufsize
+            seq = np.arange(env_len)
+            buf = c1.buffer.buffers[i]
+            assert np.all(buf.info.env_id[indices] == i)
+            assert np.all(buf.obs[indices].reshape(count, env_len) == seq)
+            assert np.all(buf.obs_next[indices].reshape(
+                count, env_len) == seq + 1)
+    # test async n_step, for now the buffer should be full of data
+    for n_step in tqdm.trange(1, 150, desc="test async n_step"):
+        result = c1.collect(n_step=n_step)
+        assert result["n/st"] >= n_step
+        for i in range(4):
+            env_len = i + 2
+            seq = np.arange(env_len)
+            buf = c1.buffer.buffers[i]
+            assert np.all(buf.info.env_id == i)
+            assert np.all(buf.obs.reshape(-1, env_len) == seq)
+            assert np.all(buf.obs_next.reshape(-1, env_len) == seq + 1)
 
 
 if __name__ == '__main__':
-    pytest.main(["-s", "-k collector_profile", "--durations=0", "-v"])
+    test_collector_nstep()
+    test_collector_nepisode()
+    test_asynccollector()
