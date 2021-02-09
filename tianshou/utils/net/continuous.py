@@ -49,7 +49,8 @@ class Actor(nn.Module):
         self.output_dim = np.prod(action_shape)
         input_dim = getattr(preprocess_net, "output_dim",
                             preprocess_net_output_dim)
-        self.last = MLP(input_dim, self.output_dim, hidden_sizes)
+        self.last = MLP(input_dim, self.output_dim,
+                        hidden_sizes, device = self.device)
         self._max = max_action
 
     def forward(
@@ -98,7 +99,7 @@ class Critic(nn.Module):
         self.output_dim = 1
         input_dim = getattr(preprocess_net, "output_dim",
                             preprocess_net_output_dim)
-        self.last = MLP(input_dim, 1, hidden_sizes)
+        self.last = MLP(input_dim, 1, hidden_sizes, device = self.device)
 
     def forward(
         self,
@@ -164,10 +165,12 @@ class ActorProb(nn.Module):
         self.output_dim = np.prod(action_shape)
         input_dim = getattr(preprocess_net, "output_dim",
                             preprocess_net_output_dim)
-        self.mu = MLP(input_dim, self.output_dim, hidden_sizes)
+        self.mu = MLP(input_dim, self.output_dim,
+                      hidden_sizes, device = self.device)
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
-            self.sigma = MLP(input_dim, self.output_dim, hidden_sizes)
+            self.sigma = MLP(input_dim, self.output_dim,
+                             hidden_sizes, device = self.device)
         else:
             self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
         self._max = max_action
