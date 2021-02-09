@@ -77,7 +77,7 @@ def test_dqn(args=get_args()):
         exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)
-    train_collector.collect(n_step=args.batch_size)
+    train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
     log_path = os.path.join(args.logdir, args.task, 'dqn')
     writer = SummaryWriter(log_path)

@@ -73,7 +73,7 @@ def test_drqn(args=get_args()):
     # the stack_num is for RNN training: sample framestack obs
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)
-    train_collector.collect(n_step=args.batch_size)
+    train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
     log_path = os.path.join(args.logdir, args.task, 'drqn')
     writer = SummaryWriter(log_path)

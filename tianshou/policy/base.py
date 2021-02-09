@@ -192,7 +192,7 @@ class BasePolicy(ABC, nn.Module):
     @staticmethod
     def value_mask(batch):
         # TODO doc
-        return ~batch.done
+        return ~batch.done.astype(np.bool)
 
     @staticmethod
     def compute_episodic_return(

@@ -316,7 +316,7 @@ With the above preparation, we are close to the first learned agent. The followi
     # ======== collector setup =========
     train_collector = Collector(policy, train_envs, ReplayBuffer(args.buffer_size))
     test_collector = Collector(policy, test_envs)
-    train_collector.collect(n_step=args.batch_size)
+    train_collector.collect(n_step=args.batch_size * args.training_num)
 
     # ======== tensorboard logging setup =========
     if not hasattr(args, 'writer'):

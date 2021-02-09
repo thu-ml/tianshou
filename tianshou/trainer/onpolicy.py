@@ -137,7 +137,7 @@ def onpolicy_trainer(
         result = test_episode(policy, test_collector, test_fn, epoch,
                               episode_per_test, writer, env_step)
         if best_epoch == -1 or best_reward < result["rews"].mean():
-            best_reward, best_reward_std = result["rews"].mean(), result["rew_std"]
+            best_reward, best_reward_std = result["rews"].mean(), result["rews"].std()
             best_epoch = epoch
             if save_fn:
                 save_fn(policy)
