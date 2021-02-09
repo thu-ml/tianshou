@@ -5,7 +5,7 @@ from typing import Any, Dict, Tuple, Union, Optional
 
 from tianshou.policy import BasePolicy
 from tianshou.exploration import BaseNoise, GaussianNoise
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import Batch, ReplayBuffer
 
 
 class DDPGPolicy(BasePolicy):

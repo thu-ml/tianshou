@@ -155,7 +155,7 @@ def test_sac_bipedal(args=get_args()):
         test_collector.reset()
         result = test_collector.collect(n_episode=args.test_num,
                                         render=args.render)
-        print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
+        print(f'Final reward:{result["rews"].mean()}, length: {result["lens"].mean()}')
 
 
 if __name__ == '__main__':

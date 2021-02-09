@@ -298,7 +298,7 @@ class BasePolicy(ABC, nn.Module):
         with torch.no_grad():
             target_q_torch = target_q_fn(buffer, terminal)  # (bsz, ?)
         target_q = to_numpy(target_q_torch) * \
-                   BasePolicy.value_mask(batch).reshape(-1, 1)
+            BasePolicy.value_mask(batch).reshape(-1, 1)
         end_flag = buffer.done.copy()
         end_flag[buffer.unfinished_index()] = True
         target_q = _nstep_return(rew, end_flag, target_q, indices,
@@ -320,6 +320,7 @@ class BasePolicy(ABC, nn.Module):
         _episodic_return(f32, f64, b, 0.1, 0.1)
         _nstep_return(f64, b, f32, i64, 0.1, 1, 0.0, 1.0)
 
+
 @njit
 def _gae_return(
     v_s: np.ndarray,
@@ -338,6 +339,7 @@ def _gae_return(
         returns[i] = gae
     return returns
 
+
 @njit
 def _episodic_return(
     v_s_: np.ndarray,
@@ -349,6 +351,7 @@ def _episodic_return(
     """Numba speedup: 4.1s -> 0.057s."""
     v_s = np.roll(v_s_, 1)
     return _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda) + v_s
+
 
 @njit
 def _nstep_return(

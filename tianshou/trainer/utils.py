@@ -1,5 +1,4 @@
 import time
-import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from typing import Dict, List, Union, Callable, Optional
 

@@ -66,9 +66,10 @@ def test_drqn(args=get_args()):
         target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(
-        policy, train_envs, VectorReplayBuffer(
-            args.buffer_size,  buffer_num = len(train_envs),
-            stack_num=args.stack_num, ignore_obs_next=True),
+            policy, train_envs,
+            VectorReplayBuffer(
+                args.buffer_size,  buffer_num=len(train_envs),
+                stack_num=args.stack_num, ignore_obs_next=True),
             exploration_noise=True)
     # the stack_num is for RNN training: sample framestack obs
     test_collector = Collector(policy, test_envs)
@@ -105,7 +106,7 @@ def test_drqn(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
+        print(f'Final reward:{result["rews"].mean()}, length: {result["lens"].mean()}')
 
 
 if __name__ == '__main__':
