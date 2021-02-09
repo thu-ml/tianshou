@@ -143,7 +143,7 @@ def test_dqn(args=get_args()):
             print("Testing agent ...")
             test_collector.reset()
             result = test_collector.collect(n_episode=args.test_num,
-                                        render=args.render)
+                                            render=args.render)
         pprint.pprint(result)
 
     if args.watch:

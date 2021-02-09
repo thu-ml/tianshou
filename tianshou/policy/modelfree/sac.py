@@ -6,7 +6,7 @@ from typing import Any, Dict, Tuple, Union, Optional
 
 from tianshou.policy import DDPGPolicy
 from tianshou.exploration import BaseNoise
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import Batch, ReplayBuffer
 
 
 class SACPolicy(DDPGPolicy):

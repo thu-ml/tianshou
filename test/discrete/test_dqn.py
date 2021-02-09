@@ -78,10 +78,10 @@ def test_dqn(args=get_args()):
     # buffer
     if args.prioritized_replay:
         buf = PrioritizedVectorReplayBuffer(
-            args.buffer_size, buffer_num = len(train_envs),
+            args.buffer_size, buffer_num=len(train_envs),
             alpha=args.alpha, beta=args.beta)
     else:
-        buf = VectorReplayBuffer(args.buffer_size, buffer_num = len(train_envs))
+        buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
     # collector
     train_collector = Collector(policy, train_envs, buf, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
@@ -128,7 +128,7 @@ def test_dqn(args=get_args()):
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
+        print(f'Final reward:{result["rews"].mean()}, length: {result["lens"].mean()}')
 
     # save buffer in pickle format, for imitation learning unittest
     buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
