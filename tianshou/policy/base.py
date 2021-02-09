@@ -291,18 +291,16 @@ class BasePolicy(ABC, nn.Module):
         for _ in range(n_step - 1):
             indices.append(buffer.next(indices[-1]))
         indices = np.stack(indices)
-
         # terminal indicates buffer indexes nstep after 'indice',
         # and are truncated at the end of each episode
         terminal = indices[-1]
         with torch.no_grad():
             target_q_torch = target_q_fn(buffer, terminal)  # (bsz, ?)
-        target_q = to_numpy(target_q_torch) * \
-            BasePolicy.value_mask(batch).reshape(-1, 1)
+        target_q = to_numpy(target_q_torch) * BasePolicy.value_mask(batch)
         end_flag = buffer.done.copy()
         end_flag[buffer.unfinished_index()] = True
-        target_q = _nstep_return(rew, end_flag, target_q, indices,
-                                 gamma, n_step, mean, std)
+        target_q = _nstep_return(rew, end_flag, target_q.reshape(-1, 1),
+                                 indices, gamma, n_step, mean, std)
 
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
@@ -366,7 +364,7 @@ def _nstep_return(
 ) -> np.ndarray:
     gamma_buffer = np.ones(n_step + 1)
     for i in range(1, n_step + 1):
-        gamma_buffer[i] = gamma_buffer[i - 1]*gamma
+        gamma_buffer[i] = gamma_buffer[i - 1] * gamma
     target_shape = target_q.shape
     bsz = target_shape[0]
     # change target_q to 2d array
