@@ -8,40 +8,36 @@ from tianshou.data import Batch, SegmentTree, to_numpy
 from tianshou.data.utils.converter import to_hdf5, from_hdf5
 
 
-def _alloc_by_keys_diff(
-    meta: Batch, batch: Batch, size: int, stack: bool = True
-) -> None:
+def _alloc_by_keys_diff(meta: Batch, batch: Batch, size: int, stack: bool = True) -> None:
     for key in batch.keys():
         if key in meta.keys():
             if isinstance(meta[key], Batch) and isinstance(batch[key], Batch):
                 _alloc_by_keys_diff(meta[key], batch[key], size, stack)
+            elif isinstance(meta[key], Batch) and meta[key].is_empty():
+                meta[key] = _create_value(batch[key], size, stack)
         else:
             meta[key] = _create_value(batch[key], size, stack)
 
 
 class ReplayBuffer:
-    """:class:`~tianshou.data.ReplayBuffer` stores data generated from \
-    interaction between the policy and environment.
+    """:class:`~tianshou.data.ReplayBuffer` stores data generated from interaction between the policy and environment.
 
-    ReplayBuffer can be considered as a specialized form (or management) of
-    Batch. It stores all the data in a batch with circular-queue style.
+    ReplayBuffer can be considered as a specialized form (or management) of Batch. It stores all the data in a batch
+    with circular-queue style.
 
-    For the example usage of ReplayBuffer, please check out Section Buffer in
-    :doc:`/tutorials/concepts`.
+    For the example usage of ReplayBuffer, please check out Section Buffer in :doc:`/tutorials/concepts`.
 
     :param int size: the maximum size of replay buffer.
-    :param int stack_num: the frame-stack sampling argument, should be greater
-        than or equal to 1, defaults to 1 (no stacking).
-    :param bool ignore_obs_next: whether to store obs_next, defaults to False.
-    :param bool save_only_last_obs: only save the last obs/obs_next when it has
-        a shape of (timestep, ...)  because of temporal stacking, defaults to
-        False.
-    :param bool sample_avail: the parameter indicating sampling only available
-        index when using frame-stack sampling method, defaults to False.
+    :param int stack_num: the frame-stack sampling argument, should be greater than or equal to 1.
+        Default to 1 (no stacking).
+    :param bool ignore_obs_next: whether to store obs_next. Default to False.
+    :param bool save_only_last_obs: only save the last obs/obs_next when it has a shape of (timestep, ...) because of
+        temporal stacking. Default to False.
+    :param bool sample_avail: the parameter indicating sampling only available index when using frame-stack sampling
+        method. Default to False.
     """
 
-    _reserved_keys = ("obs", "act", "rew", "done",
-                      "obs_next", "info", "policy")
+    _reserved_keys = ("obs", "act", "rew", "done", "obs_next", "info", "policy")
 
     def __init__(
         self,
@@ -97,8 +93,7 @@ class ReplayBuffer:
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
-        assert key not in self._reserved_keys, (
-            "key '{}' is reserved and cannot be assigned".format(key))
+        assert key not in self._reserved_keys, "key '{}' is reserved and cannot be assigned".format(key)
         super().__setattr__(key, value)
 
     def save_hdf5(self, path: str) -> None:
@@ -107,9 +102,7 @@ class ReplayBuffer:
             to_hdf5(self.__dict__, f)
 
     @classmethod
-    def load_hdf5(
-        cls, path: str, device: Optional[str] = None
-    ) -> "ReplayBuffer":
+    def load_hdf5(cls, path: str, device: Optional[str] = None) -> "ReplayBuffer":
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             buf = cls.__new__(cls)
@@ -123,16 +116,14 @@ class ReplayBuffer:
 
     def set_batch(self, batch: Batch) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage."""
-        assert len(batch) == self.maxsize and \
-            set(batch.keys()).issubset(self._reserved_keys), \
+        assert len(batch) == self.maxsize and set(batch.keys()).issubset(self._reserved_keys), \
             "Input batch doesn't meet ReplayBuffer's data form requirement."
         self._meta = batch
 
     def unfinished_index(self) -> np.ndarray:
         """Return the index of unfinished episode."""
         last = (self._index - 1) % self._size if self._size else 0
-        return np.array(
-            [last] if not self.done[last] and self._size else [], np.int)
+        return np.array([last] if not self.done[last] and self._size else [], np.int)
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         """Return the index of previous transition.
@@ -174,13 +165,10 @@ class ReplayBuffer:
         self._meta[to_indices] = buffer._meta[from_indices]
         return to_indices
 
-    def _add_index(
-        self, rew: Union[float, np.ndarray], done: bool
-    ) -> Tuple[int, Union[float, np.ndarray], int, int]:
+    def _add_index(self, rew: Union[float, np.ndarray], done: bool) -> Tuple[int, Union[float, np.ndarray], int, int]:
         """Maintain the buffer's state after adding one data batch.
 
-        Return (index_to_be_modified, episode_reward, episode_length,
-        episode_start_index).
+        Return (index_to_be_modified, episode_reward, episode_length, episode_start_index).
         """
         ptr = self._index
         self._size = min(self._size + 1, self.maxsize)
@@ -197,21 +185,17 @@ class ReplayBuffer:
             return ptr, self._ep_rew * 0.0, 0, self._ep_idx
 
     def add(
-        self,
-        batch: Batch,
-        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
+        self, batch: Batch, buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into replay buffer.
 
-        :param Batch batch: the input data batch. Its keys must belong to the 7
-            reserved keys, and "obs", "act", "rew", "done" is required.
-        :param buffer_ids: to make consistent with other buffer's add function;
-            if it is not None, we assume the input batch's first dimension is
-            always 1.
+        :param Batch batch: the input data batch. Its keys must belong to the 7 reserved keys, and "obs", "act",
+            "rew", "done" is required.
+        :param buffer_ids: to make consistent with other buffer's add function; if it is not None, we assume the input
+            batch's first dimension is always 1.
 
-        Return (current_index, episode_reward, episode_length,
-        episode_start_index). If the episode is not finished, the return value
-        of episode_length and episode_reward is 0.
+        Return (current_index, episode_reward, episode_length, episode_start_index). If the episode is not finished,
+        the return value of episode_length and episode_reward is 0.
         """
         # preprocess batch
         b = Batch()
@@ -227,15 +211,13 @@ class ReplayBuffer:
         if not self._save_obs_next:
             batch.pop("obs_next", None)
         elif self._save_only_last_obs:
-            batch.obs_next = \
-                batch.obs_next[:, -1] if stacked_batch else batch.obs_next[-1]
+            batch.obs_next = batch.obs_next[:, -1] if stacked_batch else batch.obs_next[-1]
         # get ptr
         if stacked_batch:
             rew, done = batch.rew[0], batch.done[0]
         else:
             rew, done = batch.rew, batch.done
-        ptr, ep_rew, ep_len, ep_idx = list(map(
-            lambda x: np.array([x]), self._add_index(rew, done)))
+        ptr, ep_rew, ep_len, ep_idx = list(map(lambda x: np.array([x]), self._add_index(rew, done)))
         try:
             self._meta[ptr] = batch
         except ValueError:
@@ -252,24 +234,20 @@ class ReplayBuffer:
     def sample_index(self, batch_size: int) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
 
-        Return all available indices in the buffer if batch_size is 0; return
-        an empty numpy array if batch_size < 0 or no available index can be
-        sampled.
+        Return all available indices in the buffer if batch_size is 0; return an empty numpy array if batch_size < 0
+        or no available index can be sampled.
         """
         if self.stack_num == 1 or not self._sample_avail:  # most often case
             if batch_size > 0:
                 return np.random.choice(self._size, batch_size)
             elif batch_size == 0:  # construct current available indices
-                return np.concatenate([
-                    np.arange(self._index, self._size),
-                    np.arange(self._index)])
+                return np.concatenate([np.arange(self._index, self._size), np.arange(self._index)])
             else:
                 return np.array([], np.int)
         else:
             if batch_size < 0:
                 return np.array([], np.int)
-            all_indices = prev_indices = np.concatenate([
-                np.arange(self._index, self._size), np.arange(self._index)])
+            all_indices = prev_indices = np.concatenate([np.arange(self._index, self._size), np.arange(self._index)])
             for _ in range(self.stack_num - 2):
                 prev_indices = self.prev(prev_indices)
             all_indices = all_indices[prev_indices != self.prev(prev_indices)]
@@ -297,8 +275,7 @@ class ReplayBuffer:
     ) -> Union[Batch, np.ndarray]:
         """Return the stacked result.
 
-        E.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t], where s is self.key, t is the
-        index.
+        E.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t], where s is self.key, t is the index.
         """
         if key not in self._meta and default_value is not None:
             return default_value
@@ -322,20 +299,17 @@ class ReplayBuffer:
                 raise e  # val != Batch()
             return Batch()
 
-    def __getitem__(
-        self, index: Union[slice, int, np.integer, np.ndarray]
-    ) -> Batch:
+    def __getitem__(self, index: Union[slice, int, np.integer, np.ndarray]) -> Batch:
         """Return a data batch: self[index].
 
-        If stack_num is larger than 1, return the stacked obs and obs_next with
-        shape (batch, len, ...).
+        If stack_num is larger than 1, return the stacked obs and obs_next with shape (batch, len, ...).
         """
         if isinstance(index, slice):  # change slice to np array
             if index == slice(None):  # buffer[:] will get all available data
                 index = self.sample_index(0)
             else:
                 index = self._indices[:len(self)][index]
-        # raise KeyError first instead of AttributeError, to support np.array
+        # raise KeyError first instead of AttributeError, to support np.array([ReplayBuffer()])
         obs = self.get(index, "obs")
         if self._save_obs_next:
             obs_next = self.get(index, "obs_next", Batch())
@@ -360,13 +334,10 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` for more detailed
-        explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for more detailed explanation.
     """
 
-    def __init__(
-        self, size: int, alpha: float, beta: float, **kwargs: Any
-    ) -> None:
+    def __init__(self, size: int, alpha: float, beta: float, **kwargs: Any) -> None:
         super().__init__(size, **kwargs)
         assert alpha > 0.0 and beta >= 0.0
         self._alpha, self._beta = alpha, beta
@@ -384,9 +355,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.init_weight(indices)
 
     def add(
-        self,
-        batch: Batch,
-        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
+        self, batch: Batch, buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         ptr, ep_rew, ep_len, ep_idx = super().add(batch, buffer_ids)
         self.init_weight(ptr)
@@ -399,25 +368,18 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         else:
             return super().sample_index(batch_size)
 
-    def get_weight(
-        self, index: Union[slice, int, np.integer, np.ndarray]
-    ) -> np.ndarray:
+    def get_weight(self, index: Union[slice, int, np.integer, np.ndarray]) -> np.ndarray:
         """Get the importance sampling weight.
 
-        The "weight" in the returned Batch is the weight on loss function
-        to de-bias the sampling process (some transition tuples are sampled
-        more often so their losses are weighted less).
+        The "weight" in the returned Batch is the weight on loss function to de-bias the sampling process (some
+        transition tuples are sampled more often so their losses are weighted less).
         """
         # important sampling weight calculation
         # original formula: ((p_j/p_sum*N)**(-beta))/((p_min/p_sum*N)**(-beta))
         # simplified formula: (p_j/p_min)**(-beta)
         return (self.weight[index] / self._min_prio) ** (-self._beta)
 
-    def update_weight(
-        self,
-        index: np.ndarray,
-        new_weight: Union[np.ndarray, torch.Tensor],
-    ) -> None:
+    def update_weight(self, index: np.ndarray, new_weight: Union[np.ndarray, torch.Tensor]) -> None:
         """Update priority weight by index in this buffer.
 
         :param np.ndarray index: index you want to update weight.
@@ -428,27 +390,23 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._max_prio = max(self._max_prio, weight.max())
         self._min_prio = min(self._min_prio, weight.min())
 
-    def __getitem__(
-        self, index: Union[slice, int, np.integer, np.ndarray]
-    ) -> Batch:
+    def __getitem__(self, index: Union[slice, int, np.integer, np.ndarray]) -> Batch:
         batch = super().__getitem__(index)
         batch.weight = self.get_weight(index)
         return batch
 
 
 class ReplayBufferManager(ReplayBuffer):
-    """ReplayBufferManager contains a list of ReplayBuffer with exactly the \
-    same configuration.
+    """ReplayBufferManager contains a list of ReplayBuffer with exactly the same configuration.
 
-    These replay buffers have contiguous memory layout, and the storage space
-    each buffer has is a shallow copy of the topmost memory.
+    These replay buffers have contiguous memory layout, and the storage space each buffer has is a shallow copy of the
+    topmost memory.
 
     :param int buffer_list: a list of ReplayBuffer needed to be handled.
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` for more detailed
-        explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for more detailed explanation.
     """
 
     def __init__(self, buffer_list: List[ReplayBuffer]) -> None:
@@ -481,9 +439,7 @@ class ReplayBufferManager(ReplayBuffer):
         self._set_batch_for_children()
 
     def unfinished_index(self) -> np.ndarray:
-        return np.concatenate([
-            buf.unfinished_index() + offset
-            for offset, buf in zip(self._offset, self.buffers)])
+        return np.concatenate([buf.unfinished_index() + offset for offset, buf in zip(self._offset, self.buffers)])
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         index = np.asarray(index) % self.maxsize
@@ -508,18 +464,15 @@ class ReplayBufferManager(ReplayBuffer):
         raise NotImplementedError
 
     def add(
-        self,
-        batch: Batch,
-        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
+        self, batch: Batch, buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into ReplayBufferManager.
 
-        Each of the data's length (first dimension) must equal to the length of
-        buffer_ids. By default buffer_ids is [0, 1, ..., buffer_num - 1].
+        Each of the data's length (first dimension) must equal to the length of buffer_ids. By default buffer_ids is
+        [0, 1, ..., buffer_num - 1].
 
-        Return (current_index, episode_reward, episode_length,
-        episode_start_index). If the episode is not finished, the return value
-        of episode_length and episode_reward is 0.
+        Return (current_index, episode_reward, episode_length, episode_start_index). If the episode is not finished,
+        the return value of episode_length and episode_reward is 0.
         """
         # preprocess batch
         b = Batch()
@@ -562,9 +515,9 @@ class ReplayBufferManager(ReplayBuffer):
         if batch_size < 0:
             return np.array([], np.int)
         if self._sample_avail and self.stack_num > 1:
-            all_indices = np.concatenate([
-                buf.sample_index(0) + offset
-                for offset, buf in zip(self._offset, self.buffers)])
+            all_indices = np.concatenate(
+                [buf.sample_index(0) + offset for offset, buf in zip(self._offset, self.buffers)]
+            )
             if batch_size == 0:
                 return all_indices
             else:
@@ -573,21 +526,17 @@ class ReplayBufferManager(ReplayBuffer):
             sample_num = np.zeros(self.buffer_num, np.int)
         else:
             buffer_lens = np.array([len(buf) for buf in self.buffers])
-            buffer_idx = np.random.choice(self.buffer_num, batch_size,
-                                          p=buffer_lens / buffer_lens.sum())
+            buffer_idx = np.random.choice(self.buffer_num, batch_size, p=buffer_lens / buffer_lens.sum())
             sample_num = np.bincount(buffer_idx, minlength=self.buffer_num)
             # avoid batch_size > 0 and sample_num == 0 -> get child's all data
             sample_num[sample_num == 0] = -1
 
-        return np.concatenate([
-            buf.sample_index(bsz) + offset
-            for offset, buf, bsz in zip(self._offset, self.buffers, sample_num)
-        ])
+        return np.concatenate(
+            [buf.sample_index(bsz) + offset for offset, buf, bsz in zip(self._offset, self.buffers, sample_num)]
+        )
 
 
-class PrioritizedReplayBufferManager(
-    PrioritizedReplayBuffer, ReplayBufferManager
-):
+class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManager):
     def __init__(self, buffer_list: List[PrioritizedReplayBuffer]) -> None:
         ReplayBufferManager.__init__(self, buffer_list)
         kwargs = buffer_list[0].options
@@ -597,9 +546,7 @@ class PrioritizedReplayBufferManager(
 
 
 class VectorReplayBuffer(ReplayBufferManager):
-    def __init__(
-        self, total_size: int, buffer_num: int, **kwargs: Any
-    ) -> None:
+    def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
         assert buffer_num > 0
         size = int(np.ceil(total_size / buffer_num))
         buffer_list = [ReplayBuffer(size, **kwargs) for _ in range(buffer_num)]
@@ -607,73 +554,54 @@ class VectorReplayBuffer(ReplayBufferManager):
 
 
 class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
-    def __init__(
-        self, total_size: int, buffer_num: int, **kwargs: Any
-    ) -> None:
+    def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
         assert buffer_num > 0
         size = int(np.ceil(total_size / buffer_num))
-        buffer_list = [PrioritizedReplayBuffer(size, **kwargs)
-                                                    for _ in range(buffer_num)]
+        buffer_list = [PrioritizedReplayBuffer(size, **kwargs) for _ in range(buffer_num)]
         super().__init__(buffer_list)
 
 
 class CachedReplayBuffer(ReplayBufferManager):
-    """CachedReplayBuffer contains a given main buffer and n cached buffers, \
-    cached_buffer_num * ReplayBuffer(size=max_episode_length).
+    """CachedReplayBuffer contains a given main buffer and n cached buffers, cached_buffer_num * \
+    ReplayBuffer(size=max_episode_length).
 
-    The memory layout is: ``| main_buffer | cached_buffers[0] |
-    cached_buffers[1] | ... | cached_buffers[cached_buffer_num - 1]``.
+    The memory layout is: ``| main_buffer | cached_buffers[0] | cached_buffers[1] | ... |
+    cached_buffers[cached_buffer_num - 1]``.
 
-    The data is first stored in cached buffers. When the episode is
-    terminated, the data will move to the main buffer and the corresponding
-    cached buffer will be reset.
+    The data is first stored in cached buffers. When the episode is terminated, the data will move to the main buffer
+    and the corresponding cached buffer will be reset.
 
-    :param ReplayBuffer main_buffer: the main buffer whose ``.update()``
-        function behaves normally.
-    :param int cached_buffer_num: number of ReplayBuffer needs to be created
-        for cached buffer.
-    :param int max_episode_length: the maximum length of one episode, used in
-        each cached buffer's maxsize.
+    :param ReplayBuffer main_buffer: the main buffer whose ``.update()`` function behaves normally.
+    :param int cached_buffer_num: number of ReplayBuffer needs to be created for cached buffer.
+    :param int max_episode_length: the maximum length of one episode, used in each cached buffer's maxsize.
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` or
-        :class:`~tianshou.data.ReplayBufferManager` for more detailed
-        explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` or :class:`~tianshou.data.ReplayBufferManager` for more
+        detailed explanation.
     """
 
-    def __init__(
-        self,
-        main_buffer: ReplayBuffer,
-        cached_buffer_num: int,
-        max_episode_length: int,
-    ) -> None:
+    def __init__(self, main_buffer: ReplayBuffer, cached_buffer_num: int, max_episode_length: int) -> None:
         assert cached_buffer_num > 0 and max_episode_length > 0
         assert type(main_buffer) == ReplayBuffer
         kwargs = main_buffer.options
-        buffers = [main_buffer] + [ReplayBuffer(max_episode_length, **kwargs)
-                                   for _ in range(cached_buffer_num)]
+        buffers = [main_buffer] + [ReplayBuffer(max_episode_length, **kwargs) for _ in range(cached_buffer_num)]
         super().__init__(buffer_list=buffers)
         self.main_buffer = self.buffers[0]
         self.cached_buffers = self.buffers[1:]
         self.cached_buffer_num = cached_buffer_num
 
     def add(
-        self,
-        batch: Batch,
-        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None,
+        self, batch: Batch, buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into CachedReplayBuffer.
 
-        Each of the data's length (first dimension) must equal to the length of
-        buffer_ids. By default the buffer_ids is [0, 1, ..., cached_buffer_num
-        - 1].
+        Each of the data's length (first dimension) must equal to the length of buffer_ids. By default the buffer_ids
+        is [0, 1, ..., cached_buffer_num - 1].
 
-        Return (current_index, episode_reward, episode_length,
-        episode_start_index) with each of the shape (len(buffer_ids), ...),
-        where (current_index[i], episode_reward[i], episode_length[i],
-        episode_start_index[i]) refers to the cached_buffer_ids[i]th cached
-        buffer's corresponding episode result.
+        Return (current_index, episode_reward, episode_length, episode_start_index) with each of the shape
+        (len(buffer_ids), ...), where (current_index[i], episode_reward[i], episode_length[i], episode_start_index[i])
+        refers to the cached_buffer_ids[i]th cached buffer's corresponding episode result.
         """
         if buffer_ids is None:
             buffer_ids = np.arange(1, 1 + self.cached_buffer_num)

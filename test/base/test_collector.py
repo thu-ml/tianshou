@@ -1,11 +1,12 @@
+import tqdm
 import pytest
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import BasePolicy
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
-from tianshou.data import Collector, Batch, ReplayBuffer, VectorReplayBuffer, \
-    CachedReplayBuffer
+from tianshou.data import Batch, Collector, AsyncCollector
+from tianshou.data import ReplayBuffer, VectorReplayBuffer, CachedReplayBuffer
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -92,8 +93,6 @@ def test_collector():
         policy, venv,
         VectorReplayBuffer(total_size=100, buffer_num=4),
         logger.preprocess_fn)
-    with pytest.raises(AssertionError):
-        c1.collect(n_step=6)
     c1.collect(n_step=8)
     obs = np.zeros(100)
     obs[[0, 1, 25, 26, 50, 51, 75, 76]] = [0, 1, 0, 1, 0, 1, 0, 1]
@@ -129,7 +128,7 @@ def test_collector():
     num = len(env_fns)
     c3 = Collector(policy, dum,
                    VectorReplayBuffer(total_size=40000, buffer_num=num))
-    for i in range(num, 400):
+    for i in tqdm.trange(num, 400, desc="test step collector n_episode"):
         c3.reset()
         result = c3.collect(n_episode=i)
         assert result['n/ep'] == i
@@ -140,45 +139,44 @@ def test_collector_with_async():
     env_lens = [2, 3, 4, 5]
     writer = SummaryWriter('log/async_collector')
     logger = Logger(writer)
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.1, random_sleep=True)
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True)
                for i in env_lens]
 
     venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
     policy = MyPolicy()
-    c1 = Collector(
-        policy, venv, ReplayBuffer(size=1000, ignore_obs_next=False),
+    bufsize = 300
+    c1 = AsyncCollector(
+        policy, venv,
+        VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
         logger.preprocess_fn)
-    c1.collect(n_episode=10)
-    # check if the data in the buffer is chronological
-    # i.e. data in the buffer are full episodes, and each episode is
-    # returned by the same environment
-    env_id = c1.buffer.info['env_id']
-    size = len(c1.buffer)
-    obs = c1.buffer.obs[:size]
-    done = c1.buffer.done[:size]
-    obs_ground_truth = []
-    i = 0
-    while i < size:
-        # i is the start of an episode
-        if done[i]:
-            # this episode has one transition
-            assert env_lens[env_id[i]] == 1
-            i += 1
-            continue
-        j = i
-        while True:
-            j += 1
-            # in one episode, the environment id is the same
-            assert env_id[j] == env_id[i]
-            if done[j]:
-                break
-        j = j + 1  # j is the start of the next episode
-        assert j - i == env_lens[env_id[i]]
-        obs_ground_truth += list(range(j - i))
-        i = j
-    obs_ground_truth = np.expand_dims(
-        np.array(obs_ground_truth), axis=-1)
-    assert np.allclose(obs, obs_ground_truth)
+    ptr = [0, 0, 0, 0]
+    for n_episode in tqdm.trange(1, 100, desc="test async n_episode"):
+        result = c1.collect(n_episode=n_episode)
+        assert result["n/ep"] >= n_episode
+        # check buffer data, obs and obs_next, env_id
+        for i, count in enumerate(
+                np.bincount(result["lens"], minlength=6)[2:]):
+            env_len = i + 2
+            total = env_len * count
+            indices = np.arange(ptr[i], ptr[i] + total) % bufsize
+            ptr[i] = (ptr[i] + total) % bufsize
+            seq = np.arange(env_len)
+            buf = c1.buffer.buffers[i]
+            assert np.all(buf.info.env_id[indices] == i)
+            assert np.all(buf.obs[indices].reshape(count, env_len) == seq)
+            assert np.all(buf.obs_next[indices].reshape(
+                count, env_len) == seq + 1)
+    # test async n_step, for now the buffer should be full of data
+    for n_step in tqdm.trange(1, 150, desc="test async n_step"):
+        result = c1.collect(n_step=n_step)
+        assert result["n/st"] >= n_step
+        for i in range(4):
+            env_len = i + 2
+            seq = np.arange(env_len)
+            buf = c1.buffer.buffers[i]
+            assert np.all(buf.info.env_id == i)
+            assert np.all(buf.obs.reshape(-1, env_len) == seq)
+            assert np.all(buf.obs_next.reshape(-1, env_len) == seq + 1)
 
 
 def test_collector_with_dict_state():
@@ -199,8 +197,6 @@ def test_collector_with_dict_state():
         policy, envs,
         VectorReplayBuffer(total_size=100, buffer_num=4),
         Logger.single_preprocess_fn)
-    with pytest.raises(AssertionError):
-        c1.collect(n_step=10)
     c1.collect(n_step=12)
     result = c1.collect(n_episode=8)
     assert result['n/ep'] == 8
@@ -413,4 +409,4 @@ if __name__ == '__main__':
     test_collector_with_dict_state()
     test_collector_with_ma()
     test_collector_with_atari_setting()
-    # test_collector_with_async()
+    test_collector_with_async()
