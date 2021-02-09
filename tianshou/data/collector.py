@@ -95,7 +95,7 @@ class Collector(object):
     def _assign_buffer(self, buffer: Optional[ReplayBuffer]) -> None:
         """Check if the buffer matches the constraint."""
         if buffer is None:
-            buffer = VectorReplayBuffer(self.env_num * 1, self.env_num)
+            buffer = VectorReplayBuffer(self.env_num, self.env_num)
         elif isinstance(buffer, ReplayBufferManager):
             assert buffer.buffer_num >= self.env_num
             if isinstance(buffer, CachedReplayBuffer):
@@ -132,9 +132,8 @@ class Collector(object):
         """Reset all related variables in the collector."""
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
-        self.data = Batch(
-            obs={}, act={}, rew={}, done={}, obs_next={}, info={}, policy={}
-        )
+        self.data = Batch(obs={}, act={}, rew={}, done={},
+                          obs_next={}, info={}, policy={})
         self.reset_env()
         self.reset_buffer()
         self.reset_stat()
@@ -148,7 +147,7 @@ class Collector(object):
         self.buffer.reset()
 
     def reset_env(self) -> None:
-        """Reset all of the environment(s)."""
+        """Reset all of the environments."""
         obs = self.env.reset()
         if self.preprocess_fn:
             obs = self.preprocess_fn(obs=obs).get("obs", obs)
@@ -175,6 +174,10 @@ class Collector(object):
     ) -> Dict[str, float]:
         """Collect a specified number of step or episode.
 
+        To ensure unbiased sampling result with n_episode option, this function will
+        first collect ``n_episode - env_num`` episodes, then for the last ``env_num``
+        episodes, they will be collected evenly from each env.
+
         :param int n_step: how many steps you want to collect.
         :param int n_episode: how many episodes you want to collect.
         :param bool random: whether to use random policy for collecting data. Default
@@ -196,14 +199,8 @@ class Collector(object):
             * ``rews`` list of episode reward over collected episodes.
             * ``lens`` list of episode length over collected episodes.
             * ``idxs`` list of episode start index in buffer over collected episodes.
-
-        .. note::
-
-            To ensure unbiased sampling result with n_episode option, this function
-            will first collect ``n_episode - env_num`` episodes, then for the last
-            ``env_num`` episodes, they will be collected evenly from each env.
         """
-        assert self.env.is_async is False, "Please use AsyncCollector if ..."
+        assert not self.env.is_async, "Please use AsyncCollector if using async venv."
         if n_step is not None:
             assert n_episode is None, (
                 f"Only one of n_step or n_episode is allowed in Collector."
