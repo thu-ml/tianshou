@@ -2,7 +2,7 @@ import time
 import tqdm
 from collections import defaultdict
 from torch.utils.tensorboard import SummaryWriter
-from typing import Dict, List, Union, Callable, Optional
+from typing import Dict, Union, Callable, Optional
 
 from tianshou.policy import BasePolicy
 from tianshou.utils import tqdm_config, MovAvg
@@ -16,7 +16,7 @@ def offline_trainer(
     test_collector: Collector,
     max_epoch: int,
     step_per_epoch: int,
-    episode_per_test: Union[int, List[int]],
+    episode_per_test: int,
     batch_size: int,
     test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
     stop_fn: Optional[Callable[[float], bool]] = None,

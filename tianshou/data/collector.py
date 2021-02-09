@@ -3,7 +3,7 @@ import time
 import torch
 import warnings
 import numpy as np
-from typing import Dict, List, Union, Optional, Callable
+from typing import Any, Dict, List, Union, Optional, Callable
 
 from tianshou.policy import BasePolicy
 from tianshou.data.buffer import _alloc_by_keys_diff
@@ -171,7 +171,7 @@ class Collector(object):
         random: bool = False,
         render: Optional[float] = None,
         no_grad: bool = True,
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
         """Collect a specified number of step or episode.
 
         To ensure unbiased sampling result with n_episode option, this function will
@@ -213,10 +213,14 @@ class Collector(object):
                     "which may cause extra frame collected into the buffer."
                 )
             ready_env_ids = np.arange(self.env_num)
-        else:
+        elif n_episode is not None:
             assert n_episode > 0
             ready_env_ids = np.arange(min(self.env_num, n_episode))
             self.data = self.data[:min(self.env_num, n_episode)]
+        else:
+            raise TypeError("Please specify at least one (either n_step or n_episode) "
+                            "in AsyncCollector.collect().")
+
         start_time = time.time()
 
         step_count = 0
@@ -362,7 +366,7 @@ class AsyncCollector(Collector):
         random: bool = False,
         render: Optional[float] = None,
         no_grad: bool = True,
-    ) -> Dict[str, float]:
+    ) -> Dict[str, Any]:
         """Collect a specified number of step or episode with async env setting.
 
         This function doesn't collect exactly n_step or n_episode number of frames.
@@ -398,8 +402,11 @@ class AsyncCollector(Collector):
                 f"collect, got n_step={n_step}, n_episode={n_episode}."
             )
             assert n_step > 0
-        else:
+        elif n_episode is not None:
             assert n_episode > 0
+        else:
+            raise TypeError("Please specify at least one (either n_step or n_episode) "
+                            "in AsyncCollector.collect().")
         warnings.warn("Using async setting may collect extra frames into buffer.")
 
         ready_env_ids = self._ready_env_ids

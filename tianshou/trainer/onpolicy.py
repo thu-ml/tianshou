@@ -2,7 +2,7 @@ import time
 import tqdm
 from collections import defaultdict
 from torch.utils.tensorboard import SummaryWriter
-from typing import Dict, List, Union, Callable, Optional
+from typing import Dict, Union, Callable, Optional
 
 from tianshou.data import Collector
 from tianshou.policy import BasePolicy
@@ -18,7 +18,7 @@ def onpolicy_trainer(
     step_per_epoch: int,
     collect_per_step: int,
     repeat_per_collect: int,
-    episode_per_test: Union[int, List[int]],
+    episode_per_test: int,
     batch_size: int,
     train_fn: Optional[Callable[[int, int], None]] = None,
     test_fn: Optional[Callable[[int, Optional[int]], None]] = None,

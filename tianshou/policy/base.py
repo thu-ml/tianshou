@@ -190,7 +190,7 @@ class BasePolicy(ABC, nn.Module):
         return result
 
     @staticmethod
-    def value_mask(batch):
+    def value_mask(batch: Batch) -> np.ndarray:
         # TODO doc
         return ~batch.done.astype(np.bool)
 
