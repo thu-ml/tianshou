@@ -118,7 +118,8 @@ def test_dqn(args=get_args()):
         test_collector.reset()
         result = test_collector.collect(n_episode=args.test_num,
                                         render=args.render)
-        print(f'Final reward:{result["rews"].mean()}, length: {result["lens"].mean()}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == '__main__':

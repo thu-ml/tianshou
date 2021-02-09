@@ -122,8 +122,7 @@ def test_sac(args=get_args()):
         policy.eval()
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num,
-                                        render=args.render)
+        result = test_collector.collect(n_episode=args.test_num, render=args.render)
         pprint.pprint(result)
 
     def save_fn(policy):
