@@ -279,6 +279,7 @@ class BasePolicy(ABC, nn.Module):
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """
         rew = buffer.rew
+        bsz = len(indice)
         # TODO this rew_norm will cause unstablity in training
         if rew_norm:
             bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
@@ -296,10 +297,11 @@ class BasePolicy(ABC, nn.Module):
         terminal = indices[-1]
         with torch.no_grad():
             target_q_torch = target_q_fn(buffer, terminal)  # (bsz, ?)
-        target_q = to_numpy(target_q_torch) * BasePolicy.value_mask(batch)
+        target_q = to_numpy(target_q_torch.reshape(bsz, -1))
+        target_q = target_q * BasePolicy.value_mask(batch).reshape(-1, 1)
         end_flag = buffer.done.copy()
         end_flag[buffer.unfinished_index()] = True
-        target_q = _nstep_return(rew, end_flag, target_q.reshape(-1, 1),
+        target_q = _nstep_return(rew, end_flag, target_q,
                                  indices, gamma, n_step, mean, std)
 
         batch.returns = to_torch_as(target_q, target_q_torch)
@@ -316,7 +318,7 @@ class BasePolicy(ABC, nn.Module):
         _gae_return(f32, f32, f64, b, 0.1, 0.1)
         _episodic_return(f64, f64, b, 0.1, 0.1)
         _episodic_return(f32, f64, b, 0.1, 0.1)
-        _nstep_return(f64, b, f32, i64, 0.1, 1, 0.0, 1.0)
+        _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1, 0.0, 1.0)
 
 
 @njit
@@ -351,7 +353,7 @@ def _episodic_return(
     return _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda) + v_s
 
 
-@njit
+# @njit
 def _nstep_return(
     rew: np.ndarray,
     end_flag: np.ndarray,
