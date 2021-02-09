@@ -40,13 +40,16 @@ class Actor(nn.Module):
         hidden_sizes: Sequence[int] = (),
         softmax_output: bool = True,
         preprocess_net_output_dim: Optional[int] = None,
+        device: Union[str, int, torch.device] = "cpu",
     ) -> None:
         super().__init__()
+        self.device = device
         self.preprocess = preprocess_net
         self.output_dim = np.prod(action_shape)
         input_dim = getattr(preprocess_net, "output_dim",
                             preprocess_net_output_dim)
-        self.last = MLP(input_dim, self.output_dim, hidden_sizes)
+        self.last = MLP(input_dim, self.output_dim,
+                        hidden_sizes, device=self.device)
         self.softmax_output = softmax_output
 
     def forward(
@@ -91,13 +94,16 @@ class Critic(nn.Module):
         hidden_sizes: Sequence[int] = (),
         last_size: int = 1,
         preprocess_net_output_dim: Optional[int] = None,
+        device: Union[str, int, torch.device] = "cpu",
     ) -> None:
         super().__init__()
+        self.device = device
         self.preprocess = preprocess_net
         self.output_dim = last_size
         input_dim = getattr(preprocess_net, "output_dim",
                             preprocess_net_output_dim)
-        self.last = MLP(input_dim, last_size, hidden_sizes)
+        self.last = MLP(input_dim, last_size,
+                        hidden_sizes, device=self.device)
 
     def forward(
         self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
