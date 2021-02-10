@@ -50,6 +50,7 @@ class ReplayBuffer:
         ignore_obs_next: bool = False,
         save_only_last_obs: bool = False,
         sample_avail: bool = False,
+        **kwargs: Any,
     ) -> None:
         self.options: Dict[str, Any] = {
             "stack_num": stack_num,
@@ -358,7 +359,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     """
 
     def __init__(self, size: int, alpha: float, beta: float, **kwargs: Any) -> None:
-        super().__init__(size, **kwargs)
+        # super().__init__(size, **kwargs) will raise keyword error, don't know why, yet.
+        ReplayBuffer.__init__(self, size, **kwargs)
         assert alpha > 0.0 and beta >= 0.0
         self._alpha, self._beta = alpha, beta
         self._max_prio = self._min_prio = 1.0
