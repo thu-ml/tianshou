@@ -190,9 +190,9 @@ class BasePolicy(ABC, nn.Module):
         return result
 
     @staticmethod
-    def value_mask(batch: Batch) -> np.ndarray:
+    def value_mask(buffer: ReplayBuffer, indice: np.ndarray) -> np.ndarray:
         # TODO doc
-        return ~batch.done.astype(np.bool)
+        return ~buffer.done[indice].astype(np.bool)
 
     @staticmethod
     def compute_episodic_return(
@@ -229,7 +229,7 @@ class BasePolicy(ABC, nn.Module):
             assert np.isclose(gae_lambda, 1.0)
             v_s_ = np.zeros_like(rew)
         else:
-            v_s_ = to_numpy(v_s_.flatten()) * BasePolicy.value_mask(batch)
+            v_s_ = to_numpy(v_s_.flatten()) * BasePolicy.value_mask(buffer, indice)
 
         end_flag = batch.done.copy()
         end_flag[np.isin(indice, buffer.unfinished_index())] = True
@@ -298,7 +298,7 @@ class BasePolicy(ABC, nn.Module):
         with torch.no_grad():
             target_q_torch = target_q_fn(buffer, terminal)  # (bsz, ?)
         target_q = to_numpy(target_q_torch.reshape(bsz, -1))
-        target_q = target_q * BasePolicy.value_mask(batch).reshape(-1, 1)
+        target_q = target_q * BasePolicy.value_mask(buffer, terminal).reshape(-1, 1)
         end_flag = buffer.done.copy()
         end_flag[buffer.unfinished_index()] = True
         target_q = _nstep_return(rew, end_flag, target_q,

@@ -94,7 +94,7 @@ def test_episodic_returns(size=2560):
 
 def target_q_fn(buffer, indice):
     # return the next reward
-    indice = (indice + 1 - buffer.done[indice]) % len(buffer)
+    indice = buffer.next(indice)
     return torch.tensor(-buffer.rew[indice], dtype=torch.float32)
 
 
@@ -126,7 +126,7 @@ def test_nstep_returns(size=10000):
         buf.add(Batch(obs=0, act=0, rew=i + 1, done=i % 4 == 3))
     batch, indice = buf.sample(0)
     assert np.allclose(indice, [2, 3, 4, 5, 6, 7, 8, 9, 0, 1])
-    # rew:  [10, 11, 2, 3, 4, 5, 6, 7, 8, 9]
+    # rew:  [11, 12, 3, 4, 5, 6, 7, 8, 9, 10]
     # done: [ 0,  1, 0, 1, 0, 0, 0, 1, 0, 0]
     # test nstep = 1
     returns = to_numpy(BasePolicy.compute_nstep_return(
