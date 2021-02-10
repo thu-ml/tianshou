@@ -21,50 +21,71 @@ def compute_episodic_return_base(batch, gamma):
 # TODO need to change
 def test_episodic_returns(size=2560):
     fn = BasePolicy.compute_episodic_return
+    buf = ReplayBuffer(20)
     batch = Batch(
         done=np.array([1, 0, 0, 1, 0, 1, 0, 1.]),
         rew=np.array([0, 1, 2, 3, 4, 5, 6, 7.]),
     )
-    batch = fn(batch, None, gamma=.1, gae_lambda=1)
+    for b in batch:
+        b.obs = b.act = 1
+        buf.add(b)
+    batch = fn(batch, buf, buf.sample_index(0), None, gamma=.1, gae_lambda=1)
     ans = np.array([0, 1.23, 2.3, 3, 4.5, 5, 6.7, 7])
     assert np.allclose(batch.returns, ans)
+    buf.reset()
     batch = Batch(
         done=np.array([0, 1, 0, 1, 0, 1, 0.]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
     )
-    batch = fn(batch, None, gamma=.1, gae_lambda=1)
+    for b in batch:
+        b.obs = b.act = 1
+        buf.add(b)
+    batch = fn(batch, buf, buf.sample_index(0), None, gamma=.1, gae_lambda=1)
     ans = np.array([7.6, 6, 1.2, 2, 3.4, 4, 5])
     assert np.allclose(batch.returns, ans)
+    buf.reset()
     batch = Batch(
         done=np.array([0, 1, 0, 1, 0, 0, 1.]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
     )
-    batch = fn(batch, None, gamma=.1, gae_lambda=1)
+    for b in batch:
+        b.obs = b.act = 1
+        buf.add(b)
+    batch = fn(batch, buf, buf.sample_index(0), None, gamma=.1, gae_lambda=1)
     ans = np.array([7.6, 6, 1.2, 2, 3.45, 4.5, 5])
     assert np.allclose(batch.returns, ans)
+    buf.reset()
     batch = Batch(
         done=np.array([0, 0, 0, 1., 0, 0, 0, 1, 0, 0, 0, 1]),
-        rew=np.array([
-            101, 102, 103., 200, 104, 105, 106, 201, 107, 108, 109, 202])
+        rew=np.array([101, 102, 103., 200, 104, 105, 106, 201, 107, 108, 109, 202]),
     )
+    for b in batch:
+        b.obs = b.act = 1
+        buf.add(b)
     v = np.array([2., 3., 4, -1, 5., 6., 7, -2, 8., 9., 10, -3])
-    ret = fn(batch, v, gamma=0.99, gae_lambda=0.95)
+    ret = fn(batch, buf, buf.sample_index(0), v, gamma=0.99, gae_lambda=0.95)
     returns = np.array([
         454.8344, 376.1143, 291.298, 200.,
         464.5610, 383.1085, 295.387, 201.,
         474.2876, 390.1027, 299.476, 202.])
     assert np.allclose(ret.returns, returns)
+    buf.reset()
     if __name__ == '__main__':
+        buf = ReplayBuffer(size)
         batch = Batch(
             done=np.random.randint(100, size=size) == 0,
             rew=np.random.random(size),
         )
+        for b in batch:
+            b.obs = b.act = 1
+            buf.add(b)
+        indice = buf.sample_index(0)
 
         def vanilla():
             return compute_episodic_return_base(batch, gamma=.1)
 
         def optimized():
-            return fn(batch, gamma=.1)
+            return fn(batch, buf, indice, gamma=.1, gae_lambda=1.0)
 
         cnt = 3000
         print('GAE vanilla', timeit(vanilla, setup=vanilla, number=cnt))
@@ -131,9 +152,9 @@ def test_nstep_returns(size=10000):
     assert np.allclose(returns_multidim, returns[:, np.newaxis])
     # test nstep = 10
     returns = to_numpy(BasePolicy.compute_nstep_return(
-        batch, buf, indice, target_q_fn, gamma=.1, n_step=10).pop('returns'))
-    assert np.allclose(returns, [
-        3.4, 4, 5.678, 6.78, 7.8, 8, 10.122, 11.22, 12.2, 12])
+        batch, buf, indice, target_q_fn, gamma=.1, n_step=10
+    ).pop('returns').reshape(-1))
+    assert np.allclose(returns, [3.4, 4, 5.678, 6.78, 7.8, 8, 10.122, 11.22, 12.2, 12])
     r_ = compute_nstep_return_base(10, .1, buf, indice)
     assert np.allclose(returns, r_)
     returns_multidim = to_numpy(BasePolicy.compute_nstep_return(
