@@ -19,6 +19,8 @@ def test_batch():
     assert not Batch(a=np.float64(1.0)).is_empty()
     assert len(Batch(a=[1, 2, 3], b={'c': {}})) == 3
     assert not Batch(a=[1, 2, 3]).is_empty()
+    b = Batch({'a': [4, 4], 'b': [5, 5]}, c=[None, None])
+    assert b.c.dtype == np.object
     b = Batch()
     b.update()
     assert b.is_empty()
@@ -143,8 +145,10 @@ def test_batch():
     assert batch3.a.d.e[0] == 4.0
     batch3.a.d[0] = Batch(f=5.0)
     assert batch3.a.d.f[0] == 5.0
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         batch3.a.d[0] = Batch(f=5.0, g=0.0)
+    with pytest.raises(ValueError):
+        batch3[0] = Batch(a={"c": 2, "e": 1})
     # auto convert
     batch4 = Batch(a=np.array(['a', 'b']))
     assert batch4.a.dtype == np.object  # auto convert to np.object
@@ -332,6 +336,12 @@ def test_batch_cat_and_stack():
     assert np.allclose(test.a, ans.a)
     assert torch.allclose(test.b, ans.b)
     assert np.allclose(test.common.c, ans.common.c)
+
+    # test with illegal input format
+    with pytest.raises(ValueError):
+        Batch.cat([[Batch(a=1)], [Batch(a=1)]])
+    with pytest.raises(ValueError):
+        Batch.stack([[Batch(a=1)], [Batch(a=1)]])
 
     # exceptions
     assert Batch.cat([]).is_empty()
