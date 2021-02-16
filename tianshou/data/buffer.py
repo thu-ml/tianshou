@@ -203,7 +203,7 @@ class ReplayBuffer:
                 )
         try:
             value[self._index] = inst
-        except KeyError:
+        except ValueError:
             for key in set(inst.keys()).difference(value.__dict__.keys()):
                 value.__dict__[key] = _create_value(inst[key], self._maxsize)
             value[self._index] = inst
