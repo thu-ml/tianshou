@@ -1,5 +1,6 @@
 import h5py
 import torch
+import warnings
 import numpy as np
 from numbers import Number
 from typing import Any, Dict, List, Tuple, Union, Optional
@@ -412,6 +413,7 @@ class ListReplayBuffer(ReplayBuffer):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(size=0, ignore_obs_next=False, **kwargs)
+        warnings.warn("ListReplayBuffer will be removed in version 0.4.0.")
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         raise NotImplementedError("ListReplayBuffer cannot be sampled!")
