@@ -192,11 +192,11 @@ class BasePolicy(ABC, nn.Module):
     @staticmethod
     def value_mask(buffer: ReplayBuffer, indice: np.ndarray) -> np.ndarray:
         """Value mask determines whether the obs_next of buffer[indice] is valid.
-        
+
         For instance, usually 'obs_next' after 'done' flag is considered to be invalid,
         and its q/advantage value can provide meaningless(even misleading) information,
-        and should be set to 0 by hand. But if 'done' flag is generated because of 
-        timelimit of game length (info['TimeLimit.truncated'] is set to True in 'gym' 
+        and should be set to 0 by hand. But if 'done' flag is generated because of
+        timelimit of game length (info['TimeLimit.truncated'] is set to True in 'gym'
         settings), 'obs_next' will instead be valid. Value mask is typically used
         to assist in calculating correct q/advantage value.
 
