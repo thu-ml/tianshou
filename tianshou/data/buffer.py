@@ -102,54 +102,10 @@ class ReplayBuffer:
         ), "key '{}' is reserved and cannot be assigned".format(key)
         super().__setattr__(key, value)
 
-<<<<<<< HEAD
     def save_hdf5(self, path: str) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
             to_hdf5(self.__dict__, f)
-=======
-    def _add_to_buffer(self, name: str, inst: Any) -> None:
-        try:
-            value = self._meta.__dict__[name]
-        except KeyError:
-            self._meta.__dict__[name] = _create_value(inst, self._maxsize)
-            value = self._meta.__dict__[name]
-        if isinstance(inst, (torch.Tensor, np.ndarray)):
-            if inst.shape != value.shape[1:]:
-                raise ValueError(
-                    "Cannot add data to a buffer with different shape with key"
-                    f" {name}, expect {value.shape[1:]}, given {inst.shape}."
-                )
-        try:
-            value[self._index] = inst
-        except ValueError:
-            for key in set(inst.keys()).difference(value.__dict__.keys()):
-                value.__dict__[key] = _create_value(inst[key], self._maxsize)
-            value[self._index] = inst
-
-    @property
-    def stack_num(self) -> int:
-        return self._stack
-
-    @stack_num.setter
-    def stack_num(self, num: int) -> None:
-        assert num > 0, "stack_num should greater than 0"
-        self._stack = num
-
-    def update(self, buffer: "ReplayBuffer") -> None:
-        """Move the data from the given buffer to self."""
-        if len(buffer) == 0:
-            return
-        i = begin = buffer._index % len(buffer)
-        stack_num_orig = buffer.stack_num
-        buffer.stack_num = 1
-        while True:
-            self.add(**buffer[i])  # type: ignore
-            i = (i + 1) % len(buffer)
-            if i == begin:
-                break
-        buffer.stack_num = stack_num_orig
->>>>>>> upstream/master
 
     @classmethod
     def load_hdf5(cls, path: str, device: Optional[str] = None) -> "ReplayBuffer":

@@ -158,12 +158,13 @@ Currently, the overall code of Tianshou platform is less than 2500 lines. Most o
 ```python
 result = collector.collect(n_step=n)
 ```
-# TODO remove this
-If you have 3 environments in total and want to collect 1 episode in the first environment, 3 for the third environment:
+If you have 3 environments in total and want to collect 4 episodes:
 
 ```python
-result = collector.collect(n_episode=[1, 0, 3])
+result = collector.collect(n_episode=4)
 ```
+
+Collector will collect exactly 4 episodes without any bias of episode length despite we only have 3 parallel environments.
 
 If you want to train the given policy with a sampled batch:
 

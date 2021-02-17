@@ -18,7 +18,6 @@ def compute_episodic_return_base(batch, gamma):
     return batch
 
 
-# TODO need to change
 def test_episodic_returns(size=2560):
     fn = BasePolicy.compute_episodic_return
     buf = ReplayBuffer(20)

@@ -191,7 +191,22 @@ class BasePolicy(ABC, nn.Module):
 
     @staticmethod
     def value_mask(buffer: ReplayBuffer, indice: np.ndarray) -> np.ndarray:
-        # TODO doc
+        """Value mask determines whether the obs_next of buffer[indice] is valid.
+        
+        For instance, usually 'obs_next' after 'done' flag is considered to be invalid,
+        and its q/advantage value can provide meaningless(even misleading) information,
+        and should be set to 0 by hand. But if 'done' flag is generated because of 
+        timelimit of game length (info['TimeLimit.truncated'] is set to True in 'gym' 
+        settings), 'obs_next' will instead be valid. Value mask is typically used
+        to assist in calculating correct q/advantage value.
+
+        :param ReplayBuffer buffer: the corresponding replay buffer.
+        :param numpy.ndarray indice: indices of replay buffer whose 'obs_next' will be
+        judged.
+
+        :return: A bool type numpy.ndarray in the same shape with indice. 'True' means
+        'obs_next' of that buffer[indice] is valid.
+        """
         return ~buffer.done[indice].astype(np.bool)
 
     @staticmethod
@@ -204,16 +219,20 @@ class BasePolicy(ABC, nn.Module):
         gae_lambda: float = 0.95,
         rew_norm: bool = False,
     ) -> Batch:
-        # TODO change doc
-        """Compute returns over given full-length episodes.
+        """Compute returns over given batch.
 
-        Implementation of Generalized Advantage Estimator (arXiv:1506.02438).
+        Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
+        to calculate q function/reward to go of give batch.
 
-        :param batch: a data batch which contains several full-episode data
-            chronologically. TODO generalize
+        :param batch: a data batch which contains several episodes of data
+            in sequential order. Mind that the end of each finished episode of batch
+            should be marked by done flag, unfinished(collecting) episodes will be
+            recongized by buffer.unfinished_index().
         :type batch: :class:`~tianshou.data.Batch`
+        :param numpy.ndarray indice: tell batch's location in buffer, batch is
+            equal to buffer[indice].
         :param v_s_: the value function of all next states :math:`V(s')`.
-        :type v_s_: numpy.ndarray #TODO n+1 value shape
+        :type v_s_: numpy.ndarray
         :param float gamma: the discount factor, should be in [0, 1], defaults
             to 0.99.
         :param float gae_lambda: the parameter for Generalized Advantage
@@ -249,7 +268,6 @@ class BasePolicy(ABC, nn.Module):
         n_step: int = 1,
         rew_norm: bool = False,
     ) -> Batch:
-        # TODO, doc
         r"""Compute n-step return for Q-learning targets.
 
         .. math::
@@ -264,10 +282,8 @@ class BasePolicy(ABC, nn.Module):
         :type batch: :class:`~tianshou.data.Batch`
         :param buffer: the data buffer.
         :type buffer: :class:`~tianshou.data.ReplayBuffer`
-        :param indice: sampled timestep.
-        :type indice: numpy.ndarray
-        :param function target_q_fn: a function receives :math:`t+n-1` step's
-            data and compute target Q value.
+        :param function target_q_fn: a function which compute target Q value
+            of 'obs_next' given data buffer and wanted indices.
         :param float gamma: the discount factor, should be in [0, 1], defaults
             to 0.99.
         :param int n_step: the number of estimation step, should be an int
@@ -280,7 +296,6 @@ class BasePolicy(ABC, nn.Module):
         """
         rew = buffer.rew
         bsz = len(indice)
-        # TODO this rew_norm will cause unstablity in training
         if rew_norm:
             bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
