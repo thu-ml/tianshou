@@ -35,8 +35,8 @@ def _is_scalar(value: Any) -> bool:
     if isinstance(value, torch.Tensor):
         return value.numel() == 1 and not value.shape
     else:
-        value = np.asanyarray(value)
-        return value.size == 1 and not value.shape
+        # np.asanyarray will cause dead loop in some cases
+        return np.isscalar(value)
 
 
 def _is_number(value: Any) -> bool:
