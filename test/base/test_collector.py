@@ -6,7 +6,12 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.policy import BasePolicy
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.data import Batch, Collector, AsyncCollector
-from tianshou.data import ReplayBuffer, VectorReplayBuffer, CachedReplayBuffer
+from tianshou.data import (
+    ReplayBuffer,
+    PrioritizedReplayBuffer,
+    VectorReplayBuffer,
+    CachedReplayBuffer,
+)
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -124,6 +129,14 @@ def test_collector():
     assert np.all(c2.buffer.obs[:, 0] == obs)
     c2.collect(n_episode=4, random=True)
 
+    # test corner case
+    with pytest.raises(TypeError):
+        Collector(policy, dum, ReplayBuffer(10))
+    with pytest.raises(TypeError):
+        Collector(policy, dum, PrioritizedReplayBuffer(10, 0.5, 0.5))
+    with pytest.raises(TypeError):
+        c2.collect()
+
 
 def test_collector_with_async():
     env_lens = [2, 3, 4, 5]
@@ -167,6 +180,8 @@ def test_collector_with_async():
             assert np.all(buf.info.env_id == i)
             assert np.all(buf.obs.reshape(-1, env_len) == seq)
             assert np.all(buf.obs_next.reshape(-1, env_len) == seq + 1)
+    with pytest.raises(TypeError):
+        c1.collect()
 
 
 def test_collector_with_dict_state():
