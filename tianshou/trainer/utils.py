@@ -24,10 +24,10 @@ def test_episode(
     if test_fn:
         test_fn(epoch, global_step)
     result = collector.collect(n_episode=n_episode)
+    if reward_metric:
+        result["rews"] = reward_metric(result["rews"])
     if writer is not None and global_step is not None:
         rews, lens = result["rews"], result["lens"]
-        if reward_metric:
-            rews = reward_metric(rews)
         writer.add_scalar("test/rew", rews.mean(), global_step=global_step)
         writer.add_scalar("test/rew_std", rews.std(), global_step=global_step)
         writer.add_scalar("test/len", lens.mean(), global_step=global_step)
