@@ -180,7 +180,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
     from tianshou.env import DummyVectorEnv
     from tianshou.utils.net.common import Net
     from tianshou.trainer import offpolicy_trainer
-    from tianshou.data import Collector, ReplayBuffer
+    from tianshou.data import Collector, VectorReplayBuffer
     from tianshou.policy import BasePolicy, RandomPolicy, DQNPolicy, MultiAgentPolicyManager
 
     from tic_tac_toe_env import TicTacToeEnv
@@ -199,27 +199,27 @@ The explanation of each Tianshou class/function will be deferred to their first 
                             help='a smaller gamma favors earlier win')
         parser.add_argument('--n-step', type=int, default=3)
         parser.add_argument('--target-update-freq', type=int, default=320)
-        parser.add_argument('--epoch', type=int, default=10)
-        parser.add_argument('--step-per-epoch', type=int, default=1000)
-        parser.add_argument('--collect-per-step', type=int, default=8)
+        parser.add_argument('--epoch', type=int, default=20)
+        parser.add_argument('--step-per-epoch', type=int, default=500)
+        parser.add_argument('--collect-per-step', type=int, default=10)
         parser.add_argument('--batch-size', type=int, default=64)
         parser.add_argument('--hidden-sizes', type=int,
                             nargs='*', default=[128, 128, 128, 128])
-        parser.add_argument('--training-num', type=int, default=8)
+        parser.add_argument('--training-num', type=int, default=10)
         parser.add_argument('--test-num', type=int, default=100)
         parser.add_argument('--logdir', type=str, default='log')
         parser.add_argument('--render', type=float, default=0.1)
-        parser.add_argument('--board_size', type=int, default=6)
-        parser.add_argument('--win_size', type=int, default=4)
-        parser.add_argument('--win-rate', type=float, default=np.float32(0.9),
+        parser.add_argument('--board-size', type=int, default=6)
+        parser.add_argument('--win-size', type=int, default=4)
+        parser.add_argument('--win-rate', type=float, default=0.9,
                             help='the expected winning rate')
         parser.add_argument('--watch', default=False, action='store_true',
                             help='no training, watch the play of pre-trained models')
-        parser.add_argument('--agent_id', type=int, default=2,
+        parser.add_argument('--agent-id', type=int, default=2,
                             help='the learned agent plays as the agent_id-th player. Choices are 1 and 2.')
-        parser.add_argument('--resume_path', type=str, default='',
+        parser.add_argument('--resume-path', type=str, default='',
                             help='the path of agent pth file for resuming from a pre-trained agent')
-        parser.add_argument('--opponent_path', type=str, default='',
+        parser.add_argument('--opponent-path', type=str, default='',
                             help='the path of opponent agent pth file for resuming from a pre-trained agent')
         parser.add_argument('--device', type=str,
                             default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -240,11 +240,13 @@ Both agents are passed to :class:`~tianshou.policy.MultiAgentPolicyManager`, whi
 Here it is:
 ::
 
-    def get_agents(args=get_args(),
-                   agent_learn=None,     # BasePolicy
-                   agent_opponent=None,  # BasePolicy
-                   optim=None,           # torch.optim.Optimizer
-                   ):  # return a tuple of (BasePolicy, torch.optim.Optimizer)
+    def get_agents(
+        args=get_args(),
+        agent_learn=None,     # BasePolicy
+        agent_opponent=None,  # BasePolicy
+        optim=None,           # torch.optim.Optimizer
+    ):  # return a tuple of (BasePolicy, torch.optim.Optimizer)
+
         env = TicTacToeEnv(args.board_size, args.win_size)
         args.state_shape = env.observation_space.shape or env.observation_space.n
         args.action_shape = env.action_space.shape or env.action_space.n
@@ -279,9 +281,6 @@ With the above preparation, we are close to the first learned agent. The followi
 ::
 
     args = get_args()
-    # the reward is a vector, we need a scalar metric to monitor the training.
-    # we choose the reward of the learning agent
-    Collector._default_rew_metric = lambda x: x[args.agent_id - 1]
 
     # ======== a test function that tests a pre-trained agent and exit ======
     def watch(args=get_args(),
@@ -313,8 +312,9 @@ With the above preparation, we are close to the first learned agent. The followi
     policy, optim = get_agents()
 
     # ======== collector setup =========
-    train_collector = Collector(policy, train_envs, ReplayBuffer(args.buffer_size))
-    test_collector = Collector(policy, test_envs)
+    buffer = VectorReplayBuffer(args.buffer_size, args.training_num)
+    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
     train_collector.collect(n_step=args.batch_size * args.training_num)
 
     # ======== tensorboard logging setup =========
@@ -347,13 +347,18 @@ With the above preparation, we are close to the first learned agent. The followi
     def test_fn(epoch, env_step):
         policy.policies[args.agent_id - 1].set_eps(args.eps_test)
 
+    # the reward is a vector, we need a scalar metric to monitor the training.
+    # we choose the reward of the learning agent
+    def reward_metric(rews):
+        return rews[:, args.agent_id - 1]
+
     # start training, this may require about three minutes
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, save_fn=save_fn, writer=writer,
-        test_in_train=False)
+        stop_fn=stop_fn, save_fn=save_fn, reward_metric=reward_metric,
+        writer=writer, test_in_train=False)
 
     agent = policy.policies[args.agent_id - 1]
     # let's watch the match!
@@ -476,7 +481,7 @@ By default, the trained agent is stored in ``log/tic_tac_toe/dqn/policy.pth``. Y
 
 .. code-block:: console
 
-    $ python test_tic_tac_toe.py --watch --resume_path=log/tic_tac_toe/dqn/policy.pth --opponent_path=log/tic_tac_toe/dqn/policy.pth
+    $ python test_tic_tac_toe.py --watch --resume-path log/tic_tac_toe/dqn/policy.pth --opponent-path log/tic_tac_toe/dqn/policy.pth
 
 Here is our output:
 

@@ -113,8 +113,8 @@ The collector is a key concept in Tianshou. It allows the policy to interact wit
 In each step, the collector will let the policy perform (at least) a specified number of steps or episodes and store the data in a replay buffer.
 ::
 
-    train_collector = ts.data.Collector(policy, train_envs, ts.data.ReplayBuffer(size=20000))
-    test_collector = ts.data.Collector(policy, test_envs)
+    train_collector = ts.data.Collector(policy, train_envs, ts.data.VectorReplayBuffer(20000, 8), exploration_noise=True)
+    test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)
 
 
 Train Policy with a Trainer
@@ -191,7 +191,7 @@ Watch the Agent's Performance
 
     policy.eval()
     policy.set_eps(0.05)
-    collector = ts.data.Collector(policy, env)
+    collector = ts.data.Collector(policy, env, exploration_noise=True)
     collector.collect(n_episode=1, render=1 / 35)
 
 
@@ -206,8 +206,7 @@ Tianshou supports user-defined training code. Here is the code snippet:
 ::
 
     # pre-collect at least 5000 frames with random action before training
-    policy.set_eps(1)
-    train_collector.collect(n_step=5000)
+    train_collector.collect(n_step=5000, random=True)
 
     policy.set_eps(0.1)
     for i in range(int(1e6)):  # total step

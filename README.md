@@ -195,7 +195,7 @@ train_num, test_num = 8, 100
 gamma, n_step, target_freq = 0.9, 3, 320
 buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
-step_per_epoch, collect_per_step = 1000, 10
+step_per_epoch, collect_per_step = 1000, 8
 writer = SummaryWriter('log/dqn')  # tensorboard is also supported!
 ```
 
@@ -224,8 +224,8 @@ Setup policy and collectors:
 
 ```python
 policy = ts.policy.DQNPolicy(net, optim, gamma, n_step, target_update_freq=target_freq)
-train_collector = ts.data.Collector(policy, train_envs, ts.data.ReplayBuffer(buffer_size))
-test_collector = ts.data.Collector(policy, test_envs)
+train_collector = ts.data.Collector(policy, train_envs, ts.data.VectorReplayBuffer(buffer_size, train_num), exploration_noise=True)
+test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)  # because DQN uses epsilon-greedy method
 ```
 
 Let's train it:
@@ -253,7 +253,7 @@ Watch the performance with 35 FPS:
 ```python
 policy.eval()
 policy.set_eps(eps_test)
-collector = ts.data.Collector(policy, env)
+collector = ts.data.Collector(policy, env, exploration_noise=True)
 collector.collect(n_episode=1, render=1 / 35)
 ```
 

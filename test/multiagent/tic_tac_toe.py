@@ -37,20 +37,20 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.1)
-    parser.add_argument('--board_size', type=int, default=6)
-    parser.add_argument('--win_size', type=int, default=4)
-    parser.add_argument('--win_rate', type=float, default=0.9,
+    parser.add_argument('--board-size', type=int, default=6)
+    parser.add_argument('--win-size', type=int, default=4)
+    parser.add_argument('--win-rate', type=float, default=0.9,
                         help='the expected winning rate')
     parser.add_argument('--watch', default=False, action='store_true',
                         help='no training, '
                              'watch the play of pre-trained models')
-    parser.add_argument('--agent_id', type=int, default=2,
+    parser.add_argument('--agent-id', type=int, default=2,
                         help='the learned agent plays as the'
-                             ' agent_id-th player. choices are 1 and 2.')
-    parser.add_argument('--resume_path', type=str, default='',
+                             ' agent_id-th player. Choices are 1 and 2.')
+    parser.add_argument('--resume-path', type=str, default='',
                         help='the path of agent pth file '
                              'for resuming from a pre-trained agent')
-    parser.add_argument('--opponent_path', type=str, default='',
+    parser.add_argument('--opponent-path', type=str, default='',
                         help='the path of opponent agent pth file '
                              'for resuming from a pre-trained agent')
     parser.add_argument(
@@ -61,8 +61,7 @@ def get_parser() -> argparse.ArgumentParser:
 
 def get_args() -> argparse.Namespace:
     parser = get_parser()
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_args()
 
 
 def get_agents(

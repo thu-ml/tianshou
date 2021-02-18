@@ -144,7 +144,7 @@ And finally,
 ::
 
     test_processor = MyProcessor(size=100)
-    collector = Collector(policy, env, buffer, test_processor.preprocess_fn)
+    collector = Collector(policy, env, buffer, preprocess_fn=test_processor.preprocess_fn)
 
 Some examples are in `test/base/test_collector.py <https://github.com/thu-ml/tianshou/blob/master/test/base/test_collector.py>`_.
 
@@ -156,7 +156,7 @@ RNN-style Training
 
 This is related to `Issue 19 <https://github.com/thu-ml/tianshou/issues/19>`_.
 
-First, add an argument "stack_num" to :class:`~tianshou.data.ReplayBuffer`:
+First, add an argument "stack_num" to :class:`~tianshou.data.ReplayBuffer`, :class:`~tianshou.data.VectorReplayBuffer`, or other types of buffer you are using, like:
 ::
 
     buf = ReplayBuffer(size=size, stack_num=stack_num)
@@ -206,14 +206,13 @@ The state can be a ``numpy.ndarray`` or a Python dictionary. Take "FetchReach-v1
 It shows that the state is a dictionary which has 3 keys. It will stored in :class:`~tianshou.data.ReplayBuffer` as:
 ::
 
-    >>> from tianshou.data import ReplayBuffer
+    >>> from tianshou.data import Batch, ReplayBuffer
     >>> b = ReplayBuffer(size=3)
-    >>> b.add(obs=e.reset(), act=0, rew=0, done=0)
+    >>> b.add(Batch(obs=e.reset(), act=0, rew=0, done=0))
     >>> print(b)
     ReplayBuffer(
         act: array([0, 0, 0]),
-        done: array([0, 0, 0]),
-        info: Batch(),
+        done: array([False, False, False]),
         obs: Batch(
                  achieved_goal: array([[1.34183265, 0.74910039, 0.53472272],
                                        [0.        , 0.        , 0.        ],
@@ -234,7 +233,6 @@ It shows that the state is a dictionary which has 3 keys. It will stored in :cla
                                        0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
                                        0.00000000e+00]]),
              ),
-        policy: Batch(),
         rew: array([0, 0, 0]),
     )
     >>> print(b.obs.achieved_goal)
@@ -278,7 +276,7 @@ For self-defined class, the replay buffer will store the reference into a ``nump
 
     >>> import networkx as nx
     >>> b = ReplayBuffer(size=3)
-    >>> b.add(obs=nx.Graph(), act=0, rew=0, done=0)
+    >>> b.add(Batch(obs=nx.Graph(), act=0, rew=0, done=0))
     >>> print(b)
     ReplayBuffer(
         act: array([0, 0, 0]),
