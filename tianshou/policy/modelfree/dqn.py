@@ -174,11 +174,7 @@ class DQNPolicy(BasePolicy):
         self._iter += 1
         return {"loss": loss.item()}
 
-    def exploration_noise(
-        self,
-        act: np.ndarray,
-        batch: Batch,
-    ) -> np.ndarray:
+    def exploration_noise(self, act: np.ndarray, batch: Batch) -> np.ndarray:
         if not np.isclose(self.eps, 0.0):
             for i in range(len(act)):
                 if np.random.rand() < self.eps:

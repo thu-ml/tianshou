@@ -164,11 +164,7 @@ class DDPGPolicy(BasePolicy):
             "loss/critic": critic_loss.item(),
         }
 
-    def exploration_noise(
-        self,
-        act: np.ndarray,
-        batch: Batch,
-    ) -> np.ndarray:
+    def exploration_noise(self, act: np.ndarray, batch: Batch) -> np.ndarray:
         if self._noise:
             act = act + self._noise(act.shape)
             act = act.clip(self._range[0], self._range[1])

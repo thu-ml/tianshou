@@ -68,9 +68,7 @@ class BasePolicy(ABC, nn.Module):
         self.agent_id = agent_id
 
     def exploration_noise(
-        self,
-        act: Union[np.ndarray, Batch],
-        batch: Batch,
+        self, act: Union[np.ndarray, Batch], batch: Batch
     ) -> Union[np.ndarray, Batch]:
         """Modify the action from policy.forward with exploration noise.
 
@@ -78,8 +76,8 @@ class BasePolicy(ABC, nn.Module):
             policy.forward.
         :param batch: the input batch for policy.forward, kept for advanced usage.
 
-        :return: action in the same form of input 'act' but with added
-            exploration noise.
+        :return: action in the same form of input "act" but with added exploration
+            noise.
         """
         return act
 
@@ -92,8 +90,7 @@ class BasePolicy(ABC, nn.Module):
     ) -> Batch:
         """Compute action over the given batch data.
 
-        :return: A :class:`~tianshou.data.Batch` which MUST have the following\
-        keys:
+        :return: A :class:`~tianshou.data.Batch` which MUST have the following keys:
 
             * ``act`` an numpy.ndarray or a torch.Tensor, the action over \
                 given batch data.
@@ -122,8 +119,7 @@ class BasePolicy(ABC, nn.Module):
     ) -> Batch:
         """Pre-process the data from the provided replay buffer.
 
-        Used in :meth:`update`. Check out :ref:`process_fn` for more
-        information.
+        Used in :meth:`update`. Check out :ref:`process_fn` for more information.
         """
         return batch
 
@@ -274,9 +270,8 @@ class BasePolicy(ABC, nn.Module):
             G_t = \sum_{i = t}^{t + n - 1} \gamma^{i - t}(1 - d_i)r_i +
             \gamma^n (1 - d_{t + n}) Q_{\mathrm{target}}(s_{t + n})
 
-        where :math:`\gamma` is the discount factor,
-        :math:`\gamma \in [0, 1]`, :math:`d_t` is the done flag of step
-        :math:`t`.
+        where :math:`\gamma` is the discount factor, :math:`\gamma \in [0, 1]`,
+        :math:`d_t` is the done flag of step :math:`t`.
 
         :param batch: a data batch, which is equal to buffer[indice].
         :type batch: :class:`~tianshou.data.Batch`
@@ -296,7 +291,7 @@ class BasePolicy(ABC, nn.Module):
         """
         rew = buffer.rew
         bsz = len(indice)
-        if rew_norm:
+        if rew_norm:  # TODO: remove it or fix this bug
             bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
             mean, std = bfr.mean(), bfr.std()
             if np.isclose(std, 0, 1e-2):

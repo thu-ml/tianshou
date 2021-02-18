@@ -59,6 +59,18 @@ class MultiAgentPolicyManager(BasePolicy):
             buffer._meta.rew = save_rew
         return Batch(results)
 
+    def exploration_noise(
+        self, act: Union[np.ndarray, Batch], batch: Batch
+    ) -> Union[np.ndarray, Batch]:
+        """Add exploration noise from sub-policy onto act."""
+        for policy in self.policies:
+            agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
+            if len(agent_index) == 0:
+                continue
+            act[agent_index] = policy.exploration_noise(
+                act[agent_index], batch[agent_index])
+        return act
+
     def forward(
         self,
         batch: Batch,
