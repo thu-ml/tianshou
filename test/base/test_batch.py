@@ -22,7 +22,7 @@ def test_batch():
     b = Batch({'a': [4, 4], 'b': [5, 5]}, c=[None, None])
     assert b.c.dtype == np.object
     b = Batch(d=[None], e=[starmap], f=Batch)
-    assert b.d.dtype == b.e.dtype == b.f.dtype == np.object
+    assert b.d.dtype == b.e.dtype == np.object and b.f == Batch
     b = Batch()
     b.update()
     assert b.is_empty()
