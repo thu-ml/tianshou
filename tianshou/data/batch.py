@@ -48,10 +48,8 @@ def _is_number(value: Any) -> bool:
 
 
 def _to_array_with_correct_type(v: Any) -> np.ndarray:
-    if isinstance(v, np.ndarray) and issubclass(
-        v.dtype.type, (np.bool_, np.number)
-    ):  # most often case
-        return v
+    if isinstance(v, np.ndarray) and issubclass(v.dtype.type, (np.bool_, np.number)):
+        return v  # most often case
     # convert the value to np.ndarray
     # convert to np.object data type if neither bool nor number
     # raises an exception if array's elements are tensors themself
@@ -66,9 +64,7 @@ def _to_array_with_correct_type(v: Any) -> np.ndarray:
         # array([{}, array({}, dtype=object)], dtype=object)
         if not v.shape:
             v = v.item(0)
-        elif any(
-            isinstance(e, (np.ndarray, torch.Tensor)) for e in v.reshape(-1)
-        ):
+        elif any(isinstance(e, (np.ndarray, torch.Tensor)) for e in v.reshape(-1)):
             raise ValueError("Numpy arrays of tensors are not supported yet.")
     return v
 
