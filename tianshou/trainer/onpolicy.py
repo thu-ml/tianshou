@@ -1,5 +1,6 @@
 import time
 import tqdm
+import numpy as np
 from collections import defaultdict
 from torch.utils.tensorboard import SummaryWriter
 from typing import Dict, Union, Callable, Optional
@@ -24,6 +25,7 @@ def onpolicy_trainer(
     test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
     stop_fn: Optional[Callable[[float], bool]] = None,
     save_fn: Optional[Callable[[BasePolicy], None]] = None,
+    reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     writer: Optional[SummaryWriter] = None,
     log_interval: int = 1,
     verbose: bool = True,
@@ -33,8 +35,7 @@ def onpolicy_trainer(
 
     The "step" in trainer means a policy network update.
 
-    :param policy: an instance of the :class:`~tianshou.policy.BasePolicy`
-        class.
+    :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param train_collector: the collector used for training.
     :type train_collector: :class:`~tianshou.data.Collector`
     :param test_collector: the collector used for testing.
@@ -65,6 +66,12 @@ def onpolicy_trainer(
     :param function stop_fn: a function with signature ``f(mean_rewards: float)
         -> bool``, receives the average undiscounted returns of the testing
         result, returns a boolean which indicates whether reaching the goal.
+    :param function reward_metric: a function with signature ``f(rewards: np.ndarray
+        with shape (num_episode, agent_num)) -> np.ndarray with shape (num_episode,)``,
+        used in multi-agent RL. We need to return a single scalar for each episode's
+        result to monitor training in the multi-agent RL setting. This function
+        specifies what is the desired metric, e.g., the reward of agent 1 or the
+        average reward over all agents.
     :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard
         SummaryWriter; if None is given, it will not write logs to TensorBoard.
     :param int log_interval: the log interval of the writer.
@@ -90,6 +97,8 @@ def onpolicy_trainer(
                 if train_fn:
                     train_fn(epoch, env_step)
                 result = train_collector.collect(n_episode=collect_per_step)
+                if reward_metric:
+                    result["rews"] = reward_metric(result["rews"])
                 env_step += int(result["n/st"])
                 data = {
                     "env_step": str(env_step),

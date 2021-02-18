@@ -157,13 +157,16 @@ def train_agent(
     def test_fn(epoch, env_step):
         policy.policies[args.agent_id - 1].set_eps(args.eps_test)
 
+    def reward_metric(rews):
+        return rews[:, args.agent_id - 1]
+
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, save_fn=save_fn, writer=writer,
-        test_in_train=False)
+        stop_fn=stop_fn, save_fn=save_fn, reward_metric=reward_metric,
+        writer=writer, test_in_train=False)
 
     return result, policy.policies[args.agent_id - 1]
 

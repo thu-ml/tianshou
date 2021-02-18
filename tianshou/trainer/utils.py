@@ -1,4 +1,5 @@
 import time
+import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from typing import Any, Dict, Union, Callable, Optional
 
@@ -14,6 +15,7 @@ def test_episode(
     n_episode: int,
     writer: Optional[SummaryWriter] = None,
     global_step: Optional[int] = None,
+    reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
 ) -> Dict[str, Any]:
     """A simple wrapper of testing policy in collector."""
     collector.reset_env()
@@ -24,6 +26,8 @@ def test_episode(
     result = collector.collect(n_episode=n_episode)
     if writer is not None and global_step is not None:
         rews, lens = result["rews"], result["lens"]
+        if reward_metric:
+            rews = reward_metric(rews)
         writer.add_scalar("test/rew", rews.mean(), global_step=global_step)
         writer.add_scalar("test/rew_std", rews.std(), global_step=global_step)
         writer.add_scalar("test/len", lens.mean(), global_step=global_step)

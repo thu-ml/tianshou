@@ -194,10 +194,10 @@ class BasePolicy(ABC, nn.Module):
         """Value mask determines whether the obs_next of buffer[indice] is valid.
 
         For instance, usually "obs_next" after "done" flag is considered to be invalid,
-        and its q/advantage value can provide meaningless (even misleading) information,
-        and should be set to 0 by hand. But if "done" flag is generated because
-        timelimit of game length (info["TimeLimit.truncated"] is set to True in gym's
-        settings), "obs_next" will instead be valid. Value mask is typically used
+        and its q/advantage value can provide meaningless (even misleading)
+        information, and should be set to 0 by hand. But if "done" flag is generated
+        because timelimit of game length (info["TimeLimit.truncated"] is set to True in
+        gym's settings), "obs_next" will instead be valid. Value mask is typically used
         for assisting in calculating the correct q/advantage value.
 
         :param ReplayBuffer buffer: the corresponding replay buffer.
