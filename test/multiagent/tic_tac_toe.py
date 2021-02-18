@@ -61,7 +61,7 @@ def get_parser() -> argparse.ArgumentParser:
 
 def get_args() -> argparse.Namespace:
     parser = get_parser()
-    return parser.parse_args()
+    return parser.parse_known_args()[0]
 
 
 def get_agents(
