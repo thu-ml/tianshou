@@ -1,7 +1,7 @@
 import h5py
 import torch
 import numpy as np
-from typing import Any, Dict, List, Tuple, Union, Optional
+from typing import Any, Dict, List, Tuple, Union, Sequence, Optional
 
 from tianshou.data.batch import _create_value
 from tianshou.data import Batch, SegmentTree, to_numpy
@@ -167,7 +167,8 @@ class ReplayBuffer:
             self._size = min(self._size + 1, self.maxsize)
         to_indices = np.array(to_indices)
         if self._meta.is_empty():
-            self._meta = _create_value(buffer._meta, self.maxsize, stack=False)
+            self._meta = _create_value(  # type: ignore
+                buffer._meta, self.maxsize, stack=False)
         self._meta[to_indices] = buffer._meta[from_indices]
         return to_indices
 
@@ -239,7 +240,8 @@ class ReplayBuffer:
             batch.rew = batch.rew.astype(np.float)
             batch.done = batch.done.astype(np.bool_)
             if self._meta.is_empty():
-                self._meta = _create_value(batch, self.maxsize, stack)
+                self._meta = _create_value(  # type: ignore
+                    batch, self.maxsize, stack)
             else:  # dynamic key pops up in batch
                 _alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
             self._meta[ptr] = batch
@@ -431,7 +433,7 @@ class ReplayBufferManager(ReplayBuffer):
     These replay buffers have contiguous memory layout, and the storage space each
     buffer has is a shallow copy of the topmost memory.
 
-    :param int buffer_list: a list of ReplayBuffer needed to be handled.
+    :param buffer_list: a list of ReplayBuffer needed to be handled.
 
     .. seealso::
 
@@ -539,7 +541,8 @@ class ReplayBufferManager(ReplayBuffer):
             batch.rew = batch.rew.astype(np.float)
             batch.done = batch.done.astype(np.bool_)
             if self._meta.is_empty():
-                self._meta = _create_value(batch, self.maxsize, stack=False)
+                self._meta = _create_value(  # type: ignore
+                    batch, self.maxsize, stack=False)
             else:  # dynamic key pops up in batch
                 _alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
             self._set_batch_for_children()
@@ -576,8 +579,23 @@ class ReplayBufferManager(ReplayBuffer):
 
 
 class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManager):
-    def __init__(self, buffer_list: List[PrioritizedReplayBuffer]) -> None:
-        ReplayBufferManager.__init__(self, buffer_list)
+    """PrioritizedReplayBufferManager contains a list of PrioritizedReplayBuffer with \
+    exactly the same configuration.
+
+    These replay buffers have contiguous memory layout, and the storage space each
+    buffer has is a shallow copy of the topmost memory.
+
+    :param buffer_list: a list of PrioritizedReplayBuffer needed to be handled.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.data.ReplayBuffer`,
+        :class:`~tianshou.data.ReplayBufferManager`, and
+        :class:`~tianshou.data.PrioritizedReplayBuffer` for more detailed explanation.
+    """
+
+    def __init__(self, buffer_list: Sequence[PrioritizedReplayBuffer]) -> None:
+        ReplayBufferManager.__init__(self, buffer_list)  # type: ignore
         kwargs = buffer_list[0].options
         for buf in buffer_list:
             del buf.weight
@@ -585,6 +603,24 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
 
 
 class VectorReplayBuffer(ReplayBufferManager):
+    """VectorReplayBuffer contains n ReplayBuffer with the same size.
+
+    It is used for storing data frame from different environments yet keeping the order
+    of time.
+
+    :param int total_size: the total size of VectorReplayBuffer.
+    :param int buffer_num: the number of ReplayBuffer it uses, which are under the same
+        configuration.
+
+    Other input arguments (stack_num/ignore_obs_next/save_only_last_obs/sample_avail)
+    are the same as :class:`~tianshou.data.ReplayBuffer`.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.data.ReplayBuffer` and
+        :class:`~tianshou.data.ReplayBufferManager` for more detailed explanation.
+    """
+
     def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
         assert buffer_num > 0
         size = int(np.ceil(total_size / buffer_num))
@@ -593,6 +629,25 @@ class VectorReplayBuffer(ReplayBufferManager):
 
 
 class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
+    """PrioritizedVectorReplayBuffer contains n PrioritizedReplayBuffer with same size.
+
+    It is used for storing data frame from different environments yet keeping the order
+    of time.
+
+    :param int total_size: the total size of PrioritizedVectorReplayBuffer.
+    :param int buffer_num: the number of PrioritizedReplayBuffer it uses, which are
+        under the same configuration.
+
+    Other input arguments (alpha/beta/stack_num/ignore_obs_next/save_only_last_obs/
+    sample_avail) are the same as :class:`~tianshou.data.PrioritizedReplayBuffer`.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.data.ReplayBuffer` and
+        :class:`~tianshou.data.PrioritizedReplayBufferManager` for more detailed
+        explanation.
+    """
+
     def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
         assert buffer_num > 0
         size = int(np.ceil(total_size / buffer_num))

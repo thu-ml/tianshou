@@ -116,18 +116,6 @@ class Collector(object):
                 )
         self.buffer = buffer
 
-    # TODO move to trainer
-    # @staticmethod
-    # def _default_rew_metric(
-    #     x: Union[Number, np.number]
-    # ) -> Union[Number, np.number]:
-    #     # this internal function is designed for single-agent RL
-    #     # for multi-agent RL, a reward_metric must be provided
-    #     assert np.asanyarray(x).size == 1, (
-    #         "Please specify the reward_metric "
-    #         "since the reward is not a scalar.")
-    #     return x
-
     def reset(self) -> None:
         """Reset all related variables in the collector."""
         # use empty Batch for "state" so that self.data supports slicing
