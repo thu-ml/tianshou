@@ -297,6 +297,10 @@ But the state stored in the buffer may be a shallow-copy. To make sure each of y
         ...
         return copy.deepcopy(self.graph), reward, done, {}
 
+.. note ::
+
+    Please make sure this variable is numpy-compatible, e.g., np.array([variable]) will not result in an empty array. Otherwise, ReplayBuffer cannot create an numpy array to store it.
+
 
 .. _marl_example:
 
