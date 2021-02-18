@@ -193,19 +193,19 @@ class BasePolicy(ABC, nn.Module):
     def value_mask(buffer: ReplayBuffer, indice: np.ndarray) -> np.ndarray:
         """Value mask determines whether the obs_next of buffer[indice] is valid.
 
-        For instance, usually 'obs_next' after 'done' flag is considered to be invalid,
-        and its q/advantage value can provide meaningless(even misleading) information,
-        and should be set to 0 by hand. But if 'done' flag is generated because of
-        timelimit of game length (info['TimeLimit.truncated'] is set to True in 'gym'
-        settings), 'obs_next' will instead be valid. Value mask is typically used
-        to assist in calculating correct q/advantage value.
+        For instance, usually "obs_next" after "done" flag is considered to be invalid,
+        and its q/advantage value can provide meaningless (even misleading) information,
+        and should be set to 0 by hand. But if "done" flag is generated because
+        timelimit of game length (info["TimeLimit.truncated"] is set to True in gym's
+        settings), "obs_next" will instead be valid. Value mask is typically used
+        for assisting in calculating the correct q/advantage value.
 
         :param ReplayBuffer buffer: the corresponding replay buffer.
-        :param numpy.ndarray indice: indices of replay buffer whose 'obs_next' will be
-        judged.
+        :param numpy.ndarray indice: indices of replay buffer whose "obs_next" will be
+            judged.
 
-        :return: A bool type numpy.ndarray in the same shape with indice. 'True' means
-        'obs_next' of that buffer[indice] is valid.
+        :return: A bool type numpy.ndarray in the same shape with indice. "True" means
+            "obs_next" of that buffer[indice] is valid.
         """
         return ~buffer.done[indice].astype(np.bool)
 
@@ -222,11 +222,11 @@ class BasePolicy(ABC, nn.Module):
         """Compute returns over given batch.
 
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
-        to calculate q function/reward to go of give batch.
+        to calculate q function/reward to go of given batch.
 
         :param batch: a data batch which contains several episodes of data
             in sequential order. Mind that the end of each finished episode of batch
-            should be marked by done flag, unfinished(collecting) episodes will be
+            should be marked by done flag, unfinished (or collecting) episodes will be
             recongized by buffer.unfinished_index().
         :type batch: :class:`~tianshou.data.Batch`
         :param numpy.ndarray indice: tell batch's location in buffer, batch is
@@ -283,7 +283,7 @@ class BasePolicy(ABC, nn.Module):
         :param buffer: the data buffer.
         :type buffer: :class:`~tianshou.data.ReplayBuffer`
         :param function target_q_fn: a function which compute target Q value
-            of 'obs_next' given data buffer and wanted indices.
+            of "obs_next" given data buffer and wanted indices.
         :param float gamma: the discount factor, should be in [0, 1], defaults
             to 0.99.
         :param int n_step: the number of estimation step, should be an int
