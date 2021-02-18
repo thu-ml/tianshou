@@ -68,8 +68,8 @@ def test_ppo(args=get_args()):
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
               device=args.device)
-    actor = Actor(net, args.action_shape).to(args.device)
-    critic = Critic(net).to(args.device)
+    actor = Actor(net, args.action_shape, device=args.device).to(args.device)
+    critic = Critic(net, device=args.device).to(args.device)
     # orthogonal initialization
     for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):

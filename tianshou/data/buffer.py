@@ -347,6 +347,7 @@ class ListReplayBuffer(ReplayBuffer):
     def __init__(self, **kwargs: Any) -> None:
         warnings.warn("ListReplayBuffer will be replaced in version 0.4.0.")
         super().__init__(size=0, ignore_obs_next=False, **kwargs)
+        warnings.warn("ListReplayBuffer will be removed in version 0.4.0.")
 
     def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
         raise NotImplementedError("ListReplayBuffer cannot be sampled!")
