@@ -74,7 +74,7 @@ class DiscreteBCQPolicy(DQNPolicy):
     ) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
-        act = self(batch, input="obs_next", eps=0.0).act
+        act = self(batch, input="obs_next").act
         target_q, _ = self.model_old(batch.obs_next)
         target_q = target_q[np.arange(len(act)), act]
         return target_q
@@ -84,13 +84,12 @@ class DiscreteBCQPolicy(DQNPolicy):
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         input: str = "obs",
-        eps: Optional[float] = None,
         **kwargs: Any,
     ) -> Batch:
-        if eps is None:
-            eps = self._eps
         obs = batch[input]
         q_value, state = self.model(obs, state=state, info=batch.info)
+        if not hasattr(self, "max_action_num"):
+            self.max_action_num = q_value.shape[1]
         imitation_logits, _ = self.imitator(obs, state=state, info=batch.info)
 
         # mask actions for argmax
@@ -99,16 +98,17 @@ class DiscreteBCQPolicy(DQNPolicy):
         mask = (ratio < self._log_tau).float()
         action = (q_value - np.inf * mask).argmax(dim=-1)
 
-        # add eps to act
-        if not np.isclose(eps, 0.0):
-            bsz, action_num = q_value.shape
-            mask = np.random.rand(bsz) < eps
-            action_rand = torch.randint(
-                action_num, size=[bsz], device=action.device)
-            action[mask] = action_rand[mask]
-
         return Batch(act=action, state=state, q_value=q_value,
                      imitation_logits=imitation_logits)
+
+    def exploration_noise(self, act: np.ndarray, batch: Batch) -> np.ndarray:
+        # add eps to act
+        if not np.isclose(self._eps, 0.0):
+            bsz = len(act)
+            mask = np.random.rand(bsz) < self._eps
+            act_rand = np.random.randint(self.max_action_num, size=[bsz])
+            act[mask] = act_rand[mask]
+        return act
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._iter % self._freq == 0:
@@ -116,7 +116,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         self._iter += 1
 
         target_q = batch.returns.flatten()
-        result = self(batch, eps=0.0)
+        result = self(batch)
         imitation_logits = result.imitation_logits
         current_q = result.q_value[np.arange(len(target_q)), batch.act]
         act = to_torch(batch.act, dtype=torch.long, device=target_q.device)
