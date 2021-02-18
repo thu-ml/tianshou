@@ -46,9 +46,7 @@ class DQNPolicy(BasePolicy):
         self.model = model
         self.optim = optim
         self.eps = 0.0
-        assert (
-            0.0 <= discount_factor <= 1.0
-        ), "discount factor should be in [0, 1]"
+        assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self._gamma = discount_factor
         assert estimation_step > 0, "estimation_step should be greater than 0"
         self._n_step = estimation_step
@@ -81,9 +79,7 @@ class DQNPolicy(BasePolicy):
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
         if self._target:
             a = self(batch, input="obs_next").act
-            target_q = self(
-                batch, model="model_old", input="obs_next"
-            ).logits
+            target_q = self(batch, model="model_old", input="obs_next").logits
             target_q = target_q[np.arange(len(a)), a]
         else:
             target_q = self(batch, input="obs_next").logits.max(dim=1)[0]

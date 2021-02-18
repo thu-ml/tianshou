@@ -11,6 +11,8 @@ from tianshou.data.utils.converter import to_hdf5
 from tianshou.data import Batch, SegmentTree, ReplayBuffer
 from tianshou.data import PrioritizedReplayBuffer
 from tianshou.data import VectorReplayBuffer, CachedReplayBuffer
+from tianshou.data import PrioritizedVectorReplayBuffer
+
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -151,13 +153,16 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
 def test_priortized_replaybuffer(size=32, bufsize=15):
     env = MyTestEnv(size)
     buf = PrioritizedReplayBuffer(bufsize, 0.5, 0.5)
+    buf2 = PrioritizedVectorReplayBuffer(bufsize, buffer_num=3, alpha=0.5, beta=0.5)
     obs = env.reset()
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, a in enumerate(action_list):
         obs_next, rew, done, info = env.step(a)
         batch = Batch(obs=obs, act=a, rew=rew, done=done, obs_next=obs_next,
                       info=info, policy=np.random.randn() - 0.5)
+        batch_stack = Batch.stack([batch, batch, batch])
         buf.add(Batch.stack([batch]), buffer_ids=[0])
+        buf2.add(batch_stack, buffer_ids=[0, 1, 2])
         obs = obs_next
         data, indice = buf.sample(len(buf) // 2)
         if len(buf) // 2 == 0:
@@ -165,13 +170,23 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
         else:
             assert len(data) == len(buf) // 2
         assert len(buf) == min(bufsize, i + 1)
+        assert len(buf2) == min(bufsize, 3 * (i + 1))
+    # check single buffer's data
     assert buf.info.key.shape == (buf.maxsize,)
     assert buf.rew.dtype == np.float
     assert buf.done.dtype == np.bool_
     data, indice = buf.sample(len(buf) // 2)
     buf.update_weight(indice, -data.weight / 2)
-    assert np.allclose(
-        buf.weight[indice], np.abs(-data.weight / 2) ** buf._alpha)
+    assert np.allclose(buf.weight[indice], np.abs(-data.weight / 2) ** buf._alpha)
+    # check multi buffer's data
+    assert np.allclose(buf2[np.arange(buf2.maxsize)].weight, 1)
+    batch, indice = buf2.sample(10)
+    buf2.update_weight(indice, batch.weight * 0)
+    weight = buf2[np.arange(buf2.maxsize)].weight
+    mask = np.isin(np.arange(buf2.maxsize), indice)
+    assert np.all(weight[mask] == weight[mask][0])
+    assert np.all(weight[~mask] == weight[~mask][0])
+    assert weight[~mask][0] < weight[mask][0] and weight[mask][0] < 1
 
 
 def test_update():
@@ -608,18 +623,6 @@ def test_multibuf_stack():
     indice = buf5.sample_index(0)
     assert np.allclose(sorted(indice), [0, 1, 2, 5, 6, 7, 10, 15, 20])
     batch, _ = buf5.sample(0)
-    # the below test code should move to PrioritizedReplayBufferManager
-    # assert np.allclose(buf5[np.arange(buf5.maxsize)].weight, 1)
-    # buf5.update_weight(indice, batch.weight * 0)
-    # weight = buf5[np.arange(buf5.maxsize)].weight
-    # modified_weight = weight[[0, 1, 2, 5, 6, 7]]
-    # assert modified_weight.min() == modified_weight.max()
-    # assert modified_weight.max() < 1
-    # unmodified_weight = weight[[3, 4, 8]]
-    # assert unmodified_weight.min() == unmodified_weight.max()
-    # assert unmodified_weight.max() < 1
-    # cached_weight = weight[9:]
-    # assert cached_weight.min() == cached_weight.max() == 1
     # test Atari with CachedReplayBuffer, save_only_last_obs + ignore_obs_next
     buf6 = CachedReplayBuffer(
         ReplayBuffer(bufsize, stack_num=stack_num,
