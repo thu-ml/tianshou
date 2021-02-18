@@ -28,8 +28,7 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--collect-per-step', type=int, default=100)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[128])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128])
     parser.add_argument('--dueling-q-hidden-sizes', type=int,
                         nargs='*', default=[128, 128])
     parser.add_argument('--dueling-v-hidden-sizes', type=int,
@@ -75,7 +74,7 @@ def test_dqn(args=get_args()):
         policy, train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
@@ -116,8 +115,7 @@ def test_dqn(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num,
-                                        render=args.render)
+        result = test_collector.collect(n_episode=args.test_num, render=args.render)
         rews, lens = result["rews"], result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 

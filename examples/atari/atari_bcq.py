@@ -111,7 +111,7 @@ def test_discrete_bcq(args=get_args()):
         exit(0)
 
     # collector
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
 
     log_path = os.path.join(args.logdir, args.task, 'discrete_bcq')
     writer = SummaryWriter(log_path)

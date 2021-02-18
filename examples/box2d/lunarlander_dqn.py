@@ -76,7 +76,7 @@ def test_dqn(args=get_args()):
         policy, train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log

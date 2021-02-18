@@ -78,7 +78,7 @@ def test_discrete_bcq(args=get_args()):
     buffer = pickle.load(open(args.load_buffer_name, "rb"))
 
     # collector
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
 
     log_path = os.path.join(args.logdir, args.task, 'discrete_bcq')
     writer = SummaryWriter(log_path)

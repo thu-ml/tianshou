@@ -65,14 +65,12 @@ def test_drqn(args=get_args()):
         net, optim, args.gamma, args.n_step,
         target_update_freq=args.target_update_freq)
     # collector
-    train_collector = Collector(
-            policy, train_envs,
-            VectorReplayBuffer(
-                args.buffer_size,  buffer_num=len(train_envs),
-                stack_num=args.stack_num, ignore_obs_next=True),
-            exploration_noise=True)
+    buffer = VectorReplayBuffer(
+        args.buffer_size, buffer_num=len(train_envs),
+        stack_num=args.stack_num, ignore_obs_next=True)
+    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     # the stack_num is for RNN training: sample framestack obs
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log

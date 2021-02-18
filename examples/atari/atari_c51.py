@@ -84,19 +84,16 @@ def test_c51(args=get_args()):
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(
-            args.resume_path, map_location=args.device
-        ))
+        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
-    buffer = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs),
-                                ignore_obs_next=True,
-                                save_only_last_obs=True,
-                                stack_num=args.frames_stack)
+    buffer = VectorReplayBuffer(
+        args.buffer_size, buffer_num=len(train_envs), ignore_obs_next=True,
+        save_only_last_obs=True, stack_num=args.frames_stack)
     # collector
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
     # log
     log_path = os.path.join(args.logdir, args.task, 'c51')
     writer = SummaryWriter(log_path)
@@ -132,8 +129,7 @@ def test_c51(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num,
-                                        render=args.render)
+        result = test_collector.collect(n_episode=args.test_num, render=args.render)
         pprint.pprint(result)
 
     if args.watch:
@@ -141,7 +137,7 @@ def test_c51(args=get_args()):
         exit(0)
 
     # test train_collector and start filling replay buffer
-    train_collector.collect(n_step=args.batch_size * 4)
+    train_collector.collect(n_step=args.batch_size * args.training_num)
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
