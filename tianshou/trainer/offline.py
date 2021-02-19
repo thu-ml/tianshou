@@ -88,16 +88,17 @@ def offline_trainer(
                             global_step=gradient_step)
                 t.set_postfix(**data)
         # test
-        result = test_episode(policy, test_collector, test_fn, epoch,
-                              episode_per_test, writer, gradient_step, reward_metric)
-        if best_epoch == -1 or best_reward < result["rews"].mean():
-            best_reward, best_reward_std = result["rews"].mean(), result['rews'].std()
+        test_result = test_episode(policy, test_collector, test_fn, epoch,
+                                   episode_per_test, writer, gradient_step, reward_metric)
+        if best_epoch == -1 or best_reward < test_result["rews"].mean():
+            best_reward = test_result["rews"].mean()
+            best_reward_std = test_result['rews'].std()
             best_epoch = epoch
             if save_fn:
                 save_fn(policy)
         if verbose:
-            print(f"Epoch #{epoch}: test_reward: {result['rews'].mean():.6f} ± "
-                  f"{result['rews'].std():.6f}, best_reward: {best_reward:.6f} ± "
+            print(f"Epoch #{epoch}: test_reward: {test_result['rews'].mean():.6f} ± "
+                  f"{test_result['rews'].std():.6f}, best_reward: {best_reward:.6f} ± "
                   f"{best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break
