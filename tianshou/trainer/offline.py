@@ -89,7 +89,8 @@ def offline_trainer(
                 t.set_postfix(**data)
         # test
         test_result = test_episode(policy, test_collector, test_fn, epoch,
-                                   episode_per_test, writer, gradient_step, reward_metric)
+                                   episode_per_test, writer, gradient_step,
+                                   reward_metric)
         if best_epoch == -1 or best_reward < test_result["rews"].mean():
             best_reward = test_result["rews"].mean()
             best_reward_std = test_result['rews'].std()

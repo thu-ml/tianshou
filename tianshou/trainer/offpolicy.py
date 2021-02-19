@@ -88,7 +88,7 @@ def offpolicy_trainer(
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
     test_episode(policy, test_collector, test_fn, 0,
-                 episode_per_test, writer, env_step)
+                 episode_per_test, writer, env_step, reward_metric)
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()
@@ -143,7 +143,7 @@ def offpolicy_trainer(
                 t.update()
         # test
         test_result = test_episode(policy, test_collector, test_fn, epoch,
-                              episode_per_test, writer, env_step, reward_metric)
+                                   episode_per_test, writer, env_step, reward_metric)
         if best_epoch == -1 or best_reward < test_result["rews"].mean():
             best_reward = test_result["rews"].mean()
             best_reward_std = test_result['rews'].std()
