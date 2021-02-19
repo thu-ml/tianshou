@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--step-per-collect', type=int, default=10)
+    parser.add_argument('--episode-per-collect', type=int, default=10)
     parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
@@ -95,8 +95,8 @@ def test_ppo(args=get_args()):
     # trainer
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.step_per_collect, args.repeat_per_collect,
-        args.test_num, args.batch_size, stop_fn=stop_fn, writer=writer)
+        args.step_per_epoch, args.repeat_per_collect, args.test_num, args.batch_size,
+        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, writer=writer)
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!

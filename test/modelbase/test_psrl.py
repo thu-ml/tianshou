@@ -18,7 +18,7 @@ def get_args():
     parser.add_argument('--buffer-size', type=int, default=50000)
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--step-per-collect', type=int, default=1)
+    parser.add_argument('--episode-per-collect', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=1)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -78,8 +78,8 @@ def test_psrl(args=get_args()):
     # trainer
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.step_per_collect, 1,
-        args.test_num, 0, stop_fn=stop_fn, writer=writer,
+        args.step_per_epoch, 1, args.test_num, 0,
+        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, writer=writer,
         test_in_train=False)
 
     if __name__ == '__main__':

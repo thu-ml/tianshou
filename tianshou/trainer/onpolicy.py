@@ -17,10 +17,11 @@ def onpolicy_trainer(
     test_collector: Collector,
     max_epoch: int,
     step_per_epoch: int,
-    step_per_collect: int,
     repeat_per_collect: int,
     episode_per_test: int,
     batch_size: int,
+    step_per_collect: Optional[int] = None,
+    episode_per_collect: Optional[int] = None,
     train_fn: Optional[Callable[[int, int], None]] = None,
     test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
     stop_fn: Optional[Callable[[float], bool]] = None,
@@ -30,7 +31,6 @@ def onpolicy_trainer(
     log_interval: int = 1,
     verbose: bool = True,
     test_in_train: bool = True,
-    collect_method: str = "episode",
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for on-policy trainer procedure.
 
@@ -44,13 +44,6 @@ def onpolicy_trainer(
     :param int max_epoch: the maximum number of epochs for training. The
         training process might be finished before reaching the ``max_epoch``.
     :param int step_per_epoch: the number of environment frames collected per epoch.
-    :param int step_per_collect: the number of episodes the collector would
-            collect before the network update in "episode" collect mode(defalut),
-            the number of frames the collector would collect in "step" collect
-            mode.
-    :param int step_per_collect: the number of episodes the collector would
-        collect before the network update. In other words, collect some
-        episodes and do one policy network update.
     :param int repeat_per_collect: the number of repeat time for policy
         learning, for example, set it to 2 means the policy needs to learn each
         given batch data twice.
@@ -58,6 +51,12 @@ def onpolicy_trainer(
     :type episode_per_test: int or list of ints
     :param int batch_size: the batch size of sample data, which is going to
         feed in the policy network.
+    :param int step_per_collect: the number of episodes the collector would
+            collect before the network update. Only either one of step_per_collect
+            and episode_per_collect can be specified.
+    :param int episode_per_collect: the number of episodes the collector would
+            collect before the network update. Only either one of step_per_collect
+            and episode_per_collect can be specified.
     :param function train_fn: a hook called at the beginning of training in
         each epoch. It can be used to perform custom additional operations,
         with the signature ``f(num_epoch: int, step_idx: int) -> None``.
@@ -81,8 +80,6 @@ def onpolicy_trainer(
     :param int log_interval: the log interval of the writer.
     :param bool verbose: whether to print the information.
     :param bool test_in_train: whether to test in the training phase.
-    :param string collect_method: specifies collect mode. Can be either "episode"
-        or "step".
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
@@ -104,8 +101,8 @@ def onpolicy_trainer(
             while t.n < t.total:
                 if train_fn:
                     train_fn(epoch, env_step)
-                result = train_collector.collect(
-                                **{"n_" + collect_method: step_per_collect})
+                result = train_collector.collect(n_step=step_per_collect,
+                                                 n_episode=episode_per_collect)
                 if reward_metric:
                     result["rews"] = reward_metric(result["rews"])
                 env_step += int(result["n/st"])
