@@ -64,12 +64,14 @@ def offline_trainer(
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
     gradient_step = 0
-    best_epoch, best_reward, best_reward_std = -1, -1.0, 0.0
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     test_collector.reset_stat()
-    test_episode(policy, test_collector, test_fn, 0,
-                 episode_per_test, writer, gradient_step, reward_metric)
+    test_result = test_episode(policy, test_collector, test_fn, 0, episode_per_test,
+                               writer, gradient_step, reward_metric)
+    best_epoch = 0
+    best_reward = test_result["rews"].mean()
+    best_reward_std = test_result["rews"].std()
     for epoch in range(1, 1 + max_epoch):
         policy.train()
         with tqdm.trange(

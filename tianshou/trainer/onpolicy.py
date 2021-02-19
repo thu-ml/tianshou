@@ -51,7 +51,7 @@ def onpolicy_trainer(
     :type episode_per_test: int or list of ints
     :param int batch_size: the batch size of sample data, which is going to
         feed in the policy network.
-    :param int step_per_collect: the number of episodes the collector would
+    :param int step_per_collect: the number of frames the collector would
         collect before the network update. Only either one of step_per_collect
         and episode_per_collect can be specified.
     :param int episode_per_collect: the number of episodes the collector would
@@ -84,14 +84,16 @@ def onpolicy_trainer(
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
     env_step, gradient_step = 0, 0
-    best_epoch, best_reward, best_reward_std = -1, -1.0, 0.0
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
-    test_episode(policy, test_collector, test_fn, 0,
-                 episode_per_test, writer, env_step, reward_metric)
+    test_result = test_episode(policy, test_collector, test_fn, 0, episode_per_test,
+                               writer, env_step, reward_metric)
+    best_epoch = 0
+    best_reward = test_result["rews"].mean()
+    best_reward_std = test_result["rews"].std()
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()
