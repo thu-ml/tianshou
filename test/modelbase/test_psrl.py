@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import onpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 
 
@@ -61,7 +61,9 @@ def test_psrl(args=get_args()):
         args.add_done_loop)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
     writer = SummaryWriter(args.logdir + '/' + args.task)
@@ -86,9 +88,9 @@ def test_psrl(args=get_args()):
         policy.eval()
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=[1] * args.test_num,
-                                        render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        result = test_collector.collect(n_episode=args.test_num, render=args.render)
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
     elif env.spec.reward_threshold:
         assert result["best_reward"] >= env.spec.reward_threshold
 

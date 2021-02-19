@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import BasePolicy, DQNPolicy, RandomPolicy, \
     MultiAgentPolicyManager
 
@@ -33,24 +33,24 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128, 128, 128])
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.1)
-    parser.add_argument('--board_size', type=int, default=6)
-    parser.add_argument('--win_size', type=int, default=4)
-    parser.add_argument('--win_rate', type=float, default=0.9,
+    parser.add_argument('--board-size', type=int, default=6)
+    parser.add_argument('--win-size', type=int, default=4)
+    parser.add_argument('--win-rate', type=float, default=0.9,
                         help='the expected winning rate')
     parser.add_argument('--watch', default=False, action='store_true',
                         help='no training, '
                              'watch the play of pre-trained models')
-    parser.add_argument('--agent_id', type=int, default=2,
+    parser.add_argument('--agent-id', type=int, default=2,
                         help='the learned agent plays as the'
-                             ' agent_id-th player. choices are 1 and 2.')
-    parser.add_argument('--resume_path', type=str, default='',
+                             ' agent_id-th player. Choices are 1 and 2.')
+    parser.add_argument('--resume-path', type=str, default='',
                         help='the path of agent pth file '
                              'for resuming from a pre-trained agent')
-    parser.add_argument('--opponent_path', type=str, default='',
+    parser.add_argument('--opponent-path', type=str, default='',
                         help='the path of opponent agent pth file '
                              'for resuming from a pre-trained agent')
     parser.add_argument(
@@ -61,8 +61,7 @@ def get_parser() -> argparse.ArgumentParser:
 
 def get_args() -> argparse.Namespace:
     parser = get_parser()
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def get_agents(
@@ -124,10 +123,12 @@ def train_agent(
 
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # policy.set_eps(1)
-    train_collector.collect(n_step=args.batch_size)
+    train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
     if not hasattr(args, 'writer'):
         log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
@@ -155,13 +156,16 @@ def train_agent(
     def test_fn(epoch, env_step):
         policy.policies[args.agent_id - 1].set_eps(args.eps_test)
 
+    def reward_metric(rews):
+        return rews[:, args.agent_id - 1]
+
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.collect_per_step, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, save_fn=save_fn, writer=writer,
-        test_in_train=False)
+        stop_fn=stop_fn, save_fn=save_fn, reward_metric=reward_metric,
+        writer=writer, test_in_train=False)
 
     return result, policy.policies[args.agent_id - 1]
 
@@ -178,4 +182,5 @@ def watch(
     policy.policies[args.agent_id - 1].set_eps(args.eps_test)
     collector = Collector(policy, env)
     result = collector.collect(n_episode=1, render=args.render)
-    print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+    rews, lens = result["rews"], result["lens"]
+    print(f"Final reward: {rews.mean()}, length: {lens.mean()}")

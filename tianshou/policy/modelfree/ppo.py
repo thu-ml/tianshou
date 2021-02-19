@@ -100,8 +100,8 @@ class PPOPolicy(PGPolicy):
                 )
         v_ = to_numpy(torch.cat(v_, dim=0))
         batch = self.compute_episodic_return(
-            batch, v_, gamma=self._gamma, gae_lambda=self._lambda,
-            rew_norm=self._rew_norm)
+            batch, buffer, indice, v_, gamma=self._gamma,
+            gae_lambda=self._lambda, rew_norm=self._rew_norm)
         batch.v = torch.cat(v, dim=0).flatten()  # old value
         batch.act = to_torch_as(batch.act, v[0])
         batch.logp_old = torch.cat(old_log_prob, dim=0)

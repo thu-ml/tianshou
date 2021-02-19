@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.policy import DQNPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 
 from atari_network import DQN
 from atari_wrapper import wrap_deepmind
@@ -30,7 +30,7 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=10000)
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=32)
-    parser.add_argument('--training-num', type=int, default=16)
+    parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -80,17 +80,16 @@ def test_dqn(args=get_args()):
                        target_update_freq=args.target_update_freq)
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(
-            args.resume_path, map_location=args.device
-        ))
+        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
-    buffer = ReplayBuffer(args.buffer_size, ignore_obs_next=True,
-                          save_only_last_obs=True, stack_num=args.frames_stack)
+    buffer = VectorReplayBuffer(
+        args.buffer_size, buffer_num=len(train_envs), ignore_obs_next=True,
+        save_only_last_obs=True, stack_num=args.frames_stack)
     # collector
-    train_collector = Collector(policy, train_envs, buffer)
-    test_collector = Collector(policy, test_envs)
+    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
     # log
     log_path = os.path.join(args.logdir, args.task, 'dqn')
     writer = SummaryWriter(log_path)
@@ -127,9 +126,10 @@ def test_dqn(args=get_args()):
         test_envs.seed(args.seed)
         if args.save_buffer_name:
             print(f"Generate buffer with size {args.buffer_size}")
-            buffer = ReplayBuffer(
-                args.buffer_size, ignore_obs_next=True,
-                save_only_last_obs=True, stack_num=args.frames_stack)
+            buffer = VectorReplayBuffer(
+                args.buffer_size, buffer_num=len(test_envs),
+                ignore_obs_next=True, save_only_last_obs=True,
+                stack_num=args.frames_stack)
             collector = Collector(policy, test_envs, buffer)
             result = collector.collect(n_step=args.buffer_size)
             print(f"Save buffer into {args.save_buffer_name}")
@@ -138,7 +138,7 @@ def test_dqn(args=get_args()):
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(n_episode=[1] * args.test_num,
+            result = test_collector.collect(n_episode=args.test_num,
                                             render=args.render)
         pprint.pprint(result)
 
@@ -147,7 +147,7 @@ def test_dqn(args=get_args()):
         exit(0)
 
     # test train_collector and start filling replay buffer
-    train_collector.collect(n_step=args.batch_size * 4)
+    train_collector.collect(n_step=args.batch_size * args.training_num)
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,

@@ -10,7 +10,7 @@ from tianshou.policy import DQNPolicy
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils.net.common import Recurrent
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 
 
 def get_args():
@@ -30,7 +30,7 @@ def get_args():
     parser.add_argument('--collect-per-step', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--layer-num', type=int, default=3)
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -65,13 +65,14 @@ def test_drqn(args=get_args()):
         net, optim, args.gamma, args.n_step,
         target_update_freq=args.target_update_freq)
     # collector
-    train_collector = Collector(
-        policy, train_envs, ReplayBuffer(
-            args.buffer_size, stack_num=args.stack_num, ignore_obs_next=True))
+    buffer = VectorReplayBuffer(
+        args.buffer_size, buffer_num=len(train_envs),
+        stack_num=args.stack_num, ignore_obs_next=True)
+    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     # the stack_num is for RNN training: sample framestack obs
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
-    train_collector.collect(n_step=args.batch_size)
+    train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
     log_path = os.path.join(args.logdir, args.task, 'drqn')
     writer = SummaryWriter(log_path)
@@ -103,7 +104,8 @@ def test_drqn(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == '__main__':

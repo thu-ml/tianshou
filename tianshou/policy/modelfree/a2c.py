@@ -69,15 +69,17 @@ class A2CPolicy(PGPolicy):
     ) -> Batch:
         if self._lambda in [0.0, 1.0]:
             return self.compute_episodic_return(
-                batch, None, gamma=self._gamma, gae_lambda=self._lambda)
+                batch, buffer, indice,
+                None, gamma=self._gamma, gae_lambda=self._lambda)
         v_ = []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
                 v_.append(to_numpy(self.critic(b.obs_next)))
         v_ = np.concatenate(v_, axis=0)
         return self.compute_episodic_return(
-            batch, v_, gamma=self._gamma, gae_lambda=self._lambda,
-            rew_norm=self._rew_norm)
+            batch, buffer, indice,
+            v_, gamma=self._gamma,
+            gae_lambda=self._lambda, rew_norm=self._rew_norm)
 
     def forward(
         self,

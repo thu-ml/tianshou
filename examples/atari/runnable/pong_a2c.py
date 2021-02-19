@@ -9,7 +9,7 @@ from tianshou.policy import A2CPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.discrete import Actor, Critic
 
 from atari import create_atari_environment, preprocess_fn
@@ -75,8 +75,9 @@ def test_a2c(args=get_args()):
         ent_coef=args.ent_coef, max_grad_norm=args.max_grad_norm)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size),
-        preprocess_fn=preprocess_fn)
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs)),
+        preprocess_fn=preprocess_fn, exploration_noise=True)
     test_collector = Collector(policy, test_envs, preprocess_fn=preprocess_fn)
     # log
     writer = SummaryWriter(os.path.join(args.logdir, args.task, 'a2c'))
@@ -98,7 +99,8 @@ def test_a2c(args=get_args()):
         env = create_atari_environment(args.task)
         collector = Collector(policy, env, preprocess_fn=preprocess_fn)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == '__main__':

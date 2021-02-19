@@ -56,9 +56,7 @@ class QRDQNPolicy(DQNPolicy):
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         if self._target:
             a = self(batch, input="obs_next").act
-            next_dist = self(
-                batch, model="model_old", input="obs_next"
-            ).logits
+            next_dist = self(batch, model="model_old", input="obs_next").logits
         else:
             next_b = self(batch, input="obs_next")
             a = next_b.act

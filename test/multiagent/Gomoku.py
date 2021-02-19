@@ -46,7 +46,7 @@ def gomoku(args=get_args()):
             policy.replace_policy(opponent, 3 - args.agent_id)
             test_collector = Collector(policy, test_envs)
             results = test_collector.collect(n_episode=100)
-            rews.append(results['rew'])
+            rews.append(results['rews'].mean())
         rews = np.array(rews)
         # weight opponent by their difficulty level
         rews = np.exp(-rews * 10.0)

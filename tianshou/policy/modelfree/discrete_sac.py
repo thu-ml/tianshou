@@ -119,8 +119,7 @@ class DiscreteSACPolicy(SACPolicy):
             current_q1a = self.critic1(batch.obs)
             current_q2a = self.critic2(batch.obs)
             q = torch.min(current_q1a, current_q2a)
-        actor_loss = -(self._alpha * entropy
-                       + (dist.probs * q).sum(dim=-1)).mean()
+        actor_loss = -(self._alpha * entropy + (dist.probs * q).sum(dim=-1)).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
@@ -145,3 +144,8 @@ class DiscreteSACPolicy(SACPolicy):
             result["alpha"] = self._alpha.item()  # type: ignore
 
         return result
+
+    def exploration_noise(
+        self, act: Union[np.ndarray, Batch], batch: Batch
+    ) -> Union[np.ndarray, Batch]:
+        return act

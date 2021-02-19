@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.policy import DQNPolicy
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 
 
@@ -35,7 +35,7 @@ def get_args():
                         nargs='*', default=[128, 128])
     parser.add_argument('--dueling-v-hidden-sizes', type=int,
                         nargs='*', default=[128, 128])
-    parser.add_argument('--training-num', type=int, default=10)
+    parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -73,10 +73,12 @@ def test_dqn(args=get_args()):
         target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
-    test_collector = Collector(policy, test_envs)
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
-    train_collector.collect(n_step=args.batch_size)
+    train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
     log_path = os.path.join(args.logdir, args.task, 'dqn')
     writer = SummaryWriter(log_path)
@@ -110,9 +112,9 @@ def test_dqn(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=[1] * args.test_num,
-                                        render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        result = test_collector.collect(n_episode=args.test_num, render=args.render)
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == '__main__':

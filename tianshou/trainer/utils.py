@@ -1,7 +1,7 @@
 import time
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
-from typing import Dict, List, Union, Callable, Optional
+from typing import Any, Dict, Union, Callable, Optional
 
 from tianshou.data import Collector
 from tianshou.policy import BasePolicy
@@ -12,25 +12,26 @@ def test_episode(
     collector: Collector,
     test_fn: Optional[Callable[[int, Optional[int]], None]],
     epoch: int,
-    n_episode: Union[int, List[int]],
+    n_episode: int,
     writer: Optional[SummaryWriter] = None,
     global_step: Optional[int] = None,
-) -> Dict[str, float]:
+    reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+) -> Dict[str, Any]:
     """A simple wrapper of testing policy in collector."""
     collector.reset_env()
     collector.reset_buffer()
     policy.eval()
     if test_fn:
         test_fn(epoch, global_step)
-    if collector.get_env_num() > 1 and isinstance(n_episode, int):
-        n = collector.get_env_num()
-        n_ = np.zeros(n) + n_episode // n
-        n_[:n_episode % n] += 1
-        n_episode = list(n_)
     result = collector.collect(n_episode=n_episode)
+    if reward_metric:
+        result["rews"] = reward_metric(result["rews"])
     if writer is not None and global_step is not None:
-        for k in result.keys():
-            writer.add_scalar("test/" + k, result[k], global_step=global_step)
+        rews, lens = result["rews"], result["lens"]
+        writer.add_scalar("test/rew", rews.mean(), global_step=global_step)
+        writer.add_scalar("test/rew_std", rews.std(), global_step=global_step)
+        writer.add_scalar("test/len", lens.mean(), global_step=global_step)
+        writer.add_scalar("test/len_std", lens.std(), global_step=global_step)
     return result
 
 

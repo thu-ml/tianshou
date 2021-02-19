@@ -111,7 +111,7 @@ def test_discrete_bcq(args=get_args()):
         exit(0)
 
     # collector
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
 
     log_path = os.path.join(args.logdir, args.task, 'discrete_bcq')
     writer = SummaryWriter(log_path)
@@ -130,7 +130,7 @@ def test_discrete_bcq(args=get_args()):
         test_envs.seed(args.seed)
         print("Testing agent ...")
         test_collector.reset()
-        result = test_collector.collect(n_episode=[1] * args.test_num,
+        result = test_collector.collect(n_episode=args.test_num,
                                         render=args.render)
         pprint.pprint(result)
 

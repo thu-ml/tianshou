@@ -10,7 +10,7 @@ from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.exploration import GaussianNoise
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.continuous import Actor, Critic
 
 
@@ -33,7 +33,7 @@ def get_args():
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128])
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -82,7 +82,9 @@ def test_td3(args=get_args()):
         reward_normalization=True, ignore_done=True)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
@@ -103,9 +105,9 @@ def test_td3(args=get_args()):
         policy.eval()
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=[1] * args.test_num,
-                                        render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        result = test_collector.collect(n_episode=args.test_num, render=args.render)
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == '__main__':

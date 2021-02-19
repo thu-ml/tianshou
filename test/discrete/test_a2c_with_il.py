@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.discrete import Actor, Critic
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--collect-per-step', type=int, default=10)
+    parser.add_argument('--collect-per-step', type=int, default=8)
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
@@ -79,7 +79,9 @@ def test_a2c_with_il(args=get_args()):
         max_grad_norm=args.max_grad_norm, reward_normalization=args.rew_norm)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'a2c')
@@ -105,7 +107,8 @@ def test_a2c_with_il(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
     policy.eval()
     # here we define an imitation collector with a trivial policy
@@ -134,7 +137,8 @@ def test_a2c_with_il(args=get_args()):
         il_policy.eval()
         collector = Collector(il_policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == '__main__':

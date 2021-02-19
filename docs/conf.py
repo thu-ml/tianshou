@@ -70,6 +70,7 @@ autodoc_default_options = {
         ]
     )
 }
+autodoc_member_order = "bysource"
 bibtex_bibfiles = ['refs.bib']
 
 # -- Options for HTML output -------------------------------------------------

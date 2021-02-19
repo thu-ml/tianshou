@@ -78,7 +78,7 @@ def test_discrete_bcq(args=get_args()):
     buffer = pickle.load(open(args.load_buffer_name, "rb"))
 
     # collector
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
 
     log_path = os.path.join(args.logdir, args.task, 'discrete_bcq')
     writer = SummaryWriter(log_path)
@@ -104,7 +104,8 @@ def test_discrete_bcq(args=get_args()):
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == "__main__":

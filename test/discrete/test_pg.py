@@ -10,7 +10,7 @@ from tianshou.policy import PGPolicy
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 
 
 def get_args():
@@ -22,7 +22,7 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.95)
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--collect-per-step', type=int, default=10)
+    parser.add_argument('--collect-per-step', type=int, default=8)
     parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
@@ -65,7 +65,9 @@ def test_pg(args=get_args()):
                       reward_normalization=args.rew_norm)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'pg')
@@ -91,7 +93,8 @@ def test_pg(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == '__main__':

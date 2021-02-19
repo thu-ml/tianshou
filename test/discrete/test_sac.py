@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DiscreteSACPolicy
 from tianshou.utils.net.discrete import Actor, Critic
 
@@ -32,7 +32,7 @@ def get_args():
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128])
-    parser.add_argument('--training-num', type=int, default=16)
+    parser.add_argument('--training-num', type=int, default=5)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.0)
@@ -90,7 +90,9 @@ def test_discrete_sac(args=get_args()):
         ignore_done=args.ignore_done)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
@@ -117,7 +119,8 @@ def test_discrete_sac(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == '__main__':

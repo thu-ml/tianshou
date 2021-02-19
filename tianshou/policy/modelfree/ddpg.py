@@ -5,7 +5,7 @@ from typing import Any, Dict, Tuple, Union, Optional
 
 from tianshou.policy import BasePolicy
 from tianshou.exploration import BaseNoise, GaussianNoise
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import Batch, ReplayBuffer
 
 
 class DDPGPolicy(BasePolicy):
@@ -141,9 +141,6 @@ class DDPGPolicy(BasePolicy):
         obs = batch[input]
         actions, h = model(obs, state=state, info=batch.info)
         actions += self._action_bias
-        if self._noise and not self.updating:
-            actions += to_torch_as(self._noise(actions.shape), actions)
-        actions = actions.clamp(self._range[0], self._range[1])
         return Batch(act=actions, state=h)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
@@ -166,3 +163,9 @@ class DDPGPolicy(BasePolicy):
             "loss/actor": actor_loss.item(),
             "loss/critic": critic_loss.item(),
         }
+
+    def exploration_noise(self, act: np.ndarray, batch: Batch) -> np.ndarray:
+        if self._noise:
+            act = act + self._noise(act.shape)
+            act = act.clip(self._range[0], self._range[1])
+        return act
