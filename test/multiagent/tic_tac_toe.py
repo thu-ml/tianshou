@@ -28,7 +28,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=320)
     parser.add_argument('--epoch', type=int, default=20)
-    parser.add_argument('--step-per-epoch', type=int, default=50000)
+    parser.add_argument('--step-per-epoch', type=int, default=5000)
     parser.add_argument('--step-per-collect', type=int, default=10)
     parser.add_argument('--update-per-step', type=float, default=0.1)
     parser.add_argument('--batch-size', type=int, default=64)
@@ -184,4 +184,4 @@ def watch(
     collector = Collector(policy, env)
     result = collector.collect(n_episode=1, render=args.render)
     rews, lens = result["rews"], result["lens"]
-    print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+    print(f"Final reward: {rews[:, args.agent_id - 1].mean()}, length: {lens.mean()}")

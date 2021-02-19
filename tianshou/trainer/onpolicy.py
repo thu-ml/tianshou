@@ -52,11 +52,11 @@ def onpolicy_trainer(
     :param int batch_size: the batch size of sample data, which is going to
         feed in the policy network.
     :param int step_per_collect: the number of episodes the collector would
-            collect before the network update. Only either one of step_per_collect
-            and episode_per_collect can be specified.
+        collect before the network update. Only either one of step_per_collect
+        and episode_per_collect can be specified.
     :param int episode_per_collect: the number of episodes the collector would
-            collect before the network update. Only either one of step_per_collect
-            and episode_per_collect can be specified.
+        collect before the network update. Only either one of step_per_collect
+        and episode_per_collect can be specified.
     :param function train_fn: a hook called at the beginning of training in
         each epoch. It can be used to perform custom additional operations,
         with the signature ``f(num_epoch: int, step_idx: int) -> None``.
