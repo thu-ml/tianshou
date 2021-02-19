@@ -68,7 +68,8 @@ def offline_trainer(
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     test_collector.reset_stat()
-
+    test_episode(policy, test_collector, test_fn, 0,
+                 episode_per_test, writer, gradient_step, reward_metric)
     for epoch in range(1, 1 + max_epoch):
         policy.train()
         with tqdm.trange(
