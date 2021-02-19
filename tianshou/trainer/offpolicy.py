@@ -17,10 +17,10 @@ def offpolicy_trainer(
     test_collector: Collector,
     max_epoch: int,
     step_per_epoch: int,
-    collect_per_step: int,
+    step_per_collect: int,
     episode_per_test: int,
     batch_size: int,
-    update_per_step: int = 1,
+    update_per_step: Union[int, float] = 1,
     train_fn: Optional[Callable[[int, int], None]] = None,
     test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
     stop_fn: Optional[Callable[[float], bool]] = None,
@@ -42,18 +42,18 @@ def offpolicy_trainer(
     :type test_collector: :class:`~tianshou.data.Collector`
     :param int max_epoch: the maximum number of epochs for training. The
         training process might be finished before reaching the ``max_epoch``.
-    :param int step_per_epoch: the number of policy network updates, so-called
-        gradient steps, per epoch.
-    :param int collect_per_step: the number of frames the collector would
+    :param int step_per_epoch: the number of environment frames collected per epoch.
+    :param int step_per_collect: the number of frames the collector would
         collect before the network update. In other words, collect some frames
         and do some policy network update.
     :param episode_per_test: the number of episodes for one policy evaluation.
     :param int batch_size: the batch size of sample data, which is going to
         feed in the policy network.
-    :param int update_per_step: the number of times the policy network would
-        be updated after frames are collected, for example, set it to 256 means
-        it updates policy 256 times once after ``collect_per_step`` frames are
-        collected.
+    :param int/float update_per_step: the number of times the policy network would
+        be updated per environment frame after (step_per_collect) frames are collected,
+        for example, if update_per_step set to 0.3, and step_per_collect is 256,
+        policy will be updated round(256 * 0.3 = 76.8) = 77 times after 256 frames are
+        collected by the collector. Default to 1.
     :param function train_fn: a hook called at the beginning of training in
         each epoch. It can be used to perform custom additional operations,
         with the signature ``f(num_epoch: int, step_idx: int) -> None``.
@@ -87,6 +87,8 @@ def offpolicy_trainer(
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
+    test_episode(policy, test_collector, test_fn, 0, episode_per_test,
+                            writer, env_step)
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()
@@ -96,10 +98,11 @@ def offpolicy_trainer(
             while t.n < t.total:
                 if train_fn:
                     train_fn(epoch, env_step)
-                result = train_collector.collect(n_step=collect_per_step)
+                result = train_collector.collect(n_step=step_per_collect)
                 if len(result["rews"]) > 0 and reward_metric:
                     result["rews"] = reward_metric(result["rews"])
                 env_step += int(result["n/st"])
+                t.update(result["n/st"])
                 data = {
                     "env_step": str(env_step),
                     "rew": f"{result['rews'].mean():.2f}",
@@ -126,8 +129,7 @@ def offpolicy_trainer(
                                 test_result["rews"].mean(), test_result["rews"].std())
                         else:
                             policy.train()
-                for i in range(update_per_step * min(
-                        result["n/st"] // collect_per_step, t.total - t.n)):
+                for i in range(round(update_per_step * result["n/st"])):
                     gradient_step += 1
                     losses = policy.update(batch_size, train_collector.buffer)
                     for k in losses.keys():
@@ -136,7 +138,6 @@ def offpolicy_trainer(
                         if writer and gradient_step % log_interval == 0:
                             writer.add_scalar(
                                 k, stat[k].get(), global_step=gradient_step)
-                    t.update(1)
                     t.set_postfix(**data)
             if t.n <= t.total:
                 t.update()

@@ -29,7 +29,7 @@ def get_args():
     parser.add_argument('--n-step', type=int, default=2)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=10000)
-    parser.add_argument('--collect-per-step', type=int, default=4)
+    parser.add_argument('--step-per-collect', type=int, default=4)
     parser.add_argument('--update-per-step', type=int, default=1)
     parser.add_argument('--pre-collect-step', type=int, default=10000)
     parser.add_argument('--batch-size', type=int, default=256)
@@ -139,7 +139,7 @@ def test_sac(args=get_args()):
     train_collector.collect(n_step=args.pre_collect_step, random=True)
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, args.test_num,
+        args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, args.update_per_step,
         stop_fn=stop_fn, save_fn=save_fn, writer=writer,
         log_interval=args.log_interval)

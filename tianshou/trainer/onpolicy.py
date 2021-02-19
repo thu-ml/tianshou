@@ -17,7 +17,7 @@ def onpolicy_trainer(
     test_collector: Collector,
     max_epoch: int,
     step_per_epoch: int,
-    collect_per_step: int,
+    step_per_collect: int,
     repeat_per_collect: int,
     episode_per_test: int,
     batch_size: int,
@@ -30,6 +30,7 @@ def onpolicy_trainer(
     log_interval: int = 1,
     verbose: bool = True,
     test_in_train: bool = True,
+    collect_method = "episode",
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for on-policy trainer procedure.
 
@@ -42,9 +43,12 @@ def onpolicy_trainer(
     :type test_collector: :class:`~tianshou.data.Collector`
     :param int max_epoch: the maximum number of epochs for training. The
         training process might be finished before reaching the ``max_epoch``.
-    :param int step_per_epoch: the number of policy network updates, so-called
-        gradient steps, per epoch.
-    :param int collect_per_step: the number of episodes the collector would
+    :param int step_per_epoch: the number of environment frames collected per epoch.
+    :param int step_per_collect: the number of episodes the collector would
+            collect before the network update in "episode" collect mode(defalut),
+            the number of frames the collector would collect in "step" collect
+            mode.
+    :param int step_per_collect: the number of episodes the collector would
         collect before the network update. In other words, collect some
         episodes and do one policy network update.
     :param int repeat_per_collect: the number of repeat time for policy
@@ -77,6 +81,8 @@ def onpolicy_trainer(
     :param int log_interval: the log interval of the writer.
     :param bool verbose: whether to print the information.
     :param bool test_in_train: whether to test in the training phase.
+    :param string collect_method: specifies collect mode. Can be either "episode"
+        or "step".
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
@@ -87,6 +93,8 @@ def onpolicy_trainer(
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
+    test_episode(policy, test_collector, test_fn, 0, episode_per_test,
+                            writer, env_step)
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()
@@ -96,10 +104,11 @@ def onpolicy_trainer(
             while t.n < t.total:
                 if train_fn:
                     train_fn(epoch, env_step)
-                result = train_collector.collect(n_episode=collect_per_step)
+                result = train_collector.collect(**{"n_" + collect_method : step_per_collect})
                 if reward_metric:
                     result["rews"] = reward_metric(result["rews"])
                 env_step += int(result["n/st"])
+                t.update(result["n/st"])
                 data = {
                     "env_step": str(env_step),
                     "rew": f"{result['rews'].mean():.2f}",
@@ -138,12 +147,11 @@ def onpolicy_trainer(
                     if writer and gradient_step % log_interval == 0:
                         writer.add_scalar(
                             k, stat[k].get(), global_step=gradient_step)
-                t.update(step)
                 t.set_postfix(**data)
             if t.n <= t.total:
                 t.update()
         # test
-        result = test_episode(policy, test_collector, test_fn, epoch,
+        test_result = test_episode(policy, test_collector, test_fn, epoch,
                               episode_per_test, writer, env_step)
         if best_epoch == -1 or best_reward < result["rews"].mean():
             best_reward, best_reward_std = result["rews"].mean(), result["rews"].std()

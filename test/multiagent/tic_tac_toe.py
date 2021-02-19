@@ -29,7 +29,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--target-update-freq', type=int, default=320)
     parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=500)
-    parser.add_argument('--collect-per-step', type=int, default=10)
+    parser.add_argument('--step-per-collect', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128, 128, 128])
@@ -162,7 +162,7 @@ def train_agent(
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, args.test_num,
+        args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, save_fn=save_fn, reward_metric=reward_metric,
         writer=writer, test_in_train=False)

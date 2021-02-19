@@ -16,7 +16,7 @@ def offline_trainer(
     buffer: ReplayBuffer,
     test_collector: Collector,
     max_epoch: int,
-    step_per_epoch: int,
+    update_per_epoch: int,
     episode_per_test: int,
     batch_size: int,
     test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
@@ -36,7 +36,7 @@ def offline_trainer(
     :type test_collector: :class:`~tianshou.data.Collector`
     :param int max_epoch: the maximum number of epochs for training. The
         training process might be finished before reaching the ``max_epoch``.
-    :param int step_per_epoch: the number of policy network updates, so-called
+    :param int update_per_epoch: the number of policy network updates, so-called
         gradient steps, per epoch.
     :param episode_per_test: the number of episodes for one policy evaluation.
     :param int batch_size: the batch size of sample data, which is going to
@@ -72,7 +72,7 @@ def offline_trainer(
     for epoch in range(1, 1 + max_epoch):
         policy.train()
         with tqdm.trange(
-            step_per_epoch, desc=f"Epoch #{epoch}", **tqdm_config
+            update_per_epoch, desc=f"Epoch #{epoch}", **tqdm_config
         ) as t:
             for i in t:
                 gradient_step += 1

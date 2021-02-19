@@ -125,7 +125,7 @@ Tianshou provides :func:`~tianshou.trainer.onpolicy_trainer`, :func:`~tianshou.t
 
     result = ts.trainer.offpolicy_trainer(
         policy, train_collector, test_collector,
-        max_epoch=10, step_per_epoch=1000, collect_per_step=10,
+        max_epoch=10, step_per_epoch=1000, step_per_collect=10,
         episode_per_test=100, batch_size=64,
         train_fn=lambda epoch, env_step: policy.set_eps(0.1),
         test_fn=lambda epoch, env_step: policy.set_eps(0.05),
@@ -137,7 +137,7 @@ The meaning of each parameter is as follows (full description can be found at :f
 
 * ``max_epoch``: The maximum of epochs for training. The training process might be finished before reaching the ``max_epoch``;
 * ``step_per_epoch``: The number of step for updating policy network in one epoch;
-* ``collect_per_step``: The number of frames the collector would collect before the network update. For example, the code above means "collect 10 frames and do one policy network update";
+* ``step_per_collect``: The number of frames the collector would collect before the network update. For example, the code above means "collect 10 frames and do one policy network update";
 * ``episode_per_test``: The number of episodes for one policy evaluation.
 * ``batch_size``: The batch size of sample data, which is going to feed in the policy network.
 * ``train_fn``: A function receives the current number of epoch and step index, and performs some operations at the beginning of training in this epoch. For example, the code above means "reset the epsilon to 0.1 in DQN before training".
