@@ -27,8 +27,9 @@ def get_args():
     parser.add_argument('--alpha', type=float, default=0.05)
     parser.add_argument('--auto_alpha', type=int, default=0)
     parser.add_argument('--epoch', type=int, default=5)
-    parser.add_argument('--step-per-epoch', type=int, default=1000)
+    parser.add_argument('--step-per-epoch', type=int, default=5000)
     parser.add_argument('--step-per-collect', type=int, default=5)
+    parser.add_argument('--update-per-step', type=float, default=0.2)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128])

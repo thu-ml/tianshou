@@ -26,8 +26,9 @@ def get_args():
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--exploration-noise', type=float, default=0.1)
     parser.add_argument('--epoch', type=int, default=20)
-    parser.add_argument('--step-per-epoch', type=int, default=2400)
+    parser.add_argument('--step-per-epoch', type=int, default=9600)
     parser.add_argument('--step-per-collect', type=int, default=4)
+    parser.add_argument('--update-per-step', type=float, default=0.25)
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128])
@@ -102,8 +103,9 @@ def test_ddpg(args=get_args()):
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
+        args.step_per_epoch, args.step_per_collect, args.test_num, args.batch_size,
+        update_per_step=args.update_per_step, stop_fn=stop_fn,
+        save_fn=save_fn, writer=writer)
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':
         pprint.pprint(result)
