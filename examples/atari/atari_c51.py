@@ -145,7 +145,7 @@ def test_c51(args=get_args()):
         args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, save_fn=save_fn, writer=writer,
-        update_per_step=args.update_per_step,test_in_train=False)
+        update_per_step=args.update_per_step, test_in_train=False)
 
     pprint.pprint(result)
     watch()
