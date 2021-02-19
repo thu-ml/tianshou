@@ -6,6 +6,10 @@ tianshou.utils
    :undoc-members:
    :show-inheritance:
 
+
+Pre-defined Networks
+--------------------
+
 .. automodule:: tianshou.utils.net.common
    :members:
    :undoc-members:
