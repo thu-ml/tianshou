@@ -30,7 +30,7 @@ def onpolicy_trainer(
     log_interval: int = 1,
     verbose: bool = True,
     test_in_train: bool = True,
-    collect_method = "episode",
+    collect_method: str = "episode",
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for on-policy trainer procedure.
 
@@ -93,8 +93,8 @@ def onpolicy_trainer(
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
-    test_episode(policy, test_collector, test_fn, 0, episode_per_test,
-                            writer, env_step)
+    test_episode(policy, test_collector, test_fn, 0,
+                 episode_per_test, writer, env_step)
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()
@@ -104,7 +104,8 @@ def onpolicy_trainer(
             while t.n < t.total:
                 if train_fn:
                     train_fn(epoch, env_step)
-                result = train_collector.collect(**{"n_" + collect_method : step_per_collect})
+                result = train_collector.collect(
+                                **{"n_" + collect_method: step_per_collect})
                 if reward_metric:
                     result["rews"] = reward_metric(result["rews"])
                 env_step += int(result["n/st"])
@@ -152,7 +153,7 @@ def onpolicy_trainer(
                 t.update()
         # test
         test_result = test_episode(policy, test_collector, test_fn, epoch,
-                              episode_per_test, writer, env_step)
+                                   episode_per_test, writer, env_step)
         if best_epoch == -1 or best_reward < result["rews"].mean():
             best_reward, best_reward_std = result["rews"].mean(), result["rews"].std()
             best_epoch = epoch

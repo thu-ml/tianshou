@@ -87,8 +87,8 @@ def offpolicy_trainer(
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
-    test_episode(policy, test_collector, test_fn, 0, episode_per_test,
-                            writer, env_step)
+    test_episode(policy, test_collector, test_fn, 0,
+                 episode_per_test, writer, env_step)
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()

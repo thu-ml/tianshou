@@ -4,7 +4,6 @@ import pprint
 import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
-#TODO why bug
 from tianshou.policy import A2CPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
