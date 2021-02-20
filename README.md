@@ -191,11 +191,11 @@ Define some hyper-parameters:
 ```python
 task = 'CartPole-v0'
 lr, epoch, batch_size = 1e-3, 10, 64
-train_num, test_num = 8, 100
+train_num, test_num = 10, 100
 gamma, n_step, target_freq = 0.9, 3, 320
 buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
-step_per_epoch, step_per_collect = 1000, 8
+step_per_epoch, step_per_collect = 10000, 10
 writer = SummaryWriter('log/dqn')  # tensorboard is also supported!
 ```
 
@@ -233,7 +233,7 @@ Let's train it:
 ```python
 result = ts.trainer.offpolicy_trainer(
     policy, train_collector, test_collector, epoch, step_per_epoch, step_per_collect,
-    test_num, batch_size,
+    test_num, batch_size, update_per_step=1 / step_per_collect,
     train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
     test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
