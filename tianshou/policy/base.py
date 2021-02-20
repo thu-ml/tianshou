@@ -220,7 +220,7 @@ class BasePolicy(ABC, nn.Module):
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
         to calculate q function/reward to go of given batch.
 
-        :param Batch atch: a data batch which contains several episodes of data
+        :param Batch batch: a data batch which contains several episodes of data
             in sequential order. Mind that the end of each finished episode of batch
             should be marked by done flag, unfinished (or collecting) episodes will be
             recongized by buffer.unfinished_index().
