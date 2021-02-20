@@ -27,6 +27,7 @@ def get_args():
     parser.add_argument('--alpha', type=float, default=0.2)
     parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=24000)
+    parser.add_argument('--il-step-per-epoch', type=int, default=500)
     parser.add_argument('--step-per-collect', type=int, default=10)
     parser.add_argument('--update-per-step', type=float, default=0.1)
     parser.add_argument('--batch-size', type=int, default=128)
@@ -144,7 +145,7 @@ def test_sac_with_il(args=get_args()):
     train_collector.reset()
     result = offpolicy_trainer(
         il_policy, train_collector, il_test_collector, args.epoch,
-        args.step_per_epoch // 5, args.step_per_collect, args.test_num,
+        args.il_step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':
