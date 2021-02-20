@@ -220,10 +220,10 @@ class BasePolicy(ABC, nn.Module):
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
         to calculate q function/reward to go of given batch.
 
-        :param batch: a data batch which contains several episodes of data
-            in sequential order. Mind that the end of each finished episode of batch
+        :param batch: a data batch which contains several episodes of data in
+            sequential order. Mind that the end of each finished episode of batch
             should be marked by done flag, unfinished (or collecting) episodes will be
-            recongized by buffer.unfinished_index().
+            recongized by buffer.last_index.
         :type batch: :class:`~tianshou.data.Batch`
         :param numpy.ndarray indice: tell batch's location in buffer, batch is
             equal to buffer[indice].
@@ -247,7 +247,7 @@ class BasePolicy(ABC, nn.Module):
             v_s_ = to_numpy(v_s_.flatten()) * BasePolicy.value_mask(buffer, indice)
 
         end_flag = batch.done.copy()
-        end_flag[np.isin(indice, buffer.unfinished_index())] = True
+        end_flag[np.isin(indice, buffer.last_index)] = True
         returns = _episodic_return(v_s_, rew, end_flag, gamma, gae_lambda)
         if rew_norm and not np.isclose(returns.std(), 0.0, 1e-2):
             returns = (returns - returns.mean()) / returns.std()
@@ -310,7 +310,7 @@ class BasePolicy(ABC, nn.Module):
         target_q = to_numpy(target_q_torch.reshape(bsz, -1))
         target_q = target_q * BasePolicy.value_mask(buffer, terminal).reshape(-1, 1)
         end_flag = buffer.done.copy()
-        end_flag[buffer.unfinished_index()] = True
+        end_flag[buffer.last_index] = True
         target_q = _nstep_return(rew, end_flag, target_q,
                                  indices, gamma, n_step, mean, std)
 

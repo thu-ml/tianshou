@@ -116,7 +116,7 @@ class ReplayBuffer:
 
     def reset(self) -> None:
         """Clear all the data in replay buffer and episode statistics."""
-        self._index = self._size = 0
+        self.last_index = self._index = self._size = 0
         self._ep_rew, self._ep_len, self._ep_idx = 0.0, 0, 0
 
     def set_batch(self, batch: Batch) -> None:
@@ -126,18 +126,13 @@ class ReplayBuffer:
         ), "Input batch doesn't meet ReplayBuffer's data form requirement."
         self._meta = batch
 
-    def unfinished_index(self) -> np.ndarray:
-        """Return the index of unfinished episode."""
-        last = (self._index - 1) % self._size if self._size else 0
-        return np.array([last] if not self.done[last] and self._size else [], np.int)
-
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         """Return the index of previous transition.
 
         The index won't be modified if it is the beginning of an episode.
         """
         index = (index - 1) % self._size
-        end_flag = self.done[index] | np.isin(index, self.unfinished_index())
+        end_flag = self.done[index] | (index == self.last_index)
         return (index + end_flag) % self._size
 
     def next(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
@@ -145,7 +140,7 @@ class ReplayBuffer:
 
         The index won't be modified if it is the end of an episode.
         """
-        end_flag = self.done[index] | np.isin(index, self.unfinished_index())
+        end_flag = self.done[index] | (index == self.last_index)
         return (index + (1 - end_flag)) % self._size
 
     def update(self, buffer: "ReplayBuffer") -> np.ndarray:
@@ -163,6 +158,7 @@ class ReplayBuffer:
         to_indices = []
         for _ in range(len(from_indices)):
             to_indices.append(self._index)
+            self.last_index = self._index
             self._index = (self._index + 1) % self.maxsize
             self._size = min(self._size + 1, self.maxsize)
         to_indices = np.array(to_indices)
@@ -180,7 +176,7 @@ class ReplayBuffer:
         Return (index_to_be_modified, episode_reward, episode_length,
         episode_start_index).
         """
-        ptr = self._index
+        self.last_index = ptr = self._index
         self._size = min(self._size + 1, self.maxsize)
         self._index = (self._index + 1) % self.maxsize
 
@@ -296,6 +292,13 @@ class ReplayBuffer:
         """Return the stacked result.
 
         E.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t], where s is self.key, t is the index.
+
+        :param index: the index for getting stacked data (t in the example).
+        :param str key: the key to get, should be one of the reserved_keys.
+        :param default_value: if the given key's data is not found and default_value is
+            set, return this default_value.
+        :param int stack_num: the stack num (4 in the example). Default to
+            self.stack_num.
         """
         if key not in self._meta and default_value is not None:
             return default_value
@@ -459,6 +462,7 @@ class ReplayBufferManager(ReplayBuffer):
         return sum([len(buf) for buf in self.buffers])
 
     def reset(self) -> None:
+        self.last_index = np.array([0, *self._offset[:-1]])
         for buf in self.buffers:
             buf.reset()
 
@@ -469,12 +473,6 @@ class ReplayBufferManager(ReplayBuffer):
     def set_batch(self, batch: Batch) -> None:
         super().set_batch(batch)
         self._set_batch_for_children()
-
-    def unfinished_index(self) -> np.ndarray:
-        return np.concatenate([
-            buf.unfinished_index() + offset
-            for offset, buf in zip(self._offset, self.buffers)
-        ])
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         index = np.asarray(index) % self.maxsize
@@ -534,7 +532,7 @@ class ReplayBufferManager(ReplayBuffer):
             ep_lens.append(ep_len)
             ep_rews.append(ep_rew)
             ep_idxs.append(ep_idx + self._offset[buffer_id])
-        ptrs = np.array(ptrs)
+        self.last_index = ptrs = np.array(ptrs)
         try:
             self._meta[ptrs] = batch
         except ValueError:

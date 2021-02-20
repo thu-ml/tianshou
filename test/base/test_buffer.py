@@ -396,7 +396,7 @@ def test_replaybuffermanager():
     with pytest.raises(NotImplementedError):
         # ReplayBufferManager cannot be updated
         buf.update(buf)
-    # sample index / prev / next / unfinished_index
+    # sample index / prev / next
     indice = buf.sample_index(11000)
     assert np.bincount(indice)[[0, 5, 10]].min() >= 3000  # uniform sample
     batch, indice = buf.sample(0)
@@ -405,9 +405,7 @@ def test_replaybuffermanager():
     assert np.allclose(indice_prev, indice), indice_prev
     indice_next = buf.next(indice)
     assert np.allclose(indice_next, indice), indice_next
-    assert np.allclose(buf.unfinished_index(), [0, 5])
     buf.add(Batch(obs=[4], act=[4], rew=[4], done=[1]), buffer_ids=[3])
-    assert np.allclose(buf.unfinished_index(), [0, 5])
     batch, indice = buf.sample(10)
     batch, indice = buf.sample(0)
     assert np.allclose(indice, [0, 5, 10, 15])
@@ -450,12 +448,10 @@ def test_replaybuffermanager():
         10, 12, 12, 14, 14,
         15, 17, 17, 19, 19,
     ])
-    assert np.allclose(buf.unfinished_index(), [4, 14])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
         Batch(obs=[1], act=[1], rew=[1], done=[1]), buffer_ids=[2])
     assert np.all(ep_len == [3]) and np.all(ep_rew == [1])
     assert np.all(ptr == [10]) and np.all(ep_idx == [13])
-    assert np.allclose(buf.unfinished_index(), [4])
     indice = list(sorted(buf.sample_index(0)))
     assert np.allclose(indice, np.arange(len(buf)))
     assert np.allclose(buf.prev(indice), [
@@ -506,7 +502,6 @@ def test_cachedbuffer():
     assert np.allclose(buf.obs, obs)
     assert np.all(ep_len == [1]) and np.all(ep_rew == [2.0])
     assert np.all(ptr == [0]) and np.all(ep_idx == [0])
-    assert np.allclose(buf.unfinished_index(), [15])
     assert np.allclose(buf.sample_index(0), [0, 15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
         Batch(obs=[3, 4], act=[3, 4], rew=[3, 4], done=[0, 1]),
@@ -515,7 +510,6 @@ def test_cachedbuffer():
     assert np.all(ptr == [25, 2]) and np.all(ep_idx == [25, 1])
     obs[[0, 1, 2, 15, 16, 25]] = [2, 1, 4, 1, 4, 3]
     assert np.allclose(buf.obs, obs)
-    assert np.allclose(buf.unfinished_index(), [25])
     indice = buf.sample_index(0)
     assert np.allclose(indice, [0, 1, 2, 25])
     assert np.allclose(buf.done[indice], [1, 0, 1, 0])
@@ -596,7 +590,6 @@ def test_multibuf_stack():
         0, 0, 0, 1, 0,  # cached_buffer[1]
         0, 0, 0, 1, 0,  # cached_buffer[2]
     ]), buf4.done
-    assert np.allclose(buf4.unfinished_index(), [10, 15, 20])
     indice = sorted(buf4.sample_index(0))
     assert np.allclose(indice, list(range(bufsize)) + [9, 10, 14, 15, 19, 20])
     assert np.allclose(buf4[indice].obs[..., 0], [
@@ -718,7 +711,6 @@ if __name__ == '__main__':
     test_stack()
     test_segtree()
     test_priortized_replaybuffer()
-    test_priortized_replaybuffer(233333, 200000)
     test_update()
     test_pickle()
     test_hdf5()
