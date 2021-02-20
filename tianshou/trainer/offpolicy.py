@@ -33,50 +33,48 @@ def offpolicy_trainer(
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for off-policy trainer procedure.
 
-    The "step" in trainer means an environment frame.
+    The "step" in trainer means an environment step.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
-    :param train_collector: the collector used for training.
-    :type train_collector: :class:`~tianshou.data.Collector`
-    :param test_collector: the collector used for testing.
-    :type test_collector: :class:`~tianshou.data.Collector`
-    :param int max_epoch: the maximum number of epochs for training. The
-        training process might be finished before reaching the ``max_epoch``.
+    :param Collector train_collector: the collector used for training.
+    :param Collector test_collector: the collector used for testing.
+    :param int max_epoch: the maximum number of epochs for training. The training
+        process might be finished before reaching ``max_epoch`` if ``stop_fn`` sets.
     :param int step_per_epoch: the number of environment frames collected per epoch.
-    :param int step_per_collect: the number of frames the collector would
-        collect before the network update. In other words, collect some frames
-        and do some policy network update.
+    :param int step_per_collect: the number of frames the collector would collect
+        before the network update, i.e., trainer will collect "step_per_collect" frames
+        and do some policy network update repeatly in each epoch.
     :param episode_per_test: the number of episodes for one policy evaluation.
-    :param int batch_size: the batch size of sample data, which is going to
-        feed in the policy network.
-    :param int/float update_per_step: the number of times the policy network would
-        be updated per environment frame after (step_per_collect) frames are collected,
-        for example, if update_per_step set to 0.3, and step_per_collect is 256,
-        policy will be updated round(256 * 0.3 = 76.8) = 77 times after 256 frames are
-        collected by the collector. Default to 1.
-    :param function train_fn: a hook called at the beginning of training in
-        each epoch. It can be used to perform custom additional operations,
-        with the signature ``f(num_epoch: int, step_idx: int) -> None``.
-    :param function test_fn: a hook called at the beginning of testing in each
-        epoch. It can be used to perform custom additional operations, with the
-        signature ``f(num_epoch: int, step_idx: int) -> None``.
-    :param function save_fn: a hook called when the undiscounted average mean
-        reward in evaluation phase gets better, with the signature ``f(policy:
-        BasePolicy) -> None``.
-    :param function stop_fn: a function with signature ``f(mean_rewards: float)
-        -> bool``, receives the average undiscounted returns of the testing
-        result, returns a boolean which indicates whether reaching the goal.
+    :param int batch_size: the batch size of sample data, which is going to feed in the
+        policy network.
+    :param int/float update_per_step: the number of times the policy network would be
+        updated per environment frame after (step_per_collect) frames are collected,
+        e.g., if update_per_step set to 0.3, and step_per_collect is 256, policy will
+        be updated round(256 * 0.3 = 76.8) = 77 times after 256 frames are collected by
+        the collector. Default to 1.
+    :param function train_fn: a hook called at the beginning of training in each epoch.
+        It can be used to perform custom additional operations, with the signature ``f(
+        num_epoch: int, step_idx: int) -> None``.
+    :param function test_fn: a hook called at the beginning of testing in each epoch.
+        It can be used to perform custom additional operations, with the signature ``f(
+        num_epoch: int, step_idx: int) -> None``.
+    :param function save_fn: a hook called when the undiscounted average mean reward in
+        evaluation phase gets better, with the signature ``f(policy:BasePolicy) ->
+        None``.
+    :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
+        bool``, receives the average undiscounted returns of the testing result,
+        returns a boolean which indicates whether reaching the goal.
     :param function reward_metric: a function with signature ``f(rewards: np.ndarray
         with shape (num_episode, agent_num)) -> np.ndarray with shape (num_episode,)``,
         used in multi-agent RL. We need to return a single scalar for each episode's
         result to monitor training in the multi-agent RL setting. This function
         specifies what is the desired metric, e.g., the reward of agent 1 or the
         average reward over all agents.
-    :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard
-        SummaryWriter; if None is given, it will not write logs to TensorBoard.
-    :param int log_interval: the log interval of the writer.
-    :param bool verbose: whether to print the information.
-    :param bool test_in_train: whether to test in the training phase.
+    :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard SummaryWriter;
+        if None is given, it will not write logs to TensorBoard. Default to None.
+    :param int log_interval: the log interval of the writer. Default to 1.
+    :param bool verbose: whether to print the information. Default to True.
+    :param bool test_in_train: whether to test in the training phase. Default to True.
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """

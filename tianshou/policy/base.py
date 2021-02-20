@@ -220,21 +220,17 @@ class BasePolicy(ABC, nn.Module):
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
         to calculate q function/reward to go of given batch.
 
-        :param batch: a data batch which contains several episodes of data
+        :param Batch atch: a data batch which contains several episodes of data
             in sequential order. Mind that the end of each finished episode of batch
             should be marked by done flag, unfinished (or collecting) episodes will be
             recongized by buffer.unfinished_index().
-        :type batch: :class:`~tianshou.data.Batch`
-        :param numpy.ndarray indice: tell batch's location in buffer, batch is
+        :param np.ndarray indice: tell batch's location in buffer, batch is
             equal to buffer[indice].
-        :param v_s_: the value function of all next states :math:`V(s')`.
-        :type v_s_: numpy.ndarray
-        :param float gamma: the discount factor, should be in [0, 1], defaults
-            to 0.99.
-        :param float gae_lambda: the parameter for Generalized Advantage
-            Estimation, should be in [0, 1], defaults to 0.95.
-        :param bool rew_norm: normalize the reward to Normal(0, 1), defaults
-            to False.
+        :param np.ndarray v_s_: the value function of all next states :math:`V(s')`.
+        :param float gamma: the discount factor, should be in [0, 1]. Default to 0.99.
+        :param float gae_lambda: the parameter for Generalized Advantage Estimation,
+            should be in [0, 1]. Default to 0.95.
+        :param bool rew_norm: normalize the reward to Normal(0, 1). Default to False.
 
         :return: a Batch. The result will be stored in batch.returns as a numpy
             array with shape (bsz, ).
@@ -273,18 +269,14 @@ class BasePolicy(ABC, nn.Module):
         where :math:`\gamma` is the discount factor, :math:`\gamma \in [0, 1]`,
         :math:`d_t` is the done flag of step :math:`t`.
 
-        :param batch: a data batch, which is equal to buffer[indice].
-        :type batch: :class:`~tianshou.data.Batch`
-        :param buffer: the data buffer.
-        :type buffer: :class:`~tianshou.data.ReplayBuffer`
+        :param Batch batch: a data batch, which is equal to buffer[indice].
+        :param ReplayBuffer buffer: the data buffer.
         :param function target_q_fn: a function which compute target Q value
             of "obs_next" given data buffer and wanted indices.
-        :param float gamma: the discount factor, should be in [0, 1], defaults
-            to 0.99.
-        :param int n_step: the number of estimation step, should be an int
-            greater than 0, defaults to 1.
-        :param bool rew_norm: normalize the reward to Normal(0, 1), defaults
-            to False.
+        :param float gamma: the discount factor, should be in [0, 1]. Default to 0.99.
+        :param int n_step: the number of estimation step, should be an int greater
+            than 0. Default to 1.
+        :param bool rew_norm: normalize the reward to Normal(0, 1), Default to False.
 
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
