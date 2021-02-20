@@ -116,6 +116,7 @@ def test_sac(args=get_args()):
         args.step_per_epoch, args.step_per_collect, args.test_num, args.batch_size,
         update_per_step=args.update_per_step, stop_fn=stop_fn,
         save_fn=save_fn, writer=writer)
+
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':
         pprint.pprint(result)
