@@ -67,7 +67,7 @@ def test_replaybuffer(size=10, bufsize=20):
     assert b.info.a[1] == 4 and b.info.b.c[1] == 0
     assert b.info.d.e[1] == -np.inf
     # test batch-style adding method, where len(batch) == 1
-    batch.done = 1
+    batch.done = [1]
     batch.info.e = np.zeros([1, 4])
     batch = Batch.stack([batch])
     ptr, ep_rew, ep_len, ep_idx = b.add(batch, buffer_ids=[0])
@@ -79,6 +79,13 @@ def test_replaybuffer(size=10, bufsize=20):
     assert b.info.e.shape == (b.maxsize, 1, 4)
     with pytest.raises(IndexError):
         b[22]
+    # test prev / next
+    assert np.all(b.prev(np.array([0, 1, 2])) == [0, 1, 1])
+    assert np.all(b.next(np.array([0, 1, 2])) == [0, 2, 2])
+    batch.done = [0]
+    b.add(batch, buffer_ids=[0])
+    assert np.all(b.prev(np.array([0, 1, 2, 3])) == [0, 1, 1, 3])
+    assert np.all(b.next(np.array([0, 1, 2, 3])) == [0, 2, 2, 3])
 
 
 def test_ignore_obs_next(size=10):
@@ -467,8 +474,8 @@ def test_replaybuffermanager():
         15, 17, 17, 19, 19,
     ])
     # corner case: list, int and -1
-    assert buf.prev(-1) == buf.prev([buf.maxsize - 1])[0]
-    assert buf.next(-1) == buf.next([buf.maxsize - 1])[0]
+    assert buf.prev(-1) == buf.prev([buf.maxsize - 1])
+    assert buf.next(-1) == buf.next([buf.maxsize - 1])
     batch = buf._meta
     batch.info = np.ones(buf.maxsize)
     buf.set_batch(batch)
