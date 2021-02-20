@@ -456,6 +456,11 @@ class ReplayBufferManager(ReplayBuffer):
             offset.append(size)
             size += buf.maxsize
         self._offset = np.array(offset)
+        extend_offset = np.array(offset + [size])
+        self._prev_indices = np.arange(size) - 1
+        self._next_indices = np.arange(size) + 1
+        self._prev_indices[offset] = extend_offset[1:] - 1
+        self._next_indices[extend_offset[1:] - 1] = offset
         super().__init__(size=size, **kwargs)
 
     def __len__(self) -> int:
@@ -475,14 +480,16 @@ class ReplayBufferManager(ReplayBuffer):
         self._set_batch_for_children()
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
-        index = (np.asarray(index) - 1) % self.maxsize
+        index = self._prev_indices[index]
         end_flag = self.done[index] | np.isin(index, self.last_index)
-        return (index + end_flag) % self.maxsize
+        index[end_flag] = self._next_indices[index[end_flag]]
+        return index
 
     def next(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         index = np.asarray(index) % self.maxsize
         end_flag = self.done[index] | np.isin(index, self.last_index)
-        return (index + (1 - end_flag)) % self.maxsize
+        index[~end_flag] = self._next_indices[index[~end_flag]]
+        return index
 
     def update(self, buffer: ReplayBuffer) -> np.ndarray:
         """The ReplayBufferManager cannot be updated by any buffer."""
