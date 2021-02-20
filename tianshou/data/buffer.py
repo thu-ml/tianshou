@@ -462,7 +462,7 @@ class ReplayBufferManager(ReplayBuffer):
         return sum([len(buf) for buf in self.buffers])
 
     def reset(self) -> None:
-        self.last_index = np.array([0, *self._offset[:-1]])
+        self.last_index = self._offset.copy()
         for buf in self.buffers:
             buf.reset()
 
@@ -475,22 +475,14 @@ class ReplayBufferManager(ReplayBuffer):
         self._set_batch_for_children()
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
-        index = np.asarray(index) % self.maxsize
-        prev_indices = np.zeros_like(index)
-        for offset, buf in zip(self._offset, self.buffers):
-            mask = (offset <= index) & (index < offset + buf.maxsize)
-            if np.any(mask):
-                prev_indices[mask] = buf.prev(index[mask] - offset) + offset
-        return prev_indices
+        index = (np.asarray(index) - 1) % self.maxsize
+        end_flag = self.done[index] | np.isin(index, self.last_index)
+        return (index + end_flag) % self.maxsize
 
     def next(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         index = np.asarray(index) % self.maxsize
-        next_indices = np.zeros_like(index)
-        for offset, buf in zip(self._offset, self.buffers):
-            mask = (offset <= index) & (index < offset + buf.maxsize)
-            if np.any(mask):
-                next_indices[mask] = buf.next(index[mask] - offset) + offset
-        return next_indices
+        end_flag = self.done[index] | np.isin(index, self.last_index)
+        return (index + (1 - end_flag)) % self.maxsize
 
     def update(self, buffer: ReplayBuffer) -> np.ndarray:
         """The ReplayBufferManager cannot be updated by any buffer."""
