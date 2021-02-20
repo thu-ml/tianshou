@@ -34,7 +34,7 @@ def offline_trainer(
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param Collector test_collector: the collector used for testing.
     :param int max_epoch: the maximum number of epochs for training. The training
-        process might be finished before reaching ``max_epoch`` if ``stop_fn`` sets.
+        process might be finished before reaching ``max_epoch`` if ``stop_fn`` is set.
     :param int update_per_epoch: the number of policy network updates, so-called
         gradient steps, per epoch.
     :param episode_per_test: the number of episodes for one policy evaluation.

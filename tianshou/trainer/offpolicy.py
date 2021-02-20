@@ -39,7 +39,7 @@ def offpolicy_trainer(
     :param Collector train_collector: the collector used for training.
     :param Collector test_collector: the collector used for testing.
     :param int max_epoch: the maximum number of epochs for training. The training
-        process might be finished before reaching ``max_epoch`` if ``stop_fn`` sets.
+        process might be finished before reaching ``max_epoch`` if ``stop_fn`` is set.
     :param int step_per_epoch: the number of environment frames collected per epoch.
     :param int step_per_collect: the number of frames the collector would collect
         before the network update, i.e., trainer will collect "step_per_collect" frames
