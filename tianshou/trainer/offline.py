@@ -29,7 +29,7 @@ def offline_trainer(
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for offline trainer procedure.
 
-    The "step" in trainer means an environment frame.
+    The "step" in offline trainer means a gradient step.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param test_collector: the collector used for testing.
