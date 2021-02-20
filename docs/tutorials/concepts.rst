@@ -284,7 +284,7 @@ policy.process_fn
 
 The ``process_fn`` function computes some variables that depends on time-series. For example, compute the N-step or GAE returns.
 
-Take 2-step return DQN as an example. The 2-step return DQN compute each frame's return as:
+Take 2-step return DQN as an example. The 2-step return DQN compute each transition's return as:
 
 .. math::
 

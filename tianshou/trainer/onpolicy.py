@@ -34,23 +34,23 @@ def onpolicy_trainer(
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for on-policy trainer procedure.
 
-    The "step" in trainer means an environment step.
+    The "step" in trainer means an environment step (a.k.a. transition).
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param Collector train_collector: the collector used for training.
     :param Collector test_collector: the collector used for testing.
     :param int max_epoch: the maximum number of epochs for training. The training
         process might be finished before reaching ``max_epoch`` if ``stop_fn`` is set.
-    :param int step_per_epoch: the number of environment frames collected per epoch.
+    :param int step_per_epoch: the number of transitions collected per epoch.
     :param int repeat_per_collect: the number of repeat time for policy learning, for
         example, set it to 2 means the policy needs to learn each given batch data
         twice.
     :param int episode_per_test: the number of episodes for one policy evaluation.
     :param int batch_size: the batch size of sample data, which is going to feed in the
         policy network.
-    :param int step_per_collect: the number of frames the collector would collect
-        before the network update, i.e., trainer will collect "step_per_collect" frames
-        and do some policy network update repeatly in each epoch.
+    :param int step_per_collect: the number of transitions the collector would collect
+        before the network update, i.e., trainer will collect "step_per_collect"
+        transitions and do some policy network update repeatly in each epoch.
     :param int episode_per_collect: the number of episodes the collector would collect
         before the network update, i.e., trainer will collect "episode_per_collect"
         episodes and do some policy network update repeatly in each epoch.

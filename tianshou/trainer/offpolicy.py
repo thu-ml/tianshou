@@ -33,25 +33,25 @@ def offpolicy_trainer(
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for off-policy trainer procedure.
 
-    The "step" in trainer means an environment step.
+    The "step" in trainer means an environment step (a.k.a. transition).
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param Collector train_collector: the collector used for training.
     :param Collector test_collector: the collector used for testing.
     :param int max_epoch: the maximum number of epochs for training. The training
         process might be finished before reaching ``max_epoch`` if ``stop_fn`` is set.
-    :param int step_per_epoch: the number of environment frames collected per epoch.
-    :param int step_per_collect: the number of frames the collector would collect
-        before the network update, i.e., trainer will collect "step_per_collect" frames
-        and do some policy network update repeatly in each epoch.
+    :param int step_per_epoch: the number of transitions collected per epoch.
+    :param int step_per_collect: the number of transitions the collector would collect
+        before the network update, i.e., trainer will collect "step_per_collect"
+        transitions and do some policy network update repeatly in each epoch.
     :param episode_per_test: the number of episodes for one policy evaluation.
     :param int batch_size: the batch size of sample data, which is going to feed in the
         policy network.
     :param int/float update_per_step: the number of times the policy network would be
-        updated per environment frame after (step_per_collect) frames are collected,
+        updated per transition after (step_per_collect) transitions are collected,
         e.g., if update_per_step set to 0.3, and step_per_collect is 256, policy will
-        be updated round(256 * 0.3 = 76.8) = 77 times after 256 frames are collected by
-        the collector. Default to 1.
+        be updated round(256 * 0.3 = 76.8) = 77 times after 256 transitions are
+        collected by the collector. Default to 1.
     :param function train_fn: a hook called at the beginning of training in each epoch.
         It can be used to perform custom additional operations, with the signature ``f(
         num_epoch: int, step_idx: int) -> None``.

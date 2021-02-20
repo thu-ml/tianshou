@@ -45,7 +45,7 @@ class PGPolicy(BasePolicy):
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
     ) -> Batch:
-        r"""Compute the discounted returns for each frame.
+        r"""Compute the discounted returns for each transition.
 
         .. math::
             G_t = \sum_{i=t}^T \gamma^{i-t}r_i

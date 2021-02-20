@@ -136,8 +136,8 @@ Tianshou provides :func:`~tianshou.trainer.onpolicy_trainer`, :func:`~tianshou.t
 The meaning of each parameter is as follows (full description can be found at :func:`~tianshou.trainer.offpolicy_trainer`):
 
 * ``max_epoch``: The maximum of epochs for training. The training process might be finished before reaching the ``max_epoch``;
-* ``step_per_epoch``: The number of environment frames collected per epoch;
-* ``step_per_collect``: The number of frames the collector would collect before the network update. For example, the code above means "collect 10 frames and do one policy network update";
+* ``step_per_epoch``: The number of environment step (a.k.a. transition) collected per epoch;
+* ``step_per_collect``: The number of transition the collector would collect before the network update. For example, the code above means "collect 10 transitions and do one policy network update";
 * ``episode_per_test``: The number of episodes for one policy evaluation.
 * ``batch_size``: The batch size of sample data, which is going to feed in the policy network.
 * ``train_fn``: A function receives the current number of epoch and step index, and performs some operations at the beginning of training in this epoch. For example, the code above means "reset the epsilon to 0.1 in DQN before training".
@@ -205,7 +205,7 @@ Train a Policy with Customized Codes
 Tianshou supports user-defined training code. Here is the code snippet:
 ::
 
-    # pre-collect at least 5000 frames with random action before training
+    # pre-collect at least 5000 transitions with random action before training
     train_collector.collect(n_step=5000, random=True)
 
     policy.set_eps(0.1)

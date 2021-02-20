@@ -48,7 +48,7 @@ def gather_info(
 
         * ``train_step`` the total collected step of training collector;
         * ``train_episode`` the total collected episode of training collector;
-        * ``train_time/collector`` the time for collecting frames in the \
+        * ``train_time/collector`` the time for collecting transitions in the \
             training collector;
         * ``train_time/model`` the time for training models;
         * ``train_speed`` the speed of training (env_step per second);
