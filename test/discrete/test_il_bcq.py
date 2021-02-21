@@ -26,7 +26,7 @@ def get_args():
     parser.add_argument("--unlikely-action-threshold", type=float, default=0.3)
     parser.add_argument("--imitation-logits-penalty", type=float, default=0.01)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=1000)
+    parser.add_argument("--update-per-epoch", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128, 128])
@@ -91,7 +91,7 @@ def test_discrete_bcq(args=get_args()):
 
     result = offline_trainer(
         policy, buffer, test_collector,
-        args.epoch, args.step_per_epoch, args.test_num, args.batch_size,
+        args.epoch, args.update_per_epoch, args.test_num, args.batch_size,
         stop_fn=stop_fn, save_fn=save_fn, writer=writer)
 
     assert stop_fn(result['best_reward'])

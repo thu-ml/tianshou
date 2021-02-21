@@ -618,7 +618,7 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
 class VectorReplayBuffer(ReplayBufferManager):
     """VectorReplayBuffer contains n ReplayBuffer with the same size.
 
-    It is used for storing data frame from different environments yet keeping the order
+    It is used for storing transition from different environments yet keeping the order
     of time.
 
     :param int total_size: the total size of VectorReplayBuffer.
@@ -644,7 +644,7 @@ class VectorReplayBuffer(ReplayBufferManager):
 class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
     """PrioritizedVectorReplayBuffer contains n PrioritizedReplayBuffer with same size.
 
-    It is used for storing data frame from different environments yet keeping the order
+    It is used for storing transition from different environments yet keeping the order
     of time.
 
     :param int total_size: the total size of PrioritizedVectorReplayBuffer.

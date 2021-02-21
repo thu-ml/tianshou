@@ -198,7 +198,7 @@ class Collector(object):
             if not n_step % self.env_num == 0:
                 warnings.warn(
                     f"n_step={n_step} is not a multiple of #env ({self.env_num}), "
-                    "which may cause extra frame collected into the buffer."
+                    "which may cause extra transitions collected into the buffer."
                 )
             ready_env_ids = np.arange(self.env_num)
         elif n_episode is not None:
@@ -357,9 +357,9 @@ class AsyncCollector(Collector):
     ) -> Dict[str, Any]:
         """Collect a specified number of step or episode with async env setting.
 
-        This function doesn't collect exactly n_step or n_episode number of frames.
-        Instead, in order to support async setting, it may collect more than given
-        n_step or n_episode frames and save into buffer.
+        This function doesn't collect exactly n_step or n_episode number of
+        transitions. Instead, in order to support async setting, it may collect more
+        than given n_step or n_episode transitions and save into buffer.
 
         :param int n_step: how many steps you want to collect.
         :param int n_episode: how many episodes you want to collect.
@@ -395,7 +395,7 @@ class AsyncCollector(Collector):
         else:
             raise TypeError("Please specify at least one (either n_step or n_episode) "
                             "in AsyncCollector.collect().")
-        warnings.warn("Using async setting may collect extra frames into buffer.")
+        warnings.warn("Using async setting may collect extra transitions into buffer.")
 
         ready_env_ids = self._ready_env_ids
 

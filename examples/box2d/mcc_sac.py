@@ -29,8 +29,9 @@ def get_args():
     parser.add_argument('--auto_alpha', type=int, default=1)
     parser.add_argument('--alpha', type=float, default=0.2)
     parser.add_argument('--epoch', type=int, default=20)
-    parser.add_argument('--step-per-epoch', type=int, default=2400)
-    parser.add_argument('--collect-per-step', type=int, default=5)
+    parser.add_argument('--step-per-epoch', type=int, default=12000)
+    parser.add_argument('--step-per-collect', type=int, default=5)
+    parser.add_argument('--update-per-step', type=float, default=0.2)
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128])
@@ -112,8 +113,10 @@ def test_sac(args=get_args()):
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, args.test_num,
-        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
+        args.step_per_epoch, args.step_per_collect, args.test_num, args.batch_size,
+        update_per_step=args.update_per_step, stop_fn=stop_fn,
+        save_fn=save_fn, writer=writer)
+
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':
         pprint.pprint(result)
