@@ -38,5 +38,5 @@ class RandomPolicy(BasePolicy):
         return Batch(act=logits.argmax(axis=-1))
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        """Since a random agent learn nothing, it returns an empty dict."""
+        """Since a random agent learns nothing, it returns an empty dict."""
         return {}

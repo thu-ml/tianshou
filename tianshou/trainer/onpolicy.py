@@ -17,10 +17,11 @@ def onpolicy_trainer(
     test_collector: Collector,
     max_epoch: int,
     step_per_epoch: int,
-    collect_per_step: int,
     repeat_per_collect: int,
     episode_per_test: int,
     batch_size: int,
+    step_per_collect: Optional[int] = None,
+    episode_per_collect: Optional[int] = None,
     train_fn: Optional[Callable[[int, int], None]] = None,
     test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
     stop_fn: Optional[Callable[[float], bool]] = None,
@@ -33,60 +34,67 @@ def onpolicy_trainer(
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for on-policy trainer procedure.
 
-    The "step" in trainer means a policy network update.
+    The "step" in trainer means an environment step (a.k.a. transition).
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
-    :param train_collector: the collector used for training.
-    :type train_collector: :class:`~tianshou.data.Collector`
-    :param test_collector: the collector used for testing.
-    :type test_collector: :class:`~tianshou.data.Collector`
-    :param int max_epoch: the maximum number of epochs for training. The
-        training process might be finished before reaching the ``max_epoch``.
-    :param int step_per_epoch: the number of policy network updates, so-called
-        gradient steps, per epoch.
-    :param int collect_per_step: the number of episodes the collector would
-        collect before the network update. In other words, collect some
-        episodes and do one policy network update.
-    :param int repeat_per_collect: the number of repeat time for policy
-        learning, for example, set it to 2 means the policy needs to learn each
-        given batch data twice.
-    :param episode_per_test: the number of episodes for one policy evaluation.
-    :type episode_per_test: int or list of ints
-    :param int batch_size: the batch size of sample data, which is going to
-        feed in the policy network.
-    :param function train_fn: a hook called at the beginning of training in
-        each epoch. It can be used to perform custom additional operations,
-        with the signature ``f(num_epoch: int, step_idx: int) -> None``.
-    :param function test_fn: a hook called at the beginning of testing in each
-        epoch. It can be used to perform custom additional operations, with the
-        signature ``f(num_epoch: int, step_idx: int) -> None``.
-    :param function save_fn: a hook called when the undiscounted average mean
-        reward in evaluation phase gets better, with the signature ``f(policy:
-        BasePolicy) -> None``.
-    :param function stop_fn: a function with signature ``f(mean_rewards: float)
-        -> bool``, receives the average undiscounted returns of the testing
-        result, returns a boolean which indicates whether reaching the goal.
+    :param Collector train_collector: the collector used for training.
+    :param Collector test_collector: the collector used for testing.
+    :param int max_epoch: the maximum number of epochs for training. The training
+        process might be finished before reaching ``max_epoch`` if ``stop_fn`` is set.
+    :param int step_per_epoch: the number of transitions collected per epoch.
+    :param int repeat_per_collect: the number of repeat time for policy learning, for
+        example, set it to 2 means the policy needs to learn each given batch data
+        twice.
+    :param int episode_per_test: the number of episodes for one policy evaluation.
+    :param int batch_size: the batch size of sample data, which is going to feed in the
+        policy network.
+    :param int step_per_collect: the number of transitions the collector would collect
+        before the network update, i.e., trainer will collect "step_per_collect"
+        transitions and do some policy network update repeatly in each epoch.
+    :param int episode_per_collect: the number of episodes the collector would collect
+        before the network update, i.e., trainer will collect "episode_per_collect"
+        episodes and do some policy network update repeatly in each epoch.
+    :param function train_fn: a hook called at the beginning of training in each epoch.
+        It can be used to perform custom additional operations, with the signature ``f(
+        num_epoch: int, step_idx: int) -> None``.
+    :param function test_fn: a hook called at the beginning of testing in each epoch.
+        It can be used to perform custom additional operations, with the signature ``f(
+        num_epoch: int, step_idx: int) -> None``.
+    :param function save_fn: a hook called when the undiscounted average mean reward in
+        evaluation phase gets better, with the signature ``f(policy: BasePolicy) ->
+        None``.
+    :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
+        bool``, receives the average undiscounted returns of the testing result,
+        returns a boolean which indicates whether reaching the goal.
     :param function reward_metric: a function with signature ``f(rewards: np.ndarray
         with shape (num_episode, agent_num)) -> np.ndarray with shape (num_episode,)``,
         used in multi-agent RL. We need to return a single scalar for each episode's
         result to monitor training in the multi-agent RL setting. This function
         specifies what is the desired metric, e.g., the reward of agent 1 or the
         average reward over all agents.
-    :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard
-        SummaryWriter; if None is given, it will not write logs to TensorBoard.
-    :param int log_interval: the log interval of the writer.
-    :param bool verbose: whether to print the information.
-    :param bool test_in_train: whether to test in the training phase.
+    :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard SummaryWriter;
+        if None is given, it will not write logs to TensorBoard. Default to None.
+    :param int log_interval: the log interval of the writer. Default to 1.
+    :param bool verbose: whether to print the information. Default to True.
+    :param bool test_in_train: whether to test in the training phase. Default to True.
 
     :return: See :func:`~tianshou.trainer.gather_info`.
+
+    .. note::
+
+        Only either one of step_per_collect and episode_per_collect can be specified.
     """
     env_step, gradient_step = 0, 0
-    best_epoch, best_reward, best_reward_std = -1, -1.0, 0.0
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
+    test_result = test_episode(policy, test_collector, test_fn, 0, episode_per_test,
+                               writer, env_step, reward_metric)
+    best_epoch = 0
+    best_reward = test_result["rews"].mean()
+    best_reward_std = test_result["rews"].std()
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()
@@ -96,10 +104,12 @@ def onpolicy_trainer(
             while t.n < t.total:
                 if train_fn:
                     train_fn(epoch, env_step)
-                result = train_collector.collect(n_episode=collect_per_step)
+                result = train_collector.collect(n_step=step_per_collect,
+                                                 n_episode=episode_per_collect)
                 if reward_metric:
                     result["rews"] = reward_metric(result["rews"])
                 env_step += int(result["n/st"])
+                t.update(result["n/st"])
                 data = {
                     "env_step": str(env_step),
                     "rew": f"{result['rews'].mean():.2f}",
@@ -138,21 +148,21 @@ def onpolicy_trainer(
                     if writer and gradient_step % log_interval == 0:
                         writer.add_scalar(
                             k, stat[k].get(), global_step=gradient_step)
-                t.update(step)
                 t.set_postfix(**data)
             if t.n <= t.total:
                 t.update()
         # test
-        result = test_episode(policy, test_collector, test_fn, epoch,
-                              episode_per_test, writer, env_step)
-        if best_epoch == -1 or best_reward < result["rews"].mean():
-            best_reward, best_reward_std = result["rews"].mean(), result["rews"].std()
+        test_result = test_episode(policy, test_collector, test_fn, epoch,
+                                   episode_per_test, writer, env_step)
+        if best_epoch == -1 or best_reward < test_result["rews"].mean():
+            best_reward = test_result["rews"].mean()
+            best_reward_std = test_result['rews'].std()
             best_epoch = epoch
             if save_fn:
                 save_fn(policy)
         if verbose:
-            print(f"Epoch #{epoch}: test_reward: {result['rews'].mean():.6f} ± "
-                  f"{result['rews'].std():.6f}, best_reward: {best_reward:.6f} ± "
+            print(f"Epoch #{epoch}: test_reward: {test_result['rews'].mean():.6f} ± "
+                  f"{test_result['rews'].std():.6f}, best_reward: {best_reward:.6f} ± "
                   f"{best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break
