@@ -52,7 +52,7 @@ class SummaryWriter(tensorboard.SummaryWriter):
 
 class BaseLogger(ABC):
     """The base class for any logger which is compatible with trainer."""
-    def __init__(self, writer):
+    def __init__(self, writer: Any) -> None:
         super().__init__()
         self.writer = writer
 
@@ -101,9 +101,9 @@ class BaseLogger(ABC):
 class BasicLogger(BaseLogger):
     """A loggger that relies on tensorboard.SummaryWriter by default to visualise
     and log statistics. You can also rewrite write() func to use your own writer."""
-    def __init__(self, writer,
+    def __init__(self, writer: Any,
                  train_interval=1, test_interval=1, update_interval=1000,
-                 save_path=None):
+                 save_path=None) -> None:
         super().__init__(writer)
         self.n_trainlog = 0
         self.n_testlog = 0
@@ -116,10 +116,13 @@ class BasicLogger(BaseLogger):
         self.last_log_update_step = -1
         self.save_path = save_path
 
-    def write(self, key, x, y):
+    def write(self, key: str,
+              x: Union[Number, np.number, np.ndarray],
+              y: Union[Number, np.number, np.ndarray],
+              **kwargs: Any) -> None:
         self.writer.add_scalar(key, y, global_step=x)
 
-    def log_train_data(self, collect_result, step):
+    def log_train_data(self, collect_result: dict, step: int) -> None:
         if collect_result["n/ep"] > 0:
             if 'rew' not in collect_result:
                 collect_result['rew'] = collect_result['rews'].mean()
@@ -132,7 +135,7 @@ class BasicLogger(BaseLogger):
                 self.last_log_train_step = step
                 self.n_trainlog += 1
 
-    def log_test_data(self, collect_result, step):
+    def log_test_data(self, collect_result: dict, step: int) -> None:
         assert(collect_result["n/ep"] > 0)
         if 'rew' not in collect_result:
             collect_result['rew'] = collect_result['rews'].mean()
@@ -150,14 +153,14 @@ class BasicLogger(BaseLogger):
             self.last_log_test_step = step
         self.n_testlog += 1
 
-    def log_update_data(self, update_result, step):
+    def log_update_data(self, update_result: dict, step: int) -> None:
         if step - self.last_log_update_step >= self.update_interval:
             for k, v in update_result.items():
                 self.write(k, step, v)
             self.last_log_update_step = step
             self.n_updatelog += 1
 
-    def global_log(self, **kwargs):
+    def global_log(self, **kwargs: Any) -> None:
         if 'policy' in kwargs and self.save_path:
             import torch
             torch.save(kwargs['policy'].state_dict(), self.save_path)
@@ -165,8 +168,11 @@ class BasicLogger(BaseLogger):
 
 class LazyLogger(BasicLogger):
     """A loggger that does nothing. Used as placeholder in trainer."""
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(None)
 
-    def write(self, key, x, y):
+    def write(self, key: str,
+              x: Union[Number, np.number, np.ndarray],
+              y: Union[Number, np.number, np.ndarray],
+              **kwargs: Any) -> None:
         pass
