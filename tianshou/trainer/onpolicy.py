@@ -70,7 +70,7 @@ def onpolicy_trainer(
         result to monitor training in the multi-agent RL setting. This function
         specifies what is the desired metric, e.g., the reward of agent 1 or the
         average reward over all agents.
-    :param BaseLogger logger: A logger that logs statistics during 
+    :param BaseLogger logger: A logger that logs statistics during
         training/testing/updating. Default to a logger that doesn't log anything.
     :param bool verbose: whether to print the information. Default to True.
     :param bool test_in_train: whether to test in the training phase. Default to True.
