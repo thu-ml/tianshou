@@ -49,6 +49,7 @@ class SummaryWriter(tensorboard.SummaryWriter):
                 SummaryWriter._instance[key] = SummaryWriter(*args, **kwargs)
         return SummaryWriter._instance[key]
 
+
 class BaseLogger(ABC):
     """The base class for any logger which is compatible with trainer."""
     def __init__(self, writer):
@@ -96,12 +97,13 @@ class BaseLogger(ABC):
         """Set up checkpoint during training by saving policy, rendering, etc."""
         pass
 
+
 class BasicLogger(BaseLogger):
     """A loggger that relies on tensorboard.SummaryWriter by default to visualise
     and log statistics. You can also rewrite write() func to use your own writer."""
     def __init__(self, writer,
                  train_interval=1, test_interval=1, update_interval=1000,
-                 save_path=None):  
+                 save_path=None):
         super().__init__(writer)
         self.n_trainlog = 0
         self.n_testlog = 0
@@ -146,7 +148,7 @@ class BasicLogger(BaseLogger):
             self.write("test/rew_std", step, collect_result["rew_std"])
             self.write("test/len_std", step, collect_result["len_std"])
             self.last_log_test_step = step
-        self.n_testlog += 1        
+        self.n_testlog += 1
 
     def log_update_data(self, update_result, step):
         if step - self.last_log_update_step >= self.update_interval:
@@ -159,6 +161,7 @@ class BasicLogger(BaseLogger):
         if 'policy' in kwargs and self.save_path:
             import torch
             torch.save(kwargs['policy'].state_dict(), self.save_path)
+
 
 class LazyLogger(BasicLogger):
     """A loggger that does nothing. Used as placeholder in trainer."""
