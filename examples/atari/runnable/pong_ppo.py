@@ -87,7 +87,8 @@ def test_ppo(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'ppo')
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(logger)
+    logger = BasicLogger(writer)
+    
     def stop_fn(mean_rewards):
         if env.env.spec.reward_threshold:
             return mean_rewards >= env.spec.reward_threshold

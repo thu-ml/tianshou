@@ -323,7 +323,7 @@ With the above preparation, we are close to the first learned agent. The followi
     if not hasattr(args, 'writer'):
         log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
         writer = SummaryWriter(log_path)
-        logger=BasicLogger(writer)
+        logger = BasicLogger(writer)
     else:
         logger = args.logger
 

@@ -93,7 +93,6 @@ def test_td3(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = BasicLogger(writer)
 
-
     def stop_fn(mean_rewards):
         return mean_rewards >= env.spec.reward_threshold
 

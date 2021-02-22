@@ -119,7 +119,7 @@ def test_sac(args=get_args()):
     log_path = os.path.join(args.logdir, args.task, 'sac', 'seed_' + str(
         args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
     writer = SummaryWriter(log_path)
-    logger=BasicLogger(writer)
+    logger = BasicLogger(writer)
     logger = BasicLogger(writer, train_interval=args.log_interval)
 
     def watch():

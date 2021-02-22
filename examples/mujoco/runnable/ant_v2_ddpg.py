@@ -82,7 +82,7 @@ def test_ddpg(args=get_args()):
     # log
     log_path = args.logdir + '/' + 'ddpg'
     writer = SummaryWriter(log_path)
-    logger = BasicLoggerwri(writer)
+    logger = BasicLogger(writer)
 
     def stop_fn(mean_rewards):
         return mean_rewards >= env.spec.reward_threshold

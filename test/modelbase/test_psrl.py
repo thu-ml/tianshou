@@ -67,7 +67,6 @@ def test_psrl(args=get_args()):
         exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
-    #TODO
     log_path = args.logdir + '/' + args.task
     writer = SummaryWriter(log_path)
     logger = BasicLogger(writer)

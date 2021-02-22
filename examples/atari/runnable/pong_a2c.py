@@ -82,7 +82,7 @@ def test_a2c(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'a2c')
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(logger)
+    logger = BasicLogger(writer)
 
     def stop_fn(mean_rewards):
         if env.env.spec.reward_threshold:

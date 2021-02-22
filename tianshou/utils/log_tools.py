@@ -100,8 +100,8 @@ class BasicLogger(BaseLogger):
     """A loggger that relies on tensorboard.SummaryWriter by default to visualise
     and log statistics. You can also rewrite write() func to use your own writer."""
     def __init__(self, writer,
-                 train_interval = 1, test_interval = 1, update_interval = 1000,
-                 save_path = None):  
+                 train_interval=1, test_interval=1, update_interval=1000,
+                 save_path=None):  
         super().__init__(writer)
         self.n_trainlog = 0
         self.n_testlog = 0
@@ -113,7 +113,7 @@ class BasicLogger(BaseLogger):
         self.last_log_test_step = -1
         self.last_log_update_step = -1
         self.save_path = save_path
-        
+
     def write(self, key, x, y):
         self.writer.add_scalar(key, y, global_step=x)
 
@@ -124,7 +124,7 @@ class BasicLogger(BaseLogger):
             if 'len' not in collect_result:
                 collect_result['len'] = collect_result['lens'].mean()
             if step - self.last_log_train_step >= self.train_interval:
-                self.write("train/n/ep", step, collect_result["n/ep"])  
+                self.write("train/n/ep", step, collect_result["n/ep"])
                 self.write("train/rew", step, collect_result["rew"])
                 self.write("train/len", step, collect_result["len"])
                 self.last_log_train_step = step

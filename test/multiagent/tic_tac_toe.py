@@ -135,7 +135,7 @@ def train_agent(
     if not hasattr(args, 'logger'):
         log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
         writer = SummaryWriter(log_path)
-        logger=BasicLogger(writer)
+        logger = BasicLogger(writer)
         args.logger = logger
     else:
         logger = args.logger
