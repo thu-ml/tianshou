@@ -48,14 +48,14 @@ def gather_info(
 
         * ``train_step`` the total collected step of training collector;
         * ``train_episode`` the total collected episode of training collector;
-        * ``train_time/collector`` the time for collecting frames in the \
+        * ``train_time/collector`` the time for collecting transitions in the \
             training collector;
         * ``train_time/model`` the time for training models;
-        * ``train_speed`` the speed of training (frames per second);
+        * ``train_speed`` the speed of training (env_step per second);
         * ``test_step`` the total collected step of test collector;
         * ``test_episode`` the total collected episode of test collector;
         * ``test_time`` the time for testing;
-        * ``test_speed`` the speed of testing (frames per second);
+        * ``test_speed`` the speed of testing (env_step per second);
         * ``best_reward`` the best reward over the test results;
         * ``duration`` the total elapsed time.
     """
