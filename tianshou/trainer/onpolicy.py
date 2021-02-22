@@ -70,9 +70,8 @@ def onpolicy_trainer(
         result to monitor training in the multi-agent RL setting. This function
         specifies what is the desired metric, e.g., the reward of agent 1 or the
         average reward over all agents.
-    :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard SummaryWriter;
-        if None is given, it will not write logs to TensorBoard. Default to None.
-    :param int log_interval: the log interval of the writer. Default to 1.
+    :param BaseLogger logger: A logger that logs statistics during 
+        training/testing/updating. Default to a logger that doesn't log anything.
     :param bool verbose: whether to print the information. Default to True.
     :param bool test_in_train: whether to test in the training phase. Default to True.
 
