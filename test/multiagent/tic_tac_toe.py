@@ -12,6 +12,7 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import BasePolicy, DQNPolicy, RandomPolicy, \
     MultiAgentPolicyManager
+from tianshou.utils import BasicLogger
 
 from tic_tac_toe_env import TicTacToeEnv
 
@@ -131,12 +132,13 @@ def train_agent(
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
-    if not hasattr(args, 'writer'):
+    if not hasattr(args, 'logger'):
         log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
         writer = SummaryWriter(log_path)
-        args.writer = writer
+        logger=BasicLogger(writer)
+        args.logger = logger
     else:
-        writer = args.writer
+        logger = args.logger
 
     def save_fn(policy):
         if hasattr(args, 'model_save_path'):
@@ -166,7 +168,7 @@ def train_agent(
         args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, save_fn=save_fn, update_per_step=args.update_per_step,
-        writer=writer, test_in_train=False, reward_metric=reward_metric)
+        logger=logger, test_in_train=False, reward_metric=reward_metric)
 
     return result, policy.policies[args.agent_id - 1]
 

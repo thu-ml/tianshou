@@ -12,6 +12,7 @@ from tianshou.data import (
     VectorReplayBuffer,
     CachedReplayBuffer,
 )
+from tianshou.utils import BasicLogger
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -56,7 +57,7 @@ class Logger:
             info = kwargs['info']
             info.rew = kwargs['rew']
             if 'key' in info.keys():
-                self.writer.add_scalar(
+                self.writer.add_scalar(# TODO
                     'key', np.mean(info.key), global_step=self.cnt)
             self.cnt += 1
             return Batch(info=info)
@@ -75,6 +76,7 @@ class Logger:
 
 
 def test_collector():
+    # TODO
     writer = SummaryWriter('log/collector')
     logger = Logger(writer)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]

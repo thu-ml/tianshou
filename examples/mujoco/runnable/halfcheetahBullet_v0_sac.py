@@ -2,6 +2,7 @@ import os
 import gym
 import torch
 import pprint
+import datetime
 import argparse
 import numpy as np
 import pybullet_envs
@@ -13,6 +14,7 @@ from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils import BasicLogger
 
 
 def get_args():
@@ -88,8 +90,10 @@ def test_sac(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'sac', args.run_id)
+    log_path = os.path.join(args.logdir, args.task, 'sac', 'seed_' + str(
+        args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
     writer = SummaryWriter(log_path)
+    logger = BasicLogger(writer, train_interval=args.log_interval)
 
     def stop_fn(mean_rewards):
         return mean_rewards >= env.spec.reward_threshold
@@ -99,7 +103,7 @@ def test_sac(args=get_args()):
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, stop_fn=stop_fn,
-        writer=writer, log_interval=args.log_interval)
+        logger=logger)
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':
         pprint.pprint(result)

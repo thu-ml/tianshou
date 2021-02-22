@@ -1,10 +1,10 @@
 import time
 import numpy as np
-from torch.utils.tensorboard import SummaryWriter
 from typing import Any, Dict, Union, Callable, Optional
 
 from tianshou.data import Collector
 from tianshou.policy import BasePolicy
+from tianshou.utils import BaseLogger
 
 
 def test_episode(
@@ -13,7 +13,7 @@ def test_episode(
     test_fn: Optional[Callable[[int, Optional[int]], None]],
     epoch: int,
     n_episode: int,
-    writer: Optional[SummaryWriter] = None,
+    logger: Optional[BaseLogger] = None,
     global_step: Optional[int] = None,
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
 ) -> Dict[str, Any]:
@@ -26,12 +26,8 @@ def test_episode(
     result = collector.collect(n_episode=n_episode)
     if reward_metric:
         result["rews"] = reward_metric(result["rews"])
-    if writer is not None and global_step is not None:
-        rews, lens = result["rews"], result["lens"]
-        writer.add_scalar("test/rew", rews.mean(), global_step=global_step)
-        writer.add_scalar("test/rew_std", rews.std(), global_step=global_step)
-        writer.add_scalar("test/len", lens.mean(), global_step=global_step)
-        writer.add_scalar("test/len_std", lens.std(), global_step=global_step)
+    if logger:
+        logger.log_test_data(result, global_step)
     return result
 
 

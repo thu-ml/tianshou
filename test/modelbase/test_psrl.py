@@ -9,6 +9,7 @@ from tianshou.policy import PSRLPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
+from tianshou.utils import BasicLogger
 
 
 def get_args():
@@ -66,7 +67,10 @@ def test_psrl(args=get_args()):
         exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
-    writer = SummaryWriter(args.logdir + '/' + args.task)
+    #TODO
+    log_path = args.logdir + '/' + args.task
+    writer = SummaryWriter(log_path)
+    logger = BasicLogger(writer)
 
     def stop_fn(mean_rewards):
         if env.spec.reward_threshold:
@@ -79,7 +83,7 @@ def test_psrl(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, 1, args.test_num, 0,
-        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, writer=writer,
+        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, logger=logger,
         test_in_train=False)
 
     if __name__ == '__main__':

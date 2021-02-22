@@ -130,7 +130,7 @@ Tianshou provides :func:`~tianshou.trainer.onpolicy_trainer`, :func:`~tianshou.t
         train_fn=lambda epoch, env_step: policy.set_eps(0.1),
         test_fn=lambda epoch, env_step: policy.set_eps(0.05),
         stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
-        writer=None)
+        logger=None)
     print(f'Finished training! Use {result["duration"]}')
 
 The meaning of each parameter is as follows (full description can be found at :func:`~tianshou.trainer.offpolicy_trainer`):
@@ -143,15 +143,17 @@ The meaning of each parameter is as follows (full description can be found at :f
 * ``train_fn``: A function receives the current number of epoch and step index, and performs some operations at the beginning of training in this epoch. For example, the code above means "reset the epsilon to 0.1 in DQN before training".
 * ``test_fn``: A function receives the current number of epoch and step index, and performs some operations at the beginning of testing in this epoch. For example, the code above means "reset the epsilon to 0.05 in DQN before testing".
 * ``stop_fn``: A function receives the average undiscounted returns of the testing result, return a boolean which indicates whether reaching the goal.
-* ``writer``: See below.
+* ``logger``: See below.
 
 The trainer supports `TensorBoard <https://www.tensorflow.org/tensorboard>`_ for logging. It can be used as:
 ::
 
     from torch.utils.tensorboard import SummaryWriter
+    from tianshou.utils import BasicLogger
     writer = SummaryWriter('log/dqn')
+    logger = BasicLogger(writer)
 
-Pass the writer into the trainer, and the training result will be recorded into the TensorBoard.
+Pass the logger into the trainer, and the training result will be recorded into the TensorBoard.
 
 The returned result is a dictionary as follows:
 ::

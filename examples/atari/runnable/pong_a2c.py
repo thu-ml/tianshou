@@ -10,6 +10,7 @@ from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils import BasicLogger
 
 from atari import create_atari_environment, preprocess_fn
 
@@ -79,7 +80,9 @@ def test_a2c(args=get_args()):
         preprocess_fn=preprocess_fn, exploration_noise=True)
     test_collector = Collector(policy, test_envs, preprocess_fn=preprocess_fn)
     # log
-    writer = SummaryWriter(os.path.join(args.logdir, args.task, 'a2c'))
+    log_path = os.path.join(args.logdir, args.task, 'a2c')
+    writer = SummaryWriter(log_path)
+    logger = BasicLogger(logger)
 
     def stop_fn(mean_rewards):
         if env.env.spec.reward_threshold:
@@ -91,7 +94,7 @@ def test_a2c(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.repeat_per_collect, args.test_num, args.batch_size,
-        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, writer=writer)
+        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, logger=logger)
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!

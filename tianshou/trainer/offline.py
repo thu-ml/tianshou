@@ -2,11 +2,10 @@ import time
 import tqdm
 import numpy as np
 from collections import defaultdict
-from torch.utils.tensorboard import SummaryWriter
 from typing import Dict, Union, Callable, Optional
 
 from tianshou.policy import BasePolicy
-from tianshou.utils import tqdm_config, MovAvg
+from tianshou.utils import tqdm_config, MovAvg, BaseLogger, LazyLogger
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.trainer import test_episode, gather_info
 
@@ -23,8 +22,7 @@ def offline_trainer(
     stop_fn: Optional[Callable[[float], bool]] = None,
     save_fn: Optional[Callable[[BasePolicy], None]] = None,
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-    writer: Optional[SummaryWriter] = None,
-    log_interval: int = 1,
+    logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for offline trainer procedure.
@@ -67,10 +65,9 @@ def offline_trainer(
     start_time = time.time()
     test_collector.reset_stat()
     test_result = test_episode(policy, test_collector, test_fn, 0, episode_per_test,
-                               writer, gradient_step, reward_metric)
+                               logger, gradient_step, reward_metric)
     best_epoch = 0
-    best_reward = test_result["rews"].mean()
-    best_reward_std = test_result["rews"].std()
+    best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
     for epoch in range(1, 1 + max_epoch):
         policy.train()
         with tqdm.trange(
@@ -83,24 +80,22 @@ def offline_trainer(
                 for k in losses.keys():
                     stat[k].add(losses[k])
                     data[k] = f"{stat[k].get():.6f}"
-                    if writer and gradient_step % log_interval == 0:
-                        writer.add_scalar(
-                            "train/" + k, stat[k].get(),
-                            global_step=gradient_step)
+                    for k in losses.keys():
+                        losses[k] = stat[k].get()
+                    logger.log_update_data(losses, gradient_step)
                 t.set_postfix(**data)
         # test
         test_result = test_episode(policy, test_collector, test_fn, epoch,
-                                   episode_per_test, writer, gradient_step,
+                                   episode_per_test, logger, gradient_step,
                                    reward_metric)
-        if best_epoch == -1 or best_reward < test_result["rews"].mean():
-            best_reward = test_result["rews"].mean()
-            best_reward_std = test_result['rews'].std()
+        if best_epoch == -1 or best_reward < test_result["rew"]:
+            best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
             best_epoch = epoch
             if save_fn:
                 save_fn(policy)
         if verbose:
-            print(f"Epoch #{epoch}: test_reward: {test_result['rews'].mean():.6f} ± "
-                  f"{test_result['rews'].std():.6f}, best_reward: {best_reward:.6f} ± "
+            print(f"Epoch #{epoch}: test_reward: {test_result['rew']:.6f} ± "
+                  f"{test_result['rew_std']:.6f}, best_reward: {best_reward:.6f} ± "
                   f"{best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break

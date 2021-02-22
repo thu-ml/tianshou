@@ -12,6 +12,7 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.exploration import GaussianNoise
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.continuous import Actor, Critic
+from tianshou.utils import BasicLogger
 
 
 def get_args():
@@ -79,7 +80,9 @@ def test_ddpg(args=get_args()):
         exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
-    writer = SummaryWriter(args.logdir + '/' + 'ddpg')
+    log_path = args.logdir + '/' + 'ddpg'
+    writer = SummaryWriter(log_path)
+    logger = BasicLoggerwri(writer)
 
     def stop_fn(mean_rewards):
         return mean_rewards >= env.spec.reward_threshold
@@ -88,7 +91,7 @@ def test_ddpg(args=get_args()):
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, stop_fn=stop_fn, writer=writer)
+        args.batch_size, stop_fn=stop_fn, logger=logger)
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':
         pprint.pprint(result)

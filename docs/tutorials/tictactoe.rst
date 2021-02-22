@@ -176,6 +176,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
     import numpy as np
     from copy import deepcopy
     from torch.utils.tensorboard import SummaryWriter
+    from tianshou.utils import BasicLogger
 
     from tianshou.env import DummyVectorEnv
     from tianshou.utils.net.common import Net
@@ -322,8 +323,9 @@ With the above preparation, we are close to the first learned agent. The followi
     if not hasattr(args, 'writer'):
         log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
         writer = SummaryWriter(log_path)
+        logger=BasicLogger(writer)
     else:
-        writer = args.writer
+        logger = args.logger
 
     # ======== callback functions used during training =========
 
@@ -359,7 +361,7 @@ With the above preparation, we are close to the first learned agent. The followi
         args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, save_fn=save_fn, update_per_step=args.update_per_step,
-        writer=writer, test_in_train=False, reward_metric=reward_metric)
+        logger=logger, test_in_train=False, reward_metric=reward_metric)
 
     agent = policy.policies[args.agent_id - 1]
     # let's watch the match!
