@@ -128,6 +128,11 @@ class ReplayBuffer:
         ), "Input batch doesn't meet ReplayBuffer's data form requirement."
         self._meta = batch
 
+    def unfinished_index(self) -> np.ndarray:
+        """Return the index of unfinished episode."""
+        last = (self._index - 1) % self._size if self._size else 0
+        return np.array([last] if not self.done[last] and self._size else [], np.int)
+
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         """Return the index of previous transition.
 
@@ -489,6 +494,12 @@ class ReplayBufferManager(ReplayBuffer):
     def set_batch(self, batch: Batch) -> None:
         super().set_batch(batch)
         self._set_batch_for_children()
+
+    def unfinished_index(self) -> np.ndarray:
+        return np.concatenate([
+            buf.unfinished_index() + offset
+            for offset, buf in zip(self._offset, self.buffers)
+        ])
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
