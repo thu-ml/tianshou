@@ -183,7 +183,6 @@ First, import some relevant packages:
 ```python
 import gym, torch, numpy as np, torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
-from tianshou.utils import BasicLogger
 import tianshou as ts
 ```
 
@@ -198,7 +197,7 @@ buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
 step_per_epoch, step_per_collect = 10000, 10
 writer = SummaryWriter('log/dqn')  # tensorboard is also supported!
-logger = BasicLogger(writer)
+logger = ts.utils.BasicLogger(writer)
 ```
 
 Make environments:

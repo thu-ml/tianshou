@@ -8,12 +8,12 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import SACPolicy
+from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.continuous import ActorProb, Critic
-from tianshou.utils import BasicLogger
 
 
 def get_args():
@@ -119,7 +119,7 @@ def test_sac(args=get_args()):
     log_path = os.path.join(args.logdir, args.task, 'sac', 'seed_' + str(
         args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(writer)
+    writer.add_text("args", str(args))
     logger = BasicLogger(writer, train_interval=args.log_interval)
 
     def watch():

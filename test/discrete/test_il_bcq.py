@@ -8,9 +8,9 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector
+from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
-from tianshou.utils import BasicLogger
 from tianshou.trainer import offline_trainer
 from tianshou.policy import DiscreteBCQPolicy
 

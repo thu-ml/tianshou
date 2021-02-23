@@ -92,8 +92,6 @@ class ReplayBuffer:
         ("buffer.__getattr__" is customized).
         """
         self.__dict__.update(state)
-        # compatible with version == 0.3.1's HDF5 data format
-        self._indices = np.arange(self.maxsize)
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""

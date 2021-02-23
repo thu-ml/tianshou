@@ -6,13 +6,13 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
-from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DiscreteSACPolicy
+from tianshou.trainer import offpolicy_trainer
 from tianshou.utils.net.discrete import Actor, Critic
-from tianshou.utils import BasicLogger
+from tianshou.data import Collector, VectorReplayBuffer
 
 
 def get_args():

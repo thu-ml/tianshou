@@ -6,10 +6,10 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import C51Policy
+from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.utils import BasicLogger
 
 from atari_network import C51
 from atari_wrapper import wrap_deepmind
@@ -99,6 +99,7 @@ def test_c51(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'c51')
     writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
     logger = BasicLogger(writer)
 
     def save_fn(policy):

@@ -320,12 +320,10 @@ With the above preparation, we are close to the first learned agent. The followi
     train_collector.collect(n_step=args.batch_size * args.training_num)
 
     # ======== tensorboard logging setup =========
-    if not hasattr(args, 'writer'):
-        log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
-        writer = SummaryWriter(log_path)
-        logger = BasicLogger(writer)
-    else:
-        logger = args.logger
+    log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger = BasicLogger(writer)
 
     # ======== callback functions used during training =========
 

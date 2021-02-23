@@ -7,10 +7,10 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offline_trainer
 from tianshou.utils.net.discrete import Actor
-from tianshou.utils import BasicLogger
 from tianshou.policy import DiscreteBCQPolicy
 from tianshou.data import Collector, ReplayBuffer
 
@@ -116,10 +116,11 @@ def test_discrete_bcq(args=get_args()):
     test_collector = Collector(policy, test_envs, exploration_noise=True)
 
     # log
-    log_path = os.path.join(args.logdir, args.task, 'bcq', 'seed_' + str(
-        args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
+    log_path = os.path.join(
+        args.logdir, args.task, 'bcq',
+        f'seed_{args.seed}_{datetime.datetime.now().strftime("%m%d-%H%M%S")}')
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(writer)
+    writer.add_text("args", str(args))
     logger = BasicLogger(writer, update_interval=args.log_interval)
 
     def save_fn(policy):

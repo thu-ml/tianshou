@@ -7,10 +7,10 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DQNPolicy
+from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils.net.common import Recurrent
-from tianshou.utils import BasicLogger
 from tianshou.data import Collector, VectorReplayBuffer
 
 

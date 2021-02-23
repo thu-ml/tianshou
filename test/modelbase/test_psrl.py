@@ -7,10 +7,10 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import PSRLPolicy
+# from tianshou.utils import BasicLogger
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
-from tianshou.utils import BasicLogger
 
 
 def get_args():
@@ -70,7 +70,8 @@ def test_psrl(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'psrl')
     writer = SummaryWriter(log_path)
-    args.logger = BasicLogger(writer)
+    writer.add_text("args", str(args))
+    # logger = BasicLogger(writer)
 
     def stop_fn(mean_rewards):
         if env.spec.reward_threshold:

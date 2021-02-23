@@ -1,3 +1,4 @@
+import os
 import gym
 import torch
 import pprint
@@ -6,13 +7,13 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import TD3Policy
+from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.exploration import GaussianNoise
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.continuous import Actor, Critic
-from tianshou.utils import BasicLogger
 
 
 def get_args():
@@ -89,7 +90,7 @@ def test_td3(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
-    log_path = args.logdir + '/' + 'td3'
+    log_path = os.path.join(args.logdir, args.task, 'td3')
     writer = SummaryWriter(log_path)
     logger = BasicLogger(writer)
 

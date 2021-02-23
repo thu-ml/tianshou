@@ -9,12 +9,12 @@ import pybullet_envs
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import SACPolicy
+from tianshou.utils import BasicLogger
 from tianshou.utils.net.common import Net
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.continuous import ActorProb, Critic
-from tianshou.utils import BasicLogger
 
 
 def get_args():

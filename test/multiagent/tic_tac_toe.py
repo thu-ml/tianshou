@@ -6,13 +6,13 @@ from copy import deepcopy
 from typing import Optional, Tuple
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import BasePolicy, DQNPolicy, RandomPolicy, \
     MultiAgentPolicyManager
-from tianshou.utils import BasicLogger
 
 from tic_tac_toe_env import TicTacToeEnv
 
@@ -132,13 +132,10 @@ def train_agent(
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
-    if not hasattr(args, 'logger'):
-        log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
-        writer = SummaryWriter(log_path)
-        logger = BasicLogger(writer)
-        args.logger = logger
-    else:
-        logger = args.logger
+    log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger = BasicLogger(writer)
 
     def save_fn(policy):
         if hasattr(args, 'model_save_path'):

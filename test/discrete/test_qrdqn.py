@@ -6,10 +6,10 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.utils import BasicLogger
 from tianshou.policy import QRDQNPolicy
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
-from tianshou.utils import BasicLogger
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer, PrioritizedVectorReplayBuffer
 

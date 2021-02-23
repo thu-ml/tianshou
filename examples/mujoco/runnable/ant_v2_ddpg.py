@@ -1,3 +1,4 @@
+import os
 import gym
 import torch
 import pprint
@@ -6,13 +7,13 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DDPGPolicy
+from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
 from tianshou.exploration import GaussianNoise
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.continuous import Actor, Critic
-from tianshou.utils import BasicLogger
 
 
 def get_args():
@@ -80,7 +81,7 @@ def test_ddpg(args=get_args()):
         exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = args.logdir + '/' + 'ddpg'
+    log_path = os.path.join(args.logdir, args.task, 'ddpg')
     writer = SummaryWriter(log_path)
     logger = BasicLogger(writer)
 

@@ -7,9 +7,9 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DDPGPolicy
+from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
-from tianshou.utils import BasicLogger
 from tianshou.trainer import offpolicy_trainer
 from tianshou.exploration import GaussianNoise
 from tianshou.data import Collector, VectorReplayBuffer
