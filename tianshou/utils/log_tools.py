@@ -20,7 +20,7 @@ class BaseLogger(ABC):
         y: Union[Number, np.number, np.ndarray],
         **kwargs: Any,
     ) -> None:
-        """Specifies how writer is used to log data.
+        """Specify how the writer is used to log data.
 
         :param key: namespace which the input data tuple belongs to.
         :param x: stands for the ordinate of the input data tuple.
@@ -32,8 +32,8 @@ class BaseLogger(ABC):
         """Use writer to log statistics generated during training.
 
         :param collect_result: a dict containing information of data collected in
-            training stage, i.e., returns of collect() method in collector.
-        :param int step: TODO
+            training stage, i.e., returns of collector.collect().
+        :param int step: stands for the timestep the collect_result being logged.
         """
         pass
 
@@ -41,8 +41,8 @@ class BaseLogger(ABC):
         """Use writer to log statistics generated during updating.
 
         :param update_result: a dict containing information of data collected in
-            updating stage, i.e., returns of update() method in policy.
-        :param int step: TODO
+            updating stage, i.e., returns of policy.update().
+        :param int step: stands for the timestep the collect_result being logged.
         """
         pass
 
@@ -50,8 +50,8 @@ class BaseLogger(ABC):
         """Use writer to log statistics generated during evaluating.
 
         :param collect_result: a dict containing information of data collected in
-            evaluating stage, e.g. returns of collect() method in collector.
-        :param int step: TODO
+            evaluating stage, i.e., returns of collector.collect().
+        :param int step: stands for the timestep the collect_result being logged.
         """
         pass
 
@@ -62,10 +62,10 @@ class BasicLogger(BaseLogger):
 
     You can also rewrite write() func to use your own writer.
 
-    :param SummaryWriter writer: TODO
-    :param int train_interval: TODO
-    :param int test_interval: TODO
-    :param int update_interval: TODO
+    :param SummaryWriter writer: the writer to log data.
+    :param int train_interval: the log interval in log_train_data(). Default to 1.
+    :param int test_interval: the log interval in log_test_data(). Default to 1.
+    :param int update_interval: the log interval in log_update_data(). Default to 1000.
     """
 
     def __init__(
@@ -93,7 +93,16 @@ class BasicLogger(BaseLogger):
         self.writer.add_scalar(key, y, global_step=x)
 
     def log_train_data(self, collect_result: dict, step: int) -> None:
-        """TODO: mention it may inplace modify collect_result."""
+        """Use writer to log statistics generated during training.
+
+        :param collect_result: a dict containing information of data collected in
+            training stage, i.e., returns of collector.collect().
+        :param int step: stands for the timestep the collect_result being logged.
+
+        .. note::
+
+            ``collect_result`` will be modified in-place with "rew" and "len" keys.
+        """
         if collect_result["n/ep"] > 0:
             collect_result["rew"] = collect_result["rews"].mean()
             collect_result["len"] = collect_result["lens"].mean()
@@ -104,7 +113,17 @@ class BasicLogger(BaseLogger):
                 self.last_log_train_step = step
 
     def log_test_data(self, collect_result: dict, step: int) -> None:
-        """TODO: mention it may inplace modify collect_result."""
+        """Use writer to log statistics generated during evaluating.
+
+        :param collect_result: a dict containing information of data collected in
+            evaluating stage, i.e., returns of collector.collect().
+        :param int step: stands for the timestep the collect_result being logged.
+
+        .. note::
+
+            ``collect_result`` will be modified in-place with "rew", "rew_std", "len",
+            and "len_std" keys.
+        """
         assert collect_result["n/ep"] > 0
         rews, lens = collect_result["rews"], collect_result["lens"]
         rew, rew_std, len_, len_std = rews.mean(), rews.std(), lens.mean(), lens.std()
