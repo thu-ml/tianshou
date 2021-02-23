@@ -1,3 +1,4 @@
+import os
 import gym
 import torch
 import pprint
@@ -67,9 +68,9 @@ def test_psrl(args=get_args()):
         exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = args.logdir + '/' + args.task
+    log_path = os.path.join(args.logdir, args.task, 'psrl')
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(writer)
+    args.logger = BasicLogger(writer)
 
     def stop_fn(mean_rewards):
         if env.spec.reward_threshold:
@@ -78,11 +79,12 @@ def test_psrl(args=get_args()):
             return False
 
     train_collector.collect(n_step=args.buffer_size, random=True)
-    # trainer
+    # trainer, test it without logger
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, 1, args.test_num, 0,
-        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, logger=logger,
+        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn,
+        # logger=logger,
         test_in_train=False)
 
     if __name__ == '__main__':

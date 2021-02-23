@@ -2,7 +2,6 @@ import torch
 import numpy as np
 
 from tianshou.utils import MovAvg
-from tianshou.utils import SummaryWriter
 from tianshou.utils.net.common import MLP, Net
 from tianshou.exploration import GaussianNoise, OUNoise
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
@@ -77,25 +76,7 @@ def test_net():
     assert list(net(data, act).shape) == [bsz, 1]
 
 
-def test_summary_writer():
-    # get first instance by key of `default` or your own key
-    writer1 = SummaryWriter.get_instance(
-        key="first", log_dir="log/test_sw/first")
-    assert writer1.log_dir == "log/test_sw/first"
-    writer2 = SummaryWriter.get_instance()
-    assert writer1 is writer2
-    # create new instance by specify a new key
-    writer3 = SummaryWriter.get_instance(
-        key="second", log_dir="log/test_sw/second")
-    assert writer3.log_dir == "log/test_sw/second"
-    writer4 = SummaryWriter.get_instance(key="second")
-    assert writer3 is writer4
-    assert writer1 is not writer3
-    assert writer1.log_dir != writer4.log_dir
-
-
 if __name__ == '__main__':
     test_noise()
     test_moving_average()
     test_net()
-    test_summary_writer()

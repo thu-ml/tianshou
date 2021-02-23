@@ -4,7 +4,7 @@ import numpy as np
 from torch import nn
 from numba import njit
 from abc import ABC, abstractmethod
-from typing import Any, List, Union, Mapping, Optional, Callable
+from typing import Any, Dict, Union, Optional, Callable
 
 from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
@@ -124,12 +124,10 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
     @abstractmethod
-    def learn(
-        self, batch: Batch, **kwargs: Any
-    ) -> Mapping[str, Union[float, List[float]]]:
+    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, Any]:
         """Update policy with a given batch of data.
 
-        :return: A dict which includes loss and its corresponding label.
+        :return: A dict, including the data needed to be logged (e.g., loss).
 
         .. note::
 
@@ -162,18 +160,20 @@ class BasePolicy(ABC, nn.Module):
 
     def update(
         self, sample_size: int, buffer: Optional[ReplayBuffer], **kwargs: Any
-    ) -> Mapping[str, Union[float, List[float]]]:
+    ) -> Dict[str, Any]:
         """Update the policy network and replay buffer.
 
-        It includes 3 function steps: process_fn, learn, and post_process_fn.
-        In addition, this function will change the value of ``self.updating``:
-        it will be False before this function and will be True when executing
-        :meth:`update`. Please refer to :ref:`policy_state` for more detailed
-        explanation.
+        It includes 3 function steps: process_fn, learn, and post_process_fn. In
+        addition, this function will change the value of ``self.updating``: it will be
+        False before this function and will be True when executing :meth:`update`.
+        Please refer to :ref:`policy_state` for more detailed explanation.
 
-        :param int sample_size: 0 means it will extract all the data from the
-            buffer, otherwise it will sample a batch with given sample_size.
+        :param int sample_size: 0 means it will extract all the data from the buffer,
+            otherwise it will sample a batch with given sample_size.
         :param ReplayBuffer buffer: the corresponding replay buffer.
+
+        :return: A dict, including the data needed to be logged (e.g., loss) from
+            ``policy.learn()``.
         """
         if buffer is None:
             return {}

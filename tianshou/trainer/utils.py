@@ -26,7 +26,7 @@ def test_episode(
     result = collector.collect(n_episode=n_episode)
     if reward_metric:
         result["rews"] = reward_metric(result["rews"])
-    if logger:
+    if logger and global_step is not None:
         logger.log_test_data(result, global_step)
     return result
 
