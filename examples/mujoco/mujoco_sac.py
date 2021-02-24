@@ -2,11 +2,13 @@ import os
 import gym
 import torch
 import pprint
+import datetime
 import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import SACPolicy
+from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
@@ -114,8 +116,11 @@ def test_sac(args=get_args()):
         exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'sac')
+    log_path = os.path.join(args.logdir, args.task, 'sac', 'seed_' + str(
+        args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
     writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger = BasicLogger(writer, train_interval=args.log_interval)
 
     def watch():
         # watch agent's performance
@@ -141,8 +146,8 @@ def test_sac(args=get_args()):
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer,
-        update_per_step=args.update_per_step, log_interval=args.log_interval)
+        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, logger=logger,
+        update_per_step=args.update_per_step)
     pprint.pprint(result)
     watch()
 

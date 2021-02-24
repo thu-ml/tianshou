@@ -2,12 +2,11 @@ import time
 import tqdm
 import numpy as np
 from collections import defaultdict
-from torch.utils.tensorboard import SummaryWriter
 from typing import Dict, Union, Callable, Optional
 
 from tianshou.data import Collector
 from tianshou.policy import BasePolicy
-from tianshou.utils import tqdm_config, MovAvg
+from tianshou.utils import tqdm_config, MovAvg, BaseLogger, LazyLogger
 from tianshou.trainer import test_episode, gather_info
 
 
@@ -26,8 +25,7 @@ def offpolicy_trainer(
     stop_fn: Optional[Callable[[float], bool]] = None,
     save_fn: Optional[Callable[[BasePolicy], None]] = None,
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-    writer: Optional[SummaryWriter] = None,
-    log_interval: int = 1,
+    logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
     test_in_train: bool = True,
 ) -> Dict[str, Union[float, str]]:
@@ -70,25 +68,24 @@ def offpolicy_trainer(
         result to monitor training in the multi-agent RL setting. This function
         specifies what is the desired metric, e.g., the reward of agent 1 or the
         average reward over all agents.
-    :param torch.utils.tensorboard.SummaryWriter writer: a TensorBoard SummaryWriter;
-        if None is given, it will not write logs to TensorBoard. Default to None.
-    :param int log_interval: the log interval of the writer. Default to 1.
+    :param BaseLogger logger: A logger that logs statistics during
+        training/testing/updating. Default to a logger that doesn't log anything.
     :param bool verbose: whether to print the information. Default to True.
     :param bool test_in_train: whether to test in the training phase. Default to True.
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
     env_step, gradient_step = 0, 0
+    last_rew, last_len = 0.0, 0
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
     test_result = test_episode(policy, test_collector, test_fn, 0, episode_per_test,
-                               writer, env_step, reward_metric)
+                               logger, env_step, reward_metric)
     best_epoch = 0
-    best_reward = test_result["rews"].mean()
-    best_reward_std = test_result["rews"].std()
+    best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
     for epoch in range(1, 1 + max_epoch):
         # train
         policy.train()
@@ -99,34 +96,32 @@ def offpolicy_trainer(
                 if train_fn:
                     train_fn(epoch, env_step)
                 result = train_collector.collect(n_step=step_per_collect)
-                if len(result["rews"]) > 0 and reward_metric:
+                if result["n/ep"] > 0 and reward_metric:
                     result["rews"] = reward_metric(result["rews"])
                 env_step += int(result["n/st"])
                 t.update(result["n/st"])
+                logger.log_train_data(result, env_step)
+                last_rew = result['rew'] if 'rew' in result else last_rew
+                last_len = result['len'] if 'len' in result else last_len
                 data = {
                     "env_step": str(env_step),
-                    "rew": f"{result['rews'].mean():.2f}",
-                    "len": str(result["lens"].mean()),
+                    "rew": f"{last_rew:.2f}",
+                    "len": str(last_len),
                     "n/ep": str(int(result["n/ep"])),
                     "n/st": str(int(result["n/st"])),
                 }
                 if result["n/ep"] > 0:
-                    if writer and env_step % log_interval == 0:
-                        writer.add_scalar(
-                            "train/rew", result['rews'].mean(), global_step=env_step)
-                        writer.add_scalar(
-                            "train/len", result['lens'].mean(), global_step=env_step)
-                    if test_in_train and stop_fn and stop_fn(result["rews"].mean()):
+                    if test_in_train and stop_fn and stop_fn(result["rew"]):
                         test_result = test_episode(
                             policy, test_collector, test_fn,
-                            epoch, episode_per_test, writer, env_step)
-                        if stop_fn(test_result["rews"].mean()):
+                            epoch, episode_per_test, logger, env_step)
+                        if stop_fn(test_result["rew"]):
                             if save_fn:
                                 save_fn(policy)
                             t.set_postfix(**data)
                             return gather_info(
                                 start_time, train_collector, test_collector,
-                                test_result["rews"].mean(), test_result["rews"].std())
+                                test_result["rew"], test_result["rew_std"])
                         else:
                             policy.train()
                 for i in range(round(update_per_step * result["n/st"])):
@@ -134,26 +129,24 @@ def offpolicy_trainer(
                     losses = policy.update(batch_size, train_collector.buffer)
                     for k in losses.keys():
                         stat[k].add(losses[k])
-                        data[k] = f"{stat[k].get():.6f}"
-                        if writer and gradient_step % log_interval == 0:
-                            writer.add_scalar(
-                                k, stat[k].get(), global_step=gradient_step)
+                        losses[k] = stat[k].get()
+                        data[k] = f"{losses[k]:.6f}"
+                    logger.log_update_data(losses, gradient_step)
                     t.set_postfix(**data)
             if t.n <= t.total:
                 t.update()
         # test
         test_result = test_episode(policy, test_collector, test_fn, epoch,
-                                   episode_per_test, writer, env_step, reward_metric)
-        if best_epoch == -1 or best_reward < test_result["rews"].mean():
-            best_reward = test_result["rews"].mean()
-            best_reward_std = test_result['rews'].std()
+                                   episode_per_test, logger, env_step, reward_metric)
+        rew, rew_std = test_result["rew"], test_result["rew_std"]
+        if best_epoch == -1 or best_reward < rew:
+            best_reward, best_reward_std = rew, rew_std
             best_epoch = epoch
             if save_fn:
                 save_fn(policy)
         if verbose:
-            print(f"Epoch #{epoch}: test_reward: {test_result['rews'].mean():.6f} ± "
-                  f"{test_result['rews'].std():.6f}, best_reward: {best_reward:.6f} ± "
-                  f"{best_reward_std:.6f} in #{best_epoch}")
+            print(f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
+                  f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break
     return gather_info(start_time, train_collector, test_collector,

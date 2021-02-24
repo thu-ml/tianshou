@@ -7,6 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.env import DummyVectorEnv
 from tianshou.data import Collector
 from tianshou.policy import RandomPolicy
+from tianshou.utils import BasicLogger
 
 from tic_tac_toe_env import TicTacToeEnv
 from tic_tac_toe import get_parser, get_agents, train_agent, watch
@@ -31,7 +32,8 @@ def gomoku(args=get_args()):
 
     # log
     log_path = os.path.join(args.logdir, 'Gomoku', 'dqn')
-    args.writer = SummaryWriter(log_path)
+    writer = SummaryWriter(log_path)
+    args.logger = BasicLogger(writer)
 
     opponent_pool = [agent_opponent]
 

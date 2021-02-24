@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Optional, Tuple
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
@@ -131,12 +132,10 @@ def train_agent(
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
-    if not hasattr(args, 'writer'):
-        log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
-        writer = SummaryWriter(log_path)
-        args.writer = writer
-    else:
-        writer = args.writer
+    log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger = BasicLogger(writer)
 
     def save_fn(policy):
         if hasattr(args, 'model_save_path'):
@@ -166,7 +165,7 @@ def train_agent(
         args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
         stop_fn=stop_fn, save_fn=save_fn, update_per_step=args.update_per_step,
-        writer=writer, test_in_train=False, reward_metric=reward_metric)
+        logger=logger, test_in_train=False, reward_metric=reward_metric)
 
     return result, policy.policies[args.agent_id - 1]
 

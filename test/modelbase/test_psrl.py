@@ -1,3 +1,4 @@
+import os
 import gym
 import torch
 import pprint
@@ -6,6 +7,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import PSRLPolicy
+# from tianshou.utils import BasicLogger
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
@@ -66,7 +68,10 @@ def test_psrl(args=get_args()):
         exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
-    writer = SummaryWriter(args.logdir + '/' + args.task)
+    log_path = os.path.join(args.logdir, args.task, 'psrl')
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    # logger = BasicLogger(writer)
 
     def stop_fn(mean_rewards):
         if env.spec.reward_threshold:
@@ -75,11 +80,12 @@ def test_psrl(args=get_args()):
             return False
 
     train_collector.collect(n_step=args.buffer_size, random=True)
-    # trainer
+    # trainer, test it without logger
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, 1, args.test_num, 0,
-        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, writer=writer,
+        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn,
+        # logger=logger,
         test_in_train=False)
 
     if __name__ == '__main__':

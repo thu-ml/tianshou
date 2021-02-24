@@ -184,9 +184,9 @@ class Collector(object):
 
             * ``n/ep`` collected number of episodes.
             * ``n/st`` collected number of steps.
-            * ``rews`` list of episode reward over collected episodes.
-            * ``lens`` list of episode length over collected episodes.
-            * ``idxs`` list of episode start index in buffer over collected episodes.
+            * ``rews`` array of episode reward over collected episodes.
+            * ``lens`` array of episode length over collected episodes.
+            * ``idxs`` array of episode start index in buffer over collected episodes.
         """
         assert not self.env.is_async, "Please use AsyncCollector if using async venv."
         if n_step is not None:
@@ -379,9 +379,9 @@ class AsyncCollector(Collector):
 
             * ``n/ep`` collected number of episodes.
             * ``n/st`` collected number of steps.
-            * ``rews`` list of episode reward over collected episodes.
-            * ``lens`` list of episode length over collected episodes.
-            * ``idxs`` list of episode start index in buffer over collected episodes.
+            * ``rews`` array of episode reward over collected episodes.
+            * ``lens`` array of episode length over collected episodes.
+            * ``idxs`` array of episode start index in buffer over collected episodes.
         """
         # collect at least n_step or n_episode
         if n_step is not None:

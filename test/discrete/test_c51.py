@@ -7,6 +7,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import C51Policy
+from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
@@ -89,6 +90,7 @@ def test_c51(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'c51')
     writer = SummaryWriter(log_path)
+    logger = BasicLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
@@ -115,7 +117,7 @@ def test_c51(args=get_args()):
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, save_fn=save_fn, writer=writer)
+        stop_fn=stop_fn, save_fn=save_fn, logger=logger)
 
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':

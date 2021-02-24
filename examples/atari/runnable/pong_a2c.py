@@ -4,7 +4,9 @@ import pprint
 import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.policy import A2CPolicy
+from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
@@ -79,7 +81,9 @@ def test_a2c(args=get_args()):
         preprocess_fn=preprocess_fn, exploration_noise=True)
     test_collector = Collector(policy, test_envs, preprocess_fn=preprocess_fn)
     # log
-    writer = SummaryWriter(os.path.join(args.logdir, args.task, 'a2c'))
+    log_path = os.path.join(args.logdir, args.task, 'a2c')
+    writer = SummaryWriter(log_path)
+    logger = BasicLogger(writer)
 
     def stop_fn(mean_rewards):
         if env.env.spec.reward_threshold:
@@ -91,7 +95,7 @@ def test_a2c(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.repeat_per_collect, args.test_num, args.batch_size,
-        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, writer=writer)
+        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, logger=logger)
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!

@@ -197,6 +197,7 @@ buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
 step_per_epoch, step_per_collect = 10000, 10
 writer = SummaryWriter('log/dqn')  # tensorboard is also supported!
+logger = ts.utils.BasicLogger(writer)
 ```
 
 Make environments:
@@ -237,7 +238,7 @@ result = ts.trainer.offpolicy_trainer(
     train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
     test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
-    writer=writer)
+    logger=logger)
 print(f'Finished training! Use {result["duration"]}')
 ```
 

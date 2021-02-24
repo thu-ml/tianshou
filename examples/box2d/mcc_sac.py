@@ -7,11 +7,12 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import SACPolicy
-from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import OUNoise
 from tianshou.utils.net.common import Net
+from tianshou.trainer import offpolicy_trainer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
@@ -103,6 +104,7 @@ def test_sac(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'sac')
     writer = SummaryWriter(log_path)
+    logger = BasicLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
@@ -115,7 +117,7 @@ def test_sac(args=get_args()):
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.step_per_collect, args.test_num, args.batch_size,
         update_per_step=args.update_per_step, stop_fn=stop_fn,
-        save_fn=save_fn, writer=writer)
+        save_fn=save_fn, logger=logger)
 
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':
