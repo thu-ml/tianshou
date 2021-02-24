@@ -117,7 +117,7 @@ def test_dqn(args=get_args()):
         else:
             eps = args.eps_train_final
         policy.set_eps(eps)
-        logger.write('train/eps', eps, env_step)
+        logger.write('train/eps', env_step, eps)
 
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
