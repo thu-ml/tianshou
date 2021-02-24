@@ -4,13 +4,14 @@ import pprint
 import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.policy import A2CPolicy
+from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.discrete import Actor, Critic
-from tianshou.utils import BasicLogger
 
 from atari import create_atari_environment, preprocess_fn
 

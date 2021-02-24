@@ -129,9 +129,8 @@ def offpolicy_trainer(
                     losses = policy.update(batch_size, train_collector.buffer)
                     for k in losses.keys():
                         stat[k].add(losses[k])
-                        data[k] = f"{stat[k].get():.6f}"
-                    for k in losses.keys():
                         losses[k] = stat[k].get()
+                        data[k] = f"{losses[k]:.6f}"
                     logger.log_update_data(losses, gradient_step)
                     t.set_postfix(**data)
             if t.n <= t.total:
@@ -139,15 +138,16 @@ def offpolicy_trainer(
         # test
         test_result = test_episode(policy, test_collector, test_fn, epoch,
                                    episode_per_test, logger, env_step, reward_metric)
-        if best_epoch == -1 or best_reward < test_result["rew"]:
-            best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
+        rew, rew_std = test_result["rew"], test_result["rew_std"]
+        if best_epoch == -1 or best_reward < rew:
+            best_reward, best_reward_std = rew, rew_std
             best_epoch = epoch
             if save_fn:
                 save_fn(policy)
         if verbose:
-            print(f"Epoch #{epoch}: test_reward: {test_result['rew']:.6f} ± "
-                  f"{test_result['rew_std']:.6f}, best_reward: {best_reward:.6f} ± "
-                  f"{best_reward_std:.6f} in #{best_epoch}")
+            print(
+                f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_reward:"
+                f" {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break
     return gather_info(start_time, train_collector, test_collector,
