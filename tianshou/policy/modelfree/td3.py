@@ -37,8 +37,6 @@ class TD3Policy(DDPGPolicy):
         network, default to 0.5.
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to False.
-    :param bool ignore_done: ignore the done flag while training the policy,
-        defaults to False.
 
     .. seealso::
 
@@ -62,13 +60,12 @@ class TD3Policy(DDPGPolicy):
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,
         reward_normalization: bool = False,
-        ignore_done: bool = False,
         estimation_step: int = 1,
         **kwargs: Any,
     ) -> None:
-        super().__init__(actor, actor_optim, None, None, action_range,
-                         tau, gamma, exploration_noise, reward_normalization,
-                         ignore_done, estimation_step, **kwargs)
+        super().__init__(actor, actor_optim, None, None, action_range, tau, gamma,
+                         exploration_noise, reward_normalization,
+                         estimation_step, **kwargs)
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
         self.critic1_optim = critic1_optim

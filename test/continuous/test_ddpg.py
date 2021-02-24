@@ -83,7 +83,6 @@ def test_ddpg(args=get_args()):
         tau=args.tau, gamma=args.gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         reward_normalization=args.rew_norm,
-        ignore_done=args.ignore_done,
         estimation_step=args.n_step)
     # collector
     train_collector = Collector(

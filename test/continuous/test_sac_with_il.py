@@ -91,7 +91,6 @@ def test_sac_with_il(args=get_args()):
         action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma, alpha=args.alpha,
         reward_normalization=args.rew_norm,
-        ignore_done=args.ignore_done,
         estimation_step=args.n_step)
     # collector
     train_collector = Collector(

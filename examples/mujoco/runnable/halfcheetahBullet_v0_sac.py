@@ -81,7 +81,7 @@ def test_sac(args=get_args()):
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma, alpha=args.alpha,
-        reward_normalization=True, ignore_done=True)
+        reward_normalization=True)
     # collector
     train_collector = Collector(
         policy, train_envs,

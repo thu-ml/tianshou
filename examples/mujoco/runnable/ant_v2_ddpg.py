@@ -73,7 +73,7 @@ def test_ddpg(args=get_args()):
         action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
-        reward_normalization=True, ignore_done=True)
+        reward_normalization=True)
     # collector
     train_collector = Collector(
         policy, train_envs,
