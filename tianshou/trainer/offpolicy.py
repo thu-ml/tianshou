@@ -145,9 +145,8 @@ def offpolicy_trainer(
             if save_fn:
                 save_fn(policy)
         if verbose:
-            print(
-                f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_reward:"
-                f" {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
+            print(f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
+                  f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break
     return gather_info(start_time, train_collector, test_collector,
