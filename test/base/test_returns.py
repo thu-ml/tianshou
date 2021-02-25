@@ -24,8 +24,8 @@ def test_episodic_returns(size=2560):
     batch = Batch(
         done=np.array([1, 0, 0, 1, 0, 1, 0, 1.]),
         rew=np.array([0, 1, 2, 3, 4, 5, 6, 7.]),
-        info=Batch( {'TimeLimit.truncated':
-        np.array([False, False, False, False, False, True, False, False])})
+        info=Batch({'TimeLimit.truncated':
+                    np.array([False, False, False, False, False, True, False, False])})
     )
     for b in batch:
         b.obs = b.act = 1
@@ -74,9 +74,9 @@ def test_episodic_returns(size=2560):
     batch = Batch(
         done=np.array([0, 0, 0, 1., 0, 0, 0, 1, 0, 0, 0, 1]),
         rew=np.array([101, 102, 103., 200, 104, 105, 106, 201, 107, 108, 109, 202]),
-        info=Batch( {'TimeLimit.truncated':
-        np.array([False, False, False, True, False, False,
-                  False, True, False, False, False, False])})
+        info=Batch({'TimeLimit.truncated':
+                    np.array([False, False, False, True, False, False,
+                              False, True, False, False, False, False])})
     )
     for b in batch:
         b.obs = b.act = 1
@@ -84,9 +84,9 @@ def test_episodic_returns(size=2560):
     v = np.array([2., 3., 4, -1, 5., 6., 7, -2, 8., 9., 10, -3])
     ret = fn(batch, buf, buf.sample_index(0), v, gamma=0.99, gae_lambda=0.95)
     returns = np.array(
-        [454.0109, 375.2386, 290.3669  , 199.01,
-         462.9138, 381.3571, 293.5248  , 199.02,
-         474.2876, 390.1027, 299.476   , 202.  ])
+        [454.0109, 375.2386, 290.3669, 199.01,
+         462.9138, 381.3571, 293.5248, 199.02,
+         474.2876, 390.1027, 299.476,  202.])
     assert np.allclose(ret.returns, returns)
 
     if __name__ == '__main__':
@@ -145,7 +145,8 @@ def compute_nstep_return_base(nstep, gamma, buffer, indice):
 def test_nstep_returns(size=10000):
     buf = ReplayBuffer(10)
     for i in range(12):
-        buf.add(Batch(obs=0, act=0, rew=i + 1, done=i % 4 == 3, info={"TimeLimit.truncated": i==3}))
+        buf.add(Batch(obs=0, act=0, rew=i + 1, done=i %
+                      4 == 3, info={"TimeLimit.truncated": i == 3}))
     batch, indice = buf.sample(0)
     assert np.allclose(indice, [2, 3, 4, 5, 6, 7, 8, 9, 0, 1])
     # rew:  [11, 12, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -176,7 +177,8 @@ def test_nstep_returns(size=10000):
     returns = to_numpy(BasePolicy.compute_nstep_return(
         batch, buf, indice, target_q_fn, gamma=.1, n_step=10
     ).pop('returns').reshape(-1))
-    assert np.allclose(returns, [3.36, 3.6, 5.678, 6.78, 7.8, 8, 10.122, 11.22, 12.2, 12])
+    assert np.allclose(returns, [3.36, 3.6, 5.678, 6.78,
+                                 7.8, 8, 10.122, 11.22, 12.2, 12])
     r_ = compute_nstep_return_base(10, .1, buf, indice)
     assert np.allclose(returns, r_)
     returns_multidim = to_numpy(BasePolicy.compute_nstep_return(
@@ -188,7 +190,7 @@ def test_nstep_returns(size=10000):
         buf = ReplayBuffer(size)
         for i in range(int(size * 1.5)):
             buf.add(Batch(obs=0, act=0, rew=i + 1, done=np.random.randint(3) == 0,
-                          info={"TimeLimit.truncated": i==3}))
+                          info={"TimeLimit.truncated": i == 3}))
         batch, indice = buf.sample(256)
 
         def vanilla():
