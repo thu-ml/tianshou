@@ -382,7 +382,7 @@ def _nstep_return(
     gammas = np.full(indices[0].shape, n_step)
     for n in range(n_step - 1, -1, -1):
         now = indices[n]
-        gammas[end_flag[now] > 0] = n
+        gammas[end_flag[now] > 0] = n + 1
         returns[end_flag[now] > 0] = 0.0
         returns = (rew[now].reshape(bsz, 1) - mean) / std + gamma * returns
     target_q = target_q * gamma_buffer[gammas].reshape(bsz, 1) + returns
