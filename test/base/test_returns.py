@@ -173,6 +173,17 @@ def test_nstep_returns(size=10000):
         batch, buf, indice, target_q_fn_multidim, gamma=.1, n_step=2
     ).pop('returns'))
     assert np.allclose(returns_multidim, returns[:, np.newaxis])
+    # test nstep = 10
+    returns = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn, gamma=.1, n_step=10
+    ).pop('returns').reshape(-1))
+    assert np.allclose(returns, [3.4, 4, 5.678, 6.78, 7.8, 8, 10.122, 11.22, 12.2, 12])
+    r_ = compute_nstep_return_base(10, .1, buf, indice)
+    assert np.allclose(returns, r_)
+    returns_multidim = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn_multidim, gamma=.1, n_step=10
+    ).pop('returns'))
+    assert np.allclose(returns_multidim, returns[:, np.newaxis])
 
 
 def test_nstep_returns_with_timelimit(size=10000):
@@ -223,7 +234,7 @@ def test_nstep_returns_with_timelimit(size=10000):
         buf = ReplayBuffer(size)
         for i in range(int(size * 1.5)):
             buf.add(Batch(obs=0, act=0, rew=i + 1, done=np.random.randint(3) == 0,
-                          info={"TimeLimit.truncated": i == 3}))
+                          info={"TimeLimit.truncated": i % 33 == 0}))
         batch, indice = buf.sample(256)
 
         def vanilla():
