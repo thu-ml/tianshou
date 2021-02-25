@@ -205,6 +205,7 @@ def test_nstep_returns(size=10000):
         print('nstep vanilla', timeit(vanilla, setup=vanilla, number=cnt))
         print('nstep optim  ', timeit(optimized, setup=optimized, number=cnt))
 
+
 def test_nstep_returns_without_timelimit(size=10000):
     buf = ReplayBuffer(10)
     for i in range(12):
@@ -235,6 +236,7 @@ def test_nstep_returns_without_timelimit(size=10000):
         batch, buf, indice, target_q_fn_multidim, gamma=.1, n_step=2
     ).pop('returns'))
     assert np.allclose(returns_multidim, returns[:, np.newaxis])
+
 
 if __name__ == '__main__':
     test_nstep_returns()
