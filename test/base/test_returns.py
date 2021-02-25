@@ -146,6 +146,38 @@ def compute_nstep_return_base(nstep, gamma, buffer, indice):
 def test_nstep_returns(size=10000):
     buf = ReplayBuffer(10)
     for i in range(12):
+        buf.add(Batch(obs=0, act=0, rew=i + 1, done=i % 4 == 3))
+    batch, indice = buf.sample(0)
+    assert np.allclose(indice, [2, 3, 4, 5, 6, 7, 8, 9, 0, 1])
+    # rew:  [11, 12, 3, 4, 5, 6, 7, 8, 9, 10]
+    # done: [ 0,  1, 0, 1, 0, 0, 0, 1, 0, 0]
+    # test nstep = 1
+    returns = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn, gamma=.1, n_step=1
+    ).pop('returns').reshape(-1))
+    assert np.allclose(returns, [2.6, 4, 4.4, 5.3, 6.2, 8, 8, 8.9, 9.8, 12])
+    r_ = compute_nstep_return_base(1, .1, buf, indice)
+    assert np.allclose(returns, r_), (r_, returns)
+    returns_multidim = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn_multidim, gamma=.1, n_step=1
+    ).pop('returns'))
+    assert np.allclose(returns_multidim, returns[:, np.newaxis])
+    # test nstep = 2
+    returns = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn, gamma=.1, n_step=2
+    ).pop('returns').reshape(-1))
+    assert np.allclose(returns, [3.4, 4, 5.53, 6.62, 7.8, 8, 9.89, 10.98, 12.2, 12])
+    r_ = compute_nstep_return_base(2, .1, buf, indice)
+    assert np.allclose(returns, r_)
+    returns_multidim = to_numpy(BasePolicy.compute_nstep_return(
+        batch, buf, indice, target_q_fn_multidim, gamma=.1, n_step=2
+    ).pop('returns'))
+    assert np.allclose(returns_multidim, returns[:, np.newaxis])
+
+
+def test_nstep_returns_with_timelimit(size=10000):
+    buf = ReplayBuffer(10)
+    for i in range(12):
         buf.add(Batch(obs=0, act=0, rew=i + 1, done=i % 4 == 3,
                       info={"TimeLimit.truncated": i == 3}))
     batch, indice = buf.sample(0)
@@ -206,38 +238,7 @@ def test_nstep_returns(size=10000):
         print('nstep optim  ', timeit(optimized, setup=optimized, number=cnt))
 
 
-def test_nstep_returns_without_timelimit(size=10000):
-    buf = ReplayBuffer(10)
-    for i in range(12):
-        buf.add(Batch(obs=0, act=0, rew=i + 1, done=i % 4 == 3))
-    batch, indice = buf.sample(0)
-    assert np.allclose(indice, [2, 3, 4, 5, 6, 7, 8, 9, 0, 1])
-    # rew:  [11, 12, 3, 4, 5, 6, 7, 8, 9, 10]
-    # done: [ 0,  1, 0, 1, 0, 0, 0, 1, 0, 0]
-    # test nstep = 1
-    returns = to_numpy(BasePolicy.compute_nstep_return(
-        batch, buf, indice, target_q_fn, gamma=.1, n_step=1
-    ).pop('returns').reshape(-1))
-    assert np.allclose(returns, [2.6, 4, 4.4, 5.3, 6.2, 8, 8, 8.9, 9.8, 12])
-    r_ = compute_nstep_return_base(1, .1, buf, indice)
-    assert np.allclose(returns, r_), (r_, returns)
-    returns_multidim = to_numpy(BasePolicy.compute_nstep_return(
-        batch, buf, indice, target_q_fn_multidim, gamma=.1, n_step=1
-    ).pop('returns'))
-    assert np.allclose(returns_multidim, returns[:, np.newaxis])
-    # test nstep = 2
-    returns = to_numpy(BasePolicy.compute_nstep_return(
-        batch, buf, indice, target_q_fn, gamma=.1, n_step=2
-    ).pop('returns').reshape(-1))
-    assert np.allclose(returns, [3.4, 4, 5.53, 6.62, 7.8, 8, 9.89, 10.98, 12.2, 12])
-    r_ = compute_nstep_return_base(2, .1, buf, indice)
-    assert np.allclose(returns, r_)
-    returns_multidim = to_numpy(BasePolicy.compute_nstep_return(
-        batch, buf, indice, target_q_fn_multidim, gamma=.1, n_step=2
-    ).pop('returns'))
-    assert np.allclose(returns_multidim, returns[:, np.newaxis])
-
-
 if __name__ == '__main__':
     test_nstep_returns()
+    test_nstep_returns_with_timelimit()
     test_episodic_returns()
