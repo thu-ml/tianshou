@@ -286,7 +286,7 @@ class BasePolicy(ABC, nn.Module):
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """
-        assert rew_norm == False, (
+        assert not rew_norm, (
             "Reward normalization in computing n-step return is unsupported for now.")
         rew = buffer.rew
         bsz = len(indice)

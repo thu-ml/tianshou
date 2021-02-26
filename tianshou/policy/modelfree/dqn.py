@@ -57,7 +57,7 @@ class DQNPolicy(BasePolicy):
             self.model_old = deepcopy(self.model)
             self.model_old.eval()
         self._rew_norm = reward_normalization
-        assert self._rew_norm == False, (
+        assert not self._rew_norm, (
             "Reward normalization in offpolicy algorithm is unsupported for now.")
 
     def set_eps(self, eps: float) -> None:

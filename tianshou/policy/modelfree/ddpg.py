@@ -71,7 +71,7 @@ class DDPGPolicy(BasePolicy):
         # it is only a little difference to use GaussianNoise
         # self.noise = OUNoise()
         self._rew_norm = reward_normalization
-        assert self._rew_norm == False, (
+        assert not self._rew_norm, (
             "Reward normalization in offpolicy algorithm is unsupported for now.")
         assert estimation_step > 0, "estimation_step should be greater than 0"
         self._n_step = estimation_step
