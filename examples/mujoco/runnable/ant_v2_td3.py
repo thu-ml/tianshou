@@ -80,8 +80,7 @@ def test_td3(args=get_args()):
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         policy_noise=args.policy_noise,
         update_actor_freq=args.update_actor_freq,
-        noise_clip=args.noise_clip,
-        reward_normalization=True)
+        noise_clip=args.noise_clip)
     # collector
     train_collector = Collector(
         policy, train_envs,
