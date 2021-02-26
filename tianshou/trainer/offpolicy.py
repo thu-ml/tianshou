@@ -106,7 +106,7 @@ def offpolicy_trainer(
                 data = {
                     "env_step": str(env_step),
                     "rew": f"{last_rew:.2f}",
-                    "len": str(last_len),
+                    "len": str(int(last_len)),
                     "n/ep": str(int(result["n/ep"])),
                     "n/st": str(int(result["n/st"])),
                 }
@@ -130,7 +130,7 @@ def offpolicy_trainer(
                     for k in losses.keys():
                         stat[k].add(losses[k])
                         losses[k] = stat[k].get()
-                        data[k] = f"{losses[k]:.6f}"
+                        data[k] = f"{losses[k]:.3f}"
                     logger.log_update_data(losses, gradient_step)
                     t.set_postfix(**data)
             if t.n <= t.total:

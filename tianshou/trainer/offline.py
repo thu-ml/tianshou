@@ -79,7 +79,7 @@ def offline_trainer(
                 for k in losses.keys():
                     stat[k].add(losses[k])
                     losses[k] = stat[k].get()
-                    data[k] = f"{losses[k]:.6f}"
+                    data[k] = f"{losses[k]:.3f}"
                 logger.log_update_data(losses, gradient_step)
                 t.set_postfix(**data)
         # test
