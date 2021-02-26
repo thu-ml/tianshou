@@ -14,7 +14,7 @@ class ImitationPolicy(BasePolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> a)
     :param torch.optim.Optimizer optim: for optimizing the model.
     :param str mode: indicate the imitation type ("continuous" or "discrete"
-        action space), defaults to "continuous".
+        action space). Default to "continuous".
 
     .. seealso::
 
@@ -32,9 +32,8 @@ class ImitationPolicy(BasePolicy):
         super().__init__(**kwargs)
         self.model = model
         self.optim = optim
-        assert (
-            mode in ["continuous", "discrete"]
-        ), f"Mode {mode} is not in ['continuous', 'discrete']."
+        assert mode in ["continuous", "discrete"], \
+            f"Mode {mode} is not in ['continuous', 'discrete']."
         self.mode = mode
 
     def forward(

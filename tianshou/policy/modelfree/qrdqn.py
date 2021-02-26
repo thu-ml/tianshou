@@ -16,13 +16,12 @@ class QRDQNPolicy(DQNPolicy):
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float discount_factor: in [0, 1].
     :param int num_quantiles: the number of quantile midpoints in the inverse
-        cumulative distribution function of the value, defaults to 200.
-    :param int estimation_step: greater than 1, the number of steps to look
-        ahead.
+        cumulative distribution function of the value. Default to 200.
+    :param int estimation_step: greater than 1, the number of steps to look ahead.
     :param int target_update_freq: the target network update frequency (0 if
         you do not use the target network).
-    :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to False.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1).
+        Default to False.
 
     .. seealso::
 
@@ -50,9 +49,7 @@ class QRDQNPolicy(DQNPolicy):
             ((tau[:-1] + tau[1:]) / 2).view(1, -1, 1), requires_grad=False)
         warnings.filterwarnings("ignore", message="Using a target size")
 
-    def _target_q(
-        self, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> torch.Tensor:
+    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         if self._target:
             a = self(batch, input="obs_next").act

@@ -15,30 +15,27 @@ class SACPolicy(DDPGPolicy):
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
-    :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s,
-        a))
+    :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic1_optim: the optimizer for the first
         critic network.
-    :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s,
-        a))
+    :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic2_optim: the optimizer for the second
         critic network.
     :param action_range: the action range (minimum, maximum).
     :type action_range: Tuple[float, float]
-    :param float tau: param for soft update of the target network, defaults to
-        0.005.
-    :param float gamma: discount factor, in [0, 1], defaults to 0.99.
+    :param float tau: param for soft update of the target network. Default to 0.005.
+    :param float gamma: discount factor, in [0, 1]. Default to 0.99.
     :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
-        regularization coefficient, default to 0.2.
+        regularization coefficient. Default to 0.2.
         If a tuple (target_entropy, log_alpha, alpha_optim) is provided, then
         alpha is automatatically tuned.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to False.
-    :param BaseNoise exploration_noise: add a noise to action for exploration,
-        defaults to None. This is useful when solving hard-exploration problem.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1).
+        Default to False.
+    :param BaseNoise exploration_noise: add a noise to action for exploration.
+        Default to None. This is useful when solving hard-exploration problem.
     :param bool deterministic_eval: whether to use deterministic action (mean
-        of Gaussian policy) instead of stochastic action sampled by the policy,
-        defaults to True.
+        of Gaussian policy) instead of stochastic action sampled by the policy.
+        Default to True.
 
     .. seealso::
 
@@ -57,9 +54,7 @@ class SACPolicy(DDPGPolicy):
         action_range: Tuple[float, float],
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: Union[
-            float, Tuple[float, torch.Tensor, torch.optim.Optimizer]
-        ] = 0.2,
+        alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
         reward_normalization: bool = False,
         estimation_step: int = 1,
         exploration_noise: Optional[BaseNoise] = None,
@@ -98,13 +93,9 @@ class SACPolicy(DDPGPolicy):
         return self
 
     def sync_weight(self) -> None:
-        for o, n in zip(
-            self.critic1_old.parameters(), self.critic1.parameters()
-        ):
+        for o, n in zip(self.critic1_old.parameters(), self.critic1.parameters()):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(
-            self.critic2_old.parameters(), self.critic2.parameters()
-        ):
+        for o, n in zip(self.critic2_old.parameters(), self.critic2.parameters()):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
 
     def forward(  # type: ignore
@@ -128,8 +119,7 @@ class SACPolicy(DDPGPolicy):
         log_prob = dist.log_prob(x).unsqueeze(-1)
         log_prob = log_prob - torch.log(y).sum(-1, keepdim=True)
 
-        return Batch(
-            logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
+        return Batch(logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
 
     def _target_q(
         self, buffer: ReplayBuffer, indice: np.ndarray

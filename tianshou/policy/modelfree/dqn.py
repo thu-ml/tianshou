@@ -19,12 +19,11 @@ class DQNPolicy(BasePolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float discount_factor: in [0, 1].
-    :param int estimation_step: greater than 1, the number of steps to look
-        ahead.
+    :param int estimation_step: greater than 1, the number of steps to look ahead.
     :param int target_update_freq: the target network update frequency (0 if
         you do not use the target network).
-    :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to False.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1).
+        Default to False.
 
     .. seealso::
 
@@ -57,8 +56,6 @@ class DQNPolicy(BasePolicy):
             self.model_old = deepcopy(self.model)
             self.model_old.eval()
         self._rew_norm = reward_normalization
-        assert not self._rew_norm, (
-            "Reward normalization in offpolicy algorithm is unsupported for now.")
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
@@ -74,9 +71,7 @@ class DQNPolicy(BasePolicy):
         """Synchronize the weight for the target network."""
         self.model_old.load_state_dict(self.model.state_dict())
 
-    def _target_q(
-        self, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> torch.Tensor:
+    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
         if self._target:
