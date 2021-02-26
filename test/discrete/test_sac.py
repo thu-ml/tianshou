@@ -32,13 +32,12 @@ def get_args():
     parser.add_argument('--step-per-collect', type=int, default=5)
     parser.add_argument('--update-per-step', type=float, default=0.2)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[128, 128])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
     parser.add_argument('--training-num', type=int, default=5)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.0)
-    parser.add_argument('--rew-norm', type=int, default=0)
+    parser.add_argument('--rew-norm', action="store_true", default=False)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
