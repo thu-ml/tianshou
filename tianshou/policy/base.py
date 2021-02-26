@@ -203,7 +203,12 @@ class BasePolicy(ABC, nn.Module):
         :return: A bool type numpy.ndarray in the same shape with indice. "True" means
             "obs_next" of that buffer[indice] is valid.
         """
-        return ~buffer.done[indice].astype(np.bool)
+        mask = ~buffer.done[indice].astype(np.bool)
+        # info['TimeLimit.truncated'] will be set to True if 'done' flag is generated
+        # because of timelimit of environments. Checkout gym.wrappers.TimeLimit.
+        if hasattr(buffer, 'info') and 'TimeLimit.truncated' in buffer.info:
+            mask = mask | buffer.info['TimeLimit.truncated'][indice]
+        return mask
 
     @staticmethod
     def compute_episodic_return(
@@ -377,7 +382,7 @@ def _nstep_return(
     gammas = np.full(indices[0].shape, n_step)
     for n in range(n_step - 1, -1, -1):
         now = indices[n]
-        gammas[end_flag[now] > 0] = n
+        gammas[end_flag[now] > 0] = n + 1
         returns[end_flag[now] > 0] = 0.0
         returns = (rew[now].reshape(bsz, 1) - mean) / std + gamma * returns
     target_q = target_q * gamma_buffer[gammas].reshape(bsz, 1) + returns

@@ -28,8 +28,6 @@ class DiscreteSACPolicy(SACPolicy):
         alpha is automatatically tuned.
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to ``False``.
-    :param bool ignore_done: ignore the done flag while training the policy,
-        defaults to ``False``.
 
     .. seealso::
 
@@ -51,13 +49,12 @@ class DiscreteSACPolicy(SACPolicy):
             float, Tuple[float, torch.Tensor, torch.optim.Optimizer]
         ] = 0.2,
         reward_normalization: bool = False,
-        ignore_done: bool = False,
         estimation_step: int = 1,
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, actor_optim, critic1, critic1_optim, critic2,
                          critic2_optim, (-np.inf, np.inf), tau, gamma, alpha,
-                         reward_normalization, ignore_done, estimation_step,
+                         reward_normalization, estimation_step,
                          **kwargs)
         self._alpha: Union[float, torch.Tensor]
 

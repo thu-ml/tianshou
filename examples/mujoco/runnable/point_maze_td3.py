@@ -86,7 +86,7 @@ def test_td3(args=get_args()):
         policy_noise=args.policy_noise,
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
-        reward_normalization=True, ignore_done=True)
+        reward_normalization=True)
     # collector
     train_collector = Collector(
         policy, train_envs,

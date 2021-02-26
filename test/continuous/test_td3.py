@@ -95,7 +95,6 @@ def test_td3(args=get_args()):
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
         reward_normalization=args.rew_norm,
-        ignore_done=args.ignore_done,
         estimation_step=args.n_step)
     # collector
     train_collector = Collector(

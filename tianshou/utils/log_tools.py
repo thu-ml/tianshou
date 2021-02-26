@@ -138,7 +138,7 @@ class BasicLogger(BaseLogger):
     def log_update_data(self, update_result: dict, step: int) -> None:
         if step - self.last_log_update_step >= self.update_interval:
             for k, v in update_result.items():
-                self.write("train/" + k, step, v)  # save in train/
+                self.write(k, step, v)
             self.last_log_update_step = step
 
 

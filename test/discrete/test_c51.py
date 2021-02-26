@@ -116,8 +116,8 @@ def test_c51(args=get_args()):
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, save_fn=save_fn, logger=logger)
+        args.batch_size, update_per_step=args.update_per_step, train_fn=train_fn,
+        test_fn=test_fn, stop_fn=stop_fn, save_fn=save_fn, logger=logger)
 
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':

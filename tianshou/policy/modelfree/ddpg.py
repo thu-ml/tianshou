@@ -26,8 +26,6 @@ class DDPGPolicy(BasePolicy):
         add to the action, defaults to ``GaussianNoise(sigma=0.1)``.
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to False.
-    :param bool ignore_done: ignore the done flag while training the policy,
-        defaults to False.
     :param int estimation_step: greater than 1, the number of steps to look
         ahead.
 
@@ -48,7 +46,6 @@ class DDPGPolicy(BasePolicy):
         gamma: float = 0.99,
         exploration_noise: Optional[BaseNoise] = GaussianNoise(sigma=0.1),
         reward_normalization: bool = False,
-        ignore_done: bool = False,
         estimation_step: int = 1,
         **kwargs: Any,
     ) -> None:
@@ -73,7 +70,6 @@ class DDPGPolicy(BasePolicy):
         self._action_scale = (action_range[1] - action_range[0]) / 2.0
         # it is only a little difference to use GaussianNoise
         # self.noise = OUNoise()
-        self._rm_done = ignore_done
         self._rew_norm = reward_normalization
         assert estimation_step > 0, "estimation_step should be greater than 0"
         self._n_step = estimation_step
@@ -110,8 +106,6 @@ class DDPGPolicy(BasePolicy):
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
     ) -> Batch:
-        if self._rm_done:
-            batch.done = batch.done * 0.0
         batch = self.compute_nstep_return(
             batch, buffer, indice, self._target_q,
             self._gamma, self._n_step, self._rew_norm)

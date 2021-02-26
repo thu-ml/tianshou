@@ -34,8 +34,6 @@ class SACPolicy(DDPGPolicy):
         alpha is automatatically tuned.
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         defaults to False.
-    :param bool ignore_done: ignore the done flag while training the policy,
-        defaults to False.
     :param BaseNoise exploration_noise: add a noise to action for exploration,
         defaults to None. This is useful when solving hard-exploration problem.
     :param bool deterministic_eval: whether to use deterministic action (mean
@@ -63,14 +61,13 @@ class SACPolicy(DDPGPolicy):
             float, Tuple[float, torch.Tensor, torch.optim.Optimizer]
         ] = 0.2,
         reward_normalization: bool = False,
-        ignore_done: bool = False,
         estimation_step: int = 1,
         exploration_noise: Optional[BaseNoise] = None,
         deterministic_eval: bool = True,
         **kwargs: Any,
     ) -> None:
         super().__init__(None, None, None, None, action_range, tau, gamma,
-                         exploration_noise, reward_normalization, ignore_done,
+                         exploration_noise, reward_normalization,
                          estimation_step, **kwargs)
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)

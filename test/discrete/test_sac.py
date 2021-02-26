@@ -88,8 +88,7 @@ def test_discrete_sac(args=get_args()):
     policy = DiscreteSACPolicy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         args.tau, args.gamma, args.alpha,
-        reward_normalization=args.rew_norm,
-        ignore_done=args.ignore_done)
+        reward_normalization=args.rew_norm)
     # collector
     train_collector = Collector(
         policy, train_envs,
