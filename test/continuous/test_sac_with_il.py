@@ -26,7 +26,7 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.2)
-    parser.add_argument('--epoch', type=int, default=20)
+    parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=24000)
     parser.add_argument('--il-step-per-epoch', type=int, default=500)
     parser.add_argument('--step-per-collect', type=int, default=10)
