@@ -24,7 +24,7 @@ class DDPGPolicy(BasePolicy):
         add to the action. Default to ``GaussianNoise(sigma=0.1)``.
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         Default to False.
-    :param int estimation_step: greater than 1, the number of steps to look ahead.
+    :param int estimation_step: the number of steps to look ahead. Default to 1.
 
     .. seealso::
 

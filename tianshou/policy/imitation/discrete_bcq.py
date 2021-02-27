@@ -17,7 +17,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> imtation_logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float discount_factor: in [0, 1].
-    :param int estimation_step: greater than 1, the number of steps to look ahead.
+    :param int estimation_step: the number of steps to look ahead. Default to 1.
     :param int target_update_freq: the target network update frequency.
     :param float eval_eps: the epsilon-greedy noise added in evaluation.
     :param float unlikely_action_threshold: the threshold (tau) for unlikely

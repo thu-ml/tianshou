@@ -17,7 +17,7 @@ class QRDQNPolicy(DQNPolicy):
     :param float discount_factor: in [0, 1].
     :param int num_quantiles: the number of quantile midpoints in the inverse
         cumulative distribution function of the value. Default to 200.
-    :param int estimation_step: greater than 1, the number of steps to look ahead.
+    :param int estimation_step: the number of steps to look ahead. Default to 1.
     :param int target_update_freq: the target network update frequency (0 if
         you do not use the target network).
     :param bool reward_normalization: normalize the reward to Normal(0, 1).

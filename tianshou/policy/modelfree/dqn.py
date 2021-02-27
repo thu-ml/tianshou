@@ -19,9 +19,9 @@ class DQNPolicy(BasePolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float discount_factor: in [0, 1].
-    :param int estimation_step: greater than 1, the number of steps to look ahead.
+    :param int estimation_step: the number of steps to look ahead. Default to 1.
     :param int target_update_freq: the target network update frequency (0 if
-        you do not use the target network).
+        you do not use the target network). Default to 0.
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.
 
