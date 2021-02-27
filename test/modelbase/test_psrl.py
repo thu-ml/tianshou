@@ -16,7 +16,7 @@ from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='NChain-v0')
-    parser.add_argument('--seed', type=int, default=1626)
+    parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=50000)
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=1000)
@@ -29,7 +29,7 @@ def get_args():
     parser.add_argument('--rew-std-prior', type=float, default=1.0)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--eps', type=float, default=0.01)
-    parser.add_argument('--add-done-loop', action='store_true')
+    parser.add_argument('--add-done-loop', action="store_true", default=False)
     return parser.parse_known_args()[0]
 
 

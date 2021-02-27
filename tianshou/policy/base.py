@@ -286,15 +286,10 @@ class BasePolicy(ABC, nn.Module):
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """
+        assert not rew_norm, \
+            "Reward normalization in computing n-step returns is unsupported now."
         rew = buffer.rew
         bsz = len(indice)
-        if rew_norm:  # TODO: remove it or fix this bug
-            bfr = rew[:min(len(buffer), 1000)]  # avoid large buffer
-            mean, std = bfr.mean(), bfr.std()
-            if np.isclose(std, 0, 1e-2):
-                mean, std = 0.0, 1.0
-        else:
-            mean, std = 0.0, 1.0
         indices = [indice]
         for _ in range(n_step - 1):
             indices.append(buffer.next(indices[-1]))
@@ -308,8 +303,7 @@ class BasePolicy(ABC, nn.Module):
         target_q = target_q * BasePolicy.value_mask(buffer, terminal).reshape(-1, 1)
         end_flag = buffer.done.copy()
         end_flag[buffer.unfinished_index()] = True
-        target_q = _nstep_return(rew, end_flag, target_q,
-                                 indices, gamma, n_step, mean, std)
+        target_q = _nstep_return(rew, end_flag, target_q, indices, gamma, n_step)
 
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
@@ -325,7 +319,7 @@ class BasePolicy(ABC, nn.Module):
         _gae_return(f32, f32, f64, b, 0.1, 0.1)
         _episodic_return(f64, f64, b, 0.1, 0.1)
         _episodic_return(f32, f64, b, 0.1, 0.1)
-        _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1, 0.0, 1.0)
+        _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
 
 
 @njit
@@ -368,8 +362,6 @@ def _nstep_return(
     indices: np.ndarray,
     gamma: float,
     n_step: int,
-    mean: float,
-    std: float,
 ) -> np.ndarray:
     gamma_buffer = np.ones(n_step + 1)
     for i in range(1, n_step + 1):
@@ -384,6 +376,6 @@ def _nstep_return(
         now = indices[n]
         gammas[end_flag[now] > 0] = n + 1
         returns[end_flag[now] > 0] = 0.0
-        returns = (rew[now].reshape(bsz, 1) - mean) / std + gamma * returns
+        returns = rew[now].reshape(bsz, 1) + gamma * returns
     target_q = target_q * gamma_buffer[gammas].reshape(bsz, 1) + returns
     return target_q.reshape(target_shape)

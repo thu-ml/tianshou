@@ -17,16 +17,15 @@ class DiscreteBCQPolicy(DQNPolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> imtation_logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float discount_factor: in [0, 1].
-    :param int estimation_step: greater than 1, the number of steps to look
-        ahead.
+    :param int estimation_step: the number of steps to look ahead. Default to 1.
     :param int target_update_freq: the target network update frequency.
     :param float eval_eps: the epsilon-greedy noise added in evaluation.
     :param float unlikely_action_threshold: the threshold (tau) for unlikely
-        actions, as shown in Equ. (17) in the paper, defaults to 0.3.
+        actions, as shown in Equ. (17) in the paper. Default to 0.3.
     :param float imitation_logits_penalty: reguralization weight for imitation
-        logits, defaults to 1e-2.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to False.
+        logits. Default to 1e-2.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1).
+        Default to False.
 
     .. seealso::
 
@@ -52,9 +51,8 @@ class DiscreteBCQPolicy(DQNPolicy):
                          target_update_freq, reward_normalization, **kwargs)
         assert target_update_freq > 0, "BCQ needs target network setting."
         self.imitator = imitator
-        assert (
-            0.0 <= unlikely_action_threshold < 1.0
-        ), "unlikely_action_threshold should be in [0, 1)"
+        assert 0.0 <= unlikely_action_threshold < 1.0, \
+            "unlikely_action_threshold should be in [0, 1)"
         if unlikely_action_threshold > 0:
             self._log_tau = math.log(unlikely_action_threshold)
         else:
@@ -69,9 +67,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         self.imitator.train(mode)
         return self
 
-    def _target_q(
-        self, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> torch.Tensor:
+    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
         act = self(batch, input="obs_next").act
@@ -93,8 +89,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         imitation_logits, _ = self.imitator(obs, state=state, info=batch.info)
 
         # mask actions for argmax
-        ratio = imitation_logits - imitation_logits.max(
-            dim=-1, keepdim=True).values
+        ratio = imitation_logits - imitation_logits.max(dim=-1, keepdim=True).values
         mask = (ratio < self._log_tau).float()
         action = (q_value - np.inf * mask).argmax(dim=-1)
 

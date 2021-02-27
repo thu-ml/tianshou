@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from typing import Any, Dict, List, Union, Optional, Callable
+from typing import Any, Dict, List, Type, Union, Optional
 
 from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
@@ -13,8 +13,8 @@ class PGPolicy(BasePolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Callable[[], torch.distributions.Distribution]
-    :param float discount_factor: in [0, 1].
+    :type dist_fn: Type[torch.distributions.Distribution]
+    :param float discount_factor: in [0, 1]. Default to 0.99.
 
     .. seealso::
 
@@ -26,7 +26,7 @@ class PGPolicy(BasePolicy):
         self,
         model: Optional[torch.nn.Module],
         optim: torch.optim.Optimizer,
-        dist_fn: Callable[[], torch.distributions.Distribution],
+        dist_fn: Type[torch.distributions.Distribution],
         discount_factor: float = 0.99,
         reward_normalization: bool = False,
         **kwargs: Any,
@@ -36,9 +36,7 @@ class PGPolicy(BasePolicy):
             self.model: torch.nn.Module = model
         self.optim = optim
         self.dist_fn = dist_fn
-        assert (
-            0.0 <= discount_factor <= 1.0
-        ), "discount factor should be in [0, 1]"
+        assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self._gamma = discount_factor
         self._rew_norm = reward_normalization
 
@@ -83,7 +81,7 @@ class PGPolicy(BasePolicy):
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
-            dist = self.dist_fn(logits)  # type: ignore
+            dist = self.dist_fn(logits)
         act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 

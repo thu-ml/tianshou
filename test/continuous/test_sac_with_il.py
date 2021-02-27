@@ -26,7 +26,7 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.2)
-    parser.add_argument('--epoch', type=int, default=20)
+    parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=24000)
     parser.add_argument('--il-step-per-epoch', type=int, default=500)
     parser.add_argument('--step-per-collect', type=int, default=10)
@@ -40,8 +40,7 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--rew-norm', type=int, default=1)
-    parser.add_argument('--ignore-done', type=int, default=1)
+    parser.add_argument('--rew-norm', action="store_true", default=False)
     parser.add_argument('--n-step', type=int, default=4)
     parser.add_argument(
         '--device', type=str,

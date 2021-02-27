@@ -14,17 +14,16 @@ class C51Policy(DQNPolicy):
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float discount_factor: in [0, 1].
     :param int num_atoms: the number of atoms in the support set of the
-        value distribution, defaults to 51.
-    :param float v_min: the value of the smallest atom in the support set,
-        defaults to -10.0.
-    :param float v_max: the value of the largest atom in the support set,
-        defaults to 10.0.
-    :param int estimation_step: greater than 1, the number of steps to look
-        ahead.
+        value distribution. Default to 51.
+    :param float v_min: the value of the smallest atom in the support set.
+        Default to -10.0.
+    :param float v_max: the value of the largest atom in the support set.
+        Default to 10.0.
+    :param int estimation_step: the number of steps to look ahead. Default to 1.
     :param int target_update_freq: the target network update frequency (0 if
-        you do not use the target network).
-    :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to False.
+        you do not use the target network). Default to 0.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1).
+        Default to False.
 
     .. seealso::
 

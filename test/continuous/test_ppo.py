@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--epoch', type=int, default=20)
+    parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=150000)
     parser.add_argument('--episode-per-collect', type=int, default=16)
     parser.add_argument('--repeat-per-collect', type=int, default=2)

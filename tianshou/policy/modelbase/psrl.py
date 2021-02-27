@@ -149,7 +149,7 @@ class PSRLPolicy(BasePolicy):
     :param float discount_factor: in [0, 1].
     :param float epsilon: for precision control in value iteration.
     :param bool add_done_loop: whether to add an extra self-loop for the
-        terminal state in MDP, defaults to False.
+        terminal state in MDP. Default to False.
 
     .. seealso::
 

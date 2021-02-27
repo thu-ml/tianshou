@@ -47,7 +47,7 @@ def get_args():
     parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--max-grad-norm', type=float, default=None)
     parser.add_argument('--gae-lambda', type=float, default=1.)
-    parser.add_argument('--rew-norm', type=bool, default=False)
+    parser.add_argument('--rew-norm', action="store_true", default=False)
     args = parser.parse_known_args()[0]
     return args
 

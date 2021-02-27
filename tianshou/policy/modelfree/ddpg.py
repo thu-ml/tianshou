@@ -15,19 +15,16 @@ class DDPGPolicy(BasePolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
     :param torch.nn.Module critic: the critic network. (s, a -> Q(s, a))
-    :param torch.optim.Optimizer critic_optim: the optimizer for critic
-        network.
+    :param torch.optim.Optimizer critic_optim: the optimizer for critic network.
     :param action_range: the action range (minimum, maximum).
     :type action_range: Tuple[float, float]
-    :param float tau: param for soft update of the target network, defaults to
-        0.005.
-    :param float gamma: discount factor, in [0, 1], defaults to 0.99.
+    :param float tau: param for soft update of the target network. Default to 0.005.
+    :param float gamma: discount factor, in [0, 1]. Default to 0.99.
     :param BaseNoise exploration_noise: the exploration noise,
-        add to the action, defaults to ``GaussianNoise(sigma=0.1)``.
+        add to the action. Default to ``GaussianNoise(sigma=0.1)``.
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to False.
-    :param int estimation_step: greater than 1, the number of steps to look
-        ahead.
+        Default to False.
+    :param int estimation_step: the number of steps to look ahead. Default to 1.
 
     .. seealso::
 
@@ -71,7 +68,6 @@ class DDPGPolicy(BasePolicy):
         # it is only a little difference to use GaussianNoise
         # self.noise = OUNoise()
         self._rew_norm = reward_normalization
-        assert estimation_step > 0, "estimation_step should be greater than 0"
         self._n_step = estimation_step
 
     def set_exp_noise(self, noise: Optional[BaseNoise]) -> None:
@@ -89,9 +85,7 @@ class DDPGPolicy(BasePolicy):
         """Soft-update the weight for the target network."""
         for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(
-            self.critic_old.parameters(), self.critic.parameters()
-        ):
+        for o, n in zip(self.critic_old.parameters(), self.critic.parameters()):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
 
     def _target_q(

@@ -61,7 +61,7 @@ class ReplayBuffer:
         }
         super().__init__()
         self.maxsize = size
-        assert stack_num > 0, "stack_num should greater than 0"
+        assert stack_num > 0, "stack_num should be greater than 0"
         self.stack_num = stack_num
         self._indices = np.arange(size)
         self._save_obs_next = not ignore_obs_next

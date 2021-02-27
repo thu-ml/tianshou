@@ -19,15 +19,14 @@ class DiscreteSACPolicy(SACPolicy):
     :param torch.nn.Module critic2: the second critic network. (s -> Q(s))
     :param torch.optim.Optimizer critic2_optim: the optimizer for the second
         critic network.
-    :param float tau: param for soft update of the target network, defaults to
-        0.005.
-    :param float gamma: discount factor, in [0, 1], defaults to 0.99.
+    :param float tau: param for soft update of the target network. Default to 0.005.
+    :param float gamma: discount factor, in [0, 1]. Default to 0.99.
     :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
-        regularization coefficient, default to 0.2.
-        If a tuple (target_entropy, log_alpha, alpha_optim) is provided, then
+        regularization coefficient. Default to 0.2.
+        If a tuple (target_entropy, log_alpha, alpha_optim) is provided, the
         alpha is automatatically tuned.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to ``False``.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1).
+        Default to False.
 
     .. seealso::
 
@@ -45,9 +44,7 @@ class DiscreteSACPolicy(SACPolicy):
         critic2_optim: torch.optim.Optimizer,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: Union[
-            float, Tuple[float, torch.Tensor, torch.optim.Optimizer]
-        ] = 0.2,
+        alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
         reward_normalization: bool = False,
         estimation_step: int = 1,
         **kwargs: Any,
