@@ -89,7 +89,6 @@ class BaseVectorEnv(gym.Env):
         # all environments are ready in the beginning
         self.ready_id = list(range(self.env_num))
         self.is_closed = False
-        self.seed_list: List[Optional[List[int]]] = [None] * self.env_num
 
     def _assert_is_not_closed(self) -> None:
         assert not self.is_closed, \
@@ -103,9 +102,8 @@ class BaseVectorEnv(gym.Env):
         """Switch the attribute getter depending on the key.
 
         Any class who inherits ``gym.Env`` will inherit some attributes, like
-        ``action_space``. However, we would like the attribute lookup to go
-        straight into the worker (in fact, this vector env's action_space is
-        always None).
+        ``action_space``. However, we would like the attribute lookup to go straight
+        into the worker (in fact, this vector env's action_space is always None).
         """
         if key in ['metadata', 'reward_range', 'spec', 'action_space',
                    'observation_space']:  # reserved keys in gym.Env
@@ -116,16 +114,10 @@ class BaseVectorEnv(gym.Env):
     def __getattr__(self, key: str) -> List[Any]:
         """Fetch a list of env attributes.
 
-        This function tries to retrieve an attribute from each individual
-        wrapped environment, if it does not belong to the wrapping vector
-        environment class.
+        This function tries to retrieve an attribute from each individual wrapped
+        environment, if it does not belong to the wrapping vector environment class.
         """
-        result = [getattr(worker, key) for worker in self.workers]
-        if key == "action_space":
-            for action_space, seed in zip(result, self.seed_list):
-                if seed is not None:
-                    action_space.seed(seed[0])
-        return result
+        return [getattr(worker, key) for worker in self.workers]
 
     def _wrap_id(
         self, id: Optional[Union[int, List[int], np.ndarray]] = None
@@ -249,8 +241,7 @@ class BaseVectorEnv(gym.Env):
             seed_list = [seed + i for i in range(self.env_num)]
         else:
             seed_list = seed
-        self.seed_list = [w.seed(s) for w, s in zip(self.workers, seed_list)]
-        return self.seed_list
+        return [w.seed(s) for w, s in zip(self.workers, seed_list)]
 
     def render(self, **kwargs: Any) -> List[Any]:
         """Render all of the environments."""
@@ -294,8 +285,7 @@ class DummyVectorEnv(BaseVectorEnv):
         wait_num: Optional[int] = None,
         timeout: Optional[float] = None,
     ) -> None:
-        super().__init__(
-            env_fns, DummyEnvWorker, wait_num=wait_num, timeout=timeout)
+        super().__init__(env_fns, DummyEnvWorker, wait_num=wait_num, timeout=timeout)
 
 
 class SubprocVectorEnv(BaseVectorEnv):
@@ -316,8 +306,7 @@ class SubprocVectorEnv(BaseVectorEnv):
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=False)
 
-        super().__init__(
-            env_fns, worker_fn, wait_num=wait_num, timeout=timeout)
+        super().__init__(env_fns, worker_fn, wait_num=wait_num, timeout=timeout)
 
 
 class ShmemVectorEnv(BaseVectorEnv):
@@ -340,8 +329,7 @@ class ShmemVectorEnv(BaseVectorEnv):
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
 
-        super().__init__(
-            env_fns, worker_fn, wait_num=wait_num, timeout=timeout)
+        super().__init__(env_fns, worker_fn, wait_num=wait_num, timeout=timeout)
 
 
 class RayVectorEnv(BaseVectorEnv):
@@ -369,5 +357,4 @@ class RayVectorEnv(BaseVectorEnv):
             ) from e
         if not ray.is_initialized():
             ray.init()
-        super().__init__(
-            env_fns, RayEnvWorker, wait_num=wait_num, timeout=timeout)
+        super().__init__(env_fns, RayEnvWorker, wait_num=wait_num, timeout=timeout)

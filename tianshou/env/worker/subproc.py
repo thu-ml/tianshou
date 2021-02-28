@@ -31,10 +31,7 @@ class ShArray:
     """Wrapper of multiprocessing Array."""
 
     def __init__(self, dtype: np.generic, shape: Tuple[int]) -> None:
-        self.arr = Array(
-            _NP_TO_CT[dtype.type],
-            int(np.prod(shape)),
-        )
+        self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))
         self.dtype = dtype
         self.shape = shape
 
@@ -143,10 +140,14 @@ class SubprocEnvWorker(EnvWorker):
         self.process = Process(target=_worker, args=args, daemon=True)
         self.process.start()
         self.child_remote.close()
+        self._seed = None
 
     def __getattr__(self, key: str) -> Any:
         self.parent_remote.send(["getattr", key])
-        return self.parent_remote.recv()
+        result = self.parent_remote.recv()
+        if key == "action_space":  # issue #299
+            result.seed(self._seed)
+        return result
 
     def _decode_obs(self) -> Union[dict, tuple, np.ndarray]:
         def decode_obs(
@@ -185,11 +186,9 @@ class SubprocEnvWorker(EnvWorker):
                 if remain_time <= 0:
                     break
             # connection.wait hangs if the list is empty
-            new_ready_conns = connection.wait(
-                remain_conns, timeout=remain_time)
+            new_ready_conns = connection.wait(remain_conns, timeout=remain_time)
             ready_conns.extend(new_ready_conns)  # type: ignore
-            remain_conns = [
-                conn for conn in remain_conns if conn not in ready_conns]
+            remain_conns = [conn for conn in remain_conns if conn not in ready_conns]
         return [workers[conns.index(con)] for con in ready_conns]
 
     def send_action(self, action: np.ndarray) -> None:
@@ -205,7 +204,9 @@ class SubprocEnvWorker(EnvWorker):
 
     def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
         self.parent_remote.send(["seed", seed])
-        return self.parent_remote.recv()
+        result = self.parent_remote.recv()
+        self._seed = result[0] if result is not None else seed
+        return result
 
     def render(self, **kwargs: Any) -> Any:
         self.parent_remote.send(["render", kwargs])
