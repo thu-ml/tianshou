@@ -454,7 +454,7 @@ class ReplayBufferManager(ReplayBuffer):
 
     def __init__(self, buffer_list: List[ReplayBuffer]) -> None:
         self.buffer_num = len(buffer_list)
-        self.buffers = np.array(buffer_list)
+        self.buffers = np.array(buffer_list, dtype=np.object)
         offset, size = [], 0
         buffer_type = type(self.buffers[0])
         kwargs = self.buffers[0].options
