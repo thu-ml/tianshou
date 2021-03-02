@@ -23,8 +23,7 @@ class CachedReplayBuffer(ReplayBufferManager):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` or
-        :class:`~tianshou.data.ReplayBufferManager` for more detailed explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
     def __init__(

@@ -20,8 +20,7 @@ class VectorReplayBuffer(ReplayBufferManager):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` and
-        :class:`~tianshou.data.ReplayBufferManager` for more detailed explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
     def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
@@ -46,9 +45,7 @@ class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` and
-        :class:`~tianshou.data.PrioritizedReplayBufferManager` for more detailed
-        explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
     def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:

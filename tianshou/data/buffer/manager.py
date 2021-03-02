@@ -17,8 +17,7 @@ class ReplayBufferManager(ReplayBuffer):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` for more detailed
-        explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
     def __init__(self, buffer_list: List[ReplayBuffer]) -> None:
@@ -170,6 +169,28 @@ class ReplayBufferManager(ReplayBuffer):
         ])
 
 
+class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManager):
+    """PrioritizedReplayBufferManager contains a list of PrioritizedReplayBuffer with \
+    exactly the same configuration.
+
+    These replay buffers have contiguous memory layout, and the storage space each
+    buffer has is a shallow copy of the topmost memory.
+
+    :param buffer_list: a list of PrioritizedReplayBuffer needed to be handled.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
+    """
+
+    def __init__(self, buffer_list: Sequence[PrioritizedReplayBuffer]) -> None:
+        ReplayBufferManager.__init__(self, buffer_list)  # type: ignore
+        kwargs = buffer_list[0].options
+        for buf in buffer_list:
+            del buf.weight
+        PrioritizedReplayBuffer.__init__(self, self.maxsize, **kwargs)
+
+
 @njit
 def _prev_index(
     index: np.ndarray,
@@ -209,27 +230,3 @@ def _next_index(
             end_flag = done[subind] | (subind == last)
             next_index[mask] = (subind - start + 1 - end_flag) % cur_len + start
     return next_index
-
-
-class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManager):
-    """PrioritizedReplayBufferManager contains a list of PrioritizedReplayBuffer with \
-    exactly the same configuration.
-
-    These replay buffers have contiguous memory layout, and the storage space each
-    buffer has is a shallow copy of the topmost memory.
-
-    :param buffer_list: a list of PrioritizedReplayBuffer needed to be handled.
-
-    .. seealso::
-
-        Please refer to :class:`~tianshou.data.ReplayBuffer`,
-        :class:`~tianshou.data.ReplayBufferManager`, and
-        :class:`~tianshou.data.PrioritizedReplayBuffer` for more detailed explanation.
-    """
-
-    def __init__(self, buffer_list: Sequence[PrioritizedReplayBuffer]) -> None:
-        ReplayBufferManager.__init__(self, buffer_list)  # type: ignore
-        kwargs = buffer_list[0].options
-        for buf in buffer_list:
-            del buf.weight
-        PrioritizedReplayBuffer.__init__(self, self.maxsize, **kwargs)

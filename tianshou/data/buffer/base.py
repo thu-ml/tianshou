@@ -281,14 +281,14 @@ class ReplayBuffer:
     ) -> Union[Batch, np.ndarray]:
         """Return the stacked result.
 
-        E.g. [s_{t-3}, s_{t-2}, s_{t-1}, s_t], where s is self.key, t is the index.
+        E.g., if you set ``key = "obs", stack_num = 4, index = t``, it returns the
+        stacked result as ``[obs[t-3], obs[t-2], obs[t-1], obs[t]]``.
 
-        :param index: the index for getting stacked data (t in the example).
+        :param index: the index for getting stacked data.
         :param str key: the key to get, should be one of the reserved_keys.
         :param default_value: if the given key's data is not found and default_value is
             set, return this default_value.
-        :param int stack_num: the stack num (4 in the example). Default to
-            self.stack_num.
+        :param int stack_num: Default to self.stack_num.
         """
         if key not in self._meta and default_value is not None:
             return default_value

@@ -13,8 +13,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.data.ReplayBuffer` for more detailed
-        explanation.
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
     def __init__(self, size: int, alpha: float, beta: float, **kwargs: Any) -> None:
