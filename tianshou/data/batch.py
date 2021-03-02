@@ -146,6 +146,19 @@ def _parse_value(v: Any) -> Optional[Union["Batch", np.ndarray, torch.Tensor]]:
         return v
 
 
+def _alloc_by_keys_diff(
+    meta: "Batch", batch: "Batch", size: int, stack: bool = True
+) -> None:
+    for key in batch.keys():
+        if key in meta.keys():
+            if isinstance(meta[key], Batch) and isinstance(batch[key], Batch):
+                _alloc_by_keys_diff(meta[key], batch[key], size, stack)
+            elif isinstance(meta[key], Batch) and meta[key].is_empty():
+                meta[key] = _create_value(batch[key], size, stack)
+        else:
+            meta[key] = _create_value(batch[key], size, stack)
+
+
 class Batch:
     """The internal data structure in Tianshou.
 
