@@ -5,7 +5,7 @@ tianshou.data
 Batch
 -----
 
-.. automodule:: tianshou.data.batch
+.. autoclass:: tianshou.data.Batch
    :members:
    :undoc-members:
    :show-inheritance:
@@ -14,16 +14,77 @@ Batch
 Buffer
 ------
 
-.. automodule:: tianshou.data.buffer
+ReplayBuffer
+~~~~~~~~~~~~
+
+.. autoclass:: tianshou.data.ReplayBuffer
    :members:
    :undoc-members:
    :show-inheritance:
 
+PrioritizedReplayBuffer
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.data.PrioritizedReplayBuffer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ReplayBufferManager
+~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.data.ReplayBufferManager
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+PrioritizedReplayBufferManager
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.data.PrioritizedReplayBufferManager
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+VectorReplayBuffer
+~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.data.VectorReplayBuffer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+PrioritizedVectorReplayBuffer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.data.PrioritizedVectorReplayBuffer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+CachedReplayBuffer
+~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.data.CachedReplayBuffer
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Collector
 ---------
 
-.. automodule:: tianshou.data.collector
+Collector
+~~~~~~~~~
+
+.. autoclass:: tianshou.data.Collector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+AsyncCollector
+~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.data.AsyncCollector
    :members:
    :undoc-members:
    :show-inheritance:
