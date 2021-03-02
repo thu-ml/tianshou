@@ -1,12 +1,82 @@
 tianshou.env
 ============
 
-.. automodule:: tianshou.env
+
+VectorEnv
+---------
+
+BaseVectorEnv
+~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.BaseVectorEnv
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: tianshou.env.worker
+DummyVectorEnv
+~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.DummyVectorEnv
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+SubprocVectorEnv
+~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.SubprocVectorEnv
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ShmemVectorEnv
+~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.ShmemVectorEnv
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+RayVectorEnv
+~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.RayVectorEnv
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Worker
+------
+
+EnvWorker
+~~~~~~~~~
+
+.. autoclass:: tianshou.env.worker.EnvWorker
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+DummyEnvWorker
+~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.worker.DummyEnvWorker
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+SubprocEnvWorker
+~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.worker.SubprocEnvWorker
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+RayEnvWorker
+~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.worker.RayEnvWorker
    :members:
    :undoc-members:
    :show-inheritance:

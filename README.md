@@ -158,12 +158,13 @@ Currently, the overall code of Tianshou platform is less than 2500 lines. Most o
 ```python
 result = collector.collect(n_step=n)
 ```
-
-If you have 3 environments in total and want to collect 1 episode in the first environment, 3 for the third environment:
+If you have 3 environments in total and want to collect 4 episodes:
 
 ```python
-result = collector.collect(n_episode=[1, 0, 3])
+result = collector.collect(n_episode=4)
 ```
+
+Collector will collect exactly 4 episodes without any bias of episode length despite we only have 3 parallel environments.
 
 If you want to train the given policy with a sampled batch:
 
@@ -190,12 +191,13 @@ Define some hyper-parameters:
 ```python
 task = 'CartPole-v0'
 lr, epoch, batch_size = 1e-3, 10, 64
-train_num, test_num = 8, 100
+train_num, test_num = 10, 100
 gamma, n_step, target_freq = 0.9, 3, 320
 buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
-step_per_epoch, collect_per_step = 1000, 10
+step_per_epoch, step_per_collect = 10000, 10
 writer = SummaryWriter('log/dqn')  # tensorboard is also supported!
+logger = ts.utils.BasicLogger(writer)
 ```
 
 Make environments:
@@ -223,20 +225,20 @@ Setup policy and collectors:
 
 ```python
 policy = ts.policy.DQNPolicy(net, optim, gamma, n_step, target_update_freq=target_freq)
-train_collector = ts.data.Collector(policy, train_envs, ts.data.ReplayBuffer(buffer_size))
-test_collector = ts.data.Collector(policy, test_envs)
+train_collector = ts.data.Collector(policy, train_envs, ts.data.VectorReplayBuffer(buffer_size, train_num), exploration_noise=True)
+test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)  # because DQN uses epsilon-greedy method
 ```
 
 Let's train it:
 
 ```python
 result = ts.trainer.offpolicy_trainer(
-    policy, train_collector, test_collector, epoch, step_per_epoch, collect_per_step,
-    test_num, batch_size,
+    policy, train_collector, test_collector, epoch, step_per_epoch, step_per_collect,
+    test_num, batch_size, update_per_step=1 / step_per_collect,
     train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
     test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
-    writer=writer)
+    logger=logger)
 print(f'Finished training! Use {result["duration"]}')
 ```
 
@@ -252,7 +254,7 @@ Watch the performance with 35 FPS:
 ```python
 policy.eval()
 policy.set_eps(eps_test)
-collector = ts.data.Collector(policy, env)
+collector = ts.data.Collector(policy, env, exploration_noise=True)
 collector.collect(n_episode=1, render=1 / 35)
 ```
 

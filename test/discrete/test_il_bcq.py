@@ -8,6 +8,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector
+from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offline_trainer
@@ -26,7 +27,7 @@ def get_args():
     parser.add_argument("--unlikely-action-threshold", type=float, default=0.3)
     parser.add_argument("--imitation-logits-penalty", type=float, default=0.01)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--step-per-epoch", type=int, default=1000)
+    parser.add_argument("--update-per-epoch", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
                         nargs='*', default=[128, 128, 128])
@@ -78,10 +79,11 @@ def test_discrete_bcq(args=get_args()):
     buffer = pickle.load(open(args.load_buffer_name, "rb"))
 
     # collector
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
 
     log_path = os.path.join(args.logdir, args.task, 'discrete_bcq')
     writer = SummaryWriter(log_path)
+    logger = BasicLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
@@ -91,8 +93,8 @@ def test_discrete_bcq(args=get_args()):
 
     result = offline_trainer(
         policy, buffer, test_collector,
-        args.epoch, args.step_per_epoch, args.test_num, args.batch_size,
-        stop_fn=stop_fn, save_fn=save_fn, writer=writer)
+        args.epoch, args.update_per_epoch, args.test_num, args.batch_size,
+        stop_fn=stop_fn, save_fn=save_fn, logger=logger)
 
     assert stop_fn(result['best_reward'])
 
@@ -104,7 +106,8 @@ def test_discrete_bcq(args=get_args()):
         policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == "__main__":

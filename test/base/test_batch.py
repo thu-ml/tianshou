@@ -21,6 +21,8 @@ def test_batch():
     assert not Batch(a=[1, 2, 3]).is_empty()
     b = Batch({'a': [4, 4], 'b': [5, 5]}, c=[None, None])
     assert b.c.dtype == np.object
+    b = Batch(d=[None], e=[starmap], f=Batch)
+    assert b.d.dtype == b.e.dtype == np.object and b.f == Batch
     b = Batch()
     b.update()
     assert b.is_empty()

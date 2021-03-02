@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
-from typing import Any, Dict, List, Union, Optional, Callable
+from typing import Any, Dict, List, Type, Union, Optional
 
 from tianshou.policy import PGPolicy
 from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
@@ -17,20 +17,20 @@ class A2CPolicy(PGPolicy):
     :param torch.optim.Optimizer optim: the optimizer for actor and critic
         network.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Callable[[], torch.distributions.Distribution]
-    :param float discount_factor: in [0, 1], defaults to 0.99.
-    :param float vf_coef: weight for value loss, defaults to 0.5.
-    :param float ent_coef: weight for entropy loss, defaults to 0.01.
-    :param float max_grad_norm: clipping gradients in back propagation,
-        defaults to None.
+    :type dist_fn: Type[torch.distributions.Distribution]
+    :param float discount_factor: in [0, 1]. Default to 0.99.
+    :param float vf_coef: weight for value loss. Default to 0.5.
+    :param float ent_coef: weight for entropy loss. Default to 0.01.
+    :param float max_grad_norm: clipping gradients in back propagation.
+        Default to None.
     :param float gae_lambda: in [0, 1], param for Generalized Advantage
-        Estimation, defaults to 0.95.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to False.
+        Estimation. Default to 0.95.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1).
+        Default to False.
     :param int max_batchsize: the maximum size of the batch when computing GAE,
         depends on the size of available memory and the memory cost of the
-        model; should be as large as possible within the memory constraint;
-        defaults to 256.
+        model; should be as large as possible within the memory constraint.
+        Default to 256.
 
     .. seealso::
 
@@ -43,7 +43,7 @@ class A2CPolicy(PGPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Callable[[], torch.distributions.Distribution],
+        dist_fn: Type[torch.distributions.Distribution],
         discount_factor: float = 0.99,
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,
@@ -69,15 +69,16 @@ class A2CPolicy(PGPolicy):
     ) -> Batch:
         if self._lambda in [0.0, 1.0]:
             return self.compute_episodic_return(
-                batch, None, gamma=self._gamma, gae_lambda=self._lambda)
+                batch, buffer, indice,
+                None, gamma=self._gamma, gae_lambda=self._lambda)
         v_ = []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
                 v_.append(to_numpy(self.critic(b.obs_next)))
         v_ = np.concatenate(v_, axis=0)
         return self.compute_episodic_return(
-            batch, v_, gamma=self._gamma, gae_lambda=self._lambda,
-            rew_norm=self._rew_norm)
+            batch, buffer, indice, v_,
+            gamma=self._gamma, gae_lambda=self._lambda, rew_norm=self._rew_norm)
 
     def forward(
         self,
@@ -103,7 +104,7 @@ class A2CPolicy(PGPolicy):
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
-            dist = self.dist_fn(logits)  # type: ignore
+            dist = self.dist_fn(logits)
         act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
@@ -122,13 +123,11 @@ class A2CPolicy(PGPolicy):
                 a_loss = -(log_prob * (r - v).detach()).mean()
                 vf_loss = F.mse_loss(r, v)  # type: ignore
                 ent_loss = dist.entropy().mean()
-                loss = a_loss + self._weight_vf * vf_loss - \
-                    self._weight_ent * ent_loss
+                loss = a_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
                 loss.backward()
                 if self._grad_norm is not None:
                     nn.utils.clip_grad_norm_(
-                        list(self.actor.parameters())
-                        + list(self.critic.parameters()),
+                        list(self.actor.parameters()) + list(self.critic.parameters()),
                         max_norm=self._grad_norm,
                     )
                 self.optim.step()

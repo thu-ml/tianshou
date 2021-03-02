@@ -14,31 +14,26 @@ class TD3Policy(DDPGPolicy):
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
-    :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s,
-        a))
+    :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic1_optim: the optimizer for the first
         critic network.
-    :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s,
-        a))
+    :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic2_optim: the optimizer for the second
         critic network.
     :param action_range: the action range (minimum, maximum).
     :type action_range: Tuple[float, float]
-    :param float tau: param for soft update of the target network, defaults to
-        0.005.
-    :param float gamma: discount factor, in [0, 1], defaults to 0.99.
-    :param float exploration_noise: the exploration noise, add to the action,
-        defaults to ``GaussianNoise(sigma=0.1)``
-    :param float policy_noise: the noise used in updating policy network,
-        default to 0.2.
-    :param int update_actor_freq: the update frequency of actor network,
-        default to 2.
-    :param float noise_clip: the clipping range used in updating policy
-        network, default to 0.5.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to False.
-    :param bool ignore_done: ignore the done flag while training the policy,
-        defaults to False.
+    :param float tau: param for soft update of the target network. Default to 0.005.
+    :param float gamma: discount factor, in [0, 1]. Default to 0.99.
+    :param float exploration_noise: the exploration noise, add to the action.
+        Default to ``GaussianNoise(sigma=0.1)``
+    :param float policy_noise: the noise used in updating policy network.
+        Default to 0.2.
+    :param int update_actor_freq: the update frequency of actor network.
+        Default to 2.
+    :param float noise_clip: the clipping range used in updating policy network.
+        Default to 0.5.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1).
+        Default to False.
 
     .. seealso::
 
@@ -62,13 +57,12 @@ class TD3Policy(DDPGPolicy):
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,
         reward_normalization: bool = False,
-        ignore_done: bool = False,
         estimation_step: int = 1,
         **kwargs: Any,
     ) -> None:
-        super().__init__(actor, actor_optim, None, None, action_range,
-                         tau, gamma, exploration_noise, reward_normalization,
-                         ignore_done, estimation_step, **kwargs)
+        super().__init__(actor, actor_optim, None, None, action_range, tau, gamma,
+                         exploration_noise, reward_normalization,
+                         estimation_step, **kwargs)
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
         self.critic1_optim = critic1_optim
@@ -91,18 +85,12 @@ class TD3Policy(DDPGPolicy):
     def sync_weight(self) -> None:
         for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(
-            self.critic1_old.parameters(), self.critic1.parameters()
-        ):
+        for o, n in zip(self.critic1_old.parameters(), self.critic1.parameters()):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(
-            self.critic2_old.parameters(), self.critic2.parameters()
-        ):
+        for o, n in zip(self.critic2_old.parameters(), self.critic2.parameters()):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
 
-    def _target_q(
-        self, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> torch.Tensor:
+    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs: s_{t+n}
         a_ = self(batch, model="actor_old", input="obs_next").act
         dev = a_.device
@@ -137,8 +125,7 @@ class TD3Policy(DDPGPolicy):
         self.critic2_optim.step()
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
         if self._cnt % self._freq == 0:
-            actor_loss = -self.critic1(
-                batch.obs, self(batch, eps=0.0).act).mean()
+            actor_loss = -self.critic1(batch.obs, self(batch, eps=0.0).act).mean()
             self.actor_optim.zero_grad()
             actor_loss.backward()
             self._last = actor_loss.item()

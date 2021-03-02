@@ -19,17 +19,14 @@ class DiscreteSACPolicy(SACPolicy):
     :param torch.nn.Module critic2: the second critic network. (s -> Q(s))
     :param torch.optim.Optimizer critic2_optim: the optimizer for the second
         critic network.
-    :param float tau: param for soft update of the target network, defaults to
-        0.005.
-    :param float gamma: discount factor, in [0, 1], defaults to 0.99.
+    :param float tau: param for soft update of the target network. Default to 0.005.
+    :param float gamma: discount factor, in [0, 1]. Default to 0.99.
     :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
-        regularization coefficient, default to 0.2.
-        If a tuple (target_entropy, log_alpha, alpha_optim) is provided, then
+        regularization coefficient. Default to 0.2.
+        If a tuple (target_entropy, log_alpha, alpha_optim) is provided, the
         alpha is automatatically tuned.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1),
-        defaults to ``False``.
-    :param bool ignore_done: ignore the done flag while training the policy,
-        defaults to ``False``.
+    :param bool reward_normalization: normalize the reward to Normal(0, 1).
+        Default to False.
 
     .. seealso::
 
@@ -47,17 +44,14 @@ class DiscreteSACPolicy(SACPolicy):
         critic2_optim: torch.optim.Optimizer,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: Union[
-            float, Tuple[float, torch.Tensor, torch.optim.Optimizer]
-        ] = 0.2,
+        alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
         reward_normalization: bool = False,
-        ignore_done: bool = False,
         estimation_step: int = 1,
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, actor_optim, critic1, critic1_optim, critic2,
                          critic2_optim, (-np.inf, np.inf), tau, gamma, alpha,
-                         reward_normalization, ignore_done, estimation_step,
+                         reward_normalization, estimation_step,
                          **kwargs)
         self._alpha: Union[float, torch.Tensor]
 
@@ -119,8 +113,7 @@ class DiscreteSACPolicy(SACPolicy):
             current_q1a = self.critic1(batch.obs)
             current_q2a = self.critic2(batch.obs)
             q = torch.min(current_q1a, current_q2a)
-        actor_loss = -(self._alpha * entropy
-                       + (dist.probs * q).sum(dim=-1)).mean()
+        actor_loss = -(self._alpha * entropy + (dist.probs * q).sum(dim=-1)).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
@@ -145,3 +138,8 @@ class DiscreteSACPolicy(SACPolicy):
             result["alpha"] = self._alpha.item()  # type: ignore
 
         return result
+
+    def exploration_noise(
+        self, act: Union[np.ndarray, Batch], batch: Batch
+    ) -> Union[np.ndarray, Batch]:
+        return act

@@ -1,3 +1,4 @@
+import os
 import gym
 import torch
 import pprint
@@ -6,19 +7,20 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import PSRLPolicy
+# from tianshou.utils import BasicLogger
 from tianshou.trainer import onpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='NChain-v0')
-    parser.add_argument('--seed', type=int, default=1626)
+    parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=50000)
     parser.add_argument('--epoch', type=int, default=5)
-    parser.add_argument('--step-per-epoch', type=int, default=5)
-    parser.add_argument('--collect-per-step', type=int, default=1)
+    parser.add_argument('--step-per-epoch', type=int, default=1000)
+    parser.add_argument('--episode-per-collect', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=1)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -27,7 +29,7 @@ def get_args():
     parser.add_argument('--rew-std-prior', type=float, default=1.0)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--eps', type=float, default=0.01)
-    parser.add_argument('--add-done-loop', action='store_true')
+    parser.add_argument('--add-done-loop', action="store_true", default=False)
     return parser.parse_known_args()[0]
 
 
@@ -61,10 +63,15 @@ def test_psrl(args=get_args()):
         args.add_done_loop)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
-    writer = SummaryWriter(args.logdir + '/' + args.task)
+    log_path = os.path.join(args.logdir, args.task, 'psrl')
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    # logger = BasicLogger(writer)
 
     def stop_fn(mean_rewards):
         if env.spec.reward_threshold:
@@ -73,11 +80,12 @@ def test_psrl(args=get_args()):
             return False
 
     train_collector.collect(n_step=args.buffer_size, random=True)
-    # trainer
+    # trainer, test it without logger
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, 1,
-        args.test_num, 0, stop_fn=stop_fn, writer=writer,
+        args.step_per_epoch, 1, args.test_num, 0,
+        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn,
+        # logger=logger,
         test_in_train=False)
 
     if __name__ == '__main__':
@@ -86,9 +94,9 @@ def test_psrl(args=get_args()):
         policy.eval()
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=[1] * args.test_num,
-                                        render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        result = test_collector.collect(n_episode=args.test_num, render=args.render)
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
     elif env.spec.reward_threshold:
         assert result["best_reward"] >= env.spec.reward_threshold
 

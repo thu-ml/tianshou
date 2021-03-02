@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
-from typing import Any, Dict, List, Tuple, Union, Optional, Callable
+from typing import Any, Dict, List, Type, Tuple, Union, Optional
 
 from tianshou.policy import PGPolicy
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
@@ -13,32 +13,31 @@ class PPOPolicy(PGPolicy):
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.nn.Module critic: the critic network. (s -> V(s))
-    :param torch.optim.Optimizer optim: the optimizer for actor and critic
-        network.
+    :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Callable[[], torch.distributions.Distribution]
-    :param float discount_factor: in [0, 1], defaults to 0.99.
-    :param float max_grad_norm: clipping gradients in back propagation,
-        defaults to None.
+    :type dist_fn: Type[torch.distributions.Distribution]
+    :param float discount_factor: in [0, 1]. Default to 0.99.
+    :param float max_grad_norm: clipping gradients in back propagation.
+        Default to None.
     :param float eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
-        paper, defaults to 0.2.
-    :param float vf_coef: weight for value loss, defaults to 0.5.
-    :param float ent_coef: weight for entropy loss, defaults to 0.01.
+        paper. Default to 0.2.
+    :param float vf_coef: weight for value loss. Default to 0.5.
+    :param float ent_coef: weight for entropy loss. Default to 0.01.
     :param action_range: the action range (minimum, maximum).
     :type action_range: (float, float)
     :param float gae_lambda: in [0, 1], param for Generalized Advantage
-        Estimation, defaults to 0.95.
+        Estimation. Default to 0.95.
     :param float dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
-        where c > 1 is a constant indicating the lower bound,
-        defaults to 5.0 (set ``None`` if you do not want to use it).
-    :param bool value_clip: a parameter mentioned in arXiv:1811.02553 Sec. 4.1,
-        defaults to True.
-    :param bool reward_normalization: normalize the returns to Normal(0, 1),
-        defaults to True.
+        where c > 1 is a constant indicating the lower bound.
+        Default to 5.0 (set None if you do not want to use it).
+    :param bool value_clip: a parameter mentioned in arXiv:1811.02553 Sec. 4.1.
+        Default to True.
+    :param bool reward_normalization: normalize the returns to Normal(0, 1).
+        Default to True.
     :param int max_batchsize: the maximum size of the batch when computing GAE,
         depends on the size of available memory and the memory cost of the
-        model; should be as large as possible within the memory constraint;
-        defaults to 256.
+        model; should be as large as possible within the memory constraint.
+        Default to 256.
 
     .. seealso::
 
@@ -51,7 +50,7 @@ class PPOPolicy(PGPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Callable[[], torch.distributions.Distribution],
+        dist_fn: Type[torch.distributions.Distribution],
         discount_factor: float = 0.99,
         max_grad_norm: Optional[float] = None,
         eps_clip: float = 0.2,
@@ -76,9 +75,8 @@ class PPOPolicy(PGPolicy):
         self._batch = max_batchsize
         assert 0.0 <= gae_lambda <= 1.0, "GAE lambda should be in [0, 1]."
         self._lambda = gae_lambda
-        assert (
-            dual_clip is None or dual_clip > 1.0
-        ), "Dual-clip PPO parameter should greater than 1.0."
+        assert dual_clip is None or dual_clip > 1.0, \
+            "Dual-clip PPO parameter should greater than 1.0."
         self._dual_clip = dual_clip
         self._value_clip = value_clip
         self._rew_norm = reward_normalization
@@ -95,13 +93,11 @@ class PPOPolicy(PGPolicy):
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
                 v_.append(self.critic(b.obs_next))
                 v.append(self.critic(b.obs))
-                old_log_prob.append(
-                    self(b).dist.log_prob(to_torch_as(b.act, v[0]))
-                )
+                old_log_prob.append(self(b).dist.log_prob(to_torch_as(b.act, v[0])))
         v_ = to_numpy(torch.cat(v_, dim=0))
         batch = self.compute_episodic_return(
-            batch, v_, gamma=self._gamma, gae_lambda=self._lambda,
-            rew_norm=self._rew_norm)
+            batch, buffer, indice, v_, gamma=self._gamma,
+            gae_lambda=self._lambda, rew_norm=self._rew_norm)
         batch.v = torch.cat(v, dim=0).flatten()  # old value
         batch.act = to_torch_as(batch.act, v[0])
         batch.logp_old = torch.cat(old_log_prob, dim=0)
@@ -137,7 +133,7 @@ class PPOPolicy(PGPolicy):
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
-            dist = self.dist_fn(logits)  # type: ignore
+            dist = self.dist_fn(logits)
         act = dist.sample()
         if self._range:
             act = act.clamp(self._range[0], self._range[1])
@@ -154,8 +150,7 @@ class PPOPolicy(PGPolicy):
                 ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 surr1 = ratio * b.adv
-                surr2 = ratio.clamp(1.0 - self._eps_clip,
-                                    1.0 + self._eps_clip) * b.adv
+                surr2 = ratio.clamp(1.0 - self._eps_clip, 1.0 + self._eps_clip) * b.adv
                 if self._dual_clip:
                     clip_loss = -torch.max(
                         torch.min(surr1, surr2), self._dual_clip * b.adv
@@ -164,8 +159,7 @@ class PPOPolicy(PGPolicy):
                     clip_loss = -torch.min(surr1, surr2).mean()
                 clip_losses.append(clip_loss.item())
                 if self._value_clip:
-                    v_clip = b.v + (value - b.v).clamp(
-                        -self._eps_clip, self._eps_clip)
+                    v_clip = b.v + (value - b.v).clamp(-self._eps_clip, self._eps_clip)
                     vf1 = (b.returns - value).pow(2)
                     vf2 = (b.returns - v_clip).pow(2)
                     vf_loss = 0.5 * torch.max(vf1, vf2).mean()
@@ -174,15 +168,14 @@ class PPOPolicy(PGPolicy):
                 vf_losses.append(vf_loss.item())
                 e_loss = dist.entropy().mean()
                 ent_losses.append(e_loss.item())
-                loss = clip_loss + self._weight_vf * vf_loss - \
-                    self._weight_ent * e_loss
+                loss = clip_loss + self._weight_vf * vf_loss \
+                    - self._weight_ent * e_loss
                 losses.append(loss.item())
                 self.optim.zero_grad()
                 loss.backward()
                 if self._max_grad_norm:
                     nn.utils.clip_grad_norm_(
-                        list(self.actor.parameters())
-                        + list(self.critic.parameters()),
+                        list(self.actor.parameters()) + list(self.critic.parameters()),
                         self._max_grad_norm)
                 self.optim.step()
         return {

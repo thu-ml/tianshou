@@ -6,9 +6,10 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.discrete import Actor, Critic
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
@@ -23,8 +24,11 @@ def get_args():
     parser.add_argument('--il-lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--collect-per-step', type=int, default=10)
+    parser.add_argument('--step-per-epoch', type=int, default=50000)
+    parser.add_argument('--il-step-per-epoch', type=int, default=1000)
+    parser.add_argument('--episode-per-collect', type=int, default=8)
+    parser.add_argument('--step-per-collect', type=int, default=8)
+    parser.add_argument('--update-per-step', type=float, default=0.125)
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
@@ -43,7 +47,7 @@ def get_args():
     parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--max-grad-norm', type=float, default=None)
     parser.add_argument('--gae-lambda', type=float, default=1.)
-    parser.add_argument('--rew-norm', type=bool, default=False)
+    parser.add_argument('--rew-norm', action="store_true", default=False)
     args = parser.parse_known_args()[0]
     return args
 
@@ -79,11 +83,14 @@ def test_a2c_with_il(args=get_args()):
         max_grad_norm=args.max_grad_norm, reward_normalization=args.rew_norm)
     # collector
     train_collector = Collector(
-        policy, train_envs, ReplayBuffer(args.buffer_size))
+        policy, train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'a2c')
     writer = SummaryWriter(log_path)
+    logger = BasicLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
@@ -94,9 +101,9 @@ def test_a2c_with_il(args=get_args()):
     # trainer
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, args.repeat_per_collect,
-        args.test_num, args.batch_size, stop_fn=stop_fn, save_fn=save_fn,
-        writer=writer)
+        args.step_per_epoch, args.repeat_per_collect, args.test_num, args.batch_size,
+        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, save_fn=save_fn,
+        logger=logger)
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':
         pprint.pprint(result)
@@ -105,7 +112,8 @@ def test_a2c_with_il(args=get_args()):
         policy.eval()
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
     policy.eval()
     # here we define an imitation collector with a trivial policy
@@ -118,14 +126,13 @@ def test_a2c_with_il(args=get_args()):
     il_policy = ImitationPolicy(net, optim, mode='discrete')
     il_test_collector = Collector(
         il_policy,
-        DummyVectorEnv(
-            [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     )
     train_collector.reset()
     result = offpolicy_trainer(
         il_policy, train_collector, il_test_collector, args.epoch,
-        args.step_per_epoch, args.collect_per_step, args.test_num,
-        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, writer=writer)
+        args.il_step_per_epoch, args.step_per_collect, args.test_num,
+        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, logger=logger)
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':
         pprint.pprint(result)
@@ -134,7 +141,8 @@ def test_a2c_with_il(args=get_args()):
         il_policy.eval()
         collector = Collector(il_policy, env)
         result = collector.collect(n_episode=1, render=args.render)
-        print(f'Final reward: {result["rew"]}, length: {result["len"]}')
+        rews, lens = result["rews"], result["lens"]
+        print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
 if __name__ == '__main__':
