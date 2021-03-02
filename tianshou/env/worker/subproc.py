@@ -121,7 +121,6 @@ class SubprocEnvWorker(EnvWorker):
     def __init__(
         self, env_fn: Callable[[], gym.Env], share_memory: bool = False
     ) -> None:
-        super().__init__(env_fn)
         self.parent_remote, self.child_remote = Pipe()
         self.share_memory = share_memory
         self.buffer: Optional[Union[dict, tuple, ShArray]] = None
@@ -140,14 +139,11 @@ class SubprocEnvWorker(EnvWorker):
         self.process = Process(target=_worker, args=args, daemon=True)
         self.process.start()
         self.child_remote.close()
-        self._seed = None
+        super().__init__(env_fn)
 
     def __getattr__(self, key: str) -> Any:
         self.parent_remote.send(["getattr", key])
-        result = self.parent_remote.recv()
-        if key == "action_space":  # issue #299
-            result.seed(self._seed)
-        return result
+        return self.parent_remote.recv()
 
     def _decode_obs(self) -> Union[dict, tuple, np.ndarray]:
         def decode_obs(
@@ -194,19 +190,16 @@ class SubprocEnvWorker(EnvWorker):
     def send_action(self, action: np.ndarray) -> None:
         self.parent_remote.send(["step", action])
 
-    def get_result(
-        self,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_result(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         obs, rew, done, info = self.parent_remote.recv()
         if self.share_memory:
             obs = self._decode_obs()
         return obs, rew, done, info
 
     def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
+        super().seed(seed)
         self.parent_remote.send(["seed", seed])
-        result = self.parent_remote.recv()
-        self._seed = result[0] if result is not None else seed
-        return result
+        return self.parent_remote.recv()
 
     def render(self, **kwargs: Any) -> Any:
         self.parent_remote.send(["render", kwargs])

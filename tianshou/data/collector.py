@@ -40,31 +40,6 @@ class Collector(object):
     normal env step. It returns either a dict or a :class:`~tianshou.data.Batch` with
     the modified keys and values. Examples are in "test/base/test_collector.py".
 
-    Here are some example usages:
-    ::
-
-        policy = PGPolicy(...)  # or other policies if you wish
-        env = gym.make("CartPole-v0")
-
-        replay_buffer = ReplayBuffer(size=10000)
-
-        # here we set up a collector with a single environment
-        collector = Collector(policy, env, buffer=replay_buffer)
-
-        # the collector supports vectorized environments as well
-        vec_buffer = VectorReplayBuffer(total_size=10000, buffer_num=3)
-        # buffer_num should be equal to (suggested) or larger than #envs
-        envs = DummyVectorEnv([lambda: gym.make("CartPole-v0") for _ in range(3)])
-        collector = Collector(policy, envs, buffer=vec_buffer)
-
-        # collect 3 episodes
-        collector.collect(n_episode=3)
-        # collect at least 2 steps
-        collector.collect(n_step=2)
-        # collect episodes with visual rendering ("render" is the sleep time between
-        # rendering consecutive frames)
-        collector.collect(n_episode=1, render=0.03)
-
     .. note::
 
         Please make sure the given environment has a time limitation if using n_episode
