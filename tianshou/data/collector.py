@@ -6,7 +6,7 @@ import numpy as np
 from typing import Any, Dict, List, Union, Optional, Callable
 
 from tianshou.policy import BasePolicy
-from tianshou.data.buffer import _alloc_by_keys_diff
+from tianshou.data.batch import _alloc_by_keys_diff
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.data import (
     Batch,
