@@ -37,7 +37,7 @@ $ bash run_experiments.sh mujoco_sac.py Ant-v3
 This will start 10 experiments with different seeds.
 
 #### Example benchmark
-![ant](./benchmark/Ant-v3/figure.png =250x250)
+<img src="./benchmark/Ant-v3/figure.png" width="256" height="256">
 
 \* Other graphs can be found under tianshou/examples/mujuco/benchmark/
 
