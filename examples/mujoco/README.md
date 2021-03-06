@@ -2,7 +2,6 @@
 We benchmarked Tianshou algorithm implementations in 9 out of 13 environments from the MuJoCo Gym task suite<sup>[[8]](#footnote8)</sup>.
 
 For each supported algorithm and supported mujoco environments, we will provide:
-
 - Default hyperparameters used for benchmark and scripts to reproduce the benchmark.
 - A comparasion of performance(or code level details) with other open source implementations or classic papers.
 - graphs and raw data that can be used for research purposes<sup>[[0]](#footnote1)</sup>.
@@ -11,10 +10,9 @@ For each supported algorithm and supported mujoco environments, we will provide:
 - Some hints on how to tune the algorithm.
   
 Supported algorithms are listed below.
-
-- [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf) 389bdb7
-- [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf) 389bdb7
-- [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf) 389bdb7
+- [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf) commit id: 389bdb7ed3b506f8def825fe187842c7976e9907
+- [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf) commit id: 389bdb7ed3b506f8def825fe187842c7976e9907
+- [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf) commit id: 389bdb7ed3b506f8def825fe187842c7976e9907
 
 ## Offpolicy algorithms
 #### usage
@@ -39,7 +37,7 @@ $ bash run_experiments.sh mujoco_sac.py Ant-v3
 This will start 10 experiments with different seeds.
 
 #### Example benchmark
-![ant](./benchmark/Ant-v3/figure.png)
+![ant](./benchmark/Ant-v3/figure.png =250x250)
 
 \* Other graphs can be found under tianshou/examples/mujuco/benchmark/
 
