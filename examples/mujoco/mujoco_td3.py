@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import gym
 import torch
@@ -12,8 +14,8 @@ from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.exploration import GaussianNoise
 from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.utils.net.continuous import Actor, Critic
+from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 
 
 def get_args():
