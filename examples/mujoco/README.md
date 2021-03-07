@@ -1,4 +1,5 @@
 # Tianshou's Mujoco Benchmark
+
 We benchmarked Tianshou algorithm implementations in 9 out of 13 environments from the MuJoCo Gym task suite<sup>[[1]](#footnote1)</sup>.
 
 For each supported algorithm and supported mujoco environments, we provide:
@@ -16,7 +17,9 @@ Supported algorithms are listed below:
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/v0.4.0)
 
 ## Offpolicy algorithms
+
 #### Usage
+
 Run
 
 ```bash
@@ -38,16 +41,19 @@ $ ./run_experiments.sh Ant-v3
 This will start 10 experiments with different seeds.
 
 #### Example benchmark
+
 <img src="./benchmark/Ant-v3/figure.png" width="500" height="450">
 
-\* Other graphs can be found under `/examples/mujuco/benchmark/`
+Other graphs can be found under `/examples/mujuco/benchmark/`
 
-#### hints
+#### Hints
+
 In offpolicy algorithms(DDPG, TD3, SAC), the shared hyperparameters are almost the same<sup>[[8]](#footnote8)</sup>, and most hyperparameters are consistent with those used for benchmark in SpinningUp's implementations<sup>[[9]](#footnote9)</sup>.
 
 By comparison to both classic literature and open source implementations (e.g., SpinningUp)<sup>[[1]](#footnote1)</sup><sup>[[2]](#footnote2)</sup>, Tianshou's implementations of DDPG, TD3, and SAC are roughly at-parity with or better than the best reported results for these algorithms.
 
 ### DDPG
+
 |      Environment       |     Tianshou      | [SpinningUp (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [TD3 paper (DDPG)](https://arxiv.org/abs/1802.09477) | [TD3 paper (OurDDPG)](https://arxiv.org/abs/1802.09477) |
 | :--------------------: | :---------------: | :----------------------------------------------------------: | :--------------------------------------------------: | :-----------------------------------------------------: |
 |          Ant           |     990.4±4.3     |                             ~840                             |                      **1005.3**                      |                          888.8                          |
@@ -79,6 +85,7 @@ By comparison to both classic literature and open source implementations (e.g., 
 \* details<sup>[[5]](#footnote5)</sup><sup>[[6]](#footnote6)</sup><sup>[[7]](#footnote7)</sup>
 
 ### SAC
+
 |      Environment       |      Tianshou      | [SpinningUp (Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [SAC paper](https://arxiv.org/abs/1801.01290) |
 | :--------------------: | :----------------: | :-------------------: | :---------: |
 |          Ant           |  **5850.2±475.7**  |         ~3980         |    ~3720    |
@@ -94,18 +101,21 @@ By comparison to both classic literature and open source implementations (e.g., 
 \* details<sup>[[5]](#footnote5)</sup><sup>[[6]](#footnote6)</sup>
 
 #### Hints for SAC
+
 0. DO NOT share the same network with two critic networks.
 1. The sigma (of the Gaussian policy) should be conditioned on input.
 2. The network size should not be less than 256.
 3. The deterministic evaluation helps a lot :)
 
-## Onpolicy algorithms
+## Onpolicy Algorithms
+
 TBD
 
 
 
 
-## Note that:
+## Note
+
 <a name="footnote1">[1]</a>  Supported environments include HalfCheetah-v3, Hopper-v3, Swimmer-v3, Walker2d-v3, Ant-v3, Humanoid-v3, Reacher-v2, InvertedPendulum-v2 and InvertedDoublePendulum-v2. Pusher, Thrower, Striker and HumanoidStandup are not supported because they are not commonly seen in literatures.
 
 <a name="footnote2">[2]</a>  Pretrained agents, detailed graphs (single agent, single game) and log details can all be found [here](https://cloud.tsinghua.edu.cn/d/356e0f5d1e66426b9828/).
