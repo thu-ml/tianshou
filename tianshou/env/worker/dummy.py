@@ -9,8 +9,8 @@ class DummyEnvWorker(EnvWorker):
     """Dummy worker used in sequential vector environments."""
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
-        super().__init__(env_fn)
         self.env = env_fn()
+        super().__init__(env_fn)
 
     def __getattr__(self, key: str) -> Any:
         return getattr(self.env, key)
@@ -30,13 +30,12 @@ class DummyEnvWorker(EnvWorker):
     def send_action(self, action: np.ndarray) -> None:
         self.result = self.env.step(action)
 
-    def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
-        return self.env.seed(seed) if hasattr(self.env, "seed") else None
+    def seed(self, seed: Optional[int] = None) -> List[int]:
+        super().seed(seed)
+        return self.env.seed(seed)
 
     def render(self, **kwargs: Any) -> Any:
-        return (
-            self.env.render(**kwargs) if hasattr(self.env, "render") else None
-        )
+        return self.env.render(**kwargs)
 
     def close_env(self) -> None:
         self.env.close()
