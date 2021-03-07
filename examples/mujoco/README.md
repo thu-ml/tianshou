@@ -63,7 +63,6 @@ By comparison to both classic literature and open source implementations(e.g. sp
 
 ### TD3
 
-#### implementation
 |      Environment       |     Tianshou      | [spining up(Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) |   [TD3 paper](https://arxiv.org/abs/1802.09477)    |
 | :--------------------: | :---------------: | :-------------------: | :--------------: |
 |          Ant           | **5116.4±799.9**  |         ~3800         |  4372.4±1000.3   |
@@ -80,19 +79,24 @@ By comparison to both classic literature and open source implementations(e.g. sp
 
 ### SAC
 |      Environment       |      Tianshou      | [spining up(Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [SAC paper](https://arxiv.org/abs/1801.01290) |
-| :--------------------: | :----------------: | :----------------------------------------------------------------------------------: | :-------------------------------------------: |
-|          Ant           |  **5850.2±475.7**  |                                        ~3980                                         |                     ~3720                     |
-|      HalfCheetah       | **12138.8±1049.3** |                                        ~11520                                        |                    ~10400                     |
-|         Hopper         |  **3542.2±51.5**   |                                        ~3150                                         |                     ~3370                     |
-|        Walker2d        |  **5007.0±251.5**  |                                        ~4250                                         |                     ~3740                     |
-|        Swimmer         |    **44.4±0.5**    |                                        ~41.7                                         |                       N                       |
-|        Humanoid        |  **5488.5±81.2**   |                                          N                                           |                     ~5200                     |
-|        Reacher         |    **-2.6±0.2**    |                                          N                                           |                       N                       |
-|    InvertedPendulum    |   **1000.0±0.0**   |                                          N                                           |                       N                       |
-| InvertedDoublePendulum |   **9359.5±0.4**   |                                          N                                           |                       N                       |
+| :--------------------: | :----------------: | :-------------------: | :---------: |
+|          Ant           |  **5850.2±475.7**  |         ~3980         |    ~3720    |
+|      HalfCheetah       | **12138.8±1049.3** |        ~11520         |   ~10400    |
+|         Hopper         |  **3542.2±51.5**   |         ~3150         |    ~3370    |
+|        Walker2d        |  **5007.0±251.5**  |         ~4250         |    ~3740    |
+|        Swimmer         |    **44.4±0.5**    |         ~41.7         |      N      |
+|        Humanoid        |  **5488.5±81.2**   |           N           |    ~5200    |
+|        Reacher         |    **-2.6±0.2**    |           N           |      N      |
+|    InvertedPendulum    |   **1000.0±0.0**   |           N           |      N      |
+| InvertedDoublePendulum |   **9359.5±0.4**   |           N           |      N      |
 
 \* details<sup>[[5]](#footnote5)</sup><sup>[[6]](#footnote6)</sup>
 
+#### hints
+0. DO NOT share the same network with two critic networks.
+1. The sigma (of the Gaussian policy) should be conditioned on input.
+2. The network size should not be less than 256.
+3. The deterministic evaluation helps a lot :)
 
 ## Onpolicy algorithms
 TBD
