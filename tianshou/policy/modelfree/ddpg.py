@@ -133,13 +133,15 @@ class DDPGPolicy(BasePolicy):
         return Batch(act=actions, state=h)
 
     @staticmethod
-    def _mse_optimizer(batch: Batch, critic, optimizer):
+    def _mse_optimizer(
+        batch: Batch, critic: torch.nn.Module, optimizer: torch.optim.Optimizer
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """used to optimize critic"""
         weight = getattr(batch, "weight", 1.0)
         current_q = critic(batch.obs, batch.act).flatten()
         target_q = batch.returns.flatten()
         td = current_q - target_q
-        # critic1_loss = F.mse_loss(current_q1, target_q)
+        # critic_loss = F.mse_loss(current_q1, target_q)
         critic_loss = (td.pow(2) * weight).mean()
         optimizer.zero_grad()
         critic_loss.backward()
