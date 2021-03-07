@@ -129,18 +129,31 @@ class DDPGPolicy(BasePolicy):
         obs = batch[input]
         actions, h = model(obs, state=state, info=batch.info)
         actions += self._action_bias
+        actions = actions.clamp(self._range[0], self._range[1])
         return Batch(act=actions, state=h)
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        weight = batch.pop("weight", 1.0)
-        current_q = self.critic(batch.obs, batch.act).flatten()
+    @staticmethod
+    def _mse_optimizer(
+        batch: Batch, critic: torch.nn.Module, optimizer: torch.optim.Optimizer
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """A simple wrapper script for updating critic network."""
+        weight = getattr(batch, "weight", 1.0)
+        current_q = critic(batch.obs, batch.act).flatten()
         target_q = batch.returns.flatten()
         td = current_q - target_q
+        # critic_loss = F.mse_loss(current_q1, target_q)
         critic_loss = (td.pow(2) * weight).mean()
-        batch.weight = td  # prio-buffer
-        self.critic_optim.zero_grad()
+        optimizer.zero_grad()
         critic_loss.backward()
-        self.critic_optim.step()
+        optimizer.step()
+        return td, critic_loss
+
+    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+        # critic
+        td, critic_loss = self._mse_optimizer(
+            batch, self.critic, self.critic_optim)
+        batch.weight = td  # prio-buffer
+        # actor
         action = self(batch).act
         actor_loss = -self.critic(batch.obs, action).mean()
         self.actor_optim.zero_grad()

@@ -8,12 +8,13 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import SACPolicy
+from tianshou.policy import TD3Policy
 from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
+from tianshou.exploration import GaussianNoise
 from tianshou.trainer import offpolicy_trainer
-from tianshou.utils.net.continuous import ActorProb, Critic
+from tianshou.utils.net.continuous import Actor, Critic
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 
 
@@ -23,14 +24,15 @@ def get_args():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=1000000)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[256, 256])
-    parser.add_argument('--actor-lr', type=float, default=1e-3)
-    parser.add_argument('--critic-lr', type=float, default=1e-3)
+    parser.add_argument('--actor-lr', type=float, default=3e-4)
+    parser.add_argument('--critic-lr', type=float, default=3e-4)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
-    parser.add_argument('--alpha', type=float, default=0.2)
-    parser.add_argument('--auto-alpha', default=False, action='store_true')
-    parser.add_argument('--alpha-lr', type=float, default=3e-4)
-    parser.add_argument("--start-timesteps", type=int, default=10000)
+    parser.add_argument('--exploration-noise', type=float, default=0.1)
+    parser.add_argument('--policy-noise', type=float, default=0.2)
+    parser.add_argument('--noise-clip', type=float, default=0.5)
+    parser.add_argument('--update-actor-freq', type=int, default=2)
+    parser.add_argument("--start-timesteps", type=int, default=25000)
     parser.add_argument('--epoch', type=int, default=200)
     parser.add_argument('--step-per-epoch', type=int, default=5000)
     parser.add_argument('--step-per-collect', type=int, default=1)
@@ -48,11 +50,14 @@ def get_args():
     return parser.parse_args()
 
 
-def test_sac(args=get_args()):
+def test_td3(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
+    args.exploration_noise = args.exploration_noise * args.max_action
+    args.policy_noise = args.policy_noise * args.max_action
+    args.noise_clip = args.noise_clip * args.max_action
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
     print("Action range:", np.min(env.action_space.low),
@@ -73,10 +78,9 @@ def test_sac(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(
+    actor = Actor(
         net_a, args.action_shape, max_action=args.max_action,
-        device=args.device, unbounded=True, conditioned_sigma=True
-    ).to(args.device)
+        device=args.device).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c1 = Net(args.state_shape, args.action_shape,
                  hidden_sizes=args.hidden_sizes,
@@ -89,17 +93,14 @@ def test_sac(args=get_args()):
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
-    if args.auto_alpha:
-        target_entropy = -np.prod(env.action_space.shape)
-        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
-        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
-        args.alpha = (target_entropy, log_alpha, alpha_optim)
-
-    policy = SACPolicy(
+    policy = TD3Policy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         action_range=[env.action_space.low[0], env.action_space.high[0]],
-        tau=args.tau, gamma=args.gamma, alpha=args.alpha,
-        estimation_step=args.n_step)
+        tau=args.tau, gamma=args.gamma,
+        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
+        policy_noise=args.policy_noise, update_actor_freq=args.update_actor_freq,
+        noise_clip=args.noise_clip, estimation_step=args.n_step)
+
     # load a previous policy
     if args.resume_path:
         policy.load_state_dict(torch.load(
@@ -116,7 +117,7 @@ def test_sac(args=get_args()):
     test_collector = Collector(policy, test_envs)
     train_collector.collect(n_step=args.start_timesteps, random=True)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'sac', 'seed_' + str(
+    log_path = os.path.join(args.logdir, args.task, 'td3', 'seed_' + str(
         args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
@@ -140,4 +141,4 @@ def test_sac(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_sac()
+    test_td3()
