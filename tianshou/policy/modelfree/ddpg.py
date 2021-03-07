@@ -136,7 +136,7 @@ class DDPGPolicy(BasePolicy):
     def _mse_optimizer(
         batch: Batch, critic: torch.nn.Module, optimizer: torch.optim.Optimizer
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """used to optimize critic"""
+        """A simple wrapper script for updating critic network."""
         weight = getattr(batch, "weight", 1.0)
         current_q = critic(batch.obs, batch.act).flatten()
         target_q = batch.returns.flatten()
