@@ -13,7 +13,7 @@ For each supported algorithm and supported mujoco environments, we provide:
 
 Supported algorithms are listed below:
 - [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/v0.4.0)
-- [Twin Delayed DDPG (TD3),](https://arxiv.org/pdf/1802.09477.pdf) [commit id](https://github.com/thu-ml/tianshou/tree/v0.4.0)
+- [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/v0.4.0)
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/v0.4.0)
 
 ## Offpolicy algorithms
@@ -133,4 +133,3 @@ TBD
 <a name="footnote8">[8]</a>  SAC's start-timesteps is set to 10000 by default while it is 25000 is DDPG/TD3. TD3's learning rate is set to 3e-4 while it is 1e-3 for DDPG/SAC. However, there is NO enough evidence to support our choice of such hyperparameters (we simply choose them because of SpinningUp) and you can try playing with those hyperparameters to see if you can improve performance. Do tell us if you can!
 
 <a name="footnote9">[9]</a>  We use batchsize of 256 in DDPG/TD3/SAC while SpinningUp use 100. Minor difference also lies with `start-timesteps`, data loop method `step_per_collect`, method to deal with/bootstrap truncated steps because of timelimit and unfinished/collecting episodes (contribute to performance improvement), etc.
-
