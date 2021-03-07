@@ -61,7 +61,7 @@ def test_td3(args=get_args()):
     print("Action range:", np.min(env.action_space.low),
           np.max(env.action_space.high))
     # train_envs = gym.make(args.task)
-    if args.training_num > 0:
+    if args.training_num > 1:
         train_envs = SubprocVectorEnv(
             [lambda: gym.make(args.task) for _ in range(args.training_num)])
     else:
@@ -107,7 +107,7 @@ def test_td3(args=get_args()):
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    if args.training_num > 0:
+    if args.training_num > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(args.buffer_size)
