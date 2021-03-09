@@ -2,6 +2,7 @@ import gym
 import numpy as np
 from typing import Any, List, Union, Optional, Callable
 
+from tianshou.utils import RunningMeanStd
 from tianshou.env.worker import EnvWorker, DummyEnvWorker, SubprocEnvWorker, \
     RayEnvWorker
 
@@ -56,6 +57,8 @@ class BaseVectorEnv(gym.Env):
         vectorized step it only deal with those environments spending time
         within ``timeout`` seconds.
     """
+    EPS = 1e-8
+    OBS_CLIP = 10.0
 
     def __init__(
         self,
@@ -63,6 +66,9 @@ class BaseVectorEnv(gym.Env):
         worker_fn: Callable[[Callable[[], gym.Env]], EnvWorker],
         wait_num: Optional[int] = None,
         timeout: Optional[float] = None,
+        norm_obs: bool = False,
+        obs_rms: Optional[RunningMeanStd] = None,
+        update_obs: bool = True,
     ) -> None:
         self._env_fns = env_fns
         # A VectorEnv contains a pool of EnvWorkers, which corresponds to
@@ -89,6 +95,13 @@ class BaseVectorEnv(gym.Env):
         # all environments are ready in the beginning
         self.ready_id = list(range(self.env_num))
         self.is_closed = False
+
+        # initialise observation running mean/std
+        self.norm_obs = norm_obs
+        self.update_obs = update_obs
+        if norm_obs:
+            self.obs_rms = RunningMeanStd(shape=self.observation_space[0].shape) \
+                if obs_rms is None else obs_rms
 
     def _assert_is_not_closed(self) -> None:
         assert not self.is_closed, \
@@ -149,7 +162,9 @@ class BaseVectorEnv(gym.Env):
         if self.is_async:
             self._assert_id(id)
         obs = np.stack([self.workers[i].reset() for i in id])
-        return obs
+        if self.update_obs:
+            self.obs_rms.update(obs)
+        return self.normalize_obs(obs)
 
     def step(
         self,
@@ -219,7 +234,11 @@ class BaseVectorEnv(gym.Env):
                 info["env_id"] = env_id
                 result.append((obs, rew, done, info))
                 self.ready_id.append(env_id)
-        return list(map(np.stack, zip(*result)))
+        stacked_obs, stacked_rew, stacked_done, stacked_info = \
+            list(map(np.stack, zip(*result)))
+        if self.norm_obs and self.update_obs:
+            self.obs_rms.update(stacked_obs)
+        return self.normalize_obs(stacked_obs), stacked_rew, stacked_done, stacked_info
 
     def seed(
         self, seed: Optional[Union[int, List[int]]] = None
@@ -263,6 +282,21 @@ class BaseVectorEnv(gym.Env):
         for w in self.workers:
             w.close()
         self.is_closed = True
+
+    def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
+        """
+        Normalize observations using this VecNormalize's observations statistics.
+        Calling this method does not update statistics.
+        """
+        if self.norm_obs:
+            obs = (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.EPS)
+            obs = np.clip(obs, -self.OBS_CLIP, self.OBS_CLIP)
+        return obs
+
+    def denormalize_obs(self, obs: np.ndarray) -> np.ndarray:
+        if self.norm_obs:
+            obs = (obs * np.sqrt(self.obs_rms.var + self.EPS)) + self.obs_rms.mean
+        return obs
 
     def __del__(self) -> None:
         """Redirect to self.close()."""
