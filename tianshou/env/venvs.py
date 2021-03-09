@@ -162,7 +162,7 @@ class BaseVectorEnv(gym.Env):
         if self.is_async:
             self._assert_id(id)
         obs = np.stack([self.workers[i].reset() for i in id])
-        if self.update_obs:
+        if self.norm_obs and self.update_obs:
             self.obs_rms.update(obs)
         return self.normalize_obs(obs)
 
@@ -238,7 +238,7 @@ class BaseVectorEnv(gym.Env):
             list(map(np.stack, zip(*result)))
         if self.norm_obs and self.update_obs:
             self.obs_rms.update(stacked_obs)
-        return self.normalize_obs(stacked_obs), stacked_rew, stacked_done, stacked_info
+        return [self.normalize_obs(stacked_obs), stacked_rew, stacked_done, stacked_info]
 
     def seed(
         self, seed: Optional[Union[int, List[int]]] = None
