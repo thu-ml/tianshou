@@ -73,7 +73,7 @@ class RunningMeanStd(object):
 
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
 
-    :param epsilon: helps with arithmetic issues
+    :param float epsilon: helps with arithmetic issues. Default to 1e-4.
     """
 
     def __init__(self, epsilon: float = 1e-4) -> None:
@@ -81,7 +81,7 @@ class RunningMeanStd(object):
         self.count = epsilon
 
     def update(self, x: np.ndarray) -> None:
-        """Add an item into RMS, modify the mean/var/count."""
+        """Add a batch of item into RMS with the same shape, modify mean/var/count."""
         batch_mean, batch_var = np.mean(x, axis=0), np.var(x, axis=0)
         batch_count = len(x)
 
