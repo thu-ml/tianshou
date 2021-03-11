@@ -57,14 +57,16 @@ class BaseVectorEnv(gym.Env):
         vectorized step it only deal with those environments spending time
         within ``timeout`` seconds.
     :param bool norm_obs: Whether to track mean&std of data and normalise observation
-        on return.
-    :param obs_rms: class to track mean&std of observation. If not given, will initialise
-        a new one. Usually in envs that is used to evaluate algorithm, obs_rms should be
-        passed in. Default to None.
+        on return. TODO For now, observation normalization only support observation
+        of type np.ndarray. 
+    :param obs_rms: class to track mean&std of observation. If not given, will
+        initialise a new one. Usually in envs that is used to evaluate algorithm,
+        obs_rms should be passed in. Default to None.
     :param update_obs: Whether to update obs_rms, default to True.
     """
     EPS = 1e-8
     OBS_CLIP = 10.0
+
     def __init__(
         self,
         env_fns: List[Callable[[], gym.Env]],

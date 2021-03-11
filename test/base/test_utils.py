@@ -29,14 +29,16 @@ def test_moving_average():
     assert np.allclose(stat.mean(), 3)
     assert np.allclose(stat.std() ** 2, 2)
 
+
 def test_rms():
     rms = RunningMeanStd(shape=(2, 2))
     assert np.allclose(rms.mean, 0)
     assert np.allclose(rms.var, 1)
-    rms.update(np.array([[[1, 2],[3, 5]]]))
-    rms.update(np.array([[[1, 2],[3, 4]], [[1, 2], [0, 0]]]))
+    rms.update(np.array([[[1, 2], [3, 5]]]))
+    rms.update(np.array([[[1, 2], [3, 4]], [[1, 2], [0, 0]]]))
     assert np.allclose(rms.mean, np.array([[1, 2], [2, 3]]), atol=1e-3)
     assert np.allclose(rms.var, np.array([[0, 0], [2, 14/3.]]), atol=1e-3)
+
 
 def test_net():
     # here test the networks that does not appear in the other script
