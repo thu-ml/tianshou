@@ -287,8 +287,8 @@ class BaseVectorEnv(gym.Env):
 
     def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
         """Normalize observations by statistics in obs_rms."""
-        clip_max = 10.0
-
+        clip_max = 10.0  # this magic number is from openai baselines
+        # see baselines/common/vec_env/vec_normalize.py#L10
         if self.obs_rms and self.norm_obs:
             obs = (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.__eps)
             obs = np.clip(obs, -clip_max, clip_max)
