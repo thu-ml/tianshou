@@ -56,10 +56,15 @@ class BaseVectorEnv(gym.Env):
     :param float timeout: use in asynchronous simulation same as above, in each
         vectorized step it only deal with those environments spending time
         within ``timeout`` seconds.
+    :param bool norm_obs: Whether to track mean&std of data and normalise observation
+        on return.
+    :param obs_rms: class to track mean&std of observation. If not given, will initialise
+        a new one. Usually in envs that is used to evaluate algorithm, obs_rms should be
+        passed in. Default to None.
+    :param update_obs: Whether to update obs_rms, default to True.
     """
     EPS = 1e-8
     OBS_CLIP = 10.0
-
     def __init__(
         self,
         env_fns: List[Callable[[], gym.Env]],
@@ -234,11 +239,10 @@ class BaseVectorEnv(gym.Env):
                 info["env_id"] = env_id
                 result.append((obs, rew, done, info))
                 self.ready_id.append(env_id)
-        stacked_obs, stacked_rew, stacked_done, stacked_info = \
-            list(map(np.stack, zip(*result)))
+        obs_stack, rew_stack, done_stack, info_stack = map(np.stack, zip(*result))
         if self.norm_obs and self.update_obs:
-            self.obs_rms.update(stacked_obs)
-        return [self.normalize_obs(stacked_obs), stacked_rew, stacked_done, stacked_info]
+            self.obs_rms.update(obs_stack)
+        return [self.normalize_obs(obs_stack), rew_stack, done_stack, info_stack]
 
     def seed(
         self, seed: Optional[Union[int, List[int]]] = None
@@ -291,11 +295,6 @@ class BaseVectorEnv(gym.Env):
         if self.norm_obs:
             obs = (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.EPS)
             obs = np.clip(obs, -self.OBS_CLIP, self.OBS_CLIP)
-        return obs
-
-    def denormalize_obs(self, obs: np.ndarray) -> np.ndarray:
-        if self.norm_obs:
-            obs = (obs * np.sqrt(self.obs_rms.var + self.EPS)) + self.obs_rms.mean
         return obs
 
     def __del__(self) -> None:
