@@ -58,7 +58,7 @@ class BaseVectorEnv(gym.Env):
         within ``timeout`` seconds.
     :param bool norm_obs: Whether to track mean&std of data and normalise observation
         on return. TODO For now, observation normalization only support observation
-        of type np.ndarray. 
+        of type np.ndarray.
     :param obs_rms: class to track mean&std of observation. If not given, will
         initialise a new one. Usually in envs that is used to evaluate algorithm,
         obs_rms should be passed in. Default to None.
