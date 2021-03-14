@@ -95,8 +95,14 @@ class DQNPolicy(BasePolicy):
             self._gamma, self._n_step, self._rew_norm)
         return batch
 
-    def compute_q_value(self, logits: torch.Tensor) -> torch.Tensor:
-        """Compute the q value based on the network's raw output logits."""
+    def compute_q_value(
+        self, logits: torch.Tensor, mask: Optional[np.ndarray]
+    ) -> torch.Tensor:
+        """Compute the q value based on the network's raw output and action mask."""
+        if mask is not None:
+            # the masked q value should be smaller than logits.min()
+            min_value = logits.min() - logits.max() - 1.0
+            logits = logits + to_torch_as(~mask, logits) * min_value
         return logits
 
     def forward(
@@ -140,15 +146,10 @@ class DQNPolicy(BasePolicy):
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
         logits, h = model(obs_, state=state, info=batch.info)
-        q = self.compute_q_value(logits)
+        q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
-        act: np.ndarray = to_numpy(q.max(dim=1)[1])
-        if hasattr(obs, "mask"):
-            # some of actions are masked, they cannot be selected
-            q_: np.ndarray = to_numpy(q)
-            q_[~obs.mask] = -np.inf
-            act = q_.argmax(axis=1)
+        act = to_numpy(q.max(dim=1)[1])
         return Batch(logits=logits, act=act, state=h)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
