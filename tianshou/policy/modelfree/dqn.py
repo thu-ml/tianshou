@@ -102,7 +102,7 @@ class DQNPolicy(BasePolicy):
         if mask is not None:
             # the masked q value should be smaller than logits.min()
             min_value = logits.min() - logits.max() - 1.0
-            logits = logits + to_torch_as(~mask, logits) * min_value
+            logits = logits + to_torch_as(1 - mask, logits) * min_value
         return logits
 
     def forward(
@@ -170,10 +170,11 @@ class DQNPolicy(BasePolicy):
 
     def exploration_noise(self, act: np.ndarray, batch: Batch) -> np.ndarray:
         if not np.isclose(self.eps, 0.0):
-            for i in range(len(act)):
-                if np.random.rand() < self.eps:
-                    q_ = np.random.rand(self.max_action_num)
-                    if hasattr(batch["obs"], "mask"):
-                        q_[~batch["obs"].mask[i]] = -np.inf
-                    act[i] = q_.argmax()
+            bsz = len(act)
+            rand_mask = np.random.rand(bsz) < self.eps
+            q = np.random.rand(bsz, self.max_action_num)  # [0, 1]
+            if hasattr(batch.obs, "mask"):
+                q += batch.obs.mask
+            rand_act = q.argmax(axis=1)
+            act[rand_mask] = rand_act[rand_mask]
         return act
