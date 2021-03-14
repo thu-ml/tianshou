@@ -73,13 +73,13 @@ class DQNPolicy(BasePolicy):
 
     def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
-        # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
+        result = self(batch, input="obs_next")
         if self._target:
-            a = self(batch, input="obs_next").act
+            # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
             target_q = self(batch, model="model_old", input="obs_next").logits
-            target_q = target_q[np.arange(len(a)), a]
         else:
-            target_q = self(batch, input="obs_next").logits.max(dim=1)[0]
+            target_q = result.logits
+        target_q = target_q[np.arange(len(result.act)), result.act]
         return target_q
 
     def process_fn(
