@@ -73,13 +73,13 @@ class DQNPolicy(BasePolicy):
 
     def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
-        # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
+        result = self(batch, input="obs_next")
         if self._target:
-            a = self(batch, input="obs_next").act
+            # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
             target_q = self(batch, model="model_old", input="obs_next").logits
-            target_q = target_q[np.arange(len(a)), a]
         else:
-            target_q = self(batch, input="obs_next").logits.max(dim=1)[0]
+            target_q = result.logits
+        target_q = target_q[np.arange(len(result.act)), result.act]
         return target_q
 
     def process_fn(
@@ -95,8 +95,14 @@ class DQNPolicy(BasePolicy):
             self._gamma, self._n_step, self._rew_norm)
         return batch
 
-    def compute_q_value(self, logits: torch.Tensor) -> torch.Tensor:
-        """Compute the q value based on the network's raw output logits."""
+    def compute_q_value(
+        self, logits: torch.Tensor, mask: Optional[np.ndarray]
+    ) -> torch.Tensor:
+        """Compute the q value based on the network's raw output and action mask."""
+        if mask is not None:
+            # the masked q value should be smaller than logits.min()
+            min_value = logits.min() - logits.max() - 1.0
+            logits = logits + to_torch_as(1 - mask, logits) * min_value
         return logits
 
     def forward(
@@ -140,15 +146,10 @@ class DQNPolicy(BasePolicy):
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
         logits, h = model(obs_, state=state, info=batch.info)
-        q = self.compute_q_value(logits)
+        q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
-        act: np.ndarray = to_numpy(q.max(dim=1)[1])
-        if hasattr(obs, "mask"):
-            # some of actions are masked, they cannot be selected
-            q_: np.ndarray = to_numpy(q)
-            q_[~obs.mask] = -np.inf
-            act = q_.argmax(axis=1)
+        act = to_numpy(q.max(dim=1)[1])
         return Batch(logits=logits, act=act, state=h)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
@@ -169,10 +170,11 @@ class DQNPolicy(BasePolicy):
 
     def exploration_noise(self, act: np.ndarray, batch: Batch) -> np.ndarray:
         if not np.isclose(self.eps, 0.0):
-            for i in range(len(act)):
-                if np.random.rand() < self.eps:
-                    q_ = np.random.rand(self.max_action_num)
-                    if hasattr(batch["obs"], "mask"):
-                        q_[~batch["obs"].mask[i]] = -np.inf
-                    act[i] = q_.argmax()
+            bsz = len(act)
+            rand_mask = np.random.rand(bsz) < self.eps
+            q = np.random.rand(bsz, self.max_action_num)  # [0, 1]
+            if hasattr(batch.obs, "mask"):
+                q += batch.obs.mask
+            rand_act = q.argmax(axis=1)
+            act[rand_mask] = rand_act[rand_mask]
         return act

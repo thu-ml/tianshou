@@ -17,7 +17,7 @@ from tianshou.data import Collector, VectorReplayBuffer, PrioritizedVectorReplay
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--eps-test', type=float, default=0.05)
     parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
@@ -134,7 +134,6 @@ def test_qrdqn(args=get_args()):
 def test_pqrdqn(args=get_args()):
     args.prioritized_replay = True
     args.gamma = .95
-    args.seed = 1
     test_qrdqn(args)
 
 

@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from tianshou.policy import DQNPolicy
 from tianshou.data import Batch, ReplayBuffer
@@ -57,14 +57,13 @@ class C51Policy(DQNPolicy):
         )
         self.delta_z = (v_max - v_min) / (num_atoms - 1)
 
-    def _target_q(
-        self, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> torch.Tensor:
+    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         return self.support.repeat(len(indice), 1)  # shape: [bsz, num_atoms]
 
-    def compute_q_value(self, logits: torch.Tensor) -> torch.Tensor:
-        """Compute the q value based on the network's raw output logits."""
-        return (logits * self.support).sum(2)
+    def compute_q_value(
+        self, logits: torch.Tensor, mask: Optional[np.ndarray]
+    ) -> torch.Tensor:
+        return super().compute_q_value((logits * self.support).sum(2), mask)
 
     def _target_dist(self, batch: Batch) -> torch.Tensor:
         if self._target:

@@ -1,8 +1,8 @@
 import torch
 import warnings
 import numpy as np
-from typing import Any, Dict
 import torch.nn.functional as F
+from typing import Any, Dict, Optional
 
 from tianshou.policy import DQNPolicy
 from tianshou.data import Batch, ReplayBuffer
@@ -61,9 +61,10 @@ class QRDQNPolicy(DQNPolicy):
         next_dist = next_dist[np.arange(len(a)), a, :]
         return next_dist  # shape: [bsz, num_quantiles]
 
-    def compute_q_value(self, logits: torch.Tensor) -> torch.Tensor:
-        """Compute the q value based on the network's raw output logits."""
-        return logits.mean(2)
+    def compute_q_value(
+        self, logits: torch.Tensor, mask: Optional[np.ndarray]
+    ) -> torch.Tensor:
+        return super().compute_q_value(logits.mean(2), mask)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
