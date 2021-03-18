@@ -29,10 +29,11 @@ class PGPolicy(BasePolicy):
         dist_fn: Type[torch.distributions.Distribution],
         discount_factor: float = 0.99,
         reward_normalization: bool = False,
-        action_range: Optional[Tuple[float, float]] = None,
+        scaling: Optional[bool] = True,
+        bound_method: Optional[str] = "clipping",
         **kwargs: Any,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(scaling=scaling, bound_method=bound_method, **kwargs)
         if model is not None:
             self.model: torch.nn.Module = model
         self.optim = optim
@@ -103,10 +104,6 @@ class PGPolicy(BasePolicy):
                 losses.append(loss.item())
         return {"loss": losses}
 
-    def map_action(
-        self, act: Union[np.ndarray, Batch], batch: Batch
-    ) -> Union[np.ndarray, Batch]:
-        act = np.clip(act)
 
     # def _vanilla_returns(self, batch):
     #     returns = batch.rew[:]

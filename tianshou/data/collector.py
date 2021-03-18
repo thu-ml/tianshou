@@ -219,8 +219,10 @@ class Collector(object):
                     act = self.policy.exploration_noise(act, self.data)
                 self.data.update(policy=policy, act=act)
 
+            # get bounded and remapped actions first (not saved)
+            remapped_action = self.policy.map_action(self.data.act)
             # step in env
-            obs_next, rew, done, info = self.env.step(self.data.act, id=ready_env_ids)
+            obs_next, rew, done, info = self.env.step(remapped_action, id=ready_env_ids)
 
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
             if self.preprocess_fn:
@@ -419,8 +421,10 @@ class AsyncCollector(Collector):
                 _alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
                 whole_data[ready_env_ids] = self.data  # lots of overhead
 
+            # get bounded and remapped actions first (not saved)
+            remapped_action = self.policy.map_action(self.data.act)
             # step in env
-            obs_next, rew, done, info = self.env.step(self.data.act, id=ready_env_ids)
+            obs_next, rew, done, info = self.env.step(remapped_action, id=ready_env_ids)
 
             # change self.data here because ready_env_ids has changed
             ready_env_ids = np.array([i["env_id"] for i in info])

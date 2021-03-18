@@ -84,7 +84,6 @@ def test_ddpg(args=get_args()):
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
     policy = DDPGPolicy(
         actor, actor_optim, critic, critic_optim,
-        action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         estimation_step=args.n_step)

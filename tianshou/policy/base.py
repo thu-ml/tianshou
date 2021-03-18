@@ -1,6 +1,7 @@
 import gym
 import torch
 import numpy as np
+from gym import spaces
 from torch import nn
 from numba import njit
 from abc import ABC, abstractmethod
@@ -54,13 +55,18 @@ class BasePolicy(ABC, nn.Module):
     def __init__(
         self,
         observation_space: gym.Space = None,
-        action_space: gym.Space = None
+        action_space: gym.Space = None,
+        scaling: Optional[bool] = False,
+        bound_method: Optional[str] = "",
     ) -> None:
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
         self.agent_id = 0
         self.updating = False
+        self.scaling = scaling
+        # can be either "clipping" or "tanh", empty string for do nothing.
+        self.bound_method = bound_method
         self._compile()
 
     def set_agent_id(self, agent_id: int) -> None:
@@ -85,15 +91,25 @@ class BasePolicy(ABC, nn.Module):
         self, act: Union[np.ndarray, Batch], batch: Batch
     ) -> Union[np.ndarray, Batch]:
         # TODO doc
-        """Map input action to action input to env.step(). e.g. clip action or apply
-        tanh func to remap the action to the right range (-1, 1).
-        
+        """Map raw input action to action space in gym's env.
+        Usually map (-1, 1) to (action_space.low, action_space.hight)
+        e.g. cliping, applying tanh activation and scaling.
+
         :param act: a data batch or numpy.ndarray which is the action taken by
             policy.forward.
         :param batch: the input batch for policy.forward, kept for advanced usage.
 
         :return: action in the same form of input "act" but with remapp.
         """
+        if isinstance(self.action_space, spaces.Box):
+            # TODO valid shape
+            if self.bound_method == "clipping":
+                act = np.clip(act, self.action_space.low, self.action_space.high)
+            elif self.bound_method == "tanh":
+                act = np.tanh(act)
+            if self.scaling:
+                act = self.action_space.low + \
+                    (self.action_space.high - self.action_space.low)*((act + 1)/2.)
         return act
 
     @abstractmethod
@@ -337,7 +353,7 @@ class BasePolicy(ABC, nn.Module):
         _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
 
 
-@njit
+@ njit
 def _gae_return(
     v_s: np.ndarray,
     v_s_: np.ndarray,
@@ -356,7 +372,7 @@ def _gae_return(
     return returns
 
 
-@njit
+@ njit
 def _episodic_return(
     v_s_: np.ndarray,
     rew: np.ndarray,
@@ -369,7 +385,7 @@ def _episodic_return(
     return _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda) + v_s
 
 
-@njit
+@ njit
 def _nstep_return(
     rew: np.ndarray,
     end_flag: np.ndarray,

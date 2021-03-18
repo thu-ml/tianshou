@@ -20,8 +20,6 @@ class TD3Policy(DDPGPolicy):
     :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic2_optim: the optimizer for the second
         critic network.
-    :param action_range: the action range (minimum, maximum).
-    :type action_range: Tuple[float, float]
     :param float tau: param for soft update of the target network. Default to 0.005.
     :param float gamma: discount factor, in [0, 1]. Default to 0.99.
     :param float exploration_noise: the exploration noise, add to the action.
@@ -49,7 +47,6 @@ class TD3Policy(DDPGPolicy):
         critic1_optim: torch.optim.Optimizer,
         critic2: torch.nn.Module,
         critic2_optim: torch.optim.Optimizer,
-        action_range: Tuple[float, float],
         tau: float = 0.005,
         gamma: float = 0.99,
         exploration_noise: Optional[BaseNoise] = GaussianNoise(sigma=0.1),
@@ -60,7 +57,7 @@ class TD3Policy(DDPGPolicy):
         estimation_step: int = 1,
         **kwargs: Any,
     ) -> None:
-        super().__init__(actor, actor_optim, None, None, action_range, tau, gamma,
+        super().__init__(actor, actor_optim, None, None, tau, gamma,
                          exploration_noise, reward_normalization,
                          estimation_step, **kwargs)
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
@@ -98,7 +95,6 @@ class TD3Policy(DDPGPolicy):
         if self._noise_clip > 0.0:
             noise = noise.clamp(-self._noise_clip, self._noise_clip)
         a_ += noise
-        a_ = a_.clamp(self._range[0], self._range[1])
         target_q = torch.min(
             self.critic1_old(batch.obs_next, a_),
             self.critic2_old(batch.obs_next, a_))
