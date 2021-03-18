@@ -29,6 +29,7 @@ class PGPolicy(BasePolicy):
         dist_fn: Type[torch.distributions.Distribution],
         discount_factor: float = 0.99,
         reward_normalization: bool = False,
+        action_range: Optional[Tuple[float, float]] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -101,6 +102,11 @@ class PGPolicy(BasePolicy):
                 self.optim.step()
                 losses.append(loss.item())
         return {"loss": losses}
+
+    def map_action(
+        self, act: Union[np.ndarray, Batch], batch: Batch
+    ) -> Union[np.ndarray, Batch]:
+        act = np.clip(act)
 
     # def _vanilla_returns(self, batch):
     #     returns = batch.rew[:]

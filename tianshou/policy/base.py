@@ -81,6 +81,21 @@ class BasePolicy(ABC, nn.Module):
         """
         return act
 
+    def map_action(
+        self, act: Union[np.ndarray, Batch], batch: Batch
+    ) -> Union[np.ndarray, Batch]:
+        # TODO doc
+        """Map input action to action input to env.step(). e.g. clip action or apply
+        tanh func to remap the action to the right range (-1, 1).
+        
+        :param act: a data batch or numpy.ndarray which is the action taken by
+            policy.forward.
+        :param batch: the input batch for policy.forward, kept for advanced usage.
+
+        :return: action in the same form of input "act" but with remapp.
+        """
+        return act
+
     @abstractmethod
     def forward(
         self,

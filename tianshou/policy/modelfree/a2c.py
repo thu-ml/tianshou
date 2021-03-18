@@ -50,6 +50,7 @@ class A2CPolicy(PGPolicy):
         max_grad_norm: Optional[float] = None,
         gae_lambda: float = 0.95,
         reward_normalization: bool = False,
+        action_range: Optional[Tuple[float, float]] = None,
         max_batchsize: int = 256,
         **kwargs: Any
     ) -> None:
