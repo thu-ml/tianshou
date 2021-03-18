@@ -100,8 +100,6 @@ def test_ppo(args=get_args()):
         # dual_clip=args.dual_clip,
         # dual clip cause monotonically increasing log_std :)
         value_clip=args.value_clip,
-        # action_range=[env.action_space.low[0], env.action_space.high[0]],)
-        # if clip the action, ppo would not converge :)
         gae_lambda=args.gae_lambda)
     # collector
     train_collector = Collector(

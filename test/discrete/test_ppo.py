@@ -85,7 +85,6 @@ def test_ppo(args=get_args()):
         eps_clip=args.eps_clip,
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
-        action_range=None,
         gae_lambda=args.gae_lambda,
         reward_normalization=args.rew_norm,
         dual_clip=args.dual_clip,
