@@ -49,8 +49,6 @@ class BasePolicy(ABC, nn.Module):
 
         torch.save(policy.state_dict(), "policy.pth")
         policy.load_state_dict(torch.load("policy.pth"))
-
-    TODO: param
     """
 
     def __init__(
@@ -126,7 +124,8 @@ class BasePolicy(ABC, nn.Module):
         """Map raw network output action to action range in gym's env.action_space.
 
         This function is called in :meth:`~tianshou.data.Collector.collect` and only
-        affects action sending to env (doesn't affect action saved into buffer).
+        affects action sending to env. Remapped action will not be stored in buffer
+        and thus can be viewed as a part of env (a black box action transformation).
 
         Basically it assumes the original action range is [-1, 1] or (-inf, inf), and
         maps them to [action_space.low, action_space.high] by cliping, applying tanh
@@ -143,7 +142,7 @@ class BasePolicy(ABC, nn.Module):
             # currently this action mapping only supports np.ndarray action
             low, high = self.action_space.low, self.action_space.high
             if self.action_bound_method == "clip":
-                act = np.clip(act, low, high)
+                act = np.clip(act, -1, 1)
             elif self.action_bound_method == "tanh":
                 act = np.tanh(act)
             if self.action_scaling:
