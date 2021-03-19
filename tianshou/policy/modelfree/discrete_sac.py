@@ -27,6 +27,8 @@ class DiscreteSACPolicy(SACPolicy):
         alpha is automatatically tuned.
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.
+    :param bool action_scaling:
+    :param str action_bound_method:
 
     .. seealso::
 
@@ -47,13 +49,15 @@ class DiscreteSACPolicy(SACPolicy):
         alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
         reward_normalization: bool = False,
         estimation_step: int = 1,
-        scaling: Optional[bool] = False,
-        bound_method: Optional[str] = "",
+        action_scaling: bool = True,
+        action_bound_method: str = "clip",
         **kwargs: Any,
     ) -> None:
-        super().__init__(actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-                         (-np.inf, np.inf), tau, gamma, alpha, reward_normalization,
-                         estimation_step, scaling=scaling, bound_method=bound_method, **kwargs)
+        super().__init__(
+            actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
+            tau, gamma, alpha, reward_normalization, estimation_step,
+            action_scaling=action_scaling, action_bound_method=action_bound_method,
+            **kwargs)
         self._alpha: Union[float, torch.Tensor]
 
     def forward(  # type: ignore

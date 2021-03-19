@@ -23,7 +23,8 @@ class DDPGPolicy(BasePolicy):
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         Default to False.
     :param int estimation_step: the number of steps to look ahead. Default to 1.
-
+    :param bool action_scaling:
+    :param str action_bound_method:
     .. seealso::
 
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
@@ -41,11 +42,12 @@ class DDPGPolicy(BasePolicy):
         exploration_noise: Optional[BaseNoise] = GaussianNoise(sigma=0.1),
         reward_normalization: bool = False,
         estimation_step: int = 1,
-        scaling: Optional[bool] = True,
-        bound_method: Optional[str] = "clipping",
+        action_scaling: bool = True,
+        action_bound_method: str = "clip",
         **kwargs: Any,
     ) -> None:
-        super().__init__(scaling=scaling, bound_method=bound_method, **kwargs)
+        super().__init__(action_scaling=action_scaling,
+                         action_bound_method=action_bound_method, **kwargs)
         if actor is not None and actor_optim is not None:
             self.actor: torch.nn.Module = actor
             self.actor_old = deepcopy(actor)

@@ -1,7 +1,6 @@
 import gym
 import torch
 import numpy as np
-from gym import spaces
 from torch import nn
 from numba import njit
 from abc import ABC, abstractmethod
@@ -50,23 +49,26 @@ class BasePolicy(ABC, nn.Module):
 
         torch.save(policy.state_dict(), "policy.pth")
         policy.load_state_dict(torch.load("policy.pth"))
+
+    TODO: param
     """
 
     def __init__(
         self,
-        observation_space: gym.Space = None,
-        action_space: gym.Space = None,
-        scaling: Optional[bool] = False,
-        bound_method: Optional[str] = "",
+        observation_space: Optional[gym.Space] = None,
+        action_space: Optional[gym.Space] = None,
+        action_scaling: bool = False,
+        action_bound_method: str = "",
     ) -> None:
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
         self.agent_id = 0
         self.updating = False
-        self.scaling = scaling
-        # can be either "clipping" or "tanh", empty string for do nothing.
-        self.bound_method = bound_method
+        self.action_scaling = action_scaling
+        # can be either "clip", "tanh", or empty string for doing nothing
+        assert action_bound_method in ["", "clip", "tanh"]
+        self.action_bound_method = action_bound_method
         self._compile()
 
     def set_agent_id(self, agent_id: int) -> None:
@@ -85,33 +87,6 @@ class BasePolicy(ABC, nn.Module):
         :return: action in the same form of input "act" but with added exploration
             noise.
         """
-        return act
-
-    def map_action(self, act: np.ndarray) -> np.ndarray:
-        # TODO doc
-        """Map raw input action to action space in gym's env.
-        Usually map (-1, 1) to (action_space.low, action_space.hight)
-        e.g. cliping, applying tanh activation and scaling.
-
-        :param act: a data batch or numpy.ndarray which is the action taken by
-            policy.forward.
-
-        :return: action in the same form of input "act" but with remapp.
-        """
-        if self.action_space is None:
-            # TODO warn map_action is disabled because action_space is not passed
-            pass
-        if isinstance(self.action_space, spaces.Box):
-            # TODO valid shape
-            if self.bound_method == "clipping":
-                act = np.clip(act, self.action_space.low, self.action_space.high)
-            elif self.bound_method == "tanh":
-                act = np.tanh(act)
-            if self.scaling:
-                # TODO assert act between -1 1, if yours are not,
-                # you should self define map_action
-                act = self.action_space.low + \
-                    (self.action_space.high - self.action_space.low)*((act + 1)/2.)
         return act
 
     @abstractmethod
@@ -146,6 +121,36 @@ class BasePolicy(ABC, nn.Module):
             # batch.policy.log_prob to get your data.
         """
         pass
+
+    def map_action(self, act: Union[Batch, np.ndarray]) -> Union[Batch, np.ndarray]:
+        """Map raw network output action to action range in gym's env.action_space.
+
+        This function is called in :meth:`~tianshou.data.Collector.collect` and only
+        affects action sending to env (doesn't affect action saved into buffer).
+
+        Basically it assumes the original action range is [-1, 1] or (-inf, inf), and
+        maps them to [action_space.low, action_space.high] by cliping, applying tanh
+        activation, or linear scaling.
+
+        :param act: a data batch or numpy.ndarray which is the action taken by
+            policy.forward.
+
+        :return: action in the same form of input "act" but remap to the target action
+            space.
+        """
+        if isinstance(self.action_space, gym.spaces.Box) and \
+                isinstance(act, np.ndarray):
+            # currently this action mapping only supports np.ndarray action
+            low, high = self.action_space.low, self.action_space.high
+            if self.action_bound_method == "clip":
+                act = np.clip(act, low, high)
+            elif self.action_bound_method == "tanh":
+                act = np.tanh(act)
+            if self.action_scaling:
+                assert np.all(act >= -1) and np.all(act <= 1), \
+                    "action scaling only accepts raw action range = [-1, 1]"
+                act = low + (high - low) * (act + 1) / 2
+        return act
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
@@ -355,7 +360,7 @@ class BasePolicy(ABC, nn.Module):
         _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
 
 
-@ njit
+@njit
 def _gae_return(
     v_s: np.ndarray,
     v_s_: np.ndarray,
@@ -374,7 +379,7 @@ def _gae_return(
     return returns
 
 
-@ njit
+@njit
 def _episodic_return(
     v_s_: np.ndarray,
     rew: np.ndarray,
@@ -387,7 +392,7 @@ def _episodic_return(
     return _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda) + v_s
 
 
-@ njit
+@njit
 def _nstep_return(
     rew: np.ndarray,
     end_flag: np.ndarray,

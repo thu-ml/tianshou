@@ -135,8 +135,7 @@ def test_sac_with_il(args=get_args()):
         args.action_shape, max_action=args.max_action, device=args.device
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
-    il_policy = ImitationPolicy(
-        net, optim, mode='continuous', action_space=env.action_space)
+    il_policy = ImitationPolicy(net, optim, mode='continuous')
     il_test_collector = Collector(
         il_policy,
         DummyVectorEnv(

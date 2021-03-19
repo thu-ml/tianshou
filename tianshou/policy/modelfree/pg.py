@@ -15,6 +15,8 @@ class PGPolicy(BasePolicy):
     :param dist_fn: distribution class for computing the action.
     :type dist_fn: Type[torch.distributions.Distribution]
     :param float discount_factor: in [0, 1]. Default to 0.99.
+    :param bool action_scaling:
+    :param str action_bound_method:
 
     .. seealso::
 
@@ -29,11 +31,12 @@ class PGPolicy(BasePolicy):
         dist_fn: Type[torch.distributions.Distribution],
         discount_factor: float = 0.99,
         reward_normalization: bool = False,
-        scaling: Optional[bool] = True,
-        bound_method: Optional[str] = "clipping",
+        action_scaling: bool = True,
+        action_bound_method: str = "clip",
         **kwargs: Any,
     ) -> None:
-        super().__init__(scaling=scaling, bound_method=bound_method, **kwargs)
+        super().__init__(action_scaling=action_scaling,
+                         action_bound_method=action_bound_method, **kwargs)
         if model is not None:
             self.model: torch.nn.Module = model
         self.optim = optim

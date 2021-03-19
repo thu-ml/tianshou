@@ -6,7 +6,7 @@ from typing import Any, Dict, Tuple, Union, Optional
 
 from tianshou.policy import DDPGPolicy
 from tianshou.exploration import BaseNoise
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
 
 class SACPolicy(DDPGPolicy):
@@ -21,7 +21,6 @@ class SACPolicy(DDPGPolicy):
     :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic2_optim: the optimizer for the second
         critic network.
-
     :param float tau: param for soft update of the target network. Default to 0.005.
     :param float gamma: discount factor, in [0, 1]. Default to 0.99.
     :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
@@ -35,6 +34,8 @@ class SACPolicy(DDPGPolicy):
     :param bool deterministic_eval: whether to use deterministic action (mean
         of Gaussian policy) instead of stochastic action sampled by the policy.
         Default to True.
+    :param bool action_scaling:
+    :param str action_bound_method:
 
     .. seealso::
 
@@ -57,12 +58,13 @@ class SACPolicy(DDPGPolicy):
         estimation_step: int = 1,
         exploration_noise: Optional[BaseNoise] = None,
         deterministic_eval: bool = True,
-        bound_method: Optional[str] = "tanh",
+        action_bound_method: str = "tanh",
         **kwargs: Any,
     ) -> None:
-        super().__init__(None, None, None, None, tau, gamma,
-                         exploration_noise, reward_normalization,
-                         estimation_step, bound_method=bound_method, **kwargs)
+        super().__init__(
+            None, None, None, None, tau, gamma, exploration_noise,
+            reward_normalization, estimation_step,
+            action_bound_method=action_bound_method, **kwargs)
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
@@ -82,7 +84,7 @@ class SACPolicy(DDPGPolicy):
             self._alpha = alpha
 
         self._deterministic_eval = deterministic_eval
-        self._eps = np.finfo(np.float32).eps.item()
+        self.__eps = np.finfo(np.float32).eps.item()
 
     def train(self, mode: bool = True) -> "SACPolicy":
         self.training = mode
@@ -113,21 +115,22 @@ class SACPolicy(DDPGPolicy):
         else:
             act = dist.rsample()
         log_prob = dist.log_prob(act).unsqueeze(-1)
-        # apply correction for Tanh squashing when computing logprob from Gaussian
-        # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
-        # in appendix C to get some understanding of this equation.
-        if self.bound_method == "tanh":
-            action_scale = (self.action_space.high - self.action_space.low)/2.0 \
-                if self.scaling else 1
+        if self.action_bound_method == "tanh" and self.action_space is not None:
+            # apply correction for Tanh squashing when computing logprob from Gaussian
+            # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
+            # in appendix C to get some understanding of this equation.
+            if self.action_scaling:
+                action_scale = to_torch_as(
+                    (self.action_space.high - self.action_space.low) / 2.0, act)
+            else:
+                action_scale = 1.0  # type: ignore
             squashed_action = torch.tanh(act)
             log_prob = log_prob - torch.log(
-                action_scale * (1 - squashed_action.pow(2)) + self._eps
-                ).sum(-1, keepdim=True)
+                action_scale * (1 - squashed_action.pow(2)) + self.__eps
+            ).sum(-1, keepdim=True)
         return Batch(logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
 
-    def _target_q(
-        self, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> torch.Tensor:
+    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs: s_{t+n}
         obs_next_result = self(batch, input='obs_next')
         a_ = obs_next_result.act

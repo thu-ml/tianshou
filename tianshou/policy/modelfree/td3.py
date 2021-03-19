@@ -32,6 +32,8 @@ class TD3Policy(DDPGPolicy):
         Default to 0.5.
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.
+    :param bool action_scaling:
+    :param str action_bound_method:
 
     .. seealso::
 

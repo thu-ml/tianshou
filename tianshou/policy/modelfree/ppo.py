@@ -36,6 +36,8 @@ class PPOPolicy(PGPolicy):
         depends on the size of available memory and the memory cost of the
         model; should be as large as possible within the memory constraint.
         Default to 256.
+    :param bool action_scaling:
+    :param str action_bound_method:
 
     .. seealso::
 
