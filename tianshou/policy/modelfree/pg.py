@@ -15,8 +15,13 @@ class PGPolicy(BasePolicy):
     :param dist_fn: distribution class for computing the action.
     :type dist_fn: Type[torch.distributions.Distribution]
     :param float discount_factor: in [0, 1]. Default to 0.99.
-    :param bool action_scaling:
-    :param str action_bound_method:
+    :param bool action_scaling: whether to map actions from range [-1, 1] to range
+        [action_spaces.low, action_spaces.high]. Default to True.
+    :param str action_bound_method: method to bound action to range [-1, 1], can be
+        either "clip" (for simply clipping the action), "tanh" (for applying tanh
+        squashing) for now, or empty string for no bounding. Default to "clip".
+    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
+        to use option action_scaling/action_bound_method. Default to None.
 
     .. seealso::
 

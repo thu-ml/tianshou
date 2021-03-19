@@ -31,8 +31,13 @@ class A2CPolicy(PGPolicy):
         depends on the size of available memory and the memory cost of the
         model; should be as large as possible within the memory constraint.
         Default to 256.
-    :param bool action_scaling:
-    :param str action_bound_method:
+    :param bool action_scaling: whether to map actions from range [-1, 1] to range
+        [action_spaces.low, action_spaces.high]. Default to True.
+    :param str action_bound_method: method to bound action to range [-1, 1], can be
+        either "clip" (for simply clipping the action), "tanh" (for applying tanh
+        squashing) for now, or empty string for no bounding. Default to "clip".
+    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
+        to use option action_scaling/action_bound_method. Default to None.
 
     .. seealso::
 
