@@ -108,7 +108,8 @@ class BasePolicy(ABC, nn.Module):
             elif self.bound_method == "tanh":
                 act = np.tanh(act)
             if self.scaling:
-                # TODO assert act between -1 1, if yours are not, you should self define map_action
+                # TODO assert act between -1 1, if yours are not,
+                # you should self define map_action
                 act = self.action_space.low + \
                     (self.action_space.high - self.action_space.low)*((act + 1)/2.)
         return act

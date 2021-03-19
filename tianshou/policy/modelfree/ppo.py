@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
-from typing import Any, Dict, List, Type, Tuple, Union, Optional
+from typing import Any, Dict, List, Type, Union, Optional
 
 from tianshou.policy import PGPolicy
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as

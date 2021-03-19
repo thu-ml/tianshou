@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from copy import deepcopy
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, Optional
 
 from tianshou.policy import DDPGPolicy
 from tianshou.data import Batch, ReplayBuffer

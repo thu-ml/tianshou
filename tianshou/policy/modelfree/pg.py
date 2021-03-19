@@ -104,7 +104,6 @@ class PGPolicy(BasePolicy):
                 losses.append(loss.item())
         return {"loss": losses}
 
-
     # def _vanilla_returns(self, batch):
     #     returns = batch.rew[:]
     #     last = 0

@@ -82,7 +82,7 @@ class SACPolicy(DDPGPolicy):
             self._alpha = alpha
 
         self._deterministic_eval = deterministic_eval
-        self.__eps = np.finfo(np.float32).eps.item()
+        self._eps = np.finfo(np.float32).eps.item()
 
     def train(self, mode: bool = True) -> "SACPolicy":
         self.training = mode
@@ -119,8 +119,10 @@ class SACPolicy(DDPGPolicy):
         if self.bound_method == "tanh":
             action_scale = (self.action_space.high - self.action_space.low)/2.0 \
                 if self.scaling else 1
-            log_prob = log_prob - torch.log(action_scale * \
-                (1 - torch.tanh(act).pow(2)) + self.__eps).sum(-1, keepdim=True)
+            squashed_action = torch.tanh(act)
+            log_prob = log_prob - torch.log(
+                action_scale * (1 - squashed_action.pow(2)) + self._eps
+                ).sum(-1, keepdim=True)
         return Batch(logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
 
     def _target_q(
