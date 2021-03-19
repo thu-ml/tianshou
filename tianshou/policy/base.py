@@ -87,9 +87,7 @@ class BasePolicy(ABC, nn.Module):
         """
         return act
 
-    def map_action(
-        self, act: Union[np.ndarray, Batch], batch: Batch
-    ) -> Union[np.ndarray, Batch]:
+    def map_action(self, act: np.ndarray) -> np.ndarray:
         # TODO doc
         """Map raw input action to action space in gym's env.
         Usually map (-1, 1) to (action_space.low, action_space.hight)
@@ -97,10 +95,12 @@ class BasePolicy(ABC, nn.Module):
 
         :param act: a data batch or numpy.ndarray which is the action taken by
             policy.forward.
-        :param batch: the input batch for policy.forward, kept for advanced usage.
 
         :return: action in the same form of input "act" but with remapp.
         """
+        if self.action_space is None:
+            # TODO warn map_action is disabled because action_space is not passed
+            pass
         if isinstance(self.action_space, spaces.Box):
             # TODO valid shape
             if self.bound_method == "clipping":
@@ -108,6 +108,7 @@ class BasePolicy(ABC, nn.Module):
             elif self.bound_method == "tanh":
                 act = np.tanh(act)
             if self.scaling:
+                # TODO assert act between -1 1, if yours are not, you should self define map_action
                 act = self.action_space.low + \
                     (self.action_space.high - self.action_space.low)*((act + 1)/2.)
         return act

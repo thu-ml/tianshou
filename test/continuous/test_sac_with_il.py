@@ -89,7 +89,7 @@ def test_sac_with_il(args=get_args()):
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         tau=args.tau, gamma=args.gamma, alpha=args.alpha,
         reward_normalization=args.rew_norm,
-        estimation_step=args.n_step)
+        estimation_step=args.n_step, action_space=env.action_space)
     # collector
     train_collector = Collector(
         policy, train_envs,
@@ -135,7 +135,8 @@ def test_sac_with_il(args=get_args()):
         args.action_shape, max_action=args.max_action, device=args.device
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
-    il_policy = ImitationPolicy(net, optim, mode='continuous')
+    il_policy = ImitationPolicy(
+        net, optim, mode='continuous', action_space=env.action_space)
     il_test_collector = Collector(
         il_policy,
         DummyVectorEnv(

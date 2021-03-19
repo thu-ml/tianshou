@@ -98,7 +98,7 @@ def test_sac(args=get_args()):
     policy = SACPolicy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         tau=args.tau, gamma=args.gamma, alpha=args.alpha,
-        estimation_step=args.n_step)
+        estimation_step=args.n_step, action_space=env.action_space)
     # load a previous policy
     if args.resume_path:
         policy.load_state_dict(torch.load(

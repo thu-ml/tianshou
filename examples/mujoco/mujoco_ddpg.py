@@ -86,7 +86,7 @@ def test_ddpg(args=get_args()):
         actor, actor_optim, critic, critic_optim,
         tau=args.tau, gamma=args.gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
-        estimation_step=args.n_step)
+        estimation_step=args.n_step, action_space=env.action_space)
     # load a previous policy
     if args.resume_path:
         policy.load_state_dict(torch.load(
