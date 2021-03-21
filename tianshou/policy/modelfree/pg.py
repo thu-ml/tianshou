@@ -32,6 +32,7 @@ class PGPolicy(BasePolicy):
     def __init__(
         self,
         model: Optional[torch.nn.Module],
+        #TODO lack doc
         optim: torch.optim.Optimizer,
         dist_fn: Type[torch.distributions.Distribution],
         discount_factor: float = 0.99,
@@ -110,7 +111,13 @@ class PGPolicy(BasePolicy):
                 loss.backward()
                 self.optim.step()
                 losses.append(loss.item())
+        
+        self.update_lr_scheduler()
         return {"loss": losses}
+
+    def update_lr_scheduler(self):
+        if hasattr(self.optim, "lr_scheduler"):
+            self.optim.lr_scheduler.step()
 
     # def _vanilla_returns(self, batch):
     #     returns = batch.rew[:]

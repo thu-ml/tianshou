@@ -142,6 +142,8 @@ class A2CPolicy(PGPolicy):
                 vf_losses.append(vf_loss.item())
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
+
+        self.update_lr_scheduler()
         return {
             "loss": losses,
             "loss/actor": actor_losses,

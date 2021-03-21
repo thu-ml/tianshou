@@ -179,6 +179,8 @@ class PPOPolicy(PGPolicy):
                         list(self.actor.parameters()) + list(self.critic.parameters()),
                         self._max_grad_norm)
                 self.optim.step()
+
+        self.update_lr_scheduler()
         return {
             "loss": losses,
             "loss/clip": clip_losses,
