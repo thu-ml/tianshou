@@ -128,8 +128,8 @@ class BasePolicy(ABC, nn.Module):
         and thus can be viewed as a part of env (a black box action transformation).
 
         Action mapping includes 2 standard procedures: bounding and scaling. Bounding
-        procedure expects original action range is (-inf, inf) and maps them to [-1, 1],
-        while scaling procedure expects original action range is (-1, 1) and maps them
+        procedure expects original action range is (-inf, inf) and maps it to [-1, 1],
+        while scaling procedure expects original action range is (-1, 1) and maps it
         to [action_space.low, action_space.high]. Bounding procedure is applied first.
 
         :param act: a data batch or numpy.ndarray which is the action taken by
