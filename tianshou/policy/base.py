@@ -65,8 +65,8 @@ class BasePolicy(ABC, nn.Module):
         self.updating = False
         self.action_scaling = action_scaling
         # can be one of ("clip", "tanh", ""), empty string means no bounding
-        self.action_bound_method = action_bound_method
         assert action_bound_method in ("", "clip", "tanh")
+        self.action_bound_method = action_bound_method
         self._compile()
 
     def set_agent_id(self, agent_id: int) -> None:
@@ -128,9 +128,9 @@ class BasePolicy(ABC, nn.Module):
         and thus can be viewed as a part of env (a black box action transformation).
 
         Action mapping includes 2 standard procedures: bounding and scaling. Bounding
-        procedure expects original action range is (-inf, inf) and maps them to [-1, 1],
-        while scaling procedure expects original action range is (-1, 1) and maps them
-        to [action_space.low, action_space.high]. Bounding procedure is applied first.
+        expects original action range is (-inf, inf) and maps them to [-1, 1], while
+        scaling expects original action range is (-1, 1) and maps them to
+        [action_space.low, action_space.high]. Bounding is applied first.
 
         :param act: a data batch or numpy.ndarray which is the action taken by
             policy.forward.
@@ -142,14 +142,14 @@ class BasePolicy(ABC, nn.Module):
                 isinstance(act, np.ndarray):
             # currently this action mapping only supports np.ndarray action
             if self.action_bound_method == "clip":
-                act = np.clip(act, -1, 1)
+                act = np.clip(act, -1.0, 1.0)
             elif self.action_bound_method == "tanh":
                 act = np.tanh(act)
             if self.action_scaling:
-                assert np.all(act >= -1) and np.all(act <= 1), \
+                assert np.all(act >= -1.0) and np.all(act <= 1.0), \
                     "action scaling only accepts raw action range = [-1, 1]"
                 low, high = self.action_space.low, self.action_space.high
-                act = low + (high - low) * (act + 1.) / 2.
+                act = low + (high - low) * (act + 1.0) / 2.0
         return act
 
     def process_fn(
