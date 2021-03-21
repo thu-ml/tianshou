@@ -6,7 +6,7 @@ from typing import Any, Dict, Tuple, Union, Optional
 
 from tianshou.policy import DDPGPolicy
 from tianshou.exploration import BaseNoise
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
 
 class SACPolicy(DDPGPolicy):
@@ -21,8 +21,6 @@ class SACPolicy(DDPGPolicy):
     :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic2_optim: the optimizer for the second
         critic network.
-    :param action_range: the action range (minimum, maximum).
-    :type action_range: Tuple[float, float]
     :param float tau: param for soft update of the target network. Default to 0.005.
     :param float gamma: discount factor, in [0, 1]. Default to 0.99.
     :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
@@ -36,6 +34,13 @@ class SACPolicy(DDPGPolicy):
     :param bool deterministic_eval: whether to use deterministic action (mean
         of Gaussian policy) instead of stochastic action sampled by the policy.
         Default to True.
+    :param bool action_scaling: whether to map actions from range [-1, 1] to range
+        [action_spaces.low, action_spaces.high]. Default to True.
+    :param str action_bound_method: method to bound action to range [-1, 1], can be
+        either "clip" (for simply clipping the action), "tanh" (for applying tanh
+        squashing) for now, or empty string for no bounding. Default to "tanh".
+    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
+        to use option "action_scaling" or "action_bound_method". Default to None.
 
     .. seealso::
 
@@ -51,7 +56,6 @@ class SACPolicy(DDPGPolicy):
         critic1_optim: torch.optim.Optimizer,
         critic2: torch.nn.Module,
         critic2_optim: torch.optim.Optimizer,
-        action_range: Tuple[float, float],
         tau: float = 0.005,
         gamma: float = 0.99,
         alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
@@ -59,11 +63,13 @@ class SACPolicy(DDPGPolicy):
         estimation_step: int = 1,
         exploration_noise: Optional[BaseNoise] = None,
         deterministic_eval: bool = True,
+        action_bound_method: str = "tanh",
         **kwargs: Any,
     ) -> None:
-        super().__init__(None, None, None, None, action_range, tau, gamma,
-                         exploration_noise, reward_normalization,
-                         estimation_step, **kwargs)
+        super().__init__(
+            None, None, None, None, tau, gamma, exploration_noise,
+            reward_normalization, estimation_step,
+            action_bound_method=action_bound_method, **kwargs)
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
@@ -110,24 +116,26 @@ class SACPolicy(DDPGPolicy):
         assert isinstance(logits, tuple)
         dist = Independent(Normal(*logits), 1)
         if self._deterministic_eval and not self.training:
-            x = logits[0]
+            act = logits[0]
         else:
-            x = dist.rsample()
-        y = torch.tanh(x)
-        act = y * self._action_scale + self._action_bias
-        # __eps is used to avoid log of zero/negative number.
-        y = self._action_scale * (1 - y.pow(2)) + self.__eps
-        # Compute logprob from Gaussian, and then apply correction for Tanh squashing.
-        # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
-        # in appendix C to get some understanding of this equation.
-        log_prob = dist.log_prob(x).unsqueeze(-1)
-        log_prob = log_prob - torch.log(y).sum(-1, keepdim=True)
-
+            act = dist.rsample()
+        log_prob = dist.log_prob(act).unsqueeze(-1)
+        if self.action_bound_method == "tanh" and self.action_space is not None:
+            # apply correction for Tanh squashing when computing logprob from Gaussian
+            # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
+            # in appendix C to get some understanding of this equation.
+            if self.action_scaling:
+                action_scale = to_torch_as(
+                    (self.action_space.high - self.action_space.low) / 2.0, act)
+            else:
+                action_scale = 1.0  # type: ignore
+            squashed_action = torch.tanh(act)
+            log_prob = log_prob - torch.log(
+                action_scale * (1 - squashed_action.pow(2)) + self.__eps
+            ).sum(-1, keepdim=True)
         return Batch(logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
 
-    def _target_q(
-        self, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> torch.Tensor:
+    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs: s_{t+n}
         obs_next_result = self(batch, input='obs_next')
         a_ = obs_next_result.act

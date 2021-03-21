@@ -95,11 +95,11 @@ def test_td3(args=get_args()):
 
     policy = TD3Policy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-        action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         policy_noise=args.policy_noise, update_actor_freq=args.update_actor_freq,
-        noise_clip=args.noise_clip, estimation_step=args.n_step)
+        noise_clip=args.noise_clip, estimation_step=args.n_step,
+        action_space=env.action_space)
 
     # load a previous policy
     if args.resume_path:

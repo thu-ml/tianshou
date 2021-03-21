@@ -49,10 +49,10 @@ class DiscreteSACPolicy(SACPolicy):
         estimation_step: int = 1,
         **kwargs: Any,
     ) -> None:
-        super().__init__(actor, actor_optim, critic1, critic1_optim, critic2,
-                         critic2_optim, (-np.inf, np.inf), tau, gamma, alpha,
-                         reward_normalization, estimation_step,
-                         **kwargs)
+        super().__init__(
+            actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
+            tau, gamma, alpha, reward_normalization, estimation_step,
+            action_scaling=False, action_bound_method="", **kwargs)
         self._alpha: Union[float, torch.Tensor]
 
     def forward(  # type: ignore

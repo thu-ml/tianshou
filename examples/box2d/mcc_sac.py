@@ -90,10 +90,10 @@ def test_sac(args=get_args()):
 
     policy = SACPolicy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-        action_range=[env.action_space.low[0], env.action_space.high[0]],
         tau=args.tau, gamma=args.gamma, alpha=args.alpha,
         reward_normalization=args.rew_norm,
-        exploration_noise=OUNoise(0.0, args.noise_std))
+        exploration_noise=OUNoise(0.0, args.noise_std),
+        action_space=env.action_space)
     # collector
     train_collector = Collector(
         policy, train_envs,

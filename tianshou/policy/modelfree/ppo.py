@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
-from typing import Any, Dict, List, Type, Tuple, Union, Optional
+from typing import Any, Dict, List, Type, Union, Optional
 
 from tianshou.policy import PGPolicy
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
@@ -23,8 +23,6 @@ class PPOPolicy(PGPolicy):
         paper. Default to 0.2.
     :param float vf_coef: weight for value loss. Default to 0.5.
     :param float ent_coef: weight for entropy loss. Default to 0.01.
-    :param action_range: the action range (minimum, maximum).
-    :type action_range: (float, float)
     :param float gae_lambda: in [0, 1], param for Generalized Advantage
         Estimation. Default to 0.95.
     :param float dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
@@ -38,6 +36,13 @@ class PPOPolicy(PGPolicy):
         depends on the size of available memory and the memory cost of the
         model; should be as large as possible within the memory constraint.
         Default to 256.
+    :param bool action_scaling: whether to map actions from range [-1, 1] to range
+        [action_spaces.low, action_spaces.high]. Default to True.
+    :param str action_bound_method: method to bound action to range [-1, 1], can be
+        either "clip" (for simply clipping the action), "tanh" (for applying tanh
+        squashing) for now, or empty string for no bounding. Default to "clip".
+    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
+        to use option "action_scaling" or "action_bound_method". Default to None.
 
     .. seealso::
 
@@ -56,7 +61,6 @@ class PPOPolicy(PGPolicy):
         eps_clip: float = 0.2,
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,
-        action_range: Optional[Tuple[float, float]] = None,
         gae_lambda: float = 0.95,
         dual_clip: Optional[float] = None,
         value_clip: bool = True,
@@ -69,7 +73,6 @@ class PPOPolicy(PGPolicy):
         self._eps_clip = eps_clip
         self._weight_vf = vf_coef
         self._weight_ent = ent_coef
-        self._range = action_range
         self.actor = actor
         self.critic = critic
         self._batch = max_batchsize
@@ -135,8 +138,6 @@ class PPOPolicy(PGPolicy):
         else:
             dist = self.dist_fn(logits)
         act = dist.sample()
-        if self._range:
-            act = act.clamp(self._range[0], self._range[1])
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
     def learn(  # type: ignore

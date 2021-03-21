@@ -63,7 +63,8 @@ def test_pg(args=get_args()):
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = PGPolicy(net, optim, dist, args.gamma,
-                      reward_normalization=args.rew_norm)
+                      reward_normalization=args.rew_norm,
+                      action_space=env.action_space)
     # collector
     train_collector = Collector(
         policy, train_envs,

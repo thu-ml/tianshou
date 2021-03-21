@@ -16,8 +16,6 @@ class DDPGPolicy(BasePolicy):
     :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
     :param torch.nn.Module critic: the critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic_optim: the optimizer for critic network.
-    :param action_range: the action range (minimum, maximum).
-    :type action_range: Tuple[float, float]
     :param float tau: param for soft update of the target network. Default to 0.005.
     :param float gamma: discount factor, in [0, 1]. Default to 0.99.
     :param BaseNoise exploration_noise: the exploration noise,
@@ -25,6 +23,13 @@ class DDPGPolicy(BasePolicy):
     :param bool reward_normalization: normalize the reward to Normal(0, 1),
         Default to False.
     :param int estimation_step: the number of steps to look ahead. Default to 1.
+    :param bool action_scaling: whether to map actions from range [-1, 1] to range
+        [action_spaces.low, action_spaces.high]. Default to True.
+    :param str action_bound_method: method to bound action to range [-1, 1], can be
+        either "clip" (for simply clipping the action), "tanh" (for applying tanh
+        squashing) for now, or empty string for no bounding. Default to "clip".
+    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
+        to use option "action_scaling" or "action_bound_method". Default to None.
 
     .. seealso::
 
@@ -38,15 +43,17 @@ class DDPGPolicy(BasePolicy):
         actor_optim: Optional[torch.optim.Optimizer],
         critic: Optional[torch.nn.Module],
         critic_optim: Optional[torch.optim.Optimizer],
-        action_range: Tuple[float, float],
         tau: float = 0.005,
         gamma: float = 0.99,
         exploration_noise: Optional[BaseNoise] = GaussianNoise(sigma=0.1),
         reward_normalization: bool = False,
         estimation_step: int = 1,
+        action_scaling: bool = True,
+        action_bound_method: str = "clip",
         **kwargs: Any,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(action_scaling=action_scaling,
+                         action_bound_method=action_bound_method, **kwargs)
         if actor is not None and actor_optim is not None:
             self.actor: torch.nn.Module = actor
             self.actor_old = deepcopy(actor)
@@ -62,9 +69,6 @@ class DDPGPolicy(BasePolicy):
         assert 0.0 <= gamma <= 1.0, "gamma should be in [0, 1]"
         self._gamma = gamma
         self._noise = exploration_noise
-        self._range = action_range
-        self._action_bias = (action_range[0] + action_range[1]) / 2.0
-        self._action_scale = (action_range[1] - action_range[0]) / 2.0
         # it is only a little difference to use GaussianNoise
         # self.noise = OUNoise()
         self._rew_norm = reward_normalization
@@ -128,8 +132,6 @@ class DDPGPolicy(BasePolicy):
         model = getattr(self, model)
         obs = batch[input]
         actions, h = model(obs, state=state, info=batch.info)
-        actions += self._action_bias
-        actions = actions.clamp(self._range[0], self._range[1])
         return Batch(act=actions, state=h)
 
     @staticmethod
@@ -168,5 +170,4 @@ class DDPGPolicy(BasePolicy):
     def exploration_noise(self, act: np.ndarray, batch: Batch) -> np.ndarray:
         if self._noise:
             act = act + self._noise(act.shape)
-            act = act.clip(self._range[0], self._range[1])
         return act
