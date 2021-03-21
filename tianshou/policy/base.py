@@ -138,7 +138,8 @@ class BasePolicy(ABC, nn.Module):
         :return: action in the same form of input "act" but remap to the target action
             space.
         """
-        if isinstance(self.action_space, gym.spaces.Box):
+        if isinstance(self.action_space, gym.spaces.Box) and \
+                isinstance(act, np.ndarray):
             # currently this action mapping only supports np.ndarray action
             if self.action_bound_method == "clip":
                 act = np.clip(act, -1, 1)
