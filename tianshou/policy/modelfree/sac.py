@@ -40,7 +40,7 @@ class SACPolicy(DDPGPolicy):
         either "clip" (for simply clipping the action), "tanh" (for applying tanh
         squashing) for now, or empty string for no bounding. Default to "tanh".
     :param Optional[gym.Space] action_space: env's action space, mandatory if you want
-        to use option action_scaling/action_bound_method. Default to None.
+        to use option 'action_scaling' or 'action_bound_method'. Default to None.
 
     .. seealso::
 

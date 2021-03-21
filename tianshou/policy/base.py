@@ -64,9 +64,9 @@ class BasePolicy(ABC, nn.Module):
         self.agent_id = 0
         self.updating = False
         self.action_scaling = action_scaling
-        # can be either "clip", "tanh", or empty string for doing nothing
-        assert action_bound_method in ["", "clip", "tanh"]
+        # can be one of ("clip", "tanh", ""), empty string means no bounding
         self.action_bound_method = action_bound_method
+        assert action_bound_method in ("", "clip", "tanh")
         self._compile()
 
     def set_agent_id(self, agent_id: int) -> None:
@@ -121,15 +121,16 @@ class BasePolicy(ABC, nn.Module):
         pass
 
     def map_action(self, act: Union[Batch, np.ndarray]) -> Union[Batch, np.ndarray]:
-        """Map raw network output action to action range in gym's env.action_space.
+        """Map raw network output to action range in gym's env.action_space.
 
         This function is called in :meth:`~tianshou.data.Collector.collect` and only
         affects action sending to env. Remapped action will not be stored in buffer
         and thus can be viewed as a part of env (a black box action transformation).
 
-        Basically it assumes the original action range is [-1, 1] or (-inf, inf), and
-        maps them to [action_space.low, action_space.high] by cliping, applying tanh
-        activation, or linear scaling.
+        Action mapping includes 2 standard procedures: bounding and scaling. Bounding
+        procedure expects original action range is (-inf, inf) and maps them to [-1, 1],
+        while scaling procedure expects original action range is (-1, 1) and maps them
+        to [action_space.low, action_space.high]. Bounding procedure is applied first.
 
         :param act: a data batch or numpy.ndarray which is the action taken by
             policy.forward.
@@ -137,8 +138,7 @@ class BasePolicy(ABC, nn.Module):
         :return: action in the same form of input "act" but remap to the target action
             space.
         """
-        if isinstance(self.action_space, gym.spaces.Box) and \
-                isinstance(act, np.ndarray):
+        if isinstance(self.action_space, gym.spaces.Box):
             # currently this action mapping only supports np.ndarray action
             if self.action_bound_method == "clip":
                 act = np.clip(act, -1, 1)
@@ -148,7 +148,7 @@ class BasePolicy(ABC, nn.Module):
                 assert np.all(act >= -1) and np.all(act <= 1), \
                     "action scaling only accepts raw action range = [-1, 1]"
                 low, high = self.action_space.low, self.action_space.high
-                act = low + (high - low) * (act + 1) / 2
+                act = low + (high - low) * (act + 1.) / 2.
         return act
 
     def process_fn(
