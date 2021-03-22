@@ -9,7 +9,7 @@ from tianshou.utils import RunningMeanStd
 
 
 class PGPolicy(BasePolicy):
-    """Implementation of Vanilla Policy Gradient.
+    """Implementation of REINFORCE algorithm.
 
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
