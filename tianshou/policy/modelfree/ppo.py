@@ -100,20 +100,20 @@ class PPOPolicy(PGPolicy):
         v_s = to_numpy(batch.v_s)
         if self._rew_norm:
             # unnormalize v_s_ & v_s
-            v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self.__eps) + self.ret_rms.mean
-            v_s = v_s * np.sqrt(self.ret_rms.var + self.__eps) + self.ret_rms.mean
+            v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
+            v_s = v_s * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
         un_normalized_returns, advantages = self.compute_episodic_return(
             batch, buffer, indice, v_s_, v_s, gamma=self._gamma, gae_lambda=self._lambda)
         if self._rew_norm:
             batch.returns = (un_normalized_returns - self.ret_rms.mean) / \
-                                        np.sqrt(self.ret_rms.var + self.__eps)
+                                        np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(un_normalized_returns)
         else:
             batch.returns = un_normalized_returns
-        batch.act = to_torch_as(batch.act, v_s[0])
+        batch.act = to_torch_as(batch.act, batch.v_s[0])
         batch.logp_old = torch.cat(old_log_prob, dim=0)
-        batch.returns = to_torch_as(batch.returns, v_s[0])
-        batch.adv = to_torch_as(advantages, v_s[0])
+        batch.returns = to_torch_as(batch.returns, batch.v_s[0])
+        batch.adv = to_torch_as(advantages, batch.v_s[0])
         if self._rew_norm:
             mean, std = batch.adv.mean(), batch.adv.std()
             if not np.isclose(std.item(), 0.0, 1e-2):

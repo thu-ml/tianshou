@@ -42,7 +42,7 @@ class PGPolicy(BasePolicy):
         reward_normalization: bool = False,
         action_scaling: bool = True,
         action_bound_method: str = "clip",
-        lr_scheduler: Optional[torch.optim.lr_scheduler] = None,
+        lr_scheduler: Optional[torch.optim.lr_scheduler.LambdaLR] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(action_scaling=action_scaling,
@@ -55,7 +55,7 @@ class PGPolicy(BasePolicy):
         self._gamma = discount_factor
         self._rew_norm = reward_normalization
         self.ret_rms = RunningMeanStd()
-        self.__eps = 1e-8
+        self._eps = 1e-8
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
@@ -73,7 +73,7 @@ class PGPolicy(BasePolicy):
             batch, buffer, indice, v_s_, gamma=self._gamma, gae_lambda=1.0)
         if self._rew_norm:
             batch.returns = (un_normalized_returns - self.ret_rms.mean) / \
-                                        np.sqrt(self.ret_rms.var + self.__eps)
+                                        np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(un_normalized_returns)
         else:
             batch.returns = un_normalized_returns

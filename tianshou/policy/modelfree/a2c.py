@@ -79,12 +79,12 @@ class A2CPolicy(PGPolicy):
         v_s_ = np.concatenate(v_s_, axis=0)
         if self._rew_norm:
             # unnormalize v_s_
-            v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self.__eps) + self.ret_rms.mean
+            v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
         un_normalized_returns, _ = self.compute_episodic_return(
             batch, buffer, indice, v_s_, gamma=self._gamma, gae_lambda=self._lambda)
         if self._rew_norm:
             batch.returns = (un_normalized_returns - self.ret_rms.mean) / \
-                                        np.sqrt(self.ret_rms.var + self.__eps)
+                                        np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(un_normalized_returns)
         else:
             batch.returns = un_normalized_returns
