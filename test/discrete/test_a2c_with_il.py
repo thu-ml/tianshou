@@ -79,7 +79,7 @@ def test_a2c_with_il(args=get_args()):
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
         actor, critic, optim, dist,
-        discount_factor = args.gamma, gae_lambda=args.gae_lambda,
+        discount_factor=args.gamma, gae_lambda=args.gae_lambda,
         vf_coef=args.vf_coef, ent_coef=args.ent_coef,
         max_grad_norm=args.max_grad_norm, reward_normalization=args.rew_norm,
         action_space=env.action_space)
