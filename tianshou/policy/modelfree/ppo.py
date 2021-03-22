@@ -43,6 +43,8 @@ class PPOPolicy(PGPolicy):
         squashing) for now, or empty string for no bounding. Default to "clip".
     :param Optional[gym.Space] action_space: env's action space, mandatory if you want
         to use option "action_scaling" or "action_bound_method". Default to None.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 
@@ -179,6 +181,10 @@ class PPOPolicy(PGPolicy):
                         list(self.actor.parameters()) + list(self.critic.parameters()),
                         self._max_grad_norm)
                 self.optim.step()
+        # update learning rate if lr_scheduler is given
+        if self.lr_scheduler is not None:
+            self.lr_scheduler.step()
+
         return {
             "loss": losses,
             "loss/clip": clip_losses,

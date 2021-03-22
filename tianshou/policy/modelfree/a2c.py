@@ -38,6 +38,8 @@ class A2CPolicy(PGPolicy):
         squashing) for now, or empty string for no bounding. Default to "clip".
     :param Optional[gym.Space] action_space: env's action space, mandatory if you want
         to use option "action_scaling" or "action_bound_method". Default to None.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 
@@ -142,6 +144,10 @@ class A2CPolicy(PGPolicy):
                 vf_losses.append(vf_loss.item())
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
+        # update learning rate if lr_scheduler is given
+        if self.lr_scheduler is not None:
+            self.lr_scheduler.step()
+
         return {
             "loss": losses,
             "loss/actor": actor_losses,
