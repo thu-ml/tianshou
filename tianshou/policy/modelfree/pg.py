@@ -22,6 +22,8 @@ class PGPolicy(BasePolicy):
         squashing) for now, or empty string for no bounding. Default to "clip".
     :param Optional[gym.Space] action_space: env's action space, mandatory if you want
         to use option "action_scaling" or "action_bound_method". Default to None.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 
@@ -32,15 +34,13 @@ class PGPolicy(BasePolicy):
     def __init__(
         self,
         model: Optional[torch.nn.Module],
-        #TODO lack doc
         optim: torch.optim.Optimizer,
         dist_fn: Type[torch.distributions.Distribution],
         discount_factor: float = 0.99,
         reward_normalization: bool = False,
         action_scaling: bool = True,
         action_bound_method: str = "clip",
-        # TODO doc
-        lr_scheduler: Optional[torch.optim.lr_scheduler] = None,
+        lr_scheduler: Optional[torch.optim.lr_scheduler.LambdaLR] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(action_scaling=action_scaling,
@@ -114,12 +114,11 @@ class PGPolicy(BasePolicy):
                 loss.backward()
                 self.optim.step()
                 losses.append(loss.item())
-        # update learning rate if given lr_scheduler
+        # update learning rate if lr_scheduler is given
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
 
         return {"loss": losses}
-
 
     # def _vanilla_returns(self, batch):
     #     returns = batch.rew[:]
