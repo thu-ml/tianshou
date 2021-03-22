@@ -254,14 +254,14 @@ class BasePolicy(ABC, nn.Module):
         buffer: ReplayBuffer,
         indice: np.ndarray,
         v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        v_s: Optional[Union[np.ndarray, torch.Tensor]] = None,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
-        rew_norm: bool = False,
     ) -> Batch:
         """Compute returns over given batch.
 
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
-        to calculate q function/reward to go of given batch.
+        to calculate Q&A function/reward to go of given batch.
 
         :param Batch batch: a data batch which contains several episodes of data in
             sequential order. Mind that the end of each finished episode of batch
@@ -273,8 +273,8 @@ class BasePolicy(ABC, nn.Module):
         :param float gamma: the discount factor, should be in [0, 1]. Default to 0.99.
         :param float gae_lambda: the parameter for Generalized Advantage Estimation,
             should be in [0, 1]. Default to 0.95.
-        :param bool rew_norm: normalize the reward to Normal(0, 1). Default to False.
 
+        # TODO change doc
         :return: a Batch. The result will be stored in batch.returns as a numpy
             array with shape (bsz, ).
         """
@@ -284,14 +284,16 @@ class BasePolicy(ABC, nn.Module):
             v_s_ = np.zeros_like(rew)
         else:
             v_s_ = to_numpy(v_s_.flatten()) * BasePolicy.value_mask(buffer, indice)
+        if v_s is None:
+            v_s = np.roll(v_s_, 1)
+        else:
+            v_s = to_numpy(v_s.flatten())
 
         end_flag = batch.done.copy()
         end_flag[np.isin(indice, buffer.unfinished_index())] = True
-        returns = _episodic_return(v_s_, rew, end_flag, gamma, gae_lambda)
-        if rew_norm and not np.isclose(returns.std(), 0.0, 1e-2):
-            returns = (returns - returns.mean()) / returns.std()
-        batch.returns = returns
-        return batch
+        advantage = _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda)
+        returns = advantage + v_s
+        return returns, advantage
 
     @staticmethod
     def compute_nstep_return(
@@ -355,8 +357,6 @@ class BasePolicy(ABC, nn.Module):
         i64 = np.array([[0, 1]], dtype=np.int64)
         _gae_return(f64, f64, f64, b, 0.1, 0.1)
         _gae_return(f32, f32, f64, b, 0.1, 0.1)
-        _episodic_return(f64, f64, b, 0.1, 0.1)
-        _episodic_return(f32, f64, b, 0.1, 0.1)
         _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
 
 
@@ -377,19 +377,6 @@ def _gae_return(
         gae = delta[i] + m[i] * gae
         returns[i] = gae
     return returns
-
-
-@njit
-def _episodic_return(
-    v_s_: np.ndarray,
-    rew: np.ndarray,
-    end_flag: np.ndarray,
-    gamma: float,
-    gae_lambda: float,
-) -> np.ndarray:
-    """Numba speedup: 4.1s -> 0.057s."""
-    v_s = np.roll(v_s_, 1)
-    return _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda) + v_s
 
 
 @njit

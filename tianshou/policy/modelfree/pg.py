@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Type, Union, Optional
 
 from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.utils import RunningMeanStd
+
 
 
 class PGPolicy(BasePolicy):
@@ -40,19 +42,20 @@ class PGPolicy(BasePolicy):
         reward_normalization: bool = False,
         action_scaling: bool = True,
         action_bound_method: str = "clip",
-        lr_scheduler: Optional[torch.optim.lr_scheduler.LambdaLR] = None,
+        lr_scheduler: Optional[torch.optim.lr_scheduler] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(action_scaling=action_scaling,
                          action_bound_method=action_bound_method, **kwargs)
-        if model is not None:
-            self.model: torch.nn.Module = model
+        self.actor = model
         self.optim = optim
         self.lr_scheduler = lr_scheduler
         self.dist_fn = dist_fn
         assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self._gamma = discount_factor
         self._rew_norm = reward_normalization
+        self.ret_rms = RunningMeanStd()
+        self.__eps = 1e-8
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
@@ -65,11 +68,16 @@ class PGPolicy(BasePolicy):
         where :math:`T` is the terminal time step, :math:`\gamma` is the
         discount factor, :math:`\gamma \in [0, 1]`.
         """
-        # batch.returns = self._vanilla_returns(batch)
-        # batch.returns = self._vectorized_returns(batch)
-        return self.compute_episodic_return(
-            batch, buffer, indice, gamma=self._gamma,
-            gae_lambda=1.0, rew_norm=self._rew_norm)
+        v_s_ = np.full(indice.shape, self.ret_rms.mean)
+        un_normalized_returns, _ = self.compute_episodic_return(
+            batch, buffer, indice, v_s_, gamma=self._gamma, gae_lambda=1.0)
+        if self._rew_norm:
+            batch.returns = (un_normalized_returns - self.ret_rms.mean) / \
+                                        np.sqrt(self.ret_rms.var + self.__eps)
+            self.ret_rms.update(un_normalized_returns)
+        else:
+            batch.returns = un_normalized_returns
+        return batch
 
     def forward(
         self,
@@ -91,7 +99,7 @@ class PGPolicy(BasePolicy):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
-        logits, h = self.model(batch.obs, state=state, info=batch.info)
+        logits, h = self.actor(batch.obs, state=state)
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
@@ -106,9 +114,10 @@ class PGPolicy(BasePolicy):
         for _ in range(repeat):
             for b in batch.split(batch_size, merge_last=True):
                 self.optim.zero_grad()
-                dist = self(b).dist
-                a = to_torch_as(b.act, dist.logits)
-                r = to_torch_as(b.returns, dist.logits)
+                result = self(b)
+                dist = result.dist
+                a = to_torch_as(b.act, result.act)
+                r = to_torch_as(b.returns, result.act)
                 log_prob = dist.log_prob(a).reshape(len(r), -1).transpose(0, 1)
                 loss = -(log_prob * r).mean()
                 loss.backward()
@@ -119,27 +128,3 @@ class PGPolicy(BasePolicy):
             self.lr_scheduler.step()
 
         return {"loss": losses}
-
-    # def _vanilla_returns(self, batch):
-    #     returns = batch.rew[:]
-    #     last = 0
-    #     for i in range(len(returns) - 1, -1, -1):
-    #         if not batch.done[i]:
-    #             returns[i] += self._gamma * last
-    #         last = returns[i]
-    #     return returns
-
-    # def _vectorized_returns(self, batch):
-    #     # according to my tests, it is slower than _vanilla_returns
-    #     # import scipy.signal
-    #     convolve = np.convolve
-    #     # convolve = scipy.signal.convolve
-    #     rew = batch.rew[::-1]
-    #     batch_size = len(rew)
-    #     gammas = self._gamma ** np.arange(batch_size)
-    #     c = convolve(rew, gammas)[:batch_size]
-    #     T = np.where(batch.done[::-1])[0]
-    #     d = np.zeros_like(rew)
-    #     d[T] += c[T] - rew[T]
-    #     d[T[1:]] -= d[T[:-1]] * self._gamma ** np.diff(T)
-    #     return (c - convolve(d, gammas)[:batch_size])[::-1]

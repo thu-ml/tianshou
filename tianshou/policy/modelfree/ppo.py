@@ -58,7 +58,6 @@ class PPOPolicy(PGPolicy):
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: Type[torch.distributions.Distribution],
-        discount_factor: float = 0.99,
         max_grad_norm: Optional[float] = None,
         eps_clip: float = 0.2,
         vf_coef: float = 0.5,
@@ -66,16 +65,14 @@ class PPOPolicy(PGPolicy):
         gae_lambda: float = 0.95,
         dual_clip: Optional[float] = None,
         value_clip: bool = True,
-        reward_normalization: bool = True,
         max_batchsize: int = 256,
         **kwargs: Any,
     ) -> None:
-        super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
+        super().__init__(actor, optim, dist_fn, **kwargs)
         self._max_grad_norm = max_grad_norm
         self._eps_clip = eps_clip
         self._weight_vf = vf_coef
         self._weight_ent = ent_coef
-        self.actor = actor
         self.critic = critic
         self._batch = max_batchsize
         assert 0.0 <= gae_lambda <= 1.0, "GAE lambda should be in [0, 1]."
@@ -84,7 +81,6 @@ class PPOPolicy(PGPolicy):
             "Dual-clip PPO parameter should greater than 1.0."
         self._dual_clip = dual_clip
         self._value_clip = value_clip
-        self._rew_norm = reward_normalization
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
@@ -93,54 +89,36 @@ class PPOPolicy(PGPolicy):
             mean, std = batch.rew.mean(), batch.rew.std()
             if not np.isclose(std, 0.0, 1e-2):
                 batch.rew = (batch.rew - mean) / std
-        v, v_, old_log_prob = [], [], []
+        v_s, v_s_, old_log_prob = [], [], []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
-                v_.append(self.critic(b.obs_next))
-                v.append(self.critic(b.obs))
-                old_log_prob.append(self(b).dist.log_prob(to_torch_as(b.act, v[0])))
-        v_ = to_numpy(torch.cat(v_, dim=0))
-        batch = self.compute_episodic_return(
-            batch, buffer, indice, v_, gamma=self._gamma,
-            gae_lambda=self._lambda, rew_norm=self._rew_norm)
-        batch.v = torch.cat(v, dim=0).flatten()  # old value
-        batch.act = to_torch_as(batch.act, v[0])
+                v_s_.append(self.critic(b.obs_next))
+                v_s.append(self.critic(b.obs))
+                old_log_prob.append(self(b).dist.log_prob(to_torch_as(b.act, v_s[0])))
+        batch.v_s = torch.cat(v_s, dim=0).flatten()  # old value
+        v_s_ = to_numpy(torch.cat(v_s_, dim=0).flatten())
+        v_s = to_numpy(batch.v_s)
+        if self._rew_norm:
+            # unnormalize v_s_ & v_s
+            v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self.__eps) + self.ret_rms.mean
+            v_s = v_s * np.sqrt(self.ret_rms.var + self.__eps) + self.ret_rms.mean
+        un_normalized_returns, advantages = self.compute_episodic_return(
+            batch, buffer, indice, v_s_, v_s, gamma=self._gamma, gae_lambda=self._lambda)
+        if self._rew_norm:
+            batch.returns = (un_normalized_returns - self.ret_rms.mean) / \
+                                        np.sqrt(self.ret_rms.var + self.__eps)
+            self.ret_rms.update(un_normalized_returns)
+        else:
+            batch.returns = un_normalized_returns
+        batch.act = to_torch_as(batch.act, v_s[0])
         batch.logp_old = torch.cat(old_log_prob, dim=0)
-        batch.returns = to_torch_as(batch.returns, v[0])
-        batch.adv = batch.returns - batch.v
+        batch.returns = to_torch_as(batch.returns, v_s[0])
+        batch.adv = to_torch_as(advantages, v_s[0])
         if self._rew_norm:
             mean, std = batch.adv.mean(), batch.adv.std()
             if not np.isclose(std.item(), 0.0, 1e-2):
                 batch.adv = (batch.adv - mean) / std
         return batch
-
-    def forward(
-        self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
-        **kwargs: Any,
-    ) -> Batch:
-        """Compute action over the given batch data.
-
-        :return: A :class:`~tianshou.data.Batch` which has 4 keys:
-
-            * ``act`` the action.
-            * ``logits`` the network's raw output.
-            * ``dist`` the action distribution.
-            * ``state`` the hidden state.
-
-        .. seealso::
-
-            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
-            more detailed explanation.
-        """
-        logits, h = self.actor(batch.obs, state=state, info=batch.info)
-        if isinstance(logits, tuple):
-            dist = self.dist_fn(*logits)
-        else:
-            dist = self.dist_fn(logits)
-        act = dist.sample()
-        return Batch(logits=logits, act=act, state=h, dist=dist)
 
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
@@ -162,7 +140,7 @@ class PPOPolicy(PGPolicy):
                     clip_loss = -torch.min(surr1, surr2).mean()
                 clip_losses.append(clip_loss.item())
                 if self._value_clip:
-                    v_clip = b.v + (value - b.v).clamp(-self._eps_clip, self._eps_clip)
+                    v_clip = b.v_s + (value - b.v_s).clamp(-self._eps_clip, self._eps_clip)
                     vf1 = (b.returns - value).pow(2)
                     vf2 = (b.returns - v_clip).pow(2)
                     vf_loss = 0.5 * torch.max(vf1, vf2).mean()

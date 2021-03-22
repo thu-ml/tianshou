@@ -53,17 +53,14 @@ class A2CPolicy(PGPolicy):
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: Type[torch.distributions.Distribution],
-        discount_factor: float = 0.99,
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,
         max_grad_norm: Optional[float] = None,
         gae_lambda: float = 0.95,
-        reward_normalization: bool = False,
         max_batchsize: int = 256,
         **kwargs: Any
     ) -> None:
-        super().__init__(None, optim, dist_fn, discount_factor, **kwargs)
-        self.actor = actor
+        super().__init__(actor, optim, dist_fn, **kwargs)
         self.critic = critic
         assert 0.0 <= gae_lambda <= 1.0, "GAE lambda should be in [0, 1]."
         self._lambda = gae_lambda
@@ -71,51 +68,27 @@ class A2CPolicy(PGPolicy):
         self._weight_ent = ent_coef
         self._grad_norm = max_grad_norm
         self._batch = max_batchsize
-        self._rew_norm = reward_normalization
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
     ) -> Batch:
-        if self._lambda in [0.0, 1.0]:
-            return self.compute_episodic_return(
-                batch, buffer, indice,
-                None, gamma=self._gamma, gae_lambda=self._lambda)
-        v_ = []
+        v_s_ = []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
-                v_.append(to_numpy(self.critic(b.obs_next)))
-        v_ = np.concatenate(v_, axis=0)
-        return self.compute_episodic_return(
-            batch, buffer, indice, v_,
-            gamma=self._gamma, gae_lambda=self._lambda, rew_norm=self._rew_norm)
-
-    def forward(
-        self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
-        **kwargs: Any
-    ) -> Batch:
-        """Compute action over the given batch data.
-
-        :return: A :class:`~tianshou.data.Batch` which has 4 keys:
-
-            * ``act`` the action.
-            * ``logits`` the network's raw output.
-            * ``dist`` the action distribution.
-            * ``state`` the hidden state.
-
-        .. seealso::
-
-            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
-            more detailed explanation.
-        """
-        logits, h = self.actor(batch.obs, state=state, info=batch.info)
-        if isinstance(logits, tuple):
-            dist = self.dist_fn(*logits)
+                v_s_.append(to_numpy(self.critic(b.obs_next)))
+        v_s_ = np.concatenate(v_s_, axis=0)
+        if self._rew_norm:
+            # unnormalize v_s_
+            v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self.__eps) + self.ret_rms.mean
+        un_normalized_returns, _ = self.compute_episodic_return(
+            batch, buffer, indice, v_s_, gamma=self._gamma, gae_lambda=self._lambda)
+        if self._rew_norm:
+            batch.returns = (un_normalized_returns - self.ret_rms.mean) / \
+                                        np.sqrt(self.ret_rms.var + self.__eps)
+            self.ret_rms.update(un_normalized_returns)
         else:
-            dist = self.dist_fn(logits)
-        act = dist.sample()
-        return Batch(logits=logits, act=act, state=h, dist=dist)
+            batch.returns = un_normalized_returns
+        return batch
 
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
