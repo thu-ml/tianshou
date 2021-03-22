@@ -142,8 +142,10 @@ class A2CPolicy(PGPolicy):
                 vf_losses.append(vf_loss.item())
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
+        # update learning rate if given lr_scheduler
+        if self.lr_scheduler is not None:
+            self.lr_scheduler.step()
 
-        self.update_lr_scheduler()
         return {
             "loss": losses,
             "loss/actor": actor_losses,
