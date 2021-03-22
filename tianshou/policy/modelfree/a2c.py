@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
-from typing import Any, Dict, List, Type, Union, Optional
+from typing import Any, Dict, List, Type, Optional
 
 from tianshou.policy import PGPolicy
 from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy

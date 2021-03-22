@@ -7,7 +7,6 @@ from tianshou.data import Batch, ReplayBuffer, to_torch_as
 from tianshou.utils import RunningMeanStd
 
 
-
 class PGPolicy(BasePolicy):
     """Implementation of REINFORCE algorithm.
 

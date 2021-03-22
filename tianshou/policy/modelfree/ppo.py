@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
-from typing import Any, Dict, List, Type, Union, Optional
+from typing import Any, Dict, List, Type, Optional
 
 from tianshou.policy import PGPolicy
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
@@ -103,10 +103,11 @@ class PPOPolicy(PGPolicy):
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
         un_normalized_returns, advantages = self.compute_episodic_return(
-            batch, buffer, indice, v_s_, v_s, gamma=self._gamma, gae_lambda=self._lambda)
+                                        batch, buffer, indice, v_s_, v_s,
+                                        gamma=self._gamma, gae_lambda=self._lambda)
         if self._rew_norm:
             batch.returns = (un_normalized_returns - self.ret_rms.mean) / \
-                                        np.sqrt(self.ret_rms.var + self._eps)
+                np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(un_normalized_returns)
         else:
             batch.returns = un_normalized_returns
@@ -140,7 +141,8 @@ class PPOPolicy(PGPolicy):
                     clip_loss = -torch.min(surr1, surr2).mean()
                 clip_losses.append(clip_loss.item())
                 if self._value_clip:
-                    v_clip = b.v_s + (value - b.v_s).clamp(-self._eps_clip, self._eps_clip)
+                    v_clip = b.v_s + (value - b.v_s).clamp(
+                                                    -self._eps_clip, self._eps_clip)
                     vf1 = (b.returns - value).pow(2)
                     vf2 = (b.returns - v_clip).pow(2)
                     vf_loss = 0.5 * torch.max(vf1, vf2).mean()
