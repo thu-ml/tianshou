@@ -3,11 +3,11 @@ import numpy as np
 from torch import nn
 from typing import Any, Dict, List, Type, Optional
 
-from tianshou.policy import PGPolicy
+from tianshou.policy import A2CPolicy
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 
 
-class PPOPolicy(PGPolicy):
+class PPOPolicy(A2CPolicy):
     r"""Implementation of Proximal Policy Optimization. arXiv:1707.06347.
 
     :param torch.nn.Module actor: the actor network following the rules in
@@ -30,8 +30,8 @@ class PPOPolicy(PGPolicy):
         Default to 5.0 (set None if you do not want to use it).
     :param bool value_clip: a parameter mentioned in arXiv:1811.02553 Sec. 4.1.
         Default to True.
-    :param bool reward_normalization: normalize the returns to Normal(0, 1).
-        Default to True.
+    :param bool reward_normalization: normalize the returns and advantage to
+        Normal(0, 1). Default to False.
     :param int max_batchsize: the maximum size of the batch when computing GAE,
         depends on the size of available memory and the memory cost of the
         model; should be as large as possible within the memory constraint.
@@ -68,15 +68,11 @@ class PPOPolicy(PGPolicy):
         max_batchsize: int = 256,
         **kwargs: Any,
     ) -> None:
-        super().__init__(actor, optim, dist_fn, **kwargs)
-        self._max_grad_norm = max_grad_norm
+        super().__init__(
+            actor, critic, optim, dist_fn, max_grad_norm=max_grad_norm,
+            vf_coef=vf_coef, ent_coef=ent_coef, gae_lambda=gae_lambda,
+            max_batchsize=max_batchsize, **kwargs)
         self._eps_clip = eps_clip
-        self._weight_vf = vf_coef
-        self._weight_ent = ent_coef
-        self.critic = critic
-        self._batch = max_batchsize
-        assert 0.0 <= gae_lambda <= 1.0, "GAE lambda should be in [0, 1]."
-        self._lambda = gae_lambda
         assert dual_clip is None or dual_clip > 1.0, \
             "Dual-clip PPO parameter should greater than 1.0."
         self._dual_clip = dual_clip
@@ -111,10 +107,10 @@ class PPOPolicy(PGPolicy):
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
-        batch.act = to_torch_as(batch.act, batch.v_s[0])
+        batch.act = to_torch_as(batch.act, batch.v_s)
         batch.logp_old = torch.cat(old_log_prob, dim=0)
-        batch.returns = to_torch_as(batch.returns, batch.v_s[0])
-        batch.adv = to_torch_as(advantages, batch.v_s[0])
+        batch.returns = to_torch_as(batch.returns, batch.v_s)
+        batch.adv = to_torch_as(advantages, batch.v_s)
         if self._rew_norm:
             mean, std = np.mean(advantages), np.std(advantages)
             if not np.isclose(std, 0.0, 1e-2):
@@ -156,10 +152,10 @@ class PPOPolicy(PGPolicy):
                 losses.append(loss.item())
                 self.optim.zero_grad()
                 loss.backward()
-                if self._max_grad_norm:
+                if self._grad_norm is not None:
                     nn.utils.clip_grad_norm_(
                         list(self.actor.parameters()) + list(self.critic.parameters()),
-                        self._max_grad_norm)
+                        self._grad_norm)
                 self.optim.step()
         # update learning rate if lr_scheduler is given
         if self.lr_scheduler is not None:

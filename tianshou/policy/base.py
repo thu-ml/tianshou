@@ -274,9 +274,7 @@ class BasePolicy(ABC, nn.Module):
         :param float gae_lambda: the parameter for Generalized Advantage Estimation,
             should be in [0, 1]. Default to 0.95.
 
-        # TODO change doc
-        :return: a Batch. The result will be stored in batch.returns as a numpy
-            array with shape (bsz, ).
+        :return: two numpy arrays (returns, advantage) with each shape (bsz, ).
         """
         rew = batch.rew
         if v_s_ is None:
