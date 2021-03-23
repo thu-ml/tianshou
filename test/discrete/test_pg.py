@@ -17,7 +17,7 @@ from tianshou.data import Collector, VectorReplayBuffer
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.95)
@@ -27,7 +27,7 @@ def get_args():
     parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[128, 128, 128, 128])
+                        nargs='*', default=[64, 64])
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -65,6 +65,11 @@ def test_pg(args=get_args()):
     policy = PGPolicy(net, optim, dist, args.gamma,
                       reward_normalization=args.rew_norm,
                       action_space=env.action_space)
+    for m in net.modules():
+        if isinstance(m, torch.nn.Linear):
+            # orthogonal initialization
+            torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+            torch.nn.init.zeros_(m.bias)
     # collector
     train_collector = Collector(
         policy, train_envs,

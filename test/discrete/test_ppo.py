@@ -80,7 +80,8 @@ def test_ppo(args=get_args()):
         actor.parameters()).union(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = PPOPolicy(
-        actor, critic, optim, dist, args.gamma,
+        actor, critic, optim, dist,
+        discount_factor=args.gamma,
         max_grad_norm=args.max_grad_norm,
         eps_clip=args.eps_clip,
         vf_coef=args.vf_coef,
