@@ -261,7 +261,7 @@ class BasePolicy(ABC, nn.Module):
         """Compute returns over given batch.
 
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
-        to calculate Q&A function/reward to go of given batch.
+        to calculate Q value and advantage of given batch.
 
         :param Batch batch: a data batch which contains several episodes of data in
             sequential order. Mind that the end of each finished episode of batch
