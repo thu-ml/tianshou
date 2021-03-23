@@ -282,16 +282,13 @@ class BasePolicy(ABC, nn.Module):
             v_s_ = np.zeros_like(rew)
         else:
             v_s_ = to_numpy(v_s_.flatten()) * BasePolicy.value_mask(buffer, indice)
-        if v_s is None:
-            v_s = np.roll(v_s_, 1)
-        else:
-            v_s = to_numpy(v_s.flatten())
+        v_s = np.roll(v_s_, 1) if v_s is None else to_numpy(v_s.flatten())
 
         end_flag = batch.done.copy()
         end_flag[np.isin(indice, buffer.unfinished_index())] = True
         advantage = _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda)
         returns = advantage + v_s
-        # normalization is varied from each policy, so we don't do it here
+        # normalization varies from each policy, so we don't do it here
         return returns, advantage
 
     @staticmethod

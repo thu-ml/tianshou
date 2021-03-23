@@ -77,8 +77,7 @@ class A2CPolicy(PGPolicy):
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
                 v_s_.append(to_numpy(self.critic(b.obs_next)))
         v_s_ = np.concatenate(v_s_, axis=0)
-        if self._rew_norm:
-            # unnormalize v_s_
+        if self._rew_norm:  # unnormalize v_s_
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
         unnormalized_returns, _ = self.compute_episodic_return(
             batch, buffer, indice, v_s_=v_s_,

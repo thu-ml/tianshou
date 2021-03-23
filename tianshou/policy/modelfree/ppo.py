@@ -84,16 +84,15 @@ class PPOPolicy(A2CPolicy):
         v_s, v_s_, old_log_prob = [], [], []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
-                v_s_.append(self.critic(b.obs_next))
                 v_s.append(self.critic(b.obs))
+                v_s_.append(self.critic(b.obs_next))
                 old_log_prob.append(self(b).dist.log_prob(to_torch_as(b.act, v_s[0])))
         batch.v_s = torch.cat(v_s, dim=0).flatten()  # old value
-        v_s_ = to_numpy(torch.cat(v_s_, dim=0).flatten())
         v_s = to_numpy(batch.v_s)
-        if self._rew_norm:
-            # unnormalize v_s_ & v_s
-            v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
+        v_s_ = to_numpy(torch.cat(v_s_, dim=0).flatten())
+        if self._rew_norm:  # unnormalize v_s & v_s_
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
+            v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
         unnormalized_returns, advantages = self.compute_episodic_return(
             batch, buffer, indice, v_s_, v_s,
             gamma=self._gamma, gae_lambda=self._lambda)
@@ -102,7 +101,7 @@ class PPOPolicy(A2CPolicy):
                 np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
             mean, std = np.mean(advantages), np.std(advantages)
-            advantages = (advantages - mean) / std
+            advantages = (advantages - mean) / std  # per-batch norm
         else:
             batch.returns = unnormalized_returns
         batch.act = to_torch_as(batch.act, batch.v_s)
