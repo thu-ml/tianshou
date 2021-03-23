@@ -4,7 +4,7 @@ import numpy as np
 from torch import nn
 from numba import njit
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Union, Optional, Callable, Tuple
+from typing import Any, Dict, Tuple, Union, Optional, Callable
 
 from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
@@ -261,7 +261,7 @@ class BasePolicy(ABC, nn.Module):
         """Compute returns over given batch.
 
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
-        to calculate Q value and advantage of given batch.
+        to calculate q/advantage value of given batch.
 
         :param Batch batch: a data batch which contains several episodes of data in
             sequential order. Mind that the end of each finished episode of batch
@@ -291,6 +291,7 @@ class BasePolicy(ABC, nn.Module):
         end_flag[np.isin(indice, buffer.unfinished_index())] = True
         advantage = _gae_return(v_s, v_s_, rew, end_flag, gamma, gae_lambda)
         returns = advantage + v_s
+        # normalization is varied from each policy, so we don't do it here
         return returns, advantage
 
     @staticmethod

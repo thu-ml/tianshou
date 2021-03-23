@@ -81,10 +81,6 @@ class PPOPolicy(A2CPolicy):
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
     ) -> Batch:
-        if self._rew_norm:
-            mean, std = batch.rew.mean(), batch.rew.std()
-            if not np.isclose(std, 0.0, 1e-2):
-                batch.rew = (batch.rew - mean) / std
         v_s, v_s_, old_log_prob = [], [], []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
@@ -105,16 +101,14 @@ class PPOPolicy(A2CPolicy):
             batch.returns = (unnormalized_returns - self.ret_rms.mean) / \
                 np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
+            mean, std = np.mean(advantages), np.std(advantages)
+            advantages = (advantages - mean) / std
         else:
             batch.returns = unnormalized_returns
         batch.act = to_torch_as(batch.act, batch.v_s)
         batch.logp_old = torch.cat(old_log_prob, dim=0)
         batch.returns = to_torch_as(batch.returns, batch.v_s)
         batch.adv = to_torch_as(advantages, batch.v_s)
-        if self._rew_norm:
-            mean, std = np.mean(advantages), np.std(advantages)
-            if not np.isclose(std, 0.0, 1e-2):
-                batch.adv = (batch.adv - mean) / std
         return batch
 
     def learn(  # type: ignore
