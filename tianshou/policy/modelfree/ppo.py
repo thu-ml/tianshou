@@ -102,15 +102,15 @@ class PPOPolicy(PGPolicy):
             # unnormalize v_s_ & v_s
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
-        un_normalized_returns, advantages = self.compute_episodic_return(
+        unnormalized_returns, advantages = self.compute_episodic_return(
                                         batch, buffer, indice, v_s_, v_s,
                                         gamma=self._gamma, gae_lambda=self._lambda)
         if self._rew_norm:
-            batch.returns = (un_normalized_returns - self.ret_rms.mean) / \
+            batch.returns = (unnormalized_returns - self.ret_rms.mean) / \
                 np.sqrt(self.ret_rms.var + self._eps)
-            self.ret_rms.update(un_normalized_returns)
+            self.ret_rms.update(unnormalized_returns)
         else:
-            batch.returns = un_normalized_returns
+            batch.returns = unnormalized_returns
         batch.act = to_torch_as(batch.act, batch.v_s[0])
         batch.logp_old = torch.cat(old_log_prob, dim=0)
         batch.returns = to_torch_as(batch.returns, batch.v_s[0])

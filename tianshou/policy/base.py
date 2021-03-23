@@ -4,7 +4,7 @@ import numpy as np
 from torch import nn
 from numba import njit
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Union, Optional, Callable
+from typing import Any, Dict, Union, Optional, Callable, Tuple
 
 from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
@@ -257,7 +257,7 @@ class BasePolicy(ABC, nn.Module):
         v_s: Optional[Union[np.ndarray, torch.Tensor]] = None,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
-    ) -> Batch:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Compute returns over given batch.
 
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)

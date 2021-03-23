@@ -68,14 +68,14 @@ class PGPolicy(BasePolicy):
         discount factor, :math:`\gamma \in [0, 1]`.
         """
         v_s_ = np.full(indice.shape, self.ret_rms.mean)
-        un_normalized_returns, _ = self.compute_episodic_return(
-            batch, buffer, indice, v_s_, gamma=self._gamma, gae_lambda=1.0)
+        unnormalized_returns, _ = self.compute_episodic_return(
+            batch, buffer, indice, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0)
         if self._rew_norm:
-            batch.returns = (un_normalized_returns - self.ret_rms.mean) / \
+            batch.returns = (unnormalized_returns - self.ret_rms.mean) / \
                                         np.sqrt(self.ret_rms.var + self._eps)
-            self.ret_rms.update(un_normalized_returns)
+            self.ret_rms.update(unnormalized_returns)
         else:
-            batch.returns = un_normalized_returns
+            batch.returns = unnormalized_returns
         return batch
 
     def forward(
