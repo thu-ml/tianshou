@@ -12,9 +12,10 @@ For each supported algorithm and supported mujoco environments, we provide:
   
 
 Supported algorithms are listed below:
-- [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/v0.4.0)
-- [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/v0.4.0)
-- [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/v0.4.0)
+- [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
+- [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
+- [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
+- [REINFORCE algorithm](https://papers.nips.cc/paper/1999/file/464d828b85b0bed98e80ade0a5c43b0f-Paper.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/v0.4.0)
 
 ## Offpolicy algorithms
 
@@ -109,10 +110,43 @@ By comparison to both classic literature and open source implementations (e.g., 
 
 ## Onpolicy Algorithms
 
-TBD
+### REINFORCE
+
+|      Environment       | Tianshou(10M steps) |
+| :--------------------: | :-----------------: |
+|          Ant           |  **1108.1±323.1**   |
+|      HalfCheetah       |  **1138.8±104.7**   |
+|         Hopper         |   **416.0±104.7**   |
+|        Walker2d        |   **440.9±148.2**   |
+|        Swimmer         |    **35.6±2.6**     |
+|        Humanoid        |   **464.3±58.4**    |
+|        Reacher         |    **-5.5±0.2**     |
+|    InvertedPendulum    |   **1000.0±0.0**    |
+| InvertedDoublePendulum |  **7726.2±1287.3**  |
 
 
+|      Environment       |      Tianshou(3M steps)      | [SpinningUp (VPG Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_vpg.html)<sup>[[10]](#footnote10)</sup> |
+| :--------------------: | :--------------------------: | :------------------------: |
+|          Ant           |       **474.9+-133.5**       |             ~5             |
+|      HalfCheetah       |       **884.0+-41.0**        |            ~600            |
+|         Hopper         |         395.8+-64.5*         |          **~800**          |
+|        Walker2d        |         412.0+-52.4          |          **~460**          |
+|        Swimmer         |          35.3+-1.4           |          **~51**           |
+|        Humanoid        |       **438.2+-47.8**        |             N              |
+|        Reacher         |        **-10.5+-0.7**        |             N              |
+|    InvertedPendulum    |        **999.2+-2.4**        |             N              |
+| InvertedDoublePendulum |      **1059.7+-307.7**       |             N              |
 
+\* details<sup>[[5]](#footnote5)</sup><sup>[[6]](#footnote6)</sup>
+
+#### Hints for REINFORCE
+0. Following [Andrychowicz, Marcin, et al](https://arxiv.org/abs/2006.05990), we downscale last layer of policy network by a factor of 0.01 after orthogonal initialization.
+1. We choose "tanh" function to squash sampled action from range (-inf, inf) to (-1, 1) rather than usually used clipping method(As in StableBaselines3). We did full scale ablation study and results show that tanh squashing performs a tiny little bit better than clipping overall, and is a lot better than no action bounding. "Clipping" method is still a very good method, considering it's simplicity.
+2. We use global observation normalization and global rew-to-go normalization by default. Both a crucial to good performances of REINFORCE algorithm. Since we minus mean when doing rew-to-go normalization, you can consider that global mean as a navie version of baseline(not conditioned on s).
+3. Since we do not have a value estimator, we use global rew-to-go mean to bootstrap truncated steps because of timelimit and unfinished collecting, while most other implementations use 0. We feel this would help because mean is more likely a better estimate than 0(no ablation study has been done).
+4. We have done full scale ablation study on learning rate and lr decay strategy. We experiment with lr of 3e-4, 5e-4 & 1e-3, each have 2 options: no lr decay or linear decay to 0. Experiments show that 3e-4 learning rate will cause slowly learning and make agent step in local optima easily for certain environments like InvertedDoublePendulum, Ant, HalfCheetah, and 1e-3 lr helps a lot. However, after training agents with lr 1e-3 for 5M steps or so, agents in certain environments like InvertedPendulum will become unstable. Conclusing is that we should start with a large learning rate and linearly decay it, but for a small learning rate or if you only train agents for limited timesteps, DO NOT decay it.
+5. We didn't tune `step-per-collect` option and `training-num` option, default values are finetuned with PPO algorithm so we assume they are also good for REINFORCE. You can play with them if you want, but remember that `buffer-size` should always be larger than `step-per-collect`, and if `step-per-collect` is too small and `training-num` too large, episodes will be truncated and bootstraped very often, which will harm performances. If `training-num` is too small(e.g. less than 8), speed will go down.
+6. Sigma of action is not fixed (nomally seen in other implementation) or conditioned on observation, but is an independent paramerter which can be updated by gradient descent. We choose this setting because it works well in PPO, and is recommended by [Andrychowicz, Marcin, et al](https://arxiv.org/abs/2006.05990). See Fig. 23.
 
 ## Note
 
@@ -126,10 +160,12 @@ TBD
 
 <a name="footnote5">[5]</a>  ~ means the number is approximated from the graph because accurate numbers is not provided in the paper. N means graphs not provided.
 
-<a name="footnote6">[6]</a>  Reward metric: The meaning of the table value is the max average return over 10 trails (different seeds) ± a single standard deviation over trails. Each trial is averaged on another 10 test seeds. Only the first 1M steps data will be considered. The shaded region on the graph also represents a single standard deviation. It is the same as [TD3 evaluation method](https://github.com/sfujim/TD3/issues/34).
+<a name="footnote6">[6]</a>  Reward metric: The meaning of the table value is the max average return over 10 trails (different seeds) ± a single standard deviation over trails. Each trial is averaged on another 10 test seeds. Only the first 1M steps data will be considered, if not otherwise stated. The shaded region on the graph also represents a single standard deviation. It is the same as [TD3 evaluation method](https://github.com/sfujim/TD3/issues/34).
 
 <a name="footnote7">[7]</a>  In TD3 paper, shaded region represents only half of standard deviation.
 
 <a name="footnote8">[8]</a>  SAC's start-timesteps is set to 10000 by default while it is 25000 is DDPG/TD3. TD3's learning rate is set to 3e-4 while it is 1e-3 for DDPG/SAC. However, there is NO enough evidence to support our choice of such hyperparameters (we simply choose them because of SpinningUp) and you can try playing with those hyperparameters to see if you can improve performance. Do tell us if you can!
 
 <a name="footnote9">[9]</a>  We use batchsize of 256 in DDPG/TD3/SAC while SpinningUp use 100. Minor difference also lies with `start-timesteps`, data loop method `step_per_collect`, method to deal with/bootstrap truncated steps because of timelimit and unfinished/collecting episodes (contribute to performance improvement), etc.
+
+<a name="footnote10">[10]</a>  Comparing Tianshou's REINFORCE algorithm with SpinningUp's vpg is quite unfair because SpinningUp's vpg uses a generative advantage estimator(GAE) which requires a dnn value predictor(critic), which makes so called 'vpg' more like A2C(advantage actor critic) algorithm. Even so, you can see that we are roughly at-parity with each other even if tianshou do not use a critic or GAE.
