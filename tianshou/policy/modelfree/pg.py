@@ -34,7 +34,7 @@ class PGPolicy(BasePolicy):
 
     def __init__(
         self,
-        model: Optional[torch.nn.Module],
+        model: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: Type[torch.distributions.Distribution],
         discount_factor: float = 0.99,
@@ -72,7 +72,7 @@ class PGPolicy(BasePolicy):
             batch, buffer, indice, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0)
         if self._rew_norm:
             batch.returns = (unnormalized_returns - self.ret_rms.mean) / \
-                                        np.sqrt(self.ret_rms.var + self._eps)
+                np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns

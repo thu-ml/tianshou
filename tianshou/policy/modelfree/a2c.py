@@ -85,7 +85,7 @@ class A2CPolicy(PGPolicy):
             gamma=self._gamma, gae_lambda=self._lambda)
         if self._rew_norm:
             batch.returns = (unnormalized_returns - self.ret_rms.mean) / \
-                                        np.sqrt(self.ret_rms.var + self._eps)
+                np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns

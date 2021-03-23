@@ -103,8 +103,8 @@ class PPOPolicy(PGPolicy):
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps) + self.ret_rms.mean
         unnormalized_returns, advantages = self.compute_episodic_return(
-                                        batch, buffer, indice, v_s_, v_s,
-                                        gamma=self._gamma, gae_lambda=self._lambda)
+            batch, buffer, indice, v_s_, v_s,
+            gamma=self._gamma, gae_lambda=self._lambda)
         if self._rew_norm:
             batch.returns = (unnormalized_returns - self.ret_rms.mean) / \
                 np.sqrt(self.ret_rms.var + self._eps)
@@ -116,8 +116,8 @@ class PPOPolicy(PGPolicy):
         batch.returns = to_torch_as(batch.returns, batch.v_s[0])
         batch.adv = to_torch_as(advantages, batch.v_s[0])
         if self._rew_norm:
-            mean, std = batch.adv.mean(), batch.adv.std()
-            if not np.isclose(std.item(), 0.0, 1e-2):
+            mean, std = np.mean(advantages), np.std(advantages)
+            if not np.isclose(std, 0.0, 1e-2):
                 batch.adv = (batch.adv - mean) / std
         return batch
 
@@ -142,7 +142,7 @@ class PPOPolicy(PGPolicy):
                 clip_losses.append(clip_loss.item())
                 if self._value_clip:
                     v_clip = b.v_s + (value - b.v_s).clamp(
-                                                    -self._eps_clip, self._eps_clip)
+                        -self._eps_clip, self._eps_clip)
                     vf1 = (b.returns - value).pow(2)
                     vf2 = (b.returns - v_clip).pow(2)
                     vf_loss = 0.5 * torch.max(vf1, vf2).mean()
