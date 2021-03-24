@@ -104,8 +104,8 @@ def test_ddpg(args=get_args()):
     train_collector.collect(n_step=args.start_timesteps, random=True)
     # log
     log_path = os.path.join(args.logdir, args.task, 'ddpg', 'seed_' + str(args.seed) +
-                            '_' + datetime.datetime.now().strftime('%m%d_%H%M%S') + '-' +
-                            args.task.replace('-', '_') + '_ddpg')
+                            '_' + datetime.datetime.now().strftime('%m%d_%H%M%S') +
+                            '-' + args.task.replace('-', '_') + '_ddpg')
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer)

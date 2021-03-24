@@ -116,8 +116,8 @@ def test_sac(args=get_args()):
     train_collector.collect(n_step=args.start_timesteps, random=True)
     # log
     log_path = os.path.join(args.logdir, args.task, 'sac', 'seed_' + str(args.seed) +
-                            '_' + datetime.datetime.now().strftime('%m%d_%H%M%S') + '-' +
-                            args.task.replace('-', '_') + '_sac')
+                            '_' + datetime.datetime.now().strftime('%m%d_%H%M%S') +
+                            '-' + args.task.replace('-', '_') + '_sac')
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer)

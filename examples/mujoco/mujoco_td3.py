@@ -118,8 +118,8 @@ def test_td3(args=get_args()):
     train_collector.collect(n_step=args.start_timesteps, random=True)
     # log
     log_path = os.path.join(args.logdir, args.task, 'td3', 'seed_' + str(args.seed) +
-                            '_' + datetime.datetime.now().strftime('%m%d_%H%M%S') + '-' +
-                            args.task.replace('-', '_') + '_td3')
+                            '_' + datetime.datetime.now().strftime('%m%d_%H%M%S') +
+                            '-' + args.task.replace('-', '_') + '_td3')
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer)

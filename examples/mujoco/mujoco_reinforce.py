@@ -31,7 +31,9 @@ def get_args():
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=30000)
     parser.add_argument('--step-per-collect', type=int, default=2048)
-    parser.add_argument('--repeat-per-collect', type=int, default=1) # batch-size larger than step-per-collect means calculating all data in a singe forward.
+    # batch-size larger than step-per-collect means caculating
+    # all data in one singe forward.
+    parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=99999)
     parser.add_argument('--training-num', type=int, default=64)
     parser.add_argument('--test-num', type=int, default=10)
@@ -43,7 +45,8 @@ def get_args():
     parser.add_argument('--resume-path', type=str, default=None)
     # reinforce special
     parser.add_argument('--rew-norm', type=int, default=True)
-    parser.add_argument('--bound-action-method', type=str, default="tanh") # "clipping" also works well.
+    # "clipping" also works well.
+    parser.add_argument('--bound-action-method', type=str, default="tanh")
     parser.add_argument('--lr-decay', type=int, default=True)
     return parser.parse_args()
 
@@ -74,15 +77,17 @@ def test_reinforce(args=get_args()):
     # model
     net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
                 activation=nn.Tanh, device=args.device)
-    actor = ActorProb(net_a, args.action_shape, max_action=args.max_action, unbounded=True,
-                      device=args.device).to(args.device)
+    actor = ActorProb(net_a, args.action_shape, max_action=args.max_action,
+                      unbounded=True, device=args.device).to(args.device)
     torch.nn.init.constant_(actor.sigma_param, -0.5)
     for m in actor.modules():
         if isinstance(m, torch.nn.Linear):
             # orthogonal initialization
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
             torch.nn.init.zeros_(m.bias)
-    # do last policy layer scaling, see https://arxiv.org/abs/2006.05990, Fig.24 for details
+    # do last policy layer scaling, this will make initial actions have (close to)
+    # 0 mean and std, and will help boost performances,
+    # see https://arxiv.org/abs/2006.05990, Fig.24 for details
     for m in actor.mu.modules():
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.zeros_(m.bias)
@@ -114,9 +119,10 @@ def test_reinforce(args=get_args()):
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'reinforce', 'seed_' + str(args.seed) +
-                            '_' + datetime.datetime.now().strftime('%m%d_%H%M%S') + '-' +
-                            args.task.replace('-', '_') + '_reinforce')
+    log_path = os.path.join(
+        args.logdir, args.task, 'reinforce', 'seed_' + str(args.seed) + '_' +
+        datetime.datetime.now().strftime('%m%d_%H%M%S') +
+        '-' + args.task.replace('-', '_') + '_reinforce')
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer, update_interval=10)
