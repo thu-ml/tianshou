@@ -117,14 +117,16 @@ def test_td3(args=get_args()):
     test_collector = Collector(policy, test_envs)
     train_collector.collect(n_step=args.start_timesteps, random=True)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'td3', 'seed_' + str(
-        args.seed) + '_' + datetime.datetime.now().strftime('%m%d-%H%M%S'))
+    log_path = os.path.join(args.logdir, args.task, 'td3', 'seed_' + str(args.seed) +
+                            '_' + datetime.datetime.now().strftime('%m%d_%H%M%S') + '-' +
+                            args.task.replace('-', '_') + '_td3')
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,

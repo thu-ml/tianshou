@@ -16,10 +16,8 @@ from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
-from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
-
 from tianshou.utils.net.continuous import ActorProb
-from typing import Any, List, Union, Optional, Callable, Tuple
+from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 
 
 def get_args():
@@ -33,8 +31,7 @@ def get_args():
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=30000)
     parser.add_argument('--step-per-collect', type=int, default=2048)
-    parser.add_argument('--repeat-per-collect', type=int, default=1)
-    # batch-size larger than step-per-collect means calculating all data in a singe forward.
+    parser.add_argument('--repeat-per-collect', type=int, default=1) # batch-size larger than step-per-collect means calculating all data in a singe forward.
     parser.add_argument('--batch-size', type=int, default=99999)
     parser.add_argument('--training-num', type=int, default=64)
     parser.add_argument('--test-num', type=int, default=10)
@@ -44,15 +41,14 @@ def get_args():
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--resume-path', type=str, default=None)
-    # vpg special
+    # reinforce special
     parser.add_argument('--rew-norm', type=int, default=True)
-    # "clipping" also works well.
-    parser.add_argument('--bound-action-method', type=str, default="tanh")
+    parser.add_argument('--bound-action-method', type=str, default="tanh") # "clipping" also works well.
     parser.add_argument('--lr-decay', type=int, default=True)
     return parser.parse_args()
 
 
-def test_vpg(args=get_args()):
+def test_reinforce(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -144,4 +140,4 @@ def test_vpg(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_vpg()
+    test_reinforce()
