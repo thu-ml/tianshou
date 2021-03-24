@@ -44,7 +44,7 @@ def get_args():
     parser.add_argument('--resume-path', type=str, default=None)
     # reinforce special
     parser.add_argument('--rew-norm', type=int, default=True)
-    # "clipping" also works well.
+    # "clip" option also works well.
     parser.add_argument('--action-bound-method', type=str, default="tanh")
     parser.add_argument('--lr-decay', type=int, default=True)
     return parser.parse_args()
