@@ -113,7 +113,7 @@ class A2CPolicy(PGPolicy):
                 actor_loss = -(log_prob * b.adv).mean()
                 # calculate loss for critic
                 value = self.critic(b.obs).flatten()
-                vf_loss = F.mse_loss(b.returns, value)  # type: ignore
+                vf_loss = F.mse_loss(b.returns, value)
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
                 loss = actor_loss + self._weight_vf * vf_loss \
