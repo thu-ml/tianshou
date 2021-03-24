@@ -26,16 +26,15 @@ class PPOPolicy(A2CPolicy):
         Default to True.
     :param float vf_coef: weight for value loss. Default to 0.5.
     :param float ent_coef: weight for entropy loss. Default to 0.01.
-    :param float max_grad_norm: clipping gradients in back propagation.
-        Default to None.
-    :param float gae_lambda: in [0, 1], param for Generalized Advantage
-        Estimation. Default to 0.95.
+    :param float max_grad_norm: clipping gradients in back propagation. Default to
+        None.
+    :param float gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+        Default to 0.95.
     :param bool reward_normalization: normalize estimated values to have std close
         to 1, also normalize the advantage to Normal(0, 1). Default to False.
     :param int max_batchsize: the maximum size of the batch when computing GAE,
-        depends on the size of available memory and the memory cost of the
-        model; should be as large as possible within the memory constraint.
-        Default to 256.
+        depends on the size of available memory and the memory cost of the model;
+        should be as large as possible within the memory constraint. Default to 256.
     :param bool action_scaling: whether to map actions from range [-1, 1] to range
         [action_spaces.low, action_spaces.high]. Default to True.
     :param str action_bound_method: method to bound action to range [-1, 1], can be
@@ -63,8 +62,7 @@ class PPOPolicy(A2CPolicy):
         value_clip: bool = True,
         **kwargs: Any,
     ) -> None:
-        super().__init__(
-            actor, critic, optim, dist_fn, **kwargs)
+        super().__init__(actor, critic, optim, dist_fn, **kwargs)
         self._eps_clip = eps_clip
         assert dual_clip is None or dual_clip > 1.0, \
             "Dual-clip PPO parameter should greater than 1.0."
@@ -85,8 +83,8 @@ class PPOPolicy(A2CPolicy):
         v_s_ = to_numpy(torch.cat(v_s_, dim=0).flatten())
         # when normalizing values, we do not minus self.ret_rms.mean to be numerically
         # consistent with OPENAI baselines' value normalization pipeline. Emperical
-        # study also shows that 'minus mean' will harm performances a tiny little bit
-        # due to unknown reasons(on Mujoco envs, not confident, though).
+        # study also shows that "minus mean" will harm performances a tiny little bit
+        # due to unknown reasons (on Mujoco envs, not confident, though).
         if self._rew_norm:  # unnormalize v_s & v_s_
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps)
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps)
@@ -98,7 +96,7 @@ class PPOPolicy(A2CPolicy):
                 np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
             mean, std = np.mean(advantages), np.std(advantages)
-            advantages = (advantages - mean) / std
+            advantages = (advantages - mean) / std  # per-batch norm
         else:
             batch.returns = unnormalized_returns
         batch.act = to_torch_as(batch.act, batch.v_s)
@@ -141,8 +139,7 @@ class PPOPolicy(A2CPolicy):
                     - self._weight_ent * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
-                if self._grad_norm is not None:
-                    # clip large gradient
+                if self._grad_norm is not None:  # clip large gradient
                     nn.utils.clip_grad_norm_(
                         list(self.actor.parameters()) + list(self.critic.parameters()),
                         max_norm=self._grad_norm)
@@ -151,7 +148,7 @@ class PPOPolicy(A2CPolicy):
                 vf_losses.append(vf_loss.item())
                 ent_losses.append(ent_loss.item())
                 losses.append(loss.item())
-                # update learning rate if lr_scheduler is given
+        # update learning rate if lr_scheduler is given
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
 

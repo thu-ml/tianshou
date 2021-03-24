@@ -21,12 +21,12 @@ class A2CPolicy(PGPolicy):
     :param float discount_factor: in [0, 1]. Default to 0.99.
     :param float vf_coef: weight for value loss. Default to 0.5.
     :param float ent_coef: weight for entropy loss. Default to 0.01.
-    :param float max_grad_norm: clipping gradients in back propagation.
-        Default to None.
-    :param float gae_lambda: in [0, 1], param for Generalized Advantage
-        Estimation. Default to 0.95.
-    :param bool reward_normalization: normalize estimated values to
-        have std close to 1. Default to False.
+    :param float max_grad_norm: clipping gradients in back propagation. Default to
+        None.
+    :param float gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+        Default to 0.95.
+    :param bool reward_normalization: normalize estimated values to have std close to
+        1. Default to False.
     :param int max_batchsize: the maximum size of the batch when computing GAE,
         depends on the size of available memory and the memory cost of the
         model; should be as large as possible within the memory constraint.
@@ -82,8 +82,8 @@ class A2CPolicy(PGPolicy):
         v_s_ = to_numpy(torch.cat(v_s_, dim=0).flatten())
         # when normalizing values, we do not minus self.ret_rms.mean to be numerically
         # consistent with OPENAI baselines' value normalization pipeline. Emperical
-        # study also shows that 'minus mean' will harm performances a tiny little bit
-        # due to unknown reasons(on Mujoco envs, not confident, though).
+        # study also shows that "minus mean" will harm performances a tiny little bit
+        # due to unknown reasons (on Mujoco envs, not confident, though).
         if self._rew_norm:  # unnormalize v_s & v_s_
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps)
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps)
@@ -120,8 +120,7 @@ class A2CPolicy(PGPolicy):
                     - self._weight_ent * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
-                if self._grad_norm is not None:
-                    # clip large gradient
+                if self._grad_norm is not None:  # clip large gradient
                     nn.utils.clip_grad_norm_(
                         list(self.actor.parameters()) + list(self.critic.parameters()),
                         max_norm=self._grad_norm)
