@@ -53,13 +53,8 @@ class FiniteEnv(Env):
 
 
 class FiniteVectorEnv(BaseVectorEnv):
-    def __init__(
-        self,
-        env_fns: List[Callable[[], Env]],
-        wait_num: Optional[int] = None,
-        timeout: Optional[float] = None,
-    ):
-        super().__init__(env_fns, wait_num, timeout)
+    def __init__(self, env_fns: List[Callable[[], Env]], **kwargs):
+        super().__init__(env_fns, **kwargs)
         self._alive_env_ids = set()
         self._reset_alive_envs()
         self._default_obs = self._default_info = None
