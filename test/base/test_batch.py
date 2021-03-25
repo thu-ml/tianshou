@@ -20,9 +20,9 @@ def test_batch():
     assert len(Batch(a=[1, 2, 3], b={'c': {}})) == 3
     assert not Batch(a=[1, 2, 3]).is_empty()
     b = Batch({'a': [4, 4], 'b': [5, 5]}, c=[None, None])
-    assert b.c.dtype == np.object
+    assert b.c.dtype == object
     b = Batch(d=[None], e=[starmap], f=Batch)
-    assert b.d.dtype == b.e.dtype == np.object and b.f == Batch
+    assert b.d.dtype == b.e.dtype == object and b.f == Batch
     b = Batch()
     b.update()
     assert b.is_empty()
@@ -153,10 +153,10 @@ def test_batch():
         batch3[0] = Batch(a={"c": 2, "e": 1})
     # auto convert
     batch4 = Batch(a=np.array(['a', 'b']))
-    assert batch4.a.dtype == np.object  # auto convert to np.object
+    assert batch4.a.dtype == object  # auto convert to object
     batch4.update(a=np.array(['c', 'd']))
     assert list(batch4.a) == ['c', 'd']
-    assert batch4.a.dtype == np.object  # auto convert to np.object
+    assert batch4.a.dtype == object  # auto convert to object
     batch5 = Batch(a=np.array([{'index': 0}]))
     assert isinstance(batch5.a, Batch)
     assert np.allclose(batch5.a.index, [0])
@@ -508,10 +508,10 @@ def test_batch_empty():
     assert np.allclose(b5.b.c, [2, 0])
     assert np.allclose(b5.b.d, [1, 0])
     data = Batch(a=[False, True],
-                 b={'c': np.array([2., 'st'], dtype=np.object),
+                 b={'c': np.array([2., 'st'], dtype=object),
                     'd': [1, None],
                     'e': [2., float('nan')]},
-                 c=np.array([1, 3, 4], dtype=np.int),
+                 c=np.array([1, 3, 4], dtype=int),
                  t=torch.tensor([4, 5, 6, 7.]))
     data[-1] = Batch.empty(data[1])
     assert np.allclose(data.c, [1, 3, 0])

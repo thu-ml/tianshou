@@ -46,7 +46,7 @@ class ReplayBufferManager(ReplayBuffer):
         _next_index(index, offset, done, last, lens)
 
     def __len__(self) -> int:
-        return self._lengths.sum()
+        return int(self._lengths.sum())
 
     def reset(self) -> None:
         self.last_index = self._offset.copy()

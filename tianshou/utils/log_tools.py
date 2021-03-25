@@ -14,16 +14,12 @@ class BaseLogger(ABC):
 
     @abstractmethod
     def write(
-        self,
-        key: str,
-        x: Union[Number, np.number, np.ndarray],
-        y: Union[Number, np.number, np.ndarray],
-        **kwargs: Any,
+        self, key: str, x: int, y: Union[Number, np.number, np.ndarray], **kwargs: Any
     ) -> None:
         """Specify how the writer is used to log data.
 
-        :param key: namespace which the input data tuple belongs to.
-        :param x: stands for the ordinate of the input data tuple.
+        :param str key: namespace which the input data tuple belongs to.
+        :param int x: stands for the ordinate of the input data tuple.
         :param y: stands for the abscissa of the input data tuple.
         """
         pass
@@ -84,11 +80,7 @@ class BasicLogger(BaseLogger):
         self.last_log_update_step = -1
 
     def write(
-        self,
-        key: str,
-        x: Union[Number, np.number, np.ndarray],
-        y: Union[Number, np.number, np.ndarray],
-        **kwargs: Any,
+        self, key: str, x: int, y: Union[Number, np.number, np.ndarray], **kwargs: Any
     ) -> None:
         self.writer.add_scalar(key, y, global_step=x)
 
@@ -149,11 +141,7 @@ class LazyLogger(BasicLogger):
         super().__init__(None)  # type: ignore
 
     def write(
-        self,
-        key: str,
-        x: Union[Number, np.number, np.ndarray],
-        y: Union[Number, np.number, np.ndarray],
-        **kwargs: Any,
+        self, key: str, x: int, y: Union[Number, np.number, np.ndarray], **kwargs: Any
     ) -> None:
         """The LazyLogger writes nothing."""
         pass

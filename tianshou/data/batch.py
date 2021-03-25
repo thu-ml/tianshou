@@ -87,10 +87,8 @@ def _create_value(
     if has_shape:
         shape = (size, *inst.shape) if stack else (size, *inst.shape[1:])
     if isinstance(inst, np.ndarray):
-        if issubclass(inst.dtype.type, (np.bool_, np.number)):
-            target_type = inst.dtype.type
-        else:
-            target_type = object
+        target_type = inst.dtype.type if issubclass(
+            inst.dtype.type, (np.bool_, np.number)) else object
         return np.full(
             shape,
             fill_value=None if target_type == object else 0,
@@ -187,7 +185,7 @@ class Batch:
                 for k, v in batch_dict.items():
                     self.__dict__[k] = _parse_value(v)
             elif _is_batch_set(batch_dict):
-                self.stack_(batch_dict)
+                self.stack_(batch_dict)  # type: ignore
         if len(kwargs) > 0:
             self.__init__(kwargs, copy=copy)  # type: ignore
 
@@ -530,8 +528,7 @@ class Batch:
             elif all(isinstance(e, (Batch, dict)) for e in v):  # third often
                 self.__dict__[k] = Batch.stack(v, axis)
             else:  # most often case is np.ndarray
-                v = np.stack(v, axis)
-                self.__dict__[k] = _to_array_with_correct_type(v)
+                self.__dict__[k] = _to_array_with_correct_type(np.stack(v, axis))
         # all the keys
         keys_total = set.union(*[set(b.keys()) for b in batches])
         # keys that are reserved in all batches
@@ -588,7 +585,7 @@ class Batch:
         return batch
 
     def empty_(
-        self, index: Union[str, slice, int, np.integer, np.ndarray, List[int]] = None
+        self, index: Optional[Union[slice, int, np.ndarray, List[int]]] = None
     ) -> "Batch":
         """Return an empty Batch object with 0 or None filled.
 
@@ -638,7 +635,7 @@ class Batch:
     @staticmethod
     def empty(
         batch: "Batch",
-        index: Union[str, slice, int, np.integer, np.ndarray, List[int]] = None,
+        index: Optional[Union[slice, int, np.ndarray, List[int]]] = None,
     ) -> "Batch":
         """Return an empty Batch object with 0 or None filled.
 

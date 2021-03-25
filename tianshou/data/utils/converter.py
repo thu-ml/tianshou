@@ -4,15 +4,12 @@ import pickle
 import numpy as np
 from copy import deepcopy
 from numbers import Number
-from typing import Dict, Union, Optional
+from typing import Any, Dict, Union, Optional
 
 from tianshou.data.batch import _parse_value, Batch
 
 
-def to_numpy(
-    x: Optional[Union[Batch, dict, list, tuple, np.number, np.bool_, Number,
-                      np.ndarray, torch.Tensor]]
-) -> Union[Batch, dict, list, tuple, np.ndarray]:
+def to_numpy(x: Any) -> Union[Batch, dict, list, np.ndarray]:
     """Return an object without torch.Tensor."""
     if isinstance(x, torch.Tensor):  # most often case
         return x.detach().cpu().numpy()
@@ -38,11 +35,10 @@ def to_numpy(
 
 
 def to_torch(
-    x: Union[Batch, dict, list, tuple, np.number, np.bool_, Number, np.ndarray,
-             torch.Tensor],
+    x: Any,
     dtype: Optional[torch.dtype] = None,
     device: Union[str, int, torch.device] = "cpu",
-) -> Union[Batch, dict, list, tuple, torch.Tensor]:
+) -> Union[Batch, dict, list, torch.Tensor]:
     """Return an object without np.ndarray."""
     if isinstance(x, np.ndarray) and issubclass(
         x.dtype.type, (np.bool_, np.number)
@@ -73,9 +69,8 @@ def to_torch(
 
 
 def to_torch_as(
-    x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
-    y: torch.Tensor,
-) -> Union[Batch, dict, list, tuple, torch.Tensor]:
+    x: Any, y: torch.Tensor
+) -> Union[Batch, dict, list, torch.Tensor]:
     """Return an object without np.ndarray.
 
     Same as ``to_torch(x, dtype=y.dtype, device=y.device)``.
@@ -154,11 +149,11 @@ def from_hdf5(
     if isinstance(x, h5py.Dataset):
         # handle datasets
         if x.attrs["__data_type__"] == "ndarray":
-            y = np.array(x)
+            return np.array(x)
         elif x.attrs["__data_type__"] == "Tensor":
-            y = torch.tensor(x, device=device)
+            return torch.tensor(x, device=device)
         else:
-            y = pickle.loads(x[()])
+            return pickle.loads(x[()])
     else:
         # handle groups representing a dict or a Batch
         y = {k: v for k, v in x.attrs.items() if k != "__data_type__"}
@@ -168,4 +163,4 @@ def from_hdf5(
             # if dictionary represents Batch, convert to Batch
             if x.attrs["__data_type__"] == "Batch":
                 y = Batch(y)
-    return y
+        return y

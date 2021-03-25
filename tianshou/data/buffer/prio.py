@@ -34,6 +34,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def update(self, buffer: ReplayBuffer) -> np.ndarray:
         indices = super().update(buffer)
         self.init_weight(indices)
+        return indices
 
     def add(
         self, batch: Batch, buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
