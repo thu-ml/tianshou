@@ -43,7 +43,7 @@ This will start 10 experiments with different seeds.
 
 #### Example benchmark
 
-<img src="./benchmark/Ant-v3/figure.png" width="500" height="450">
+<img src="./benchmark/Ant-v3/offpolicy.png" width="500" height="450">
 
 Other graphs can be found under `/examples/mujuco/benchmark/`
 
