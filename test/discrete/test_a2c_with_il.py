@@ -20,22 +20,22 @@ def get_args():
     parser.add_argument('--task', type=str, default='CartPole-v0')
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=3e-4)
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--il-lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--step-per-epoch', type=int, default=50000)
     parser.add_argument('--il-step-per-epoch', type=int, default=1000)
-    parser.add_argument('--episode-per-collect', type=int, default=8)
-    parser.add_argument('--step-per-collect', type=int, default=8)
-    parser.add_argument('--update-per-step', type=float, default=0.125)
+    parser.add_argument('--episode-per-collect', type=int, default=16)
+    parser.add_argument('--step-per-collect', type=int, default=16)
+    parser.add_argument('--update-per-step', type=float, default=1 / 16)
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[128, 128, 128])
+                        nargs='*', default=[64, 64])
     parser.add_argument('--imitation-hidden-sizes', type=int,
                         nargs='*', default=[128])
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -78,7 +78,8 @@ def test_a2c_with_il(args=get_args()):
         actor.parameters()).union(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
-        actor, critic, optim, dist, args.gamma, gae_lambda=args.gae_lambda,
+        actor, critic, optim, dist,
+        discount_factor=args.gamma, gae_lambda=args.gae_lambda,
         vf_coef=args.vf_coef, ent_coef=args.ent_coef,
         max_grad_norm=args.max_grad_norm, reward_normalization=args.rew_norm,
         action_space=env.action_space)
