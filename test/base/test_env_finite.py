@@ -1,13 +1,14 @@
-import copy
-from collections import Counter
-from typing import Callable, Optional, Union, List
+# see issue #322 for detail
 
+import gym
+import copy
 import numpy as np
-from gym import Env
+from collections import Counter
+from torch.utils.data import Dataset, DataLoader, DistributedSampler
+
+from tianshou.policy import BasePolicy
 from tianshou.data import Collector, Batch
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
-from tianshou.policy import BasePolicy
-from torch.utils.data import Dataset, DataLoader, DistributedSampler
 
 
 class DummyDataset(Dataset):
@@ -23,15 +24,15 @@ class DummyDataset(Dataset):
         return self.length
 
 
-class FiniteEnv(Env):
+class FiniteEnv(gym.Env):
     def __init__(self, dataset, num_replicas, rank):
         self.dataset = dataset
         self.num_replicas = num_replicas
         self.rank = rank
-        self.loader = DataLoader(dataset,
-                                 sampler=DistributedSampler(
-                                     dataset, num_replicas, rank),
-                                 batch_size=None)
+        self.loader = DataLoader(
+            dataset,
+            sampler=DistributedSampler(dataset, num_replicas, rank),
+            batch_size=None)
         self.iterator = None
 
     def reset(self):
@@ -53,7 +54,7 @@ class FiniteEnv(Env):
 
 
 class FiniteVectorEnv(BaseVectorEnv):
-    def __init__(self, env_fns: List[Callable[[], Env]], **kwargs):
+    def __init__(self, env_fns, **kwargs):
         super().__init__(env_fns, **kwargs)
         self._alive_env_ids = set()
         self._reset_alive_envs()
@@ -80,7 +81,7 @@ class FiniteVectorEnv(BaseVectorEnv):
         return copy.deepcopy(self._default_info)
     # END
 
-    def reset(self, id: Optional[Union[int, List[int], np.ndarray]] = None):
+    def reset(self, id=None):
         id = self._wrap_id(id)
         self._reset_alive_envs()
 
@@ -108,9 +109,7 @@ class FiniteVectorEnv(BaseVectorEnv):
 
         return np.stack(obs)
 
-    def step(self,
-             action: np.ndarray,
-             id: Optional[Union[int, List[int], np.ndarray]] = None):
+    def step(self, action, id=None):
         id = self._wrap_id(id)
         id2idx = {i: k for k, i in enumerate(id)}
         request_id = list(filter(lambda i: i in self._alive_env_ids, id))
