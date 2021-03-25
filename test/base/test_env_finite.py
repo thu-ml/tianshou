@@ -1,10 +1,8 @@
 import copy
-import random
 from collections import Counter
 from typing import Callable, Optional, Union, List
 
 import numpy as np
-import torch
 from gym import Env
 from tianshou.data import Collector, Batch
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
@@ -30,7 +28,10 @@ class FiniteEnv(Env):
         self.dataset = dataset
         self.num_replicas = num_replicas
         self.rank = rank
-        self.loader = DataLoader(dataset, sampler=DistributedSampler(dataset, num_replicas, rank), batch_size=None)
+        self.loader = DataLoader(dataset,
+                                 sampler=DistributedSampler(
+                                     dataset, num_replicas, rank),
+                                 batch_size=None)
         self.iterator = None
 
     def reset(self):
@@ -47,7 +48,8 @@ class FiniteEnv(Env):
     def step(self, action):
         self.current_step += 1
         assert self.current_step <= self.step_count
-        return 0, 1.0, self.current_step >= self.step_count, {'sample': self.current_sample, 'action': action, 'metric': 2.0}
+        return 0, 1.0, self.current_step >= self.step_count, \
+            {'sample': self.current_sample, 'action': action, 'metric': 2.0}
 
 
 class FiniteVectorEnv(BaseVectorEnv):
@@ -67,7 +69,7 @@ class FiniteVectorEnv(BaseVectorEnv):
             # starting or running out
             self._alive_env_ids = set(range(self.env_num))
 
-    ### to workaround with tianshou's buffer and batch ###
+    # to workaround with tianshou's buffer and batch
     def _set_default_obs(self, obs):
         if obs is not None and self._default_obs is None:
             self._default_obs = copy.deepcopy(obs)
@@ -81,7 +83,7 @@ class FiniteVectorEnv(BaseVectorEnv):
 
     def _get_default_info(self):
         return copy.deepcopy(self._default_info)
-    ### END ###
+    # END
 
     def reset(self, id: Optional[Union[int, List[int], np.ndarray]] = None):
         id = self._wrap_id(id)
@@ -111,7 +113,9 @@ class FiniteVectorEnv(BaseVectorEnv):
 
         return np.stack(obs)
 
-    def step(self, action: np.ndarray, id: Optional[Union[int, List[int], np.ndarray]] = None):
+    def step(self,
+             action: np.ndarray,
+             id: Optional[Union[int, List[int], np.ndarray]] = None):
         id = self._wrap_id(id)
         id2idx = {i: k for k, i in enumerate(id)}
         request_id = list(filter(lambda i: i in self._alive_env_ids, id))
@@ -181,11 +185,12 @@ class MetricTracker:
 
 def test_finite_dummy_vector_env():
     dataset = DummyDataset(100)
-    envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
+    envs = FiniteSubprocVectorEnv([
+        _finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()
     test_collector = Collector(policy, envs, exploration_noise=True)
 
-    for epoch in range(3):
+    for _ in range(3):
         envs.tracker = MetricTracker()
         try:
             test_collector.collect(n_step=10 ** 18)
@@ -195,11 +200,12 @@ def test_finite_dummy_vector_env():
 
 def test_finite_subproc_vector_env():
     dataset = DummyDataset(100)
-    envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
+    envs = FiniteSubprocVectorEnv([
+        _finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()
     test_collector = Collector(policy, envs, exploration_noise=True)
 
-    for epoch in range(3):
+    for _ in range(3):
         envs.tracker = MetricTracker()
         try:
             test_collector.collect(n_step=10 ** 18)
