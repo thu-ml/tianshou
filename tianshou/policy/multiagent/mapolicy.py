@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Tuple, Union, Optional
 
 from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer
@@ -71,7 +71,7 @@ class MultiAgentPolicyManager(BasePolicy):
                 act[agent_index], batch[agent_index])
         return act
 
-    def forward(
+    def forward(  # type: ignore
         self,
         batch: Batch,
         state: Optional[Union[dict, Batch]] = None,
@@ -100,7 +100,8 @@ class MultiAgentPolicyManager(BasePolicy):
                     "agent_n": xxx}
             }
         """
-        results = []
+        results: List[Tuple[bool, np.ndarray, Batch,
+                            Union[np.ndarray, Batch], Batch]] = []
         for policy in self.policies:
             # This part of code is difficult to understand.
             # Let's follow an example with two agents
@@ -112,7 +113,7 @@ class MultiAgentPolicyManager(BasePolicy):
             agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
             if len(agent_index) == 0:
                 # (has_data, agent_index, out, act, state)
-                results.append((False, None, Batch(), None, Batch()))
+                results.append((False, np.array([-1]), Batch(), Batch(), Batch()))
                 continue
             tmp_batch = batch[agent_index]
             if isinstance(tmp_batch.rew, np.ndarray):

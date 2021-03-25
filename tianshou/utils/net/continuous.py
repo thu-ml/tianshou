@@ -46,7 +46,7 @@ class Actor(nn.Module):
         super().__init__()
         self.device = device
         self.preprocess = preprocess_net
-        self.output_dim = np.prod(action_shape)
+        self.output_dim = int(np.prod(action_shape))
         input_dim = getattr(preprocess_net, "output_dim",
                             preprocess_net_output_dim)
         self.last = MLP(input_dim, self.output_dim,
@@ -162,7 +162,7 @@ class ActorProb(nn.Module):
         super().__init__()
         self.preprocess = preprocess_net
         self.device = device
-        self.output_dim = np.prod(action_shape)
+        self.output_dim = int(np.prod(action_shape))
         input_dim = getattr(preprocess_net, "output_dim",
                             preprocess_net_output_dim)
         self.mu = MLP(input_dim, self.output_dim,
@@ -219,12 +219,12 @@ class RecurrentActorProb(nn.Module):
         super().__init__()
         self.device = device
         self.nn = nn.LSTM(
-            input_size=np.prod(state_shape),
+            input_size=int(np.prod(state_shape)),
             hidden_size=hidden_layer_size,
             num_layers=layer_num,
             batch_first=True,
         )
-        output_dim = np.prod(action_shape)
+        output_dim = int(np.prod(action_shape))
         self.mu = nn.Linear(hidden_layer_size, output_dim)
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
@@ -293,12 +293,12 @@ class RecurrentCritic(nn.Module):
         self.action_shape = action_shape
         self.device = device
         self.nn = nn.LSTM(
-            input_size=np.prod(state_shape),
+            input_size=int(np.prod(state_shape)),
             hidden_size=hidden_layer_size,
             num_layers=layer_num,
             batch_first=True,
         )
-        self.fc2 = nn.Linear(hidden_layer_size + np.prod(action_shape), 1)
+        self.fc2 = nn.Linear(hidden_layer_size + int(np.prod(action_shape)), 1)
 
     def forward(
         self,

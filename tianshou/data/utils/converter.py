@@ -21,7 +21,7 @@ def to_numpy(
     elif isinstance(x, (np.number, np.bool_, Number)):
         return np.asanyarray(x)
     elif x is None:
-        return np.array(None, dtype=np.object)
+        return np.array(None, dtype=object)
     elif isinstance(x, Batch):
         x = deepcopy(x)
         x.to_numpy()

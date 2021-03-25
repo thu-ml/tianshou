@@ -74,8 +74,10 @@ class RunningMeanStd(object):
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     """
 
-    def __init__(self) -> None:
-        self.mean, self.var = 0.0, 1.0
+    def __init__(
+        self, mean: Union[float, np.ndarray] = 0.0, std: Union[float, np.ndarray] = 1.0
+    ) -> None:
+        self.mean, self.var = mean, std
         self.count = 0
 
     def update(self, x: np.ndarray) -> None:

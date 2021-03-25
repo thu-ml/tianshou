@@ -10,13 +10,13 @@ from typing import Any, List, Dict, Union, Iterator, Optional, Iterable, Sequenc
 
 def _is_batch_set(data: Any) -> bool:
     # Batch set is a list/tuple of dict/Batch objects,
-    # or 1-D np.ndarray with np.object type,
+    # or 1-D np.ndarray with object type,
     # where each element is a dict/Batch object
     if isinstance(data, np.ndarray):  # most often case
         # "for e in data" will just unpack the first dimension,
         # but data.tolist() will flatten ndarray of objects
         # so do not use data.tolist()
-        return data.dtype == np.object and all(
+        return data.dtype == object and all(
             isinstance(e, (dict, Batch)) for e in data)
     elif isinstance(data, (list, tuple)):
         if len(data) > 0 and all(isinstance(e, (dict, Batch)) for e in data):
@@ -50,13 +50,13 @@ def _to_array_with_correct_type(v: Any) -> np.ndarray:
     if isinstance(v, np.ndarray) and issubclass(v.dtype.type, (np.bool_, np.number)):
         return v  # most often case
     # convert the value to np.ndarray
-    # convert to np.object data type if neither bool nor number
+    # convert to object data type if neither bool nor number
     # raises an exception if array's elements are tensors themself
     v = np.asanyarray(v)
     if not issubclass(v.dtype.type, (np.bool_, np.number)):
-        v = v.astype(np.object)
-    if v.dtype == np.object:
-        # scalar ndarray with np.object data type is very annoying
+        v = v.astype(object)
+    if v.dtype == object:
+        # scalar ndarray with object data type is very annoying
         # a=np.array([np.array({}, dtype=object), np.array({}, dtype=object)])
         # a is not array([{}, {}], dtype=object), and a[0]={} results in
         # something very strange:
@@ -90,10 +90,10 @@ def _create_value(
         if issubclass(inst.dtype.type, (np.bool_, np.number)):
             target_type = inst.dtype.type
         else:
-            target_type = np.object
+            target_type = object
         return np.full(
             shape,
-            fill_value=None if target_type == np.object else 0,
+            fill_value=None if target_type == object else 0,
             dtype=target_type
         )
     elif isinstance(inst, torch.Tensor):
@@ -105,8 +105,8 @@ def _create_value(
         return zero_batch
     elif is_scalar:
         return _create_value(np.asarray(inst), size, stack=stack)
-    else:  # fall back to np.object
-        return np.array([None for _ in range(size)])
+    else:  # fall back to object
+        return np.array([None for _ in range(size)], object)
 
 
 def _assert_type_keys(keys: Iterable[str]) -> None:
@@ -620,7 +620,7 @@ class Batch:
             elif v is None:
                 continue
             elif isinstance(v, np.ndarray):
-                if v.dtype == np.object:
+                if v.dtype == object:
                     self.__dict__[k][index] = None
                 else:
                     self.__dict__[k][index] = 0

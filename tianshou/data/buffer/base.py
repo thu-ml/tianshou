@@ -114,7 +114,7 @@ class ReplayBuffer:
     def unfinished_index(self) -> np.ndarray:
         """Return the index of unfinished episode."""
         last = (self._index - 1) % self._size if self._size else 0
-        return np.array([last] if not self.done[last] and self._size else [], np.int)
+        return np.array([last] if not self.done[last] and self._size else [], int)
 
     def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
         """Return the index of previous transition.
@@ -139,12 +139,12 @@ class ReplayBuffer:
         Return the updated indices. If update fails, return an empty array.
         """
         if len(buffer) == 0 or self.maxsize == 0:
-            return np.array([], np.int)
+            return np.array([], int)
         stack_num, buffer.stack_num = buffer.stack_num, 1
         from_indices = buffer.sample_index(0)  # get all available indices
         buffer.stack_num = stack_num
         if len(from_indices) == 0:
-            return np.array([], np.int)
+            return np.array([], int)
         to_indices = []
         for _ in range(len(from_indices)):
             to_indices.append(self._index)
@@ -223,8 +223,8 @@ class ReplayBuffer:
             self._meta[ptr] = batch
         except ValueError:
             stack = not stacked_batch
-            batch.rew = batch.rew.astype(np.float)
-            batch.done = batch.done.astype(np.bool_)
+            batch.rew = batch.rew.astype(float)
+            batch.done = batch.done.astype(bool)
             if self._meta.is_empty():
                 self._meta = _create_value(  # type: ignore
                     batch, self.maxsize, stack)
@@ -247,10 +247,10 @@ class ReplayBuffer:
                     [np.arange(self._index, self._size), np.arange(self._index)]
                 )
             else:
-                return np.array([], np.int)
+                return np.array([], int)
         else:
             if batch_size < 0:
-                return np.array([], np.int)
+                return np.array([], int)
             all_indices = prev_indices = np.concatenate(
                 [np.arange(self._index, self._size), np.arange(self._index)]
             )

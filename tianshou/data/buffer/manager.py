@@ -22,7 +22,7 @@ class ReplayBufferManager(ReplayBuffer):
 
     def __init__(self, buffer_list: List[ReplayBuffer]) -> None:
         self.buffer_num = len(buffer_list)
-        self.buffers = np.array(buffer_list, dtype=np.object)
+        self.buffers = np.array(buffer_list, dtype=object)
         offset, size = [], 0
         buffer_type = type(self.buffers[0])
         kwargs = self.buffers[0].options
@@ -130,8 +130,8 @@ class ReplayBufferManager(ReplayBuffer):
         try:
             self._meta[ptrs] = batch
         except ValueError:
-            batch.rew = batch.rew.astype(np.float)
-            batch.done = batch.done.astype(np.bool_)
+            batch.rew = batch.rew.astype(float)
+            batch.done = batch.done.astype(bool)
             if self._meta.is_empty():
                 self._meta = _create_value(  # type: ignore
                     batch, self.maxsize, stack=False)
@@ -143,7 +143,7 @@ class ReplayBufferManager(ReplayBuffer):
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         if batch_size < 0:
-            return np.array([], np.int)
+            return np.array([], int)
         if self._sample_avail and self.stack_num > 1:
             all_indices = np.concatenate([
                 buf.sample_index(0) + offset
@@ -154,7 +154,7 @@ class ReplayBufferManager(ReplayBuffer):
             else:
                 return np.random.choice(all_indices, batch_size)
         if batch_size == 0:  # get all available indices
-            sample_num = np.zeros(self.buffer_num, np.int)
+            sample_num = np.zeros(self.buffer_num, int)
         else:
             buffer_idx = np.random.choice(
                 self.buffer_num, batch_size, p=self._lengths / self._lengths.sum()
