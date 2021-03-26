@@ -7,9 +7,9 @@ import datetime
 import argparse
 import numpy as np
 from torch import nn
+from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Independent, Normal
-from torch.optim.lr_scheduler import LambdaLR
 
 from tianshou.policy import PGPolicy
 from tianshou.utils import BasicLogger
@@ -31,9 +31,8 @@ def get_args():
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=30000)
     parser.add_argument('--step-per-collect', type=int, default=2048)
-    # batch-size larger than step-per-collect means caculating
-    # all data in one singe forward.
     parser.add_argument('--repeat-per-collect', type=int, default=1)
+    # batch-size >> step-per-collect means caculating all data in one singe forward.
     parser.add_argument('--batch-size', type=int, default=99999)
     parser.add_argument('--training-num', type=int, default=64)
     parser.add_argument('--test-num', type=int, default=10)
@@ -45,8 +44,8 @@ def get_args():
     parser.add_argument('--resume-path', type=str, default=None)
     # reinforce special
     parser.add_argument('--rew-norm', type=int, default=True)
-    # "clipping" also works well.
-    parser.add_argument('--bound-action-method', type=str, default="tanh")
+    # "clip" option also works well.
+    parser.add_argument('--action-bound-method', type=str, default="tanh")
     parser.add_argument('--lr-decay', type=int, default=True)
     return parser.parse_args()
 
@@ -97,18 +96,18 @@ def test_reinforce(args=get_args()):
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
-        max_update_num = np.ceil(args.step_per_epoch /
-                                 args.step_per_collect) * args.epoch
+        max_update_num = np.ceil(
+            args.step_per_epoch / args.step_per_collect) * args.epoch
 
-        def lr_lambda(epoch): return (1 - epoch/max_update_num)
-        lr_scheduler = LambdaLR(optim, lr_lambda=lr_lambda)
+        lr_scheduler = LambdaLR(
+            optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
     def dist(*logits):
         return Independent(Normal(*logits), 1)
 
     policy = PGPolicy(actor, optim, dist, discount_factor=args.gamma,
                       reward_normalization=args.rew_norm, action_scaling=True,
-                      action_bound_method=args.bound_action_method,
+                      action_bound_method=args.action_bound_method,
                       lr_scheduler=lr_scheduler, action_space=env.action_space)
 
     # collector
@@ -119,10 +118,9 @@ def test_reinforce(args=get_args()):
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(
-        args.logdir, args.task, 'reinforce', 'seed_' + str(args.seed) + '_' +
-        datetime.datetime.now().strftime('%m%d_%H%M%S') +
-        '-' + args.task.replace('-', '_') + '_reinforce')
+    t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
+    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_reinforce'
+    log_path = os.path.join(args.logdir, args.task, 'reinforce', log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer, update_interval=10)
@@ -132,10 +130,10 @@ def test_reinforce(args=get_args()):
 
     # trainer
     result = onpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.repeat_per_collect, args.test_num, args.batch_size,
-        step_per_collect=args.step_per_collect, save_fn=save_fn,
-        logger=logger, test_in_train=False)
+        policy, train_collector, test_collector, args.epoch, args.step_per_epoch,
+        args.repeat_per_collect, args.test_num, args.batch_size,
+        step_per_collect=args.step_per_collect, save_fn=save_fn, logger=logger,
+        test_in_train=False)
 
     # Let's watch its performance!
     policy.eval()

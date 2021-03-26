@@ -129,8 +129,7 @@ Tianshou provides :func:`~tianshou.trainer.onpolicy_trainer`, :func:`~tianshou.t
         update_per_step=0.1, episode_per_test=100, batch_size=64,
         train_fn=lambda epoch, env_step: policy.set_eps(0.1),
         test_fn=lambda epoch, env_step: policy.set_eps(0.05),
-        stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
-        logger=None)
+        stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold)
     print(f'Finished training! Use {result["duration"]}')
 
 The meaning of each parameter is as follows (full description can be found at :func:`~tianshou.trainer.offpolicy_trainer`):
