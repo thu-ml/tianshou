@@ -68,7 +68,7 @@ class ReplayBufferManager(ReplayBuffer):
             for offset, buf in zip(self._offset, self.buffers)
         ])
 
-    def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
+    def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
             return _prev_index(np.asarray(index), self._extend_offset,
                                self.done, self.last_index, self._lengths)
@@ -76,7 +76,7 @@ class ReplayBufferManager(ReplayBuffer):
             return _prev_index(np.array([index]), self._extend_offset,
                                self.done, self.last_index, self._lengths)[0]
 
-    def next(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
+    def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
             return _next_index(np.asarray(index), self._extend_offset,
                                self.done, self.last_index, self._lengths)

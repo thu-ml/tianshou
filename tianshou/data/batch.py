@@ -221,9 +221,7 @@ class Batch:
         """
         self.__init__(**state)  # type: ignore
 
-    def __getitem__(
-        self, index: Union[str, slice, int, np.ndarray, List[int]]
-    ) -> Any:
+    def __getitem__(self, index: Union[str, slice, int, np.ndarray, List[int]]) -> Any:
         """Return self[index]."""
         if isinstance(index, str):
             return self.__dict__[index]
@@ -240,9 +238,7 @@ class Batch:
             raise IndexError("Cannot access item from empty Batch object.")
 
     def __setitem__(
-        self,
-        index: Union[str, slice, int, np.ndarray, List[int]],
-        value: Any,
+        self, index: Union[str, slice, int, np.ndarray, List[int]], value: Any
     ) -> None:
         """Assign value to self[index]."""
         value = _parse_value(value)

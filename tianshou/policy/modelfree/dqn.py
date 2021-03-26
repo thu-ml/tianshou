@@ -168,10 +168,10 @@ class DQNPolicy(BasePolicy):
         self._iter += 1
         return {"loss": loss.item()}
 
-    def exploration_noise(  # type: ignore
-        self, act: np.ndarray, batch: Batch
-    ) -> np.ndarray:
-        if not np.isclose(self.eps, 0.0):
+    def exploration_noise(
+        self, act: Union[np.ndarray, Batch], batch: Batch
+    ) -> Union[np.ndarray, Batch]:
+        if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
             q = np.random.rand(bsz, self.max_action_num)  # [0, 1]
