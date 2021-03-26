@@ -120,7 +120,7 @@ class A2CPolicy(PGPolicy):
                     - self._weight_ent * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
-                if self._grad_norm is not None:
+                if self._grad_norm is not None and not self._grad_norm:
                     # clip large gradient
                     nn.utils.clip_grad_norm_(
                         list(self.actor.parameters()) + list(self.critic.parameters()),
