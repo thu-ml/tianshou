@@ -58,9 +58,7 @@ def to_torch(
         raise TypeError(f"object {x} cannot be converted to torch.")
 
 
-def to_torch_as(
-    x: Any, y: torch.Tensor
-) -> Union[Batch, torch.Tensor]:
+def to_torch_as(x: Any, y: torch.Tensor) -> Union[Batch, torch.Tensor]:
     """Return an object without np.ndarray.
 
     Same as ``to_torch(x, dtype=y.dtype, device=y.device)``.
@@ -132,9 +130,7 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
             y[k].attrs["__data_type__"] = v.__class__.__name__
 
 
-def from_hdf5(
-    x: h5py.Group, device: Optional[str] = None
-) -> Hdf5ConvertibleType:
+def from_hdf5(x: h5py.Group, device: Optional[str] = None) -> Hdf5ConvertibleValues:
     """Restore object from HDF5 group."""
     if isinstance(x, h5py.Dataset):
         # handle datasets
@@ -146,11 +142,8 @@ def from_hdf5(
             return pickle.loads(x[()])
     else:
         # handle groups representing a dict or a Batch
-        y = {k: v for k, v in x.attrs.items() if k != "__data_type__"}
+        y = dict(x.attrs.items())
+        data_type = y.pop("__data_type__", None)
         for k, v in x.items():
             y[k] = from_hdf5(v, device)
-        if "__data_type__" in x.attrs:
-            # if dictionary represents Batch, convert to Batch
-            if x.attrs["__data_type__"] == "Batch":
-                y = Batch(y)
-        return y
+        return Batch(y) if data_type == "Batch" else y

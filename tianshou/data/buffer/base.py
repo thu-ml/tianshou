@@ -116,7 +116,7 @@ class ReplayBuffer:
         last = (self._index - 1) % self._size if self._size else 0
         return np.array([last] if not self.done[last] and self._size else [], int)
 
-    def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
+    def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
         """Return the index of previous transition.
 
         The index won't be modified if it is the beginning of an episode.
@@ -125,7 +125,7 @@ class ReplayBuffer:
         end_flag = self.done[index] | (index == self.last_index[0])
         return (index + end_flag) % self._size
 
-    def next(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
+    def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
         """Return the index of next transition.
 
         The index won't be modified if it is the end of an episode.
@@ -274,9 +274,9 @@ class ReplayBuffer:
 
     def get(
         self,
-        index: Union[int, np.integer, np.ndarray],
+        index: Union[int, List[int], np.ndarray],
         key: str,
-        default_value: Optional[Any] = None,
+        default_value: Any = None,
         stack_num: Optional[int] = None,
     ) -> Union[Batch, np.ndarray]:
         """Return the stacked result.
@@ -302,7 +302,7 @@ class ReplayBuffer:
             if isinstance(index, list):
                 indice = np.array(index)
             else:
-                indice = index
+                indice = index  # type: ignore
             for _ in range(stack_num):
                 stack = [val[indice]] + stack
                 indice = self.prev(indice)
@@ -315,30 +315,31 @@ class ReplayBuffer:
                 raise e  # val != Batch()
             return Batch()
 
-    def __getitem__(self, index: Union[slice, int, np.integer, np.ndarray]) -> Batch:
+    def __getitem__(self, index: Union[slice, int, List[int], np.ndarray]) -> Batch:
         """Return a data batch: self[index].
 
         If stack_num is larger than 1, return the stacked obs and obs_next with shape
         (batch, len, ...).
         """
         if isinstance(index, slice):  # change slice to np array
-            if index == slice(None):  # buffer[:] will get all available data
-                index = self.sample_index(0)
-            else:
-                index = self._indices[:len(self)][index]
+            # buffer[:] will get all available data
+            indice = self.sample_index(0) if index == slice(None) \
+                else self._indices[:len(self)][index]
+        else:
+            indice = index
         # raise KeyError first instead of AttributeError,
         # to support np.array([ReplayBuffer()])
-        obs = self.get(index, "obs")
+        obs = self.get(indice, "obs")
         if self._save_obs_next:
-            obs_next = self.get(index, "obs_next", Batch())
+            obs_next = self.get(indice, "obs_next", Batch())
         else:
-            obs_next = self.get(self.next(index), "obs", Batch())
+            obs_next = self.get(self.next(indice), "obs", Batch())
         return Batch(
             obs=obs,
-            act=self.act[index],
-            rew=self.rew[index],
-            done=self.done[index],
+            act=self.act[indice],
+            rew=self.rew[indice],
+            done=self.done[indice],
             obs_next=obs_next,
-            info=self.get(index, "info", Batch()),
-            policy=self.get(index, "policy", Batch()),
+            info=self.get(indice, "info", Batch()),
+            policy=self.get(indice, "policy", Batch()),
         )

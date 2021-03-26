@@ -33,7 +33,7 @@ def test_replaybuffer(size=10, bufsize=20):
                       done=done, obs_next=obs_next, info=info))
         obs = obs_next
         assert len(buf) == min(bufsize, i + 1)
-    assert buf.act.dtype == np.int
+    assert buf.act.dtype == int
     assert buf.act.shape == (bufsize, 1)
     data, indice = buf.sample(bufsize * 2)
     assert (indice < len(buf)).all()
@@ -50,9 +50,9 @@ def test_replaybuffer(size=10, bufsize=20):
     assert b.obs_next[0] == 'str'
     assert np.all(b.obs[1:] == 0)
     assert np.all(b.obs_next[1:] == np.array(None))
-    assert b.info.a[0] == 3 and b.info.a.dtype == np.integer
+    assert b.info.a[0] == 3 and b.info.a.dtype == int
     assert np.all(b.info.a[1:] == 0)
-    assert b.info.b.c[0] == 5.0 and b.info.b.c.dtype == np.inexact
+    assert b.info.b.c[0] == 5.0 and b.info.b.c.dtype == float
     assert np.all(b.info.b.c[1:] == 0.0)
     assert ptr.shape == (1,) and ptr[0] == 0
     assert ep_rew.shape == (1,) and ep_rew[0] == 1
@@ -180,8 +180,8 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
         assert len(buf2) == min(bufsize, 3 * (i + 1))
     # check single buffer's data
     assert buf.info.key.shape == (buf.maxsize,)
-    assert buf.rew.dtype == np.float
-    assert buf.done.dtype == np.bool_
+    assert buf.rew.dtype == float
+    assert buf.done.dtype == bool
     data, indice = buf.sample(len(buf) // 2)
     buf.update_weight(indice, -data.weight / 2)
     assert np.allclose(buf.weight[indice], np.abs(-data.weight / 2) ** buf._alpha)
@@ -273,7 +273,7 @@ def test_segtree():
         index = tree.get_prefix_sum_idx(scalar)
         assert naive[:index].sum() <= scalar <= naive[:index + 1].sum()
     # corner case here
-    naive = np.ones(actual_len, np.int)
+    naive = np.ones(actual_len, int)
     tree[np.arange(actual_len)] = naive
     for scalar in range(actual_len):
         index = tree.get_prefix_sum_idx(scalar * 1.)
@@ -485,7 +485,7 @@ def test_replaybuffermanager():
     buf.set_batch(batch)
     assert np.allclose(buf.buffers[-1].info, [1] * 5)
     assert buf.sample_index(-1).tolist() == []
-    assert np.array([ReplayBuffer(0, ignore_obs_next=True)]).dtype == np.object
+    assert np.array([ReplayBuffer(0, ignore_obs_next=True)]).dtype == object
 
 
 def test_cachedbuffer():
@@ -642,7 +642,7 @@ def test_multibuf_stack():
     assert np.allclose(buf6.obs[0], obs[0, -1])
     assert np.allclose(buf6.obs[14], obs[2, -1])
     assert np.allclose(buf6.obs[19], obs[0, -1])
-    assert buf6[0].obs.shape == (4, 84, 84)
+    assert buf6[0].obs.shape == (4, 84, 84), buf6[0].obs.shape
 
 
 def test_multibuf_hdf5():

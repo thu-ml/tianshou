@@ -222,7 +222,7 @@ class Batch:
         self.__init__(**state)  # type: ignore
 
     def __getitem__(
-        self, index: Union[str, slice, int, np.integer, np.ndarray, List[int]]
+        self, index: Union[str, slice, int, np.ndarray, List[int]]
     ) -> Any:
         """Return self[index]."""
         if isinstance(index, str):
@@ -241,7 +241,7 @@ class Batch:
 
     def __setitem__(
         self,
-        index: Union[str, slice, int, np.integer, np.ndarray, List[int]],
+        index: Union[str, slice, int, np.ndarray, List[int]],
         value: Any,
     ) -> None:
         """Assign value to self[index]."""

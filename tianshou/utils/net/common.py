@@ -50,8 +50,7 @@ class MLP(nn.Module):
         output_dim: int = 0,
         hidden_sizes: Sequence[int] = (),
         norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
-        activation: Optional[Union[ModuleType, Sequence[ModuleType]]]
-        = nn.ReLU,
+        activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
         device: Optional[Union[str, int, torch.device]] = None,
     ) -> None:
         super().__init__()
@@ -179,7 +178,7 @@ class Net(nn.Module):
     def forward(
         self,
         s: Union[np.ndarray, torch.Tensor],
-        state: Optional[Any] = None,
+        state: Any = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: s -> flatten (inside MLP)-> logits."""

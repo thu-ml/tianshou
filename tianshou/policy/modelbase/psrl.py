@@ -126,7 +126,7 @@ class PSRLModel(object):
     def __call__(
         self,
         obs: np.ndarray,
-        state: Optional[Any] = None,
+        state: Any = None,
         info: Dict[str, Any] = {},
     ) -> np.ndarray:
         if not self.updated:

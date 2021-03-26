@@ -55,7 +55,7 @@ class Actor(nn.Module):
     def forward(
         self,
         s: Union[np.ndarray, torch.Tensor],
-        state: Optional[Any] = None,
+        state: Any = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
