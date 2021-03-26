@@ -405,21 +405,23 @@ def test_utils_to_torch_numpy():
     assert data_list_2_torch.shape == (2, 3, 3)
     assert np.allclose(to_numpy(to_torch(data_list_2)), data_list_2)
     data_list_3 = [np.zeros((3, 2)), np.zeros((3, 3))]
-    data_list_3_torch = to_torch(data_list_3)
-    assert isinstance(data_list_3_torch, list)
-    assert all(isinstance(e, torch.Tensor) for e in data_list_3_torch)
-    assert all(starmap(np.allclose,
-                       zip(to_numpy(to_torch(data_list_3)), data_list_3)))
+    data_list_3_torch = [torch.zeros((3, 2)), torch.zeros((3, 3))]
+    with pytest.raises(TypeError):
+        to_torch(data_list_3)
+    with pytest.raises(TypeError):
+        to_numpy(data_list_3_torch)
     data_list_4 = [np.zeros((2, 3)), np.zeros((3, 3))]
-    data_list_4_torch = to_torch(data_list_4)
-    assert isinstance(data_list_4_torch, list)
-    assert all(isinstance(e, torch.Tensor) for e in data_list_4_torch)
-    assert all(starmap(np.allclose,
-                       zip(to_numpy(to_torch(data_list_4)), data_list_4)))
+    data_list_4_torch = [torch.zeros((2, 3)), torch.zeros((3, 3))]
+    with pytest.raises(TypeError):
+        to_torch(data_list_4)
+    with pytest.raises(TypeError):
+        to_numpy(data_list_4_torch)
     data_list_5 = [np.zeros(2), np.zeros((3, 3))]
-    data_list_5_torch = to_torch(data_list_5)
-    assert isinstance(data_list_5_torch, list)
-    assert all(isinstance(e, torch.Tensor) for e in data_list_5_torch)
+    data_list_5_torch = [torch.zeros(2), torch.zeros((3, 3))]
+    with pytest.raises(TypeError):
+        to_torch(data_list_5)
+    with pytest.raises(TypeError):
+        to_numpy(data_list_5_torch)
     data_array = np.random.rand(3, 2, 2)
     data_empty_tensor = to_torch(data_array[[]])
     assert isinstance(data_empty_tensor, torch.Tensor)

@@ -9,7 +9,7 @@ from typing import Any, Dict, Union, Optional
 from tianshou.data.batch import _parse_value, Batch
 
 
-def to_numpy(x: Any) -> Union[Batch, dict, list, np.ndarray]:
+def to_numpy(x: Any) -> Union[Batch, np.ndarray]:
     """Return an object without torch.Tensor."""
     if isinstance(x, torch.Tensor):  # most often case
         return x.detach().cpu().numpy()
@@ -19,17 +19,12 @@ def to_numpy(x: Any) -> Union[Batch, dict, list, np.ndarray]:
         return np.asanyarray(x)
     elif x is None:
         return np.array(None, dtype=object)
-    elif isinstance(x, Batch):
-        x = deepcopy(x)
+    elif isinstance(x, (dict, Batch)):
+        x = Batch(x) if isinstance(x, dict) else deepcopy(x)
         x.to_numpy()
         return x
-    elif isinstance(x, dict):
-        return {k: to_numpy(v) for k, v in x.items()}
     elif isinstance(x, (list, tuple)):
-        try:
-            return to_numpy(_parse_value(x))
-        except TypeError:
-            return [to_numpy(e) for e in x]
+        return to_numpy(_parse_value(x))
     else:  # fallback
         return np.asanyarray(x)
 
@@ -38,7 +33,7 @@ def to_torch(
     x: Any,
     dtype: Optional[torch.dtype] = None,
     device: Union[str, int, torch.device] = "cpu",
-) -> Union[Batch, dict, list, torch.Tensor]:
+) -> Union[Batch, torch.Tensor]:
     """Return an object without np.ndarray."""
     if isinstance(x, np.ndarray) and issubclass(
         x.dtype.type, (np.bool_, np.number)
@@ -53,24 +48,19 @@ def to_torch(
         return x.to(device)  # type: ignore
     elif isinstance(x, (np.number, np.bool_, Number)):
         return to_torch(np.asanyarray(x), dtype, device)
-    elif isinstance(x, dict):
-        return {k: to_torch(v, dtype, device) for k, v in x.items()}
-    elif isinstance(x, Batch):
-        x = deepcopy(x)
+    elif isinstance(x, (dict, Batch)):
+        x = Batch(x, copy=True) if isinstance(x, dict) else deepcopy(x)
         x.to_torch(dtype, device)
         return x
     elif isinstance(x, (list, tuple)):
-        try:
-            return to_torch(_parse_value(x), dtype, device)
-        except TypeError:
-            return [to_torch(e, dtype, device) for e in x]
+        return to_torch(_parse_value(x), dtype, device)
     else:  # fallback
         raise TypeError(f"object {x} cannot be converted to torch.")
 
 
 def to_torch_as(
     x: Any, y: torch.Tensor
-) -> Union[Batch, dict, list, torch.Tensor]:
+) -> Union[Batch, torch.Tensor]:
     """Return an object without np.ndarray.
 
     Same as ``to_torch(x, dtype=y.dtype, device=y.device)``.
