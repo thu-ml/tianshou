@@ -3,8 +3,6 @@ import numpy as np
 from numbers import Number
 from typing import List, Union
 
-from tianshou.data import to_numpy
-
 
 class MovAvg(object):
     """Class for moving average.
@@ -28,44 +26,43 @@ class MovAvg(object):
     def __init__(self, size: int = 100) -> None:
         super().__init__()
         self.size = size
-        self.cache: List[Union[Number, np.number]] = []
+        self.cache: List[np.number] = []
         self.banned = [np.inf, np.nan, -np.inf]
 
     def add(
         self, x: Union[Number, np.number, list, np.ndarray, torch.Tensor]
-    ) -> np.number:
+    ) -> float:
         """Add a scalar into :class:`MovAvg`.
 
         You can add ``torch.Tensor`` with only one element, a python scalar, or
         a list of python scalar.
         """
         if isinstance(x, torch.Tensor):
-            x = to_numpy(x.flatten())
-        if isinstance(x, list) or isinstance(x, np.ndarray):
-            for i in x:
-                if i not in self.banned:
-                    self.cache.append(i)
-        elif x not in self.banned:
-            self.cache.append(x)
+            x = x.flatten().cpu().numpy()
+        if np.isscalar(x):
+            x = [x]
+        for i in x:  # type: ignore
+            if i not in self.banned:
+                self.cache.append(i)
         if self.size > 0 and len(self.cache) > self.size:
             self.cache = self.cache[-self.size:]
         return self.get()
 
-    def get(self) -> np.number:
+    def get(self) -> float:
         """Get the average."""
         if len(self.cache) == 0:
-            return 0
-        return np.mean(self.cache)
+            return 0.0
+        return float(np.mean(self.cache))
 
-    def mean(self) -> np.number:
+    def mean(self) -> float:
         """Get the average. Same as :meth:`get`."""
         return self.get()
 
-    def std(self) -> np.number:
+    def std(self) -> float:
         """Get the standard deviation."""
         if len(self.cache) == 0:
-            return 0
-        return np.std(self.cache)
+            return 0.0
+        return float(np.std(self.cache))
 
 
 class RunningMeanStd(object):
@@ -94,5 +91,5 @@ class RunningMeanStd(object):
         m_2 = m_a + m_b + delta ** 2 * self.count * batch_count / total_count
         new_var = m_2 / total_count
 
-        self.mean, self.var = new_mean, new_var
+        self.mean, self.var = new_mean, new_var  # type: ignore
         self.count = total_count

@@ -140,12 +140,10 @@ class BaseVectorEnv(gym.Env):
         self, id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> Union[List[int], np.ndarray]:
         if id is None:
-            id = list(range(self.env_num))
-        elif np.isscalar(id):
-            id = [id]
-        return id
+            return list(range(self.env_num))
+        return [id] if np.isscalar(id) else id  # type: ignore
 
-    def _assert_id(self, id: List[int]) -> None:
+    def _assert_id(self, id: Union[List[int], np.ndarray]) -> None:
         for i in id:
             assert i not in self.waiting_id, \
                 f"Cannot interact with environment {i} which is stepping now."
@@ -291,7 +289,7 @@ class BaseVectorEnv(gym.Env):
             clip_max = 10.0  # this magic number is from openai baselines
             # see baselines/common/vec_env/vec_normalize.py#L10
             obs = (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.__eps)
-            obs = np.clip(obs, -clip_max, clip_max)
+            obs = np.clip(obs, -clip_max, clip_max)  # type: ignore
         return obs
 
     def __del__(self) -> None:

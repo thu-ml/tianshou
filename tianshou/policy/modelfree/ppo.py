@@ -4,7 +4,7 @@ from torch import nn
 from typing import Any, Dict, List, Type, Optional
 
 from tianshou.policy import A2CPolicy
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
 
 class PPOPolicy(A2CPolicy):
@@ -79,8 +79,8 @@ class PPOPolicy(A2CPolicy):
                 v_s_.append(self.critic(b.obs_next))
                 old_log_prob.append(self(b).dist.log_prob(to_torch_as(b.act, v_s[0])))
         batch.v_s = torch.cat(v_s, dim=0).flatten()  # old value
-        v_s = to_numpy(batch.v_s)
-        v_s_ = to_numpy(torch.cat(v_s_, dim=0).flatten())
+        v_s = batch.v_s.cpu().numpy()
+        v_s_ = torch.cat(v_s_, dim=0).flatten().cpu().numpy()
         # when normalizing values, we do not minus self.ret_rms.mean to be numerically
         # consistent with OPENAI baselines' value normalization pipeline. Emperical
         # study also shows that "minus mean" will harm performances a tiny little bit

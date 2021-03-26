@@ -96,9 +96,10 @@ class DiscreteBCQPolicy(DQNPolicy):
         return Batch(act=action, state=state, q_value=q_value,
                      imitation_logits=imitation_logits)
 
-    def exploration_noise(self, act: np.ndarray, batch: Batch) -> np.ndarray:
-        # add eps to act
-        if not np.isclose(self._eps, 0.0):
+    def exploration_noise(  # type: ignore
+        self, act: np.ndarray, batch: Batch
+    ) -> np.ndarray:
+        if not np.isclose(self._eps, 0.0):  # add eps to act
             bsz = len(act)
             mask = np.random.rand(bsz) < self._eps
             act_rand = np.random.randint(self.max_action_num, size=[bsz])
