@@ -134,7 +134,7 @@ def onpolicy_trainer(
                 losses = policy.update(
                     0, train_collector.buffer,
                     batch_size=batch_size, repeat=repeat_per_collect)
-                train_collector.reset_buffer()
+                train_collector.reset_buffer(keep_statistics=True)
                 step = max([1] + [
                     len(v) for v in losses.values() if isinstance(v, list)])
                 gradient_step += step
