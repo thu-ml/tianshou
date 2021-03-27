@@ -50,7 +50,6 @@ def get_args():
     parser.add_argument('--bound-action-method', type=str, default="clip")
     parser.add_argument('--lr-decay', type=int, default=True)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
-    parser.add_argument('--temp_adam', type=int, default=0)
     return parser.parse_args()
 
 
@@ -99,13 +98,9 @@ def test_a2c(args=get_args()):
             torch.nn.init.zeros_(m.bias)
             m.weight.data.copy_(0.01 * m.weight.data)
 
-    if args.temp_adam:
-        print("adam")
-        optim = torch.optim.Adam(set(actor.parameters()).union(critic.parameters()),
-                                 lr=args.lr)
-    else:
-        optim = torch.optim.RMSprop(set(actor.parameters()).union(critic.parameters()),
-                                lr=args.lr, eps=1e-5, alpha=0.99)
+
+    optim = torch.optim.RMSprop(set(actor.parameters()).union(critic.parameters()),
+                            lr=args.lr, eps=1e-5, alpha=0.99)
 
     lr_scheduler = None
     if args.lr_decay:
