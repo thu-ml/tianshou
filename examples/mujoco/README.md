@@ -16,6 +16,7 @@ Supported algorithms are listed below:
 - [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
 - [REINFORCE algorithm](https://papers.nips.cc/paper/1999/file/464d828b85b0bed98e80ade0a5c43b0f-Paper.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e27b5a26f330de446fe15388bf81c3777f024fb9)
+- A2C, commit id (TODO)
 
 ## Offpolicy algorithms
 
@@ -180,13 +181,13 @@ By comparison to both classic literature and open source implementations (e.g., 
 #### Hints for A2C
 
 0. We choose `clip` action method in A2C instead `tanh` option as used in REINFORCE simply to be consistent with original implementation. `tanh` may be better or equally well but we didn't try.
-1. (Initial) learning rate, lr decay, and `step-per-collect`, `training-num` affect performances of A2C to a great extend. These 4 hyperparameters also affect each other and should be tuned together. We have done full scale ablation studies on these 4 hyperparameters(more than 800 agents trained), below are our findings.
-2. `step-per-collect`/`training-num` = `bootstrap-lenghth`, which is max length of an "episode" used in GAE estimator, default to 80/16=5 in default settings. When `bootstrap-lenghth` is small, (maybe) because GAE can at most looks forward 5 steps, and use bootstrap strategy very often, the critic is less well-trained, so they actor cannot converge to very high scores. However, if we increase `step-per-collect` to increase `bootstrap-lenghth`(e.g. 256/16=16), actor/critic will be updated less often, so sample efficiency is low, which will make training process slow. To conclude, If you don't restrict env timesteps, you can try to use larger `bootstrap-lenghth`, and train for more steps, which perhaps will give you better converged scores. Train slower, achieve higher.
-3. 7e-4 learning rate with decay strategy if proper for `step-per-collect` 80, `training-num` 16, but if you use larger `step-per-collect`(e.g. 256 - 2048), 7e-4 `lr` is a little bit small, because now you have less noise (more) each update and can in theory take larger steps will more confidence, so higher learning rate(e.g. 1e-3) is more appropriate and usually boost performance. If plotting results arises fast in early stages and become unstable later, consider lr decay before decreasing lr.
-4. `max-grad-norm` doesn't really help in our experiments, we simply keep it for consistency with other opensource implementations(e.g. SB3).
-5. We original paper of A3C use RMSprop optimizer, we find that Adam with same learning rate works equally well. We use RMSprop anyway. Again, consistency.
-6. We notice that in SB3's implementation of A2C thet set `gae-lambda` to 1 by default, we don't know why and do some experiments. Results show 0.95 is better overall.
-7. We find out that `step-per-collect`=256, `training-num`=8 are also good hyperparameters. You can also try it.
+1. (Initial) learning rate, lr decay, and `step-per-collect`, `training-num` affect the performance of A2C to a great extend. These 4 hyperparameters also affect each other and should be tuned together. We have done full scale ablation studies on these 4 hyperparameters (more than 800 agents trained), below are our findings.
+2. `step-per-collect`/`training-num` = `bootstrap-lenghth`, which is max length of an "episode" used in GAE estimator, 80/16=5 in default settings. When `bootstrap-lenghth` is small, (maybe) because GAE can at most looks forward 5 steps, and use bootstrap strategy very often, the critic is less well-trained, so they actor cannot converge to very high scores. However, if we increase `step-per-collect` to increase `bootstrap-lenghth` (e.g. 256/16=16), actor/critic will be updated less often, so sample efficiency is low, which will make training process slow. To conclude, If you don't restrict env timesteps, you can try to use larger `bootstrap-lenghth`, and train for more steps, which perhaps will give you better converged scores. Train slower, achieve higher.
+3. 7e-4 learning rate with decay strategy if proper for `step-per-collect=80`, `training-num=16`, but if you use larger `step-per-collect`(e.g. 256 - 2048), 7e-4 `lr` is a little bit small, because now you have more data and less noise for each update, and will be more confidence if taking larger steps; so higher learning rate(e.g. 1e-3) is more appropriate and usually boost performance in this setting. If plotting results arises fast in early stages and become unstable later, consider lr decay before decreasing lr.
+4. `max-grad-norm` doesn't really help in our experiments, we simply keep it for consistency with other open-source implementations (e.g. SB3).
+5. We original paper of A3C use RMSprop optimizer, we find that Adam with the same learning rate works equally well. We use RMSprop anyway. Again, for consistency.
+6. We notice that in SB3's implementation of A2C that set `gae-lambda` to 1 by default, we don't know why and after doing some experiments, results show 0.95 is better overall.
+7. We find out that `step-per-collect=256`, `training-num=8` are also good hyperparameters. You can have a try.
 
 ## Note
 

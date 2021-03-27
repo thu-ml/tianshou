@@ -98,9 +98,8 @@ def test_a2c(args=get_args()):
             torch.nn.init.zeros_(m.bias)
             m.weight.data.copy_(0.01 * m.weight.data)
 
-
     optim = torch.optim.RMSprop(set(actor.parameters()).union(critic.parameters()),
-                            lr=args.lr, eps=1e-5, alpha=0.99)
+                                lr=args.lr, eps=1e-5, alpha=0.99)
 
     lr_scheduler = None
     if args.lr_decay:
