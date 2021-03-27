@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import free_mjc
 import os
 import gym
 import torch
@@ -119,11 +120,11 @@ def test_a2c(args=get_args()):
         return Independent(Normal(*logits), 1)
 
     policy = A2CPolicy(actor, critic, optim, dist, discount_factor=args.gamma,
-                      gae_lambda=args.gae_lambda, max_grad_norm=args.max_grad_norm,
-                      vf_coef=args.vf_coef, ent_coef=args.ent_coef,
-                      reward_normalization=args.rew_norm, action_scaling=True,
-                      action_bound_method=args.bound_action_method,
-                      lr_scheduler=lr_scheduler, action_space=env.action_space)
+                       gae_lambda=args.gae_lambda, max_grad_norm=args.max_grad_norm,
+                       vf_coef=args.vf_coef, ent_coef=args.ent_coef,
+                       reward_normalization=args.rew_norm, action_scaling=True,
+                       action_bound_method=args.bound_action_method,
+                       lr_scheduler=lr_scheduler, action_space=env.action_space)
 
     # collector
     if args.training_num > 1:
