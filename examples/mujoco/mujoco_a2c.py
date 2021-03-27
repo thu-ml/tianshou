@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import free_mjc
+
 import os
 import gym
 import torch
