@@ -97,8 +97,8 @@ class PPOPolicy(A2CPolicy):
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
-        assert batch_size == 64
-        assert repeat == 10
+        # assert batch_size == 64
+        # assert repeat == 10
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         for step in range(repeat):
             if self._recompute_adv and step > 0:
@@ -107,7 +107,7 @@ class PPOPolicy(A2CPolicy):
                 # calculate loss for actor
                 dist = self(b).dist
                 if self._norm_adv:
-                    mean, std = np.mean(b.adv), np.std(b.adv)
+                    mean, std = b.adv.mean(), b.adv.std()
                     b.adv = (b.adv - mean) / std  # per-batch norm
                 ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
