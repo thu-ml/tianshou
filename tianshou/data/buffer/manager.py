@@ -48,11 +48,11 @@ class ReplayBufferManager(ReplayBuffer):
     def __len__(self) -> int:
         return self._lengths.sum()
 
-    def reset(self) -> None:
+    def reset(self, keep_statistics: bool = False) -> None:
         self.last_index = self._offset.copy()
         self._lengths = np.zeros_like(self._offset)
         for buf in self.buffers:
-            buf.reset()
+            buf.reset(keep_statistics=keep_statistics)
 
     def _set_batch_for_children(self) -> None:
         for offset, buf in zip(self._offset, self.buffers):
