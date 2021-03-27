@@ -98,11 +98,12 @@ class ReplayBuffer:
             buf.__setstate__(from_hdf5(f, device=device))
         return buf
 
-    def reset(self) -> None:
+    def reset(self, keep_statistics: bool = False) -> None:
         """Clear all the data in replay buffer and episode statistics."""
         self.last_index = np.array([0])
         self._index = self._size = 0
-        self._ep_rew, self._ep_len, self._ep_idx = 0.0, 0, 0
+        if not keep_statistics:
+            self._ep_rew, self._ep_len, self._ep_idx = 0.0, 0, 0
 
     def set_batch(self, batch: Batch) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage."""

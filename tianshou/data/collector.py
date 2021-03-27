@@ -105,9 +105,9 @@ class Collector(object):
         """Reset the statistic variables."""
         self.collect_step, self.collect_episode, self.collect_time = 0, 0, 0.0
 
-    def reset_buffer(self) -> None:
+    def reset_buffer(self, keep_statistics: bool = False) -> None:
         """Reset the data buffer."""
-        self.buffer.reset()
+        self.buffer.reset(keep_statistics=keep_statistics)
 
     def reset_env(self) -> None:
         """Reset all of the environments."""
