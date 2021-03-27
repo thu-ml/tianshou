@@ -149,6 +149,45 @@ By comparison to both classic literature and open source implementations (e.g., 
 5. We didn't tune `step-per-collect` option and `training-num` option. Default values are finetuned with PPO algorithm so we assume they are also good for REINFORCE. You can play with them if you want, but remember that `buffer-size` should always be larger than `step-per-collect`, and if `step-per-collect` is too small and `training-num` too large, episodes will be truncated and bootstrapped very often, which will harm performances. If `training-num` is too small (e.g., less than 8), speed will go down.
 6. Sigma of action is not fixed (normally seen in other implementation) or conditioned on observation, but is an independent parameter which can be updated by gradient descent. We choose this setting because it works well in PPO, and is recommended by [Andrychowicz, Marcin, et al](https://arxiv.org/abs/2006.05990). See Fig. 23.
 
+### A2C
+
+|      Environment       | Tianshou(3M steps) | [Spinning Up(Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_vpg.html)|
+| :--------------------: | :----------------: | :--------------------: |
+|          Ant           | **5236.8+-236.7**  |           ~5           |
+|      HalfCheetah       | **2377.3+-1363.7** |          ~600          |
+|         Hopper         | **1608.6+-529.5**  |          ~800          |
+|        Walker2d        | **1805.4+-1055.9** |          ~460          |
+|        Swimmer         |     40.2+-1.8      |        **~51**         |
+|        Humanoid        | **5316.6+-554.8**  |           N            |
+|        Reacher         |   **-5.2+-0.5**    |           N            |
+|    InvertedPendulum    |  **1000.0+-0.0**   |           N            |
+| InvertedDoublePendulum |  **9351.3+-12.8**  |           N            |
+
+|      Environment       |      Tianshou      | [PPO paper](https://arxiv.org/abs/1707.06347) A2C | [PPO paper](https://arxiv.org/abs/1707.06347) A2C + Trust Region |
+| :--------------------: | :----------------: | :-------------: | :-------------: |
+|          Ant           | **3485.4+-433.1**  |        N        |        N        |
+|      HalfCheetah       | **1829.9+-1068.3** |      ~1000      |      ~930       |
+|         Hopper         | **1253.2+-458.0**  |      ~900       |      ~1220      |
+|        Walker2d        | **1091.6+-709.2**  |      ~850       |      ~700       |
+|        Swimmer         |   **36.6+-2.1**    |       ~31       |     **~36**     |
+|        Humanoid        | **1726.0+-1070.1** |        N        |        N        |
+|        Reacher         |   **-6.7+-2.3**    |      ~-24       |      ~-27       |
+|    InvertedPendulum    |  **1000.0+-0.0**   |    **~1000**    |    **~1000**    |
+| InvertedDoublePendulum | **9257.7+-277.4**  |      ~7100      |      ~8100      |
+
+\* details<sup>[[5]](#footnote5)</sup><sup>[[6]](#footnote6)</sup>
+
+#### Hints for A2C
+
+0. We choose `clip` action method in A2C instead `tanh` option as used in REINFORCE simply to be consistent with original implementation. `tanh` may be better or equally well but we didn't try.
+1. (Initial) learning rate, lr decay, and `step-per-collect`, `training-num` affect performances of A2C to a great extend. These 4 hyperparameters also affect each other and should be tuned together. We have done full scale ablation studies on these 4 hyperparameters(more than 800 agents trained), below are our findings.
+2. `step-per-collect`/`training-num` = `bootstrap-lenghth`, which is max length of an "episode" used in GAE estimator, default to 80/16=5 in default settings. When `bootstrap-lenghth` is small, (maybe) because GAE can at most looks forward 5 steps, and use bootstrap strategy very often, the critic is less well-trained, so they actor cannot converge to very high scores. However, if we increase `step-per-collect` to increase `bootstrap-lenghth`(e.g. 256/16=16), actor/critic will be updated less often, so sample efficiency is low, which will make training process slow. To conclude, If you don't restrict env timesteps, you can try to use larger `bootstrap-lenghth`, and train for more steps, which perhaps will give you better converged scores. Train slower, achieve higher.
+3. 7e-4 learning rate with decay strategy if proper for `step-per-collect` 80, `training-num` 16, but if you use larger `step-per-collect`(e.g. 256 - 2048), 7e-4 `lr` is a little bit small, because now you have less noise (more) each update and can in theory take larger steps will more confidence, so higher learning rate(e.g. 1e-3) is more appropriate and usually boost performance. If plotting results arises fast in early stages and become unstable later, consider lr decay before decreasing lr.
+4. `max-grad-norm` doesn't really help in our experiments, we simply keep it for consistency with other opensource implementations(e.g. SB3).
+5. We original paper of A3C use RMSprop optimizer, we find that Adam with same learning rate works equally well. We use RMSprop anyway. Again, consistency.
+6. We notice that in SB3's implementation of A2C thet set `gae-lambda` to 1 by default, we don't know why and do some experiments. Results show 0.95 is better overall.
+7. We find out that `step-per-collect`=256, `training-num`=8 are also good hyperparameters. You can also try it.
+
 ## Note
 
 <a name="footnote1">[1]</a>  Supported environments include HalfCheetah-v3, Hopper-v3, Swimmer-v3, Walker2d-v3, Ant-v3, Humanoid-v3, Reacher-v2, InvertedPendulum-v2 and InvertedDoublePendulum-v2. Pusher, Thrower, Striker and HumanoidStandup are not supported because they are not commonly seen in literatures.
