@@ -22,14 +22,13 @@ def get_args():
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.99)
+    parser.add_argument('--gamma', type=float, default=0.95)
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=150000)
     parser.add_argument('--episode-per-collect', type=int, default=16)
     parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[128, 128])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -38,14 +37,16 @@ def get_args():
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
     # ppo special
-    parser.add_argument('--vf-coef', type=float, default=0.5)
-    parser.add_argument('--ent-coef', type=float, default=0.01)
+    parser.add_argument('--vf-coef', type=float, default=0.25)
+    parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
     parser.add_argument('--gae-lambda', type=float, default=0.95)
     parser.add_argument('--rew-norm', type=int, default=1)
     parser.add_argument('--dual-clip', type=float, default=None)
     parser.add_argument('--value-clip', type=int, default=1)
+    parser.add_argument('--norm-adv', type=int, default=1)
+    parser.add_argument('--recompute-adv', type=int, default=0)
     args = parser.parse_known_args()[0]
     return args
 
@@ -90,6 +91,7 @@ def test_ppo(args=get_args()):
     # pass *logits to be consistent with policy.forward
     def dist(*logits):
         return Independent(Normal(*logits), 1)
+
     policy = PPOPolicy(
         actor, critic, optim, dist,
         discount_factor=args.gamma,
@@ -98,6 +100,8 @@ def test_ppo(args=get_args()):
         vf_coef=args.vf_coef,
         ent_coef=args.ent_coef,
         reward_normalization=args.rew_norm,
+        advantage_normalization=args.norm_adv,
+        recompute_advantage=args.recompute_adv,
         # dual_clip=args.dual_clip,
         # dual clip cause monotonically increasing log_std :)
         value_clip=args.value_clip,
