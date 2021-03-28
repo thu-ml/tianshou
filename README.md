@@ -23,7 +23,7 @@
 - [Deep Q-Network (DQN)](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 - [Double DQN](https://arxiv.org/pdf/1509.06461.pdf)
 - [Dueling DQN](https://arxiv.org/pdf/1511.06581.pdf)
-- [C51](https://arxiv.org/pdf/1707.06887.pdf)
+- [Categorical DQN (C51)](https://arxiv.org/pdf/1707.06887.pdf)
 - [Quantile Regression DQN (QRDQN)](https://arxiv.org/pdf/1710.10044.pdf)
 - [Advantage Actor-Critic (A2C)](https://openai.com/blog/baselines-acktr-a2c/)
 - [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf)
@@ -39,7 +39,8 @@
 
 Here is Tianshou's other features:
 
-- Elegant framework, using only ~2000 lines of code
+- Elegant framework, using only ~3000 lines of code
+- State-of-the-art [MuJoCo benchmark](https://github.com/thu-ml/tianshou/tree/master/examples/mujoco) for REINFORCE/A2C/PPO/DDPG/TD3/SAC algorithms
 - Support parallel environment simulation (synchronous or asynchronous) for all algorithms [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#parallel-sampling)
 - Support recurrent state representation in actor network and critic network (RNN-style training for POMDP) [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#rnn-style-training)
 - Support any type of environment state/action (e.g. a dict, a self-defined class, ...) [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#user-defined-environment-and-different-state-representation)
