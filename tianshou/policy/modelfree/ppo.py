@@ -25,7 +25,7 @@ class PPOPolicy(A2CPolicy):
     :param bool value_clip: a parameter mentioned in arXiv:1811.02553 Sec. 4.1.
         Default to True.
     :param bool advantage_normalization: whether to do per mini-batch advantage
-        normalization. Default to False.
+        normalization. Default to True.
     :param bool recompute_advantage: whether to recompute advantage every update
         repeat according to https://arxiv.org/pdf/2006.05990.pdf Sec. 3.5.
         Default to False.
@@ -65,7 +65,7 @@ class PPOPolicy(A2CPolicy):
         eps_clip: float = 0.2,
         dual_clip: Optional[float] = None,
         value_clip: bool = False,
-        advantage_normalization: bool = False,
+        advantage_normalization: bool = True,
         recompute_advantage: bool = False,
         **kwargs: Any,
     ) -> None:
