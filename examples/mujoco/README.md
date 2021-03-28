@@ -48,41 +48,41 @@ This will start 10 experiments with different seeds.
 Other graphs can be found under `/examples/mujuco/benchmark/`
 
 ## Offpolicy algorithms
-#### Hints
+#### Notes
 
-0. In offpolicy algorithms(DDPG, TD3, SAC), the shared hyperparameters are almost the same, and unless otherwise stated, hyperparameters are consistent with those used for benchmark in SpinningUp's implementations(e.g. We use batchsize of 256 in DDPG/TD3/SAC while SpinningUp use 100. Minor difference also lies with `start-timesteps`, data loop method `step_per_collect`, method to deal with/bootstrap truncated steps because of timelimit and unfinished/collecting episodes (contribute to performance improvement), etc.).
+0. In offpolicy algorithms (DDPG, TD3, SAC), the shared hyperparameters are almost the same, and unless otherwise stated, hyperparameters are consistent with those used for benchmark in SpinningUp's implementations (e.g. we use batchsize 256 in DDPG/TD3/SAC while SpinningUp use 100. Minor difference also lies with `start-timesteps`, data loop method `step_per_collect`, method to deal with/bootstrap truncated steps because of timelimit and unfinished/collecting episodes (contribute to performance improvement), etc.).
 1. By comparison to both classic literature and open source implementations (e.g., SpinningUp)<sup>[[1]](#footnote1)</sup><sup>[[2]](#footnote2)</sup>, Tianshou's implementations of DDPG, TD3, and SAC are roughly at-parity with or better than the best reported results for these algorithms, so you can definitely use Tianshou's benchmark for research purposes.
 2. We didn't compare offpolicy algorithms to OpenAI baselines [benchmark](https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm), because for now it seems that they haven't provided benchmark for offpolicy algorithms, but in [SpinningUp docs](https://spinningup.openai.com/en/latest/spinningup/bench.html) they stated that "SpinningUp implementations of DDPG, TD3, and SAC are roughly at-parity with the best-reported results for these algorithms", so we think lack of comparisons with OpenAI baselines is okay.
 
 ### DDPG
 
-|      Environment       |     Tianshou      | [SpinningUp (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [TD3 paper (DDPG)](https://arxiv.org/abs/1802.09477) | [TD3 paper (OurDDPG)](https://arxiv.org/abs/1802.09477) |
-| :--------------------: | :---------------: | :--------------------: | :----------------: | :-------------------: |
-|          Ant           |     990.4±4.3     |          ~840          |     **1005.3**     |         888.8         |
-|      HalfCheetah       | **11718.7±465.6** |         ~11000         |       3305.6       |        8577.3         |
-|         Hopper         | **2197.0±971.6**  |         ~1800          |     **2020.5**     |        1860.0         |
-|        Walker2d        |   1400.6±905.0    |         ~1950          |       1843.6       |      **3098.1**       |
-|        Swimmer         |   **144.1±6.5**   |          ~137          |         N          |           N           |
-|        Humanoid        |  **177.3±77.6**   |           N            |         N          |           N           |
-|        Reacher         |   **-3.3±0.3**    |           N            |       -6.51        |         -4.01         |
-|    InvertedPendulum    |  **1000.0±0.0**   |           N            |     **1000.0**     |      **1000.0**       |
-| InvertedDoublePendulum |   8364.3±2778.9   |           N            |     **9355.5**     |        8370.0         |
+|      Environment       |   Tianshou (1M)   | [SpinningUp (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [TD3 paper (DDPG)](https://arxiv.org/abs/1802.09477) | [TD3 paper (OurDDPG)](https://arxiv.org/abs/1802.09477) |
+| :--------------------: | :---------------: | :----------------------------------------------------------: | :--------------------------------------------------: | :-----------------------------------------------------: |
+|          Ant           |     990.4±4.3     |                             ~840                             |                      **1005.3**                      |                          888.8                          |
+|      HalfCheetah       | **11718.7±465.6** |                            ~11000                            |                        3305.6                        |                         8577.3                          |
+|         Hopper         | **2197.0±971.6**  |                            ~1800                             |                      **2020.5**                      |                         1860.0                          |
+|        Walker2d        |   1400.6±905.0    |                            ~1950                             |                        1843.6                        |                       **3098.1**                        |
+|        Swimmer         |   **144.1±6.5**   |                             ~137                             |                          N                           |                            N                            |
+|        Humanoid        |  **177.3±77.6**   |                              N                               |                          N                           |                            N                            |
+|        Reacher         |   **-3.3±0.3**    |                              N                               |                        -6.51                         |                          -4.01                          |
+|    InvertedPendulum    |  **1000.0±0.0**   |                              N                               |                      **1000.0**                      |                       **1000.0**                        |
+| InvertedDoublePendulum |   8364.3±2778.9   |                              N                               |                      **9355.5**                      |                         8370.0                          |
 
 \* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup><sup>[[6]](#footnote6)</sup>
 
 ### TD3
 
-|      Environment       |     Tianshou      | [SpinningUp (Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) |   [TD3 paper](https://arxiv.org/abs/1802.09477)    |
-| :--------------------: | :---------------: | :-------------------: | :--------------: |
-|          Ant           | **5116.4±799.9**  |         ~3800         |  4372.4±1000.3   |
-|      HalfCheetah       | **10201.2±772.8** |         ~9750         |   9637.0±859.1   |
-|         Hopper         |   3472.2±116.8    |         ~2860         | **3564.1±114.7** |
-|        Walker2d        |   3982.4±274.5    |         ~4000         | **4682.8±539.6** |
-|        Swimmer         |  **104.2±34.2**   |          ~78          |        N         |
-|        Humanoid        | **5189.5±178.5**  |           N           |        N         |
-|        Reacher         |   **-2.7±0.2**    |           N           |     -3.6±0.6     |
-|    InvertedPendulum    |  **1000.0±0.0**   |           N           |  **1000.0±0.0**  |
-| InvertedDoublePendulum |  **9349.2±14.3**  |           N           | **9337.5±15.0**  |
+|      Environment       |   Tianshou (1M)   | [SpinningUp (Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [TD3 paper](https://arxiv.org/abs/1802.09477) |
+| :--------------------: | :---------------: | :----------------------------------------------------------: | :-------------------------------------------: |
+|          Ant           | **5116.4±799.9**  |                            ~3800                             |                 4372.4±1000.3                 |
+|      HalfCheetah       | **10201.2±772.8** |                            ~9750                             |                 9637.0±859.1                  |
+|         Hopper         |   3472.2±116.8    |                            ~2860                             |               **3564.1±114.7**                |
+|        Walker2d        |   3982.4±274.5    |                            ~4000                             |               **4682.8±539.6**                |
+|        Swimmer         |  **104.2±34.2**   |                             ~78                              |                       N                       |
+|        Humanoid        | **5189.5±178.5**  |                              N                               |                       N                       |
+|        Reacher         |   **-2.7±0.2**    |                              N                               |                   -3.6±0.6                    |
+|    InvertedPendulum    |  **1000.0±0.0**   |                              N                               |                **1000.0±0.0**                 |
+| InvertedDoublePendulum |  **9349.2±14.3**  |                              N                               |                **9337.5±15.0**                |
 
 \* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup><sup>[[6]](#footnote6)</sup>
 
@@ -91,62 +91,59 @@ Other graphs can be found under `/examples/mujuco/benchmark/`
 
 ### SAC
 
-|      Environment       |      Tianshou      | [SpinningUp (Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [SAC paper](https://arxiv.org/abs/1801.01290) |
-| :--------------------: | :----------------: | :-------------------: | :---------: |
-|          Ant           |  **5850.2±475.7**  |         ~3980         |    ~3720    |
-|      HalfCheetah       | **12138.8±1049.3** |        ~11520         |   ~10400    |
-|         Hopper         |  **3542.2±51.5**   |         ~3150         |    ~3370    |
-|        Walker2d        |  **5007.0±251.5**  |         ~4250         |    ~3740    |
-|        Swimmer         |    **44.4±0.5**    |         ~41.7         |      N      |
-|        Humanoid        |  **5488.5±81.2**   |           N           |    ~5200    |
-|        Reacher         |    **-2.6±0.2**    |           N           |      N      |
-|    InvertedPendulum    |   **1000.0±0.0**   |           N           |      N      |
-| InvertedDoublePendulum |   **9359.5±0.4**   |           N           |      N      |
+|      Environment       |   Tianshou (1M)    | [SpinningUp (Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [SAC paper](https://arxiv.org/abs/1801.01290) |
+| :--------------------: | :----------------: | :----------------------------------------------------------: | :-------------------------------------------: |
+|          Ant           |  **5850.2±475.7**  |                            ~3980                             |                     ~3720                     |
+|      HalfCheetah       | **12138.8±1049.3** |                            ~11520                            |                    ~10400                     |
+|         Hopper         |  **3542.2±51.5**   |                            ~3150                             |                     ~3370                     |
+|        Walker2d        |  **5007.0±251.5**  |                            ~4250                             |                     ~3740                     |
+|        Swimmer         |    **44.4±0.5**    |                            ~41.7                             |                       N                       |
+|        Humanoid        |  **5488.5±81.2**   |                              N                               |                     ~5200                     |
+|        Reacher         |    **-2.6±0.2**    |                              N                               |                       N                       |
+|    InvertedPendulum    |   **1000.0±0.0**   |                              N                               |                       N                       |
+| InvertedDoublePendulum |   **9359.5±0.4**   |                              N                               |                       N                       |
 
 \* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup>
 
 #### Hints
 0. SAC's start-timesteps is set to 10000 by default while it is 25000 is DDPG/TD3. However, there is NO enough evidence to support our choice of such hyperparameters (we simply choose them because SpinningUp do so) and you can try playing with those hyperparameters to see if you can improve performance. Do tell us if you can!
-
-#### Hints for SAC
-
-0. DO NOT share the same network with two critic networks.
-1. The sigma (of the Gaussian policy) should be conditioned on input.
-2. The network size should not be less than 256.
-3. The deterministic evaluation helps a lot :)
+1. DO NOT share the same network with two critic networks.
+2. The sigma (of the Gaussian policy) should be conditioned on input.
+3. The network size should not be less than 256.
+4. The deterministic evaluation helps a lot :)
 
 ## Onpolicy Algorithms
 
-#### Hints
+#### Notes
 0. In A2C and PPO, unless otherwise stated, most hyperparameters are consistent with those used for benchmark in [ikostrikov/pytorch-a2c-ppo-acktr-gail](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail).
 1. Gernally speaking, by comparison to both classic literature and open source implementations (e.g., OPENAI Baselines)<sup>[[1]](#footnote1)</sup><sup>[[2]](#footnote2)</sup>, Tianshou's implementations of REINFORCE, A2C, PPO are better than the best reported results for these algorithms, so you can definitely use Tianshou's benchmark for research purposes.
 
 ### REINFORCE
 
-|      Environment       | Tianshou(10M steps) |
-| :--------------------: | :-----------------: |
-|          Ant           |  **1108.1±323.1**   |
-|      HalfCheetah       |  **1138.8±104.7**   |
-|         Hopper         |   **416.0±104.7**   |
-|        Walker2d        |   **440.9±148.2**   |
-|        Swimmer         |    **35.6±2.6**     |
-|        Humanoid        |   **464.3±58.4**    |
-|        Reacher         |    **-5.5±0.2**     |
-|    InvertedPendulum    |   **1000.0±0.0**    |
-| InvertedDoublePendulum |  **7726.2±1287.3**  |
+|      Environment       |  Tianshou (10M)   |
+| :--------------------: | :---------------: |
+|          Ant           | **1108.1±323.1**  |
+|      HalfCheetah       | **1138.8±104.7**  |
+|         Hopper         |  **416.0±104.7**  |
+|        Walker2d        |  **440.9±148.2**  |
+|        Swimmer         |   **35.6±2.6**    |
+|        Humanoid        |  **464.3±58.4**   |
+|        Reacher         |   **-5.5±0.2**    |
+|    InvertedPendulum    |  **1000.0±0.0**   |
+| InvertedDoublePendulum | **7726.2±1287.3** |
 
 
-|      Environment       |      Tianshou(3M steps)      | [SpinningUp (VPG Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_vpg.html)<sup>[[7]](#footnote7)</sup> |
-| :--------------------: | :--------------------------: | :------------------------: |
-|          Ant           |       **474.9+-133.5**       |             ~5             |
-|      HalfCheetah       |       **884.0+-41.0**        |            ~600            |
-|         Hopper         |         395.8+-64.5*         |          **~800**          |
-|        Walker2d        |         412.0+-52.4          |          **~460**          |
-|        Swimmer         |          35.3+-1.4           |          **~51**           |
-|        Humanoid        |       **438.2+-47.8**        |             N              |
-|        Reacher         |        **-10.5+-0.7**        |             N              |
-|    InvertedPendulum    |        **999.2+-2.4**        |             N              |
-| InvertedDoublePendulum |      **1059.7+-307.7**       |             N              |
+|      Environment       |   Tianshou (3M)   | [SpinningUp (VPG Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_vpg.html)<sup>[[7]](#footnote7)</sup> |
+| :--------------------: | :---------------: | :----------------------------------------------------------: |
+|          Ant           | **474.9+-133.5**  |                              ~5                              |
+|      HalfCheetah       |  **884.0+-41.0**  |                             ~600                             |
+|         Hopper         |   395.8+-64.5*    |                           **~800**                           |
+|        Walker2d        |    412.0+-52.4    |                           **~460**                           |
+|        Swimmer         |     35.3+-1.4     |                           **~51**                            |
+|        Humanoid        |  **438.2+-47.8**  |                              N                               |
+|        Reacher         |  **-10.5+-0.7**   |                              N                               |
+|    InvertedPendulum    |  **999.2+-2.4**   |                              N                               |
+| InvertedDoublePendulum | **1059.7+-307.7** |                              N                               |
 
 \* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup>
 
@@ -162,29 +159,29 @@ Other graphs can be found under `/examples/mujuco/benchmark/`
 
 ### A2C
 
-|      Environment       | Tianshou(3M steps) | [Spinning Up(Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_vpg.html)|
-| :--------------------: | :----------------: | :--------------------: |
-|          Ant           | **5236.8+-236.7**  |           ~5           |
-|      HalfCheetah       | **2377.3+-1363.7** |          ~600          |
-|         Hopper         | **1608.6+-529.5**  |          ~800          |
-|        Walker2d        | **1805.4+-1055.9** |          ~460          |
-|        Swimmer         |     40.2+-1.8      |        **~51**         |
-|        Humanoid        | **5316.6+-554.8**  |           N            |
-|        Reacher         |   **-5.2+-0.5**    |           N            |
-|    InvertedPendulum    |  **1000.0+-0.0**   |           N            |
-| InvertedDoublePendulum |  **9351.3+-12.8**  |           N            |
+|      Environment       |   Tianshou (3M)    | [Spinning Up(Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_vpg.html) |
+| :--------------------: | :----------------: | :----------------------------------------------------------: |
+|          Ant           | **5236.8+-236.7**  |                              ~5                              |
+|      HalfCheetah       | **2377.3+-1363.7** |                             ~600                             |
+|         Hopper         | **1608.6+-529.5**  |                             ~800                             |
+|        Walker2d        | **1805.4+-1055.9** |                             ~460                             |
+|        Swimmer         |     40.2+-1.8      |                           **~51**                            |
+|        Humanoid        | **5316.6+-554.8**  |                              N                               |
+|        Reacher         |   **-5.2+-0.5**    |                              N                               |
+|    InvertedPendulum    |  **1000.0+-0.0**   |                              N                               |
+| InvertedDoublePendulum |  **9351.3+-12.8**  |                              N                               |
 
-|      Environment       |      Tianshou      | [PPO paper](https://arxiv.org/abs/1707.06347) A2C | [PPO paper](https://arxiv.org/abs/1707.06347) A2C + Trust Region |
-| :--------------------: | :----------------: | :-------------: | :-------------: |
-|          Ant           | **3485.4+-433.1**  |        N        |        N        |
-|      HalfCheetah       | **1829.9+-1068.3** |      ~1000      |      ~930       |
-|         Hopper         | **1253.2+-458.0**  |      ~900       |      ~1220      |
-|        Walker2d        | **1091.6+-709.2**  |      ~850       |      ~700       |
-|        Swimmer         |   **36.6+-2.1**    |       ~31       |     **~36**     |
-|        Humanoid        | **1726.0+-1070.1** |        N        |        N        |
-|        Reacher         |   **-6.7+-2.3**    |      ~-24       |      ~-27       |
-|    InvertedPendulum    |  **1000.0+-0.0**   |    **~1000**    |    **~1000**    |
-| InvertedDoublePendulum | **9257.7+-277.4**  |      ~7100      |      ~8100      |
+|      Environment       |   Tianshou (1M)    | [PPO paper](https://arxiv.org/abs/1707.06347) A2C | [PPO paper](https://arxiv.org/abs/1707.06347) A2C + Trust Region |
+| :--------------------: | :----------------: | :-----------------------------------------------: | :----------------------------------------------------------: |
+|          Ant           | **3485.4+-433.1**  |                         N                         |                              N                               |
+|      HalfCheetah       | **1829.9+-1068.3** |                       ~1000                       |                             ~930                             |
+|         Hopper         | **1253.2+-458.0**  |                       ~900                        |                            ~1220                             |
+|        Walker2d        | **1091.6+-709.2**  |                       ~850                        |                             ~700                             |
+|        Swimmer         |   **36.6+-2.1**    |                        ~31                        |                           **~36**                            |
+|        Humanoid        | **1726.0+-1070.1** |                         N                         |                              N                               |
+|        Reacher         |   **-6.7+-2.3**    |                       ~-24                        |                             ~-27                             |
+|    InvertedPendulum    |  **1000.0+-0.0**   |                     **~1000**                     |                          **~1000**                           |
+| InvertedDoublePendulum | **9257.7+-277.4**  |                       ~7100                       |                            ~8100                             |
 
 \* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup>
 
@@ -201,38 +198,38 @@ Other graphs can be found under `/examples/mujuco/benchmark/`
 
 ### PPO
 
-|      Environment       |      Tianshou      | [ikostrikov/pytorch-a2c-ppo-acktr-gail](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail)| [PPO paper](https://arxiv.org/pdf/1707.06347.pdf)|[baselines](http://htmlpreview.github.io/?https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm)|[spinningup(pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_ppo.html)|
-| :--------------------: | :----------------: | :------------------: | :---------: | :---------: | :-------------------: |
-|          Ant           | **3258.4+-1079.3** |          N           |      N      |      N      |         ~650          |
-|      HalfCheetah       | **5783.9+-1244.0** |        ~3120         |    ~1800    |    ~1700    |         ~1670         |
-|         Hopper         | **2609.3+-700.8**  |        ~2300         |    ~2330    |    ~2400    |         ~1850         |
-|        Walker2d        |   3588.5+-756.6    |      **~4000**       |    ~3460    |    ~3510    |         ~1230         |
-|        Swimmer         |     66.7+-99.1     |          N           |    ~108     |    ~111     |       **~120**        |
-|        Humanoid        |  **787.1+-193.5**  |          N           |      N      |      N      |           N           |
-|        Reacher         |   **-4.1+-0.3**    |         ~-5          |     ~-7     |     ~-6     |           N           |
-|    InvertedPendulum    | **1000.0+-0.0**    |          N           |  **~1000**  |    ~940     |           N           |
-| InvertedDoublePendulum | **9231.3+-270.4**  |          N           |    ~8000    |    ~7350    |           N           |
+|      Environment       |   Tianshou (1M)    | [ikostrikov/pytorch-a2c-ppo-acktr-gail](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail) | [PPO paper](https://arxiv.org/pdf/1707.06347.pdf) | [baselines](http://htmlpreview.github.io/?https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm) | [spinningup(pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_ppo.html) |
+| :--------------------: | :----------------: | :----------------------------------------------------------: | :-----------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
+|          Ant           | **3258.4+-1079.3** |                              N                               |                         N                         |                              N                               |                             ~650                             |
+|      HalfCheetah       | **5783.9+-1244.0** |                            ~3120                             |                       ~1800                       |                            ~1700                             |                            ~1670                             |
+|         Hopper         | **2609.3+-700.8**  |                            ~2300                             |                       ~2330                       |                            ~2400                             |                            ~1850                             |
+|        Walker2d        |   3588.5+-756.6    |                          **~4000**                           |                       ~3460                       |                            ~3510                             |                            ~1230                             |
+|        Swimmer         |     66.7+-99.1     |                              N                               |                       ~108                        |                             ~111                             |                           **~120**                           |
+|        Humanoid        |  **787.1+-193.5**  |                              N                               |                         N                         |                              N                               |                              N                               |
+|        Reacher         |   **-4.1+-0.3**    |                             ~-5                              |                        ~-7                        |                             ~-6                              |                              N                               |
+|    InvertedPendulum    |  **1000.0+-0.0**   |                              N                               |                     **~1000**                     |                             ~940                             |                              N                               |
+| InvertedDoublePendulum | **9231.3+-270.4**  |                              N                               |                       ~8000                       |                            ~7350                             |                              N                               |
 
-|      Environment       | Tianshou(3M steps) | [Spinning Up(Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_ppo.html)|
-| :--------------------: | :----------------: | :--------------------: |
-|          Ant           | **4079.3+-880.2**  |         ~3000          |
-|      HalfCheetah       | **7337.4+-1508.2** |         ~3130          |
-|         Hopper         | **3127.7+-413.0**  |         ~2460          |
-|        Walker2d        | **4895.6+-704.3**  |         ~2600          |
-|        Swimmer         |     81.4+-96.0     |       **~120**         |
-|        Humanoid        | **1359.7+-572.7**  |           N            |
-|        Reacher         |   **-3.7+-0.3**    |           N            |
-|    InvertedPendulum    |  **1000.0+-0.0**   |           N            |
-| InvertedDoublePendulum |  **9231.3+-270.4** |           N            |
+|      Environment       |   Tianshou (3M)    | [Spinning Up(Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_ppo.html) |
+| :--------------------: | :----------------: | :----------------------------------------------------------: |
+|          Ant           | **4079.3+-880.2**  |                            ~3000                             |
+|      HalfCheetah       | **7337.4+-1508.2** |                            ~3130                             |
+|         Hopper         | **3127.7+-413.0**  |                            ~2460                             |
+|        Walker2d        | **4895.6+-704.3**  |                            ~2600                             |
+|        Swimmer         |     81.4+-96.0     |                           **~120**                           |
+|        Humanoid        | **1359.7+-572.7**  |                              N                               |
+|        Reacher         |   **-3.7+-0.3**    |                              N                               |
+|    InvertedPendulum    |  **1000.0+-0.0**   |                              N                               |
+| InvertedDoublePendulum | **9231.3+-270.4**  |                              N                               |
 
 \* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup>
 
 #### Hints for PPO
-1. Following [Andrychowicz, Marcin, et al](https://arxiv.org/abs/2006.05990) Sec 3.5, we use "recompute advantage" strategy, which conrtibutes a lot to our SOTA benchmark. However, I personally don't quite agree with their explanation about why "recompute advantage" helps. They stated that it's because old strategy "makes it impossible to compute advantages as the temporal structure is broken", but PPO's update equation is designed to learn from slightly-outdated advantages. I think the only reason "recompute advantage" works is that it update the critic serveral times rather than just one time per update, which leads to a better value function estimate.
-2. We have done full scale ablation studies of PPO algorithm's hyperparameters. Here are our findings: In mujoco settings, `value-clip` and `norm-adv` may help a litte bit in some games(e.g. `norm-adv` helps stablize training in InvertedPendulum-v2), but they make no difference to overall performance. So in our benchmark we do not use such tricks. We validate that setting `ent-coef` to 0.0 rather than 0.01 will increase overall performance in mujoco environments. `max-grad-norm` still offers no help for PPO algorithm, but we still keep it for consistency.
-3. [Andrychowicz, Marcin, et al](https://arxiv.org/abs/2006.05990)'s work indicates that using `gae-lambda` 0.9 and changing policy network's width based on which game you play(e.g. use [16, 16] `hidden-sizes` for `actor` network in HalfCheetah and [256, 256] for Ant) may help boost performance. Our ablation studies say otherwise: Both options may lead to equal or lower performance overall in our experiments. We are not confident about this claim because we didn't change learning rate and other maybe-correlated factors in our experiments. So if you want, you can still have a try.
-4. `batch-size` 128 and 64(default) work equally well. Changing `training-num` alone slightly(maybe in range [8, 128]) won't affect performance. For bound action method, both `clip` and `tanh` work quite well. 
-5. In OPENAI implementations of PPO, they multiply value loss with a factor of 0.5 for no good reason(see this [issue](https://github.com/openai/baselines/issues/445#issuecomment-777988738)). We do not do so and therefore make our `vf-coef` 0.25(half of standard 0.5). However, since value loss is only used to optimize `critic` network, setting different `vf-coef` should in theory make no difference if using Adam optimizer.
+1. Following [Andrychowicz, Marcin, et al](https://arxiv.org/abs/2006.05990) Sec 3.5, we use "recompute advantage" strategy, which contributes a lot to our SOTA benchmark. However, I personally don't quite agree with their explanation about why "recompute advantage" helps. They stated that it's because old strategy "makes it impossible to compute advantages as the temporal structure is broken", but PPO's update equation is designed to learn from slightly-outdated advantages. I think the only reason "recompute advantage" works is that it update the critic several times rather than just one time per update, which leads to a better value function estimation.
+2. We have done full scale ablation studies of PPO algorithm's hyperparameters. Here are our findings: In mujoco settings, `value-clip` and `norm-adv` may help a litte bit in some games (e.g. `norm-adv` helps stabilize training in InvertedPendulum-v2), but they make no difference to overall performance. So in our benchmark we do not use such tricks. We validate that setting `ent-coef` to 0.0 rather than 0.01 will increase overall performance in mujoco environments. `max-grad-norm` still offers no help for PPO algorithm, but we still keep it for consistency.
+3. [Andrychowicz, Marcin, et al](https://arxiv.org/abs/2006.05990)'s work indicates that using `gae-lambda` 0.9 and changing policy network's width based on which game you play (e.g. use [16, 16] `hidden-sizes` for `actor` network in HalfCheetah and [256, 256] for Ant) may help boost performance. Our ablation studies say otherwise: both options may lead to equal or lower performance overall in our experiments. We are not confident about this claim because we didn't change learning rate and other maybe-correlated factors in our experiments. So if you want, you can still have a try.
+4. `batch-size` 128 and 64 (default) work equally well. Changing `training-num` alone slightly (maybe in range [8, 128]) won't affect performance. For bound action method, both `clip` and `tanh` work quite well. 
+5. In OPENAI implementations of PPO, they multiply value loss with a factor of 0.5 for no good reason (see this [issue](https://github.com/openai/baselines/issues/445#issuecomment-777988738)). We do not do so and therefore make our `vf-coef` 0.25 (half of standard 0.5). However, since value loss is only used to optimize `critic` network, setting different `vf-coef` should in theory make no difference if using Adam optimizer.
    
 
 
