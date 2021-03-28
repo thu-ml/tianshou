@@ -96,7 +96,7 @@ class PPOPolicy(A2CPolicy):
                 np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
             mean, std = np.mean(advantages), np.std(advantages)
-            advantages = (advantages - mean) / std  # per-batch norm
+            advantages = (advantages - mean) / std
         else:
             batch.returns = unnormalized_returns
         batch.act = to_torch_as(batch.act, batch.v_s)
@@ -139,7 +139,7 @@ class PPOPolicy(A2CPolicy):
                     - self._weight_ent * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
-                if self._grad_norm is not None:  # clip large gradient
+                if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
                         list(self.actor.parameters()) + list(self.critic.parameters()),
                         max_norm=self._grad_norm)

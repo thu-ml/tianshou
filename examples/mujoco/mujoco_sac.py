@@ -115,9 +115,9 @@ def test_sac(args=get_args()):
     test_collector = Collector(policy, test_envs)
     train_collector.collect(n_step=args.start_timesteps, random=True)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'sac', 'seed_' + str(args.seed) +
-                            '_' + datetime.datetime.now().strftime('%m%d_%H%M%S') +
-                            '-' + args.task.replace('-', '_') + '_sac')
+    t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
+    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_sac'
+    log_path = os.path.join(args.logdir, args.task, 'sac', log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer)
