@@ -77,7 +77,7 @@ class PPOPolicy(A2CPolicy):
         self._value_clip = value_clip
         if not self._rew_norm:
             assert not self._value_clip, \
-            "value clip is available only when `reward_normalization` is True"
+                "value clip is available only when `reward_normalization` is True"
         self._norm_adv = advantage_normalization
         self._recompute_adv = recompute_advantage
 
@@ -155,4 +155,3 @@ class PPOPolicy(A2CPolicy):
             "loss/vf": vf_losses,
             "loss/ent": ent_losses,
         }
-

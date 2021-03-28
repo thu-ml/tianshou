@@ -101,7 +101,7 @@ class A2CPolicy(PGPolicy):
                 np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
         else:
-            batch.returns = unnormalized_returns  
+            batch.returns = unnormalized_returns
         batch.returns = to_torch_as(batch.returns, batch.v_s)
         batch.adv = to_torch_as(advantages, batch.v_s)
         return batch
@@ -144,4 +144,3 @@ class A2CPolicy(PGPolicy):
             "loss/vf": vf_losses,
             "loss/ent": ent_losses,
         }
-
