@@ -4,7 +4,7 @@ from torch import nn
 from typing import Any, Dict, List, Type, Optional
 
 from tianshou.policy import A2CPolicy
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
 
 class PPOPolicy(A2CPolicy):
@@ -24,6 +24,11 @@ class PPOPolicy(A2CPolicy):
         Default to 5.0 (set None if you do not want to use it).
     :param bool value_clip: a parameter mentioned in arXiv:1811.02553 Sec. 4.1.
         Default to True.
+    :param bool advantage_normalization: whether to do per mini-batch advantage
+        normalization. Default to False.
+    :param bool recompute_advantage: whether to recompute advantage every update
+        repeat according to https://arxiv.org/pdf/2006.05990.pdf Sec. 3.5.
+        Default to False.
     :param float vf_coef: weight for value loss. Default to 0.5.
     :param float ent_coef: weight for entropy loss. Default to 0.01.
     :param float max_grad_norm: clipping gradients in back propagation. Default to
@@ -60,10 +65,8 @@ class PPOPolicy(A2CPolicy):
         eps_clip: float = 0.2,
         dual_clip: Optional[float] = None,
         value_clip: bool = False,
-        # norm advantage per mini-batch TODO doc
-        advantage_normalization = True,
-        # recompute advantage every update repeat
-        recompute_advantage = False,
+        advantage_normalization: bool = False,
+        recompute_advantage: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, critic, optim, dist_fn, **kwargs)
@@ -97,8 +100,6 @@ class PPOPolicy(A2CPolicy):
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
-        # assert batch_size == 64
-        # assert repeat == 10
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         for step in range(repeat):
             if self._recompute_adv and step > 0:
