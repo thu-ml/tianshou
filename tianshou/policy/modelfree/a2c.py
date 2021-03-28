@@ -77,7 +77,7 @@ class A2CPolicy(PGPolicy):
 
     def _compute_returns(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
-    ):
+    ) -> Batch:
         v_s, v_s_ = [], []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
