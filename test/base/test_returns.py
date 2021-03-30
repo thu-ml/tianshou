@@ -122,7 +122,7 @@ def target_q_fn_multidim(buffer, indice):
 
 
 def compute_nstep_return_base(nstep, gamma, buffer, indice):
-    returns = np.zeros_like(indice, dtype=np.float)
+    returns = np.zeros_like(indice, dtype=float)
     buf_len = len(buffer)
     for i in range(len(indice)):
         flag, r = False, 0.

@@ -22,7 +22,7 @@ def has_ray():
 def recurse_comp(a, b):
     try:
         if isinstance(a, np.ndarray):
-            if a.dtype == np.object:
+            if a.dtype == object:
                 return np.array(
                     [recurse_comp(m, n) for m, n in zip(a, b)]).all()
             else:

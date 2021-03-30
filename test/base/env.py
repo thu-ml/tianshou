@@ -73,7 +73,7 @@ class MyTestEnv(gym.Env):
         elif self.recurse_state:
             return {'index': np.array([self.index], dtype=np.float32),
                     'dict': {"tuple": (np.array([1],
-                                       dtype=np.int64), self.rng.rand(2)),
+                                       dtype=int), self.rng.rand(2)),
                              "rand": self.rng.rand(1, 2)}}
         elif self.array_state:
             img = np.zeros([4, 84, 84], np.int)
