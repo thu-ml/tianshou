@@ -1,4 +1,5 @@
 import torch
+import warnings
 import numpy as np
 from copy import deepcopy
 from typing import Any, Dict, Tuple, Union, Optional
@@ -170,6 +171,9 @@ class DDPGPolicy(BasePolicy):
     def exploration_noise(
         self, act: Union[np.ndarray, Batch], batch: Batch
     ) -> Union[np.ndarray, Batch]:
-        if isinstance(act, np.ndarray) and self._noise:
+        if self._noise is None:
+            return act
+        if isinstance(act, np.ndarray):
             return act + self._noise(act.shape)
+        warnings.warn("Cannot add exploration noise to non-numpy_array action.")
         return act

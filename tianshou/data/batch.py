@@ -7,6 +7,8 @@ from numbers import Number
 from collections.abc import Collection
 from typing import Any, List, Dict, Union, Iterator, Optional, Iterable, Sequence
 
+IndexType = Union[slice, int, np.ndarray, List[int]]
+
 
 def _is_batch_set(data: Any) -> bool:
     # Batch set is a list/tuple of dict/Batch objects,
@@ -221,7 +223,7 @@ class Batch:
         """
         self.__init__(**state)  # type: ignore
 
-    def __getitem__(self, index: Union[str, slice, int, np.ndarray, List[int]]) -> Any:
+    def __getitem__(self, index: Union[str, IndexType]) -> Any:
         """Return self[index]."""
         if isinstance(index, str):
             return self.__dict__[index]
@@ -237,9 +239,7 @@ class Batch:
         else:
             raise IndexError("Cannot access item from empty Batch object.")
 
-    def __setitem__(
-        self, index: Union[str, slice, int, np.ndarray, List[int]], value: Any
-    ) -> None:
+    def __setitem__(self, index: Union[str, IndexType], value: Any) -> None:
         """Assign value to self[index]."""
         value = _parse_value(value)
         if isinstance(index, str):
@@ -580,9 +580,7 @@ class Batch:
         batch.stack_(batches, axis)
         return batch
 
-    def empty_(
-        self, index: Optional[Union[slice, int, np.ndarray, List[int]]] = None
-    ) -> "Batch":
+    def empty_(self, index: Optional[Union[slice, IndexType]] = None) -> "Batch":
         """Return an empty Batch object with 0 or None filled.
 
         If "index" is specified, it will only reset the specific indexed-data.
@@ -629,10 +627,7 @@ class Batch:
         return self
 
     @staticmethod
-    def empty(
-        batch: "Batch",
-        index: Optional[Union[slice, int, np.ndarray, List[int]]] = None,
-    ) -> "Batch":
+    def empty(batch: "Batch", index: Optional[IndexType] = None) -> "Batch":
         """Return an empty Batch object with 0 or None filled.
 
         The shape is the same as the given Batch.

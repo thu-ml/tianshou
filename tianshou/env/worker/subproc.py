@@ -63,8 +63,7 @@ def _worker(
     obs_bufs: Optional[Union[dict, tuple, ShArray]] = None,
 ) -> None:
     def _encode_obs(
-        obs: Union[dict, tuple, np.ndarray],
-        buffer: Union[dict, tuple, ShArray],
+        obs: Union[dict, tuple, np.ndarray], buffer: Union[dict, tuple, ShArray]
     ) -> None:
         if isinstance(obs, np.ndarray) and isinstance(buffer, ShArray):
             buffer.save(obs)

@@ -642,7 +642,7 @@ def test_multibuf_stack():
     assert np.allclose(buf6.obs[0], obs[0, -1])
     assert np.allclose(buf6.obs[14], obs[2, -1])
     assert np.allclose(buf6.obs[19], obs[0, -1])
-    assert buf6[0].obs.shape == (4, 84, 84), buf6[0].obs.shape
+    assert buf6[0].obs.shape == (4, 84, 84)
 
 
 def test_multibuf_hdf5():
