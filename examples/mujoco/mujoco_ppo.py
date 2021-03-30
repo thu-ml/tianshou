@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
+
 import os
 import gym
 import torch
+import pprint
 import datetime
 import argparse
 import numpy as np
@@ -33,12 +36,6 @@ def get_args():
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--training-num', type=int, default=64)
     parser.add_argument('--test-num', type=int, default=10)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
-    parser.add_argument('--resume-path', type=str, default=None)
     # ppo special
     parser.add_argument('--rew-norm', type=int, default=True)
     # In theory, `vf-coef` will not make any difference if using Adam optimizer.
@@ -53,6 +50,14 @@ def get_args():
     parser.add_argument('--value-clip', type=int, default=0)
     parser.add_argument('--norm-adv', type=int, default=0)
     parser.add_argument('--recompute-adv', type=int, default=1)
+    parser.add_argument('--logdir', type=str, default='log')
+    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument(
+        '--device', type=str,
+        default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument('--watch', default=False, action='store_true',
+                        help='watch the play of pre-trained policy only')
     return parser.parse_args()
 
 
@@ -126,6 +131,11 @@ def test_ppo(args=get_args()):
                        dual_clip=args.dual_clip, advantage_normalization=args.norm_adv,
                        recompute_advantage=args.recompute_adv)
 
+    # load a previous policy
+    if args.resume_path:
+        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        print("Loaded agent from: ", args.resume_path)
+
     # collector
     if args.training_num > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
@@ -144,12 +154,14 @@ def test_ppo(args=get_args()):
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
-    # trainer
-    result = onpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch, args.step_per_epoch,
-        args.repeat_per_collect, args.test_num, args.batch_size,
-        step_per_collect=args.step_per_collect, save_fn=save_fn, logger=logger,
-        test_in_train=False)
+    if not args.watch:
+        # trainer
+        result = onpolicy_trainer(
+            policy, train_collector, test_collector, args.epoch, args.step_per_epoch,
+            args.repeat_per_collect, args.test_num, args.batch_size,
+            step_per_collect=args.step_per_collect, save_fn=save_fn, logger=logger,
+            test_in_train=False)
+        pprint.pprint(result)
 
     # Let's watch its performance!
     policy.eval()

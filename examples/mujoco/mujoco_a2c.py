@@ -3,6 +3,7 @@
 import os
 import gym
 import torch
+import pprint
 import datetime
 import argparse
 import numpy as np
@@ -36,12 +37,6 @@ def get_args():
     parser.add_argument('--batch-size', type=int, default=99999)
     parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=10)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
-    parser.add_argument('--resume-path', type=str, default=None)
     # a2c special
     parser.add_argument('--rew-norm', type=int, default=True)
     parser.add_argument('--vf-coef', type=float, default=0.5)
@@ -50,6 +45,14 @@ def get_args():
     parser.add_argument('--bound-action-method', type=str, default="clip")
     parser.add_argument('--lr-decay', type=int, default=True)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
+    parser.add_argument('--logdir', type=str, default='log')
+    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument(
+        '--device', type=str,
+        default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument('--watch', default=False, action='store_true',
+                        help='watch the play of pre-trained policy only')
     return parser.parse_args()
 
 
@@ -120,6 +123,11 @@ def test_a2c(args=get_args()):
                        action_bound_method=args.bound_action_method,
                        lr_scheduler=lr_scheduler, action_space=env.action_space)
 
+    # load a previous policy
+    if args.resume_path:
+        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
+        print("Loaded agent from: ", args.resume_path)
+
     # collector
     if args.training_num > 1:
         buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
@@ -138,12 +146,14 @@ def test_a2c(args=get_args()):
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
-    # trainer
-    result = onpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch, args.step_per_epoch,
-        args.repeat_per_collect, args.test_num, args.batch_size,
-        step_per_collect=args.step_per_collect, save_fn=save_fn, logger=logger,
-        test_in_train=False)
+    if not args.watch:
+        # trainer
+        result = onpolicy_trainer(
+            policy, train_collector, test_collector, args.epoch, args.step_per_epoch,
+            args.repeat_per_collect, args.test_num, args.batch_size,
+            step_per_collect=args.step_per_collect, save_fn=save_fn, logger=logger,
+            test_in_train=False)
+        pprint.pprint(result)
 
     # Let's watch its performance!
     policy.eval()
