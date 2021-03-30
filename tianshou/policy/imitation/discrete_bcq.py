@@ -58,7 +58,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         else:
             self._log_tau = -np.inf
         assert 0.0 <= eval_eps < 1.0
-        self._eps = eval_eps
+        self.eps = eval_eps
         self._weight_reg = imitation_logits_penalty
 
     def train(self, mode: bool = True) -> "DiscreteBCQPolicy":
@@ -95,15 +95,6 @@ class DiscreteBCQPolicy(DQNPolicy):
 
         return Batch(act=action, state=state, q_value=q_value,
                      imitation_logits=imitation_logits)
-
-    def exploration_noise(self, act: np.ndarray, batch: Batch) -> np.ndarray:
-        # add eps to act
-        if not np.isclose(self._eps, 0.0):
-            bsz = len(act)
-            mask = np.random.rand(bsz) < self._eps
-            act_rand = np.random.randint(self.max_action_num, size=[bsz])
-            act[mask] = act_rand[mask]
-        return act
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._iter % self._freq == 0:

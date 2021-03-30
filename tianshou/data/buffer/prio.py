@@ -34,6 +34,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def update(self, buffer: ReplayBuffer) -> np.ndarray:
         indices = super().update(buffer)
         self.init_weight(indices)
+        return indices
 
     def add(
         self, batch: Batch, buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
@@ -45,13 +46,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def sample_index(self, batch_size: int) -> np.ndarray:
         if batch_size > 0 and len(self) > 0:
             scalar = np.random.rand(batch_size) * self.weight.reduce()
-            return self.weight.get_prefix_sum_idx(scalar)
+            return self.weight.get_prefix_sum_idx(scalar)  # type: ignore
         else:
             return super().sample_index(batch_size)
 
-    def get_weight(
-        self, index: Union[slice, int, np.integer, np.ndarray]
-    ) -> np.ndarray:
+    def get_weight(self, index: Union[int, np.ndarray]) -> Union[float, np.ndarray]:
         """Get the importance sampling weight.
 
         The "weight" in the returned Batch is the weight on loss function to de-bias
@@ -76,7 +75,13 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._max_prio = max(self._max_prio, weight.max())
         self._min_prio = min(self._min_prio, weight.min())
 
-    def __getitem__(self, index: Union[slice, int, np.integer, np.ndarray]) -> Batch:
-        batch = super().__getitem__(index)
-        batch.weight = self.get_weight(index)
+    def __getitem__(self, index: Union[slice, int, List[int], np.ndarray]) -> Batch:
+        if isinstance(index, slice):  # change slice to np array
+            # buffer[:] will get all available data
+            indice = self.sample_index(0) if index == slice(None) \
+                else self._indices[:len(self)][index]
+        else:
+            indice = index
+        batch = super().__getitem__(indice)
+        batch.weight = self.get_weight(indice)
         return batch

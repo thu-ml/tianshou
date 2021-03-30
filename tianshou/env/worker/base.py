@@ -25,9 +25,7 @@ class EnvWorker(ABC):
     def send_action(self, action: np.ndarray) -> None:
         pass
 
-    def get_result(
-        self,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_result(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return self.result
 
     def step(
@@ -45,9 +43,7 @@ class EnvWorker(ABC):
 
     @staticmethod
     def wait(
-        workers: List["EnvWorker"],
-        wait_num: int,
-        timeout: Optional[float] = None,
+        workers: List["EnvWorker"], wait_num: int, timeout: Optional[float] = None
     ) -> List["EnvWorker"]:
         """Given a list of workers, return those ready ones."""
         raise NotImplementedError

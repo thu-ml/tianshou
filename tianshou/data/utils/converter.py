@@ -4,15 +4,12 @@ import pickle
 import numpy as np
 from copy import deepcopy
 from numbers import Number
-from typing import Dict, Union, Optional
+from typing import Any, Dict, Union, Optional
 
 from tianshou.data.batch import _parse_value, Batch
 
 
-def to_numpy(
-    x: Optional[Union[Batch, dict, list, tuple, np.number, np.bool_, Number,
-                      np.ndarray, torch.Tensor]]
-) -> Union[Batch, dict, list, tuple, np.ndarray]:
+def to_numpy(x: Any) -> Union[Batch, np.ndarray]:
     """Return an object without torch.Tensor."""
     if isinstance(x, torch.Tensor):  # most often case
         return x.detach().cpu().numpy()
@@ -21,28 +18,22 @@ def to_numpy(
     elif isinstance(x, (np.number, np.bool_, Number)):
         return np.asanyarray(x)
     elif x is None:
-        return np.array(None, dtype=np.object)
-    elif isinstance(x, Batch):
-        x = deepcopy(x)
+        return np.array(None, dtype=object)
+    elif isinstance(x, (dict, Batch)):
+        x = Batch(x) if isinstance(x, dict) else deepcopy(x)
         x.to_numpy()
         return x
-    elif isinstance(x, dict):
-        return {k: to_numpy(v) for k, v in x.items()}
     elif isinstance(x, (list, tuple)):
-        try:
-            return to_numpy(_parse_value(x))
-        except TypeError:
-            return [to_numpy(e) for e in x]
+        return to_numpy(_parse_value(x))
     else:  # fallback
         return np.asanyarray(x)
 
 
 def to_torch(
-    x: Union[Batch, dict, list, tuple, np.number, np.bool_, Number, np.ndarray,
-             torch.Tensor],
+    x: Any,
     dtype: Optional[torch.dtype] = None,
     device: Union[str, int, torch.device] = "cpu",
-) -> Union[Batch, dict, list, tuple, torch.Tensor]:
+) -> Union[Batch, torch.Tensor]:
     """Return an object without np.ndarray."""
     if isinstance(x, np.ndarray) and issubclass(
         x.dtype.type, (np.bool_, np.number)
@@ -57,25 +48,17 @@ def to_torch(
         return x.to(device)  # type: ignore
     elif isinstance(x, (np.number, np.bool_, Number)):
         return to_torch(np.asanyarray(x), dtype, device)
-    elif isinstance(x, dict):
-        return {k: to_torch(v, dtype, device) for k, v in x.items()}
-    elif isinstance(x, Batch):
-        x = deepcopy(x)
+    elif isinstance(x, (dict, Batch)):
+        x = Batch(x, copy=True) if isinstance(x, dict) else deepcopy(x)
         x.to_torch(dtype, device)
         return x
     elif isinstance(x, (list, tuple)):
-        try:
-            return to_torch(_parse_value(x), dtype, device)
-        except TypeError:
-            return [to_torch(e, dtype, device) for e in x]
+        return to_torch(_parse_value(x), dtype, device)
     else:  # fallback
         raise TypeError(f"object {x} cannot be converted to torch.")
 
 
-def to_torch_as(
-    x: Union[Batch, dict, list, tuple, np.ndarray, torch.Tensor],
-    y: torch.Tensor,
-) -> Union[Batch, dict, list, tuple, torch.Tensor]:
+def to_torch_as(x: Any, y: torch.Tensor) -> Union[Batch, torch.Tensor]:
     """Return an object without np.ndarray.
 
     Same as ``to_torch(x, dtype=y.dtype, device=y.device)``.
@@ -147,25 +130,20 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
             y[k].attrs["__data_type__"] = v.__class__.__name__
 
 
-def from_hdf5(
-    x: h5py.Group, device: Optional[str] = None
-) -> Hdf5ConvertibleType:
+def from_hdf5(x: h5py.Group, device: Optional[str] = None) -> Hdf5ConvertibleValues:
     """Restore object from HDF5 group."""
     if isinstance(x, h5py.Dataset):
         # handle datasets
         if x.attrs["__data_type__"] == "ndarray":
-            y = np.array(x)
+            return np.array(x)
         elif x.attrs["__data_type__"] == "Tensor":
-            y = torch.tensor(x, device=device)
+            return torch.tensor(x, device=device)
         else:
-            y = pickle.loads(x[()])
+            return pickle.loads(x[()])
     else:
         # handle groups representing a dict or a Batch
-        y = {k: v for k, v in x.attrs.items() if k != "__data_type__"}
+        y = dict(x.attrs.items())
+        data_type = y.pop("__data_type__", None)
         for k, v in x.items():
             y[k] = from_hdf5(v, device)
-        if "__data_type__" in x.attrs:
-            # if dictionary represents Batch, convert to Batch
-            if x.attrs["__data_type__"] == "Batch":
-                y = Batch(y)
-    return y
+        return Batch(y) if data_type == "Batch" else y

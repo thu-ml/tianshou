@@ -45,7 +45,7 @@ class Actor(nn.Module):
         super().__init__()
         self.device = device
         self.preprocess = preprocess_net
-        self.output_dim = np.prod(action_shape)
+        self.output_dim = int(np.prod(action_shape))
         input_dim = getattr(preprocess_net, "output_dim",
                             preprocess_net_output_dim)
         self.last = MLP(input_dim, self.output_dim,
@@ -55,7 +55,7 @@ class Actor(nn.Module):
     def forward(
         self,
         s: Union[np.ndarray, torch.Tensor],
-        state: Optional[Any] = None,
+        state: Any = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""

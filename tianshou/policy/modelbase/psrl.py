@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from typing import Any, Dict, Union, Optional
+from typing import Any, Dict, Tuple, Union, Optional
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy
@@ -100,7 +100,7 @@ class PSRLModel(object):
         discount_factor: float,
         eps: float,
         value: np.ndarray,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Value iteration solver for MDPs.
 
         :param np.ndarray trans_prob: transition probabilities, with shape
@@ -126,7 +126,7 @@ class PSRLModel(object):
     def __call__(
         self,
         obs: np.ndarray,
-        state: Optional[Any] = None,
+        state: Any = None,
         info: Dict[str, Any] = {},
     ) -> np.ndarray:
         if not self.updated:
@@ -215,6 +215,6 @@ class PSRLPolicy(BasePolicy):
                 rew_count[obs_next, :] += 1
         self.model.observe(trans_count, rew_sum, rew_square_sum, rew_count)
         return {
-            "psrl/rew_mean": self.model.rew_mean.mean(),
-            "psrl/rew_std": self.model.rew_std.mean(),
+            "psrl/rew_mean": float(self.model.rew_mean.mean()),
+            "psrl/rew_std": float(self.model.rew_std.mean()),
         }

@@ -68,9 +68,7 @@ class OUNoise(BaseNoise):
         """Reset to the initial state."""
         self._x = self._x0
 
-    def __call__(
-        self, size: Sequence[int], mu: Optional[float] = None
-    ) -> np.ndarray:
+    def __call__(self, size: Sequence[int], mu: Optional[float] = None) -> np.ndarray:
         """Generate new noise.
 
         Return an numpy array which size is equal to ``size``.
@@ -82,4 +80,4 @@ class OUNoise(BaseNoise):
             mu = self._mu
         r = self._beta * np.random.normal(size=size)
         self._x = self._x + self._alpha * (mu - self._x) + r
-        return self._x
+        return self._x  # type: ignore

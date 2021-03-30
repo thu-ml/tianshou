@@ -123,7 +123,7 @@ class Collector(object):
             if isinstance(state, torch.Tensor):
                 state[id].zero_()
             elif isinstance(state, np.ndarray):
-                state[id] = None if state.dtype == np.object else 0
+                state[id] = None if state.dtype == object else 0
             elif isinstance(state, Batch):
                 state.empty_(id)
 
@@ -266,7 +266,7 @@ class Collector(object):
                 if n_episode:
                     surplus_env_num = len(ready_env_ids) - (n_episode - episode_count)
                     if surplus_env_num > 0:
-                        mask = np.ones_like(ready_env_ids, np.bool)
+                        mask = np.ones_like(ready_env_ids, dtype=bool)
                         mask[env_ind_local[:surplus_env_num]] = False
                         ready_env_ids = ready_env_ids[mask]
                         self.data = self.data[mask]
@@ -291,7 +291,7 @@ class Collector(object):
             rews, lens, idxs = list(map(
                 np.concatenate, [episode_rews, episode_lens, episode_start_indices]))
         else:
-            rews, lens, idxs = np.array([]), np.array([], np.int), np.array([], np.int)
+            rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
 
         return {
             "n/ep": episode_count,
@@ -493,7 +493,7 @@ class AsyncCollector(Collector):
             rews, lens, idxs = list(map(
                 np.concatenate, [episode_rews, episode_lens, episode_start_indices]))
         else:
-            rews, lens, idxs = np.array([]), np.array([], np.int), np.array([], np.int)
+            rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
 
         return {
             "n/ep": episode_count,

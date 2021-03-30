@@ -50,8 +50,7 @@ class MLP(nn.Module):
         output_dim: int = 0,
         hidden_sizes: Sequence[int] = (),
         norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
-        activation: Optional[Union[ModuleType, Sequence[ModuleType]]]
-        = nn.ReLU,
+        activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
         device: Optional[Union[str, int, torch.device]] = None,
     ) -> None:
         super().__init__()
@@ -139,7 +138,7 @@ class Net(nn.Module):
     def __init__(
         self,
         state_shape: Union[int, Sequence[int]],
-        action_shape: Optional[Union[int, Sequence[int]]] = 0,
+        action_shape: Union[int, Sequence[int]] = 0,
         hidden_sizes: Sequence[int] = (),
         norm_layer: Optional[ModuleType] = None,
         activation: Optional[ModuleType] = nn.ReLU,
@@ -153,8 +152,8 @@ class Net(nn.Module):
         self.device = device
         self.softmax = softmax
         self.num_atoms = num_atoms
-        input_dim = np.prod(state_shape)
-        action_dim = np.prod(action_shape) * num_atoms
+        input_dim = int(np.prod(state_shape))
+        action_dim = int(np.prod(action_shape)) * num_atoms
         if concat:
             input_dim += action_dim
         self.use_dueling = dueling_param is not None
@@ -179,7 +178,7 @@ class Net(nn.Module):
     def forward(
         self,
         s: Union[np.ndarray, torch.Tensor],
-        state: Optional[Any] = None,
+        state: Any = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: s -> flatten (inside MLP)-> logits."""
@@ -221,8 +220,8 @@ class Recurrent(nn.Module):
             num_layers=layer_num,
             batch_first=True,
         )
-        self.fc1 = nn.Linear(np.prod(state_shape), hidden_layer_size)
-        self.fc2 = nn.Linear(hidden_layer_size, np.prod(action_shape))
+        self.fc1 = nn.Linear(int(np.prod(state_shape)), hidden_layer_size)
+        self.fc2 = nn.Linear(hidden_layer_size, int(np.prod(action_shape)))
 
     def forward(
         self,

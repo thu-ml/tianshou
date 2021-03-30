@@ -12,7 +12,6 @@ from tianshou.env.utils import CloudpickleWrapper
 
 
 _NP_TO_CT = {
-    np.bool: ctypes.c_bool,
     np.bool_: ctypes.c_bool,
     np.uint8: ctypes.c_uint8,
     np.uint16: ctypes.c_uint16,
@@ -31,7 +30,7 @@ class ShArray:
     """Wrapper of multiprocessing Array."""
 
     def __init__(self, dtype: np.generic, shape: Tuple[int]) -> None:
-        self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))
+        self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))  # type: ignore
         self.dtype = dtype
         self.shape = shape
 
@@ -64,8 +63,7 @@ def _worker(
     obs_bufs: Optional[Union[dict, tuple, ShArray]] = None,
 ) -> None:
     def _encode_obs(
-        obs: Union[dict, tuple, np.ndarray],
-        buffer: Union[dict, tuple, ShArray],
+        obs: Union[dict, tuple, np.ndarray], buffer: Union[dict, tuple, ShArray]
     ) -> None:
         if isinstance(obs, np.ndarray) and isinstance(buffer, ShArray):
             buffer.save(obs)

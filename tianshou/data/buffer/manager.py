@@ -22,7 +22,7 @@ class ReplayBufferManager(ReplayBuffer):
 
     def __init__(self, buffer_list: List[ReplayBuffer]) -> None:
         self.buffer_num = len(buffer_list)
-        self.buffers = np.array(buffer_list, dtype=np.object)
+        self.buffers = np.array(buffer_list, dtype=object)
         offset, size = [], 0
         buffer_type = type(self.buffers[0])
         kwargs = self.buffers[0].options
@@ -46,7 +46,7 @@ class ReplayBufferManager(ReplayBuffer):
         _next_index(index, offset, done, last, lens)
 
     def __len__(self) -> int:
-        return self._lengths.sum()
+        return int(self._lengths.sum())
 
     def reset(self, keep_statistics: bool = False) -> None:
         self.last_index = self._offset.copy()
@@ -68,7 +68,7 @@ class ReplayBufferManager(ReplayBuffer):
             for offset, buf in zip(self._offset, self.buffers)
         ])
 
-    def prev(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
+    def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
             return _prev_index(np.asarray(index), self._extend_offset,
                                self.done, self.last_index, self._lengths)
@@ -76,7 +76,7 @@ class ReplayBufferManager(ReplayBuffer):
             return _prev_index(np.array([index]), self._extend_offset,
                                self.done, self.last_index, self._lengths)[0]
 
-    def next(self, index: Union[int, np.integer, np.ndarray]) -> np.ndarray:
+    def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
             return _next_index(np.asarray(index), self._extend_offset,
                                self.done, self.last_index, self._lengths)
@@ -130,8 +130,8 @@ class ReplayBufferManager(ReplayBuffer):
         try:
             self._meta[ptrs] = batch
         except ValueError:
-            batch.rew = batch.rew.astype(np.float)
-            batch.done = batch.done.astype(np.bool_)
+            batch.rew = batch.rew.astype(float)
+            batch.done = batch.done.astype(bool)
             if self._meta.is_empty():
                 self._meta = _create_value(  # type: ignore
                     batch, self.maxsize, stack=False)
@@ -143,7 +143,7 @@ class ReplayBufferManager(ReplayBuffer):
 
     def sample_index(self, batch_size: int) -> np.ndarray:
         if batch_size < 0:
-            return np.array([], np.int)
+            return np.array([], int)
         if self._sample_avail and self.stack_num > 1:
             all_indices = np.concatenate([
                 buf.sample_index(0) + offset
@@ -154,7 +154,7 @@ class ReplayBufferManager(ReplayBuffer):
             else:
                 return np.random.choice(all_indices, batch_size)
         if batch_size == 0:  # get all available indices
-            sample_num = np.zeros(self.buffer_num, np.int)
+            sample_num = np.zeros(self.buffer_num, int)
         else:
             buffer_idx = np.random.choice(
                 self.buffer_num, batch_size, p=self._lengths / self._lengths.sum()

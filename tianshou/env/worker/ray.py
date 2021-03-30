@@ -25,9 +25,7 @@ class RayEnvWorker(EnvWorker):
 
     @staticmethod
     def wait(  # type: ignore
-        workers: List["RayEnvWorker"],
-        wait_num: int,
-        timeout: Optional[float] = None,
+        workers: List["RayEnvWorker"], wait_num: int, timeout: Optional[float] = None
     ) -> List["RayEnvWorker"]:
         results = [x.result for x in workers]
         ready_results, _ = ray.wait(results, num_returns=wait_num, timeout=timeout)
