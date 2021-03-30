@@ -76,7 +76,7 @@ class MyTestEnv(gym.Env):
                                        dtype=int), self.rng.rand(2)),
                              "rand": self.rng.rand(1, 2)}}
         elif self.array_state:
-            img = np.zeros([4, 84, 84], np.int)
+            img = np.zeros([4, 84, 84], int)
             img[3, np.arange(84), np.arange(84)] = self.index
             img[2, np.arange(84)] = self.index
             img[1, :, np.arange(84)] = self.index
