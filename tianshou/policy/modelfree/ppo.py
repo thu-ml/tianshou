@@ -86,8 +86,7 @@ class PPOPolicy(A2CPolicy):
     ) -> Batch:
         if self._recompute_adv:
             # buffer input `buffer` and `indice` to be used in `learn()`.
-            self._buffer = buffer
-            self._indice = indice
+            self._buffer, self._indice = buffer, indice
         batch = self._compute_returns(batch, buffer, indice)
         batch.act = to_torch_as(batch.act, batch.v_s)
         old_log_prob = []

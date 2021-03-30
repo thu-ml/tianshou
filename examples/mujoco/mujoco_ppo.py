@@ -12,12 +12,12 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Independent, Normal
 
-from tianshou.policy import PGPolicy
+from tianshou.policy import PPOPolicy
 from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
-from tianshou.utils.net.continuous import ActorProb
+from tianshou.utils.net.continuous import ActorProb, Critic
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 
 
@@ -27,21 +27,29 @@ def get_args():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=4096)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=30000)
     parser.add_argument('--step-per-collect', type=int, default=2048)
-    parser.add_argument('--repeat-per-collect', type=int, default=1)
-    # batch-size >> step-per-collect means caculating all data in one singe forward.
-    parser.add_argument('--batch-size', type=int, default=99999)
+    parser.add_argument('--repeat-per-collect', type=int, default=10)
+    parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--training-num', type=int, default=64)
     parser.add_argument('--test-num', type=int, default=10)
-    # reinforce special
+    # ppo special
     parser.add_argument('--rew-norm', type=int, default=True)
-    # "clip" option also works well.
-    parser.add_argument('--action-bound-method', type=str, default="tanh")
+    # In theory, `vf-coef` will not make any difference if using Adam optimizer.
+    parser.add_argument('--vf-coef', type=float, default=0.25)
+    parser.add_argument('--ent-coef', type=float, default=0.0)
+    parser.add_argument('--gae-lambda', type=float, default=0.95)
+    parser.add_argument('--bound-action-method', type=str, default="clip")
     parser.add_argument('--lr-decay', type=int, default=True)
+    parser.add_argument('--max-grad-norm', type=float, default=0.5)
+    parser.add_argument('--eps-clip', type=float, default=0.2)
+    parser.add_argument('--dual-clip', type=float, default=None)
+    parser.add_argument('--value-clip', type=int, default=0)
+    parser.add_argument('--norm-adv', type=int, default=0)
+    parser.add_argument('--recompute-adv', type=int, default=1)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
@@ -53,7 +61,7 @@ def get_args():
     return parser.parse_args()
 
 
-def test_reinforce(args=get_args()):
+def test_ppo(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -81,8 +89,11 @@ def test_reinforce(args=get_args()):
                 activation=nn.Tanh, device=args.device)
     actor = ActorProb(net_a, args.action_shape, max_action=args.max_action,
                       unbounded=True, device=args.device).to(args.device)
+    net_c = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
+                activation=nn.Tanh, device=args.device)
+    critic = Critic(net_c, device=args.device).to(args.device)
     torch.nn.init.constant_(actor.sigma_param, -0.5)
-    for m in actor.modules():
+    for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):
             # orthogonal initialization
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
@@ -95,7 +106,9 @@ def test_reinforce(args=get_args()):
             torch.nn.init.zeros_(m.bias)
             m.weight.data.copy_(0.01 * m.weight.data)
 
-    optim = torch.optim.Adam(actor.parameters(), lr=args.lr)
+    optim = torch.optim.Adam(set(
+        actor.parameters()).union(critic.parameters()), lr=args.lr)
+
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
@@ -108,10 +121,15 @@ def test_reinforce(args=get_args()):
     def dist(*logits):
         return Independent(Normal(*logits), 1)
 
-    policy = PGPolicy(actor, optim, dist, discount_factor=args.gamma,
-                      reward_normalization=args.rew_norm, action_scaling=True,
-                      action_bound_method=args.action_bound_method,
-                      lr_scheduler=lr_scheduler, action_space=env.action_space)
+    policy = PPOPolicy(actor, critic, optim, dist, discount_factor=args.gamma,
+                       gae_lambda=args.gae_lambda, max_grad_norm=args.max_grad_norm,
+                       vf_coef=args.vf_coef, ent_coef=args.ent_coef,
+                       reward_normalization=args.rew_norm, action_scaling=True,
+                       action_bound_method=args.bound_action_method,
+                       lr_scheduler=lr_scheduler, action_space=env.action_space,
+                       eps_clip=args.eps_clip, value_clip=args.value_clip,
+                       dual_clip=args.dual_clip, advantage_normalization=args.norm_adv,
+                       recompute_advantage=args.recompute_adv)
 
     # load a previous policy
     if args.resume_path:
@@ -127,11 +145,11 @@ def test_reinforce(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
-    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_reinforce'
-    log_path = os.path.join(args.logdir, args.task, 'reinforce', log_file)
+    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_ppo'
+    log_path = os.path.join(args.logdir, args.task, 'ppo', log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    logger = BasicLogger(writer, update_interval=10, train_interval=100)
+    logger = BasicLogger(writer, update_interval=100, train_interval=100)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
@@ -154,4 +172,4 @@ def test_reinforce(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_reinforce()
+    test_ppo()
