@@ -13,7 +13,7 @@ Welcome to Tianshou!
 * :class:`~tianshou.policy.DQNPolicy` `Deep Q-Network <https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf>`_
 * :class:`~tianshou.policy.DQNPolicy` `Double DQN <https://arxiv.org/pdf/1509.06461.pdf>`_
 * :class:`~tianshou.policy.DQNPolicy` `Dueling DQN <https://arxiv.org/pdf/1511.06581.pdf>`_
-* :class:`~tianshou.policy.C51Policy` `C51 <https://arxiv.org/pdf/1707.06887.pdf>`_
+* :class:`~tianshou.policy.C51Policy` `Categorical DQN <https://arxiv.org/pdf/1707.06887.pdf>`_
 * :class:`~tianshou.policy.QRDQNPolicy` `Quantile Regression DQN <https://arxiv.org/pdf/1710.10044.pdf>`_
 * :class:`~tianshou.policy.A2CPolicy` `Advantage Actor-Critic <https://openai.com/blog/baselines-acktr-a2c/>`_
 * :class:`~tianshou.policy.DDPGPolicy` `Deep Deterministic Policy Gradient <https://arxiv.org/pdf/1509.02971.pdf>`_
@@ -30,6 +30,7 @@ Welcome to Tianshou!
 Here is Tianshou's other features:
 
 * Elegant framework, using only ~2000 lines of code
+* State-of-the-art `MuJoCo benchmark <https://github.com/thu-ml/tianshou/tree/master/examples/mujoco>`_
 * Support parallel environment simulation (synchronous or asynchronous) for all algorithms: :ref:`parallel_sampling`
 * Support recurrent state representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
 * Support any type of environment state/action (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`

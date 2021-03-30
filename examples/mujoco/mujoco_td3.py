@@ -3,6 +3,7 @@
 import os
 import gym
 import torch
+import pprint
 import datetime
 import argparse
 import numpy as np
@@ -47,6 +48,8 @@ def get_args():
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument('--watch', default=False, action='store_true',
+                        help='watch the play of pre-trained policy only')
     return parser.parse_args()
 
 
@@ -103,9 +106,7 @@ def test_td3(args=get_args()):
 
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(
-            args.resume_path, map_location=args.device
-        ))
+        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
 
     # collector
@@ -117,9 +118,9 @@ def test_td3(args=get_args()):
     test_collector = Collector(policy, test_envs)
     train_collector.collect(n_step=args.start_timesteps, random=True)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'td3', 'seed_' + str(args.seed) +
-                            '_' + datetime.datetime.now().strftime('%m%d_%H%M%S') +
-                            '-' + args.task.replace('-', '_') + '_td3')
+    t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
+    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_td3'
+    log_path = os.path.join(args.logdir, args.task, 'td3', log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer)
@@ -127,12 +128,14 @@ def test_td3(args=get_args()):
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
-    # trainer
-    result = offpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, save_fn=save_fn, logger=logger,
-        update_per_step=args.update_per_step, test_in_train=False)
+    if not args.watch:
+        # trainer
+        result = offpolicy_trainer(
+            policy, train_collector, test_collector, args.epoch,
+            args.step_per_epoch, args.step_per_collect, args.test_num,
+            args.batch_size, save_fn=save_fn, logger=logger,
+            update_per_step=args.update_per_step, test_in_train=False)
+        pprint.pprint(result)
 
     # Let's watch its performance!
     policy.eval()

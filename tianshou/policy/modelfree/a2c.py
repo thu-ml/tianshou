@@ -14,8 +14,7 @@ class A2CPolicy(PGPolicy):
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.nn.Module critic: the critic network. (s -> V(s))
-    :param torch.optim.Optimizer optim: the optimizer for actor and critic
-        network.
+    :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
     :type dist_fn: Type[torch.distributions.Distribution]
     :param float discount_factor: in [0, 1]. Default to 0.99.
@@ -72,6 +71,13 @@ class A2CPolicy(PGPolicy):
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
     ) -> Batch:
+        batch = self._compute_returns(batch, buffer, indice)
+        batch.act = to_torch_as(batch.act, batch.v_s)
+        return batch
+
+    def _compute_returns(
+        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> Batch:
         v_s, v_s_ = [], []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
@@ -96,7 +102,6 @@ class A2CPolicy(PGPolicy):
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
-        batch.act = to_torch_as(batch.act, batch.v_s)
         batch.returns = to_torch_as(batch.returns, batch.v_s)
         batch.adv = to_torch_as(advantages, batch.v_s)
         return batch
@@ -120,7 +125,7 @@ class A2CPolicy(PGPolicy):
                     - self._weight_ent * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
-                if self._grad_norm is not None:  # clip large gradient
+                if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
                         list(self.actor.parameters()) + list(self.critic.parameters()),
                         max_norm=self._grad_norm)
