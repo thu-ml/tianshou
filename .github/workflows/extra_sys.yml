@@ -23,6 +23,5 @@ jobs:
       run: |
         python -m pip install ".[dev]" --upgrade
     - name: Test with pytest
-      # ignore test/throughput and test/discrete
       run: |
-        pytest test --ignore-glob="*throughput*" --ignore-glob="*discrete*" --cov=tianshou --cov-report=xml --durations=0 -v
+        pytest test/base test/continuous --cov=tianshou --cov-report=xml --durations=0 -v
