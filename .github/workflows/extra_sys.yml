@@ -24,4 +24,4 @@ jobs:
         python -m pip install ".[dev]" --upgrade
     - name: Test with pytest
       run: |
-        pytest test/base test/continuous --cov=tianshou --cov-report=xml --durations=0 -v
+        pytest test/base test/continuous --ignore-glob "*env.py" --cov=tianshou --durations=0 -v
