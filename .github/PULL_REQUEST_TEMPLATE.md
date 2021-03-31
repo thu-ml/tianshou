@@ -11,6 +11,6 @@ Less important but also useful:
 - [ ] I have searched through the [issue tracker](https://github.com/thu-ml/tianshou/issues) for duplicates
 - [ ] I have mentioned version numbers, operating system and environment, where applicable:
   ```python
-  import tianshou, torch, sys
-  print(tianshou.__version__, torch.__version__, sys.version, sys.platform)
+  import tianshou, torch, numpy, sys
+  print(tianshou.__version__, torch.__version__, numpy.__version__, sys.version, sys.platform)
   ```
