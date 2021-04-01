@@ -37,7 +37,7 @@ class SACPolicy(DDPGPolicy):
     :param bool action_scaling: whether to map actions from range [-1, 1] to range
         [action_spaces.low, action_spaces.high]. Default to True.
     :param str action_bound_method: method to bound action to range [-1, 1], can be
-        either "clip" (for simply clipping the action), or empty string for no bounding.
+        either "clip" (for simply clipping the action) or empty string for no bounding.
         Default to "tanh".
     :param Optional[gym.Space] action_space: env's action space, mandatory if you want
         to use option "action_scaling" or "action_bound_method". Default to None.
@@ -130,7 +130,8 @@ class SACPolicy(DDPGPolicy):
         log_prob = log_prob - torch.log(
             action_scale * (1 - squashed_action.pow(2)) + self.__eps
         ).sum(-1, keepdim=True)
-        return Batch(logits=logits, act=squashed_action, state=h, dist=dist, log_prob=log_prob)
+        return Batch(logits=logits, act=squashed_action,
+                     state=h, dist=dist, log_prob=log_prob)
 
     def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs: s_{t+n}
