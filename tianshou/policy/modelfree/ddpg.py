@@ -27,8 +27,8 @@ class DDPGPolicy(BasePolicy):
     :param bool action_scaling: whether to map actions from range [-1, 1] to range
         [action_spaces.low, action_spaces.high]. Default to True.
     :param str action_bound_method: method to bound action to range [-1, 1], can be
-        either "clip" (for simply clipping the action), "tanh" (for applying tanh
-        squashing) for now, or empty string for no bounding. Default to "clip".
+        either "clip" (for simply clipping the action), or empty string for no bounding.
+        Default to "tanh".
     :param Optional[gym.Space] action_space: env's action space, mandatory if you want
         to use option "action_scaling" or "action_bound_method". Default to None.
 
@@ -55,6 +55,9 @@ class DDPGPolicy(BasePolicy):
     ) -> None:
         super().__init__(action_scaling=action_scaling,
                          action_bound_method=action_bound_method, **kwargs)
+        assert action_bound_method != "tanh", "tanh mapping is not supported" \
+            "in policies where action is used as input of critic , because" \
+             "raw action in range (-inf, inf) will cause instability in training"
         if actor is not None and actor_optim is not None:
             self.actor: torch.nn.Module = actor
             self.actor_old = deepcopy(actor)

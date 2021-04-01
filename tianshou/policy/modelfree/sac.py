@@ -37,8 +37,8 @@ class SACPolicy(DDPGPolicy):
     :param bool action_scaling: whether to map actions from range [-1, 1] to range
         [action_spaces.low, action_spaces.high]. Default to True.
     :param str action_bound_method: method to bound action to range [-1, 1], can be
-        either "clip" (for simply clipping the action), "tanh" (for applying tanh
-        squashing) for now, or empty string for no bounding. Default to "tanh".
+        either "clip" (for simply clipping the action), or empty string for no bounding.
+        Default to "tanh".
     :param Optional[gym.Space] action_space: env's action space, mandatory if you want
         to use option "action_scaling" or "action_bound_method". Default to None.
 
@@ -63,13 +63,11 @@ class SACPolicy(DDPGPolicy):
         estimation_step: int = 1,
         exploration_noise: Optional[BaseNoise] = None,
         deterministic_eval: bool = True,
-        action_bound_method: str = "tanh",
         **kwargs: Any,
     ) -> None:
         super().__init__(
             None, None, None, None, tau, gamma, exploration_noise,
-            reward_normalization, estimation_step,
-            action_bound_method=action_bound_method, **kwargs)
+            reward_normalization, estimation_step, **kwargs)
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
@@ -120,20 +118,19 @@ class SACPolicy(DDPGPolicy):
         else:
             act = dist.rsample()
         log_prob = dist.log_prob(act).unsqueeze(-1)
-        if self.action_bound_method == "tanh" and self.action_space is not None:
-            # apply correction for Tanh squashing when computing logprob from Gaussian
-            # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
-            # in appendix C to get some understanding of this equation.
-            if self.action_scaling:
-                action_scale = to_torch_as(
-                    (self.action_space.high - self.action_space.low) / 2.0, act)
-            else:
-                action_scale = 1.0  # type: ignore
-            squashed_action = torch.tanh(act)
-            log_prob = log_prob - torch.log(
-                action_scale * (1 - squashed_action.pow(2)) + self.__eps
-            ).sum(-1, keepdim=True)
-        return Batch(logits=logits, act=act, state=h, dist=dist, log_prob=log_prob)
+        # apply correction for Tanh squashing when computing logprob from Gaussian
+        # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
+        # in appendix C to get some understanding of this equation.
+        if self.action_scaling:
+            action_scale = to_torch_as(
+                (self.action_space.high - self.action_space.low) / 2.0, act)
+        else:
+            action_scale = 1.0  # type: ignore
+        squashed_action = torch.tanh(act)
+        log_prob = log_prob - torch.log(
+            action_scale * (1 - squashed_action.pow(2)) + self.__eps
+        ).sum(-1, keepdim=True)
+        return Batch(logits=logits, act=squashed_action, state=h, dist=dist, log_prob=log_prob)
 
     def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs: s_{t+n}
