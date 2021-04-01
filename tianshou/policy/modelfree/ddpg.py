@@ -55,9 +55,9 @@ class DDPGPolicy(BasePolicy):
     ) -> None:
         super().__init__(action_scaling=action_scaling,
                          action_bound_method=action_bound_method, **kwargs)
-        # assert action_bound_method != "tanh", "tanh mapping is not supported" \
-        #     "in policies where action is used as input of critic , because" \
-        #     "raw action in range (-inf, inf) will cause instability in training"
+        assert action_bound_method != "tanh", "tanh mapping is not supported" \
+            "in policies where action is used as input of critic , because" \
+            "raw action in range (-inf, inf) will cause instability in training"
         if actor is not None and actor_optim is not None:
             self.actor: torch.nn.Module = actor
             self.actor_old = deepcopy(actor)

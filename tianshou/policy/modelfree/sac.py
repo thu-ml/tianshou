@@ -63,13 +63,11 @@ class SACPolicy(DDPGPolicy):
         estimation_step: int = 1,
         exploration_noise: Optional[BaseNoise] = None,
         deterministic_eval: bool = True,
-        action_bound_method: str = "tanh",
         **kwargs: Any,
     ) -> None:
         super().__init__(
             None, None, None, None, tau, gamma, exploration_noise,
-            reward_normalization, estimation_step,
-            action_bound_method=action_bound_method, **kwargs)
+            reward_normalization, estimation_step, **kwargs)
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
