@@ -123,9 +123,9 @@ class SACPolicy(DDPGPolicy):
         # apply correction for Tanh squashing when computing logprob from Gaussian
         # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
         # in appendix C to get some understanding of this equation.
-        if self.action_scaling:
-            diff = self.action_space.high - self.action_space.low  # type: ignore
-            action_scale = to_torch_as(diff / 2.0, act)
+        if self.action_scaling and self.action_space is not None:
+            action_scale = to_torch_as(
+                (self.action_space.high - self.action_space.low) / 2.0, act)
         else:
             action_scale = 1.0  # type: ignore
         squashed_action = torch.tanh(act)
