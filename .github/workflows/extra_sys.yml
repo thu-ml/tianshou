@@ -4,10 +4,11 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     strategy:
       matrix:
+        os: [macos-latest, windows-latest]
         python-version: [3.6, 3.7, 3.8]
     steps:
     - uses: actions/checkout@v2
@@ -22,14 +23,5 @@ jobs:
       run: |
         python -m pip install ".[dev]" --upgrade
     - name: Test with pytest
-      # ignore test/throughput which only profiles the code
       run: |
-        pytest test --ignore-glob='*profile.py' --cov=tianshou --cov-report=xml --durations=0 -v
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
-      with:
-        token: ${{ secrets.CODECOV }}
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+        pytest test/base test/continuous --ignore-glob "*env.py" --cov=tianshou --durations=0 -v

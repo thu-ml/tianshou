@@ -1,3 +1,4 @@
+import sys
 import copy
 import torch
 import pickle
@@ -373,7 +374,10 @@ def test_batch_over_batch_to_torch():
     assert batch.a.dtype == torch.float64
     assert batch.b.c.dtype == torch.float32
     assert batch.b.d.dtype == torch.float64
-    assert batch.b.e.dtype == torch.int64
+    if sys.platform in ["win32", "cygwin"]:  # windows
+        assert batch.b.e.dtype == torch.int32
+    else:
+        assert batch.b.e.dtype == torch.int64
     batch.to_torch(dtype=torch.float32)
     assert batch.a.dtype == torch.float32
     assert batch.b.c.dtype == torch.float32
@@ -439,7 +443,10 @@ def test_utils_to_torch_numpy():
     assert to_numpy(to_numpy).item() == to_numpy
     # additional test for to_torch, for code-coverage
     assert isinstance(to_torch(1), torch.Tensor)
-    assert to_torch(1).dtype == torch.int64
+    if sys.platform in ["win32", "cygwin"]:  # windows
+        assert to_torch(1).dtype == torch.int32
+    else:
+        assert to_torch(1).dtype == torch.int64
     assert to_torch(1.).dtype == torch.float64
     assert isinstance(to_torch({'a': [1]})['a'], torch.Tensor)
     with pytest.raises(TypeError):

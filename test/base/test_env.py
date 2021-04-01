@@ -13,8 +13,8 @@ else:  # pytest
 
 def has_ray():
     try:
-        import ray
-        return hasattr(ray, 'init')  # avoid PEP8 F401 Error
+        import ray  # noqa: F401
+        return True
     except ImportError:
         return False
 
@@ -22,7 +22,7 @@ def has_ray():
 def recurse_comp(a, b):
     try:
         if isinstance(a, np.ndarray):
-            if a.dtype == np.object:
+            if a.dtype == object:
                 return np.array(
                     [recurse_comp(m, n) for m, n in zip(a, b)]).all()
             else:
