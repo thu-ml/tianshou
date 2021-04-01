@@ -20,12 +20,14 @@ def get_args():
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--actor-lr', type=float, default=3e-4)
+    parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--il-lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--tau', type=float, default=0.005)
     parser.add_argument('--alpha', type=float, default=0.2)
+    parser.add_argument('--auto-alpha', type=int, default=1)
+    parser.add_argument('--alpha-lr', type=float, default=3e-4)
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=24000)
     parser.add_argument('--il-step-per-epoch', type=int, default=500)
@@ -41,7 +43,7 @@ def get_args():
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument('--rew-norm', action="store_true", default=False)
-    parser.add_argument('--n-step', type=int, default=1)
+    parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -85,6 +87,13 @@ def test_sac_with_il(args=get_args()):
                  concat=True, device=args.device)
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+
+    if args.auto_alpha:
+        target_entropy = -np.prod(env.action_space.shape)
+        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
+        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
+        args.alpha = (target_entropy, log_alpha, alpha_optim)
+
     policy = SACPolicy(
         actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
         tau=args.tau, gamma=args.gamma, alpha=args.alpha,
@@ -138,8 +147,7 @@ def test_sac_with_il(args=get_args()):
     il_policy = ImitationPolicy(net, optim, mode='continuous')
     il_test_collector = Collector(
         il_policy,
-        DummyVectorEnv(
-            [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     )
     train_collector.reset()
     result = offpolicy_trainer(
@@ -147,6 +155,7 @@ def test_sac_with_il(args=get_args()):
         args.il_step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, stop_fn=stop_fn, save_fn=save_fn, logger=logger)
     assert stop_fn(result['best_reward'])
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!

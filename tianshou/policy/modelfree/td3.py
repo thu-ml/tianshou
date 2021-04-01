@@ -36,7 +36,7 @@ class TD3Policy(DDPGPolicy):
         [action_spaces.low, action_spaces.high]. Default to True.
     :param str action_bound_method: method to bound action to range [-1, 1], can be
         either "clip" (for simply clipping the action) or empty string for no bounding.
-        Default to "tanh".
+        Default to "clip".
     :param Optional[gym.Space] action_space: env's action space, mandatory if you want
         to use option "action_scaling" or "action_bound_method". Default to None.
 

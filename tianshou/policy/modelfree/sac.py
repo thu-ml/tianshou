@@ -63,11 +63,13 @@ class SACPolicy(DDPGPolicy):
         estimation_step: int = 1,
         exploration_noise: Optional[BaseNoise] = None,
         deterministic_eval: bool = True,
+        action_bound_method: str = "tanh",
         **kwargs: Any,
     ) -> None:
         super().__init__(
             None, None, None, None, tau, gamma, exploration_noise,
-            reward_normalization, estimation_step, **kwargs)
+            reward_normalization, estimation_step,
+            action_bound_method=action_bound_method, **kwargs)
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
@@ -122,8 +124,8 @@ class SACPolicy(DDPGPolicy):
         # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
         # in appendix C to get some understanding of this equation.
         if self.action_scaling:
-            action_scale = to_torch_as(
-                (self.action_space.high - self.action_space.low) / 2.0, act)
+            diff = self.action_space.high - self.action_space.low  # type: ignore
+            action_scale = to_torch_as(diff / 2.0, act)
         else:
             action_scale = 1.0  # type: ignore
         squashed_action = torch.tanh(act)
