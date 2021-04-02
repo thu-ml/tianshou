@@ -12,39 +12,44 @@ from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 class BasePolicy(ABC, nn.Module):
     """The base class for any RL policy.
 
-    Tianshou aims to modularizing RL algorithms. It comes into several classes
-    of policies in Tianshou. All of the policy classes must inherit
+    Tianshou aims to modularizing RL algorithms. It comes into several classes of
+    policies in Tianshou. All of the policy classes must inherit
     :class:`~tianshou.policy.BasePolicy`.
 
-    A policy class typically has four parts:
+    A policy class typically has the following parts:
 
-    * :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, \
-        including coping the target network and so on;
+    * :meth:`~tianshou.policy.BasePolicy.__init__`: initialize the policy, including \
+        coping the target network and so on;
     * :meth:`~tianshou.policy.BasePolicy.forward`: compute action with given \
         observation;
-    * :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from \
-        the replay buffer (this function can interact with replay buffer);
-    * :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given \
-        batch of data.
+    * :meth:`~tianshou.policy.BasePolicy.process_fn`: pre-process data from the \
+        replay buffer (this function can interact with replay buffer);
+    * :meth:`~tianshou.policy.BasePolicy.learn`: update policy with a given batch of \
+        data.
+    * :meth:`~tianshou.policy.BasePolicy.post_process_fn`: update the replay buffer \
+        from the learning process (e.g., prioritized replay buffer needs to update \
+        the weight);
+    * :meth:`~tianshou.policy.BasePolicy.update`: the main interface for training, \
+        i.e., `process_fn -> learn -> post_process_fn`.
 
     Most of the policy needs a neural network to predict the action and an
     optimizer to optimize the policy. The rules of self-defined networks are:
 
-    1. Input: observation "obs" (may be a ``numpy.ndarray``, a \
-    ``torch.Tensor``, a dict or any others), hidden state "state" (for RNN \
-    usage), and other information "info" provided by the environment.
-    2. Output: some "logits", the next hidden state "state", and the \
-    intermediate result during policy forwarding procedure "policy". The \
-    "logits" could be a tuple instead of a ``torch.Tensor``. It depends on how\
-    the policy process the network output. For example, in PPO, the return of \
-    the network might be ``(mu, sigma), state`` for Gaussian policy. The \
-    "policy" can be a Batch of torch.Tensor or other things, which will be \
-    stored in the replay buffer, and can be accessed in the policy update \
-    process (e.g. in "policy.learn()", the "batch.policy" is what you need).
+    1. Input: observation "obs" (may be a ``numpy.ndarray``, a ``torch.Tensor``, a \
+    dict or any others), hidden state "state" (for RNN usage), and other information \
+    "info" provided by the environment.
+    2. Output: some "logits", the next hidden state "state", and the intermediate \
+    result during policy forwarding procedure "policy". The "logits" could be a tuple \
+    instead of a ``torch.Tensor``. It depends on how the policy process the network \
+    output. For example, in PPO, the return of the network might be \
+    ``(mu, sigma), state`` for Gaussian policy. The "policy" can be a Batch of \
+    torch.Tensor or other things, which will be stored in the replay buffer, and can \
+    be accessed in the policy update process (e.g. in "policy.learn()", the \
+    "batch.policy" is what you need).
 
-    Since :class:`~tianshou.policy.BasePolicy` inherits ``torch.nn.Module``,
-    you can use :class:`~tianshou.policy.BasePolicy` almost the same as
-    ``torch.nn.Module``, for instance, loading and saving the model:
+    Since :class:`~tianshou.policy.BasePolicy` inherits ``torch.nn.Module``, you can
+    use :class:`~tianshou.policy.BasePolicy` almost the same as ``torch.nn.Module``,
+    for instance, loading and saving the model:
     ::
 
         torch.save(policy.state_dict(), "policy.pth")
@@ -117,6 +122,15 @@ class BasePolicy(ABC, nn.Module):
             return Batch(..., policy=Batch(log_prob=dist.log_prob(act)))
             # and in the sampled data batch, you can directly use
             # batch.policy.log_prob to get your data.
+
+        .. note::
+
+            In continuous action space, you should do another step "map_action" to get
+            the real action:
+            ::
+
+                act = policy(batch).act  # doesn't map to the target action range
+                act = policy.map_action(act, batch)
         """
         pass
 
