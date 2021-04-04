@@ -12,7 +12,7 @@ from tianshou.policy.modelfree.sac import SACPolicy
 from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.policy.imitation.base import ImitationPolicy
 from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
-from tianshou.policy.modelbase.psrl import PSRLPolicy
+from tianshou.policy.modelbased.psrl import PSRLPolicy
 from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
 
 
