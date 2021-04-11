@@ -41,6 +41,13 @@ $ ./run_experiments.sh Ant-v3
 
 This will start 10 experiments with different seeds.
 
+Now that all the experiments are finished, we can convert all tfevent files into csv files and then try plotting the results.
+
+```bash
+$ python tools.py --root_dir="./results"
+$ python plotter.py --root_dir="./results" --shaded_std
+```
+
 #### Example benchmark
 
 <img src="./benchmark/Ant-v3/offpolicy.png" width="500" height="450">
