@@ -47,6 +47,8 @@ COLORS = ([
     '#D55E00',
     '#CC79A7',
     # '#F0E442',
+    '#4daf4a',  # GREEN
+    '#d73027',  # RED
     # built-in color
     'blue', 'red', 'pink', 'cyan', 'magenta', 'yellow', 'black', 'purple',
     'brown', 'orange', 'teal', 'lightblue', 'lime', 'lavender', 'turquoise',
@@ -54,9 +56,7 @@ COLORS = ([
     # personal color
     '#313695',  # DARK BLUE
     '#74add1',  # LIGHT BLUE
-    '#4daf4a',  # GREEN
     '#f46d43',  # ORANGE
-    '#d73027',  # RED
     '#984ea3',  # PURPLE
     '#f781bf',  # PINK
     '#ffc832',  # YELLOW
@@ -123,9 +123,9 @@ def plot_ax(
     ax.set_title(title)
     # add labels
     if xlabel is not None:
-        ax.xaxis.set_label(xlabel)
+        ax.set_xlabel(xlabel)
     if ylabel is not None:
-        ax.yaxis.set_label(ylabel)
+        ax.set_ylabel(ylabel)
 
 
 def plot_figure(
@@ -138,9 +138,9 @@ def plot_figure(
     title=None,
     **kwargs,
 ):
-    if group_pattern is None:
+    if not group_pattern:
         fig, ax = plt.subplots(figsize=(fig_length, fig_width))
-        plot_ax(ax, file_lists, **kwargs)
+        plot_ax(ax, file_lists, title=title, **kwargs)
     else:
         res = group_files(file_lists, group_pattern)
         row_n = int(np.ceil(len(res) / 3))

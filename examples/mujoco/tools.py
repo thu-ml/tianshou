@@ -6,7 +6,7 @@ import csv
 import tqdm
 import argparse
 import numpy as np
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union
 from tensorboard.backend.event_processing import event_accumulator
 
 
@@ -61,9 +61,8 @@ def convert_tfevents_to_csv(
 
 
 def merge_csv(
-    csv_files: List[List[Union[str, float]]],
+    csv_files: List[List[Union[str, int, float]]],
     root_dir: str,
-    timelimit: Optional[int] = None,
     remove_zero: bool = False,
 ) -> None:
     """Merge result in csv_files into a single csv file."""
@@ -79,8 +78,6 @@ def merge_csv(
     for rows in zip(*sorted_values):
         array = np.array(rows)
         assert len(set(array[:, 0])) == 1, (set(array[:, 0]), array[:, 0])
-        if timelimit and rows[0][0] > timelimit:
-            continue
         line = [rows[0][0], round(array[:, 1].mean(), 4), round(array[:, 1].std(), 4)]
         line += array[:, 1].tolist()
         content.append(line)
@@ -98,9 +95,6 @@ if __name__ == "__main__":
     parser.add_argument(
         '--remove-zero', action="store_true",
         help="Remove the data point of env_step == 0.")
-    parser.add_argument(
-        '--timelimit', type=int, default=None,
-        help="Grab all env_step smaller than this timelimit.")
     args = parser.parse_args()
     csv_files = convert_tfevents_to_csv(args.root_dir, args.refresh)
-    merge_csv(csv_files, args.root_dir, args.timelimit, args.remove_zero)
+    merge_csv(csv_files, args.root_dir, args.remove_zero)
