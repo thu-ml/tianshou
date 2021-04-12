@@ -36,7 +36,7 @@ $ tensorboard --logdir log
 You can also reproduce the benchmark (e.g. SAC in Ant-v3) with the example script we provide under `examples/mujoco/`:
 
 ```bash
-$ ./run_experiments.sh Ant-v3
+$ ./run_experiments.sh Ant-v3 sac
 ```
 
 This will start 10 experiments with different seeds.
@@ -44,8 +44,8 @@ This will start 10 experiments with different seeds.
 Now that all the experiments are finished, we can convert all tfevent files into csv files and then try plotting the results.
 
 ```bash
-$ python tools.py --root_dir="./results"
-$ python plotter.py --root_dir="./results" --shaded_std
+$ ./tools.py --root-dir ./results/Ant-v3/sac
+$ ./plotter.py --root-dir ./results/Ant-v3 --shaded-std --legend-pattern "\\w+"
 ```
 
 #### Example benchmark
