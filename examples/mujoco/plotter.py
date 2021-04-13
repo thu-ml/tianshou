@@ -47,7 +47,6 @@ COLORS = ([
     '#D55E00',
     '#CC79A7',
     # '#F0E442',
-    '#4daf4a',  # GREEN
     '#d73027',  # RED
     # built-in color
     'blue', 'red', 'pink', 'cyan', 'magenta', 'yellow', 'black', 'purple',
@@ -57,6 +56,7 @@ COLORS = ([
     '#313695',  # DARK BLUE
     '#74add1',  # LIGHT BLUE
     '#f46d43',  # ORANGE
+    '#4daf4a',  # GREEN
     '#984ea3',  # PURPLE
     '#f781bf',  # PINK
     '#ffc832',  # YELLOW
@@ -97,6 +97,8 @@ def plot_ax(
     legend_outside=False,
 ):
     def legend_fn(x):
+        # return os.path.split(os.path.join(
+        #     args.root_dir, x))[0].replace('/', '_') + " (10)"
         return re.search(legend_pattern, x).group(0)
 
     legneds = map(legend_fn, file_lists)
@@ -118,7 +120,7 @@ def plot_ax(
               bbox_to_anchor=(1, 1) if legend_outside else None)
     ax.xaxis.set_major_formatter(mticker.EngFormatter())
     if xlim is not None:
-        ax.xlim((0, xlim))
+        ax.set_xlim(xmin=0, xmax=xlim)
     # add title
     ax.set_title(title)
     # add labels
@@ -201,8 +203,8 @@ if __name__ == "__main__":
     parser.add_argument('--show', action='store_true', help='show figure')
     parser.add_argument('--output-path', type=str,
                         help='figure save path', default="./figure.png")
-    parser.add_argument('--dpi', type=int, default=400,
-                        help='figure dpi (default: 400)')
+    parser.add_argument('--dpi', type=int, default=200,
+                        help='figure dpi (default: 200)')
     args = parser.parse_args()
     file_lists = find_all_files(args.root_dir, re.compile(args.file_pattern))
     file_lists = [os.path.relpath(f, args.root_dir) for f in file_lists]
@@ -220,6 +222,7 @@ if __name__ == "__main__":
         ylabel=args.ylabel,
         xkey=args.xkey,
         ykey=args.ykey,
+        xlim=args.xlim,
         sharex=args.sharex,
         sharey=args.sharey,
         smooth_radius=args.smooth,
