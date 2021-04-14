@@ -26,12 +26,12 @@ def get_args():
     parser.add_argument('--task', type=str, default='HalfCheetah-v3')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=4096)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--lr', type=float, default=7e-4)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])#baselines 32 32
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=30000)
-    parser.add_argument('--step-per-collect', type=int, default=80)
+    parser.add_argument('--step-per-collect', type=int, default=1024)#baselines 1024 trpo15000 acktr 80
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     # batch-size >> step-per-collect means caculating all data in one singe forward.
     parser.add_argument('--batch-size', type=int, default=99999)
@@ -39,12 +39,17 @@ def get_args():
     parser.add_argument('--test-num', type=int, default=10)
     # trpo special
     parser.add_argument('--rew-norm', type=int, default=True)
-    parser.add_argument('--gae-lambda', type=float, default=0.95)
+    parser.add_argument('--gae-lambda', type=float, default=0.98)#trpo097 spinn095 acktr095
     # TODO tanh support
     parser.add_argument('--bound-action-method', type=str, default="clip")
     parser.add_argument('--lr-decay', type=int, default=False)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument('--norm-adv', type=int, default=1)
+    parser.add_argument('--optim-critic-iters', type=int, default=5)
+    parser.add_argument('--max-kl', type=float, default=0.01)
+    parser.add_argument('--backtrack-coeff', type=float, default=0.8)
+    parser.add_argument('--max-backtracks', type=int, default=10)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
