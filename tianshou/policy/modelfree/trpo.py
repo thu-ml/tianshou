@@ -41,6 +41,9 @@ class TRPOPolicy(A2CPolicy):
         dist_fn: Type[torch.distributions.Distribution],
         advantage_normalization: bool = True,
         optim_critic_iters: int = 3,
+        max_kl: float = 0.01,
+        backtrack_coeff: float = 0.8,
+        max_backtracks: int = 10,
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, critic, optim, dist_fn, **kwargs)
@@ -49,10 +52,10 @@ class TRPOPolicy(A2CPolicy):
         del self._grad_norm
         self._norm_adv = advantage_normalization
         self._optim_critic_iters = optim_critic_iters
+        self._max_backtracks = max_backtracks
+        self._delta = max_kl
+        self._backtrack_coeff = backtrack_coeff  #trpo 0.5
         self.__damping = 0.1
-        self._max_backtracks = 10
-        self._delta = 0.01
-        self._backtrack_coeff = 0.5  #spinningup0.8
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
@@ -64,6 +67,8 @@ class TRPOPolicy(A2CPolicy):
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
                 old_log_prob.append(self(b).dist.log_prob(b.act))
         batch.logp_old = torch.cat(old_log_prob, dim=0)
+        if self._norm_adv:
+            batch.adv = (batch.adv - batch.adv.mean()) / batch.adv.std()
         return batch
 
     def learn(  # type: ignore
