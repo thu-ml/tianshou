@@ -31,8 +31,23 @@ def conjugate_gradients(A, b, nsteps=10, residual_tol=1e-10):
             return x
     return x
 
+
+def get_flat_grad(y, model, **kwargs):
+    grads = torch.autograd.grad(y, model.parameters(), **kwargs)
+    return  torch.cat([grad.reshape(-1) for grad in grads])
+
+
+def set_from_flat_params(model, flat_params):
+    prev_ind = 0
+    for param in model.parameters():
+        flat_size = int(np.prod(list(param.size())))
+        param.data.copy_(
+            flat_params[prev_ind: prev_ind + flat_size].view(param.size()))
+        prev_ind += flat_size
+    return model
+
+
 class TRPOPolicy(A2CPolicy):
-    # https://towardsdatascience.com/introducing-k-fac-and-its-application-for-large-scale-deep-learning-4e3f9b443414
     def __init__(
         self,
         actor: torch.nn.Module,
@@ -83,26 +98,23 @@ class TRPOPolicy(A2CPolicy):
                 ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 actor_loss = - (ratio * b.adv).mean()
-                with torch.no_grad():
-                    grads = torch.autograd.grad(actor_loss, self.actor.parameters(), retain_graph=True)
-                    flattened_grads = torch.cat([grad.view(-1) for grad in grads]).data
+                flat_grads = get_flat_grad(actor_loss, self.actor, retain_graph=True).detach()
 
                 # direction: calculate natural gradient
                 # calculate kl divergence
                 with torch.no_grad():
                     old_dist = self(b).dist
-                kl = kl_divergence(old_dist, dist).mean()
-                kl_grads = torch.autograd.grad(kl, self.actor.parameters(), create_graph=True)
-                flattened_kl_grad = torch.cat([kl_grad.view(-1) for kl_grad in kl_grads])
-                def MVP(v):
-                    # matrix vector product
+                def MVP(v): # matrix vector product
+                    if not hasattr(MVP, "flat_kl_grad"):
+                        # caculate first order gradient of kl with respect to theta, only need once
+                        kl = kl_divergence(old_dist, dist).mean()
+                        MVP.flat_kl_grad = get_flat_grad(kl, self.actor, create_graph=True)
                     # caculate second order gradient of kl with respect to theta
-                    kl_v = (flattened_kl_grad * v).sum() # why variable
-                    kl_grads2 = torch.autograd.grad(kl_v, self.actor.parameters(), retain_graph=True)
-                    flat_grad_grad_kl = torch.cat([kl_grad.contiguous().view(-1) for kl_grad in kl_grads2]).data
-                    return flat_grad_grad_kl + v * self.__damping
+                    kl_v = (MVP.flat_kl_grad * v).sum() # why variable
+                    flat_kl_grad_grad = get_flat_grad(kl_v, self.actor, retain_graph=True).detach()
+                    return flat_kl_grad_grad + v * self.__damping
 
-                search_direction = - conjugate_gradients(MVP, flattened_grads, nsteps=10)
+                search_direction = - conjugate_gradients(MVP, flat_grads, nsteps=10)
 
                 # stepsize: calculate max stepsize constrained by kl bound
                 step_size = torch.sqrt(
@@ -110,15 +122,10 @@ class TRPOPolicy(A2CPolicy):
 
                 # stepsize: linesearch stepsize
                 with torch.no_grad():
-                    flattened_params = torch.cat([param.data.view(-1) for param in self.actor.parameters()])
+                    flat_params = torch.cat([param.data.view(-1) for param in self.actor.parameters()])
                     for i in range(self._max_backtracks):
-                        new_flattened_params = flattened_params + step_size * search_direction
-                        prev_ind = 0
-                        for param in self.actor.parameters():
-                            flat_size = int(np.prod(list(param.size())))
-                            param.data.copy_(
-                                new_flattened_params[prev_ind: prev_ind + flat_size].view(param.size()))
-                            prev_ind += flat_size
+                        new_flat_params = flat_params + step_size * search_direction
+                        set_from_flat_params(self.actor, new_flat_params)
                         # calculate kl and if in bound, loss actually down
                         new_dist = self(b).dist
                         new_dratio = (new_dist.log_prob(b.act) - b.logp_old).exp().float()
@@ -133,14 +140,9 @@ class TRPOPolicy(A2CPolicy):
                         elif i < self._max_backtracks - 1:
                             step_size = step_size * self._backtrack_coeff
                         else:
-                            print('Line search failed! Keeping old params.')
+                            set_from_flat_params(self.actor, new_flat_params)
                             step_size = 0
-                            prev_ind = 0
-                            for param in self.actor.parameters():
-                                flat_size = int(np.prod(list(param.size())))
-                                param.data.copy_(
-                                    flattened_params[prev_ind: prev_ind + flat_size].view(param.size()))
-                                prev_ind += flat_size
+                            print('Line search failed! Keeping old params.')
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):

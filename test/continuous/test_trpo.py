@@ -29,8 +29,8 @@ def get_args():
     parser.add_argument('--step-per-collect', type=int, default=1024)
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=99999)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[32, 32])
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[16, 16])
+    parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -38,7 +38,7 @@ def get_args():
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
     # trpo special
-    parser.add_argument('--gae-lambda', type=float, default=0.98)
+    parser.add_argument('--gae-lambda', type=float, default=0.95)
     parser.add_argument('--rew-norm', type=int, default=1)
     parser.add_argument('--norm-adv', type=int, default=1)
     parser.add_argument('--optim-critic-iters', type=int, default=5)
