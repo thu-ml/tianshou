@@ -9,6 +9,7 @@ from torch.distributions import kl_divergence
 from tianshou.policy import A2CPolicy
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
+
 def conjugate_gradients(A, b, nsteps=10, residual_tol=1e-10):
     x = torch.zeros_like(b)
     r = b.clone()
@@ -34,7 +35,7 @@ def conjugate_gradients(A, b, nsteps=10, residual_tol=1e-10):
 
 def get_flat_grad(y, model, **kwargs):
     grads = torch.autograd.grad(y, model.parameters(), **kwargs)
-    return  torch.cat([grad.reshape(-1) for grad in grads])
+    return torch.cat([grad.reshape(-1) for grad in grads])
 
 
 def set_from_flat_params(model, flat_params):
@@ -69,7 +70,7 @@ class TRPOPolicy(A2CPolicy):
         self._optim_critic_iters = optim_critic_iters
         self._max_backtracks = max_backtracks
         self._delta = max_kl
-        self._backtrack_coeff = backtrack_coeff  #trpo 0.5
+        self._backtrack_coeff = backtrack_coeff  # trpo 0.5
         self.__damping = 0.1
 
     def process_fn(
@@ -94,24 +95,28 @@ class TRPOPolicy(A2CPolicy):
             for b in batch.split(batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
-                dist = self(b).dist # TODO could come from batch
+                dist = self(b).dist  # TODO could come from batch
                 ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 actor_loss = - (ratio * b.adv).mean()
-                flat_grads = get_flat_grad(actor_loss, self.actor, retain_graph=True).detach()
+                flat_grads = get_flat_grad(
+                    actor_loss, self.actor, retain_graph=True).detach()
 
                 # direction: calculate natural gradient
                 # calculate kl divergence
                 with torch.no_grad():
                     old_dist = self(b).dist
-                def MVP(v): # matrix vector product
+
+                def MVP(v):  # matrix vector product
                     if not hasattr(MVP, "flat_kl_grad"):
                         # caculate first order gradient of kl with respect to theta, only need once
                         kl = kl_divergence(old_dist, dist).mean()
-                        MVP.flat_kl_grad = get_flat_grad(kl, self.actor, create_graph=True)
+                        MVP.flat_kl_grad = get_flat_grad(
+                            kl, self.actor, create_graph=True)
                     # caculate second order gradient of kl with respect to theta
-                    kl_v = (MVP.flat_kl_grad * v).sum() # why variable
-                    flat_kl_grad_grad = get_flat_grad(kl_v, self.actor, retain_graph=True).detach()
+                    kl_v = (MVP.flat_kl_grad * v).sum()  # why variable
+                    flat_kl_grad_grad = get_flat_grad(
+                        kl_v, self.actor, retain_graph=True).detach()
                     return flat_kl_grad_grad + v * self.__damping
 
                 search_direction = - conjugate_gradients(MVP, flat_grads, nsteps=10)
@@ -122,20 +127,23 @@ class TRPOPolicy(A2CPolicy):
 
                 # stepsize: linesearch stepsize
                 with torch.no_grad():
-                    flat_params = torch.cat([param.data.view(-1) for param in self.actor.parameters()])
+                    flat_params = torch.cat([param.data.view(-1)
+                                             for param in self.actor.parameters()])
                     for i in range(self._max_backtracks):
                         new_flat_params = flat_params + step_size * search_direction
                         set_from_flat_params(self.actor, new_flat_params)
                         # calculate kl and if in bound, loss actually down
                         new_dist = self(b).dist
-                        new_dratio = (new_dist.log_prob(b.act) - b.logp_old).exp().float()
-                        new_dratio = new_dratio.reshape(new_dratio.size(0), -1).transpose(0, 1)
+                        new_dratio = (new_dist.log_prob(b.act) -
+                                      b.logp_old).exp().float()
+                        new_dratio = new_dratio.reshape(
+                            new_dratio.size(0), -1).transpose(0, 1)
                         new_actor_loss = - (new_dratio * b.adv).mean()
                         kl = kl_divergence(old_dist, new_dist).mean()
 
-                        if  kl < 1.5 * self._delta and new_actor_loss < actor_loss:
-                            if i!=0:
-                                print('Accepting new params at step %d of line search.'%i)
+                        if kl < 1.5 * self._delta and new_actor_loss < actor_loss:
+                            if i != 0:
+                                print('Accepting new params at step %d of line search.' % i)
                             break
                         elif i < self._max_backtracks - 1:
                             step_size = step_size * self._backtrack_coeff
