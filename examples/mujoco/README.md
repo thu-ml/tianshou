@@ -36,7 +36,7 @@ $ tensorboard --logdir log
 You can also reproduce the benchmark (e.g. SAC in Ant-v3) with the example script we provide under `examples/mujoco/`:
 
 ```bash
-$ ./run_experiments.sh Ant-v3
+$ ./run_experiments.sh Ant-v3 sac
 ```
 
 This will start 10 experiments with different seeds.
@@ -44,8 +44,8 @@ This will start 10 experiments with different seeds.
 Now that all the experiments are finished, we can convert all tfevent files into csv files and then try plotting the results.
 
 ```bash
-$ python tools.py --root_dir="./results"
-$ python plotter.py --root_dir="./results" --shaded_std
+$ ./tools.py --root-dir ./results/Ant-v3/sac
+$ ./plotter.py --root-dir ./results/Ant-v3 --shaded-std --legend-pattern "\\w+"
 ```
 
 #### Example benchmark
@@ -243,7 +243,7 @@ Other graphs can be found under `/examples/mujuco/benchmark/`
 
 <a name="footnote1">[1]</a>  Supported environments include HalfCheetah-v3, Hopper-v3, Swimmer-v3, Walker2d-v3, Ant-v3, Humanoid-v3, Reacher-v2, InvertedPendulum-v2 and InvertedDoublePendulum-v2. Pusher, Thrower, Striker and HumanoidStandup are not supported because they are not commonly seen in literatures.
 
-<a name="footnote2">[2]</a>  Pretrained agents, detailed graphs (single agent, single game) and log details can all be found [here](https://cloud.tsinghua.edu.cn/d/356e0f5d1e66426b9828/).
+<a name="footnote2">[2]</a>  Pretrained agents, detailed graphs (single agent, single game) and log details can all be found [here](https://cloud.tsinghua.edu.cn/d/f45fcfc5016043bc8fbc/).
 
 <a name="footnote3">[3]</a>  We used the latest version of all mujoco environments in gym (0.17.3 with mujoco==2.0.2.13), but it's not often the case with other benchmarks. Please check for details yourself in the original paper. (Different version's outcomes are usually similar, though)
 
