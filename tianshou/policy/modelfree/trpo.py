@@ -152,15 +152,12 @@ class TRPOPolicy(A2CPolicy):
                         kl = kl_divergence(old_dist, new_dist).mean()
 
                         if kl < 1.5 * self._delta and new_actor_loss < actor_loss:
-                            if i != 0:
-                                print(f"Accept new params at step {i} of line search.")
                             break
                         elif i < self._max_backtracks - 1:
                             step_size = step_size * self._backtrack_coeff
                         else:
                             _set_from_flat_params(self.actor, new_flat_params)
-                            step_size = 0  # type: ignore
-                            print("Line search failed! Keeping old params.")
+                            step_size = torch.tensor([0.0])
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):
