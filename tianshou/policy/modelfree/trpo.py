@@ -2,53 +2,68 @@ import torch
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
-from typing import Any, Dict, List, Type, Optional
 from torch.distributions import kl_divergence
+from typing import Any, Dict, List, Type, Callable
 
 
 from tianshou.policy import A2CPolicy
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import Batch, ReplayBuffer
 
 
-def conjugate_gradients(A, b, nsteps=10, residual_tol=1e-10):
+def _conjugate_gradients(
+    Avp: Callable[[torch.Tensor], torch.Tensor],
+    b: torch.Tensor,
+    nsteps: int = 10,
+    residual_tol: float = 1e-10
+) -> torch.Tensor:
     x = torch.zeros_like(b)
-    r = b.clone()
-    p = b.clone()
-    # Note: should be 'b - A(x)', but for x=0, A(x)=0. Change if doing warm start.
-    # r = b - A(x)
-    # p = r
-    rdotr = torch.dot(r, r)
+    r, p = b.clone(), b.clone()
+    # Note: should be 'r, p = b - A(x)', but for x=0, A(x)=0.
+    # Change if doing warm start.
+    rdotr = r.dot(r)
     for i in range(nsteps):
-        z = A(p)
-        alpha = rdotr / torch.dot(p, z)
+        z = Avp(p)
+        alpha = rdotr / p.dot(z)
         x += alpha * p
         r -= alpha * z
-        new_rdotr = torch.dot(r, r)
-        betta = new_rdotr / rdotr
-        p = r + betta * p
+        new_rdotr = r.dot(r)
+        if new_rdotr < residual_tol:
+            break
+        p = r + new_rdotr / rdotr * p
         rdotr = new_rdotr
-        if rdotr < residual_tol:
-            print("Early solving cg at {} step".format(i))
-            return x
     return x
 
 
-def get_flat_grad(y, model, **kwargs):
-    grads = torch.autograd.grad(y, model.parameters(), **kwargs)
+def _get_flat_grad(y: torch.Tensor, model: nn.Module, **kwargs: Any) -> torch.Tensor:
+    grads = torch.autograd.grad(y, model.parameters(), **kwargs)  # type: ignore
     return torch.cat([grad.reshape(-1) for grad in grads])
 
 
-def set_from_flat_params(model, flat_params):
+def _set_from_flat_params(model: nn.Module, flat_params: torch.Tensor) -> nn.Module:
     prev_ind = 0
     for param in model.parameters():
         flat_size = int(np.prod(list(param.size())))
         param.data.copy_(
-            flat_params[prev_ind: prev_ind + flat_size].view(param.size()))
+            flat_params[prev_ind:prev_ind + flat_size].view(param.size()))
         prev_ind += flat_size
     return model
 
 
 class TRPOPolicy(A2CPolicy):
+    """Implementation of Trust Region Policy Optimization. arXiv:1502.05477.
+
+    :param torch.nn.Module actor: the actor network following the rules in
+        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
+    :param torch.nn.Module critic: the critic network. (s -> V(s))
+    :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
+    :param dist_fn: distribution class for computing the action.
+    :type dist_fn: Type[torch.distributions.Distribution]
+    :param bool advantage_normalization: whether to do per mini-batch advantage
+        normalization. Default to True.
+
+    TODO: doc
+    """
+
     def __init__(
         self,
         actor: torch.nn.Module,
@@ -63,21 +78,18 @@ class TRPOPolicy(A2CPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, critic, optim, dist_fn, **kwargs)
-        del self._weight_vf
-        del self._weight_ent
-        del self._grad_norm
+        del self._weight_vf, self._weight_ent, self._grad_norm
         self._norm_adv = advantage_normalization
         self._optim_critic_iters = optim_critic_iters
         self._max_backtracks = max_backtracks
         self._delta = max_kl
-        self._backtrack_coeff = backtrack_coeff  # trpo 0.5
+        self._backtrack_coeff = backtrack_coeff
         self.__damping = 0.1
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
     ) -> Batch:
-        batch = self._compute_returns(batch, buffer, indice)
-        batch.act = to_torch_as(batch.act, batch.v_s)
+        batch = super().process_fn(batch, buffer, indice)
         old_log_prob = []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):
@@ -98,32 +110,30 @@ class TRPOPolicy(A2CPolicy):
                 dist = self(b).dist  # TODO could come from batch
                 ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
-                actor_loss = - (ratio * b.adv).mean()
-                flat_grads = get_flat_grad(
+                actor_loss = -(ratio * b.adv).mean()
+                flat_grads = _get_flat_grad(
                     actor_loss, self.actor, retain_graph=True).detach()
 
                 # direction: calculate natural gradient
-                # calculate kl divergence
                 with torch.no_grad():
                     old_dist = self(b).dist
 
-                def MVP(v):  # matrix vector product
-                    if not hasattr(MVP, "flat_kl_grad"):
-                        # caculate first order gradient of kl with respect to theta, only need once
-                        kl = kl_divergence(old_dist, dist).mean()
-                        MVP.flat_kl_grad = get_flat_grad(
-                            kl, self.actor, create_graph=True)
+                kl = kl_divergence(old_dist, dist).mean()
+                # calculate first order gradient of kl with respect to theta
+                flat_kl_grad = _get_flat_grad(kl, self.actor, create_graph=True)
+
+                def MVP(v: torch.Tensor) -> torch.Tensor:  # matrix vector product
                     # caculate second order gradient of kl with respect to theta
-                    kl_v = (MVP.flat_kl_grad * v).sum()  # why variable
-                    flat_kl_grad_grad = get_flat_grad(
+                    kl_v = (flat_kl_grad * v).sum()
+                    flat_kl_grad_grad = _get_flat_grad(
                         kl_v, self.actor, retain_graph=True).detach()
                     return flat_kl_grad_grad + v * self.__damping
 
-                search_direction = - conjugate_gradients(MVP, flat_grads, nsteps=10)
+                search_direction = -_conjugate_gradients(MVP, flat_grads, nsteps=10)
 
                 # stepsize: calculate max stepsize constrained by kl bound
-                step_size = torch.sqrt(
-                    2 * self._delta / (search_direction * MVP(search_direction)).sum(0, keepdim=True))
+                step_size = torch.sqrt(2 * self._delta / (
+                    search_direction * MVP(search_direction)).sum(0, keepdim=True))
 
                 # stepsize: linesearch stepsize
                 with torch.no_grad():
@@ -131,11 +141,11 @@ class TRPOPolicy(A2CPolicy):
                                              for param in self.actor.parameters()])
                     for i in range(self._max_backtracks):
                         new_flat_params = flat_params + step_size * search_direction
-                        set_from_flat_params(self.actor, new_flat_params)
+                        _set_from_flat_params(self.actor, new_flat_params)
                         # calculate kl and if in bound, loss actually down
                         new_dist = self(b).dist
-                        new_dratio = (new_dist.log_prob(b.act) -
-                                      b.logp_old).exp().float()
+                        new_dratio = (
+                            new_dist.log_prob(b.act) - b.logp_old).exp().float()
                         new_dratio = new_dratio.reshape(
                             new_dratio.size(0), -1).transpose(0, 1)
                         new_actor_loss = - (new_dratio * b.adv).mean()
@@ -143,19 +153,18 @@ class TRPOPolicy(A2CPolicy):
 
                         if kl < 1.5 * self._delta and new_actor_loss < actor_loss:
                             if i != 0:
-                                print('Accepting new params at step %d of line search.' % i)
+                                print(f"Accept new params at step {i} of line search.")
                             break
                         elif i < self._max_backtracks - 1:
                             step_size = step_size * self._backtrack_coeff
                         else:
-                            set_from_flat_params(self.actor, new_flat_params)
-                            step_size = 0
-                            print('Line search failed! Keeping old params.')
+                            _set_from_flat_params(self.actor, new_flat_params)
+                            step_size = 0  # type: ignore
+                            print("Line search failed! Keeping old params.")
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):
-                    value = self.critic(b.obs).flatten()
-                    # TODO use gae or rtg?
+                    value = self.critic(b.obs).flatten()  # TODO use gae or rtg?
                     vf_loss = F.mse_loss(b.returns, value)
                     self.optim.zero_grad()
                     vf_loss.backward()
@@ -164,6 +173,7 @@ class TRPOPolicy(A2CPolicy):
                 actor_losses.append(actor_loss.item())
                 vf_losses.append(vf_loss.item())
                 step_sizes.append(step_size.item())
+
         # update learning rate if lr_scheduler is given
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()

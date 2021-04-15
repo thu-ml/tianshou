@@ -49,6 +49,7 @@ def get_args():
     args = parser.parse_known_args()[0]
     return args
 
+
 def test_trpo(args=get_args()):
     env = gym.make(args.task)
     if args.task == 'Pendulum-v0':
@@ -123,6 +124,7 @@ def test_trpo(args=get_args()):
         step_per_collect=args.step_per_collect, stop_fn=stop_fn, save_fn=save_fn,
         logger=logger)
     assert stop_fn(result['best_reward'])
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
