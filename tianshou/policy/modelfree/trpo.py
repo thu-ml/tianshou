@@ -1,4 +1,5 @@
 import torch
+import warnings
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
@@ -158,6 +159,8 @@ class TRPOPolicy(A2CPolicy):
                         else:
                             _set_from_flat_params(self.actor, new_flat_params)
                             step_size = torch.tensor([0.0])
+                            warnings.warn("Line search failed! It seems hyperparamters"
+                                          " are not well and need to be changed")
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):
