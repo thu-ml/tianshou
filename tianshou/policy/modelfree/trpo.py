@@ -148,7 +148,7 @@ class TRPOPolicy(A2CPolicy):
                             new_dist.log_prob(b.act) - b.logp_old).exp().float()
                         new_dratio = new_dratio.reshape(
                             new_dratio.size(0), -1).transpose(0, 1)
-                        new_actor_loss = - (new_dratio * b.adv).mean()
+                        new_actor_loss = -(new_dratio * b.adv).mean()
                         kl = kl_divergence(old_dist, new_dist).mean()
 
                         if kl < 1.5 * self._delta and new_actor_loss < actor_loss:
