@@ -61,8 +61,13 @@ class TRPOPolicy(A2CPolicy):
     :type dist_fn: Type[torch.distributions.Distribution]
     :param bool advantage_normalization: whether to do per mini-batch advantage
         normalization. Default to True.
-
-    TODO: doc
+    :param int optim_critic_iters: Number of times to optimize critic network per
+        update. Default to 5.
+    :param int max_kl: max kl-divergence used to constrain each actor network update.
+        Default to 0.01.
+    :param float backtrack_coeff: Coefficient to be multiplied by step size when 
+        constraints are not met. Default to 0.8.
+    :param int max_backtracks: Max number of backtracking times in linesearch. Default to 10.
     """
 
     def __init__(
@@ -72,7 +77,7 @@ class TRPOPolicy(A2CPolicy):
         optim: torch.optim.Optimizer,
         dist_fn: Type[torch.distributions.Distribution],
         advantage_normalization: bool = True,
-        optim_critic_iters: int = 3,
+        optim_critic_iters: int = 5,
         max_kl: float = 0.01,
         backtrack_coeff: float = 0.8,
         max_backtracks: int = 10,
@@ -85,6 +90,7 @@ class TRPOPolicy(A2CPolicy):
         self._max_backtracks = max_backtracks
         self._delta = max_kl
         self._backtrack_coeff = backtrack_coeff
+        # artifact that adjusts Hessian-vector product calculation for numerical stability
         self.__damping = 0.1
 
     def process_fn(
@@ -103,7 +109,7 @@ class TRPOPolicy(A2CPolicy):
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
-        actor_losses, vf_losses, step_sizes = [], [], []
+        actor_losses, vf_losses, step_sizes, kls = [], [], [], []
         for step in range(repeat):
             for b in batch.split(batch_size, merge_last=True):
                 # optimize actor
@@ -152,8 +158,9 @@ class TRPOPolicy(A2CPolicy):
                         new_actor_loss = -(new_dratio * b.adv).mean()
                         kl = kl_divergence(old_dist, new_dist).mean()
 
-                        # TODO: document 1.5 here
-                        if kl < 1.5 * self._delta and new_actor_loss < actor_loss:
+                        if kl < self._delta and new_actor_loss < actor_loss:
+                            if i > 0:
+                                print("Backtracking to step {}".format(i))
                             break
                         elif i < self._max_backtracks - 1:
                             step_size = step_size * self._backtrack_coeff
@@ -165,7 +172,7 @@ class TRPOPolicy(A2CPolicy):
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):
-                    value = self.critic(b.obs).flatten()  # TODO use gae or rtg?
+                    value = self.critic(b.obs).flatten()
                     vf_loss = F.mse_loss(b.returns, value)
                     self.optim.zero_grad()
                     vf_loss.backward()
@@ -174,6 +181,7 @@ class TRPOPolicy(A2CPolicy):
                 actor_losses.append(actor_loss.item())
                 vf_losses.append(vf_loss.item())
                 step_sizes.append(step_size.item())
+                kls.append(kl.item())
 
         # update learning rate if lr_scheduler is given
         if self.lr_scheduler is not None:
