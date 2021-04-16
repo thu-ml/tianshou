@@ -152,6 +152,7 @@ class TRPOPolicy(A2CPolicy):
                         new_actor_loss = -(new_dratio * b.adv).mean()
                         kl = kl_divergence(old_dist, new_dist).mean()
 
+                        # TODO: document 1.5 here
                         if kl < 1.5 * self._delta and new_actor_loss < actor_loss:
                             break
                         elif i < self._max_backtracks - 1:
@@ -160,7 +161,7 @@ class TRPOPolicy(A2CPolicy):
                             _set_from_flat_params(self.actor, new_flat_params)
                             step_size = torch.tensor([0.0])
                             warnings.warn("Line search failed! It seems hyperparamters"
-                                          " are not well and need to be changed")
+                                          " are not well and need to be changed.")
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):
