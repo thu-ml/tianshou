@@ -65,9 +65,27 @@ class TRPOPolicy(A2CPolicy):
         update. Default to 5.
     :param int max_kl: max kl-divergence used to constrain each actor network update.
         Default to 0.01.
-    :param float backtrack_coeff: Coefficient to be multiplied by step size when 
+    :param float backtrack_coeff: Coefficient to be multiplied by step size when
         constraints are not met. Default to 0.8.
-    :param int max_backtracks: Max number of backtracking times in linesearch. Default to 10.
+    :param int max_backtracks: Max number of backtracking times in linesearch. Default
+        to 10.
+    :param float gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+        Default to 0.95.
+    :param bool reward_normalization: normalize estimated values to have std close to
+        1. Default to False.
+    :param int max_batchsize: the maximum size of the batch when computing GAE,
+        depends on the size of available memory and the memory cost of the
+        model; should be as large as possible within the memory constraint.
+        Default to 256.
+    :param bool action_scaling: whether to map actions from range [-1, 1] to range
+        [action_spaces.low, action_spaces.high]. Default to True.
+    :param str action_bound_method: method to bound action to range [-1, 1], can be
+        either "clip" (for simply clipping the action), "tanh" (for applying tanh
+        squashing) for now, or empty string for no bounding. Default to "clip".
+    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
+        to use option "action_scaling" or "action_bound_method". Default to None.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
     """
 
     def __init__(
@@ -90,7 +108,7 @@ class TRPOPolicy(A2CPolicy):
         self._max_backtracks = max_backtracks
         self._delta = max_kl
         self._backtrack_coeff = backtrack_coeff
-        # artifact that adjusts Hessian-vector product calculation for numerical stability
+        # adjusts Hessian-vector product calculation for numerical stability
         self.__damping = 0.1
 
     def process_fn(
@@ -160,7 +178,8 @@ class TRPOPolicy(A2CPolicy):
 
                         if kl < self._delta and new_actor_loss < actor_loss:
                             if i > 0:
-                                print("Backtracking to step {}".format(i))
+                                warnings.warn(f"Backtracking to step {i}. "
+                                              "Hyperparamters aren't good enough.")
                             break
                         elif i < self._max_backtracks - 1:
                             step_size = step_size * self._backtrack_coeff
@@ -168,7 +187,7 @@ class TRPOPolicy(A2CPolicy):
                             _set_from_flat_params(self.actor, new_flat_params)
                             step_size = torch.tensor([0.0])
                             warnings.warn("Line search failed! It seems hyperparamters"
-                                          " are not well and need to be changed.")
+                                          " are poor and need to be changed.")
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):
@@ -190,5 +209,6 @@ class TRPOPolicy(A2CPolicy):
         return {
             "loss/actor": actor_losses,
             "loss/vf": vf_losses,
-            "loss/step_sizes": step_sizes,
+            "step_size": step_sizes,
+            "kl": kls,
         }
