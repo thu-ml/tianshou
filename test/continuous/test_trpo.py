@@ -4,57 +4,62 @@ import torch
 import pprint
 import argparse
 import numpy as np
+from torch import nn
 from torch.utils.tensorboard import SummaryWriter
+from torch.distributions import Independent, Normal
 
-from tianshou.policy import PPOPolicy
+from tianshou.policy import TRPOPolicy
 from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer-size', type=int, default=20000)
+    parser.add_argument('--task', type=str, default='Pendulum-v0')
+    parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--buffer-size', type=int, default=50000)
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--epoch', type=int, default=10)
+    parser.add_argument('--gamma', type=float, default=0.95)
+    parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=50000)
-    parser.add_argument('--episode-per-collect', type=int, default=20)
-    parser.add_argument('--repeat-per-collect', type=int, default=2)
-    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--step-per-collect', type=int, default=2048)
+    parser.add_argument('--repeat-per-collect', type=int,
+                        default=2)  # theoretically it should be 1
+    parser.add_argument('--batch-size', type=int, default=99999)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--training-num', type=int, default=20)
-    parser.add_argument('--test-num', type=int, default=100)
+    parser.add_argument('--training-num', type=int, default=16)
+    parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
-    # ppo special
-    parser.add_argument('--vf-coef', type=float, default=0.5)
-    parser.add_argument('--ent-coef', type=float, default=0.0)
-    parser.add_argument('--eps-clip', type=float, default=0.2)
-    parser.add_argument('--max-grad-norm', type=float, default=0.5)
+    # trpo special
     parser.add_argument('--gae-lambda', type=float, default=0.95)
     parser.add_argument('--rew-norm', type=int, default=1)
-    parser.add_argument('--dual-clip', type=float, default=None)
-    parser.add_argument('--value-clip', type=int, default=1)
+    parser.add_argument('--norm-adv', type=int, default=1)
+    parser.add_argument('--optim-critic-iters', type=int, default=5)
+    parser.add_argument('--max-kl', type=float, default=0.01)
+    parser.add_argument('--backtrack-coeff', type=float, default=0.8)
+    parser.add_argument('--max-backtracks', type=int, default=10)
+
     args = parser.parse_known_args()[0]
     return args
 
 
-def test_ppo(args=get_args()):
-    torch.set_num_threads(1)  # for poor CPU
+def test_trpo(args=get_args()):
     env = gym.make(args.task)
+    if args.task == 'Pendulum-v0':
+        env.spec.reward_threshold = -250
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-    # train_envs = gym.make(args.task)
+    args.max_action = env.action_space.high[0]
     # you can also use tianshou.env.SubprocVectorEnv
+    # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
@@ -67,9 +72,12 @@ def test_ppo(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
-              device=args.device)
-    actor = Actor(net, args.action_shape, device=args.device).to(args.device)
-    critic = Critic(net, device=args.device).to(args.device)
+              activation=nn.Tanh, device=args.device)
+    actor = ActorProb(net, args.action_shape, max_action=args.max_action,
+                      unbounded=True, device=args.device).to(args.device)
+    critic = Critic(Net(
+        args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device,
+        activation=nn.Tanh), device=args.device).to(args.device)
     # orthogonal initialization
     for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):
@@ -77,26 +85,30 @@ def test_ppo(args=get_args()):
             torch.nn.init.zeros_(m.bias)
     optim = torch.optim.Adam(set(
         actor.parameters()).union(critic.parameters()), lr=args.lr)
-    dist = torch.distributions.Categorical
-    policy = PPOPolicy(
+
+    # replace DiagGuassian with Independent(Normal) which is equivalent
+    # pass *logits to be consistent with policy.forward
+    def dist(*logits):
+        return Independent(Normal(*logits), 1)
+
+    policy = TRPOPolicy(
         actor, critic, optim, dist,
         discount_factor=args.gamma,
-        max_grad_norm=args.max_grad_norm,
-        eps_clip=args.eps_clip,
-        vf_coef=args.vf_coef,
-        ent_coef=args.ent_coef,
-        gae_lambda=args.gae_lambda,
         reward_normalization=args.rew_norm,
-        dual_clip=args.dual_clip,
-        value_clip=args.value_clip,
-        action_space=env.action_space)
+        advantage_normalization=args.norm_adv,
+        gae_lambda=args.gae_lambda,
+        action_space=env.action_space,
+        optim_critic_iters=args.optim_critic_iters,
+        max_kl=args.max_kl,
+        backtrack_coeff=args.backtrack_coeff,
+        max_backtracks=args.max_backtracks)
     # collector
     train_collector = Collector(
         policy, train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)))
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'ppo')
+    log_path = os.path.join(args.logdir, args.task, 'trpo')
     writer = SummaryWriter(log_path)
     logger = BasicLogger(writer)
 
@@ -110,9 +122,10 @@ def test_ppo(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.repeat_per_collect, args.test_num, args.batch_size,
-        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, save_fn=save_fn,
+        step_per_collect=args.step_per_collect, stop_fn=stop_fn, save_fn=save_fn,
         logger=logger)
     assert stop_fn(result['best_reward'])
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
@@ -125,4 +138,4 @@ def test_ppo(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_ppo()
+    test_trpo()

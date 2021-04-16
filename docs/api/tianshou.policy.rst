@@ -48,6 +48,11 @@ On-policy
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.TRPOPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: tianshou.policy.PPOPolicy
    :members:
    :undoc-members:

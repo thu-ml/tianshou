@@ -52,7 +52,6 @@ def get_args():
 
 
 def test_ppo(args=get_args()):
-    torch.set_num_threads(1)  # we just need only one thread for NN
     env = gym.make(args.task)
     if args.task == 'Pendulum-v0':
         env.spec.reward_threshold = -250
@@ -110,8 +109,7 @@ def test_ppo(args=get_args()):
     # collector
     train_collector = Collector(
         policy, train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True)
+        VectorReplayBuffer(args.buffer_size, len(train_envs)))
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'ppo')

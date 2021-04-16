@@ -91,8 +91,7 @@ def test_discrete_sac(args=get_args()):
     # collector
     train_collector = Collector(
         policy, train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True)
+        VectorReplayBuffer(args.buffer_size, len(train_envs)))
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log

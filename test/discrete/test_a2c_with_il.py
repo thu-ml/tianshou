@@ -86,8 +86,7 @@ def test_a2c_with_il(args=get_args()):
     # collector
     train_collector = Collector(
         policy, train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True)
+        VectorReplayBuffer(args.buffer_size, len(train_envs)))
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'a2c')
