@@ -1,4 +1,4 @@
-name: GPU
+name: Ubuntu GPU
 
 on: [push, pull_request]
 
