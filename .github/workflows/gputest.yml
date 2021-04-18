@@ -1,20 +1,17 @@
-name: Unittest
+name: GPU
 
 on: [push, pull_request]
 
 jobs:
-  build:
+  gpu:
     runs-on: [self-hosted, Linux, X64]
     if: "!contains(github.event.head_commit.message, 'ci skip')"
-    strategy:
-      matrix:
-        python-version: [3.6, 3.7, 3.8]
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3.8
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: 3.8
     - name: Upgrade pip
       run: |
         python -m pip install --upgrade pip setuptools wheel
