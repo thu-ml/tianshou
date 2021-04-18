@@ -7,7 +7,6 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-from collections import defaultdict
 
 from tools import find_all_files, group_files, csv2numpy
 
