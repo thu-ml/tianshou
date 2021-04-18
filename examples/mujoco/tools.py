@@ -101,7 +101,7 @@ def merge_csv(
     print(f"Output merged csv file to {output_path} with {len(content[1:])} lines.")
     csv.writer(open(output_path, "w")).writerows(content)
 
-def numerical_anysis(root_dir: str, xlim: int) -> None:
+def numerical_anysis(root_dir: str, xlim: int, norm: bool = False) -> None:
     file_pattern = r".*/test_rew_\d+seeds.csv$"
     norm_group_pattern = r"(/|^)\w+?\-v(\d|$)"
     output_group_pattern = r".*?(?=(/|^)\w+?\-v\d)"
@@ -118,7 +118,10 @@ def numerical_anysis(root_dir: str, xlim: int) -> None:
         # result = np.array(result).T
         # iclip = np.searchsorted(result[0], xlim)
         result = csv2numpy(f)
-        result = np.stack((result['env_step'], result['rew'] - result['rew'][0], result['rew:shaded']))
+        if norm:
+            result = np.stack((result['env_step'], result['rew'] - result['rew'][0], result['rew:shaded']))
+        else:
+            result = np.stack((result['env_step'], result['rew'], result['rew:shaded']))
         iclip = np.searchsorted(result[0], xlim)
 
         if iclip == 0 or iclip == len(result[0]):
@@ -133,51 +136,60 @@ def numerical_anysis(root_dir: str, xlim: int) -> None:
         result[1, iclip] = final_rew
         result[2, iclip] = final_rew_std
         results[f]['final_reward'] = final_rew.astype(float)
-        max_rew = np.max(result[1])
+        results[f]['final_reward_std'] = final_rew_std.astype(float)
+        max_id = np.argmax(result[1])
+        max_rew = result[1][max_id]
+        max_std = result[2][max_id]
+        
         results[f]['max_reward'] = max_rew.astype(float)
+        results[f]['max_std'] = max_std.astype(float)
         rew_integration = np.trapz(result[1], x=result[0])
         results[f]['reward_integration'] = rew_integration.astype(float)
         std_integration = np.trapz(result[2], x=result[0])
         results[f]['reward_std_integration'] = std_integration.astype(float)
-    # calculate normalised numerical outcome for each csv_file group
-    for _, fs in norm_group.items():
-        maxres = defaultdict(lambda: -np.inf)
-        # find max for each key
-        for f in fs:
-            if not results[f]:
-                continue
-            for k, v in results[f].items():
-                maxres[k] = v if maxres[k] < v else maxres[k]
-        # add normalised numerical outcome
-        for f in fs:
-            if not results[f]:
-                continue
-            new_dict = results[f].copy()
-            for k, v in results[f].items():
-                new_dict[k + ":normalised"] = v / maxres[k]
-            results[f] = new_dict    
-    # Add all numerical results for each outcome group
-    output_group
-    group_results = {}
-    for g, fs in output_group.items():
-        group_results[g] = defaultdict(lambda: 0)
-        group_n = 0
-        for f in fs:
-            if not results[f]:
-                continue
-            group_n += 1
-            for k, v in results[f].items():
-                group_results[g][k] += v
-        for k, v in group_results[g].items():
-            group_results[g][k] = v / group_n
-        group_results[g]['group_n'] += group_n
-    # print all outputs for each csv_file and each outcome group
+
     for f, numerical_result in results.items():
         print("*******  " + f + ":")
         print(numerical_result)
-    for g, numerical_result in group_results.items():
-        print("*******  " + g + ":")
-        print(numerical_result)
+
+    if norm:
+        # calculate normalised numerical outcome for each csv_file group
+        for _, fs in norm_group.items():
+            maxres = defaultdict(lambda: -np.inf)
+            # find max for each key
+            for f in fs:
+                if not results[f]:
+                    continue
+                for k, v in results[f].items():
+                    maxres[k] = v if maxres[k] < v else maxres[k]
+            # add normalised numerical outcome
+            for f in fs:
+                if not results[f]:
+                    continue
+                new_dict = results[f].copy()
+                for k, v in results[f].items():
+                    new_dict[k + ":normalised"] = v / maxres[k]
+                results[f] = new_dict    
+        # Add all numerical results for each outcome group
+        output_group
+        group_results = {}
+        for g, fs in output_group.items():
+            group_results[g] = defaultdict(lambda: 0)
+            group_n = 0
+            for f in fs:
+                if not results[f]:
+                    continue
+                group_n += 1
+                for k, v in results[f].items():
+                    group_results[g][k] += v
+            for k, v in group_results[g].items():
+                group_results[g][k] = v / group_n
+            group_results[g]['group_n'] += group_n
+        # print all outputs for each csv_file and each outcome group
+
+        for g, numerical_result in group_results.items():
+            print("*******  " + g + ":")
+            print(numerical_result)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -194,15 +206,15 @@ if __name__ == "__main__":
 
     analysis_parser = sp.add_parser('analysis')
     analysis_parser.add_argument('--xlim', type=int, default=1000000,
-                        help='x-axis limitation (default: None)')
+                        help='x-axis limitation (default: 1000000)')
     analysis_parser.add_argument('--root-dir', type=str)
+    analysis_parser.add_argument(
+        '--norm', action="store_true",
+        help="Normalise all results according to environment.")
     args = parser.parse_args()
 
-    args.action = "analysis"
-    args.xlim=1000000
-    args.root_dir="/home/huayu/git/tianshou/examples/mujoco/ablation_trpo_last"
     if args.action == "merge":
         csv_files = convert_tfevents_to_csv(args.root_dir, args.refresh)
         merge_csv(csv_files, args.root_dir, args.remove_zero)
     elif args.action == "analysis":
-        numerical_anysis(args.root_dir, args.xlim)
+        numerical_anysis(args.root_dir, args.xlim, norm=args.norm)
