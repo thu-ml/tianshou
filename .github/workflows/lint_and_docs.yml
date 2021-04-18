@@ -3,7 +3,7 @@ name: PEP8, Types and Docs Check
 on: [push, pull_request]
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
