@@ -2,7 +2,6 @@
 
 import re
 import os
-import csv
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -61,6 +60,7 @@ COLORS = ([
     '#ffc832',  # YELLOW
     '#000000',  # BLACK
 ])
+
 
 def plot_ax(
     ax,

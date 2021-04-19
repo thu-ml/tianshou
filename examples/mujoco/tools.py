@@ -21,6 +21,7 @@ def find_all_files(root_dir: str, pattern: re.Pattern) -> List[str]:
                 file_list.append(absolute_path)
     return file_list
 
+
 def group_files(file_list, pattern):
     res = defaultdict(list)
     for f in file_list:
@@ -29,6 +30,7 @@ def group_files(file_list, pattern):
         res[key].append(f)
     return res
 
+
 def csv2numpy(csv_file):
     csv_dict = defaultdict(list)
     reader = csv.DictReader(open(csv_file))
@@ -36,6 +38,7 @@ def csv2numpy(csv_file):
         for k, v in row.items():
             csv_dict[k].append(eval(v))
     return {k: np.array(v) for k, v in csv_dict.items()}
+
 
 def convert_tfevents_to_csv(
     root_dir: str, refresh: bool = False
@@ -101,6 +104,7 @@ def merge_csv(
     print(f"Output merged csv file to {output_path} with {len(content[1:])} lines.")
     csv.writer(open(output_path, "w")).writerows(content)
 
+
 def numerical_anysis(root_dir: str, xlim: int, norm: bool = False) -> None:
     file_pattern = r".*/test_rew_\d+seeds.csv$"
     norm_group_pattern = r"(/|^)\w+?\-v(\d|$)"
@@ -119,9 +123,13 @@ def numerical_anysis(root_dir: str, xlim: int, norm: bool = False) -> None:
         # iclip = np.searchsorted(result[0], xlim)
         result = csv2numpy(f)
         if norm:
-            result = np.stack((result['env_step'], result['rew'] - result['rew'][0], result['rew:shaded']))
+            result = np.stack((
+                result['env_step'],
+                result['rew'] - result['rew'][0],
+                result['rew:shaded']))
         else:
-            result = np.stack((result['env_step'], result['rew'], result['rew:shaded']))
+            result = np.stack((
+                result['env_step'], result['rew'], result['rew:shaded']))
         iclip = np.searchsorted(result[0], xlim)
 
         if iclip == 0 or iclip == len(result[0]):
@@ -140,7 +148,7 @@ def numerical_anysis(root_dir: str, xlim: int, norm: bool = False) -> None:
         max_id = np.argmax(result[1])
         max_rew = result[1][max_id]
         max_std = result[2][max_id]
-        
+
         results[f]['max_reward'] = max_rew.astype(float)
         results[f]['max_std'] = max_std.astype(float)
         rew_integration = np.trapz(result[1], x=result[0])
@@ -168,8 +176,8 @@ def numerical_anysis(root_dir: str, xlim: int, norm: bool = False) -> None:
                     continue
                 new_dict = results[f].copy()
                 for k, v in results[f].items():
-                    new_dict[k + ":normalised"] = v / maxres[k]
-                results[f] = new_dict    
+                    new_dict[k + ":normalized"] = v / maxres[k]
+                results[f] = new_dict
         # Add all numerical results for each outcome group
         output_group
         group_results = {}
@@ -191,6 +199,7 @@ def numerical_anysis(root_dir: str, xlim: int, norm: bool = False) -> None:
             print("*******  " + g + ":")
             print(numerical_result)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     sp = parser.add_subparsers(dest='action')
@@ -206,11 +215,11 @@ if __name__ == "__main__":
 
     analysis_parser = sp.add_parser('analysis')
     analysis_parser.add_argument('--xlim', type=int, default=1000000,
-                        help='x-axis limitation (default: 1000000)')
+                                 help='x-axis limitation (default: 1000000)')
     analysis_parser.add_argument('--root-dir', type=str)
     analysis_parser.add_argument(
         '--norm', action="store_true",
-        help="Normalise all results according to environment.")
+        help="Normalize all results according to environment.")
     args = parser.parse_args()
 
     if args.action == "merge":
