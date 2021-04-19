@@ -178,8 +178,7 @@ class TRPOPolicy(A2CPolicy):
 
                         if kl < self._delta and new_actor_loss < actor_loss:
                             if i > 0:
-                                warnings.warn(f"Backtracking to step {i}. "
-                                              "Hyperparamters aren't good enough.")
+                                warnings.warn(f"Backtracking to step {i}.")
                             break
                         elif i < self._max_backtracks - 1:
                             step_size = step_size * self._backtrack_coeff

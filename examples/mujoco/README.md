@@ -17,7 +17,8 @@ Supported algorithms are listed below:
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
 - [REINFORCE algorithm](https://papers.nips.cc/paper/1999/file/464d828b85b0bed98e80ade0a5c43b0f-Paper.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e27b5a26f330de446fe15388bf81c3777f024fb9)
 - [Advantage Actor-Critic (A2C)](https://openai.com/blog/baselines-acktr-a2c/), [commit id](https://github.com/thu-ml/tianshou/tree/1730a9008ad6bb67cac3b21347bed33b532b17bc)
-- [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/5d580c36624df0548818edf1f9b111b318dd7fd8)
+- [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/6426a39796db052bafb7cabe85c764db20a722b0)
+- [Trust Region Policy Optimization (TRPO)](https://arxiv.org/pdf/1502.05477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/5057b5c89e6168220272c9c28a15b758a72efc32)
 
 #### Usage
 
@@ -65,7 +66,7 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 
 ### DDPG
 
-|      Environment       |   Tianshou (1M)   | [SpinningUp (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [TD3 paper (DDPG)](https://arxiv.org/abs/1802.09477) | [TD3 paper (OurDDPG)](https://arxiv.org/abs/1802.09477) |
+|      Environment       |   Tianshou (1M)   | [Spinning Up (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [TD3 paper (DDPG)](https://arxiv.org/abs/1802.09477) | [TD3 paper (OurDDPG)](https://arxiv.org/abs/1802.09477) |
 | :--------------------: | :---------------: | :----------------------------------------------------------: | :--------------------------------------------------: | :-----------------------------------------------------: |
 |          Ant           |     990.4±4.3     |                             ~840                             |                      **1005.3**                      |                          888.8                          |
 |      HalfCheetah       | **11718.7±465.6** |                            ~11000                            |                        3305.6                        |                         8577.3                          |
@@ -81,7 +82,7 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 
 ### TD3
 
-|      Environment       |   Tianshou (1M)   | [SpinningUp (Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [TD3 paper](https://arxiv.org/abs/1802.09477) |
+|      Environment       |   Tianshou (1M)   | [Spinning Up (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [TD3 paper](https://arxiv.org/abs/1802.09477) |
 | :--------------------: | :---------------: | :----------------------------------------------------------: | :-------------------------------------------: |
 |          Ant           | **5116.4±799.9**  |                            ~3800                             |                 4372.4±1000.3                 |
 |      HalfCheetah       | **10201.2±772.8** |                            ~9750                             |                 9637.0±859.1                  |
@@ -100,7 +101,7 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 
 ### SAC
 
-|      Environment       |   Tianshou (1M)    | [SpinningUp (Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [SAC paper](https://arxiv.org/abs/1801.01290) |
+|      Environment       |   Tianshou (1M)    | [Spinning Up (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) | [SAC paper](https://arxiv.org/abs/1801.01290) |
 | :--------------------: | :----------------: | :----------------------------------------------------------: | :-------------------------------------------: |
 |          Ant           |  **5850.2±475.7**  |                            ~3980                             |                     ~3720                     |
 |      HalfCheetah       | **12138.8±1049.3** |                            ~11520                            |                    ~10400                     |
@@ -141,7 +142,7 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 | InvertedDoublePendulum | **7726.2±1287.3** |
 
 
-|      Environment       |   Tianshou (3M)   | [SpinningUp (VPG Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_vpg.html)<sup>[[7]](#footnote7)</sup> |
+|      Environment       |   Tianshou (3M)   | [Spinning Up (VPG PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench_vpg.html)<sup>[[7]](#footnote7)</sup> |
 | :--------------------: | :---------------: | :----------------------------------------------------------: |
 |          Ant           | **474.9+-133.5**  |                              ~5                              |
 |      HalfCheetah       |  **884.0+-41.0**  |                             ~600                             |
@@ -167,7 +168,7 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 
 ### A2C
 
-|      Environment       |   Tianshou (3M)    | [Spinning Up(Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_vpg.html) |
+|      Environment       |   Tianshou (3M)    | [Spinning Up (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench_vpg.html) |
 | :--------------------: | :----------------: | :----------------------------------------------------------: |
 |          Ant           | **5236.8+-236.7**  |                              ~5                              |
 |      HalfCheetah       | **2377.3+-1363.7** |                             ~600                             |
@@ -196,7 +197,7 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 #### Hints for A2C
 
 1. We choose `clip` action method in A2C instead of `tanh` option as used in REINFORCE simply to be consistent with original implementation. `tanh` may be better or equally well but we didn't have a try.
-2. (Initial) learning rate, lr decay, `step-per-collect` and `training-num` affect the performance of A2C to a great extend. These 4 hyperparameters also affect each other and should be tuned together. We have done full scale ablation studies on these 4 hyperparameters (more than 800 agents have been trained). Below are our findings.
+2. (Initial) learning rate, lr\_decay, `step-per-collect` and `training-num` affect the performance of A2C to a great extend. These 4 hyperparameters also affect each other and should be tuned together. We have done full scale ablation studies on these 4 hyperparameters (more than 800 agents have been trained). Below are our findings.
 3. `step-per-collect` / `training-num` are equal to `bootstrap-lenghth`, which is the max length of an "episode" used in GAE estimator and 80/16=5 in default settings. When `bootstrap-lenghth` is small, (maybe) because GAE can look forward at most 5 steps and use bootstrap strategy very often, the critic is less well-trained leading the actor to a not very high score. However, if we increase `step-per-collect` to increase `bootstrap-lenghth` (e.g. 256/16=16), actor/critic will be updated less often, resulting in low sample efficiency and slow training process. To conclude, If you don't restrict env timesteps, you can try using larger `bootstrap-lenghth` and train with more steps to get a better converged score. Train slower, achieve higher.
 4. The learning rate 7e-4 with decay strategy is appropriate for `step-per-collect=80` and `training-num=16`. But if you use a larger `step-per-collect`(e.g. 256 - 2048), 7e-4 is a little bit small for `lr` because each update will have more data, less noise and thus smaller deviation in this case. So it is more appropriate to use a higher learning rate (e.g. 1e-3) to boost performance in this setting. If plotting results arise fast in early stages and become unstable later, consider lr decay first before decreasing lr.
 5. `max-grad-norm` didn't really help in our experiments. We simply keep it for consistency with other open-source implementations (e.g. SB3).
@@ -206,7 +207,7 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 
 ### PPO
 
-|      Environment       |   Tianshou (1M)    | [ikostrikov/pytorch-a2c-ppo-acktr-gail](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail) | [PPO paper](https://arxiv.org/pdf/1707.06347.pdf) | [baselines](http://htmlpreview.github.io/?https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm) | [spinningup(pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_ppo.html) |
+|      Environment       |   Tianshou (1M)    | [ikostrikov/pytorch-a2c-ppo-acktr-gail](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail) | [PPO paper](https://arxiv.org/pdf/1707.06347.pdf) | [OpenAI Baselines](https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm) | [Spinning Up (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench_ppo.html) |
 | :--------------------: | :----------------: | :----------------------------------------------------------: | :-----------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
 |          Ant           | **3258.4+-1079.3** |                              N                               |                         N                         |                              N                               |                             ~650                             |
 |      HalfCheetah       | **5783.9+-1244.0** |                            ~3120                             |                       ~1800                       |                            ~1700                             |                            ~1670                             |
@@ -218,7 +219,7 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 |    InvertedPendulum    |  **1000.0+-0.0**   |                              N                               |                     **~1000**                     |                             ~940                             |                              N                               |
 | InvertedDoublePendulum | **9231.3+-270.4**  |                              N                               |                       ~8000                       |                            ~7350                             |                              N                               |
 
-|      Environment       |   Tianshou (3M)    | [Spinning Up(Pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench_ppo.html) |
+|      Environment       |   Tianshou (3M)    | [Spinning Up (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench_ppo.html) |
 | :--------------------: | :----------------: | :----------------------------------------------------------: |
 |          Ant           | **4079.3+-880.2**  |                            ~3000                             |
 |      HalfCheetah       | **7337.4+-1508.2** |                            ~3130                             |
@@ -234,12 +235,36 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 
 #### Hints for PPO
 1. Following [Andrychowicz, Marcin, et al](https://arxiv.org/abs/2006.05990) Sec 3.5, we use "recompute advantage" strategy, which contributes a lot to our SOTA benchmark. However, I personally don't quite agree with their explanation about why "recompute advantage" helps. They stated that it's because old strategy "makes it impossible to compute advantages as the temporal structure is broken", but PPO's update equation is designed to learn from slightly-outdated advantages. I think the only reason "recompute advantage" works is that it update the critic several times rather than just one time per update, which leads to a better value function estimation.
-2. We have done full scale ablation studies of PPO algorithm's hyperparameters. Here are our findings: In mujoco settings, `value-clip` and `norm-adv` may help a litte bit in some games (e.g. `norm-adv` helps stabilize training in InvertedPendulum-v2), but they make no difference to overall performance. So in our benchmark we do not use such tricks. We validate that setting `ent-coef` to 0.0 rather than 0.01 will increase overall performance in mujoco environments. `max-grad-norm` still offers no help for PPO algorithm, but we still keep it for consistency.
+2. We have done full scale ablation studies of PPO algorithm's hyperparameters. Here are our findings: In Mujoco settings, `value-clip` and `norm-adv` may help a litte bit in some games (e.g. `norm-adv` helps stabilize training in InvertedPendulum-v2), but they make no difference to overall performance. So in our benchmark we do not use such tricks. We validate that setting `ent-coef` to 0.0 rather than 0.01 will increase overall performance in mujoco environments. `max-grad-norm` still offers no help for PPO algorithm, but we still keep it for consistency.
 3. [Andrychowicz, Marcin, et al](https://arxiv.org/abs/2006.05990)'s work indicates that using `gae-lambda` 0.9 and changing policy network's width based on which game you play (e.g. use [16, 16] `hidden-sizes` for `actor` network in HalfCheetah and [256, 256] for Ant) may help boost performance. Our ablation studies say otherwise: both options may lead to equal or lower performance overall in our experiments. We are not confident about this claim because we didn't change learning rate and other maybe-correlated factors in our experiments. So if you want, you can still have a try.
 4. `batch-size` 128 and 64 (default) work equally well. Changing `training-num` alone slightly (maybe in range [8, 128]) won't affect performance. For bound action method, both `clip` and `tanh` work quite well. 
 5. In OPENAI implementations of PPO, they multiply value loss with a factor of 0.5 for no good reason (see this [issue](https://github.com/openai/baselines/issues/445#issuecomment-777988738)). We do not do so and therefore make our `vf-coef` 0.25 (half of standard 0.5). However, since value loss is only used to optimize `critic` network, setting different `vf-coef` should in theory make no difference if using Adam optimizer.
    
+### TRPO
 
+|Environment| Tianshou| [ACKTR paper](https://arxiv.org/pdf/1708.05144.pdf)| [PPO paper](https://arxiv.org/pdf/1707.06347.pdf)|[OpenAI Baselines](https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm)|[Spinning Up (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html)|
+| :---------------: | :---------------: | :---------------: | :---------------: | :---------------: |:---------------: |
+|Ant|**2866.7±707.9** | ~0 | N | N | ~150 |
+|HalfCheetah|**4471.2±804.9** | ~400 | ~0| ~1350 | ~850 |
+|Hopper| 2046.0±1037.9| ~1400 | ~2100 | **~2200** | ~1200 |
+|Walker2d|**3826.7±782.7** | ~550 | ~1100 | ~2350 | ~600 |
+|Swimmer|40.9±19.6 | ~40 | **~121** | ~95| ~85 |
+|Humanoid|**810.1±126.1**| N | N | N | N |
+|Reacher| **-5.1±0.8** | -8 | ~-115 | **~-5** | N |
+|InvertedPendulum|**1000.0±0.0**  | **~1000** | **~1000** | ~910 | N |
+|InvertedDoublePendulum|**8435.2±1073.3**| ~800 | ~200 | ~7000 | N |
+
+\* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup>
+
+#### Hints for TRPO
+1. We have tried `step-per-collect` in (80, 1024, 2048, 4096), and `training-num` in (4, 16, 32, 64), and found out 1024 for `step-per-collect` (same as OpenAI Baselines) and smaller `training-num` (below 16) are good choices. Set `training-num` to 4 is actually better but we still use 16 considering the boost of training speed.
+2. Advantage normalization is a standard trick in TRPO, but we found it of minor help, just like in PPO.
+3. Larger `optim-critic-iters` (than 5, as used in OpenAI Baselines) helps in most environments. Smaller lr and lr\_decay strategy also help a tiny little bit for performance.
+4. `gae-lambda` 0.98 and 0.95 work equally well.
+5. We use GAE returns (GAE advantage + value) as the target of critic network when updating, while people usually tend to use reward to go (lambda = 0.) as target. We found that they work equally well although using GAE returns is a little bit inaccurate (biased) by math.
+6. Empirically, Swimmer-v3 usually requires larger bootstrap lengths and learning rate. Humanoid-v3 and InvertedPendulum-v2, however, are on the opposite.
+7. In contrast, with the statement made in TRPO paper, we found that backtracking in line search is rarely used at least in Mujoco settings, which is actually unimportant. This makes TRPO algorithm actually the same as TNPG algorithm (described in this [paper](http://proceedings.mlr.press/v48/duan16.html)). This also explains why TNPG and TRPO's plotting results look so similar in that paper.
+8. "recompute advantage" is helpful in PPO but doesn't help in TRPO.
 
 ## Note
 
