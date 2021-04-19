@@ -12,7 +12,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Independent, Normal
 
-from tianshou.policy import A2CPolicy
+from tianshou.policy import TRPOPolicy
 from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.utils.net.common import Net
@@ -26,27 +26,31 @@ def get_args():
     parser.add_argument('--task', type=str, default='HalfCheetah-v3')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=4096)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--lr', type=float, default=7e-4)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*',
+                        default=[64, 64])  # baselines [32, 32]
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=30000)
-    parser.add_argument('--step-per-collect', type=int, default=80)
+    parser.add_argument('--step-per-collect', type=int, default=1024)
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     # batch-size >> step-per-collect means calculating all data in one singe forward.
     parser.add_argument('--batch-size', type=int, default=99999)
     parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=10)
-    # a2c special
+    # trpo special
     parser.add_argument('--rew-norm', type=int, default=True)
-    parser.add_argument('--vf-coef', type=float, default=0.5)
-    parser.add_argument('--ent-coef', type=float, default=0.01)
     parser.add_argument('--gae-lambda', type=float, default=0.95)
+    # TODO tanh support
     parser.add_argument('--bound-action-method', type=str, default="clip")
     parser.add_argument('--lr-decay', type=int, default=True)
-    parser.add_argument('--max-grad-norm', type=float, default=0.5)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument('--norm-adv', type=int, default=1)
+    parser.add_argument('--optim-critic-iters', type=int, default=20)
+    parser.add_argument('--max-kl', type=float, default=0.01)
+    parser.add_argument('--backtrack-coeff', type=float, default=0.8)
+    parser.add_argument('--max-backtracks', type=int, default=10)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -56,7 +60,7 @@ def get_args():
     return parser.parse_args()
 
 
-def test_a2c(args=get_args()):
+def test_trpo(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -101,9 +105,7 @@ def test_a2c(args=get_args()):
             torch.nn.init.zeros_(m.bias)
             m.weight.data.copy_(0.01 * m.weight.data)
 
-    optim = torch.optim.RMSprop(set(actor.parameters()).union(critic.parameters()),
-                                lr=args.lr, eps=1e-5, alpha=0.99)
-
+    optim = torch.optim.Adam(critic.parameters(), lr=args.lr)
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
@@ -116,12 +118,16 @@ def test_a2c(args=get_args()):
     def dist(*logits):
         return Independent(Normal(*logits), 1)
 
-    policy = A2CPolicy(actor, critic, optim, dist, discount_factor=args.gamma,
-                       gae_lambda=args.gae_lambda, max_grad_norm=args.max_grad_norm,
-                       vf_coef=args.vf_coef, ent_coef=args.ent_coef,
-                       reward_normalization=args.rew_norm, action_scaling=True,
-                       action_bound_method=args.bound_action_method,
-                       lr_scheduler=lr_scheduler, action_space=env.action_space)
+    policy = TRPOPolicy(actor, critic, optim, dist, discount_factor=args.gamma,
+                        gae_lambda=args.gae_lambda,
+                        reward_normalization=args.rew_norm, action_scaling=True,
+                        action_bound_method=args.bound_action_method,
+                        lr_scheduler=lr_scheduler, action_space=env.action_space,
+                        advantage_normalization=args.norm_adv,
+                        optim_critic_iters=args.optim_critic_iters,
+                        max_kl=args.max_kl,
+                        backtrack_coeff=args.backtrack_coeff,
+                        max_backtracks=args.max_backtracks)
 
     # load a previous policy
     if args.resume_path:
@@ -137,8 +143,8 @@ def test_a2c(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
-    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_a2c'
-    log_path = os.path.join(args.logdir, args.task, 'a2c', log_file)
+    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_trpo'
+    log_path = os.path.join(args.logdir, args.task, 'trpo', log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer, update_interval=100, train_interval=100)
@@ -164,4 +170,4 @@ def test_a2c(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_a2c()
+    test_trpo()
