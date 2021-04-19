@@ -17,7 +17,8 @@ Supported algorithms are listed below:
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
 - [REINFORCE algorithm](https://papers.nips.cc/paper/1999/file/464d828b85b0bed98e80ade0a5c43b0f-Paper.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e27b5a26f330de446fe15388bf81c3777f024fb9)
 - [Advantage Actor-Critic (A2C)](https://openai.com/blog/baselines-acktr-a2c/), [commit id](https://github.com/thu-ml/tianshou/tree/1730a9008ad6bb67cac3b21347bed33b532b17bc)
-- [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/5d580c36624df0548818edf1f9b111b318dd7fd8)
+- [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/6426a39796db052bafb7cabe85c764db20a722b0)
+- [Trust Region Policy Optimization (TRPO)](https://arxiv.org/pdf/1502.05477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/5057b5c89e6168220272c9c28a15b758a72efc32)
 
 #### Usage
 
@@ -239,7 +240,31 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 4. `batch-size` 128 and 64 (default) work equally well. Changing `training-num` alone slightly (maybe in range [8, 128]) won't affect performance. For bound action method, both `clip` and `tanh` work quite well. 
 5. In OPENAI implementations of PPO, they multiply value loss with a factor of 0.5 for no good reason (see this [issue](https://github.com/openai/baselines/issues/445#issuecomment-777988738)). We do not do so and therefore make our `vf-coef` 0.25 (half of standard 0.5). However, since value loss is only used to optimize `critic` network, setting different `vf-coef` should in theory make no difference if using Adam optimizer.
    
+### TRPO
 
+|Environment| Tianshou| [ACKTR paper](https://arxiv.org/pdf/1708.05144.pdf)| [PPO paper](https://arxiv.org/pdf/1707.06347.pdf)|[baselines](http://htmlpreview.github.io/?https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm)|[spinningup(pytorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html)|
+| :---------------: | :---------------: | :---------------: | :---------------: | :---------------: |:---------------: |
+|Ant|**2866.7±707.9** | ~0 | N | N | ~150 |
+|HalfCheetah|**4471.2±804.9** | ~400 | ~0| ~1350 | ~850 |
+|Hopper| 2046.0±1037.9| ~1400 | ~2100 | **~2200** | ~1200 |
+|Walker2d|**3826.7±782.7** | ~550 | ~1100 | ~2350 | ~600 |
+|Swimmer|40.9±19.6 | ~40 | **~121** | ~95| ~85 |
+|Humanoid|**810.1±126.1**| N | N | N | N |
+|Reacher| **-5.1±0.8** | -8 | ~-115 | **~-5** | N |
+|InvertedPendulum|**1000.0±0.0**  | **~1000** | **~1000** | ~910 | N |
+|InvertedDoublePendulum|**8435.2±1073.3**| ~800 | ~200 | ~7000 | N |
+
+\* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup>
+
+#### Hints for TRPO
+1. We have tried `step-per-collect` in (80, 1024, 2048, 4096), and `training-num` in (4, 16, 32, 64), and found out 1024 for `step-per-collect` (same as openai baselines) and smaller `training-num` (below 16) are good choices. Set `training-num` to 4 is actually better but we still use 16 considering its training speed boost.
+2. Advantage normalization is a standard trick in TRPO, but we found it of minor help, just like in PPO.
+3. Larger `optim-critic-iters` (than 5, as used in openai baselines) helps in most environments. Smaller lr and learning decay strategy also help a tiny little bit.
+4. `gae-lambda` 0.98 and 0.95 work equally well.
+5. We use gae returns (GAE advantage + value) as the target of critic network when updating, while normally people tend to use reward to go(lambda = 0.) as target. We found that they work equally well although using gae returns is a little bit inaccurate(biased) by math.
+6. Emperically, Simmer-v3 usually requires larger bootstrap lengths and learning rate. Humanoid-v3/InvertedPendulum-v2, however, are the opposite.
+7. In constrast with statement made in TRPO paper, we found that backtracking in line search is rarely used as least in mujoco settings, which is actually unimportant. This makes TRPO algorithm actually the same as TNPG algorithm (described in this [paper](http://proceedings.mlr.press/v48/duan16.html)). This also explains why TNPG and TRPO's plotting results look so similar in that paper.
+8. Trick: "recompute advantage", which is helpful in PPO, doesn't really help in TRPO.
 
 ## Note
 
