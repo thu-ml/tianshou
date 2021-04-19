@@ -25,6 +25,7 @@ __all__ = [
     "QRDQNPolicy",
     "PGPolicy",
     "A2CPolicy",
+    "NPGPolicy",
     "DDPGPolicy",
     "PPOPolicy",
     "TRPOPolicy",
