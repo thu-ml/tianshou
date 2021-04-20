@@ -44,6 +44,7 @@ def get_args():
     parser.add_argument('--resume-path', type=str, default=None)
     parser.add_argument('--watch', default=False, action='store_true',
                         help='watch the play of pre-trained policy only')
+    parser.add_argument('--save-buffer-name', type=str, default=None)
     return parser.parse_args()
 
 
@@ -126,13 +127,29 @@ def test_qrdqn(args=get_args()):
 
     # watch agent's performance
     def watch():
-        print("Testing agent ...")
+        print("Setup test envs ...")
         policy.eval()
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
-        test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        pprint.pprint(result)
+        if args.save_buffer_name:
+            print(f"Generate buffer with size {args.buffer_size}")
+            buffer = VectorReplayBuffer(
+                args.buffer_size, buffer_num=len(test_envs),
+                ignore_obs_next=True, save_only_last_obs=True,
+                stack_num=args.frames_stack)
+            collector = Collector(policy, test_envs, buffer,
+                                  exploration_noise=True)
+            result = collector.collect(n_step=args.buffer_size)
+            print(f"Save buffer into {args.save_buffer_name}")
+            # Unfortunately, pickle will cause oom with 1M buffer size
+            buffer.save_hdf5(args.save_buffer_name)
+        else:
+            print("Testing agent ...")
+            test_collector.reset()
+            result = test_collector.collect(n_episode=args.test_num,
+                                            render=args.render)
+        rew = result["rews"].mean()
+        print(f'Mean reward (over {result["n/ep"]} episodes): {rew}')
 
     if args.watch:
         watch()

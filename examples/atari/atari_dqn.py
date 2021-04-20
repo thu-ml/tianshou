@@ -134,7 +134,8 @@ def test_dqn(args=get_args()):
                 args.buffer_size, buffer_num=len(test_envs),
                 ignore_obs_next=True, save_only_last_obs=True,
                 stack_num=args.frames_stack)
-            collector = Collector(policy, test_envs, buffer)
+            collector = Collector(policy, test_envs, buffer,
+                                  exploration_noise=True)
             result = collector.collect(n_step=args.buffer_size)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
@@ -144,7 +145,8 @@ def test_dqn(args=get_args()):
             test_collector.reset()
             result = test_collector.collect(n_episode=args.test_num,
                                             render=args.render)
-        pprint.pprint(result)
+        rew = result["rews"].mean()
+        print(f'Mean reward (over {result["n/ep"]} episodes): {rew}')
 
     if args.watch:
         watch()
