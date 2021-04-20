@@ -12,7 +12,7 @@ from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offline_trainer
 from tianshou.utils.net.discrete import Actor
 from tianshou.policy import DiscreteBCQPolicy
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 
 from atari_network import DQN
 from atari_wrapper import wrap_deepmind
@@ -25,17 +25,16 @@ def get_args():
     parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=6.25e-5)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--n-step", type=int, default=3)
+    parser.add_argument("--n-step", type=int, default=1)
     parser.add_argument("--target-update-freq", type=int, default=8000)
     parser.add_argument("--unlikely-action-threshold", type=float, default=0.3)
     parser.add_argument("--imitation-logits-penalty", type=float, default=0.01)
     parser.add_argument("--epoch", type=int, default=100)
     parser.add_argument("--update-per-epoch", type=int, default=10000)
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[512])
-    parser.add_argument("--test-num", type=int, default=100)
-    parser.add_argument('--frames_stack', type=int, default=4)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512])
+    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument('--frames-stack', type=int, default=4)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
     parser.add_argument("--resume-path", type=str, default=None)
@@ -44,12 +43,10 @@ def get_args():
     parser.add_argument("--log-interval", type=int, default=100)
     parser.add_argument(
         "--load-buffer-name", type=str,
-        default="./expert_DQN_PongNoFrameskip-v4.hdf5",
-    )
+        default="./expert_DQN_PongNoFrameskip-v4.hdf5")
     parser.add_argument(
         "--device", type=str,
-        default="cuda" if torch.cuda.is_available() else "cpu",
-    )
+        default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_known_args()[0]
     return args
 
@@ -81,25 +78,24 @@ def test_discrete_bcq(args=get_args()):
     # model
     feature_net = DQN(*args.state_shape, args.action_shape,
                       device=args.device, features_only=True).to(args.device)
-    policy_net = Actor(feature_net, args.action_shape,
-                       hidden_sizes=args.hidden_sizes).to(args.device)
-    imitation_net = Actor(feature_net, args.action_shape,
-                          hidden_sizes=args.hidden_sizes).to(args.device)
+    policy_net = Actor(
+        feature_net, args.action_shape, device=args.device,
+        hidden_sizes=args.hidden_sizes, softmax_output=False).to(args.device)
+    imitation_net = Actor(
+        feature_net, args.action_shape, device=args.device,
+        hidden_sizes=args.hidden_sizes, softmax_output=False).to(args.device)
     optim = torch.optim.Adam(
         set(policy_net.parameters()).union(imitation_net.parameters()),
-        lr=args.lr,
-    )
+        lr=args.lr)
     # define policy
     policy = DiscreteBCQPolicy(
         policy_net, imitation_net, optim, args.gamma, args.n_step,
         args.target_update_freq, args.eps_test,
-        args.unlikely_action_threshold, args.imitation_logits_penalty,
-    )
+        args.unlikely_action_threshold, args.imitation_logits_penalty)
     # load a previous policy
     if args.resume_path:
         policy.load_state_dict(torch.load(
-            args.resume_path, map_location=args.device
-        ))
+            args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
     assert os.path.exists(args.load_buffer_name), \
@@ -107,7 +103,7 @@ def test_discrete_bcq(args=get_args()):
     if args.load_buffer_name.endswith('.pkl'):
         buffer = pickle.load(open(args.load_buffer_name, "rb"))
     elif args.load_buffer_name.endswith('.hdf5'):
-        buffer = ReplayBuffer.load_hdf5(args.load_buffer_name)
+        buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
     else:
         print(f"Unknown buffer format: {args.load_buffer_name}")
         exit(0)
@@ -146,11 +142,9 @@ def test_discrete_bcq(args=get_args()):
         exit(0)
 
     result = offline_trainer(
-        policy, buffer, test_collector,
-        args.epoch, args.update_per_epoch, args.test_num, args.batch_size,
-        stop_fn=stop_fn, save_fn=save_fn, logger=logger,
-        log_interval=args.log_interval,
-    )
+        policy, buffer, test_collector, args.epoch,
+        args.update_per_epoch, args.test_num, args.batch_size,
+        stop_fn=stop_fn, save_fn=save_fn, logger=logger)
 
     pprint.pprint(result)
     watch()
