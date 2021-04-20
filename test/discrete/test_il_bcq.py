@@ -22,9 +22,9 @@ def get_args():
     parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--n-step", type=int, default=1)
+    parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--target-update-freq", type=int, default=320)
-    parser.add_argument("--unlikely-action-threshold", type=float, default=0.3)
+    parser.add_argument("--unlikely-action-threshold", type=float, default=0.6)
     parser.add_argument("--imitation-logits-penalty", type=float, default=0.01)
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--update-per-epoch", type=int, default=2000)
@@ -49,6 +49,8 @@ def get_args():
 def test_discrete_bcq(args=get_args()):
     # envs
     env = gym.make(args.task)
+    if args.task == 'CartPole-v0':
+        env.spec.reward_threshold = 190  # lower the goal
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     test_envs = DummyVectorEnv(
