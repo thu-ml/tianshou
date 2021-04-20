@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import free_mjc
 import os
 import gym
 import torch
@@ -26,14 +25,15 @@ def get_args():
     parser.add_argument('--task', type=str, default='HalfCheetah-v3')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=4096)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])# baselines 32 32
+    parser.add_argument('--hidden-sizes', type=int, nargs='*',
+                        default=[64, 64])  # baselines [32, 32]
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=30000)
     parser.add_argument('--step-per-collect', type=int, default=1024)
     parser.add_argument('--repeat-per-collect', type=int, default=1)
-    # batch-size >> step-per-collect means caculating all data in one singe forward.
+    # batch-size >> step-per-collect means calculating all data in one singe forward.
     parser.add_argument('--batch-size', type=int, default=99999)
     parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=10)
