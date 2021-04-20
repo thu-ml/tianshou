@@ -1,5 +1,4 @@
 import torch
-import warnings
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
@@ -7,15 +6,52 @@ from torch.distributions import kl_divergence
 from typing import Any, Dict, List, Type, Callable
 
 
-from tianshou.policy import NPGPolicy
+from tianshou.policy import A2CPolicy
 from tianshou.data import Batch, ReplayBuffer
-# TODO   don't know whether this work or not in library
-from .npg import _conjugate_gradients, _get_flat_grad, _set_from_flat_params
 
 
-class TRPOPolicy(NPGPolicy):
-    """Implementation of Trust Region Policy Optimization. arXiv:1502.05477.
+def _conjugate_gradients(
+    Avp: Callable[[torch.Tensor], torch.Tensor],
+    b: torch.Tensor,
+    nsteps: int = 10,
+    residual_tol: float = 1e-10
+) -> torch.Tensor:
+    x = torch.zeros_like(b)
+    r, p = b.clone(), b.clone()
+    # Note: should be 'r, p = b - A(x)', but for x=0, A(x)=0.
+    # Change if doing warm start.
+    rdotr = r.dot(r)
+    for i in range(nsteps):
+        z = Avp(p)
+        alpha = rdotr / p.dot(z)
+        x += alpha * p
+        r -= alpha * z
+        new_rdotr = r.dot(r)
+        if new_rdotr < residual_tol:
+            break
+        p = r + new_rdotr / rdotr * p
+        rdotr = new_rdotr
+    return x
 
+
+def _get_flat_grad(y: torch.Tensor, model: nn.Module, **kwargs: Any) -> torch.Tensor:
+    grads = torch.autograd.grad(y, model.parameters(), **kwargs)  # type: ignore
+    return torch.cat([grad.reshape(-1) for grad in grads])
+
+
+def _set_from_flat_params(model: nn.Module, flat_params: torch.Tensor) -> nn.Module:
+    prev_ind = 0
+    for param in model.parameters():
+        flat_size = int(np.prod(list(param.size())))
+        param.data.copy_(
+            flat_params[prev_ind:prev_ind + flat_size].view(param.size()))
+        prev_ind += flat_size
+    return model
+
+
+class NPGPolicy(A2CPolicy):
+    """Implementation of Natural Policy Gradient. 
+        https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.nn.Module critic: the critic network. (s -> V(s))
@@ -26,12 +62,6 @@ class TRPOPolicy(NPGPolicy):
         normalization. Default to True.
     :param int optim_critic_iters: Number of times to optimize critic network per
         update. Default to 5.
-    :param int max_kl: max kl-divergence used to constrain each actor network update.
-        Default to 0.01.
-    :param float backtrack_coeff: Coefficient to be multiplied by step size when
-        constraints are not met. Default to 0.8.
-    :param int max_backtracks: Max number of backtracking times in linesearch. Default
-        to 10.
     :param float gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
         Default to 0.95.
     :param bool reward_normalization: normalize estimated values to have std close to
@@ -57,21 +87,36 @@ class TRPOPolicy(NPGPolicy):
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: Type[torch.distributions.Distribution],
-        max_kl: float = 0.01,
-        backtrack_coeff: float = 0.8,
-        max_backtracks: int = 10,
+        advantage_normalization: bool = True,
+        optim_critic_iters: int = 5,
+        actor_step_size: float = 0.5, # TODO
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, critic, optim, dist_fn, **kwargs)
-        del self._step_size
-        self._max_backtracks = max_backtracks
-        self._delta = max_kl
-        self._backtrack_coeff = backtrack_coeff
+        del self._weight_vf, self._weight_ent, self._grad_norm
+        self._norm_adv = advantage_normalization
+        self._optim_critic_iters = optim_critic_iters
+        self._step_size = actor_step_size
+        # adjusts Hessian-vector product calculation for numerical stability
+        self._damping = 0.1
+
+    def process_fn(
+        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> Batch:
+        batch = super().process_fn(batch, buffer, indice)
+        old_log_prob = []
+        with torch.no_grad():
+            for b in batch.split(self._batch, shuffle=False, merge_last=True):
+                old_log_prob.append(self(b).dist.log_prob(b.act))
+        batch.logp_old = torch.cat(old_log_prob, dim=0)
+        if self._norm_adv:
+            batch.adv = (batch.adv - batch.adv.mean()) / batch.adv.std()
+        return batch
 
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
-        actor_losses, vf_losses, step_sizes, kls = [], [], [], []
+        actor_losses, vf_losses, kls = [], [], []
         for step in range(repeat):
             for b in batch.split(batch_size, merge_last=True):
                 # optimize actor
@@ -100,37 +145,14 @@ class TRPOPolicy(NPGPolicy):
 
                 search_direction = -_conjugate_gradients(MVP, flat_grads, nsteps=10)
 
-                # stepsize: calculate max stepsize constrained by kl bound
-                step_size = torch.sqrt(2 * self._delta / (
-                    search_direction * MVP(search_direction)).sum(0, keepdim=True))
-
-                # stepsize: linesearch stepsize
+                # step
                 with torch.no_grad():
                     flat_params = torch.cat([param.data.view(-1)
                                              for param in self.actor.parameters()])
-                    for i in range(self._max_backtracks):
-                        new_flat_params = flat_params + step_size * search_direction
-                        _set_from_flat_params(self.actor, new_flat_params)
-                        # calculate kl and if in bound, loss actually down
-                        new_dist = self(b).dist
-                        new_dratio = (
-                            new_dist.log_prob(b.act) - b.logp_old).exp().float()
-                        new_dratio = new_dratio.reshape(
-                            new_dratio.size(0), -1).transpose(0, 1)
-                        new_actor_loss = -(new_dratio * b.adv).mean()
-                        kl = kl_divergence(old_dist, new_dist).mean()
-
-                        if kl < self._delta and new_actor_loss < actor_loss:
-                            if i > 0:
-                                warnings.warn(f"Backtracking to step {i}.")
-                            break
-                        elif i < self._max_backtracks - 1:
-                            step_size = step_size * self._backtrack_coeff
-                        else:
-                            _set_from_flat_params(self.actor, new_flat_params)
-                            step_size = torch.tensor([0.0])
-                            warnings.warn("Line search failed! It seems hyperparamters"
-                                          " are poor and need to be changed.")
+                    new_flat_params = flat_params + self._step_size * search_direction
+                    _set_from_flat_params(self.actor, new_flat_params)
+                    new_dist = self(b).dist
+                    kl = kl_divergence(old_dist, new_dist).mean()
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):
@@ -142,7 +164,6 @@ class TRPOPolicy(NPGPolicy):
 
                 actor_losses.append(actor_loss.item())
                 vf_losses.append(vf_loss.item())
-                step_sizes.append(step_size.item())
                 kls.append(kl.item())
 
         # update learning rate if lr_scheduler is given
@@ -152,6 +173,5 @@ class TRPOPolicy(NPGPolicy):
         return {
             "loss/actor": actor_losses,
             "loss/vf": vf_losses,
-            "step_size": step_sizes,
             "kl": kls,
         }
