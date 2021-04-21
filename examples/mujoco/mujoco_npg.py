@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import free_mjc
+
 import os
 import gym
 import torch
@@ -116,13 +116,13 @@ def test_npg(args=get_args()):
         return Independent(Normal(*logits), 1)
 
     policy = NPGPolicy(actor, critic, optim, dist, discount_factor=args.gamma,
-                        gae_lambda=args.gae_lambda,
-                        reward_normalization=args.rew_norm, action_scaling=True,
-                        action_bound_method=args.bound_action_method,
-                        lr_scheduler=lr_scheduler, action_space=env.action_space,
-                        advantage_normalization=args.norm_adv,
-                        optim_critic_iters=args.optim_critic_iters,
-                        actor_step_size=args.actor_step_size)
+                       gae_lambda=args.gae_lambda,
+                       reward_normalization=args.rew_norm, action_scaling=True,
+                       action_bound_method=args.bound_action_method,
+                       lr_scheduler=lr_scheduler, action_space=env.action_space,
+                       advantage_normalization=args.norm_adv,
+                       optim_critic_iters=args.optim_critic_iters,
+                       actor_step_size=args.actor_step_size)
 
     # load a previous policy
     if args.resume_path:
