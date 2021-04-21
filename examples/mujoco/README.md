@@ -16,6 +16,7 @@ Supported algorithms are listed below:
 - [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
 - [REINFORCE algorithm](https://papers.nips.cc/paper/1999/file/464d828b85b0bed98e80ade0a5c43b0f-Paper.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e27b5a26f330de446fe15388bf81c3777f024fb9)
+- [Natural Policy Gradient](https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/1dcf65fe21dc7636966796b6099ede1f4bd775e1)
 - [Advantage Actor-Critic (A2C)](https://openai.com/blog/baselines-acktr-a2c/), [commit id](https://github.com/thu-ml/tianshou/tree/1730a9008ad6bb67cac3b21347bed33b532b17bc)
 - [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/6426a39796db052bafb7cabe85c764db20a722b0)
 - [Trust Region Policy Optimization (TRPO)](https://arxiv.org/pdf/1502.05477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/5057b5c89e6168220272c9c28a15b758a72efc32)
@@ -242,17 +243,17 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
    
 ### TRPO
 
-|Environment| Tianshou| [ACKTR paper](https://arxiv.org/pdf/1708.05144.pdf)| [PPO paper](https://arxiv.org/pdf/1707.06347.pdf)|[OpenAI Baselines](https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm)|[Spinning Up (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html)|
-| :---------------: | :---------------: | :---------------: | :---------------: | :---------------: |:---------------: |
-|Ant|**2866.7±707.9** | ~0 | N | N | ~150 |
-|HalfCheetah|**4471.2±804.9** | ~400 | ~0| ~1350 | ~850 |
-|Hopper| 2046.0±1037.9| ~1400 | ~2100 | **~2200** | ~1200 |
-|Walker2d|**3826.7±782.7** | ~550 | ~1100 | ~2350 | ~600 |
-|Swimmer|40.9±19.6 | ~40 | **~121** | ~95| ~85 |
-|Humanoid|**810.1±126.1**| N | N | N | N |
-|Reacher| **-5.1±0.8** | -8 | ~-115 | **~-5** | N |
-|InvertedPendulum|**1000.0±0.0**  | **~1000** | **~1000** | ~910 | N |
-|InvertedDoublePendulum|**8435.2±1073.3**| ~800 | ~200 | ~7000 | N |
+|      Environment       |   Tianshou (1M)   | [ACKTR paper](https://arxiv.org/pdf/1708.05144.pdf) | [PPO paper](https://arxiv.org/pdf/1707.06347.pdf) | [OpenAI Baselines](https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm) | [Spinning Up (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) |
+| :--------------------: | :---------------: | :-------------------------------------------------: | :-----------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
+|          Ant           | **2866.7±707.9**  |                         ~0                          |                         N                         |                              N                               |                             ~150                             |
+|      HalfCheetah       | **4471.2±804.9**  |                        ~400                         |                        ~0                         |                            ~1350                             |                             ~850                             |
+|         Hopper         |   2046.0±1037.9   |                        ~1400                        |                       ~2100                       |                          **~2200**                           |                            ~1200                             |
+|        Walker2d        | **3826.7±782.7**  |                        ~550                         |                       ~1100                       |                            ~2350                             |                             ~600                             |
+|        Swimmer         |     40.9±19.6     |                         ~40                         |                     **~121**                      |                             ~95                              |                             ~85                              |
+|        Humanoid        |  **810.1±126.1**  |                          N                          |                         N                         |                              N                               |                              N                               |
+|        Reacher         |   **-5.1±0.8**    |                         -8                          |                       ~-115                       |                           **~-5**                            |                              N                               |
+|    InvertedPendulum    |  **1000.0±0.0**   |                      **~1000**                      |                     **~1000**                     |                             ~910                             |                              N                               |
+| InvertedDoublePendulum | **8435.2±1073.3** |                        ~800                         |                       ~200                        |                            ~7000                             |                              N                               |
 
 \* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup>
 
@@ -265,6 +266,26 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 6. Empirically, Swimmer-v3 usually requires larger bootstrap lengths and learning rate. Humanoid-v3 and InvertedPendulum-v2, however, are on the opposite.
 7. In contrast, with the statement made in TRPO paper, we found that backtracking in line search is rarely used at least in Mujoco settings, which is actually unimportant. This makes TRPO algorithm actually the same as TNPG algorithm (described in this [paper](http://proceedings.mlr.press/v48/duan16.html)). This also explains why TNPG and TRPO's plotting results look so similar in that paper.
 8. "recompute advantage" is helpful in PPO but doesn't help in TRPO.
+
+### NPG
+
+|      Environment       |  Tianshou (1M)   |
+| :--------------------: | :--------------: |
+|          Ant           | **2358.0±517.5** |
+|      HalfCheetah       | **3485.2±716.6** |
+|         Hopper         | **1915.2±550.5** |
+|        Walker2d        | **2503.2±963.3** |
+|        Swimmer         |   **31.5±8.0**   |
+|        Humanoid        |  **765.1±91.3**  |
+|        Reacher         |   **-4.5±0.5**   |
+|    InvertedPendulum    |  **1000.0±0.0**  |
+| InvertedDoublePendulum | **9243.2±276.0** |
+
+\* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup>
+
+#### Hints for NPG
+1. All shared hyperparameters are exactly the same as TRPO, regarding how similar these two algorithms are.
+2. We found different games in Mujoco may require quite different `actor-step-size`: Reacher/Swimmer are insensitive to step-size in range (0.1~1.0), while InvertedDoublePendulum / InvertedPendulum / Humanoid are quite sensitive to step size, and even 0.1 is too large. Other games may require `actor-step-size` in range (0.1~0.4), but aren't that sensitive in general.
 
 ## Note
 

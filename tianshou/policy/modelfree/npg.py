@@ -84,10 +84,10 @@ class NPGPolicy(A2CPolicy):
             for b in batch.split(batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
-                dist = self(b).dist  # TODO could come from batch
-                ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
-                ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
-                actor_loss = -(ratio * b.adv).mean()
+                dist = self(b).dist
+                log_prob = dist.log_prob(b.act)
+                log_prob = log_prob.reshape(log_prob.size(0), -1).transpose(0, 1)
+                actor_loss = -(log_prob * b.adv).mean()
                 flat_grads = self._get_flat_grad(
                     actor_loss, self.actor, retain_graph=True).detach()
 
