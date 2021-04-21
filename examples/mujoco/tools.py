@@ -6,12 +6,11 @@ import csv
 import tqdm
 import argparse
 import numpy as np
-from typing import Dict, List, Union
-from tensorboard.backend.event_processing import event_accumulator
 from collections import defaultdict
+from tensorboard.backend.event_processing import event_accumulator
 
 
-def find_all_files(root_dir: str, pattern: re.Pattern) -> List[str]:
+def find_all_files(root_dir, pattern):
     """Find all files under root_dir according to relative pattern."""
     file_list = []
     for dirname, _, files in os.walk(root_dir):
@@ -40,9 +39,7 @@ def csv2numpy(csv_file):
     return {k: np.array(v) for k, v in csv_dict.items()}
 
 
-def convert_tfevents_to_csv(
-    root_dir: str, refresh: bool = False
-) -> Dict[str, np.ndarray]:
+def convert_tfevents_to_csv(root_dir, refresh=False):
     """Recursively convert test/rew from all tfevent file under root_dir to csv.
 
     This function assumes that there is at most one tfevents file in each directory
@@ -79,11 +76,7 @@ def convert_tfevents_to_csv(
     return result
 
 
-def merge_csv(
-    csv_files: List[List[Union[str, int, float]]],
-    root_dir: str,
-    remove_zero: bool = False,
-) -> None:
+def merge_csv(csv_files, root_dir, remove_zero=False):
     """Merge result in csv_files into a single csv file."""
     assert len(csv_files) > 0
     if remove_zero:
@@ -105,125 +98,16 @@ def merge_csv(
     csv.writer(open(output_path, "w")).writerows(content)
 
 
-def numerical_anysis(root_dir: str, xlim: int, norm: bool = False) -> None:
-    file_pattern = r".*/test_rew_\d+seeds.csv$"
-    norm_group_pattern = r"(/|^)\w+?\-v(\d|$)"
-    output_group_pattern = r".*?(?=(/|^)\w+?\-v\d)"
-    csv_files = find_all_files(root_dir, re.compile(file_pattern))
-    norm_group = group_files(csv_files, norm_group_pattern)
-    output_group = group_files(csv_files, output_group_pattern)
-    # calculate numerical outcome for each csv_file (y/std integration max_y, final_y)
-    results = {}
-    for f in csv_files:
-        # reader = csv.DictReader(open(f, newline=''))
-        # result = []
-        # for row in reader:
-        #     result.append([row['env_step'], row['rew'], row['rew:shaded']])
-        # result = np.array(result).T
-        # iclip = np.searchsorted(result[0], xlim)
-        result = csv2numpy(f)
-        if norm:
-            result = np.stack((
-                result['env_step'],
-                result['rew'] - result['rew'][0],
-                result['rew:shaded']))
-        else:
-            result = np.stack((
-                result['env_step'], result['rew'], result['rew:shaded']))
-        iclip = np.searchsorted(result[0], xlim)
-
-        if iclip == 0 or iclip == len(result[0]):
-            results[f] = None
-            continue
-        else:
-            results[f] = {}
-        result = result[:, :iclip + 1]
-        final_rew = np.interp(xlim, result[0], result[1])
-        final_rew_std = np.interp(xlim, result[0], result[2])
-        result[0, iclip] = xlim
-        result[1, iclip] = final_rew
-        result[2, iclip] = final_rew_std
-        results[f]['final_reward'] = final_rew.astype(float)
-        results[f]['final_reward_std'] = final_rew_std.astype(float)
-        max_id = np.argmax(result[1])
-        max_rew = result[1][max_id]
-        max_std = result[2][max_id]
-
-        results[f]['max_reward'] = max_rew.astype(float)
-        results[f]['max_std'] = max_std.astype(float)
-        rew_integration = np.trapz(result[1], x=result[0])
-        results[f]['reward_integration'] = rew_integration.astype(float)
-        std_integration = np.trapz(result[2], x=result[0])
-        results[f]['reward_std_integration'] = std_integration.astype(float)
-
-    for f, numerical_result in results.items():
-        print("*******  " + f + ":")
-        print(numerical_result)
-
-    if norm:
-        # calculate normalised numerical outcome for each csv_file group
-        for _, fs in norm_group.items():
-            maxres = defaultdict(lambda: -np.inf)
-            # find max for each key
-            for f in fs:
-                if not results[f]:
-                    continue
-                for k, v in results[f].items():
-                    maxres[k] = v if maxres[k] < v else maxres[k]
-            # add normalised numerical outcome
-            for f in fs:
-                if not results[f]:
-                    continue
-                new_dict = results[f].copy()
-                for k, v in results[f].items():
-                    new_dict[k + ":normalized"] = v / maxres[k]
-                results[f] = new_dict
-        # Add all numerical results for each outcome group
-        output_group
-        group_results = {}
-        for g, fs in output_group.items():
-            group_results[g] = defaultdict(lambda: 0)
-            group_n = 0
-            for f in fs:
-                if not results[f]:
-                    continue
-                group_n += 1
-                for k, v in results[f].items():
-                    group_results[g][k] += v
-            for k, v in group_results[g].items():
-                group_results[g][k] = v / group_n
-            group_results[g]['group_n'] += group_n
-        # print all outputs for each csv_file and each outcome group
-
-        for g, numerical_result in group_results.items():
-            print("*******  " + g + ":")
-            print(numerical_result)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    sp = parser.add_subparsers(dest='action')
-
-    merge_parser = sp.add_parser('merge')
-    merge_parser.add_argument(
+    parser.add_argument(
         '--refresh', action="store_true",
         help="Re-generate all csv files instead of using existing one.")
-    merge_parser.add_argument(
+    parser.add_argument(
         '--remove-zero', action="store_true",
         help="Remove the data point of env_step == 0.")
-    merge_parser.add_argument('--root-dir', type=str)
-
-    analysis_parser = sp.add_parser('analysis')
-    analysis_parser.add_argument('--xlim', type=int, default=1000000,
-                                 help='x-axis limitation (default: 1000000)')
-    analysis_parser.add_argument('--root-dir', type=str)
-    analysis_parser.add_argument(
-        '--norm', action="store_true",
-        help="Normalize all results according to environment.")
+    parser.add_argument('--root-dir', type=str)
     args = parser.parse_args()
 
-    if args.action == "merge":
-        csv_files = convert_tfevents_to_csv(args.root_dir, args.refresh)
-        merge_csv(csv_files, args.root_dir, args.remove_zero)
-    elif args.action == "analysis":
-        numerical_anysis(args.root_dir, args.xlim, norm=args.norm)
+    csv_files = convert_tfevents_to_csv(args.root_dir, args.refresh)
+    merge_csv(csv_files, args.root_dir, args.remove_zero)
