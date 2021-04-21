@@ -46,8 +46,12 @@ This will start 10 experiments with different seeds.
 Now that all the experiments are finished, we can convert all tfevent files into csv files and then try plotting the results.
 
 ```bash
+# geenrate csv
 $ ./tools.py --root-dir ./results/Ant-v3/sac
+# generate figures
 $ ./plotter.py --root-dir ./results/Ant-v3 --shaded-std --legend-pattern "\\w+"
+# generate numerical result (support multiple groups: `--root-dir ./` instead of single dir)
+$ ./analysis.py --root-dir ./results --norm
 ```
 
 #### Example benchmark
