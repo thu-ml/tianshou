@@ -43,6 +43,11 @@ On-policy
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.NPGPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: tianshou.policy.A2CPolicy
    :members:
    :undoc-members:
