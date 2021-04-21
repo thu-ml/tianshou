@@ -118,7 +118,7 @@ class DiscreteBCQPolicy(DQNPolicy):
 
         return {
             "loss": loss.item(),
-            "q_loss": q_loss.item(),
-            "i_loss": i_loss.item(),
-            "reg_loss": reg_loss.item(),
+            "loss/q": q_loss.item(),
+            "loss/i": i_loss.item(),
+            "loss/reg": reg_loss.item(),
         }

@@ -56,10 +56,15 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 
 # BCQ
 
-TODO: after the `done` issue fixed, the result should be re-tuned and place here.
-
 To running BCQ algorithm on Atari, you need to do the following things:
 
 - Train an expert, by using the command listed in the above DQN section;
 - Generate buffer with noise: `python3 atari_dqn.py --task {your_task} --watch --resume-path log/{your_task}/dqn/policy.pth --eps-test 0.2 --buffer-size 1000000 --save-buffer-name expert.hdf5` (note that 1M Atari buffer cannot be saved as `.pkl` format because it is too large and will cause error);
 - Train BCQ: `python3 atari_bcq.py --task {your_task} --load-buffer-name expert.hdf5`.
+
+We test our BCQ implementation on two example tasks (different from author's version, we use v4 instead of v0; one epoch means 10k gradient step):
+
+| Task                   | Online DQN | Behavioral | BCQ                               |
+| ---------------------- | ---------- | ---------- | --------------------------------- |
+| PongNoFrameskip-v4     | 21         | 7.7        | 21 (epoch 5)                      |
+| BreakoutNoFrameskip-v4 | 303        | 61         | 167.4 (epoch 12, could be higher) |
