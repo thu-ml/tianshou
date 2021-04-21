@@ -8,7 +8,7 @@ from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Independent, Normal
 
-from tianshou.policy import TRPOPolicy
+from tianshou.policy import NPGPolicy
 from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
@@ -27,7 +27,8 @@ def get_args():
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=50000)
     parser.add_argument('--step-per-collect', type=int, default=2048)
-    parser.add_argument('--repeat-per-collect', type=int, default=1)
+    parser.add_argument('--repeat-per-collect', type=int,
+                        default=2)  # theoretically it should be 1
     parser.add_argument('--batch-size', type=int, default=99999)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument('--training-num', type=int, default=16)
@@ -37,20 +38,17 @@ def get_args():
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
-    # trpo special
+    # npg special
     parser.add_argument('--gae-lambda', type=float, default=0.95)
     parser.add_argument('--rew-norm', type=int, default=1)
     parser.add_argument('--norm-adv', type=int, default=1)
     parser.add_argument('--optim-critic-iters', type=int, default=5)
-    parser.add_argument('--max-kl', type=float, default=0.005)
-    parser.add_argument('--backtrack-coeff', type=float, default=0.8)
-    parser.add_argument('--max-backtracks', type=int, default=10)
-
+    parser.add_argument('--actor-step-size', type=float, default=0.5)
     args = parser.parse_known_args()[0]
     return args
 
 
-def test_trpo(args=get_args()):
+def test_npg(args=get_args()):
     env = gym.make(args.task)
     if args.task == 'Pendulum-v0':
         env.spec.reward_threshold = -250
@@ -90,7 +88,7 @@ def test_trpo(args=get_args()):
     def dist(*logits):
         return Independent(Normal(*logits), 1)
 
-    policy = TRPOPolicy(
+    policy = NPGPolicy(
         actor, critic, optim, dist,
         discount_factor=args.gamma,
         reward_normalization=args.rew_norm,
@@ -98,16 +96,14 @@ def test_trpo(args=get_args()):
         gae_lambda=args.gae_lambda,
         action_space=env.action_space,
         optim_critic_iters=args.optim_critic_iters,
-        max_kl=args.max_kl,
-        backtrack_coeff=args.backtrack_coeff,
-        max_backtracks=args.max_backtracks)
+        actor_step_size=args.actor_step_size)
     # collector
     train_collector = Collector(
         policy, train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)))
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'trpo')
+    log_path = os.path.join(args.logdir, args.task, 'npg')
     writer = SummaryWriter(log_path)
     logger = BasicLogger(writer)
 
@@ -137,4 +133,4 @@ def test_trpo(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_trpo()
+    test_npg()
