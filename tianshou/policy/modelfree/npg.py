@@ -2,56 +2,19 @@ import torch
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
+from typing import Any, Dict, List, Type
 from torch.distributions import kl_divergence
-from typing import Any, Dict, List, Type, Callable
 
 
 from tianshou.policy import A2CPolicy
 from tianshou.data import Batch, ReplayBuffer
 
 
-def _conjugate_gradients(
-    Avp: Callable[[torch.Tensor], torch.Tensor],
-    b: torch.Tensor,
-    nsteps: int = 10,
-    residual_tol: float = 1e-10
-) -> torch.Tensor:
-    x = torch.zeros_like(b)
-    r, p = b.clone(), b.clone()
-    # Note: should be 'r, p = b - A(x)', but for x=0, A(x)=0.
-    # Change if doing warm start.
-    rdotr = r.dot(r)
-    for i in range(nsteps):
-        z = Avp(p)
-        alpha = rdotr / p.dot(z)
-        x += alpha * p
-        r -= alpha * z
-        new_rdotr = r.dot(r)
-        if new_rdotr < residual_tol:
-            break
-        p = r + new_rdotr / rdotr * p
-        rdotr = new_rdotr
-    return x
-
-
-def _get_flat_grad(y: torch.Tensor, model: nn.Module, **kwargs: Any) -> torch.Tensor:
-    grads = torch.autograd.grad(y, model.parameters(), **kwargs)  # type: ignore
-    return torch.cat([grad.reshape(-1) for grad in grads])
-
-
-def _set_from_flat_params(model: nn.Module, flat_params: torch.Tensor) -> nn.Module:
-    prev_ind = 0
-    for param in model.parameters():
-        flat_size = int(np.prod(list(param.size())))
-        param.data.copy_(
-            flat_params[prev_ind:prev_ind + flat_size].view(param.size()))
-        prev_ind += flat_size
-    return model
-
-
 class NPGPolicy(A2CPolicy):
-    """Implementation of Natural Policy Gradient. 
-        https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
+    """Implementation of Natural Policy Gradient.
+
+    https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
+
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.nn.Module critic: the critic network. (s -> V(s))
@@ -89,7 +52,7 @@ class NPGPolicy(A2CPolicy):
         dist_fn: Type[torch.distributions.Distribution],
         advantage_normalization: bool = True,
         optim_critic_iters: int = 5,
-        actor_step_size: float = 0.5, # TODO
+        actor_step_size: float = 0.5,
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, critic, optim, dist_fn, **kwargs)
@@ -125,7 +88,7 @@ class NPGPolicy(A2CPolicy):
                 ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 actor_loss = -(ratio * b.adv).mean()
-                flat_grads = _get_flat_grad(
+                flat_grads = self._get_flat_grad(
                     actor_loss, self.actor, retain_graph=True).detach()
 
                 # direction: calculate natural gradient
@@ -134,23 +97,16 @@ class NPGPolicy(A2CPolicy):
 
                 kl = kl_divergence(old_dist, dist).mean()
                 # calculate first order gradient of kl with respect to theta
-                flat_kl_grad = _get_flat_grad(kl, self.actor, create_graph=True)
-
-                def MVP(v: torch.Tensor) -> torch.Tensor:  # matrix vector product
-                    # caculate second order gradient of kl with respect to theta
-                    kl_v = (flat_kl_grad * v).sum()
-                    flat_kl_grad_grad = _get_flat_grad(
-                        kl_v, self.actor, retain_graph=True).detach()
-                    return flat_kl_grad_grad + v * self._damping
-
-                search_direction = -_conjugate_gradients(MVP, flat_grads, nsteps=10)
+                flat_kl_grad = self._get_flat_grad(kl, self.actor, create_graph=True)
+                search_direction = -self._conjugate_gradients(
+                    flat_grads, flat_kl_grad, nsteps=10)
 
                 # step
                 with torch.no_grad():
                     flat_params = torch.cat([param.data.view(-1)
                                              for param in self.actor.parameters()])
                     new_flat_params = flat_params + self._step_size * search_direction
-                    _set_from_flat_params(self.actor, new_flat_params)
+                    self._set_from_flat_params(self.actor, new_flat_params)
                     new_dist = self(b).dist
                     kl = kl_divergence(old_dist, new_dist).mean()
 
@@ -175,3 +131,52 @@ class NPGPolicy(A2CPolicy):
             "loss/vf": vf_losses,
             "kl": kls,
         }
+
+    def _MVP(self, v: torch.Tensor, flat_kl_grad: torch.Tensor) -> torch.Tensor:
+        """Matrix vector product."""
+        # caculate second order gradient of kl with respect to theta
+        kl_v = (flat_kl_grad * v).sum()
+        flat_kl_grad_grad = self._get_flat_grad(
+            kl_v, self.actor, retain_graph=True).detach()
+        return flat_kl_grad_grad + v * self._damping
+
+    def _conjugate_gradients(
+        self,
+        b: torch.Tensor,
+        flat_kl_grad: torch.Tensor,
+        nsteps: int = 10,
+        residual_tol: float = 1e-10
+    ) -> torch.Tensor:
+        x = torch.zeros_like(b)
+        r, p = b.clone(), b.clone()
+        # Note: should be 'r, p = b - MVP(x)', but for x=0, MVP(x)=0.
+        # Change if doing warm start.
+        rdotr = r.dot(r)
+        for i in range(nsteps):
+            z = self._MVP(p, flat_kl_grad)
+            alpha = rdotr / p.dot(z)
+            x += alpha * p
+            r -= alpha * z
+            new_rdotr = r.dot(r)
+            if new_rdotr < residual_tol:
+                break
+            p = r + new_rdotr / rdotr * p
+            rdotr = new_rdotr
+        return x
+
+    def _get_flat_grad(
+        self, y: torch.Tensor, model: nn.Module, **kwargs: Any
+    ) -> torch.Tensor:
+        grads = torch.autograd.grad(y, model.parameters(), **kwargs)  # type: ignore
+        return torch.cat([grad.reshape(-1) for grad in grads])
+
+    def _set_from_flat_params(
+        self, model: nn.Module, flat_params: torch.Tensor
+    ) -> nn.Module:
+        prev_ind = 0
+        for param in model.parameters():
+            flat_size = int(np.prod(list(param.size())))
+            param.data.copy_(
+                flat_params[prev_ind:prev_ind + flat_size].view(param.size()))
+            prev_ind += flat_size
+        return model

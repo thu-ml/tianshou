@@ -1,16 +1,12 @@
 import torch
 import warnings
-import numpy as np
-from torch import nn
 import torch.nn.functional as F
+from typing import Any, Dict, List, Type
 from torch.distributions import kl_divergence
-from typing import Any, Dict, List, Type, Callable
 
 
+from tianshou.data import Batch
 from tianshou.policy import NPGPolicy
-from tianshou.data import Batch, ReplayBuffer
-# TODO   don't know whether this work or not in library
-from .npg import _conjugate_gradients, _get_flat_grad, _set_from_flat_params
 
 
 class TRPOPolicy(NPGPolicy):
@@ -80,7 +76,7 @@ class TRPOPolicy(NPGPolicy):
                 ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 actor_loss = -(ratio * b.adv).mean()
-                flat_grads = _get_flat_grad(
+                flat_grads = self._get_flat_grad(
                     actor_loss, self.actor, retain_graph=True).detach()
 
                 # direction: calculate natural gradient
@@ -89,20 +85,14 @@ class TRPOPolicy(NPGPolicy):
 
                 kl = kl_divergence(old_dist, dist).mean()
                 # calculate first order gradient of kl with respect to theta
-                flat_kl_grad = _get_flat_grad(kl, self.actor, create_graph=True)
-
-                def MVP(v: torch.Tensor) -> torch.Tensor:  # matrix vector product
-                    # caculate second order gradient of kl with respect to theta
-                    kl_v = (flat_kl_grad * v).sum()
-                    flat_kl_grad_grad = _get_flat_grad(
-                        kl_v, self.actor, retain_graph=True).detach()
-                    return flat_kl_grad_grad + v * self._damping
-
-                search_direction = -_conjugate_gradients(MVP, flat_grads, nsteps=10)
+                flat_kl_grad = self._get_flat_grad(kl, self.actor, create_graph=True)
+                search_direction = -self._conjugate_gradients(
+                    flat_grads, flat_kl_grad, nsteps=10)
 
                 # stepsize: calculate max stepsize constrained by kl bound
                 step_size = torch.sqrt(2 * self._delta / (
-                    search_direction * MVP(search_direction)).sum(0, keepdim=True))
+                    search_direction * self._MVP(search_direction, flat_kl_grad)
+                ).sum(0, keepdim=True))
 
                 # stepsize: linesearch stepsize
                 with torch.no_grad():
@@ -110,7 +100,7 @@ class TRPOPolicy(NPGPolicy):
                                              for param in self.actor.parameters()])
                     for i in range(self._max_backtracks):
                         new_flat_params = flat_params + step_size * search_direction
-                        _set_from_flat_params(self.actor, new_flat_params)
+                        self._set_from_flat_params(self.actor, new_flat_params)
                         # calculate kl and if in bound, loss actually down
                         new_dist = self(b).dist
                         new_dratio = (
@@ -127,7 +117,7 @@ class TRPOPolicy(NPGPolicy):
                         elif i < self._max_backtracks - 1:
                             step_size = step_size * self._backtrack_coeff
                         else:
-                            _set_from_flat_params(self.actor, new_flat_params)
+                            self._set_from_flat_params(self.actor, new_flat_params)
                             step_size = torch.tensor([0.0])
                             warnings.warn("Line search failed! It seems hyperparamters"
                                           " are poor and need to be changed.")
