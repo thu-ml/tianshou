@@ -136,9 +136,11 @@ def test_dqn(args=get_args()):
 
     # save buffer in pickle format, for imitation learning unittest
     buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
-    collector = Collector(policy, test_envs, buf)
-    collector.collect(n_step=args.buffer_size)
+    policy.set_eps(0.2)
+    collector = Collector(policy, test_envs, buf, exploration_noise=True)
+    result = collector.collect(n_step=args.buffer_size)
     pickle.dump(buf, open(args.save_buffer_name, "wb"))
+    print(result["rews"].mean())
 
 
 def test_pdqn(args=get_args()):
