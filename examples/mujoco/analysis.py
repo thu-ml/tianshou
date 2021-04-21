@@ -27,6 +27,10 @@ def numerical_anysis(root_dir: str, xlim: int, norm: bool = False) -> None:
         else:
             result = np.stack([
                 result['env_step'], result['rew'], result['rew:shaded']])
+
+        if result[0, -1] < xlim:
+            continue
+
         final_rew = np.interp(xlim, result[0], result[1])
         final_rew_std = np.interp(xlim, result[0], result[2])
         result = result[:, result[0] <= xlim]
@@ -62,8 +66,8 @@ def numerical_anysis(root_dir: str, xlim: int, norm: bool = False) -> None:
         group_results = defaultdict(list)
         for g, fs in output_group.items():
             group_results['name'].append(g)
-            group_results['num'].append(len(fs))
             mask = np.isin(results['name'], fs)
+            group_results['num'].append(sum(mask))
             for k in results.keys():
                 if k == 'name':
                     continue
