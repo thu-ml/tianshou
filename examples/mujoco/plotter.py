@@ -2,14 +2,12 @@
 
 import re
 import os
-import csv
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-from collections import defaultdict
 
-from tools import find_all_files
+from tools import find_all_files, group_files, csv2numpy
 
 
 def smooth(y, radius, mode='two_sided', valid_only=False):
@@ -62,24 +60,6 @@ COLORS = ([
     '#ffc832',  # YELLOW
     '#000000',  # BLACK
 ])
-
-
-def csv2numpy(csv_file):
-    csv_dict = defaultdict(list)
-    reader = csv.DictReader(open(csv_file))
-    for row in reader:
-        for k, v in row.items():
-            csv_dict[k].append(eval(v))
-    return {k: np.array(v) for k, v in csv_dict.items()}
-
-
-def group_files(file_list, pattern):
-    res = defaultdict(list)
-    for f in file_list:
-        match = re.search(pattern, f)
-        key = match.group() if match else ''
-        res[key].append(f)
-    return res
 
 
 def plot_ax(

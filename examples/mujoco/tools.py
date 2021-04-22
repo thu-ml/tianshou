@@ -6,11 +6,11 @@ import csv
 import tqdm
 import argparse
 import numpy as np
-from typing import Dict, List, Union
+from collections import defaultdict
 from tensorboard.backend.event_processing import event_accumulator
 
 
-def find_all_files(root_dir: str, pattern: re.Pattern) -> List[str]:
+def find_all_files(root_dir, pattern):
     """Find all files under root_dir according to relative pattern."""
     file_list = []
     for dirname, _, files in os.walk(root_dir):
@@ -21,9 +21,25 @@ def find_all_files(root_dir: str, pattern: re.Pattern) -> List[str]:
     return file_list
 
 
-def convert_tfevents_to_csv(
-    root_dir: str, refresh: bool = False
-) -> Dict[str, np.ndarray]:
+def group_files(file_list, pattern):
+    res = defaultdict(list)
+    for f in file_list:
+        match = re.search(pattern, f)
+        key = match.group() if match else ''
+        res[key].append(f)
+    return res
+
+
+def csv2numpy(csv_file):
+    csv_dict = defaultdict(list)
+    reader = csv.DictReader(open(csv_file))
+    for row in reader:
+        for k, v in row.items():
+            csv_dict[k].append(eval(v))
+    return {k: np.array(v) for k, v in csv_dict.items()}
+
+
+def convert_tfevents_to_csv(root_dir, refresh=False):
     """Recursively convert test/rew from all tfevent file under root_dir to csv.
 
     This function assumes that there is at most one tfevents file in each directory
@@ -60,11 +76,7 @@ def convert_tfevents_to_csv(
     return result
 
 
-def merge_csv(
-    csv_files: List[List[Union[str, int, float]]],
-    root_dir: str,
-    remove_zero: bool = False,
-) -> None:
+def merge_csv(csv_files, root_dir, remove_zero=False):
     """Merge result in csv_files into a single csv file."""
     assert len(csv_files) > 0
     if remove_zero:
@@ -88,13 +100,14 @@ def merge_csv(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root-dir', type=str)
     parser.add_argument(
         '--refresh', action="store_true",
         help="Re-generate all csv files instead of using existing one.")
     parser.add_argument(
         '--remove-zero', action="store_true",
         help="Remove the data point of env_step == 0.")
+    parser.add_argument('--root-dir', type=str)
     args = parser.parse_args()
+
     csv_files = convert_tfevents_to_csv(args.root_dir, args.refresh)
     merge_csv(csv_files, args.root_dir, args.remove_zero)
