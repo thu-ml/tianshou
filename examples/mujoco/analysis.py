@@ -8,7 +8,7 @@ from collections import defaultdict
 from tools import find_all_files, group_files, csv2numpy
 
 
-def numerical_anysis(root_dir: str, xlim: int, norm: bool = False) -> None:
+def numerical_anysis(root_dir, xlim, norm=False):
     file_pattern = re.compile(r".*/test_rew_\d+seeds.csv$")
     norm_group_pattern = re.compile(r"(/|^)\w+?\-v(\d|$)")
     output_group_pattern = re.compile(r".*?(?=(/|^)\w+?\-v\d)")
