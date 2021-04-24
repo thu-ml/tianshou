@@ -163,7 +163,11 @@ class BaseVectorEnv(gym.Env):
         id = self._wrap_id(id)
         if self.is_async:
             self._assert_id(id)
-        obs = np.stack([self.workers[i].reset() for i in id])
+        obs = [self.workers[i].reset() for i in id]
+        try:
+            obs = np.stack(obs)
+        except ValueError:  # different len(obs)
+            obs = np.array(obs, dtype=object)
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs)
         return self.normalize_obs(obs)
@@ -236,7 +240,13 @@ class BaseVectorEnv(gym.Env):
                 info["env_id"] = env_id
                 result.append((obs, rew, done, info))
                 self.ready_id.append(env_id)
-        obs_stack, rew_stack, done_stack, info_stack = map(np.stack, zip(*result))
+        obs_stack, rew_stack, done_stack, info_stack = zip(*result)
+        try:
+            obs_stack = np.stack(obs_stack)
+        except ValueError:  # different len(obs)
+            obs_stack = np.array(obs_stack, dtype=object)
+        rew_stack, done_stack, info_stack = map(
+            np.stack, [rew_stack, done_stack, info_stack])
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs_stack)
         return [self.normalize_obs(obs_stack), rew_stack, done_stack, info_stack]
