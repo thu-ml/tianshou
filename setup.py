@@ -62,6 +62,7 @@ setup(
             "pytest",
             "pytest-cov",
             "ray>=1.0.0",
+            "networkx",
             "mypy",
             "pydocstyle",
             "doc8",

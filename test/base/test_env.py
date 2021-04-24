@@ -6,9 +6,9 @@ from tianshou.env import DummyVectorEnv, SubprocVectorEnv, \
     ShmemVectorEnv, RayVectorEnv
 
 if __name__ == '__main__':
-    from env import MyTestEnv
+    from env import MyTestEnv, NXEnv
 else:  # pytest
-    from test.base.env import MyTestEnv
+    from test.base.env import MyTestEnv, NXEnv
 
 
 def has_ray():
@@ -167,7 +167,18 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         v.close()
 
 
+def test_env_obs():
+    for obs_type in ["array", "object"]:
+        envs = SubprocVectorEnv([
+            lambda i=x: NXEnv(i, obs_type) for x in [5, 10, 15, 20]])
+        obs = envs.reset()
+        assert obs.dtype == object
+        obs = envs.step([1, 1, 1, 1])[0]
+        assert obs.dtype == object
+
+
 if __name__ == '__main__':
+    test_env_obs()
     test_vecenv()
     test_async_env()
     test_async_check_id()
