@@ -302,11 +302,6 @@ class BaseVectorEnv(gym.Env):
             obs = np.clip(obs, -clip_max, clip_max)  # type: ignore
         return obs
 
-    def __del__(self) -> None:
-        """Redirect to self.close()."""
-        if not self.is_closed:
-            self.close()
-
 
 class DummyVectorEnv(BaseVectorEnv):
     """Dummy vectorized environment wrapper, implemented in for-loop.
