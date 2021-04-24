@@ -14,7 +14,7 @@ function showEnv(elem) {
     var dataSource = {
         $schema: "https://vega.github.io/schema/vega-lite/v5.json",
         data: {
-            url: "/_static/js/mujoco/benchmark/" + selectEnv + "/result.json"
+            url: "/en/master/_static/js/mujoco/benchmark/" + selectEnv + "/result.json"
         },
         mark: "line",
         height: 400,
