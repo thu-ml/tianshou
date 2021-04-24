@@ -4,6 +4,7 @@ import torch
 import pickle
 import pytest
 import numpy as np
+import networkx as nx
 from itertools import starmap
 
 from tianshou.data import Batch, to_torch, to_numpy
@@ -36,8 +37,7 @@ def test_batch():
     assert 'a' not in b
     with pytest.raises(AssertionError):
         Batch({1: 2})
-    with pytest.raises(TypeError):
-        Batch(a=[np.zeros((2, 3)), np.zeros((3, 3))])
+    assert Batch(a=[np.zeros((2, 3)), np.zeros((3, 3))]).a.dtype == object
     with pytest.raises(TypeError):
         Batch(a=[np.zeros((3, 2)), np.zeros((3, 3))])
     with pytest.raises(TypeError):
@@ -169,6 +169,14 @@ def test_batch():
     a = Batch.stack([Batch(a=None), Batch(b=None)])
     assert a.a[0] is None and a.a[1] is None
     assert a.b[0] is None and a.b[1] is None
+
+    # nx.Graph corner case
+    assert Batch(a=np.array([nx.Graph(), nx.Graph()], dtype=object)).a.dtype == object
+    g1 = nx.Graph()
+    g1.add_nodes_from(list(range(10)))
+    g2 = nx.Graph()
+    g2.add_nodes_from(list(range(20)))
+    assert Batch(a=np.array([g1, g2])).a.dtype == object
 
 
 def test_batch_over_batch():

@@ -14,9 +14,9 @@ from tianshou.data import (
 )
 
 if __name__ == '__main__':
-    from env import MyTestEnv
+    from env import MyTestEnv, NXEnv
 else:  # pytest
-    from test.base.env import MyTestEnv
+    from test.base.env import MyTestEnv, NXEnv
 
 
 class MyPolicy(BasePolicy):
@@ -136,6 +136,15 @@ def test_collector():
         Collector(policy, dum, PrioritizedReplayBuffer(10, 0.5, 0.5))
     with pytest.raises(TypeError):
         c2.collect()
+
+    # test NXEnv
+    for obs_type in ["array", "object"]:
+        envs = SubprocVectorEnv([
+            lambda i=x: NXEnv(i, obs_type) for x in [5, 10, 15, 20]])
+        c3 = Collector(policy, envs,
+                       VectorReplayBuffer(total_size=100, buffer_num=4))
+        c3.collect(n_step=6)
+        assert c3.buffer.obs.dtype == object
 
 
 def test_collector_with_async():
