@@ -59,7 +59,6 @@ class TRPOPolicy(NPGPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, critic, optim, dist_fn, **kwargs)
-        del self._step_size
         self._max_backtracks = max_backtracks
         self._delta = max_kl
         self._backtrack_coeff = backtrack_coeff
