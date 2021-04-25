@@ -59,7 +59,6 @@ class TRPOPolicy(NPGPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, critic, optim, dist_fn, **kwargs)
-        del self._step_size
         self._max_backtracks = max_backtracks
         self._delta = max_kl
         self._backtrack_coeff = backtrack_coeff
@@ -123,7 +122,7 @@ class TRPOPolicy(NPGPolicy):
                                           " are poor and need to be changed.")
 
                 # optimize citirc
-                for _ in range(self._optim_critic_iters):
+                for _ in range(self._optim_critic_iters):  # type: ignore
                     value = self.critic(b.obs).flatten()
                     vf_loss = F.mse_loss(b.returns, value)
                     self.optim.zero_grad()
