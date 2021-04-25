@@ -42,6 +42,7 @@ class PGPolicy(BasePolicy):
         action_scaling: bool = True,
         action_bound_method: str = "clip",
         lr_scheduler: Optional[torch.optim.lr_scheduler.LambdaLR] = None,
+        deterministic_eval: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(action_scaling=action_scaling,
@@ -55,6 +56,7 @@ class PGPolicy(BasePolicy):
         self._rew_norm = reward_normalization
         self.ret_rms = RunningMeanStd()
         self._eps = 1e-8
+        self._deterministic_eval = deterministic_eval
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
@@ -103,7 +105,13 @@ class PGPolicy(BasePolicy):
             dist = self.dist_fn(*logits)
         else:
             dist = self.dist_fn(logits)
-        act = dist.sample()
+        if self._deterministic_eval and not self.training:
+            if isinstance(logits, tuple):
+                act = logits[0].argmax(-1)
+            else:
+                act = logits.argmax(-1)
+        else:
+            act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
     def learn(  # type: ignore
