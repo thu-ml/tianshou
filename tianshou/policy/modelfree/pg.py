@@ -1,3 +1,4 @@
+import gym
 import torch
 import numpy as np
 from typing import Any, Dict, List, Type, Union, Optional
@@ -25,8 +26,10 @@ class PGPolicy(BasePolicy):
         to use option "action_scaling" or "action_bound_method". Default to None.
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
         optimizer in each policy.update(). Default to None (no lr_scheduler).
-    :param deterministic_eval: whether to use deterministic action (maximum
-        value in the logits) instead of stochastic action sampled by the policy.
+    :param deterministic_eval: whether to use deterministic action
+        instead of stochastic action sampled by the policy. If the action space
+        is one of "Discrete", "MultiDiscrete", and "MultiBinary", argmax will be
+        taken. Otherwise, the raw result of actor will be returned.
         Default to False.
 
     .. seealso::
@@ -113,7 +116,12 @@ class PGPolicy(BasePolicy):
                 act = logits[0]
             else:
                 act = logits
-            if issubclass(self.dist_fn, torch.distributions.Categorical):
+            if self.action_space is not None and \
+                    isinstance(self.action_space, (
+                        gym.spaces.Discrete,
+                        gym.spaces.MultiDiscrete,
+                        gym.spaces.MultiBinary
+                    )):
                 act = act.argmax(-1)
         else:
             act = dist.sample()
