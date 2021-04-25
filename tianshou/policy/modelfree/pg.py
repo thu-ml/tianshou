@@ -25,6 +25,9 @@ class PGPolicy(BasePolicy):
         to use option "action_scaling" or "action_bound_method". Default to None.
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
         optimizer in each policy.update(). Default to None (no lr_scheduler).
+    :param deterministic_eval: whether to use deterministic action (maximum
+        value in the logits) instead of stochastic action sampled by the policy.
+        Default to False.
 
     .. seealso::
 
