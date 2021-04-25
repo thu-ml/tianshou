@@ -5,6 +5,7 @@ from torch import nn
 from numba import njit
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Tuple, Union, Optional, Callable
+from gym.spaces import Box, Discrete, MultiDiscrete, MultiBinary
 
 from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
@@ -66,6 +67,11 @@ class BasePolicy(ABC, nn.Module):
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
+        self.action_type = ""
+        if isinstance(action_space, (Discrete, MultiDiscrete, MultiBinary)):
+            self.action_type = "discrete"
+        elif isinstance(action_space, Box):
+            self.action_type = "continuous"
         self.agent_id = 0
         self.updating = False
         self.action_scaling = action_scaling
