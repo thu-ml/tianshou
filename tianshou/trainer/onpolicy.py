@@ -103,7 +103,7 @@ def onpolicy_trainer(
             gradient_step, last_rew, last_len = logger.restore_data()
     else:
         test_result = test_episode(policy, test_collector, test_fn, 0,
-                                   episode_per_test, logger, env_step, reward_metric)
+                                   episode_per_test, logger, 0, reward_metric)
         best_epoch = 0
         best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
 

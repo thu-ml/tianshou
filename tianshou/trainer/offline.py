@@ -21,6 +21,9 @@ def offline_trainer(
     test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
     stop_fn: Optional[Callable[[float], bool]] = None,
     save_fn: Optional[Callable[[BasePolicy], None]] = None,
+    save_train_fn: Optional[Callable[[int, int, int], None]] = None,
+    resume_from_log: bool = False,
+    epoch_per_save: int = 1,
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
@@ -44,6 +47,14 @@ def offline_trainer(
     :param function save_fn: a hook called when the undiscounted average mean reward in
         evaluation phase gets better, with the signature ``f(policy: BasePolicy) ->
         None``.
+    :param function save_train_fn: a function to save training process, with the
+        signature ``f(epoch: int, env_step: int, gradient_step: int) -> None``; you can
+        save whatever you want. Because offline-RL doesn't have env_step, the env_step
+        is always 0 here.
+    :param int epoch_per_save: save train process each ``epoch_per_save`` epoch by
+        calling ``save_train_fn``. Default to 1.
+    :param bool resume_from_log: resume gradient_step and other metadata from existing
+        tensorboard log. Default to False.
     :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
         bool``, receives the average undiscounted returns of the testing result,
         returns a boolean which indicates whether reaching the goal.
@@ -59,15 +70,20 @@ def offline_trainer(
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
-    gradient_step = 0
+    start_epoch, gradient_step = 0, 0
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     test_collector.reset_stat()
-    test_result = test_episode(policy, test_collector, test_fn, 0, episode_per_test,
-                               logger, gradient_step, reward_metric)
-    best_epoch = 0
-    best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
-    for epoch in range(1, 1 + max_epoch):
+    if resume_from_log:
+        best_epoch, best_reward, best_reward_std, start_epoch, _, \
+            gradient_step, _, _ = logger.restore_data()
+    else:
+        test_result = test_episode(policy, test_collector, test_fn, 0,
+                                   episode_per_test, logger, 0, reward_metric)
+        best_epoch = 0
+        best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
+
+    for epoch in range(1 + start_epoch, 1 + max_epoch):
         policy.train()
         with tqdm.trange(
             update_per_epoch, desc=f"Epoch #{epoch}", **tqdm_config
@@ -87,15 +103,15 @@ def offline_trainer(
             policy, test_collector, test_fn, epoch, episode_per_test,
             logger, gradient_step, reward_metric)
         rew, rew_std = test_result["rew"], test_result["rew_std"]
-        if best_epoch == -1 or best_reward < rew:
-            best_reward, best_reward_std = rew, rew_std
-            best_epoch = epoch
+        if best_epoch < 0 or best_reward < rew:
+            best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
             if save_fn:
                 save_fn(policy)
+        if epoch_per_save > 0 and epoch % epoch_per_save == 0 and save_train_fn:
+            save_train_fn(epoch, 0, gradient_step)
         if verbose:
-            print(
-                f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_reward:"
-                f" {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
+            print(f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
+                  f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break
     return gather_info(start_time, None, test_collector, best_reward, best_reward_std)

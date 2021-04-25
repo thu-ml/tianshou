@@ -127,7 +127,7 @@ def test_ppo(args=get_args()):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
         torch.save({
             'model': policy.state_dict(),
-            'optim': policy.optim.state_dict(),
+            'optim': optim.state_dict(),
         }, os.path.join(log_path, 'checkpoint.pth'))
 
     if args.resume:

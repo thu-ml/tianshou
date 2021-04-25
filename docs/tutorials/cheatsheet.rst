@@ -45,11 +45,11 @@ To resume training process from an existing checkpoint, you need to do the follo
 And to successfully resume from a checkpoint:
 
 1. Load everything needed in the training process **before trainer initialization**, i.e., policy, optim, buffer;
-2. set ``resume_from_log=True`` with trainer;
+2. Set ``resume_from_log=True`` with trainer;
 
-We provide an example to show how these steps work: checkout `test_c51.py <https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_c51.py>`_ or `test_ppo.py <https://github.com/thu-ml/tianshou/blob/master/test/continuous/test_ppo.py>`_ by running
+We provide an example to show how these steps work: checkout `test_c51.py <https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_c51.py>`_, `test_ppo.py <https://github.com/thu-ml/tianshou/blob/master/test/continuous/test_ppo.py>`_ or `test_il_bcq.py <https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_il_bcq.py>`_ by running
 
-.. code-block:: bash
+.. code-block:: console
 
     $ python3 test/discrete/test_c51.py  # train some epoch
     $ python3 test/discrete/test_c51.py --resume  # restore from existing log and continuing training

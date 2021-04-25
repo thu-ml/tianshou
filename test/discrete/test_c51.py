@@ -118,7 +118,7 @@ def test_c51(args=get_args()):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
         torch.save({
             'model': policy.state_dict(),
-            'optim': policy.optim.state_dict(),
+            'optim': optim.state_dict(),
         }, os.path.join(log_path, 'checkpoint.pth'))
         pickle.dump(train_collector.buffer,
                     open(os.path.join(log_path, 'train_buffer.pkl'), "wb"))
@@ -136,8 +136,7 @@ def test_c51(args=get_args()):
             print("Fail to restore policy and optim.")
         buffer_path = os.path.join(log_path, 'train_buffer.pkl')
         if os.path.exists(buffer_path):
-            buffer = pickle.load(open(buffer_path, "rb"))
-            train_collector._assign_buffer(buffer)
+            train_collector.buffer = pickle.load(open(buffer_path, "rb"))
             print("Successfully restore buffer.")
         else:
             print("Fail to restore buffer.")

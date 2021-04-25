@@ -42,6 +42,7 @@ def get_args():
         "--device", type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
+    parser.add_argument("--resume", action="store_true")
     args = parser.parse_known_args()[0]
     return args
 
@@ -93,10 +94,30 @@ def test_discrete_bcq(args=get_args()):
     def stop_fn(mean_rewards):
         return mean_rewards >= env.spec.reward_threshold
 
+    def save_train_fn(epoch, env_step, gradient_step):
+        # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
+        torch.save({
+            'model': policy.state_dict(),
+            'optim': optim.state_dict(),
+        }, os.path.join(log_path, 'checkpoint.pth'))
+
+    if args.resume:
+        # load from existing checkpoint
+        print(f"Loading agent under {log_path}")
+        ckpt_path = os.path.join(log_path, 'checkpoint.pth')
+        if os.path.exists(ckpt_path):
+            checkpoint = torch.load(ckpt_path, map_location=args.device)
+            policy.load_state_dict(checkpoint['model'])
+            # optim.load_state_dict(checkpoint['optim'])  # don't know why
+            print("Successfully restore policy and optim.")
+        else:
+            print("Fail to restore policy and optim.")
+
     result = offline_trainer(
         policy, buffer, test_collector,
         args.epoch, args.update_per_epoch, args.test_num, args.batch_size,
-        stop_fn=stop_fn, save_fn=save_fn, logger=logger)
+        stop_fn=stop_fn, save_fn=save_fn, logger=logger,
+        resume_from_log=args.resume, save_train_fn=save_train_fn)
 
     assert stop_fn(result['best_reward'])
 
@@ -110,6 +131,11 @@ def test_discrete_bcq(args=get_args()):
         result = collector.collect(n_episode=1, render=args.render)
         rews, lens = result["rews"], result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+
+
+def test_discrete_bcq_resume(args=get_args()):
+    args.resume = True
+    test_discrete_bcq(args)
 
 
 if __name__ == "__main__":
