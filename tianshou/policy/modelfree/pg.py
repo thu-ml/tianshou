@@ -114,7 +114,7 @@ class PGPolicy(BasePolicy):
             else:
                 act = logits
             if issubclass(self.dist_fn, torch.distributions.Categorical):
-                act = logits.argmax(-1)
+                act = act.argmax(-1)
         else:
             act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
