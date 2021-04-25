@@ -30,6 +30,31 @@ Customize Training Process
 See :ref:`customized_trainer`.
 
 
+.. _resume_training:
+
+Resume Training Process
+-----------------------
+
+This is related to `Issue 349 <https://github.com/thu-ml/tianshou/issues/349>`_.
+
+To resume training process from an existing checkpoint, you need to do the following things in the training process:
+
+1. Make sure you write ``save_train_fn`` which saves everything needed in the training process, i.e., policy, optim, buffer; pass it to trainer;
+2. Use ``BasicLogger`` which contains a tensorboard;
+
+And to successfully resume from a checkpoint:
+
+1. Load everything needed in the training process **before trainer initialization**, i.e., policy, optim, buffer;
+2. set ``resume_from_log=True`` with trainer;
+
+We provide an example to show how these steps work: checkout `test_c51.py <https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_c51.py>`_ by running
+
+.. code-block:: bash
+
+    $ python3 test/discrete/test_c51.py  # train some epoch
+    $ python3 test/discrete/test_c51.py --resume  # restore from existing log and continuing training
+
+
 .. _parallel_sampling:
 
 Parallel Sampling

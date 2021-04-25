@@ -44,7 +44,6 @@ def get_args():
     parser.add_argument(
         '--save-buffer-name', type=str,
         default="./expert_DQN_CartPole-v0.pkl")
-    parser.add_argument("--epoch-per-save", type=int, default=5)
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -98,39 +97,8 @@ def test_dqn(args=get_args()):
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
-    def save_train_fn(policy, train_collector,
-                      test_collector, train_log, epoch):
-        # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': policy.state_dict(),
-            'optimizer_state_dict': policy.optim.state_dict(),
-            'train_log': train_log.state_dict()
-        }, os.path.join(log_path, 'checkpoint.pth'))
-        pickle.dump(train_collector.buffer,
-                    open(os.path.join(log_path, 'train_buffer.pkl'), "wb"))
-        # test collector does not need to be saved
-
-    def load_train_fn(policy, train_collector,
-                      test_collector, train_log):
-        # or use resume_path
-        print("Loaded agent from: ", log_path)
-        if os.path.exists(os.path.join(log_path, 'checkpoint.pth')) \
-                and os.path.exists(os.path.join(log_path, 'train_buffer.pkl')):
-            checkpoint = torch.load(
-                os.path.join(log_path, 'checkpoint.pth'), map_location=args.device
-            )
-            policy.load_state_dict(checkpoint['model_state_dict'])
-            policy.optim.load_state_dict(checkpoint['optimizer_state_dict'])
-            train_log.load_state_dict(checkpoint['train_log'])
-            buffer = pickle.load(open(os.path.join(log_path, 'train_buffer.pkl'), "rb"))
-            train_collector._assign_buffer(buffer)
-            return checkpoint['epoch'] + 1
-        return 1
-
     def stop_fn(mean_rewards):
         return mean_rewards >= env.spec.reward_threshold
-        # return False
 
     def train_fn(epoch, env_step):
         # eps annnealing, just a demo
@@ -151,10 +119,7 @@ def test_dqn(args=get_args()):
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, update_per_step=args.update_per_step, train_fn=train_fn,
-        test_fn=test_fn, stop_fn=stop_fn, save_fn=save_fn, logger=logger,
-        save_train_fn=save_train_fn, load_train_fn=load_train_fn,
-        epoch_per_save=args.epoch_per_save
-    )
+        test_fn=test_fn, stop_fn=stop_fn, save_fn=save_fn, logger=logger)
 
     assert stop_fn(result['best_reward'])
 

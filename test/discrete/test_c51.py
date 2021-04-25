@@ -1,6 +1,7 @@
 import os
 import gym
 import torch
+import pickle
 import pprint
 import argparse
 import numpy as np
@@ -43,6 +44,7 @@ def get_args():
                         action="store_true", default=False)
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
+    parser.add_argument('--resume', action="store_true")
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
@@ -112,14 +114,44 @@ def test_c51(args=get_args()):
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
 
+    def save_train_fn(epoch, env_step, gradient_step):
+        # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
+        torch.save({
+            'model': policy.state_dict(),
+            'optim': policy.optim.state_dict(),
+        }, os.path.join(log_path, 'checkpoint.pth'))
+        pickle.dump(train_collector.buffer,
+                    open(os.path.join(log_path, 'train_buffer.pkl'), "wb"))
+
+    if args.resume:
+        # load from existing checkpoint
+        print(f"Loading agent under {log_path}")
+        ckpt_path = os.path.join(log_path, 'checkpoint.pth')
+        if os.path.exists(ckpt_path):
+            checkpoint = torch.load(ckpt_path, map_location=args.device)
+            policy.load_state_dict(checkpoint['model'])
+            policy.optim.load_state_dict(checkpoint['optim'])
+            print("Successfully restore policy and optim.")
+        else:
+            print("Fail to restore policy and optim.")
+        buffer_path = os.path.join(log_path, 'train_buffer.pkl')
+        if os.path.exists(buffer_path):
+            buffer = pickle.load(open(buffer_path, "rb"))
+            train_collector._assign_buffer(buffer)
+            print("Successfully restore buffer.")
+        else:
+            print("Fail to restore buffer.")
+
     # trainer
     result = offpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, update_per_step=args.update_per_step, train_fn=train_fn,
-        test_fn=test_fn, stop_fn=stop_fn, save_fn=save_fn, logger=logger)
+        test_fn=test_fn, stop_fn=stop_fn, save_fn=save_fn, logger=logger,
+        resume_from_log=args.resume, save_train_fn=save_train_fn)
 
     assert stop_fn(result['best_reward'])
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
@@ -130,6 +162,11 @@ def test_c51(args=get_args()):
         result = collector.collect(n_episode=1, render=args.render)
         rews, lens = result["rews"], result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+
+
+def test_c51_resume(args=get_args()):
+    args.resume = True
+    test_c51(args)
 
 
 def test_pc51(args=get_args()):
