@@ -110,8 +110,10 @@ class PGPolicy(BasePolicy):
             dist = self.dist_fn(logits)
         if self._deterministic_eval and not self.training:
             if isinstance(logits, tuple):
-                act = logits[0].argmax(-1)
+                act = logits[0]
             else:
+                act = logits
+            if issubclass(self.dist_fn, torch.distributions.Categorical):
                 act = logits.argmax(-1)
         else:
             act = dist.sample()
