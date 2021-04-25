@@ -133,6 +133,8 @@ def offpolicy_trainer(
                         if stop_fn(test_result["rew"]):
                             if save_fn:
                                 save_fn(policy)
+                            if save_train_fn:
+                                save_train_fn(epoch, env_step, gradient_step)
                             t.set_postfix(**data)
                             return gather_info(
                                 start_time, train_collector, test_collector,
