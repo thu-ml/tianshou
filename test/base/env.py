@@ -2,6 +2,8 @@ import gym
 import time
 import random
 import numpy as np
+import networkx as nx
+from copy import deepcopy
 from gym.spaces import Discrete, MultiDiscrete, Box, Dict, Tuple
 
 
@@ -107,3 +109,30 @@ class MyTestEnv(gym.Env):
             self.done = self.index == self.size
             return self._get_state(), self._get_reward(), \
                 self.done, {'key': 1, 'env': self}
+
+
+class NXEnv(gym.Env):
+    def __init__(self, size, obs_type, feat_dim=32):
+        self.size = size
+        self.feat_dim = feat_dim
+        self.graph = nx.Graph()
+        self.graph.add_nodes_from(list(range(size)))
+        assert obs_type in ["array", "object"]
+        self.obs_type = obs_type
+
+    def _encode_obs(self):
+        if self.obs_type == "array":
+            return np.stack([v["data"] for v in self.graph._node.values()])
+        return deepcopy(self.graph)
+
+    def reset(self):
+        graph_state = np.random.rand(self.size, self.feat_dim)
+        for i in range(self.size):
+            self.graph.nodes[i]["data"] = graph_state[i]
+        return self._encode_obs()
+
+    def step(self, action):
+        next_graph_state = np.random.rand(self.size, self.feat_dim)
+        for i in range(self.size):
+            self.graph.nodes[i]["data"] = next_graph_state[i]
+        return self._encode_obs(), 1.0, 0, {}
