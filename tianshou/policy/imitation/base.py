@@ -13,8 +13,7 @@ class ImitationPolicy(BasePolicy):
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> a)
     :param torch.optim.Optimizer optim: for optimizing the model.
-    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
-        to use option "action_scaling" or "action_bound_method". Default to None.
+    :param gym.Space action_space: env's action space.
 
     .. seealso::
 
@@ -31,7 +30,8 @@ class ImitationPolicy(BasePolicy):
         super().__init__(**kwargs)
         self.model = model
         self.optim = optim
-        assert self.action_type, "Please specify action_space."
+        assert self.action_type in ["continuous", "discrete"], \
+            "Please specify action_space."
 
     def forward(
         self,
