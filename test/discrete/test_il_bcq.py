@@ -68,7 +68,7 @@ def test_discrete_bcq(args=get_args()):
         args.state_shape, args.action_shape,
         hidden_sizes=args.hidden_sizes, device=args.device).to(args.device)
     optim = torch.optim.Adam(
-        set(policy_net.parameters()).union(imitation_net.parameters()),
+        list(policy_net.parameters()) + list(imitation_net.parameters()),
         lr=args.lr)
 
     policy = DiscreteBCQPolicy(
@@ -108,7 +108,7 @@ def test_discrete_bcq(args=get_args()):
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
             policy.load_state_dict(checkpoint['model'])
-            # optim.load_state_dict(checkpoint['optim'])  # don't know why
+            optim.load_state_dict(checkpoint['optim'])
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")
@@ -118,7 +118,6 @@ def test_discrete_bcq(args=get_args()):
         args.epoch, args.update_per_epoch, args.test_num, args.batch_size,
         stop_fn=stop_fn, save_fn=save_fn, logger=logger,
         resume_from_log=args.resume, save_train_fn=save_train_fn)
-
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':
