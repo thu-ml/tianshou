@@ -133,8 +133,8 @@ def offpolicy_trainer(
                         if stop_fn(test_result["rew"]):
                             if save_fn:
                                 save_fn(policy)
-                            if save_train_fn:
-                                save_train_fn(epoch, env_step, gradient_step)
+                            logger.save_data(
+                                epoch, env_step, gradient_step, save_train_fn)
                             t.set_postfix(**data)
                             return gather_info(
                                 start_time, train_collector, test_collector,
@@ -160,8 +160,8 @@ def offpolicy_trainer(
             best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
             if save_fn:
                 save_fn(policy)
-        if epoch_per_save > 0 and epoch % epoch_per_save == 0 and save_train_fn:
-            save_train_fn(epoch, env_step, gradient_step)
+        if epoch_per_save > 0 and epoch % epoch_per_save == 0:
+            logger.save_data(epoch, env_step, gradient_step, save_train_fn)
         if verbose:
             print(f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
                   f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")

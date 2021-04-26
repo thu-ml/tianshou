@@ -2,9 +2,12 @@ import warnings
 import numpy as np
 from numbers import Number
 from abc import ABC, abstractmethod
-from typing import Any, Tuple, Union
 from torch.utils.tensorboard import SummaryWriter
+from typing import Any, Tuple, Union, Callable, Optional
 from tensorboard.backend.event_processing import event_accumulator
+
+
+WRITE_TYPE = Union[int, Number, np.number, np.ndarray]
 
 
 class BaseLogger(ABC):
@@ -15,9 +18,7 @@ class BaseLogger(ABC):
         self.writer = writer
 
     @abstractmethod
-    def write(
-        self, key: str, x: int, y: Union[Number, np.number, np.ndarray], **kwargs: Any
-    ) -> None:
+    def write(self, key: str, x: int, y: WRITE_TYPE, **kwargs: Any) -> None:
         """Specify how the writer is used to log data.
 
         :param str key: namespace which the input data tuple belongs to.
@@ -53,6 +54,24 @@ class BaseLogger(ABC):
         :param int epoch: stands for the epoch the collect_result being logged.
         """
         pass
+
+    def save_data(
+        self,
+        epoch: int,
+        env_step: int,
+        gradient_step: int,
+        save_train_fn: Optional[Callable[[int, int, int], None]] = None,
+    ) -> None:
+        """Use writer to log metadata when calling ``save_train_fn`` in trainer.
+
+        :param int epoch: the epoch in trainer.
+        :param int env_step: the env_step in trainer.
+        :param int gradient_step: the gradient_step in trainer.
+        :param function save_train_fn: a hook defined by user, see trainer
+            documentation for detail.
+        """
+        if save_train_fn:
+            save_train_fn(epoch, env_step, gradient_step)
 
     def restore_data(self) -> Tuple[int, float, float, int, int, int, float, int]:
         """Return the metadata from existing log.
@@ -96,9 +115,7 @@ class BasicLogger(BaseLogger):
         self.last_log_test_step = -1
         self.last_log_update_step = -1
 
-    def write(
-        self, key: str, x: int, y: Union[Number, np.number, np.ndarray], **kwargs: Any
-    ) -> None:
+    def write(self, key: str, x: int, y: WRITE_TYPE, **kwargs: Any) -> None:
         self.writer.add_scalar(key, y, global_step=x)
 
     def log_train_data(self, collect_result: dict, step: int) -> None:
@@ -139,7 +156,6 @@ class BasicLogger(BaseLogger):
         rew, rew_std, len_, len_std = rews.mean(), rews.std(), lens.mean(), lens.std()
         collect_result.update(rew=rew, rew_std=rew_std, len=len_, len_std=len_std)
         if step - self.last_log_test_step >= self.test_interval:
-            self.write("test/epoch", step, epoch)  # type: ignore
             self.write("test/rew", step, rew)
             self.write("test/len", step, len_)
             self.write("test/rew_std", step, rew_std)
@@ -148,15 +164,37 @@ class BasicLogger(BaseLogger):
 
     def log_update_data(self, update_result: dict, step: int) -> None:
         if step - self.last_log_update_step >= self.update_interval:
-            self.write("train/gradient_step", step, step)  # type: ignore
             for k, v in update_result.items():
                 self.write(k, step, v)
             self.last_log_update_step = step
 
+    def save_data(
+        self,
+        epoch: int,
+        env_step: int,
+        gradient_step: int,
+        save_train_fn: Optional[Callable[[int, int, int], None]] = None,
+    ) -> None:
+        super().save_data(epoch, env_step, gradient_step, save_train_fn)
+        self.write("save/epoch", epoch, epoch)
+        self.write("save/env_step", env_step, env_step)
+        self.write("save/gradient_step", gradient_step, gradient_step)
+
     def restore_data(self) -> Tuple[int, float, float, int, int, int, float, int]:
         ea = event_accumulator.EventAccumulator(self.writer.log_dir)
         ea.Reload()
-        epoch, best_epoch, best_reward, best_reward_std = 0, -1, 0.0, 0.0
+
+        try:  # epoch / env_step / gradient_step
+            epoch = ea.scalars.Items("save/epoch")[-1].step
+            env_step = ea.scalars.Items("save/env_step")[-1].step
+            gradient_step = ea.scalars.Items("save/gradient_step")[-1].step
+            self.last_log_train_step = env_step
+            self.last_log_update_step = gradient_step
+            self.last_log_test_step = epoch
+        except KeyError:
+            epoch, env_step, gradient_step = 0, 0, 0
+
+        best_epoch, best_reward, best_reward_std = -1, 0.0, 0.0
         try:  # best_*
             for test_rew, test_rew_std in zip(
                 ea.scalars.Items("test/rew"), ea.scalars.Items("test/rew_std")
@@ -164,22 +202,14 @@ class BasicLogger(BaseLogger):
                 rew, rew_std = test_rew.value, test_rew_std.value
                 if best_epoch == -1 or best_reward < rew:
                     best_epoch, best_reward, best_reward_std = 0, rew, rew_std
-                self.last_log_test_step = test_rew.step
-            epoch = int(ea.scalars.Items("test/epoch")[-1].value)
         except KeyError:
             pass
-        try:  # env_step / last_*
-            item = ea.scalars.Items("train/rew")[-1]
-            self.last_log_train_step = env_step = item.step
-            last_rew = item.value
+
+        try:  # last_*
+            last_rew = ea.scalars.Items("train/rew")[-1].value
             last_len = ea.scalars.Items("train/len")[-1].value
         except KeyError:
-            last_rew, last_len, env_step = 0.0, 0, 0
-        try:
-            self.last_log_update_step = gradient_step = int(ea.scalars.Items(
-                "train/gradient_step")[-1].value)
-        except KeyError:
-            gradient_step = 0
+            last_rew, last_len = 0.0, 0
         return best_epoch, best_reward, best_reward_std, \
             epoch, env_step, gradient_step, last_rew, last_len
 
@@ -190,8 +220,6 @@ class LazyLogger(BasicLogger):
     def __init__(self) -> None:
         super().__init__(None)  # type: ignore
 
-    def write(
-        self, key: str, x: int, y: Union[Number, np.number, np.ndarray], **kwargs: Any
-    ) -> None:
+    def write(self, key: str, x: int, y: WRITE_TYPE, **kwargs: Any) -> None:
         """The LazyLogger writes nothing."""
         pass
