@@ -89,7 +89,8 @@ def test_ppo(args=get_args()):
         reward_normalization=args.rew_norm,
         dual_clip=args.dual_clip,
         value_clip=args.value_clip,
-        action_space=env.action_space)
+        action_space=env.action_space,
+        deterministic_eval=True)
     # collector
     train_collector = Collector(
         policy, train_envs,
