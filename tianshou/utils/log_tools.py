@@ -60,18 +60,18 @@ class BaseLogger(ABC):
         epoch: int,
         env_step: int,
         gradient_step: int,
-        save_train_fn: Optional[Callable[[int, int, int], None]] = None,
+        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
     ) -> None:
-        """Use writer to log metadata when calling ``save_train_fn`` in trainer.
+        """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 
         :param int epoch: the epoch in trainer.
         :param int env_step: the env_step in trainer.
         :param int gradient_step: the gradient_step in trainer.
-        :param function save_train_fn: a hook defined by user, see trainer
+        :param function save_checkpoint_fn: a hook defined by user, see trainer
             documentation for detail.
         """
-        if save_train_fn:
-            save_train_fn(epoch, env_step, gradient_step)
+        if save_checkpoint_fn:
+            save_checkpoint_fn(epoch, env_step, gradient_step)
 
     def restore_data(self) -> Tuple[int, float, float, int, int, int, float, int]:
         """Return the metadata from existing log.
@@ -173,9 +173,9 @@ class BasicLogger(BaseLogger):
         epoch: int,
         env_step: int,
         gradient_step: int,
-        save_train_fn: Optional[Callable[[int, int, int], None]] = None,
+        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
     ) -> None:
-        super().save_data(epoch, env_step, gradient_step, save_train_fn)
+        super().save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
         self.write("save/epoch", epoch, epoch)
         self.write("save/env_step", env_step, env_step)
         self.write("save/gradient_step", gradient_step, gradient_step)

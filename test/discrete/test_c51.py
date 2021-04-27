@@ -114,7 +114,7 @@ def test_c51(args=get_args()):
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
 
-    def save_train_fn(epoch, env_step, gradient_step):
+    def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
         torch.save({
             'model': policy.state_dict(),
@@ -147,7 +147,7 @@ def test_c51(args=get_args()):
         args.step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, update_per_step=args.update_per_step, train_fn=train_fn,
         test_fn=test_fn, stop_fn=stop_fn, save_fn=save_fn, logger=logger,
-        resume_from_log=args.resume, save_train_fn=save_train_fn)
+        resume_from_log=args.resume, save_checkpoint_fn=save_checkpoint_fn)
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':
