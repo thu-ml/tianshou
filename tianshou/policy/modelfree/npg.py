@@ -42,6 +42,8 @@ class NPGPolicy(A2CPolicy):
         to use option "action_scaling" or "action_bound_method". Default to None.
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
         optimizer in each policy.update(). Default to None (no lr_scheduler).
+    :param bool deterministic_eval: whether to use deterministic action instead of
+        stochastic action sampled by the policy. Default to False.
     """
 
     def __init__(

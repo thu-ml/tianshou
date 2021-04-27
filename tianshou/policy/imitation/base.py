@@ -13,8 +13,7 @@ class ImitationPolicy(BasePolicy):
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> a)
     :param torch.optim.Optimizer optim: for optimizing the model.
-    :param str mode: indicate the imitation type ("continuous" or "discrete"
-        action space). Default to "continuous".
+    :param gym.Space action_space: env's action space.
 
     .. seealso::
 
@@ -26,15 +25,13 @@ class ImitationPolicy(BasePolicy):
         self,
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        mode: str = "continuous",
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.model = model
         self.optim = optim
-        assert mode in ["continuous", "discrete"], \
-            f"Mode {mode} is not in ['continuous', 'discrete']."
-        self.mode = mode
+        assert self.action_type in ["continuous", "discrete"], \
+            "Please specify action_space."
 
     def forward(
         self,
@@ -43,7 +40,7 @@ class ImitationPolicy(BasePolicy):
         **kwargs: Any,
     ) -> Batch:
         logits, h = self.model(batch.obs, state=state, info=batch.info)
-        if self.mode == "discrete":
+        if self.action_type == "discrete":
             a = logits.max(dim=1)[1]
         else:
             a = logits
@@ -51,11 +48,11 @@ class ImitationPolicy(BasePolicy):
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         self.optim.zero_grad()
-        if self.mode == "continuous":  # regression
+        if self.action_type == "continuous":  # regression
             a = self(batch).act
             a_ = to_torch(batch.act, dtype=torch.float32, device=a.device)
             loss = F.mse_loss(a, a_)  # type: ignore
-        elif self.mode == "discrete":  # classification
+        elif self.action_type == "discrete":  # classification
             a = F.log_softmax(self(batch).logits, dim=-1)
             a_ = to_torch(batch.act, dtype=torch.long, device=a.device)
             loss = F.nll_loss(a, a_)  # type: ignore
