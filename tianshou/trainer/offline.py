@@ -71,17 +71,16 @@ def offline_trainer(
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
     start_epoch, gradient_step = 0, 0
+    if resume_from_log:
+        start_epoch, _, gradient_step = logger.restore_data()
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     test_collector.reset_stat()
-    if resume_from_log:
-        best_epoch, best_reward, best_reward_std, start_epoch, _, \
-            gradient_step, _, _ = logger.restore_data()
-    else:
-        test_result = test_episode(policy, test_collector, test_fn, 0,
-                                   episode_per_test, logger, 0, reward_metric)
-        best_epoch = 0
-        best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
+
+    test_result = test_episode(policy, test_collector, test_fn, start_epoch,
+                               episode_per_test, logger, gradient_step, reward_metric)
+    best_epoch = start_epoch
+    best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
 
     for epoch in range(1 + start_epoch, 1 + max_epoch):
         policy.train()

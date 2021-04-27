@@ -27,7 +27,7 @@ def test_episode(
     if reward_metric:
         result["rews"] = reward_metric(result["rews"])
     if logger and global_step is not None:
-        logger.log_test_data(result, global_step, epoch)
+        logger.log_test_data(result, global_step)
     return result
 
 

@@ -86,20 +86,18 @@ def offpolicy_trainer(
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
     start_epoch, env_step, gradient_step = 0, 0, 0
+    if resume_from_log:
+        start_epoch, env_step, gradient_step = logger.restore_data()
     last_rew, last_len = 0.0, 0
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
-    if resume_from_log:
-        best_epoch, best_reward, best_reward_std, start_epoch, env_step, \
-            gradient_step, last_rew, last_len = logger.restore_data()
-    else:
-        test_result = test_episode(policy, test_collector, test_fn, 0,
-                                   episode_per_test, logger, 0, reward_metric)
-        best_epoch = 0
-        best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
+    test_result = test_episode(policy, test_collector, test_fn, start_epoch,
+                               episode_per_test, logger, gradient_step, reward_metric)
+    best_epoch = start_epoch
+    best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
 
     for epoch in range(1 + start_epoch, 1 + max_epoch):
         # train

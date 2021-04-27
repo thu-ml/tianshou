@@ -45,13 +45,12 @@ class BaseLogger(ABC):
         """
         pass
 
-    def log_test_data(self, collect_result: dict, step: int, epoch: int) -> None:
+    def log_test_data(self, collect_result: dict, step: int) -> None:
         """Use writer to log statistics generated during evaluating.
 
         :param collect_result: a dict containing information of data collected in
             evaluating stage, i.e., returns of collector.collect().
         :param int step: stands for the timestep the collect_result being logged.
-        :param int epoch: stands for the epoch the collect_result being logged.
         """
         pass
 
@@ -73,18 +72,16 @@ class BaseLogger(ABC):
         if save_checkpoint_fn:
             save_checkpoint_fn(epoch, env_step, gradient_step)
 
-    def restore_data(self) -> Tuple[int, float, float, int, int, int, float, int]:
+    def restore_data(self) -> Tuple[int, int, int]:
         """Return the metadata from existing log.
 
         If it finds nothing or an error occurs during the recover process, it will
         return the default parameters.
 
-        :return: best_epoch, best_reward, best_reward_std, epoch, env_step,
-            gradient_step, last_rew, last_len
+        :return: epoch, env_step, gradient_step
         """
         warnings.warn("Please specify an existing tensorboard logdir to resume.")
-        # epoch == -1 is invalid, so that it should be forcely updated by trainer
-        return -1, 0.0, 0.0, 0, 0, 0, 0.0, 0
+        return 0, 0, 0
 
 
 class BasicLogger(BaseLogger):
@@ -138,13 +135,12 @@ class BasicLogger(BaseLogger):
                 self.write("train/len", step, collect_result["len"])
                 self.last_log_train_step = step
 
-    def log_test_data(self, collect_result: dict, step: int, epoch: int) -> None:
+    def log_test_data(self, collect_result: dict, step: int) -> None:
         """Use writer to log statistics generated during evaluating.
 
         :param collect_result: a dict containing information of data collected in
             evaluating stage, i.e., returns of collector.collect().
         :param int step: stands for the timestep the collect_result being logged.
-        :param int epoch: stands for the epoch the collect_result being logged.
 
         .. note::
 
@@ -180,38 +176,24 @@ class BasicLogger(BaseLogger):
         self.write("save/env_step", env_step, env_step)
         self.write("save/gradient_step", gradient_step, gradient_step)
 
-    def restore_data(self) -> Tuple[int, float, float, int, int, int, float, int]:
+    def restore_data(self) -> Tuple[int, int, int]:
         ea = event_accumulator.EventAccumulator(self.writer.log_dir)
         ea.Reload()
 
-        try:  # epoch / env_step / gradient_step
+        try:  # epoch / gradient_step
             epoch = ea.scalars.Items("save/epoch")[-1].step
-            env_step = ea.scalars.Items("save/env_step")[-1].step
-            gradient_step = ea.scalars.Items("save/gradient_step")[-1].step
-            self.last_log_train_step = env_step
-            self.last_log_update_step = gradient_step
             self.last_log_test_step = epoch
+            gradient_step = ea.scalars.Items("save/gradient_step")[-1].step
+            self.last_log_update_step = gradient_step
         except KeyError:
-            epoch, env_step, gradient_step = 0, 0, 0
+            epoch, gradient_step = 0, 0
+        try:  # offline trainer doesn't have env_step
+            env_step = ea.scalars.Items("save/env_step")[-1].step
+            self.last_log_train_step = env_step
+        except KeyError:
+            env_step = 0
 
-        best_epoch, best_reward, best_reward_std = -1, 0.0, 0.0
-        try:  # best_*
-            for test_rew, test_rew_std in zip(
-                ea.scalars.Items("test/rew"), ea.scalars.Items("test/rew_std")
-            ):
-                rew, rew_std = test_rew.value, test_rew_std.value
-                if best_epoch == -1 or best_reward < rew:
-                    best_epoch, best_reward, best_reward_std = 0, rew, rew_std
-        except KeyError:
-            pass
-
-        try:  # last_*
-            last_rew = ea.scalars.Items("train/rew")[-1].value
-            last_len = ea.scalars.Items("train/len")[-1].value
-        except KeyError:
-            last_rew, last_len = 0.0, 0
-        return best_epoch, best_reward, best_reward_std, \
-            epoch, env_step, gradient_step, last_rew, last_len
+        return epoch, env_step, gradient_step
 
 
 class LazyLogger(BasicLogger):
