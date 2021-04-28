@@ -48,6 +48,7 @@ def get_args():
     parser.add_argument('--norm-adv', type=int, default=1)
     parser.add_argument('--recompute-adv', type=int, default=0)
     parser.add_argument('--resume', action="store_true")
+    parser.add_argument("--save-interval", type=int, default=4)
     args = parser.parse_known_args()[0]
     return args
 
@@ -115,7 +116,7 @@ def test_ppo(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'ppo')
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(writer)
+    logger = BasicLogger(writer, save_interval=args.save_interval)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))

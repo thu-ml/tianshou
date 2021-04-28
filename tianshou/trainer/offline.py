@@ -1,5 +1,6 @@
 import time
 import tqdm
+import warnings
 import numpy as np
 from collections import defaultdict
 from typing import Dict, Union, Callable, Optional
@@ -23,7 +24,6 @@ def offline_trainer(
     save_fn: Optional[Callable[[BasePolicy], None]] = None,
     save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
     resume_from_log: bool = False,
-    epoch_per_checkpoint: int = 1,
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
@@ -51,8 +51,6 @@ def offline_trainer(
         signature ``f(epoch: int, env_step: int, gradient_step: int) -> None``; you can
         save whatever you want. Because offline-RL doesn't have env_step, the env_step
         is always 0 here.
-    :param int epoch_per_checkpoint: save train process each ``epoch_per_checkpoint``
-        epoch by calling ``save_checkpoint_fn``. Default to 1.
     :param bool resume_from_log: resume gradient_step and other metadata from existing
         tensorboard log. Default to False.
     :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
@@ -70,6 +68,9 @@ def offline_trainer(
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
+    if save_fn:
+        warnings.warn("Please consider using save_checkpoint_fn instead of save_fn.")
+
     start_epoch, gradient_step = 0, 0
     if resume_from_log:
         start_epoch, _, gradient_step = logger.restore_data()
@@ -106,8 +107,7 @@ def offline_trainer(
             best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
             if save_fn:
                 save_fn(policy)
-        if epoch_per_checkpoint > 0 and epoch % epoch_per_checkpoint == 0:
-            logger.save_data(epoch, 0, gradient_step, save_checkpoint_fn)
+        logger.save_data(epoch, 0, gradient_step, save_checkpoint_fn)
         if verbose:
             print(f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
                   f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")

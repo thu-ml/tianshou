@@ -48,6 +48,7 @@ def get_args():
     parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument("--save-interval", type=int, default=4)
     args = parser.parse_known_args()[0]
     return args
 
@@ -92,7 +93,7 @@ def test_c51(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'c51')
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(writer)
+    logger = BasicLogger(writer, save_interval=args.save_interval)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))

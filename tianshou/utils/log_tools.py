@@ -1,4 +1,3 @@
-import warnings
 import numpy as np
 from numbers import Number
 from abc import ABC, abstractmethod
@@ -69,8 +68,7 @@ class BaseLogger(ABC):
         :param function save_checkpoint_fn: a hook defined by user, see trainer
             documentation for detail.
         """
-        if save_checkpoint_fn:
-            save_checkpoint_fn(epoch, env_step, gradient_step)
+        pass
 
     def restore_data(self) -> Tuple[int, int, int]:
         """Return the metadata from existing log.
@@ -78,10 +76,9 @@ class BaseLogger(ABC):
         If it finds nothing or an error occurs during the recover process, it will
         return the default parameters.
 
-        :return: epoch, env_step, gradient_step
+        :return: epoch, env_step, gradient_step.
         """
-        warnings.warn("Please specify an existing tensorboard logdir to resume.")
-        return 0, 0, 0
+        pass
 
 
 class BasicLogger(BaseLogger):
@@ -94,6 +91,8 @@ class BasicLogger(BaseLogger):
     :param int train_interval: the log interval in log_train_data(). Default to 1.
     :param int test_interval: the log interval in log_test_data(). Default to 1.
     :param int update_interval: the log interval in log_update_data(). Default to 1000.
+    :param int save_interval: the save interval in save_data(). Default to 1 (save at
+        the end of each epoch).
     """
 
     def __init__(
@@ -102,15 +101,17 @@ class BasicLogger(BaseLogger):
         train_interval: int = 1,
         test_interval: int = 1,
         update_interval: int = 1000,
-        resume: bool = True,
+        save_interval: int = 1,
     ) -> None:
         super().__init__(writer)
         self.train_interval = train_interval
         self.test_interval = test_interval
         self.update_interval = update_interval
+        self.save_interval = save_interval
         self.last_log_train_step = -1
         self.last_log_test_step = -1
         self.last_log_update_step = -1
+        self.last_save_step = -1
 
     def write(self, key: str, x: int, y: WRITE_TYPE, **kwargs: Any) -> None:
         self.writer.add_scalar(key, y, global_step=x)
@@ -171,10 +172,12 @@ class BasicLogger(BaseLogger):
         gradient_step: int,
         save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
     ) -> None:
-        super().save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
-        self.write("save/epoch", epoch, epoch)
-        self.write("save/env_step", env_step, env_step)
-        self.write("save/gradient_step", gradient_step, gradient_step)
+        if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
+            self.last_save_step = epoch
+            save_checkpoint_fn(epoch, env_step, gradient_step)
+            self.write("save/epoch", epoch, epoch)
+            self.write("save/env_step", env_step, env_step)
+            self.write("save/gradient_step", gradient_step, gradient_step)
 
     def restore_data(self) -> Tuple[int, int, int]:
         ea = event_accumulator.EventAccumulator(self.writer.log_dir)
@@ -182,7 +185,7 @@ class BasicLogger(BaseLogger):
 
         try:  # epoch / gradient_step
             epoch = ea.scalars.Items("save/epoch")[-1].step
-            self.last_log_test_step = epoch
+            self.last_save_step = self.last_log_test_step = epoch
             gradient_step = ea.scalars.Items("save/gradient_step")[-1].step
             self.last_log_update_step = gradient_step
         except KeyError:

@@ -41,6 +41,7 @@ To resume training process from an existing checkpoint, you need to do the follo
 
 1. Make sure you write ``save_checkpoint_fn`` which saves everything needed in the training process, i.e., policy, optim, buffer; pass it to trainer;
 2. Use ``BasicLogger`` which contains a tensorboard;
+3. To adjust the save frequency, specify ``save_interval`` when initializing BasicLogger.
 
 And to successfully resume from a checkpoint:
 
