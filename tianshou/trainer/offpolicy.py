@@ -96,7 +96,7 @@ def offpolicy_trainer(
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
     test_result = test_episode(policy, test_collector, test_fn, start_epoch,
-                               episode_per_test, logger, gradient_step, reward_metric)
+                               episode_per_test, logger, env_step, reward_metric)
     best_epoch = start_epoch
     best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
 
