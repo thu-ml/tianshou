@@ -48,7 +48,7 @@ setup(
         "gym>=0.15.4",
         "tqdm",
         "numpy>1.16.0",  # https://github.com/numpy/numpy/issues/12793
-        "tensorboard",
+        "tensorboard>=2.5.0",
         "torch>=1.4.0",
         "numba>=0.51.0",
         "h5py>=2.10.0",  # to match tensorflow's minimal requirements
