@@ -212,7 +212,8 @@ class KFACOptimizer(optim.Optimizer):
                 layer_info = (module.kernel_size, module.stride,
                               module.padding)
 
-            aa = self.compute_cov_a(input[0].data, classname, layer_info, self.fast_cnn)
+            aa = self.compute_cov_a(
+                input[0].data, classname, layer_info, self.fast_cnn)
 
             # Initialize buffers
             if self.steps == 0:
@@ -229,7 +230,8 @@ class KFACOptimizer(optim.Optimizer):
                 layer_info = (module.kernel_size, module.stride,
                               module.padding)
 
-            gg = self.compute_cov_g(grad_output[0].data, classname, layer_info, self.fast_cnn)
+            gg = self.compute_cov_g(
+                grad_output[0].data, classname, layer_info, self.fast_cnn)
 
             # Initialize buffers
             if self.steps == 0:
