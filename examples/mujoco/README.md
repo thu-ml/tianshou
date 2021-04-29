@@ -16,11 +16,11 @@ Supported algorithms are listed below:
 - [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e605bdea942b408126ef4fbc740359773259c9ec)
 - [REINFORCE algorithm](https://papers.nips.cc/paper/1999/file/464d828b85b0bed98e80ade0a5c43b0f-Paper.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/e27b5a26f330de446fe15388bf81c3777f024fb9)
-- [Natural Policy Gradient](https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/844d7703c313009c4c364edb4018c91de93439ca)
+- [Natural Policy Gradient (NPG)](https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/844d7703c313009c4c364edb4018c91de93439ca)
 - [Advantage Actor-Critic (A2C)](https://openai.com/blog/baselines-acktr-a2c/), [commit id](https://github.com/thu-ml/tianshou/tree/1730a9008ad6bb67cac3b21347bed33b532b17bc)
 - [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/6426a39796db052bafb7cabe85c764db20a722b0)
-- [Trust Region Policy Optimization (TRPO)](https://arxiv.org/pdf/1502.05477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/5057b5c89e6168220272c9c28a15b758a72efc32)
-
+- [Trust Region Policy Optimization (TRPO)](https://arxiv.org/pdf/1502.05477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/a57503c0aa6d40a0c939b37f4ae3c3a83bb2e126)
+- [Trust Region Policy Optimization (ACKTR)](https://arxiv.org/pdf/1708.05144.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/844d7703c313009c4c364edb4018c91de93439ca)
 #### Usage
 
 Run
@@ -290,6 +290,26 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 #### Hints for NPG
 1. All shared hyperparameters are exactly the same as TRPO, regarding how similar these two algorithms are.
 2. We found different games in Mujoco may require quite different `actor-step-size`: Reacher/Swimmer are insensitive to step-size in range (0.1~1.0), while InvertedDoublePendulum / InvertedPendulum / Humanoid are quite sensitive to step size, and even 0.1 is too large. Other games may require `actor-step-size` in range (0.1~0.4), but aren't that sensitive in general.
+
+### ACKTR
+
+|      Environment       |  Tianshou (1M)   | [ACKTR paper](https://arxiv.org/pdf/1708.05144.pdf)/[OpenAI Baselines](https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm)|
+| :---------------: | :---------------: |  :---------------: | 
+|Ant| **1368.2±272.4** | ~1350 |
+|HalfCheetah| 1876.3±950.3 | **~2450** |
+|Hopper| 1066.2±799.8 | **~3500** |
+|Walker2d| **625.0±297.1** | ~620 |
+|Swimmer| **101.6±32.1**  | ~42 |
+|Humanoid| **361.3±38.5**  | N |
+|Reacher|  **-3.8±0.3** | ~5 |
+|InvertedPendulum| 919.4±122.2  | **~1000** |
+|InvertedDoublePendulum| 3073.2±1281.7  | **~9300** |
+
+\* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup>
+
+#### Hints for ACKTR
+1. (TODO)Not all Mujcoco games use default hyperparameters for ACKTR policy. For InvertedPendulum/InvertedDoublePendulum/Reacher/Humanoid, we do not use value normalization (`rew-norm` is False) because we noticed that value normalization will introduce instability in training in these games. We haven't exactly figured out why yet, though. 
+2. Tianshou's implementation of ACKTR algorithm used [`ikostrikov`'s implementation](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail) for reference(Core algorithms are almost the same). You can also look at their code for details.
 
 ## Note
 
