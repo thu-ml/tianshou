@@ -78,6 +78,7 @@ def test_acktr(args=get_args()):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
     optim = KFACOptimizer(actor, critic, lr=0.25)
+
     # replace DiagGuassian with Independent(Normal) which is equivalent
     # pass *logits to be consistent with policy.forward
     def dist(*logits):

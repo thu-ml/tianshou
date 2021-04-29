@@ -1,14 +1,12 @@
 import torch
-import numpy as np
 from torch import nn
 import torch.optim as optim
 import torch.nn.functional as F
 from typing import Any, Dict, List, Type
-from torch.distributions import kl_divergence
-
 
 from tianshou.policy import A2CPolicy
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch
+
 
 class ACKTRPolicy(A2CPolicy):
     """Implementation of ACKTR
@@ -214,8 +212,7 @@ class KFACOptimizer(optim.Optimizer):
                 layer_info = (module.kernel_size, module.stride,
                               module.padding)
 
-            aa = self.compute_cov_a(input[0].data, classname, layer_info,
-                               self.fast_cnn)
+            aa = self.compute_cov_a(input[0].data, classname, layer_info, self.fast_cnn)
 
             # Initialize buffers
             if self.steps == 0:
@@ -232,8 +229,7 @@ class KFACOptimizer(optim.Optimizer):
                 layer_info = (module.kernel_size, module.stride,
                               module.padding)
 
-            gg = self.compute_cov_g(grad_output[0].data, classname, layer_info,
-                               self.fast_cnn)
+            gg = self.compute_cov_g(grad_output[0].data, classname, layer_info, self.fast_cnn)
 
             # Initialize buffers
             if self.steps == 0:
@@ -245,9 +241,9 @@ class KFACOptimizer(optim.Optimizer):
         for module in self.model.modules():
             classname = module.__class__.__name__
             if classname in self.known_modules:
-                assert not ((classname in ['Linear', 'Conv2d']) and module.bias is not None), \
-                                    "You must have a bias as a separate layer"
-
+                assert not ((classname in [
+                            'Linear', 'Conv2d']) and module.bias is not None), \
+                            "You must have a bias as a separate layer"
                 self.modules.append(module)
                 module.register_forward_pre_hook(self._save_input)
                 module.register_backward_hook(self._save_grad_output)
@@ -256,7 +252,7 @@ class KFACOptimizer(optim.Optimizer):
         # Add weight decay
         if self.weight_decay > 0:
             for p in self.model.parameters():
-                p.grad.data.add_(self.weight_decay, p.data) # TODO do not understand
+                p.grad.data.add_(self.weight_decay, p.data)  # TODO do not understand
 
         updates = {}
         for i, m in enumerate(self.modules):
@@ -309,12 +305,11 @@ class KFACOptimizer(optim.Optimizer):
 
         self.optim.step()
         self.steps += 1
-    
+
     @staticmethod
     def _extract_patches(x, kernel_size, stride, padding):
         if padding[0] + padding[1] > 0:
-            x = F.pad(x, (padding[1], padding[1], padding[0],
-                        padding[0])).data  # Actually check dims
+            x = F.pad(x, (padding[1], padding[1], padding[0], padding[0])).data
         x = x.unfold(2, kernel_size[0], stride[0])
         x = x.unfold(3, kernel_size[1], stride[1])
         x = x.transpose_(1, 2).transpose_(2, 3).contiguous()
@@ -329,11 +324,11 @@ class KFACOptimizer(optim.Optimizer):
 
         if classname == 'Conv2d':
             if fast_cnn:
-                a = self._extract_patches(a, *layer_info)
+                a = KFACOptimizer._extract_patches(a, *layer_info)
                 a = a.view(a.size(0), -1, a.size(-1))
                 a = a.mean(1)
             else:
-                a = self._extract_patches(a, *layer_info)
+                a = KFACOptimizer._extract_patches(a, *layer_info)
                 a = a.view(-1, a.size(-1)).div_(a.size(1)).div_(a.size(2))
         elif classname == 'AddBias':
             is_cuda = a.is_cuda
