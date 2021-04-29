@@ -308,7 +308,7 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
 \* details<sup>[[4]](#footnote4)</sup><sup>[[5]](#footnote5)</sup>
 
 #### Hints for ACKTR
-1. (TODO)Not all Mujcoco games use default hyperparameters for ACKTR policy. For InvertedPendulum/InvertedDoublePendulum/Reacher/Humanoid, we do not use value normalization (`rew-norm` is False) because we noticed that value normalization will introduce instability in training in these games. We haven't exactly figured out why yet, though. 
+1. (TODO) Not all Mujcoco games use default hyperparameters for ACKTR policy. For InvertedPendulum/InvertedDoublePendulum/Reacher/Humanoid, we do not use value normalization (`rew-norm` is False) because we noticed that value normalization will introduce instability in training in these games. We haven't exactly figured out why yet, though. 
 2. Tianshou's implementation of ACKTR algorithm used [`ikostrikov`'s implementation](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail) for reference(Core algorithms are almost the same). You can also look at their code for details.
 
 ## Note
