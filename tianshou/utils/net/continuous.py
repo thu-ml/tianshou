@@ -121,6 +121,18 @@ class Critic(nn.Module):
         return logits
 
 
+class AddBias(nn.Module):
+    def __init__(self, bias):
+        super(AddBias, self).__init__()
+        self._bias = nn.Parameter(bias)
+
+    def forward(self, x):
+        shape = [1] * len(x.shape)
+        shape[1] = -1
+        bias = self._bias.view(shape)
+        return x + bias
+
+
 class ActorProb(nn.Module):
     """Simple actor network (output with a Gauss distribution).
 
@@ -172,7 +184,7 @@ class ActorProb(nn.Module):
             self.sigma = MLP(input_dim, self.output_dim,
                              hidden_sizes, device=self.device)
         else:
-            self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
+            self.sigma_param = AddBias(torch.zeros(self.output_dim, 1))
         self._max = max_action
         self._unbounded = unbounded
 
@@ -192,9 +204,7 @@ class ActorProb(nn.Module):
                 self.sigma(logits), min=SIGMA_MIN, max=SIGMA_MAX
             ).exp()
         else:
-            shape = [1] * len(mu.shape)
-            shape[1] = -1
-            sigma = (self.sigma_param.view(shape) + torch.zeros_like(mu)).exp()
+            sigma = (self.sigma_param(torch.zeros_like(mu))).exp()
         return (mu, sigma), state
 
 

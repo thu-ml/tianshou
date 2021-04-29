@@ -88,7 +88,7 @@ def test_npg(args=get_args()):
     net_c = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
                 activation=nn.Tanh, device=args.device)
     critic = Critic(net_c, device=args.device).to(args.device)
-    torch.nn.init.constant_(actor.sigma_param, -0.5)
+    torch.nn.init.constant_(actor.sigma_param._bias, -0.5)
     for m in list(actor.modules()) + list(critic.modules()):
         if isinstance(m, torch.nn.Linear):
             # orthogonal initialization

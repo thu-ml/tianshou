@@ -9,6 +9,8 @@ from tianshou.policy.modelfree.npg import NPGPolicy
 from tianshou.policy.modelfree.ddpg import DDPGPolicy
 from tianshou.policy.modelfree.ppo import PPOPolicy
 from tianshou.policy.modelfree.trpo import TRPOPolicy
+from tianshou.policy.modelfree.acktr import ACKTRPolicy
+from tianshou.policy.modelfree.acktr import KFACOptimizer
 from tianshou.policy.modelfree.td3 import TD3Policy
 from tianshou.policy.modelfree.sac import SACPolicy
 from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
@@ -30,6 +32,8 @@ __all__ = [
     "DDPGPolicy",
     "PPOPolicy",
     "TRPOPolicy",
+    "ACKTRPolicy",
+    "KFACOptimizer",
     "TD3Policy",
     "SACPolicy",
     "DiscreteSACPolicy",

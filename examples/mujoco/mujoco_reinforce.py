@@ -81,7 +81,7 @@ def test_reinforce(args=get_args()):
                 activation=nn.Tanh, device=args.device)
     actor = ActorProb(net_a, args.action_shape, max_action=args.max_action,
                       unbounded=True, device=args.device).to(args.device)
-    torch.nn.init.constant_(actor.sigma_param, -0.5)
+    torch.nn.init.constant_(actor.sigma_param._bias, -0.5)
     for m in actor.modules():
         if isinstance(m, torch.nn.Linear):
             # orthogonal initialization

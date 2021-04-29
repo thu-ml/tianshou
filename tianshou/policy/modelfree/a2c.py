@@ -97,6 +97,7 @@ class A2CPolicy(PGPolicy):
             batch, buffer, indice, v_s_, v_s,
             gamma=self._gamma, gae_lambda=self._lambda)
         if self._rew_norm:
+            # TODO determine normalization order
             batch.returns = unnormalized_returns / \
                 np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)

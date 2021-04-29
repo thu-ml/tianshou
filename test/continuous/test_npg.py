@@ -80,8 +80,7 @@ def test_npg(args=get_args()):
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
-    optim = torch.optim.Adam(set(
-        actor.parameters()).union(critic.parameters()), lr=args.lr)
+    optim = torch.optim.Adam(critic.parameters(), lr=args.lr)
 
     # replace DiagGuassian with Independent(Normal) which is equivalent
     # pass *logits to be consistent with policy.forward
