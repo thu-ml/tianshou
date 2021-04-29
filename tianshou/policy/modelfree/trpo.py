@@ -45,6 +45,8 @@ class TRPOPolicy(NPGPolicy):
         to use option "action_scaling" or "action_bound_method". Default to None.
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
         optimizer in each policy.update(). Default to None (no lr_scheduler).
+    :param bool deterministic_eval: whether to use deterministic action instead of
+        stochastic action sampled by the policy. Default to False.
     """
 
     def __init__(
@@ -59,7 +61,6 @@ class TRPOPolicy(NPGPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(actor, critic, optim, dist_fn, **kwargs)
-        del self._step_size
         self._max_backtracks = max_backtracks
         self._delta = max_kl
         self._backtrack_coeff = backtrack_coeff
@@ -123,7 +124,7 @@ class TRPOPolicy(NPGPolicy):
                                           " are poor and need to be changed.")
 
                 # optimize citirc
-                for _ in range(self._optim_critic_iters):
+                for _ in range(self._optim_critic_iters):  # type: ignore
                     value = self.critic(b.obs).flatten()
                     vf_loss = F.mse_loss(b.returns, value)
                     self.optim.zero_grad()

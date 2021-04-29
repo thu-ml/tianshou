@@ -95,7 +95,8 @@ def test_npg(args=get_args()):
         gae_lambda=args.gae_lambda,
         action_space=env.action_space,
         optim_critic_iters=args.optim_critic_iters,
-        actor_step_size=args.actor_step_size)
+        actor_step_size=args.actor_step_size,
+        deterministic_eval=True)
     # collector
     train_collector = Collector(
         policy, train_envs,

@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-from typing import Any, List, Union, Optional, Callable
+from typing import Any, List, Tuple, Union, Optional, Callable
 
 from tianshou.utils import RunningMeanStd
 from tianshou.env.worker import EnvWorker, DummyEnvWorker, SubprocEnvWorker, \
@@ -163,7 +163,11 @@ class BaseVectorEnv(gym.Env):
         id = self._wrap_id(id)
         if self.is_async:
             self._assert_id(id)
-        obs = np.stack([self.workers[i].reset() for i in id])
+        obs_list = [self.workers[i].reset() for i in id]
+        try:
+            obs = np.stack(obs_list)
+        except ValueError:  # different len(obs)
+            obs = np.array(obs_list, dtype=object)
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs)
         return self.normalize_obs(obs)
@@ -172,7 +176,7 @@ class BaseVectorEnv(gym.Env):
         self,
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None
-    ) -> List[np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Run one timestep of some environments' dynamics.
 
         If id is None, run one timestep of all the environments’ dynamics;
@@ -236,10 +240,16 @@ class BaseVectorEnv(gym.Env):
                 info["env_id"] = env_id
                 result.append((obs, rew, done, info))
                 self.ready_id.append(env_id)
-        obs_stack, rew_stack, done_stack, info_stack = map(np.stack, zip(*result))
+        obs_list, rew_list, done_list, info_list = zip(*result)
+        try:
+            obs_stack = np.stack(obs_list)
+        except ValueError:  # different len(obs)
+            obs_stack = np.array(obs_list, dtype=object)
+        rew_stack, done_stack, info_stack = map(
+            np.stack, [rew_list, done_list, info_list])
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs_stack)
-        return [self.normalize_obs(obs_stack), rew_stack, done_stack, info_stack]
+        return self.normalize_obs(obs_stack), rew_stack, done_stack, info_stack
 
     def seed(
         self, seed: Optional[Union[int, List[int]]] = None
@@ -291,11 +301,6 @@ class BaseVectorEnv(gym.Env):
             obs = (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.__eps)
             obs = np.clip(obs, -clip_max, clip_max)  # type: ignore
         return obs
-
-    def __del__(self) -> None:
-        """Redirect to self.close()."""
-        if not self.is_closed:
-            self.close()
 
 
 class DummyVectorEnv(BaseVectorEnv):
