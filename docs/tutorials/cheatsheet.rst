@@ -56,6 +56,8 @@ We provide an example to show how these steps work: checkout `test_c51.py <https
     $ python3 test/discrete/test_c51.py --resume  # restore from existing log and continuing training
 
 
+To correctly render the data (including several tfevent files), we highly recommend using ``tensorboard >= 2.5.0``.
+
 .. _parallel_sampling:
 
 Parallel Sampling
