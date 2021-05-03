@@ -68,3 +68,18 @@ We test our BCQ implementation on two example tasks (different from author's ver
 | ---------------------- | ---------- | ---------- | --------------------------------- |
 | PongNoFrameskip-v4     | 21         | 7.7        | 21 (epoch 5)                      |
 | BreakoutNoFrameskip-v4 | 303        | 61         | 167.4 (epoch 12, could be higher) |
+
+# CQL
+
+To running CQL algorithm on Atari, you need to do the following things:
+
+- Train an expert, by using the command listed in the above QRDQN section;
+- Generate buffer with noise: `python3 atari_qrdqn.py --task {your_task} --watch --resume-path log/{your_task}/qrdqn/policy.pth --eps-test 0.2 --buffer-size 1000000 --save-buffer-name expert.hdf5` (note that 1M Atari buffer cannot be saved as `.pkl` format because it is too large and will cause error);
+- Train CQL: `python3 atari_cql.py --task {your_task} --load-buffer-name expert.hdf5`.
+
+We test our CQL implementation on two example tasks (different from author's version, we use v4 instead of v0; one epoch means 10k gradient step):
+
+| Task                   | Online QRDQN | Behavioral | CQL                               |
+| ---------------------- | ---------- | ---------- | --------------------------------- |
+| PongNoFrameskip-v4     | 20.5         |         | 21 (epoch 5)                      |
+| BreakoutNoFrameskip-v4 | 394.3        |          |  (epoch 12, could be higher) |
