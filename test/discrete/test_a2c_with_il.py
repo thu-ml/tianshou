@@ -74,8 +74,8 @@ def test_a2c_with_il(args=get_args()):
               device=args.device)
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
     critic = Critic(net, device=args.device).to(args.device)
-    optim = torch.optim.Adam(set(
-        actor.parameters()).union(critic.parameters()), lr=args.lr)
+    optim = torch.optim.Adam(
+        list(actor.parameters()) + list(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
         actor, critic, optim, dist,
@@ -106,6 +106,7 @@ def test_a2c_with_il(args=get_args()):
         episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, save_fn=save_fn,
         logger=logger)
     assert stop_fn(result['best_reward'])
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
@@ -135,6 +136,7 @@ def test_a2c_with_il(args=get_args()):
         args.il_step_per_epoch, args.step_per_collect, args.test_num,
         args.batch_size, stop_fn=stop_fn, save_fn=save_fn, logger=logger)
     assert stop_fn(result['best_reward'])
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!

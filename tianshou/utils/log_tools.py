@@ -1,8 +1,12 @@
 import numpy as np
 from numbers import Number
-from typing import Any, Union
 from abc import ABC, abstractmethod
 from torch.utils.tensorboard import SummaryWriter
+from typing import Any, Tuple, Union, Callable, Optional
+from tensorboard.backend.event_processing import event_accumulator
+
+
+WRITE_TYPE = Union[int, Number, np.number, np.ndarray]
 
 
 class BaseLogger(ABC):
@@ -13,9 +17,7 @@ class BaseLogger(ABC):
         self.writer = writer
 
     @abstractmethod
-    def write(
-        self, key: str, x: int, y: Union[Number, np.number, np.ndarray], **kwargs: Any
-    ) -> None:
+    def write(self, key: str, x: int, y: WRITE_TYPE, **kwargs: Any) -> None:
         """Specify how the writer is used to log data.
 
         :param str key: namespace which the input data tuple belongs to.
@@ -51,6 +53,33 @@ class BaseLogger(ABC):
         """
         pass
 
+    def save_data(
+        self,
+        epoch: int,
+        env_step: int,
+        gradient_step: int,
+        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
+    ) -> None:
+        """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
+
+        :param int epoch: the epoch in trainer.
+        :param int env_step: the env_step in trainer.
+        :param int gradient_step: the gradient_step in trainer.
+        :param function save_checkpoint_fn: a hook defined by user, see trainer
+            documentation for detail.
+        """
+        pass
+
+    def restore_data(self) -> Tuple[int, int, int]:
+        """Return the metadata from existing log.
+
+        If it finds nothing or an error occurs during the recover process, it will
+        return the default parameters.
+
+        :return: epoch, env_step, gradient_step.
+        """
+        pass
+
 
 class BasicLogger(BaseLogger):
     """A loggger that relies on tensorboard SummaryWriter by default to visualize \
@@ -62,6 +91,8 @@ class BasicLogger(BaseLogger):
     :param int train_interval: the log interval in log_train_data(). Default to 1.
     :param int test_interval: the log interval in log_test_data(). Default to 1.
     :param int update_interval: the log interval in log_update_data(). Default to 1000.
+    :param int save_interval: the save interval in save_data(). Default to 1 (save at
+        the end of each epoch).
     """
 
     def __init__(
@@ -70,18 +101,19 @@ class BasicLogger(BaseLogger):
         train_interval: int = 1,
         test_interval: int = 1,
         update_interval: int = 1000,
+        save_interval: int = 1,
     ) -> None:
         super().__init__(writer)
         self.train_interval = train_interval
         self.test_interval = test_interval
         self.update_interval = update_interval
+        self.save_interval = save_interval
         self.last_log_train_step = -1
         self.last_log_test_step = -1
         self.last_log_update_step = -1
+        self.last_save_step = -1
 
-    def write(
-        self, key: str, x: int, y: Union[Number, np.number, np.ndarray], **kwargs: Any
-    ) -> None:
+    def write(self, key: str, x: int, y: WRITE_TYPE, **kwargs: Any) -> None:
         self.writer.add_scalar(key, y, global_step=x)
 
     def log_train_data(self, collect_result: dict, step: int) -> None:
@@ -133,6 +165,39 @@ class BasicLogger(BaseLogger):
                 self.write(k, step, v)
             self.last_log_update_step = step
 
+    def save_data(
+        self,
+        epoch: int,
+        env_step: int,
+        gradient_step: int,
+        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
+    ) -> None:
+        if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
+            self.last_save_step = epoch
+            save_checkpoint_fn(epoch, env_step, gradient_step)
+            self.write("save/epoch", epoch, epoch)
+            self.write("save/env_step", env_step, env_step)
+            self.write("save/gradient_step", gradient_step, gradient_step)
+
+    def restore_data(self) -> Tuple[int, int, int]:
+        ea = event_accumulator.EventAccumulator(self.writer.log_dir)
+        ea.Reload()
+
+        try:  # epoch / gradient_step
+            epoch = ea.scalars.Items("save/epoch")[-1].step
+            self.last_save_step = self.last_log_test_step = epoch
+            gradient_step = ea.scalars.Items("save/gradient_step")[-1].step
+            self.last_log_update_step = gradient_step
+        except KeyError:
+            epoch, gradient_step = 0, 0
+        try:  # offline trainer doesn't have env_step
+            env_step = ea.scalars.Items("save/env_step")[-1].step
+            self.last_log_train_step = env_step
+        except KeyError:
+            env_step = 0
+
+        return epoch, env_step, gradient_step
+
 
 class LazyLogger(BasicLogger):
     """A loggger that does nothing. Used as the placeholder in trainer."""
@@ -140,8 +205,6 @@ class LazyLogger(BasicLogger):
     def __init__(self) -> None:
         super().__init__(None)  # type: ignore
 
-    def write(
-        self, key: str, x: int, y: Union[Number, np.number, np.ndarray], **kwargs: Any
-    ) -> None:
+    def write(self, key: str, x: int, y: WRITE_TYPE, **kwargs: Any) -> None:
         """The LazyLogger writes nothing."""
         pass

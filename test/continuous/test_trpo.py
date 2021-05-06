@@ -27,7 +27,8 @@ def get_args():
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=50000)
     parser.add_argument('--step-per-collect', type=int, default=2048)
-    parser.add_argument('--repeat-per-collect', type=int, default=1)
+    parser.add_argument('--repeat-per-collect', type=int,
+                        default=2)  # theoretically it should be 1
     parser.add_argument('--batch-size', type=int, default=99999)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument('--training-num', type=int, default=16)
