@@ -93,6 +93,7 @@ def test_pg(args=get_args()):
         episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, save_fn=save_fn,
         logger=logger)
     assert stop_fn(result['best_reward'])
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!

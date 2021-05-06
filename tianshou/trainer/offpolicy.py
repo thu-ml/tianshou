@@ -1,13 +1,14 @@
 import time
 import tqdm
+import warnings
 import numpy as np
 from collections import defaultdict
 from typing import Dict, Union, Callable, Optional
 
 from tianshou.data import Collector
 from tianshou.policy import BasePolicy
-from tianshou.utils import tqdm_config, MovAvg, BaseLogger, LazyLogger
 from tianshou.trainer import test_episode, gather_info
+from tianshou.utils import tqdm_config, MovAvg, BaseLogger, LazyLogger
 
 
 def offpolicy_trainer(
@@ -24,6 +25,8 @@ def offpolicy_trainer(
     test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
     stop_fn: Optional[Callable[[float], bool]] = None,
     save_fn: Optional[Callable[[BasePolicy], None]] = None,
+    save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
+    resume_from_log: bool = False,
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
@@ -57,8 +60,13 @@ def offpolicy_trainer(
         It can be used to perform custom additional operations, with the signature ``f(
         num_epoch: int, step_idx: int) -> None``.
     :param function save_fn: a hook called when the undiscounted average mean reward in
-        evaluation phase gets better, with the signature ``f(policy:BasePolicy) ->
+        evaluation phase gets better, with the signature ``f(policy: BasePolicy) ->
         None``.
+    :param function save_checkpoint_fn: a function to save training process, with the
+        signature ``f(epoch: int, env_step: int, gradient_step: int) -> None``; you can
+        save whatever you want.
+    :param bool resume_from_log: resume env_step/gradient_step and other metadata from
+        existing tensorboard log. Default to False.
     :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
         bool``, receives the average undiscounted returns of the testing result,
         returns a boolean which indicates whether reaching the goal.
@@ -75,18 +83,24 @@ def offpolicy_trainer(
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
-    env_step, gradient_step = 0, 0
+    if save_fn:
+        warnings.warn("Please consider using save_checkpoint_fn instead of save_fn.")
+
+    start_epoch, env_step, gradient_step = 0, 0, 0
+    if resume_from_log:
+        start_epoch, env_step, gradient_step = logger.restore_data()
     last_rew, last_len = 0.0, 0
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
-    test_result = test_episode(policy, test_collector, test_fn, 0, episode_per_test,
-                               logger, env_step, reward_metric)
-    best_epoch = 0
+    test_result = test_episode(policy, test_collector, test_fn, start_epoch,
+                               episode_per_test, logger, env_step, reward_metric)
+    best_epoch = start_epoch
     best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
-    for epoch in range(1, 1 + max_epoch):
+
+    for epoch in range(1 + start_epoch, 1 + max_epoch):
         # train
         policy.train()
         with tqdm.tqdm(
@@ -118,6 +132,8 @@ def offpolicy_trainer(
                         if stop_fn(test_result["rew"]):
                             if save_fn:
                                 save_fn(policy)
+                            logger.save_data(
+                                epoch, env_step, gradient_step, save_checkpoint_fn)
                             t.set_postfix(**data)
                             return gather_info(
                                 start_time, train_collector, test_collector,
@@ -139,15 +155,14 @@ def offpolicy_trainer(
         test_result = test_episode(policy, test_collector, test_fn, epoch,
                                    episode_per_test, logger, env_step, reward_metric)
         rew, rew_std = test_result["rew"], test_result["rew_std"]
-        if best_epoch == -1 or best_reward < rew:
-            best_reward, best_reward_std = rew, rew_std
-            best_epoch = epoch
+        if best_epoch < 0 or best_reward < rew:
+            best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
             if save_fn:
                 save_fn(policy)
+        logger.save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
         if verbose:
-            print(
-                f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_reward:"
-                f" {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
+            print(f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
+                  f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
         if stop_fn and stop_fn(best_reward):
             break
     return gather_info(start_time, train_collector, test_collector,

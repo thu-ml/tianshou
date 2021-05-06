@@ -106,8 +106,8 @@ def test_ppo(args=get_args()):
             torch.nn.init.zeros_(m.bias)
             m.weight.data.copy_(0.01 * m.weight.data)
 
-    optim = torch.optim.Adam(set(
-        actor.parameters()).union(critic.parameters()), lr=args.lr)
+    optim = torch.optim.Adam(
+        list(actor.parameters()) + list(critic.parameters()), lr=args.lr)
 
     lr_scheduler = None
     if args.lr_decay:

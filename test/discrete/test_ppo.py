@@ -75,8 +75,8 @@ def test_ppo(args=get_args()):
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
-    optim = torch.optim.Adam(set(
-        actor.parameters()).union(critic.parameters()), lr=args.lr)
+    optim = torch.optim.Adam(
+        list(actor.parameters()) + list(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = PPOPolicy(
         actor, critic, optim, dist,
@@ -114,6 +114,7 @@ def test_ppo(args=get_args()):
         episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, save_fn=save_fn,
         logger=logger)
     assert stop_fn(result['best_reward'])
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
