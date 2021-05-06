@@ -56,7 +56,7 @@ We provide an example to show how these steps work: checkout `test_c51.py <https
     $ python3 test/discrete/test_c51.py --resume  # restore from existing log and continuing training
 
 
-To correctly render the data (including several tfevent files), we highly recommend using ``tensorboard >= 2.5.0``.
+To correctly render the data (including several tfevent files), we highly recommend using ``tensorboard >= 2.5.0`` (see `here <https://github.com/thu-ml/tianshou/pull/350#issuecomment-829123378>`_ for the reason). Otherwise, it may cause overlapping issue that you need to manually handle with.
 
 .. _parallel_sampling:
 
