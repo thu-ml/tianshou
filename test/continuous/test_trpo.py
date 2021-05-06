@@ -27,7 +27,8 @@ def get_args():
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=50000)
     parser.add_argument('--step-per-collect', type=int, default=2048)
-    parser.add_argument('--repeat-per-collect', type=int, default=1)
+    parser.add_argument('--repeat-per-collect', type=int,
+                        default=2)  # theoretically it should be 1
     parser.add_argument('--batch-size', type=int, default=99999)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument('--training-num', type=int, default=16)
@@ -82,8 +83,7 @@ def test_trpo(args=get_args()):
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
-    optim = torch.optim.Adam(set(
-        actor.parameters()).union(critic.parameters()), lr=args.lr)
+    optim = torch.optim.Adam(critic.parameters(), lr=args.lr)
 
     # replace DiagGuassian with Independent(Normal) which is equivalent
     # pass *logits to be consistent with policy.forward

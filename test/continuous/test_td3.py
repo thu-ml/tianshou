@@ -119,6 +119,7 @@ def test_td3(args=get_args()):
         update_per_step=args.update_per_step, stop_fn=stop_fn,
         save_fn=save_fn, logger=logger)
     assert stop_fn(result['best_reward'])
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!

@@ -30,6 +30,34 @@ Customize Training Process
 See :ref:`customized_trainer`.
 
 
+.. _resume_training:
+
+Resume Training Process
+-----------------------
+
+This is related to `Issue 349 <https://github.com/thu-ml/tianshou/issues/349>`_.
+
+To resume training process from an existing checkpoint, you need to do the following things in the training process:
+
+1. Make sure you write ``save_checkpoint_fn`` which saves everything needed in the training process, i.e., policy, optim, buffer; pass it to trainer;
+2. Use ``BasicLogger`` which contains a tensorboard;
+3. To adjust the save frequency, specify ``save_interval`` when initializing BasicLogger.
+
+And to successfully resume from a checkpoint:
+
+1. Load everything needed in the training process **before trainer initialization**, i.e., policy, optim, buffer;
+2. Set ``resume_from_log=True`` with trainer;
+
+We provide an example to show how these steps work: checkout `test_c51.py <https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_c51.py>`_, `test_ppo.py <https://github.com/thu-ml/tianshou/blob/master/test/continuous/test_ppo.py>`_ or `test_il_bcq.py <https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_il_bcq.py>`_ by running
+
+.. code-block:: console
+
+    $ python3 test/discrete/test_c51.py  # train some epoch
+    $ python3 test/discrete/test_c51.py --resume  # restore from existing log and continuing training
+
+
+To correctly render the data (including several tfevent files), we highly recommend using ``tensorboard >= 2.5.0`` (see `here <https://github.com/thu-ml/tianshou/pull/350#issuecomment-829123378>`_ for the reason). Otherwise, it may cause overlapping issue that you need to manually handle with.
+
 .. _parallel_sampling:
 
 Parallel Sampling
