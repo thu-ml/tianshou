@@ -79,7 +79,7 @@ To running CQL algorithm on Atari, you need to do the following things:
 
 We test our CQL implementation on two example tasks (different from author's version, we use v4 instead of v0; one epoch means 10k gradient step):
 
-| Task                   | Online QRDQN | Behavioral | CQL                               |
-| ---------------------- | ---------- | ---------- | --------------------------------- |
-| PongNoFrameskip-v4     | 20.5         |         | 21 (epoch 5)                      |
-| BreakoutNoFrameskip-v4 | 394.3        |          |  (epoch 12, could be higher) |
+| Task                   | Online QRDQN | Behavioral | CQL                               | parameters                                                   |
+| ---------------------- | ---------- | ---------- | --------------------------------- | ------------------------------------------------------------ |
+| PongNoFrameskip-v4     | 20.5         | 6.8        | 19.5 (epoch 5)                      | `python3 atari_cql.py --task "PongNoFrameskip-v4" --load-buffer-name log/PongNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 5` |
+| BreakoutNoFrameskip-v4 | 394.3        | 46.9       | 248.3 (epoch 12) | `python3 atari_cql.py --task "BreakoutNoFrameskip-v4" --load-buffer-name log/BreakoutNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 12 --min-q-weight 50` |

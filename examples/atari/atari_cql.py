@@ -22,7 +22,7 @@ def get_args():
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--eps-test", type=float, default=0.001)
-    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument('--num-quantiles', type=int, default=200)
     parser.add_argument("--n-step", type=int, default=1)
@@ -127,6 +127,8 @@ def test_discrete_cql(args=get_args()):
         result = test_collector.collect(n_episode=args.test_num,
                                         render=args.render)
         pprint.pprint(result)
+        rew = result["rews"].mean()
+        print(f'Mean reward (over {result["n/ep"]} episodes): {rew}')
 
     if args.watch:
         watch()
