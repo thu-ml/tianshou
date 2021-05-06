@@ -112,6 +112,7 @@ def test_discrete_sac(args=get_args()):
         args.batch_size, stop_fn=stop_fn, save_fn=save_fn, logger=logger,
         update_per_step=args.update_per_step, test_in_train=False)
     assert stop_fn(result['best_reward'])
+
     if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
