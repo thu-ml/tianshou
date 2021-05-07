@@ -124,7 +124,7 @@ class TRPOPolicy(NPGPolicy):
                                           " are poor and need to be changed.")
 
                 # optimize citirc
-                for _ in range(self._optim_critic_iters):  # type: ignore
+                for _ in range(self._optim_critic_iters):
                     value = self.critic(b.obs).flatten()
                     vf_loss = F.mse_loss(b.returns, value)
                     self.optim.zero_grad()
