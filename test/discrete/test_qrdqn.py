@@ -136,7 +136,7 @@ def test_qrdqn(args=get_args()):
 
     # save buffer in pickle format, for imitation learning unittest
     buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
-    policy.set_eps(0.2)
+    policy.set_eps(0.9)  # 10% of expert data as demonstrated in the original paper
     collector = Collector(policy, test_envs, buf, exploration_noise=True)
     result = collector.collect(n_step=args.buffer_size)
     pickle.dump(buf, open(args.save_buffer_name, "wb"))
