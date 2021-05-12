@@ -99,6 +99,11 @@ Imitation
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.DiscreteCQLPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Model-based
 -----------
 
