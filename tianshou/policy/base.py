@@ -162,7 +162,7 @@ class BasePolicy(ABC, nn.Module):
                 isinstance(act, np.ndarray):
             # currently this action mapping only supports np.ndarray action
             if self.action_bound_method == "clip":
-                act = np.clip(act, -1.0, 1.0)  # type: ignore
+                act = np.clip(act, -1.0, 1.0)
             elif self.action_bound_method == "tanh":
                 act = np.tanh(act)
             if self.action_scaling:
