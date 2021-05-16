@@ -9,7 +9,7 @@ from tianshou.data import Batch, to_torch, to_torch_as
 
 
 class DiscreteCRRPolicy(PGPolicy):
-    """Implementation of discrete Critic Regularized Regression. arXiv:2006.15134.
+    r"""Implementation of discrete Critic Regularized Regression. arXiv:2006.15134.
 
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
