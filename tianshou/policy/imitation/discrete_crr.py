@@ -14,7 +14,7 @@ class DiscreteCRRPolicy(PGPolicy):
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.nn.Module critic: the action-value critic (i.e., Q function)
-        network. (s -> Q(s, *))
+        network. (s -> Q(s, \*))
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float discount_factor: in [0, 1]. Default to 0.99.
     :param str policy_improvement_mode: type of the weight function f. Possible
