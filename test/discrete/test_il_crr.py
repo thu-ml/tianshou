@@ -19,7 +19,6 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=7e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--n-step", type=int, default=3)
@@ -101,7 +100,6 @@ def test_discrete_crr(args=get_args()):
         # Let's watch its performance!
         env = gym.make(args.task)
         policy.eval()
-        policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         rews, lens = result["rews"], result["lens"]
