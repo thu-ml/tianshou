@@ -71,7 +71,7 @@ def test_discrete_cql(args=get_args()):
     ).to(args.device)
     # buffer
     assert os.path.exists(args.load_buffer_name), \
-        "Please run test_dqn.py first to get expert's data buffer."
+        "Please run test_qrdqn.py first to get expert's data buffer."
     buffer = pickle.load(open(args.load_buffer_name, "rb"))
 
     # collector

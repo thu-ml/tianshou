@@ -1,8 +1,8 @@
 import torch
-import torch.nn.functional as F
-from torch.distributions import Categorical
 from copy import deepcopy
 from typing import Any, Dict
+import torch.nn.functional as F
+from torch.distributions import Categorical
 
 from tianshou.policy.modelfree.pg import PGPolicy
 from tianshou.data import Batch, to_torch, to_torch_as
@@ -66,6 +66,7 @@ class DiscreteCRRPolicy(PGPolicy):
             self.actor_old.eval()
             self.critic_old = deepcopy(self.critic)
             self.critic_old.eval()
+        assert policy_improvement_mode in ["exp", "binary", "all"]
         self._policy_improvement_mode = policy_improvement_mode
         self._ratio_upper_bound = ratio_upper_bound
         self._beta = beta
@@ -104,7 +105,7 @@ class DiscreteCRRPolicy(PGPolicy):
                 (advantage / self._beta).exp().clamp(0, self._ratio_upper_bound)
             )
         else:
-            actor_loss_coef = 1  # effectively behavior cloning
+            actor_loss_coef = 1.0  # effectively behavior cloning
         actor_loss = (-m.log_prob(act) * actor_loss_coef).mean()
         # CQL loss/regularizer
         min_q_loss = (q_t.logsumexp(1) - qa_t).mean()
