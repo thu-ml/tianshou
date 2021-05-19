@@ -18,7 +18,7 @@ class DiscreteCRRPolicy(PGPolicy):
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float discount_factor: in [0, 1]. Default to 0.99.
     :param str policy_improvement_mode: type of the weight function f. Possible
-        values: "binary"/"exp"/"all". Default to "binary".
+        values: "binary"/"exp"/"all". Default to "exp".
     :param float ratio_upper_bound: when policy_improvement_mode is "exp", the value
         of the exp function is upper-bounded by this parameter. Default to 20.
     :param float beta: when policy_improvement_mode is "exp", this is the denominator
@@ -56,7 +56,6 @@ class DiscreteCRRPolicy(PGPolicy):
             reward_normalization,
             **kwargs,
         )
-        self.actor = actor
         self.critic = critic
         self._target = target_update_freq > 0
         self._freq = target_update_freq
@@ -66,6 +65,9 @@ class DiscreteCRRPolicy(PGPolicy):
             self.actor_old.eval()
             self.critic_old = deepcopy(self.critic)
             self.critic_old.eval()
+        else:
+            self.actor_old = self.actor
+            self.critic_old = self.critic
         assert policy_improvement_mode in ["exp", "binary", "all"]
         self._policy_improvement_mode = policy_improvement_mode
         self._ratio_upper_bound = ratio_upper_bound
