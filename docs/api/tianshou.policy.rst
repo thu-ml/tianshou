@@ -104,6 +104,11 @@ Imitation
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.DiscreteCRRPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Model-based
 -----------
 
