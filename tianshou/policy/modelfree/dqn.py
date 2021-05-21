@@ -82,8 +82,10 @@ class DQNPolicy(BasePolicy):
             target_q = self(batch, model="model_old", input="obs_next").logits
         else:
             target_q = result.logits
-        target_q = target_q[np.arange(len(result.act)), result.act] if self._is_double else target_q.max(dim=1)[0]
-        return target_q
+        if self._is_double:
+            return target_q[np.arange(len(result.act)), result.act]
+        else:  # Nature DQN, over estimate
+            return target_q.max(dim=1)[0]
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
@@ -99,7 +101,7 @@ class DQNPolicy(BasePolicy):
         return batch
 
     def compute_q_value(
-        self, logits: torch.Tensor, mask: Optional[np.ndarray] = None
+        self, logits: torch.Tensor, mask: Optional[np.ndarray]
     ) -> torch.Tensor:
         """Compute the q value based on the network's raw output and action mask."""
         if mask is not None:
