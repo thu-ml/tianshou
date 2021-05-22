@@ -199,7 +199,7 @@ class IQN(Critic):
     def sample_size(self, sz: int) -> None:
         self._sample_size = sz
 
-    def forward(
+    def forward(  # type: ignore
         self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""

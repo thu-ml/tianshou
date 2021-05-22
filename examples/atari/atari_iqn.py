@@ -26,9 +26,9 @@ def get_args():
     parser.add_argument('--buffer-size', type=int, default=100000)
     parser.add_argument('--lr', type=float, default=0.0001)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--K', type=int, default=32)
-    parser.add_argument('--N', type=int, default=8)
-    parser.add_argument('--N-prime', type=int, default=8)
+    parser.add_argument('--sample-size', type=int, default=32)
+    parser.add_argument('--online-sample-size', type=int, default=8)
+    parser.add_argument('--target-sample-size', type=int, default=8)
     parser.add_argument('--num-cosines', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512])
     parser.add_argument('--n-step', type=int, default=3)
@@ -82,13 +82,15 @@ def test_iqn(args=get_args()):
     # define model
     feature_net = DQN(*args.state_shape, args.action_shape, args.device,
                       features_only=True)
-    net = IQN(feature_net, args.action_shape, args.hidden_sizes, sample_size=args.K,
+    net = IQN(feature_net, args.action_shape, args.hidden_sizes,
+              sample_size=args.sample_size,
               num_cosines=args.num_cosines, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy = IQNPolicy(
-        net, optim, args.gamma, args.K, args.N, args.N_prime,
-        args.n_step, target_update_freq=args.target_update_freq
+        net, optim, args.gamma, args.sample_size, args.online_sample_size,
+        args.target_sample_size, args.n_step,
+        target_update_freq=args.target_update_freq
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
