@@ -114,7 +114,7 @@ class Critic(nn.Module):
 
 
 class CosineEmbeddingNetwork(nn.Module):
-    """Cosine embedding network for IQN. Convert a scalar in [0, 1] to a list
+    """Cosine embedding network for IQN. Convert a scalar in [0, 1] to a list \
     of n-dim vectors.
 
     :param num_cosines: the number of cosines used for the embedding.
@@ -125,6 +125,7 @@ class CosineEmbeddingNetwork(nn.Module):
         From https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master
         /fqf_iqn_qrdqn/network.py .
     """
+
     def __init__(self, num_cosines: int, embedding_dim: int) -> None:
         super().__init__()
         self.net = nn.Sequential(nn.Linear(num_cosines, embedding_dim), nn.ReLU())
@@ -147,8 +148,8 @@ class CosineEmbeddingNetwork(nn.Module):
         return tau_embeddings
 
 
-class IQN(Critic):
-    """Implicit Quantile Network. A property named `sample_size` is used to
+class ImplicitQuantileNetwork(Critic):
+    """Implicit Quantile Network. A property named `sample_size` is used to \
     change the number of samples.
 
     :param preprocess_net: a self-defined preprocess_net which output a

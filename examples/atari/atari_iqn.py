@@ -6,7 +6,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils import BasicLogger
-from tianshou.utils.net.discrete import IQN
+from tianshou.utils.net.discrete import ImplicitQuantileNetwork
 from tianshou.policy import IQNPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
@@ -82,9 +82,10 @@ def test_iqn(args=get_args()):
     # define model
     feature_net = DQN(*args.state_shape, args.action_shape, args.device,
                       features_only=True)
-    net = IQN(feature_net, args.action_shape, args.hidden_sizes,
-              sample_size=args.sample_size,
-              num_cosines=args.num_cosines, device=args.device).to(args.device)
+    net = ImplicitQuantileNetwork(
+        feature_net, args.action_shape, args.hidden_sizes,
+        sample_size=args.sample_size, num_cosines=args.num_cosines, device=args.device
+    ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy = IQNPolicy(
