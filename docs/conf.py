@@ -38,12 +38,12 @@ release = version
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
-    # "sphinx.ext.doctest",
-    # "sphinx.ext.intersphinx",
-    # "sphinx.ext.coverage",
+    "sphinx.ext.doctest",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.coverage",
     # 'sphinx.ext.imgmath',
     "sphinx.ext.mathjax",
-    # "sphinx.ext.ifconfig",
+    "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
     "sphinxcontrib.bibtex",
@@ -90,6 +90,10 @@ html_logo = "_static/images/tianshou-logo.png"
 
 
 def setup(app):
+    app.add_js_file("https://cdn.jsdelivr.net/npm/vega@5.20.2")
+    app.add_js_file("https://cdn.jsdelivr.net/npm/vega-lite@5.1.0")
+    app.add_js_file("https://cdn.jsdelivr.net/npm/vega-embed@6.17.0")
+
     app.add_js_file("js/copybutton.js")
     app.add_js_file("js/benchmark.js")
     app.add_css_file("css/style.css")

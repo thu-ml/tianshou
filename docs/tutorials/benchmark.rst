@@ -1,12 +1,6 @@
 Benchmark
 =========
 
-.. raw:: html
-
-    <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.1.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.17.0"></script>
-
 
 Mujoco Benchmark
 ----------------
