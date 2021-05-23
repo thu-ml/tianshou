@@ -4,6 +4,7 @@ from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.c51 import C51Policy
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
 from tianshou.policy.modelfree.iqn import IQNPolicy
+from tianshou.policy.modelfree.fqf import FQFPolicy
 from tianshou.policy.modelfree.pg import PGPolicy
 from tianshou.policy.modelfree.a2c import A2CPolicy
 from tianshou.policy.modelfree.npg import NPGPolicy
@@ -28,6 +29,7 @@ __all__ = [
     "C51Policy",
     "QRDQNPolicy",
     "IQNPolicy",
+    "FQFPolicy",
     "PGPolicy",
     "A2CPolicy",
     "NPGPolicy",

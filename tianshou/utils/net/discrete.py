@@ -202,3 +202,118 @@ class ImplicitQuantileNetwork(Critic):
         out = self.last(embedding).view(batch_size,
                                         sample_size, -1).transpose(1, 2)
         return (out, taus), h
+
+
+class FractionProposalNetwork(nn.Module):
+    """Fraction proposal network for FQF.
+
+    :param num_fractions: the number of factions to propose.
+    :param embedding_dim: the dimension of the embedding/input.
+
+    .. note::
+
+        From https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master
+        /fqf_iqn_qrdqn/network.py .
+    """
+
+    def __init__(self, num_fractions: int, embedding_dim: int) -> None:
+        super().__init__()
+        self.net = nn.Linear(embedding_dim, num_fractions)
+        self.num_fractions = num_fractions
+        self.embedding_dim = embedding_dim
+
+    def forward(
+        self, state_embeddings: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        batch_size = state_embeddings.shape[0]
+        # Calculate (log of) probabilities q_i in the paper.
+        log_probs = F.log_softmax(self.net(state_embeddings), dim=1)
+        probs = log_probs.exp()
+        assert probs.shape == (batch_size, self.num_fractions)
+        tau_0 = torch.zeros(
+            (batch_size, 1),
+            dtype=state_embeddings.dtype,
+            device=state_embeddings.device,
+        )
+        taus_1_N = torch.cumsum(probs, dim=1)
+        # Calculate \tau_i (i=0,...,N).
+        taus = torch.cat((tau_0, taus_1_N), dim=1)
+        assert taus.shape == (batch_size, self.num_fractions + 1)
+        # Calculate \hat \tau_i (i=0,...,N-1).
+        tau_hats = (taus[:, :-1] + taus[:, 1:]).detach() / 2.0
+        assert tau_hats.shape == (batch_size, self.num_fractions)
+        # Calculate entropies of value distributions.
+        entropies = -(log_probs * probs).sum(dim=-1, keepdim=True)
+        assert entropies.shape == (batch_size, 1)
+        return taus, tau_hats, entropies
+
+
+class FullQuantileFunction(ImplicitQuantileNetwork):
+    """Full(y parameterized) Quantile Function.
+
+    :param preprocess_net: a self-defined preprocess_net which output a
+        flattened hidden state.
+    :param int action_dim: the dimension of action space.
+    :param hidden_sizes: a sequence of int for constructing the MLP after
+        preprocess_net. Default to empty sequence (where the MLP now contains
+        only a single linear layer).
+    :param int num_cosines: the number of cosines to use for cosine embedding.
+        Default to 64.
+    :param int preprocess_net_output_dim: the output dimension of
+        preprocess_net.
+
+    .. note::
+
+        The first return value is a tuple of (out, taus, tau_hats, fraction_grad,
+        entropies).
+    """
+
+    def __init__(
+        self,
+        preprocess_net: nn.Module,
+        action_shape: Sequence[int],
+        hidden_sizes: Sequence[int] = (),
+        num_fractions: int = 32,
+        num_cosines: int = 64,
+        preprocess_net_output_dim: Optional[int] = None,
+        device: Union[str, int, torch.device] = "cpu"
+    ) -> None:
+        super().__init__(
+            preprocess_net, action_shape, hidden_sizes,
+            num_cosines, preprocess_net_output_dim, device
+        )
+        self.propose_model = FractionProposalNetwork(
+            num_fractions, self.input_dim
+        ).to(device)
+
+    def _compute_quantiles(self, obs, taus):
+        batch_size, sample_size = taus.size(0), taus.size(1)
+        embedding = (obs.unsqueeze(1) * self.embed_model(taus)).view(
+            batch_size * sample_size, -1
+        )
+        quantiles = self.last(embedding).view(
+            batch_size, sample_size, -1
+        ).transpose(1, 2)
+        return quantiles
+
+    def forward(  # type: ignore
+        self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
+    ) -> Tuple[Any, torch.Tensor]:
+        r"""Mapping: s -> Q(s, \*)."""
+        logits, h = self.preprocess(s, state=kwargs.get("state", None))
+        # Propose fractions.
+        taus, tau_hats, entropies = self.propose_model(logits.detach())
+        quantiles = self._compute_quantiles(logits, tau_hats)
+        out = taus.size(1) * (
+            taus[:, 1:] - taus[:, :-1]
+        ).detach().unsqueeze(1) * quantiles
+        # Calculate fraction grad
+        with torch.no_grad():
+            if self.training:
+                quantiles_tau = self._compute_quantiles(logits, taus[:, 1:-1])
+                quantiles = quantiles[:, :, :-1]
+                padded_sum = quantiles + F.pad(quantiles, (1, 0))[:, :, :-1]
+                fraction_grad = 2 * quantiles_tau - padded_sum
+            else:
+                fraction_grad = torch.zeros_like(quantiles)[:, :, 1:]
+        return (out, taus, tau_hats, fraction_grad, entropies), h
