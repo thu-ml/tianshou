@@ -3,4 +3,5 @@ tqdm
 torch
 numba
 tensorboard
+sphinx<4
 sphinxcontrib-bibtex
