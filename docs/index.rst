@@ -33,7 +33,7 @@ Welcome to Tianshou!
 
 Here is Tianshou's other features:
 
-* Elegant framework, using only ~2000 lines of code
+* Elegant framework, using only ~3000 lines of code
 * State-of-the-art `MuJoCo benchmark <https://github.com/thu-ml/tianshou/tree/master/examples/mujoco>`_
 * Support parallel environment simulation (synchronous or asynchronous) for all algorithms: :ref:`parallel_sampling`
 * Support recurrent state representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
