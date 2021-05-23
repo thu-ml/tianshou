@@ -90,9 +90,10 @@ html_logo = "_static/images/tianshou-logo.png"
 
 
 def setup(app):
-    app.add_js_file("js/copybutton.js")
-    app.add_js_file("js/benchmark.js")
-    app.add_css_file("css/style.css")
+    pass
+    # app.add_js_file("js/copybutton.js")
+    # app.add_js_file("js/benchmark.js")
+    # app.add_css_file("css/style.css")
 
 
 # -- Extension configuration -------------------------------------------------
