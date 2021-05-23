@@ -60,11 +60,11 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 
 | task                        | best reward | reward curve                          | parameters                                                   |
 | --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
-| PongNoFrameskip-v4          |             | ![](results/iqn/Pong_rew.png)         | `python3 atari_iqn.py --task "PongNoFrameskip-v4" --batch-size 64` |
-| BreakoutNoFrameskip-v4      |        | ![](results/iqn/Breakout_rew.png)     | `python3 atari_iqn.py --task "BreakoutNoFrameskip-v4" --n-step 1` |
-| EnduroNoFrameskip-v4        |       | ![](results/iqn/Enduro_rew.png)       | `python3 atari_iqn.py --task "EnduroNoFrameskip-v4"`  |
-| QbertNoFrameskip-v4         |        | ![](results/iqn/Qbert_rew.png)        | `python3 atari_iqn.py --task "QbertNoFrameskip-v4"`  |
-| MsPacmanNoFrameskip-v4      |         | ![](results/iqn/MsPacman_rew.png)     | `python3 atari_iqn.py --task "MsPacmanNoFrameskip-v4"`  |
+| PongNoFrameskip-v4          | 20.2        | ![](results/iqn/Pong_rew.png)         | `python3 atari_iqn.py --task "PongNoFrameskip-v4" --batch-size 64` |
+| BreakoutNoFrameskip-v4      | 450.2       | ![](results/iqn/Breakout_rew.png)     | `python3 atari_iqn.py --task "BreakoutNoFrameskip-v4" --n-step 1` |
+| EnduroNoFrameskip-v4        | 1883.6      | ![](results/iqn/Enduro_rew.png)       | `python3 atari_iqn.py --task "EnduroNoFrameskip-v4"`  |
+| QbertNoFrameskip-v4         | 15837.5     | ![](results/iqn/Qbert_rew.png)        | `python3 atari_iqn.py --task "QbertNoFrameskip-v4"`  |
+| MsPacmanNoFrameskip-v4      | 3304        | ![](results/iqn/MsPacman_rew.png)     | `python3 atari_iqn.py --task "MsPacmanNoFrameskip-v4"`  |
 | SeaquestNoFrameskip-v4      |         | ![](results/iqn/Seaquest_rew.png)     | `python3 atari_iqn.py --task "SeaquestNoFrameskip-v4"`  |
 | SpaceInvadersNoFrameskip-v4 |          | ![](results/iqn/SpaceInvader_rew.png) | `python3 atari_iqn.py --task "SpaceInvadersNoFrameskip-v4"`  |
 

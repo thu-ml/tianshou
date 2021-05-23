@@ -61,7 +61,7 @@ class IQNPolicy(QRDQNPolicy):
     def train(self, mode: bool = True) -> "IQNPolicy":
         super().train(mode)
         self.model.sample_size = (self._online_sample_size if mode  # type: ignore
-                                  else self._sample_size)  # type: ignore
+                                  else self._sample_size)
         return self
 
     def sync_weight(self) -> None:
