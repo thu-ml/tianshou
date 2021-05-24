@@ -65,8 +65,8 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 | EnduroNoFrameskip-v4        | 1883.6      | ![](results/iqn/Enduro_rew.png)       | `python3 atari_iqn.py --task "EnduroNoFrameskip-v4"`  |
 | QbertNoFrameskip-v4         | 15837.5     | ![](results/iqn/Qbert_rew.png)        | `python3 atari_iqn.py --task "QbertNoFrameskip-v4"`  |
 | MsPacmanNoFrameskip-v4      | 3304        | ![](results/iqn/MsPacman_rew.png)     | `python3 atari_iqn.py --task "MsPacmanNoFrameskip-v4"`  |
-| SeaquestNoFrameskip-v4      |         | ![](results/iqn/Seaquest_rew.png)     | `python3 atari_iqn.py --task "SeaquestNoFrameskip-v4"`  |
-| SpaceInvadersNoFrameskip-v4 |          | ![](results/iqn/SpaceInvader_rew.png) | `python3 atari_iqn.py --task "SpaceInvadersNoFrameskip-v4"`  |
+| SeaquestNoFrameskip-v4      | 5522        | ![](results/iqn/Seaquest_rew.png)     | `python3 atari_iqn.py --task "SeaquestNoFrameskip-v4"`  |
+| SpaceInvadersNoFrameskip-v4 | 1228.5      | ![](results/iqn/SpaceInvader_rew.png) | `python3 atari_iqn.py --task "SpaceInvadersNoFrameskip-v4"`  |
 
 # BCQ
 
