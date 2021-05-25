@@ -153,10 +153,23 @@ def _alloc_by_keys_diff(
 ) -> None:
     for key in batch.keys():
         if key in meta.keys():
-            if isinstance(meta[key], Batch) and isinstance(batch[key], Batch):
-                _alloc_by_keys_diff(meta[key], batch[key], size, stack)
-            elif isinstance(meta[key], Batch) and meta[key].is_empty():
-                meta[key] = _create_value(batch[key], size, stack)
+            if isinstance(meta[key], Batch):
+                if isinstance(batch[key], Batch):
+                    _alloc_by_keys_diff(meta[key], batch[key], size, stack)
+                elif meta[key].is_empty():
+                    meta[key] = _create_value(batch[key], size, stack)
+            elif isinstance(meta[key], np.ndarray) and meta[key].dtype != object:
+                if isinstance(batch[key], np.ndarray):
+                    target_shape = batch[key].shape if stack else batch[key].shape[1:]
+                    if target_shape == meta[key].shape[1:]:
+                        continue
+                    warnings.warn(f"Detect different variable length with key {key},"
+                                  " fall back to dtype=object.")
+                    original_data = meta[key]
+                    new_data = np.array([None for _ in range(size)])
+                    for i in range(size):
+                        new_data[i] = original_data[i]
+                    meta[key] = new_data
         else:
             meta[key] = _create_value(batch[key], size, stack)
 
@@ -265,6 +278,12 @@ class Batch:
                     self.__dict__[key][index] = 0
                 else:
                     self.__dict__[key][index] = None
+            except ValueError:
+                try:
+                    for i in index:  # type: ignore
+                        self.__dict__[key][i] = value[key][i]
+                except Exception:
+                    raise ValueError
 
     def __iadd__(self, other: Union["Batch", Number, np.number]) -> "Batch":
         """Algebraic addition with another Batch instance in-place."""
