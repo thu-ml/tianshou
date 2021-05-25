@@ -30,7 +30,7 @@ def get_args():
     parser.add_argument('--online-sample-size', type=int, default=8)
     parser.add_argument('--target-sample-size', type=int, default=8)
     parser.add_argument('--num-cosines', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512, 512])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512])
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=500)
     parser.add_argument('--epoch', type=int, default=100)
