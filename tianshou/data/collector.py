@@ -259,7 +259,12 @@ class Collector(object):
                 obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
                     obs_reset = self.preprocess_fn(obs=obs_reset).get("obs", obs_reset)
-                self.data.obs_next[env_ind_local] = obs_reset
+                try:
+                    self.data.obs_next[env_ind_local] = obs_reset
+                except ValueError:
+                    _alloc_by_keys_diff(self.data, Batch(obs_next=obs_reset),
+                                        len(self.data), False)
+                    self.data.obs_next[env_ind_local] = obs_reset
                 for i in env_ind_local:
                     self._reset_state(i)
 
