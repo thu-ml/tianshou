@@ -73,7 +73,7 @@ def test_iqn(args=get_args()):
                       hidden_sizes=args.hidden_sizes[:-1], device=args.device,
                       softmax=False)
     net = ImplicitQuantileNetwork(
-        feature_net, args.action_shape, sample_size=args.sample_size,
+        feature_net, args.action_shape,
         num_cosines=args.num_cosines, device=args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = IQNPolicy(

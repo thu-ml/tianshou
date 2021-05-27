@@ -1,10 +1,10 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Union
 
 from tianshou.policy import QRDQNPolicy
-from tianshou.data import Batch
+from tianshou.data import Batch, to_numpy
 
 
 class IQNPolicy(QRDQNPolicy):
@@ -53,21 +53,30 @@ class IQNPolicy(QRDQNPolicy):
         self._sample_size = sample_size  # for policy eval
         self._online_sample_size = online_sample_size
         self._target_sample_size = target_sample_size
-        # set sample size for online and target model
-        self.model.sample_size = self._online_sample_size  # type: ignore
-        if self._target:
-            self.model_old.sample_size = self._target_sample_size  # type: ignore
 
-    def train(self, mode: bool = True) -> "IQNPolicy":
-        super().train(mode)
-        self.model.sample_size = (self._online_sample_size if mode  # type: ignore
-                                  else self._sample_size)
-        return self
-
-    def sync_weight(self) -> None:
-        """Synchronize the weight for the target network."""
-        self.model_old.load_state_dict(self.model.state_dict())  # type: ignore
-        self.model_old.sample_size = self._target_sample_size  # type: ignore
+    def forward(
+        self,
+        batch: Batch,
+        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        model: str = "model",
+        input: str = "obs",
+        **kwargs: Any,
+    ) -> Batch:
+        model = getattr(self, model)
+        obs = batch[input]
+        obs_ = obs.obs if hasattr(obs, "obs") else obs
+        if model == "model_old":
+            sample_size = self._target_sample_size
+        elif self.training:
+            sample_size = self._online_sample_size
+        else:
+            sample_size = self._sample_size
+        logits, h = model(obs_, sample_size, state=state, info=batch.info)
+        q = self.compute_q_value(logits, getattr(obs, "mask", None))
+        if not hasattr(self, "max_action_num"):
+            self.max_action_num = q.shape[1]
+        act = to_numpy(q.max(dim=1)[1])
+        return Batch(logits=logits, act=act, state=h)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:

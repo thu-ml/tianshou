@@ -149,8 +149,7 @@ class CosineEmbeddingNetwork(nn.Module):
 
 
 class ImplicitQuantileNetwork(Critic):
-    """Implicit Quantile Network. A property named `sample_size` is used to \
-    change the number of samples.
+    """Implicit Quantile Network.
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
@@ -158,8 +157,6 @@ class ImplicitQuantileNetwork(Critic):
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
-    :param int sample_size: the number of samples to use for each input vector.
-        Default to 32.
     :param int num_cosines: the number of cosines to use for cosine embedding.
         Default to 64.
     :param int preprocess_net_output_dim: the output dimension of
@@ -178,7 +175,6 @@ class ImplicitQuantileNetwork(Critic):
         preprocess_net: nn.Module,
         action_shape: Sequence[int],
         hidden_sizes: Sequence[int] = (),
-        sample_size: int = 32,
         num_cosines: int = 64,
         preprocess_net_output_dim: Optional[int] = None,
         device: Union[str, int, torch.device] = "cpu"
@@ -190,28 +186,19 @@ class ImplicitQuantileNetwork(Critic):
                                  preprocess_net_output_dim)
         self.embed_model = CosineEmbeddingNetwork(num_cosines,
                                                   self.input_dim).to(device)
-        self._sample_size = sample_size
-
-    @property
-    def sample_size(self) -> int:
-        return self._sample_size
-
-    @sample_size.setter
-    def sample_size(self, sz: int) -> None:
-        self._sample_size = sz
 
     def forward(  # type: ignore
-        self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
+        self, s: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
         logits, _ = self.preprocess(s, state=kwargs.get("state", None))
         # Sample fractions.
         batch_size = logits.size(0)
-        taus = torch.rand(batch_size, self.sample_size,
+        taus = torch.rand(batch_size, sample_size,
                           dtype=logits.dtype, device=logits.device)
         embedding = (logits.unsqueeze(1) * self.embed_model(taus)).view(
-            batch_size * self.sample_size, -1
+            batch_size * sample_size, -1
         )
         out = self.last(embedding).view(batch_size,
-                                        self.sample_size, -1).transpose(1, 2)
+                                        sample_size, -1).transpose(1, 2)
         return out, taus
