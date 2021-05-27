@@ -35,6 +35,11 @@ DQN Family
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.IQNPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 On-policy
 ~~~~~~~~~
 

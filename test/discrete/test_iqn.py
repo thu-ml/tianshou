@@ -1,7 +1,6 @@
 import os
 import gym
 import torch
-import pickle
 import pprint
 import argparse
 import numpy as np
@@ -11,8 +10,8 @@ from tianshou.utils import BasicLogger
 from tianshou.policy import IQNPolicy
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.discrete import ImplicitQuantileNetwork
 from tianshou.trainer import offpolicy_trainer
+from tianshou.utils.net.discrete import ImplicitQuantileNetwork
 from tianshou.data import Collector, VectorReplayBuffer, PrioritizedVectorReplayBuffer
 
 
@@ -23,7 +22,7 @@ def get_args():
     parser.add_argument('--eps-test', type=float, default=0.05)
     parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=3e-3)
     parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--sample-size', type=int, default=32)
     parser.add_argument('--online-sample-size', type=int, default=8)
@@ -37,7 +36,7 @@ def get_args():
     parser.add_argument('--update-per-step', type=float, default=0.1)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[128, 128, 128, 128])
+                        nargs='*', default=[64, 64, 64])
     parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -47,16 +46,13 @@ def get_args():
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
     parser.add_argument(
-        '--save-buffer-name', type=str,
-        default="./expert_QRDQN_CartPole-v0.pkl")
-    parser.add_argument(
         '--device', type=str,
         default='cuda' if torch.cuda.is_available() else 'cpu')
     args = parser.parse_known_args()[0]
     return args
 
 
-def test_qrdqn(args=get_args()):
+def test_iqn(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -142,19 +138,11 @@ def test_qrdqn(args=get_args()):
         rews, lens = result["rews"], result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
-    # save buffer in pickle format, for imitation learning unittest
-    buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
-    policy.set_eps(0.9)  # 10% of expert data as demonstrated in the original paper
-    collector = Collector(policy, test_envs, buf, exploration_noise=True)
-    result = collector.collect(n_step=args.buffer_size)
-    pickle.dump(buf, open(args.save_buffer_name, "wb"))
-    print(result["rews"].mean())
 
-
-def test_iqn(args=get_args()):
+def test_piqn(args=get_args()):
     args.prioritized_replay = True
     args.gamma = .95
-    test_qrdqn(args)
+    test_iqn(args)
 
 
 if __name__ == '__main__':
