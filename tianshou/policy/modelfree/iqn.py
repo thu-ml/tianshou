@@ -62,21 +62,23 @@ class IQNPolicy(QRDQNPolicy):
         input: str = "obs",
         **kwargs: Any,
     ) -> Batch:
-        model = getattr(self, model)
-        obs = batch[input]
-        obs_ = obs.obs if hasattr(obs, "obs") else obs
         if model == "model_old":
             sample_size = self._target_sample_size
         elif self.training:
             sample_size = self._online_sample_size
         else:
             sample_size = self._sample_size
-        logits, h = model(obs_, sample_size, state=state, info=batch.info)
+        model = getattr(self, model)
+        obs = batch[input]
+        obs_ = obs.obs if hasattr(obs, "obs") else obs
+        (logits, taus), h = model(
+            obs_, sample_size=sample_size, state=state, info=batch.info
+        )
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
-        return Batch(logits=logits, act=act, state=h)
+        return Batch(logits=logits, act=act, state=h, taus=taus)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
@@ -84,7 +86,7 @@ class IQNPolicy(QRDQNPolicy):
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         out = self(batch)
-        curr_dist, taus = out.logits, out.state
+        curr_dist, taus = out.logits, out.taus
         act = batch.act
         curr_dist = curr_dist[np.arange(len(act)), act, :].unsqueeze(2)
         target_dist = batch.returns.unsqueeze(1)

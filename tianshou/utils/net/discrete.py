@@ -167,7 +167,7 @@ class ImplicitQuantileNetwork(Critic):
         Although this class inherits Critic, it is actually a quantile Q-Network
         with output shape (batch_size, action_dim, sample_size).
 
-        The second return value is the tau vector.
+        The second item of the first return value is tau vector.
     """
 
     def __init__(
@@ -191,7 +191,7 @@ class ImplicitQuantileNetwork(Critic):
         self, s: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, _ = self.preprocess(s, state=kwargs.get("state", None))
+        logits, h = self.preprocess(s, state=kwargs.get("state", None))
         # Sample fractions.
         batch_size = logits.size(0)
         taus = torch.rand(batch_size, sample_size,
@@ -201,4 +201,4 @@ class ImplicitQuantileNetwork(Critic):
         )
         out = self.last(embedding).view(batch_size,
                                         sample_size, -1).transpose(1, 2)
-        return out, taus
+        return (out, taus), h
