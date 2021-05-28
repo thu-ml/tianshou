@@ -189,7 +189,7 @@ class ImplicitQuantileNetwork(Critic):
 
     def forward(  # type: ignore
         self, s: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
-    ) -> Tuple[torch.Tensor, Any]:
+    ) -> Tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
         logits, h = self.preprocess(s, state=kwargs.get("state", None))
         # Sample fractions.
