@@ -5,29 +5,32 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import C51Policy
+from tianshou.policy import IQNPolicy
 from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.utils.net.discrete import ImplicitQuantileNetwork
 
-from atari_network import C51
+from atari_network import DQN
 from atari_wrapper import wrap_deepmind
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='PongNoFrameskip-v4')
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--seed', type=int, default=1234)
     parser.add_argument('--eps-test', type=float, default=0.005)
     parser.add_argument('--eps-train', type=float, default=1.)
     parser.add_argument('--eps-train-final', type=float, default=0.05)
     parser.add_argument('--buffer-size', type=int, default=100000)
     parser.add_argument('--lr', type=float, default=0.0001)
     parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--num-atoms', type=int, default=51)
-    parser.add_argument('--v-min', type=float, default=-10.)
-    parser.add_argument('--v-max', type=float, default=10.)
+    parser.add_argument('--sample-size', type=int, default=32)
+    parser.add_argument('--online-sample-size', type=int, default=8)
+    parser.add_argument('--target-sample-size', type=int, default=8)
+    parser.add_argument('--num-cosines', type=int, default=64)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512])
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=500)
     parser.add_argument('--epoch', type=int, default=100)
@@ -59,7 +62,7 @@ def make_atari_env_watch(args):
                          episode_life=False, clip_rewards=False)
 
 
-def test_c51(args=get_args()):
+def test_iqn(args=get_args()):
     env = make_atari_env(args)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -77,13 +80,18 @@ def test_c51(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # define model
-    net = C51(*args.state_shape, args.action_shape,
-              args.num_atoms, args.device)
+    feature_net = DQN(*args.state_shape, args.action_shape, args.device,
+                      features_only=True)
+    net = ImplicitQuantileNetwork(
+        feature_net, args.action_shape, args.hidden_sizes,
+        num_cosines=args.num_cosines, device=args.device
+    ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = C51Policy(
-        net, optim, args.gamma, args.num_atoms, args.v_min, args.v_max,
-        args.n_step, target_update_freq=args.target_update_freq
+    policy = IQNPolicy(
+        net, optim, args.gamma, args.sample_size, args.online_sample_size,
+        args.target_sample_size, args.n_step,
+        target_update_freq=args.target_update_freq
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
@@ -92,13 +100,13 @@ def test_c51(args=get_args()):
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
     buffer = VectorReplayBuffer(
-        args.buffer_size, buffer_num=len(train_envs), ignore_obs_next=True,
-        save_only_last_obs=True, stack_num=args.frames_stack)
+        args.buffer_size, buffer_num=len(train_envs),
+        ignore_obs_next=True, save_only_last_obs=True, stack_num=args.frames_stack)
     # collector
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'c51')
+    log_path = os.path.join(args.logdir, args.task, 'iqn')
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer)
@@ -172,4 +180,4 @@ def test_c51(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_c51(get_args())
+    test_iqn(get_args())

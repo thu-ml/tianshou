@@ -102,7 +102,7 @@ def test_dqn(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        if env.env.spec.reward_threshold:
+        if env.spec.reward_threshold:
             return mean_rewards >= env.spec.reward_threshold
         elif 'Pong' in args.task:
             return mean_rewards >= 20

@@ -24,6 +24,7 @@
 - [Dueling DQN](https://arxiv.org/pdf/1511.06581.pdf)
 - [Categorical DQN (C51)](https://arxiv.org/pdf/1707.06887.pdf)
 - [Quantile Regression DQN (QRDQN)](https://arxiv.org/pdf/1710.10044.pdf)
+- [Implicit Quantile Network (IQN)](https://arxiv.org/pdf/1806.06923.pdf)
 - [Policy Gradient (PG)](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
 - [Natural Policy Gradient (NPG)](https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf)
 - [Advantage Actor-Critic (A2C)](https://openai.com/blog/baselines-acktr-a2c/)

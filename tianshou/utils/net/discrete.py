@@ -111,3 +111,94 @@ class Critic(nn.Module):
         """Mapping: s -> V(s)."""
         logits, _ = self.preprocess(s, state=kwargs.get("state", None))
         return self.last(logits)
+
+
+class CosineEmbeddingNetwork(nn.Module):
+    """Cosine embedding network for IQN. Convert a scalar in [0, 1] to a list \
+    of n-dim vectors.
+
+    :param num_cosines: the number of cosines used for the embedding.
+    :param embedding_dim: the dimension of the embedding/output.
+
+    .. note::
+
+        From https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master
+        /fqf_iqn_qrdqn/network.py .
+    """
+
+    def __init__(self, num_cosines: int, embedding_dim: int) -> None:
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(num_cosines, embedding_dim), nn.ReLU())
+        self.num_cosines = num_cosines
+        self.embedding_dim = embedding_dim
+
+    def forward(self, taus: torch.Tensor) -> torch.Tensor:
+        batch_size = taus.shape[0]
+        N = taus.shape[1]
+        # Calculate i * \pi (i=1,...,N).
+        i_pi = np.pi * torch.arange(
+            start=1, end=self.num_cosines + 1, dtype=taus.dtype, device=taus.device
+        ).view(1, 1, self.num_cosines)
+        # Calculate cos(i * \pi * \tau).
+        cosines = torch.cos(taus.view(batch_size, N, 1) * i_pi).view(
+            batch_size * N, self.num_cosines
+        )
+        # Calculate embeddings of taus.
+        tau_embeddings = self.net(cosines).view(batch_size, N, self.embedding_dim)
+        return tau_embeddings
+
+
+class ImplicitQuantileNetwork(Critic):
+    """Implicit Quantile Network.
+
+    :param preprocess_net: a self-defined preprocess_net which output a
+        flattened hidden state.
+    :param int action_dim: the dimension of action space.
+    :param hidden_sizes: a sequence of int for constructing the MLP after
+        preprocess_net. Default to empty sequence (where the MLP now contains
+        only a single linear layer).
+    :param int num_cosines: the number of cosines to use for cosine embedding.
+        Default to 64.
+    :param int preprocess_net_output_dim: the output dimension of
+        preprocess_net.
+
+    .. note::
+
+        Although this class inherits Critic, it is actually a quantile Q-Network
+        with output shape (batch_size, action_dim, sample_size).
+
+        The second item of the first return value is tau vector.
+    """
+
+    def __init__(
+        self,
+        preprocess_net: nn.Module,
+        action_shape: Sequence[int],
+        hidden_sizes: Sequence[int] = (),
+        num_cosines: int = 64,
+        preprocess_net_output_dim: Optional[int] = None,
+        device: Union[str, int, torch.device] = "cpu"
+    ) -> None:
+        last_size = np.prod(action_shape)
+        super().__init__(preprocess_net, hidden_sizes, last_size,
+                         preprocess_net_output_dim, device)
+        self.input_dim = getattr(preprocess_net, "output_dim",
+                                 preprocess_net_output_dim)
+        self.embed_model = CosineEmbeddingNetwork(num_cosines,
+                                                  self.input_dim).to(device)
+
+    def forward(  # type: ignore
+        self, s: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
+    ) -> Tuple[Any, torch.Tensor]:
+        r"""Mapping: s -> Q(s, \*)."""
+        logits, h = self.preprocess(s, state=kwargs.get("state", None))
+        # Sample fractions.
+        batch_size = logits.size(0)
+        taus = torch.rand(batch_size, sample_size,
+                          dtype=logits.dtype, device=logits.device)
+        embedding = (logits.unsqueeze(1) * self.embed_model(taus)).view(
+            batch_size * sample_size, -1
+        )
+        out = self.last(embedding).view(batch_size,
+                                        sample_size, -1).transpose(1, 2)
+        return (out, taus), h
