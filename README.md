@@ -24,6 +24,7 @@
 - [Dueling DQN](https://arxiv.org/pdf/1511.06581.pdf)
 - [Categorical DQN (C51)](https://arxiv.org/pdf/1707.06887.pdf)
 - [Quantile Regression DQN (QRDQN)](https://arxiv.org/pdf/1710.10044.pdf)
+- [Implicit Quantile Network (IQN)](https://arxiv.org/pdf/1806.06923.pdf)
 - [Policy Gradient (PG)](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
 - [Natural Policy Gradient (NPG)](https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf)
 - [Advantage Actor-Critic (A2C)](https://openai.com/blog/baselines-acktr-a2c/)
@@ -36,6 +37,7 @@
 - Vanilla Imitation Learning
 - [Discrete Batch-Constrained deep Q-Learning (BCQ-Discrete)](https://arxiv.org/pdf/1910.01708.pdf)
 - [Discrete Conservative Q-Learning (CQL-Discrete)](https://arxiv.org/pdf/2006.04779.pdf)
+- [Discrete Critic Regularized Regression (CRR-Discrete)](https://arxiv.org/pdf/2006.15134.pdf)
 - [Prioritized Experience Replay (PER)](https://arxiv.org/pdf/1511.05952.pdf)
 - [Generalized Advantage Estimator (GAE)](https://arxiv.org/pdf/1506.02438.pdf)
 - [Posterior Sampling Reinforcement Learning (PSRL)](https://www.ece.uvic.ca/~bctill/papers/learning/Strens_2000.pdf)

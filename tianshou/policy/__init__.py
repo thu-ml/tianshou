@@ -3,6 +3,7 @@ from tianshou.policy.random import RandomPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
 from tianshou.policy.modelfree.c51 import C51Policy
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
+from tianshou.policy.modelfree.iqn import IQNPolicy
 from tianshou.policy.modelfree.pg import PGPolicy
 from tianshou.policy.modelfree.a2c import A2CPolicy
 from tianshou.policy.modelfree.npg import NPGPolicy
@@ -17,6 +18,7 @@ from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.policy.imitation.base import ImitationPolicy
 from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
 from tianshou.policy.imitation.discrete_cql import DiscreteCQLPolicy
+from tianshou.policy.imitation.discrete_crr import DiscreteCRRPolicy
 from tianshou.policy.modelbased.psrl import PSRLPolicy
 from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
 
@@ -27,6 +29,7 @@ __all__ = [
     "DQNPolicy",
     "C51Policy",
     "QRDQNPolicy",
+    "IQNPolicy",
     "PGPolicy",
     "A2CPolicy",
     "NPGPolicy",
@@ -41,6 +44,7 @@ __all__ = [
     "ImitationPolicy",
     "DiscreteBCQPolicy",
     "DiscreteCQLPolicy",
+    "DiscreteCRRPolicy",
     "PSRLPolicy",
     "MultiAgentPolicyManager",
 ]

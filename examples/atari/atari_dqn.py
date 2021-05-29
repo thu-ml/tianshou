@@ -59,7 +59,7 @@ def make_atari_env_watch(args):
 def test_dqn(args=get_args()):
     env = make_atari_env(args)
     args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.env.action_space.shape or env.env.action_space.n
+    args.action_shape = env.action_space.shape or env.action_space.n
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
@@ -102,7 +102,7 @@ def test_dqn(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        if env.env.spec.reward_threshold:
+        if env.spec.reward_threshold:
             return mean_rewards >= env.spec.reward_threshold
         elif 'Pong' in args.task:
             return mean_rewards >= 20

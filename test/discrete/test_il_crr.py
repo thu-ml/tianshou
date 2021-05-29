@@ -12,20 +12,17 @@ from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offline_trainer
-from tianshou.policy import DiscreteCQLPolicy
+from tianshou.policy import DiscreteCRRPolicy
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=7e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument('--num-quantiles', type=int, default=200)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--target-update-freq", type=int, default=320)
-    parser.add_argument("--min-q-weight", type=float, default=10.)
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--update-per-epoch", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=64)
@@ -36,7 +33,7 @@ def get_args():
     parser.add_argument("--render", type=float, default=0.)
     parser.add_argument(
         "--load-buffer-name", type=str,
-        default="./expert_QRDQN_CartPole-v0.pkl",
+        default="./expert_DQN_CartPole-v0.pkl",
     )
     parser.add_argument(
         "--device", type=str,
@@ -46,7 +43,7 @@ def get_args():
     return args
 
 
-def test_discrete_cql(args=get_args()):
+def test_discrete_crr(args=get_args()):
     # envs
     env = gym.make(args.task)
     if args.task == 'CartPole-v0':
@@ -60,18 +57,22 @@ def test_discrete_cql(args=get_args()):
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, args.action_shape,
-              hidden_sizes=args.hidden_sizes, device=args.device,
-              softmax=False, num_atoms=args.num_quantiles)
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    actor = Net(args.state_shape, args.action_shape,
+                hidden_sizes=args.hidden_sizes, device=args.device,
+                softmax=False)
+    critic = Net(args.state_shape, args.action_shape,
+                 hidden_sizes=args.hidden_sizes, device=args.device,
+                 softmax=False)
+    optim = torch.optim.Adam(list(actor.parameters()) + list(critic.parameters()),
+                             lr=args.lr)
 
-    policy = DiscreteCQLPolicy(
-        net, optim, args.gamma, args.num_quantiles, args.n_step,
-        args.target_update_freq, min_q_weight=args.min_q_weight
+    policy = DiscreteCRRPolicy(
+        actor, critic, optim, args.gamma,
+        target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer
     assert os.path.exists(args.load_buffer_name), \
-        "Please run test_qrdqn.py first to get expert's data buffer."
+        "Please run test_dqn.py first to get expert's data buffer."
     buffer = pickle.load(open(args.load_buffer_name, "rb"))
 
     # collector
@@ -99,7 +100,6 @@ def test_discrete_cql(args=get_args()):
         # Let's watch its performance!
         env = gym.make(args.task)
         policy.eval()
-        policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         rews, lens = result["rews"], result["lens"]
@@ -107,4 +107,4 @@ def test_discrete_cql(args=get_args()):
 
 
 if __name__ == "__main__":
-    test_discrete_cql(get_args())
+    test_discrete_crr(get_args())

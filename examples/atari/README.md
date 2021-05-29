@@ -54,6 +54,20 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 | SeaquestNoFrameskip-v4      | 5676        | ![](results/qrdqn/Seaquest_rew.png)     | `python3 atari_qrdqn.py --task "SeaquestNoFrameskip-v4"`  |
 | SpaceInvadersNoFrameskip-v4      | 938        | ![](results/qrdqn/SpaceInvader_rew.png)     | `python3 atari_qrdqn.py --task "SpaceInvadersNoFrameskip-v4"`  |
 
+# IQN (single run)
+
+One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
+
+| task                        | best reward | reward curve                          | parameters                                                   |
+| --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
+| PongNoFrameskip-v4          | 20.9        | ![](results/iqn/Pong_rew.png)         | `python3 atari_iqn.py --task "PongNoFrameskip-v4" --batch-size 64` |
+| BreakoutNoFrameskip-v4      | 578.3       | ![](results/iqn/Breakout_rew.png)     | `python3 atari_iqn.py --task "BreakoutNoFrameskip-v4" --n-step 1` |
+| EnduroNoFrameskip-v4        | 1507        | ![](results/iqn/Enduro_rew.png)       | `python3 atari_iqn.py --task "EnduroNoFrameskip-v4"`  |
+| QbertNoFrameskip-v4         | 15520       | ![](results/iqn/Qbert_rew.png)        | `python3 atari_iqn.py --task "QbertNoFrameskip-v4"`  |
+| MsPacmanNoFrameskip-v4      | 2911        | ![](results/iqn/MsPacman_rew.png)     | `python3 atari_iqn.py --task "MsPacmanNoFrameskip-v4"`  |
+| SeaquestNoFrameskip-v4      | 6236        | ![](results/iqn/Seaquest_rew.png)     | `python3 atari_iqn.py --task "SeaquestNoFrameskip-v4"`  |
+| SpaceInvadersNoFrameskip-v4 | 1370        | ![](results/iqn/SpaceInvader_rew.png) | `python3 atari_iqn.py --task "SpaceInvadersNoFrameskip-v4"`  |
+
 # BCQ
 
 To running BCQ algorithm on Atari, you need to do the following things:
@@ -99,3 +113,20 @@ Buffer size 10000:
 | ---------------------- | ---------- | ---------- | --------------------------------- | ------------------------------------------------------------ |
 | PongNoFrameskip-v4     | 20.5         | nan        | 1.8 (epoch 5)                      | `python3 atari_cql.py --task "PongNoFrameskip-v4" --load-buffer-name log/PongNoFrameskip-v4/qrdqn/expert.size_1e4.hdf5 --epoch 5 --min-q-weight 1` |
 | BreakoutNoFrameskip-v4 | 394.3        | 31.7       | 22.5 (epoch 12) | `python3 atari_cql.py --task "BreakoutNoFrameskip-v4" --load-buffer-name log/BreakoutNoFrameskip-v4/qrdqn/expert.size_1e4.hdf5 --epoch 12 --min-q-weight 10` |
+
+# CRR
+
+To running CRR algorithm on Atari, you need to do the following things:
+
+- Train an expert, by using the command listed in the above QRDQN section;
+- Generate buffer with noise: `python3 atari_qrdqn.py --task {your_task} --watch --resume-path log/{your_task}/qrdqn/policy.pth --eps-test 0.2 --buffer-size 1000000 --save-buffer-name expert.hdf5` (note that 1M Atari buffer cannot be saved as `.pkl` format because it is too large and will cause error);
+- Train CQL: `python3 atari_crr.py --task {your_task} --load-buffer-name expert.hdf5`.
+
+We test our CRR implementation on two example tasks (different from author's version, we use v4 instead of v0; one epoch means 10k gradient step):
+
+| Task                   | Online QRDQN | Behavioral | CRR            | CRR w/ CQL        | parameters                                                   |
+| ---------------------- | ---------- | ---------- | ---------------- | ----------------- | ------------------------------------------------------------ |
+| PongNoFrameskip-v4     | 20.5         | 6.8        | -21 (epoch 5)   |  16.1 (epoch 5)  | `python3 atari_crr.py --task "PongNoFrameskip-v4" --load-buffer-name log/PongNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 5` |
+| BreakoutNoFrameskip-v4 | 394.3        | 46.9       | 26.4 (epoch 12) | 125.0 (epoch 12) | `python3 atari_crr.py --task "BreakoutNoFrameskip-v4" --load-buffer-name log/BreakoutNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 12 --min-q-weight 50` |
+
+Note that CRR itself does not work well in Atari tasks but adding CQL loss/regularizer helps.
