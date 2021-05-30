@@ -79,14 +79,9 @@ class ACKTRPolicy(A2CPolicy):
                     # Compute fisher, see Martens 2014
                     self.optim.model.zero_grad()
                     pg_fisher_loss = -log_prob.mean()
-
-                    value_noise = torch.randn(value.size())
-                    if value.is_cuda:
-                        value_noise = value_noise.cuda()
-
+                    value_noise = torch.randn(value.size(), device=value.device)
                     sample_value = value + value_noise
                     vf_fisher_loss = -(value - sample_value.detach()).pow(2).mean()
-
                     fisher_loss = pg_fisher_loss + vf_fisher_loss
                     self.optim.acc_stats = True
                     fisher_loss.backward(retain_graph=True)
