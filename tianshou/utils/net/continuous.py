@@ -122,11 +122,11 @@ class Critic(nn.Module):
 
 
 class AddBias(nn.Module):
-    def __init__(self, bias):
-        super(AddBias, self).__init__()
+    def __init__(self, bias: torch.Tensor) -> None:
+        super().__init__()
         self._bias = nn.Parameter(bias)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         shape = [1] * len(x.shape)
         shape[1] = -1
         bias = self._bias.view(shape)

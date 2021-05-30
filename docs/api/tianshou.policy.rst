@@ -58,6 +58,11 @@ On-policy
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.ACKTRPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: tianshou.policy.TRPOPolicy
    :members:
    :undoc-members:
