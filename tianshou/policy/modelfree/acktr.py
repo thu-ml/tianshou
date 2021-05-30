@@ -80,7 +80,10 @@ class ACKTRPolicy(A2CPolicy):
                     self.optim.model.zero_grad()
                     pg_fisher_loss = -log_prob.mean()
 
-                    value_noise = torch.randn(value.size(), device=value.device)
+                    value_noise = torch.randn(value.size())
+                    if value.is_cuda:
+                        value_noise = value_noise.cuda()
+
                     sample_value = value + value_noise
                     vf_fisher_loss = -(value - sample_value.detach()).pow(2).mean()
 

@@ -8,11 +8,11 @@ from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Independent, Normal
 
-from tianshou.policy import ACKTRPolicy, KFACOptimizer
-from tianshou.utils import BasicLogger
+from tianshou.policy import ACKTRPolicy
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
+from tianshou.utils import BasicLogger, KFACOptimizer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.utils.net.continuous import ActorProb, Critic
 

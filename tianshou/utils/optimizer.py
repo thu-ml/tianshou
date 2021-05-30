@@ -206,8 +206,7 @@ class KFACOptimizer(optim.Optimizer):
         x = x.unfold(2, kernel_size[0], stride[0])
         x = x.unfold(3, kernel_size[1], stride[1])
         x = x.transpose_(1, 2).transpose_(2, 3).contiguous()
-        x = x.view(*x.shape[:3], -1)
-        return x
+        return x.view(*x.shape[:3], -1)
 
     def compute_cov_a(
         self, a: torch.Tensor, classname: str, layer_info: Tuple[Any, ...]
