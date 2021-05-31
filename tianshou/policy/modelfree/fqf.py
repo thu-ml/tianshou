@@ -59,7 +59,7 @@ class FQFPolicy(QRDQNPolicy):
         model = getattr(self, model)
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
-        (logits, taus, tau_hats, fraction_grad, entropies), h = model(
+        (logits, taus, tau_hats, quantiles, quantiles_tau, entropies), h = model(
             obs_, state=state, info=batch.info
         )
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
@@ -68,7 +68,7 @@ class FQFPolicy(QRDQNPolicy):
         act = to_numpy(q.max(dim=1)[1])
         return Batch(
             logits=logits, act=act, state=h, taus=taus, tau_hats=tau_hats,
-            fraction_grad=fraction_grad, entropies=entropies
+            quantiles=quantiles, quantiles_tau=quantiles_tau, entropies=entropies
         )
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
@@ -80,7 +80,6 @@ class FQFPolicy(QRDQNPolicy):
         out = self(batch)
         curr_dist_orig = out.logits
         taus, tau_hats = out.taus, out.tau_hats
-        fraction_grad, entropies = out.fraction_grad, out.entropies
         act = batch.act
         curr_dist = curr_dist_orig[np.arange(len(act)), act, :].unsqueeze(2)
         target_dist = batch.returns.unsqueeze(1)
@@ -94,10 +93,27 @@ class FQFPolicy(QRDQNPolicy):
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
         batch.weight = u.detach().abs().sum(-1).mean(1)  # prio-buffer
         # calculate fraction loss
-        fraction_grad = fraction_grad[np.arange(len(act)), act, :]
-        fraction_loss = (fraction_grad.detach() * taus[:, 1:-1]).sum(1).mean()
+        sa_quantile_hats = out.quantiles[np.arange(len(act)), act, :]
+        sa_quantiles = out.quantiles_tau[np.arange(len(act)), act, :]
+        # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
+        # blob/master/fqf_iqn_qrdqn/agent/fqf_agent.py L169
+        values_1 = sa_quantiles - sa_quantile_hats[:, :-1]
+        signs_1 = sa_quantiles > torch.cat([
+            sa_quantile_hats[:, :1], sa_quantiles[:, :-1]], dim=1)
+        assert values_1.shape == signs_1.shape
+
+        values_2 = sa_quantiles - sa_quantile_hats[:, 1:]
+        signs_2 = sa_quantiles < torch.cat([
+            sa_quantiles[:, 1:], sa_quantile_hats[:, -1:]], dim=1)
+        assert values_2.shape == signs_2.shape
+
+        gradient_of_taus = (
+            torch.where(signs_1, values_1, -values_1)
+            + torch.where(signs_2, values_2, -values_2)
+        ).view(taus.shape[0], taus.shape[1] - 2)
+        fraction_loss = (gradient_of_taus.detach() * taus[:, 1:-1]).sum(1).mean()
         # calculate entropy loss
-        entropy_loss = entropies.mean()
+        entropy_loss = out.entropies.mean()
         fraction_entropy_loss = fraction_loss - self._ent_coef * entropy_loss
         fraction_entropy_loss.backward(retain_graph=True)
         self._fraction_optim.step()

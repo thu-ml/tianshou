@@ -227,24 +227,17 @@ class FractionProposalNetwork(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size = state_embeddings.shape[0]
         # Calculate (log of) probabilities q_i in the paper.
-        log_probs = F.log_softmax(self.net(state_embeddings), dim=1)
-        probs = log_probs.exp()
-        assert probs.shape == (batch_size, self.num_fractions)
-        tau_0 = torch.zeros(
-            (batch_size, 1),
-            dtype=state_embeddings.dtype,
-            device=state_embeddings.device,
-        )
-        taus_1_N = torch.cumsum(probs, dim=1)
+        m = torch.distributions.Categorical(logits=self.net(state_embeddings))
+        taus_1_N = torch.cumsum(m.probs, dim=1)
         # Calculate \tau_i (i=0,...,N).
-        taus = torch.cat((tau_0, taus_1_N), dim=1)
+        taus = F.pad(taus_1_N, (1, 0))
         assert taus.shape == (batch_size, self.num_fractions + 1)
         # Calculate \hat \tau_i (i=0,...,N-1).
         tau_hats = (taus[:, :-1] + taus[:, 1:]).detach() / 2.0
         assert tau_hats.shape == (batch_size, self.num_fractions)
         # Calculate entropies of value distributions.
-        entropies = -(log_probs * probs).sum(dim=-1, keepdim=True)
-        assert entropies.shape == (batch_size, 1)
+        entropies = m.entropy()
+        assert entropies.shape == (batch_size,)
         return taus, tau_hats, entropies
 
 
@@ -264,8 +257,8 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
 
     .. note::
 
-        The first return value is a tuple of (out, taus, tau_hats, fraction_grad,
-        entropies).
+        The first return value is a tuple of (out, taus, tau_hats, quantiles,
+        quantiles_tau, entropies).
     """
 
     def __init__(
@@ -287,8 +280,8 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         ).to(device)
 
     def _compute_quantiles(self, obs, taus):
-        batch_size, sample_size = taus.size(0), taus.size(1)
-        embedding = (obs.unsqueeze(1) * self.embed_model(taus)).view(
+        batch_size, sample_size = taus.shape
+        embedding = (obs.unsqueeze(1) * self.embed_model(taus.detach())).view(
             batch_size * sample_size, -1
         )
         quantiles = self.last(embedding).view(
@@ -304,16 +297,13 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         # Propose fractions.
         taus, tau_hats, entropies = self.propose_model(logits.detach())
         quantiles = self._compute_quantiles(logits, tau_hats)
-        out = taus.size(1) * (
+        out = tau_hats.shape[1] * (
             taus[:, 1:] - taus[:, :-1]
         ).detach().unsqueeze(1) * quantiles
         # Calculate fraction grad
         with torch.no_grad():
             if self.training:
                 quantiles_tau = self._compute_quantiles(logits, taus[:, 1:-1])
-                quantiles = quantiles[:, :, :-1]
-                padded_sum = quantiles + F.pad(quantiles, (1, 0))[:, :, :-1]
-                fraction_grad = 2 * quantiles_tau - padded_sum
             else:
-                fraction_grad = torch.zeros_like(quantiles)[:, :, 1:]
-        return (out, taus, tau_hats, fraction_grad, entropies), h
+                quantiles_tau = torch.zeros_like(quantiles)[:, :, :-1]
+        return (out, taus, tau_hats, quantiles, quantiles_tau, entropies), h
