@@ -1,10 +1,10 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, Tuple
 
 from tianshou.policy import QRDQNPolicy
-from tianshou.data import Batch, to_numpy
+from tianshou.data import Batch, to_numpy, ReplayBuffer
 
 
 class FQFPolicy(QRDQNPolicy):
@@ -48,38 +48,57 @@ class FQFPolicy(QRDQNPolicy):
         self._ent_coef = ent_coef
         self._fraction_optim = fraction_optim
 
+    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
+        batch = buffer[indice]  # batch.obs_next: s_{t+n}
+        if self._target:
+            fractions = self(batch).fractions
+            a = self(batch, input="obs_next").act
+            next_dist = self(
+                batch, fractions=fractions, model="model_old", input="obs_next"
+            ).logits
+        else:
+            next_b = self(batch, input="obs_next")
+            a = next_b.act
+            next_dist = next_b.logits
+        next_dist = next_dist[np.arange(len(a)), a, :]
+        return next_dist  # shape: [bsz, num_quantiles]
+
     def forward(
         self,
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
+        fractions: Optional[Batch] = None,
         **kwargs: Any,
     ) -> Batch:
         model = getattr(self, model)
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
-        (logits, taus, tau_hats, quantiles, quantiles_tau, entropies), h = model(
-            obs_, state=state, info=batch.info
-        )
+        if fractions is None:
+            (logits, fractions, quantiles, quantiles_tau), h = model(
+                obs_, state=state, info=batch.info
+            )
+        else:
+            (logits, _, quantiles, quantiles_tau), h = model(
+                obs_, fractions=fractions, state=state, info=batch.info
+            )
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         return Batch(
-            logits=logits, act=act, state=h, taus=taus, tau_hats=tau_hats,
-            quantiles=quantiles, quantiles_tau=quantiles_tau, entropies=entropies
+            logits=logits, act=act, state=h, fractions=fractions,
+            quantiles=quantiles, quantiles_tau=quantiles_tau
         )
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
-        self.optim.zero_grad()
-        self._fraction_optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         out = self(batch)
         curr_dist_orig = out.logits
-        taus, tau_hats = out.taus, out.tau_hats
+        taus, tau_hats = out.fractions.taus, out.fractions.tau_hats
         act = batch.act
         curr_dist = curr_dist_orig[np.arange(len(act)), act, :].unsqueeze(2)
         target_dist = batch.returns.unsqueeze(1)
@@ -93,30 +112,39 @@ class FQFPolicy(QRDQNPolicy):
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
         batch.weight = u.detach().abs().sum(-1).mean(1)  # prio-buffer
         # calculate fraction loss
-        sa_quantile_hats = out.quantiles[np.arange(len(act)), act, :]
-        sa_quantiles = out.quantiles_tau[np.arange(len(act)), act, :]
-        # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
-        # blob/master/fqf_iqn_qrdqn/agent/fqf_agent.py L169
-        values_1 = sa_quantiles - sa_quantile_hats[:, :-1]
-        signs_1 = sa_quantiles > torch.cat([
-            sa_quantile_hats[:, :1], sa_quantiles[:, :-1]], dim=1)
-        assert values_1.shape == signs_1.shape
+        with torch.no_grad():
+            sa_quantile_hats = out.quantiles[np.arange(len(act)), act, :]
+            sa_quantiles = out.quantiles_tau[np.arange(len(act)), act, :]
+            # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
+            # blob/master/fqf_iqn_qrdqn/agent/fqf_agent.py L169
+            values_1 = sa_quantiles - sa_quantile_hats[:, :-1]
+            signs_1 = sa_quantiles > torch.cat([
+                sa_quantile_hats[:, :1], sa_quantiles[:, :-1]], dim=1)
+            assert values_1.shape == signs_1.shape
 
-        values_2 = sa_quantiles - sa_quantile_hats[:, 1:]
-        signs_2 = sa_quantiles < torch.cat([
-            sa_quantiles[:, 1:], sa_quantile_hats[:, -1:]], dim=1)
-        assert values_2.shape == signs_2.shape
+            values_2 = sa_quantiles - sa_quantile_hats[:, 1:]
+            signs_2 = sa_quantiles < torch.cat([
+                sa_quantiles[:, 1:], sa_quantile_hats[:, -1:]], dim=1)
+            assert values_2.shape == signs_2.shape
 
-        gradient_of_taus = (
-            torch.where(signs_1, values_1, -values_1)
-            + torch.where(signs_2, values_2, -values_2)
-        ).view(taus.shape[0], taus.shape[1] - 2)
-        fraction_loss = (gradient_of_taus.detach() * taus[:, 1:-1]).sum(1).mean()
+            gradient_of_taus = (
+                torch.where(signs_1, values_1, -values_1)
+                + torch.where(signs_2, values_2, -values_2)
+            )
+            assert not gradient_of_taus.requires_grad
+            assert gradient_of_taus.shape == taus[:, 1:-1].shape 
+        fraction_loss = (gradient_of_taus * taus[:, 1:-1]).sum(1).mean()
+        if fraction_loss.item() > 1e3:
+            print("iter:", self._iter, "fraction_loss:", fraction_loss.item())
+            print("gradient_of_taus:", gradient_of_taus)
+            print("taus:", taus[:, 1:-1])
         # calculate entropy loss
-        entropy_loss = out.entropies.mean()
+        entropy_loss = out.fractions.entropies.mean()
         fraction_entropy_loss = fraction_loss - self._ent_coef * entropy_loss
+        self._fraction_optim.zero_grad()
         fraction_entropy_loss.backward(retain_graph=True)
         self._fraction_optim.step()
+        self.optim.zero_grad()
         quantile_loss.backward()
         self.optim.step()
         self._iter += 1

@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
 from tianshou.utils.net.common import MLP
+from tianshou.data import Batch
 
 
 class Actor(nn.Module):
@@ -219,6 +220,8 @@ class FractionProposalNetwork(nn.Module):
     def __init__(self, num_fractions: int, embedding_dim: int) -> None:
         super().__init__()
         self.net = nn.Linear(embedding_dim, num_fractions)
+        torch.nn.init.xavier_uniform_(self.net.weight, gain=0.01)
+        torch.nn.init.constant_(self.net.bias, 0)
         self.num_fractions = num_fractions
         self.embedding_dim = embedding_dim
 
@@ -281,7 +284,7 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
 
     def _compute_quantiles(self, obs, taus):
         batch_size, sample_size = taus.shape
-        embedding = (obs.unsqueeze(1) * self.embed_model(taus.detach())).view(
+        embedding = (obs.unsqueeze(1) * self.embed_model(taus)).view(
             batch_size * sample_size, -1
         )
         quantiles = self.last(embedding).view(
@@ -290,20 +293,24 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         return quantiles
 
     def forward(  # type: ignore
-        self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
+        self, s: Union[np.ndarray, torch.Tensor],
+        fractions: Optional[Batch] = None,
+        **kwargs: Any
     ) -> Tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
         logits, h = self.preprocess(s, state=kwargs.get("state", None))
         # Propose fractions.
-        taus, tau_hats, entropies = self.propose_model(logits.detach())
+        if fractions is None:
+            taus, tau_hats, entropies = self.propose_model(logits.detach())
+            fractions = Batch(taus=taus, tau_hats=tau_hats, entropies=entropies)
+        taus, tau_hats = fractions.taus, fractions.tau_hats
         quantiles = self._compute_quantiles(logits, tau_hats)
         out = tau_hats.shape[1] * (
             taus[:, 1:] - taus[:, :-1]
-        ).detach().unsqueeze(1) * quantiles
+        ).unsqueeze(1).detach() * quantiles
         # Calculate fraction grad
-        with torch.no_grad():
-            if self.training:
-                quantiles_tau = self._compute_quantiles(logits, taus[:, 1:-1])
-            else:
-                quantiles_tau = torch.zeros_like(quantiles)[:, :, :-1]
-        return (out, taus, tau_hats, quantiles, quantiles_tau, entropies), h
+        if self.training:
+            quantiles_tau = self._compute_quantiles(logits, taus[:, 1:-1])
+        else:
+            quantiles_tau = torch.zeros_like(quantiles)[:, :, :-1]
+        return (out, fractions, quantiles, quantiles_tau), h
