@@ -1,9 +1,10 @@
+from tianshou.policy.modelfree.dqn import DQNPolicy
 import torch
 import numpy as np
 import torch.nn.functional as F
 from typing import Any, Dict, Optional, Union, Tuple
 
-from tianshou.policy import QRDQNPolicy
+from tianshou.policy import QRDQNPolicy, DQNPolicy
 from tianshou.data import Batch, to_numpy, ReplayBuffer
 
 
@@ -51,8 +52,8 @@ class FQFPolicy(QRDQNPolicy):
     def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}
         if self._target:
-            fractions = self(batch).fractions
             a = self(batch, input="obs_next").act
+            fractions = self(batch).fractions
             next_dist = self(
                 batch, fractions=fractions, model="model_old", input="obs_next"
             ).logits
@@ -76,20 +77,25 @@ class FQFPolicy(QRDQNPolicy):
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
         if fractions is None:
-            (logits, fractions, quantiles, quantiles_tau), h = model(
+            (logits, fractions, quantiles_tau), h = model(
                 obs_, state=state, info=batch.info
             )
         else:
-            (logits, _, quantiles, quantiles_tau), h = model(
+            (logits, _, quantiles_tau), h = model(
                 obs_, fractions=fractions, state=state, info=batch.info
             )
-        q = self.compute_q_value(logits, getattr(obs, "mask", None))
+        weighted_logits = (
+            fractions.taus[:, 1:] - fractions.taus[:, :-1]
+        ).unsqueeze(1) * logits
+        q = DQNPolicy.compute_q_value(
+            self, weighted_logits.sum(2), getattr(obs, "mask", None)
+        )
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         return Batch(
             logits=logits, act=act, state=h, fractions=fractions,
-            quantiles=quantiles, quantiles_tau=quantiles_tau
+            quantiles_tau=quantiles_tau
         )
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
@@ -113,7 +119,7 @@ class FQFPolicy(QRDQNPolicy):
         batch.weight = u.detach().abs().sum(-1).mean(1)  # prio-buffer
         # calculate fraction loss
         with torch.no_grad():
-            sa_quantile_hats = out.quantiles[np.arange(len(act)), act, :]
+            sa_quantile_hats = curr_dist_orig[np.arange(len(act)), act, :]
             sa_quantiles = out.quantiles_tau[np.arange(len(act)), act, :]
             # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
             # blob/master/fqf_iqn_qrdqn/agent/fqf_agent.py L169
@@ -134,10 +140,6 @@ class FQFPolicy(QRDQNPolicy):
             assert not gradient_of_taus.requires_grad
             assert gradient_of_taus.shape == taus[:, 1:-1].shape 
         fraction_loss = (gradient_of_taus * taus[:, 1:-1]).sum(1).mean()
-        if fraction_loss.item() > 1e3:
-            print("iter:", self._iter, "fraction_loss:", fraction_loss.item())
-            print("gradient_of_taus:", gradient_of_taus)
-            print("taus:", taus[:, 1:-1])
         # calculate entropy loss
         entropy_loss = out.fractions.entropies.mean()
         fraction_entropy_loss = fraction_loss - self._ent_coef * entropy_loss

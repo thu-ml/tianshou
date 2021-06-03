@@ -213,7 +213,7 @@ class FractionProposalNetwork(nn.Module):
 
     .. note::
 
-        From https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master
+        Adapted from https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master
         /fqf_iqn_qrdqn/network.py .
     """
 
@@ -260,8 +260,8 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
 
     .. note::
 
-        The first return value is a tuple of (out, taus, tau_hats, quantiles,
-        quantiles_tau, entropies).
+        The first return value is a tuple of (quantiles, fractions, quantiles_tau),
+        where fractions is a Batch(taus, tau_hats, entropies).
     """
 
     def __init__(
@@ -299,18 +299,15 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
     ) -> Tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
         logits, h = self.preprocess(s, state=kwargs.get("state", None))
-        # Propose fractions.
+        # Propose fractions or use provided fractions
         if fractions is None:
             taus, tau_hats, entropies = self.propose_model(logits.detach())
             fractions = Batch(taus=taus, tau_hats=tau_hats, entropies=entropies)
         taus, tau_hats = fractions.taus, fractions.tau_hats
         quantiles = self._compute_quantiles(logits, tau_hats)
-        out = tau_hats.shape[1] * (
-            taus[:, 1:] - taus[:, :-1]
-        ).unsqueeze(1).detach() * quantiles
-        # Calculate fraction grad
+        # Calculate quantiles_tau for computing fraction grad
+        quantiles_tau = None
         if self.training:
-            quantiles_tau = self._compute_quantiles(logits, taus[:, 1:-1])
-        else:
-            quantiles_tau = torch.zeros_like(quantiles)[:, :, :-1]
-        return (out, fractions, quantiles, quantiles_tau), h
+            with torch.no_grad():
+                quantiles_tau = self._compute_quantiles(logits, taus[:, 1:-1])
+        return (quantiles, fractions, quantiles_tau), h
