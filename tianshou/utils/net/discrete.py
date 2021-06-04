@@ -278,7 +278,9 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
             num_fractions, self.input_dim
         ).to(device)
 
-    def _compute_quantiles(self, obs, taus):
+    def _compute_quantiles(
+        self, obs: torch.Tensor, taus: torch.Tensor
+    ) -> torch.Tensor:
         batch_size, sample_size = taus.shape
         embedding = (obs.unsqueeze(1) * self.embed_model(taus)).view(
             batch_size * sample_size, -1
