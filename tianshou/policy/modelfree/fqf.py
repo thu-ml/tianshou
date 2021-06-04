@@ -1,11 +1,10 @@
-from tianshou.policy.modelfree.dqn import DQNPolicy
 import torch
 import numpy as np
 import torch.nn.functional as F
-from typing import Any, Dict, Optional, Union, Tuple
+from typing import Any, Dict, Optional, Union
 
 from tianshou.policy import QRDQNPolicy, DQNPolicy
-from tianshou.data import Batch, to_numpy, ReplayBuffer
+from tianshou.data import Batch, to_numpy
 
 
 class FQFPolicy(QRDQNPolicy):
@@ -46,23 +45,15 @@ class FQFPolicy(QRDQNPolicy):
             model, optim, discount_factor, num_fractions, estimation_step,
             target_update_freq, reward_normalization, **kwargs
         )
+        if self._target:
+            self.model_old.propose_model = self.model.propose_model
         self._ent_coef = ent_coef
         self._fraction_optim = fraction_optim
 
-    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
-        batch = buffer[indice]  # batch.obs_next: s_{t+n}
-        if self._target:
-            a = self(batch, input="obs_next").act
-            fractions = self(batch).fractions
-            next_dist = self(
-                batch, fractions=fractions, model="model_old", input="obs_next"
-            ).logits
-        else:
-            next_b = self(batch, input="obs_next")
-            a = next_b.act
-            next_dist = next_b.logits
-        next_dist = next_dist[np.arange(len(a)), a, :]
-        return next_dist  # shape: [bsz, num_quantiles]
+    def sync_weight(self) -> None:
+        """Synchronize the weight for the target network."""
+        super().sync_weight()
+        self.model_old.propose_model = self.model.propose_model
 
     def forward(
         self,
@@ -70,20 +61,14 @@ class FQFPolicy(QRDQNPolicy):
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
-        fractions: Optional[Batch] = None,
         **kwargs: Any,
     ) -> Batch:
         model = getattr(self, model)
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
-        if fractions is None:
-            (logits, fractions, quantiles_tau), h = model(
-                obs_, state=state, info=batch.info
-            )
-        else:
-            (logits, _, quantiles_tau), h = model(
-                obs_, fractions=fractions, state=state, info=batch.info
-            )
+        (logits, fractions, quantiles_tau), h = model(
+            obs_, state=state, info=batch.info
+        )
         weighted_logits = (
             fractions.taus[:, 1:] - fractions.taus[:, :-1]
         ).unsqueeze(1) * logits
@@ -126,19 +111,15 @@ class FQFPolicy(QRDQNPolicy):
             values_1 = sa_quantiles - sa_quantile_hats[:, :-1]
             signs_1 = sa_quantiles > torch.cat([
                 sa_quantile_hats[:, :1], sa_quantiles[:, :-1]], dim=1)
-            assert values_1.shape == signs_1.shape
 
             values_2 = sa_quantiles - sa_quantile_hats[:, 1:]
             signs_2 = sa_quantiles < torch.cat([
                 sa_quantiles[:, 1:], sa_quantile_hats[:, -1:]], dim=1)
-            assert values_2.shape == signs_2.shape
 
             gradient_of_taus = (
                 torch.where(signs_1, values_1, -values_1)
                 + torch.where(signs_2, values_2, -values_2)
             )
-            assert not gradient_of_taus.requires_grad
-            assert gradient_of_taus.shape == taus[:, 1:-1].shape 
         fraction_loss = (gradient_of_taus * taus[:, 1:-1]).sum(1).mean()
         # calculate entropy loss
         entropy_loss = out.fractions.entropies.mean()

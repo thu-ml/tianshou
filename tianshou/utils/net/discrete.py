@@ -228,19 +228,15 @@ class FractionProposalNetwork(nn.Module):
     def forward(
         self, state_embeddings: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        batch_size = state_embeddings.shape[0]
         # Calculate (log of) probabilities q_i in the paper.
         m = torch.distributions.Categorical(logits=self.net(state_embeddings))
         taus_1_N = torch.cumsum(m.probs, dim=1)
         # Calculate \tau_i (i=0,...,N).
         taus = F.pad(taus_1_N, (1, 0))
-        assert taus.shape == (batch_size, self.num_fractions + 1)
         # Calculate \hat \tau_i (i=0,...,N-1).
         tau_hats = (taus[:, :-1] + taus[:, 1:]).detach() / 2.0
-        assert tau_hats.shape == (batch_size, self.num_fractions)
         # Calculate entropies of value distributions.
         entropies = m.entropy()
-        assert entropies.shape == (batch_size,)
         return taus, tau_hats, entropies
 
 
@@ -293,17 +289,13 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         return quantiles
 
     def forward(  # type: ignore
-        self, s: Union[np.ndarray, torch.Tensor],
-        fractions: Optional[Batch] = None,
-        **kwargs: Any
+        self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
     ) -> Tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
         logits, h = self.preprocess(s, state=kwargs.get("state", None))
-        # Propose fractions or use provided fractions
-        if fractions is None:
-            taus, tau_hats, entropies = self.propose_model(logits.detach())
-            fractions = Batch(taus=taus, tau_hats=tau_hats, entropies=entropies)
-        taus, tau_hats = fractions.taus, fractions.tau_hats
+        # Propose fractions
+        taus, tau_hats, entropies = self.propose_model(logits.detach())
+        fractions = Batch(taus=taus, tau_hats=tau_hats, entropies=entropies)
         quantiles = self._compute_quantiles(logits, tau_hats)
         # Calculate quantiles_tau for computing fraction grad
         quantiles_tau = None

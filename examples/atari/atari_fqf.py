@@ -19,17 +19,17 @@ from atari_wrapper import wrap_deepmind
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='PongNoFrameskip-v4')
-    parser.add_argument('--seed', type=int, default=2431)
+    parser.add_argument('--seed', type=int, default=3128)
     parser.add_argument('--eps-test', type=float, default=0.005)
     parser.add_argument('--eps-train', type=float, default=1.)
     parser.add_argument('--eps-train-final', type=float, default=0.05)
     parser.add_argument('--buffer-size', type=int, default=100000)
-    parser.add_argument('--lr', type=float, default=0.0001)
-    parser.add_argument('--fraction-lr', type=float, default=2.5e-8)
+    parser.add_argument('--lr', type=float, default=5e-5)
+    parser.add_argument('--fraction-lr', type=float, default=2.5e-9)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--num-fractions', type=int, default=32)
     parser.add_argument('--num-cosines', type=int, default=64)
-    parser.add_argument('--ent-coef', type=float, default=0.)
+    parser.add_argument('--ent-coef', type=float, default=10.)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512])
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=500)
@@ -87,11 +87,13 @@ def test_fqf(args=get_args()):
         args.num_fractions, args.num_cosines, device=args.device
     ).to(args.device)
     fraction_optim = torch.optim.RMSprop(
-        net.propose_model.parameters(), lr=args.fraction_lr
+        net.propose_model.parameters(), lr=args.fraction_lr,
+        alpha=0.95, eps=0.00001
     )
     optim = torch.optim.Adam(
         list(net.preprocess.parameters()) + list(net.last.parameters())
-        + list(net.embed_model.parameters()), lr=args.lr
+        + list(net.embed_model.parameters()), lr=args.lr,
+        eps=1e-2/args.batch_size
     )
     # define policy
     policy = FQFPolicy(
