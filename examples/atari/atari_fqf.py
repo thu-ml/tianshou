@@ -88,7 +88,8 @@ def test_fqf(args=get_args()):
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)
-    fraction_optim = torch.optim.RMSprop(fraction_net.parameters(), lr=args.fraction_lr)
+    fraction_optim = torch.optim.RMSprop(fraction_net.parameters(),
+                                         lr=args.fraction_lr)
     # define policy
     policy = FQFPolicy(
         net, optim, fraction_net, fraction_optim,
