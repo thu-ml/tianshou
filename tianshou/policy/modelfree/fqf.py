@@ -1,3 +1,4 @@
+from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 import torch
 import numpy as np
 import torch.nn.functional as F
@@ -30,8 +31,9 @@ class FQFPolicy(QRDQNPolicy):
 
     def __init__(
         self,
-        model: torch.nn.Module,
+        model: FullQuantileFunction,
         optim: torch.optim.Optimizer,
+        fraction_model: FractionProposalNetwork,
         fraction_optim: torch.optim.Optimizer,
         discount_factor: float = 0.99,
         num_fractions: int = 32,
@@ -45,15 +47,9 @@ class FQFPolicy(QRDQNPolicy):
             model, optim, discount_factor, num_fractions, estimation_step,
             target_update_freq, reward_normalization, **kwargs
         )
-        if self._target:
-            self.model_old.propose_model = self.model.propose_model
+        self.propose_model = fraction_model
         self._ent_coef = ent_coef
         self._fraction_optim = fraction_optim
-
-    def sync_weight(self) -> None:
-        """Synchronize the weight for the target network."""
-        super().sync_weight()
-        self.model_old.propose_model = self.model.propose_model
 
     def forward(
         self,
@@ -67,7 +63,7 @@ class FQFPolicy(QRDQNPolicy):
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
         (logits, fractions, quantiles_tau), h = model(
-            obs_, state=state, info=batch.info
+            obs_, propose_model=self.propose_model, state=state, info=batch.info
         )
         weighted_logits = (
             fractions.taus[:, 1:] - fractions.taus[:, :-1]

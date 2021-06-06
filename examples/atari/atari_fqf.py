@@ -10,7 +10,7 @@ from tianshou.policy import FQFPolicy
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.utils.net.discrete import FullQuantileFunction
+from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 
 from atari_network import DQN
 from atari_wrapper import wrap_deepmind
@@ -86,18 +86,12 @@ def test_fqf(args=get_args()):
         feature_net, args.action_shape, args.hidden_sizes,
         args.num_fractions, args.num_cosines, device=args.device
     ).to(args.device)
-    fraction_optim = torch.optim.RMSprop(
-        net.propose_model.parameters(), lr=args.fraction_lr,
-        alpha=0.95, eps=0.00001
-    )
-    optim = torch.optim.Adam(
-        list(net.preprocess.parameters()) + list(net.last.parameters())
-        + list(net.embed_model.parameters()), lr=args.lr,
-        eps=1e-2 / args.batch_size
-    )
+    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)
+    fraction_optim = torch.optim.RMSprop(fraction_net.parameters(), lr=args.fraction_lr)
     # define policy
     policy = FQFPolicy(
-        net, optim, fraction_optim,
+        net, optim, fraction_net, fraction_optim,
         args.gamma, args.num_fractions, args.ent_coef, args.n_step,
         target_update_freq=args.target_update_freq
     ).to(args.device)

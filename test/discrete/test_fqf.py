@@ -11,7 +11,7 @@ from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offpolicy_trainer
-from tianshou.utils.net.discrete import FullQuantileFunction
+from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 from tianshou.data import Collector, VectorReplayBuffer, PrioritizedVectorReplayBuffer
 
 
@@ -77,15 +77,13 @@ def test_fqf(args=get_args()):
         num_fractions=args.num_fractions, num_cosines=args.num_cosines,
         device=args.device
     )
-    optim = torch.optim.Adam(
-        list(net.preprocess.parameters()) + list(net.last.parameters())
-        + list(net.embed_model.parameters()), lr=args.lr
-    )
+    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+    fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)
     fraction_optim = torch.optim.RMSprop(
-        net.propose_model.parameters(), lr=args.fraction_lr
+        fraction_net.parameters(), lr=args.fraction_lr
     )
     policy = FQFPolicy(
-        net, optim, fraction_optim, args.gamma, args.num_fractions,
+        net, optim, fraction_net, fraction_optim, args.gamma, args.num_fractions,
         args.ent_coef, args.n_step, target_update_freq=args.target_update_freq
     ).to(args.device)
     # buffer
