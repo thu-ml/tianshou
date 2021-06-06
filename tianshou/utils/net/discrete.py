@@ -4,8 +4,8 @@ from torch import nn
 import torch.nn.functional as F
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
-from tianshou.utils.net.common import MLP
 from tianshou.data import Batch
+from tianshou.utils.net.common import MLP
 
 
 class Actor(nn.Module):
@@ -200,8 +200,8 @@ class ImplicitQuantileNetwork(Critic):
         embedding = (logits.unsqueeze(1) * self.embed_model(taus)).view(
             batch_size * sample_size, -1
         )
-        out = self.last(embedding).view(batch_size,
-                                        sample_size, -1).transpose(1, 2)
+        out = self.last(embedding).view(
+            batch_size, sample_size, -1).transpose(1, 2)
         return (out, taus), h
 
 
@@ -268,7 +268,7 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         num_fractions: int = 32,
         num_cosines: int = 64,
         preprocess_net_output_dim: Optional[int] = None,
-        device: Union[str, int, torch.device] = "cpu"
+        device: Union[str, int, torch.device] = "cpu",
     ) -> None:
         super().__init__(
             preprocess_net, action_shape, hidden_sizes,

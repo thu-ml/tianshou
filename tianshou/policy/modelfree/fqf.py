@@ -3,8 +3,8 @@ import numpy as np
 import torch.nn.functional as F
 from typing import Any, Dict, Optional, Union
 
-from tianshou.policy import QRDQNPolicy, DQNPolicy
 from tianshou.data import Batch, to_numpy
+from tianshou.policy import DQNPolicy, QRDQNPolicy
 
 
 class FQFPolicy(QRDQNPolicy):
