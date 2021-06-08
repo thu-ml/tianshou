@@ -84,7 +84,7 @@ def test_fqf(args=get_args()):
                       features_only=True)
     net = FullQuantileFunction(
         feature_net, args.action_shape, args.hidden_sizes,
-        args.num_fractions, args.num_cosines, device=args.device
+        args.num_cosines, device=args.device
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)

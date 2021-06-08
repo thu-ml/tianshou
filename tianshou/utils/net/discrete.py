@@ -265,7 +265,6 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         preprocess_net: nn.Module,
         action_shape: Sequence[int],
         hidden_sizes: Sequence[int] = (),
-        num_fractions: int = 32,
         num_cosines: int = 64,
         preprocess_net_output_dim: Optional[int] = None,
         device: Union[str, int, torch.device] = "cpu",
@@ -290,13 +289,17 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
     def forward(  # type: ignore
         self, s: Union[np.ndarray, torch.Tensor],
         propose_model: FractionProposalNetwork,
+        fractions: Optional[Batch] = None,
         **kwargs: Any
     ) -> Tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
         logits, h = self.preprocess(s, state=kwargs.get("state", None))
         # Propose fractions
-        taus, tau_hats, entropies = propose_model(logits.detach())
-        fractions = Batch(taus=taus, tau_hats=tau_hats, entropies=entropies)
+        if fractions is None:
+            taus, tau_hats, entropies = propose_model(logits.detach())
+            fractions = Batch(taus=taus, tau_hats=tau_hats, entropies=entropies)
+        else:
+            taus, tau_hats = fractions.taus, fractions.tau_hats
         quantiles = self._compute_quantiles(logits, tau_hats)
         # Calculate quantiles_tau for computing fraction grad
         quantiles_tau = None

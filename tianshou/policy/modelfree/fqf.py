@@ -4,7 +4,7 @@ import numpy as np
 import torch.nn.functional as F
 from typing import Any, Dict, Optional, Union
 
-from tianshou.data import Batch, to_numpy
+from tianshou.data import Batch, to_numpy, ReplayBuffer
 from tianshou.policy import DQNPolicy, QRDQNPolicy
 
 
@@ -51,20 +51,42 @@ class FQFPolicy(QRDQNPolicy):
         self._ent_coef = ent_coef
         self._fraction_optim = fraction_optim
 
+    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
+        batch = buffer[indice]  # batch.obs_next: s_{t+n}
+        if self._target:
+            result = self(batch, input="obs_next")
+            a, fractions = result.act, result.fractions
+            next_dist = self(
+                batch, model="model_old", input="obs_next", fractions=fractions
+            ).logits
+        else:
+            next_b = self(batch, input="obs_next")
+            a = next_b.act
+            next_dist = next_b.logits
+        next_dist = next_dist[np.arange(len(a)), a, :]
+        return next_dist  # shape: [bsz, num_quantiles]
+
     def forward(
         self,
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
+        fractions: Optional[Batch] = None,
         **kwargs: Any,
     ) -> Batch:
         model = getattr(self, model)
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
-        (logits, fractions, quantiles_tau), h = model(
-            obs_, propose_model=self.propose_model, state=state, info=batch.info
-        )
+        if fractions is None:
+            (logits, fractions, quantiles_tau), h = model(
+                obs_, propose_model=self.propose_model, state=state, info=batch.info
+            )
+        else:
+            (logits, _, quantiles_tau), h = model(
+                obs_, propose_model=self.propose_model, fractions=fractions,
+                state=state, info=batch.info
+            )
         weighted_logits = (
             fractions.taus[:, 1:] - fractions.taus[:, :-1]
         ).unsqueeze(1) * logits
