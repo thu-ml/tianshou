@@ -5,8 +5,8 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils import BasicLogger
 from tianshou.policy import FQFPolicy
+from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer

@@ -1,11 +1,11 @@
-from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 import torch
 import numpy as np
 import torch.nn.functional as F
 from typing import Any, Dict, Optional, Union
 
-from tianshou.data import Batch, to_numpy, ReplayBuffer
 from tianshou.policy import DQNPolicy, QRDQNPolicy
+from tianshou.data import Batch, to_numpy, ReplayBuffer
+from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 
 
 class FQFPolicy(QRDQNPolicy):
