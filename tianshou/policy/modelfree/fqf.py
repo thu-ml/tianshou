@@ -14,6 +14,10 @@ class FQFPolicy(QRDQNPolicy):
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
+    :param FractionProposalNetwork fraction_model: a FractionProposalNetwork for
+        proposing fractions/quantiles given state.
+    :param torch.optim.Optimizer fraction_optim: a torch.optim for optimizing
+        the fraction model above.
     :param float discount_factor: in [0, 1].
     :param int num_fractions: the number of fractions to use. Default to 32.
     :param float ent_coef: the coefficient for entropy loss. Default to 0.
