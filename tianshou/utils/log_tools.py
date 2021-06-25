@@ -88,7 +88,7 @@ class BasicLogger(BaseLogger):
     You can also rewrite write() func to use your own writer.
 
     :param SummaryWriter writer: the writer to log data.
-    :param int train_interval: the log interval in log_train_data(). Default to 1.
+    :param int train_interval: the log interval in log_train_data(). Default to 1000.
     :param int test_interval: the log interval in log_test_data(). Default to 1.
     :param int update_interval: the log interval in log_update_data(). Default to 1000.
     :param int save_interval: the save interval in save_data(). Default to 1 (save at
@@ -98,7 +98,7 @@ class BasicLogger(BaseLogger):
     def __init__(
         self,
         writer: SummaryWriter,
-        train_interval: int = 1,
+        train_interval: int = 1000,
         test_interval: int = 1,
         update_interval: int = 1000,
         save_interval: int = 1,

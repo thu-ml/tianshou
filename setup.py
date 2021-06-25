@@ -55,7 +55,7 @@ setup(
     ],
     extras_require={
         "dev": [
-            "Sphinx",
+            "sphinx<4",
             "sphinx_rtd_theme",
             "sphinxcontrib-bibtex",
             "flake8",
