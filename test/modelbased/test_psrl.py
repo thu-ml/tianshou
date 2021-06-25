@@ -22,7 +22,7 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=1000)
     parser.add_argument('--episode-per-collect', type=int, default=1)
     parser.add_argument('--training-num', type=int, default=1)
-    parser.add_argument('--test-num', type=int, default=100)
+    parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.0)
     parser.add_argument('--rew-mean-prior', type=float, default=0.0)
@@ -36,11 +36,11 @@ def get_args():
 def test_psrl(args=get_args()):
     env = gym.make(args.task)
     if args.task == "NChain-v0":
-        env.spec.reward_threshold = 3647  # described in PSRL paper
+        env.spec.reward_threshold = 3400
+        # env.spec.reward_threshold = 3647  # described in PSRL paper
     print("reward threshold:", env.spec.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-    # train_envs = gym.make(args.task)
     # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)])
