@@ -72,7 +72,7 @@ class DQNPolicy(BasePolicy):
 
     def sync_weight(self) -> None:
         """Synchronize the weight for the target network."""
-        self.model_old.load_state_dict(self.model.state_dict())  # type: ignore
+        self.model_old.load_state_dict(self.model.state_dict())
 
     def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
         batch = buffer[indice]  # batch.obs_next: s_{t+n}

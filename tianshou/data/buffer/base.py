@@ -53,6 +53,7 @@ class ReplayBuffer:
         self._save_only_last_obs = save_only_last_obs
         self._sample_avail = sample_avail
         self._meta: Batch = Batch()
+        self._ep_rew: Union[float, np.ndarray]
         self.reset()
 
     def __len__(self) -> int:
