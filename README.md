@@ -22,6 +22,7 @@
 - [Double DQN](https://arxiv.org/pdf/1509.06461.pdf)
 - [Dueling DQN](https://arxiv.org/pdf/1511.06581.pdf)
 - [Categorical DQN (C51)](https://arxiv.org/pdf/1707.06887.pdf)
+- [Rainbow DQN (Rainbow)](https://arxiv.org/pdf/1710.02298.pdf)
 - [Quantile Regression DQN (QRDQN)](https://arxiv.org/pdf/1710.10044.pdf)
 - [Implicit Quantile Network (IQN)](https://arxiv.org/pdf/1806.06923.pdf)
 - [Fully-parameterized Quantile Function (FQF)](https://arxiv.org/pdf/1911.02140.pdf)
