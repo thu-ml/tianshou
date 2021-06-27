@@ -75,8 +75,8 @@ class DiscreteCRRPolicy(PGPolicy):
         self._min_q_weight = min_q_weight
 
     def sync_weight(self) -> None:
-        self.actor_old.load_state_dict(self.actor.state_dict())  # type: ignore
-        self.critic_old.load_state_dict(self.critic.state_dict())  # type: ignore
+        self.actor_old.load_state_dict(self.actor.state_dict())
+        self.critic_old.load_state_dict(self.critic.state_dict())
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:  # type: ignore
         if self._target and self._iter % self._freq == 0:

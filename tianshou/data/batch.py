@@ -526,7 +526,12 @@ class Batch:
             elif all(isinstance(e, (Batch, dict)) for e in v):  # third often
                 self.__dict__[k] = Batch.stack(v, axis)
             else:  # most often case is np.ndarray
-                self.__dict__[k] = _to_array_with_correct_type(np.stack(v, axis))
+                try:
+                    self.__dict__[k] = _to_array_with_correct_type(np.stack(v, axis))
+                except ValueError:
+                    warnings.warn("You are using tensors with different shape,"
+                                  " fallback to dtype=object by default.")
+                    self.__dict__[k] = np.array(v, dtype=object)
         # all the keys
         keys_total = set.union(*[set(b.keys()) for b in batches])
         # keys that are reserved in all batches

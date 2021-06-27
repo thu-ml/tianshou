@@ -60,13 +60,27 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 
 | task                        | best reward | reward curve                          | parameters                                                   |
 | --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
-| PongNoFrameskip-v4          | 20.9        | ![](results/iqn/Pong_rew.png)         | `python3 atari_iqn.py --task "PongNoFrameskip-v4" --batch-size 64` |
-| BreakoutNoFrameskip-v4      | 578.3       | ![](results/iqn/Breakout_rew.png)     | `python3 atari_iqn.py --task "BreakoutNoFrameskip-v4" --n-step 1` |
-| EnduroNoFrameskip-v4        | 1507        | ![](results/iqn/Enduro_rew.png)       | `python3 atari_iqn.py --task "EnduroNoFrameskip-v4"`  |
-| QbertNoFrameskip-v4         | 15520       | ![](results/iqn/Qbert_rew.png)        | `python3 atari_iqn.py --task "QbertNoFrameskip-v4"`  |
-| MsPacmanNoFrameskip-v4      | 2911        | ![](results/iqn/MsPacman_rew.png)     | `python3 atari_iqn.py --task "MsPacmanNoFrameskip-v4"`  |
-| SeaquestNoFrameskip-v4      | 6236        | ![](results/iqn/Seaquest_rew.png)     | `python3 atari_iqn.py --task "SeaquestNoFrameskip-v4"`  |
-| SpaceInvadersNoFrameskip-v4 | 1370        | ![](results/iqn/SpaceInvader_rew.png) | `python3 atari_iqn.py --task "SpaceInvadersNoFrameskip-v4"`  |
+| PongNoFrameskip-v4          | 20.3        | ![](results/iqn/Pong_rew.png)         | `python3 atari_iqn.py --task "PongNoFrameskip-v4" --batch-size 64` |
+| BreakoutNoFrameskip-v4      | 496.7       | ![](results/iqn/Breakout_rew.png)     | `python3 atari_iqn.py --task "BreakoutNoFrameskip-v4" --n-step 1` |
+| EnduroNoFrameskip-v4        | 1545        | ![](results/iqn/Enduro_rew.png)       | `python3 atari_iqn.py --task "EnduroNoFrameskip-v4"`  |
+| QbertNoFrameskip-v4         | 15342.5     | ![](results/iqn/Qbert_rew.png)        | `python3 atari_iqn.py --task "QbertNoFrameskip-v4"`  |
+| MsPacmanNoFrameskip-v4      | 2915        | ![](results/iqn/MsPacman_rew.png)     | `python3 atari_iqn.py --task "MsPacmanNoFrameskip-v4"`  |
+| SeaquestNoFrameskip-v4      | 4874        | ![](results/iqn/Seaquest_rew.png)     | `python3 atari_iqn.py --task "SeaquestNoFrameskip-v4"`  |
+| SpaceInvadersNoFrameskip-v4 | 1498.5      | ![](results/iqn/SpaceInvaders_rew.png) | `python3 atari_iqn.py --task "SpaceInvadersNoFrameskip-v4"`  |
+
+# FQF (single run)
+
+One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
+
+| task                        | best reward | reward curve                          | parameters                                                   |
+| --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
+| PongNoFrameskip-v4          | 20.7        | ![](results/fqf/Pong_rew.png)         | `python3 atari_fqf.py --task "PongNoFrameskip-v4" --batch-size 64` |
+| BreakoutNoFrameskip-v4      | 517.3       | ![](results/fqf/Breakout_rew.png)     | `python3 atari_fqf.py --task "BreakoutNoFrameskip-v4" --n-step 1` |
+| EnduroNoFrameskip-v4        | 2240.5      | ![](results/fqf/Enduro_rew.png)       | `python3 atari_fqf.py --task "EnduroNoFrameskip-v4"`  |
+| QbertNoFrameskip-v4         | 16172.5     | ![](results/fqf/Qbert_rew.png)        | `python3 atari_fqf.py --task "QbertNoFrameskip-v4"`  |
+| MsPacmanNoFrameskip-v4      | 2429        | ![](results/fqf/MsPacman_rew.png)     | `python3 atari_fqf.py --task "MsPacmanNoFrameskip-v4"`  |
+| SeaquestNoFrameskip-v4      | 10775       | ![](results/fqf/Seaquest_rew.png)     | `python3 atari_fqf.py --task "SeaquestNoFrameskip-v4"`  |
+| SpaceInvadersNoFrameskip-v4 | 2482        | ![](results/fqf/SpaceInvaders_rew.png) | `python3 atari_fqf.py --task "SpaceInvadersNoFrameskip-v4"`  |
 
 # BCQ
 

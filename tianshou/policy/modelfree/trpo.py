@@ -64,6 +64,7 @@ class TRPOPolicy(NPGPolicy):
         self._max_backtracks = max_backtracks
         self._delta = max_kl
         self._backtrack_coeff = backtrack_coeff
+        self._optim_critic_iters: int
 
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
