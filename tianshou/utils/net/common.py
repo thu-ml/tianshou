@@ -11,10 +11,11 @@ def miniblock(
     output_size: int = 0,
     norm_layer: Optional[ModuleType] = None,
     activation: Optional[ModuleType] = None,
+    linear_layer: Type[nn.Linear] = nn.Linear,
 ) -> List[nn.Module]:
     """Construct a miniblock with given input/output-size, norm layer and \
     activation."""
-    layers: List[nn.Module] = [nn.Linear(input_size, output_size)]
+    layers: List[nn.Module] = [linear_layer(input_size, output_size)]
     if norm_layer is not None:
         layers += [norm_layer(output_size)]  # type: ignore
     if activation is not None:
@@ -52,6 +53,7 @@ class MLP(nn.Module):
         norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
         activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
         device: Optional[Union[str, int, torch.device]] = None,
+        linear_layer: Type[nn.Linear] = nn.Linear,
     ) -> None:
         super().__init__()
         self.device = device
@@ -78,9 +80,9 @@ class MLP(nn.Module):
         for in_dim, out_dim, norm, activ in zip(
                 hidden_sizes[:-1], hidden_sizes[1:],
                 norm_layer_list, activation_list):
-            model += miniblock(in_dim, out_dim, norm, activ)
+            model += miniblock(in_dim, out_dim, norm, activ, linear_layer)
         if output_dim > 0:
-            model += [nn.Linear(hidden_sizes[-1], output_dim)]
+            model += [linear_layer(hidden_sizes[-1], output_dim)]
         self.output_dim = output_dim or hidden_sizes[-1]
         self.model = nn.Sequential(*model)
 
@@ -168,10 +170,10 @@ class Net(nn.Module):
                 q_output_dim, v_output_dim = action_dim, num_atoms
             q_kwargs: Dict[str, Any] = {
                 **q_kwargs, "input_dim": self.output_dim,
-                "output_dim": q_output_dim}
+                "output_dim": q_output_dim, "device": self.device}
             v_kwargs: Dict[str, Any] = {
                 **v_kwargs, "input_dim": self.output_dim,
-                "output_dim": v_output_dim}
+                "output_dim": v_output_dim, "device": self.device}
             self.Q, self.V = MLP(**q_kwargs), MLP(**v_kwargs)
             self.output_dim = self.Q.output_dim
 
