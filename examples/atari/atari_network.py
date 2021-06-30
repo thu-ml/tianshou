@@ -104,10 +104,13 @@ class Rainbow(DQN):
         super().__init__(c, h, w, action_shape, device, features_only=True)
         self.action_num = np.prod(action_shape)
         self.num_atoms = num_atoms
-        if is_noisy:
-            linear = lambda x, y: NoisyLinear(x, y, noisy_std)
-        else:
-            linear = nn.Linear
+
+        def linear(x, y):
+            if is_noisy:
+                return NoisyLinear(x, y, noisy_std)
+            else:
+                return nn.Linear(x, y)
+
         self.Q = nn.Sequential(
             linear(self.output_dim, 512), nn.ReLU(inplace=True),
             linear(512, self.action_num * self.num_atoms))

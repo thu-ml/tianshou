@@ -85,7 +85,8 @@ def test_rainbow(args=get_args()):
     # define model
     net = Rainbow(*args.state_shape, args.action_shape,
                   args.num_atoms, args.noisy_std, args.device,
-                  is_dueling=not args.no_dueling, is_noisy=not args.no_noisy)
+                  is_dueling=not args.no_dueling,
+                  is_noisy=not args.no_noisy)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy = C51Policy(
@@ -102,13 +103,14 @@ def test_rainbow(args=get_args()):
         buffer = VectorReplayBuffer(
             args.buffer_size, buffer_num=len(train_envs), ignore_obs_next=True,
             save_only_last_obs=True, stack_num=args.frames_stack)
-    else:    
+    else:
         buffer = PrioritizedVectorReplayBuffer(
             args.buffer_size, buffer_num=len(train_envs), ignore_obs_next=True,
             save_only_last_obs=True, stack_num=args.frames_stack, alpha=args.alpha,
             beta=args.beta)
     # collector
-    train_collector = Collector(policy, train_envs, buffer, exploration_noise=args.no_noisy)
+    train_collector = Collector(policy, train_envs, buffer,
+                                exploration_noise=args.no_noisy)
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # log
     log_path = os.path.join(args.logdir, args.task, 'rainbow')
