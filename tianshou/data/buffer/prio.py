@@ -85,6 +85,3 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         batch = super().__getitem__(indice)
         batch.weight = self.get_weight(indice)
         return batch
-
-    def update_beta(self, beta: float) -> None:
-        self._beta = beta

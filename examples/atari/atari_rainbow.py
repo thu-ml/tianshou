@@ -33,7 +33,7 @@ def get_args():
     parser.add_argument('--no-noisy', action='store_true', default=False)
     parser.add_argument('--no-priority', action='store_true', default=False)
     parser.add_argument('--alpha', type=float, default=0.5)
-    parser.add_argument('--beta', type=float, default=0.4)
+    parser.add_argument('--beta', type=float, default=1.)
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=500)
     parser.add_argument('--epoch', type=int, default=100)
@@ -134,15 +134,10 @@ def test_rainbow(args=get_args()):
         if env_step <= 1e6:
             eps = args.eps_train - env_step / 1e6 * \
                 (args.eps_train - args.eps_train_final)
-            beta = args.beta + env_step / 1e6 * (1 - args.beta)
         else:
             eps = args.eps_train_final
-            beta = 1
         policy.set_eps(eps)
         logger.write('train/eps', env_step, eps)
-        if not args.no_priority:
-            buffer.update_beta(beta)
-            logger.write('train/beta', env_step, beta)
 
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
