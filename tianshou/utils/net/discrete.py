@@ -357,14 +357,16 @@ class NoisyLinear(nn.Module):
         return x.normal_().sign().mul(x.abs().sqrt())
 
     def sample(self) -> None:
-        self.eps_p.copy_(self.f(self.eps_p))
-        self.eps_q.copy_(self.f(self.eps_q))
+        self.eps_p.copy_(self.f(self.eps_p))  # type: ignore
+        self.eps_q.copy_(self.f(self.eps_q))  # type: ignore
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.training:
             self.sample()
-            weight = self.mu_W + self.sigma_W * self.eps_q.ger(self.eps_p)
-            bias = self.mu_bias + self.sigma_bias * self.eps_q.clone()
+            weight = self.mu_W + self.sigma_W * (
+                self.eps_q.ger(self.eps_p)  # type: ignore
+            )
+            bias = self.mu_bias + self.sigma_bias * self.eps_q.clone()  # type: ignore
         else:
             weight = self.mu_W
             bias = self.mu_bias
