@@ -43,6 +43,8 @@ class MLP(nn.Module):
         the same actvition for all layers if passed in nn.Module, or different
         activation for different Modules if passed in a list. Default to
         nn.ReLU.
+    :param device: which device to create this model on. Default to None.
+    :param linear_layer: use this module as linear layer. Default to nn.Linear.
     """
 
     def __init__(
