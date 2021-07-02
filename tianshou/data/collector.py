@@ -115,7 +115,8 @@ class Collector(object):
         """Reset all of the environments."""
         obs = self.env.reset()
         if self.preprocess_fn:
-            obs = self.preprocess_fn(obs=obs).get("obs", obs)
+            obs = self.preprocess_fn(
+                obs=obs, env_id=np.arange(self.env_num)).get("obs", obs)
         self.data.obs = obs
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
@@ -235,6 +236,7 @@ class Collector(object):
                     done=self.data.done,
                     info=self.data.info,
                     policy=self.data.policy,
+                    env_id=ready_env_ids,
                 ))
 
             if render:
@@ -260,7 +262,8 @@ class Collector(object):
                 # finished episodes, we have to reset finished envs first.
                 obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
-                    obs_reset = self.preprocess_fn(obs=obs_reset).get("obs", obs_reset)
+                    obs_reset = self.preprocess_fn(
+                        obs=obs_reset, env_id=env_ind_global).get("obs", obs_reset)
                 self.data.obs_next[env_ind_local] = obs_reset
                 for i in env_ind_local:
                     self._reset_state(i)
@@ -442,6 +445,7 @@ class AsyncCollector(Collector):
                     rew=self.data.rew,
                     done=self.data.done,
                     info=self.data.info,
+                    env_id=ready_env_ids,
                 ))
 
             if render:
@@ -467,7 +471,8 @@ class AsyncCollector(Collector):
                 # finished episodes, we have to reset finished envs first.
                 obs_reset = self.env.reset(env_ind_global)
                 if self.preprocess_fn:
-                    obs_reset = self.preprocess_fn(obs=obs_reset).get("obs", obs_reset)
+                    obs_reset = self.preprocess_fn(
+                        obs=obs_reset, env_id=env_ind_global).get("obs", obs_reset)
                 self.data.obs_next[env_ind_local] = obs_reset
                 for i in env_ind_local:
                     self._reset_state(i)
