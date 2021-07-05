@@ -35,11 +35,11 @@ class Collector(object):
         exploration noise into action. Default to False.
 
     The "preprocess_fn" is a function called before the data has been added to the
-    buffer with batch format. It will receive with only "obs" when the collector resets
-    the environment, and will receive five keys "obs_next", "rew", "done", "info", and
-    "policy" in a normal env step. It returns either a dict or a
-    :class:`~tianshou.data.Batch` with the modified keys and values. Examples are in
-    "test/base/test_collector.py".
+    buffer with batch format. It will receive only "obs" and "env_id" when the
+    collector resets the environment, and will receive six keys "obs_next", "rew",
+    "done", "info", "policy" and "env_id" in a normal env step. It returns either a
+    dict or a :class:`~tianshou.data.Batch` with the modified keys and values. Examples
+    are in "test/base/test_collector.py".
 
     .. note::
 
