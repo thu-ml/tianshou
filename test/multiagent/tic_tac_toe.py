@@ -128,7 +128,7 @@ def train_agent(
         policy, train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
+    test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
@@ -180,7 +180,7 @@ def watch(
         args, agent_learn=agent_learn, agent_opponent=agent_opponent)
     policy.eval()
     policy.policies[args.agent_id - 1].set_eps(args.eps_test)
-    collector = Collector(policy, env)
+    collector = Collector(policy, env, exploration_noise=True)
     result = collector.collect(n_episode=1, render=args.render)
     rews, lens = result["rews"], result["lens"]
     print(f"Final reward: {rews[:, args.agent_id - 1].mean()}, length: {lens.mean()}")
