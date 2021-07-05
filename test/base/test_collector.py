@@ -50,8 +50,8 @@ class Logger:
 
     def preprocess_fn(self, **kwargs):
         # modify info before adding into the buffer, and recorded into tfb
-        # if only obs exist -> reset
-        # if obs_next/rew/done/info exist -> normal step
+        # if obs && env_id exist -> reset
+        # if obs_next/rew/done/info/env_id exist -> normal step
         if 'rew' in kwargs:
             info = kwargs['info']
             info.rew = kwargs['rew']
