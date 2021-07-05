@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import C51Policy
+from tianshou.policy import RainbowPolicy
 from tianshou.utils import BasicLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
@@ -18,17 +18,17 @@ from atari_wrapper import wrap_deepmind
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='PongNoFrameskip-v4')
-    parser.add_argument('--seed', type=int, default=5789)
+    parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--eps-test', type=float, default=0.005)
     parser.add_argument('--eps-train', type=float, default=1.)
     parser.add_argument('--eps-train-final', type=float, default=0.05)
     parser.add_argument('--buffer-size', type=int, default=100000)
-    parser.add_argument('--lr', type=float, default=0.0001)
+    parser.add_argument('--lr', type=float, default=0.0000625)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--num-atoms', type=int, default=51)
     parser.add_argument('--v-min', type=float, default=-10.)
     parser.add_argument('--v-max', type=float, default=10.)
-    parser.add_argument('--noisy-std', type=float, default=0.5)
+    parser.add_argument('--noisy-std', type=float, default=0.1)
     parser.add_argument('--no-dueling', action='store_true', default=False)
     parser.add_argument('--no-noisy', action='store_true', default=False)
     parser.add_argument('--no-priority', action='store_true', default=False)
@@ -89,7 +89,7 @@ def test_rainbow(args=get_args()):
                   is_noisy=not args.no_noisy)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = C51Policy(
+    policy = RainbowPolicy(
         net, optim, args.gamma, args.num_atoms, args.v_min, args.v_max,
         args.n_step, target_update_freq=args.target_update_freq
     ).to(args.device)
@@ -109,8 +109,7 @@ def test_rainbow(args=get_args()):
             save_only_last_obs=True, stack_num=args.frames_stack, alpha=args.alpha,
             beta=args.beta)
     # collector
-    train_collector = Collector(policy, train_envs, buffer,
-                                exploration_noise=args.no_noisy)
+    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # log
     log_path = os.path.join(args.logdir, args.task, 'rainbow')
