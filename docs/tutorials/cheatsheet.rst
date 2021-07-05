@@ -129,7 +129,7 @@ This is related to `Issue 42 <https://github.com/thu-ml/tianshou/issues/42>`_.
 
 If you want to get log stat from data stream / pre-process batch-image / modify the reward with given env info, use ``preproces_fn`` in :class:`~tianshou.data.Collector`. This is a hook which will be called before the data adding into the buffer.
 
-It will receive with only "obs" when the collector resets the environment, and will receive five keys "obs_next", "rew", "done", "info", "policy" in a normal env step. It returns either a dict or a :class:`~tianshou.data.Batch` with the modified keys and values.
+It will receive with "obs" and "env_id" when the collector resets the environment, and will receive six keys "obs_next", "rew", "done", "info", "policy", "env_id" in a normal env step. It returns either a dict or a :class:`~tianshou.data.Batch` with the modified keys and values.
 
 These variables are intended to gather all the information requires to keep track of a simulation step, namely the (observation, action, reward, done flag, next observation, info, intermediate result of the policy) at time t, for the whole duration of the simulation.
 
@@ -149,8 +149,8 @@ For example, you can write your hook as:
 
         def preprocess_fn(**kwargs):
             """change reward to zero mean"""
-            # if only obs exist -> reset
-            # if obs_next/act/rew/done/policy exist -> normal step
+            # if obs && env_id exist -> reset
+            # if obs_next/act/rew/done/policy/env_id exist -> normal step
             if 'rew' not in kwargs:
                 # means that it is called after env.reset(), it can only process the obs
                 return Batch()  # none of the variables are needed to be updated
