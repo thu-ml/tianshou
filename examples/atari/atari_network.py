@@ -144,7 +144,7 @@ class Rainbow(DQN):
     def sample_noise(self) -> None:
         for m in self.modules():
             if isinstance(m, NoisyLinear):
-                m.reset_noise()
+                m.sample()
 
 
 class QRDQN(DQN):

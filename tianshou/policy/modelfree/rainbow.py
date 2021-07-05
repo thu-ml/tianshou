@@ -1,13 +1,12 @@
-import torch
 import numpy as np
 from typing import Any, Dict, Union
 
 from tianshou.policy import C51Policy
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch
 
 
 class RainbowPolicy(C51Policy):
-    """Implementation of Categorical Deep Q-Network. arXiv:1707.06887.
+    """Implementation of Rainbow DQN. arXiv:1710.02298.
 
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
@@ -27,7 +26,7 @@ class RainbowPolicy(C51Policy):
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.policy.DQNPolicy` for more detailed
+        Please refer to :class:`~tianshou.policy.C51Policy` for more detailed
         explanation.
     """
 
