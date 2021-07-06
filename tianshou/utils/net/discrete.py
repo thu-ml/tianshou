@@ -372,3 +372,12 @@ class NoisyLinear(nn.Module):
             bias = self.mu_bias
 
         return F.linear(x, weight, bias)
+
+
+def sample_noise(model: nn.Module) -> bool:
+    done = False
+    for m in model.modules():
+        if isinstance(m, NoisyLinear):
+            m.sample()
+            done = True
+    return done

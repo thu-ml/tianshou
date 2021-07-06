@@ -1,4 +1,3 @@
-from numpy.lib.arraysetops import isin
 import torch
 import numpy as np
 from torch import nn
@@ -140,11 +139,6 @@ class Rainbow(DQN):
             logits = q
         y = logits.softmax(dim=2)
         return y, state
-
-    def sample_noise(self) -> None:
-        for m in self.modules():
-            if isinstance(m, NoisyLinear):
-                m.sample()
 
 
 class QRDQN(DQN):

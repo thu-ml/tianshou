@@ -3,6 +3,7 @@ from typing import Any, Dict, Union
 
 from tianshou.policy import C51Policy
 from tianshou.data import Batch
+from tianshou.utils.net.discrete import sample_noise
 
 
 class RainbowPolicy(C51Policy):
@@ -31,13 +32,14 @@ class RainbowPolicy(C51Policy):
     """
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        self.model.sample_noise()
-        self.model_old.sample_noise()
+        sample_noise(self.model)
+        sample_noise(self.model_old)
         return super().learn(batch, **kwargs)
 
-    def exploration_noise(self, act: Union[np.ndarray, Batch], batch: Batch) -> Union[np.ndarray, Batch]:
-        if self.training:
-            self.model.sample_noise()
+    def exploration_noise(
+        self, act: Union[np.ndarray, Batch], batch: Batch
+    ) -> Union[np.ndarray, Batch]:
+        if self.training and sample_noise(self.model):
             return act
         else:
             return super().exploration_noise(act, batch)

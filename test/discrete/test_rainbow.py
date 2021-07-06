@@ -7,7 +7,7 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import C51Policy
+from tianshou.policy import RainbowPolicy
 from tianshou.utils import BasicLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
@@ -82,7 +82,7 @@ def test_rainbow(args=get_args()):
               dueling_param=({"linear_layer": noisy_linear},
                              {"linear_layer": noisy_linear}))
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = C51Policy(
+    policy = RainbowPolicy(
         net, optim, args.gamma, args.num_atoms, args.v_min, args.v_max,
         args.n_step, target_update_freq=args.target_update_freq
     ).to(args.device)
