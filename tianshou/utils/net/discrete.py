@@ -375,6 +375,13 @@ class NoisyLinear(nn.Module):
 
 
 def sample_noise(model: nn.Module) -> bool:
+    """Sample the random noises of NoisyLinear modules in the model.
+
+    :param model: a PyTorch module which may have NoisyLinear submodules.
+    :returns: True if model has at least one NoisyLinear submodule;
+        otherwise, False.
+    """
+
     done = False
     for m in model.modules():
         if isinstance(m, NoisyLinear):
