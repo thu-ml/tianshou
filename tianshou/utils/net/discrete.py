@@ -381,7 +381,6 @@ def sample_noise(model: nn.Module) -> bool:
     :returns: True if model has at least one NoisyLinear submodule;
         otherwise, False.
     """
-
     done = False
     for m in model.modules():
         if isinstance(m, NoisyLinear):
