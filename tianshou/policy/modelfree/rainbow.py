@@ -34,8 +34,7 @@ class RainbowPolicy(C51Policy):
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         sample_noise(self.model)
-        if self._target:
-            sample_noise(self.model_old)
+        if self._target and sample_noise(self.model_old):
             self.model_old.train()  # so that NoisyLinear takes effect
         return super().learn(batch, **kwargs)
 
