@@ -25,7 +25,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._max_prio = self._min_prio = 1.0
         # save weight directly in this class instead of self._meta
         self.weight = SegmentTree(size)
-        self.__eps = np.finfo(np.float32).eps.item()
         self.options.update(alpha=alpha, beta=beta)
 
     def init_weight(self, index: Union[int, np.ndarray]) -> None:
@@ -70,7 +69,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         :param np.ndarray index: index you want to update weight.
         :param np.ndarray new_weight: new priority weight you want to update.
         """
-        weight = np.abs(to_numpy(new_weight)) + self.__eps
+        weight = np.abs(to_numpy(new_weight))
         self.weight[index] = weight ** self._alpha
         self._max_prio = max(self._max_prio, weight.max())
         self._min_prio = min(self._min_prio, weight.min())
