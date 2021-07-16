@@ -95,7 +95,7 @@ class C51Policy(DQNPolicy):
         cross_entropy = - (target_dist * torch.log(curr_dist + 1e-8)).sum(1)
         loss = (cross_entropy * weight).mean()
         # ref: https://github.com/Kaixhin/Rainbow/blob/master/agent.py L94-100
-        batch.weight = cross_entropy.detach()  # prio-buffer
+        batch.weight = cross_entropy.detach() * 1e9  # prio-buffer
         loss.backward()
         self.optim.step()
         self._iter += 1
