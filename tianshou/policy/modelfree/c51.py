@@ -89,6 +89,8 @@ class C51Policy(DQNPolicy):
         with torch.no_grad():
             target_dist = self._target_dist(batch)
         weight = batch.pop("weight", 1.0)
+        # ref: https://github.com/Kaixhin/Rainbow/blob/master/memory.py L154
+        weight = weight / np.max(weight)
         curr_dist = self(batch).logits
         act = batch.act
         curr_dist = curr_dist[np.arange(len(act)), act, :]

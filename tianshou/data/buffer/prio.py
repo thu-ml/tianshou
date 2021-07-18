@@ -83,7 +83,5 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         else:
             indice = index
         batch = super().__getitem__(indice)
-        weight = self.get_weight(indice)
-        # ref: https://github.com/Kaixhin/Rainbow/blob/master/memory.py L154
-        batch.weight = weight / np.max(weight)
+        batch.weight = self.get_weight(indice)
         return batch

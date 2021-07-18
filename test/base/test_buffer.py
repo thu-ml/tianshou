@@ -193,7 +193,7 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
     mask = np.isin(np.arange(buf2.maxsize), indice)
     assert np.all(weight[mask] == weight[mask][0])
     assert np.all(weight[~mask] == weight[~mask][0])
-    assert weight[~mask][0] < weight[mask][0] and weight[mask][0] <= 1
+    assert weight[~mask][0] < weight[mask][0] and weight[mask][0] < 1
 
 
 def test_update():
