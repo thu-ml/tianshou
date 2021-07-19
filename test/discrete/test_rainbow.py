@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument('--num-atoms', type=int, default=51)
     parser.add_argument('--v-min', type=float, default=-10.)
     parser.add_argument('--v-max', type=float, default=10.)
-    parser.add_argument('--noisy-std', type=float, default=0.5)
+    parser.add_argument('--noisy-std', type=float, default=0.1)
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=320)
     parser.add_argument('--epoch', type=int, default=10)
@@ -90,7 +90,7 @@ def test_rainbow(args=get_args()):
     if args.prioritized_replay:
         buf = PrioritizedVectorReplayBuffer(
             args.buffer_size, buffer_num=len(train_envs),
-            alpha=args.alpha, beta=args.beta)
+            alpha=args.alpha, beta=args.beta, weight_norm=True)
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
     # collector

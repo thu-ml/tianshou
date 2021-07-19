@@ -33,7 +33,8 @@ def get_args():
     parser.add_argument('--no-noisy', action='store_true', default=False)
     parser.add_argument('--no-priority', action='store_true', default=False)
     parser.add_argument('--alpha', type=float, default=0.5)
-    parser.add_argument('--beta', type=float, default=1.)
+    parser.add_argument('--beta', type=float, default=0.4)
+    parser.add_argument('--weight-norm', action='store_true', default=False)
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=500)
     parser.add_argument('--epoch', type=int, default=100)
@@ -107,7 +108,7 @@ def test_rainbow(args=get_args()):
         buffer = PrioritizedVectorReplayBuffer(
             args.buffer_size, buffer_num=len(train_envs), ignore_obs_next=True,
             save_only_last_obs=True, stack_num=args.frames_stack, alpha=args.alpha,
-            beta=args.beta)
+            beta=args.beta, weight_norm=args.weight_norm)
     # collector
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs, exploration_noise=True)

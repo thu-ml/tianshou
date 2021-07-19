@@ -10,13 +10,22 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     :param float alpha: the prioritization exponent.
     :param float beta: the importance sample soft coefficient.
+    :param bool weight_norm: whether to normalize returned weights with the maximum
+        weight value within the batch. Default to False.
 
     .. seealso::
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
-    def __init__(self, size: int, alpha: float, beta: float, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        size: int,
+        alpha: float,
+        beta: float,
+        weight_norm: bool = False,
+        **kwargs: Any
+    ) -> None:
         # will raise KeyError in PrioritizedVectorReplayBuffer
         # super().__init__(size, **kwargs)
         ReplayBuffer.__init__(self, size, **kwargs)
@@ -27,6 +36,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.weight = SegmentTree(size)
         self.__eps = np.finfo(np.float32).eps.item()
         self.options.update(alpha=alpha, beta=beta)
+        self._weight_norm = weight_norm
 
     def init_weight(self, index: Union[int, np.ndarray]) -> None:
         self.weight[index] = self._max_prio ** self._alpha
@@ -83,5 +93,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         else:
             indice = index
         batch = super().__getitem__(indice)
-        batch.weight = self.get_weight(indice)
+        weight = self.get_weight(indice)
+        if self._weight_norm:
+            # ref: https://github.com/Kaixhin/Rainbow/blob/master/memory.py L154
+            weight = weight / np.max(weight)
+        batch.weight = weight
         return batch
