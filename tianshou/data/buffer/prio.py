@@ -94,10 +94,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             indice = index
         batch = super().__getitem__(indice)
         weight = self.get_weight(indice)
-        if self._weight_norm:
-            # ref: https://github.com/Kaixhin/Rainbow/blob/master/memory.py L154
-            weight = weight / np.max(weight)
-        batch.weight = weight
+        # ref: https://github.com/Kaixhin/Rainbow/blob/master/memory.py L154
+        batch.weight = weight / np.max(weight) if self._weight_norm else weight
         return batch
 
     def set_beta(self, beta: float) -> None:

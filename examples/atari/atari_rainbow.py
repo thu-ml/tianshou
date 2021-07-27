@@ -142,7 +142,7 @@ def test_rainbow(args=get_args()):
         if not args.no_priority:
             if env_step <= 5e6:
                 beta = args.beta - env_step / 5e6 * \
-                (args.beta - args.beta_final)
+                    (args.beta - args.beta_final)
             else:
                 beta = args.beta_final
             buffer.set_beta(beta)
