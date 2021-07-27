@@ -11,7 +11,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     :param float alpha: the prioritization exponent.
     :param float beta: the importance sample soft coefficient.
     :param bool weight_norm: whether to normalize returned weights with the maximum
-        weight value within the batch. Default to False.
+        weight value within the batch. Default to True.
 
     .. seealso::
 
@@ -23,7 +23,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         size: int,
         alpha: float,
         beta: float,
-        weight_norm: bool = False,
+        weight_norm: bool = True,
         **kwargs: Any
     ) -> None:
         # will raise KeyError in PrioritizedVectorReplayBuffer
@@ -99,3 +99,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             weight = weight / np.max(weight)
         batch.weight = weight
         return batch
+
+    def set_beta(self, beta: float) -> None:
+        self._beta = beta
