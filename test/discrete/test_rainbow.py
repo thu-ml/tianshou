@@ -46,6 +46,7 @@ def get_args():
                         action="store_true", default=False)
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
+    parser.add_argument('--beta-final', type=float, default=1.)
     parser.add_argument('--resume', action="store_true")
     parser.add_argument(
         '--device', type=str,
@@ -110,7 +111,7 @@ def test_rainbow(args=get_args()):
         return mean_rewards >= env.spec.reward_threshold
 
     def train_fn(epoch, env_step):
-        # eps annnealing, just a demo
+        # eps annealing, just a demo
         if env_step <= 10000:
             policy.set_eps(args.eps_train)
         elif env_step <= 50000:
@@ -119,6 +120,16 @@ def test_rainbow(args=get_args()):
             policy.set_eps(eps)
         else:
             policy.set_eps(0.1 * args.eps_train)
+        # beta annealing, just a demo
+        if args.prioritized_replay:
+            if env_step <= 10000:
+                beta = args.beta
+            elif env_step <= 50000:
+                beta = args.beta - (env_step - 10000) / \
+                    40000 * (args.beta - args.beta_final)
+            else:
+                beta = args.beta_final
+            buf.set_beta(beta)
 
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)

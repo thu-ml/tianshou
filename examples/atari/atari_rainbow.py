@@ -140,8 +140,8 @@ def test_rainbow(args=get_args()):
         policy.set_eps(eps)
         logger.write('train/eps', env_step, eps)
         if not args.no_priority:
-            if env_step <= 5e6:
-                beta = args.beta - env_step / 5e6 * \
+            if env_step <= 1e6:
+                beta = args.beta - env_step / 1e6 * \
                     (args.beta - args.beta_final)
             else:
                 beta = args.beta_final
