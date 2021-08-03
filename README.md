@@ -285,13 +285,11 @@ Check out the [Project](https://github.com/thu-ml/tianshou/projects) page for mo
 If you find Tianshou useful, please cite it in your publications.
 
 ```latex
-@misc{tianshou,
-  author = {Jiayi Weng, Huayu Chen, Alexis Duburcq, Kaichao You, Minghao Zhang, Dong Yan, Hang Su, Jun Zhu},
-  title = {Tianshou},
-  year = {2020},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/thu-ml/tianshou}},
+@article{weng2021tianshou,
+  title={Tianshou: a Highly Modularized Deep Reinforcement Learning Library},
+  author={Weng, Jiayi and Chen, Huayu and Yan, Dong and You, Kaichao and Duburcq, Alexis and Zhang, Minghao and Su, Hang and Zhu, Jun},
+  journal={arXiv preprint arXiv:2107.14171},
+  year={2021}
 }
 ```
 
