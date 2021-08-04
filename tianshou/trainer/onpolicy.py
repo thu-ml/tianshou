@@ -1,6 +1,5 @@
 import time
 import tqdm
-import warnings
 import numpy as np
 from collections import defaultdict
 from typing import Dict, Union, Callable, Optional
@@ -89,8 +88,6 @@ def onpolicy_trainer(
 
         Only either one of step_per_collect and episode_per_collect can be specified.
     """
-    if save_fn:
-        warnings.warn("Please consider using save_checkpoint_fn instead of save_fn.")
 
     start_epoch, env_step, gradient_step = 0, 0, 0
     if resume_from_log:
