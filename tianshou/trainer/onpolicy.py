@@ -88,7 +88,6 @@ def onpolicy_trainer(
 
         Only either one of step_per_collect and episode_per_collect can be specified.
     """
-
     start_epoch, env_step, gradient_step = 0, 0, 0
     if resume_from_log:
         start_epoch, env_step, gradient_step = logger.restore_data()

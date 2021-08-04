@@ -67,7 +67,7 @@ setup(
             "pydocstyle",
             "doc8",
         ],
-        "atari": ["atari_py", "cv2"],
+        "atari": ["atari_py", "opencv-python"],
         "mujoco": ["mujoco_py"],
         "pybullet": ["pybullet"],
     },

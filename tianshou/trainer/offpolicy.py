@@ -82,7 +82,6 @@ def offpolicy_trainer(
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
-
     start_epoch, env_step, gradient_step = 0, 0, 0
     if resume_from_log:
         start_epoch, env_step, gradient_step = logger.restore_data()

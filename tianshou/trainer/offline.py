@@ -67,7 +67,6 @@ def offline_trainer(
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
-
     start_epoch, gradient_step = 0, 0
     if resume_from_log:
         start_epoch, _, gradient_step = logger.restore_data()
