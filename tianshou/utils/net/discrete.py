@@ -351,7 +351,7 @@ class NoisyLinear(nn.Module):
         self.mu_W.data.uniform_(-bound, bound)
         self.mu_bias.data.uniform_(-bound, bound)
         self.sigma_W.data.fill_(self.sigma / np.sqrt(self.in_features))
-        self.sigma_bias.data.fill_(self.sigma / np.sqrt(self.out_features))
+        self.sigma_bias.data.fill_(self.sigma / np.sqrt(self.in_features))
 
     def f(self, x: torch.Tensor) -> torch.Tensor:
         x = torch.randn(x.size(0), device=x.device)
