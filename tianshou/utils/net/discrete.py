@@ -407,7 +407,7 @@ class IntrinsicCuriosityModule(nn.Module):
 
     def __init__(
         self,
-        feature_net: nn.Module,
+                feature_net: nn.Module,
         feature_dim: int,
         action_dim: int,
         hidden_sizes: Sequence[int] = (),
@@ -447,3 +447,37 @@ class IntrinsicCuriosityModule(nn.Module):
         mse_loss = 0.5 * F.mse_loss(phi2_hat, phi2, reduction="none").sum(1)
         act_hat = self.inverse_model(torch.cat([phi1, phi2], dim=1))
         return mse_loss, act_hat
+
+
+class Discriminator(nn.Module):
+    """Discriminator network used in GAIL policy.
+
+    .. note::
+
+        Adapted from https://github.com/ku2482/gail-airl-ppo.pytorch/blob/master
+        /gail_airl_ppo/network/disc.py .
+    """
+
+    def __init__(
+        self,
+        preprocess_net: nn.Module,
+        action_shape: Union[int, Sequence[int]],
+        hidden_sizes: Sequence[int] = (),
+        preprocess_net_output_dim: Optional[int] = None,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
+        super().__init__()
+        self.preprocess = preprocess_net
+        self.device = device
+        self.output_dim = 1
+        state_dim = getattr(preprocess_net, "output_dim",
+                            preprocess_net_output_dim)
+        action_dim = int(np.prod(action_shape))
+        self.action_dim = action_dim
+        self.net = MLP(state_dim, action_dim, hidden_sizes, device=self.device)
+
+    def forward(
+        self, obs: torch.Tensor, act: torch.Tensor, **kwargs: Any
+    ) -> torch.Tensor:
+        s, _ = self.preprocess(obs, state=kwargs.get("state", None))
+        return self.net(s).gather(-1, act.long().view(-1, 1))

@@ -121,3 +121,19 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 | MsPacmanNoFrameskip-v4      | 1930       | ![](results/ppo/MsPacman_rew.png)     | `python3 atari_ppo.py --task "MsPacmanNoFrameskip-v4"`  |
 | SeaquestNoFrameskip-v4      | 904      | ![](results/ppo/Seaquest_rew.png)     | `python3 atari_ppo.py --task "SeaquestNoFrameskip-v4" --lr 2.5e-5`  |
 | SpaceInvadersNoFrameskip-v4 | 843       | ![](results/ppo/SpaceInvaders_rew.png) | `python3 atari_ppo.py --task "SpaceInvadersNoFrameskip-v4"`  |
+Note that CRR itself does not work well in Atari tasks but adding CQL loss/regularizer helps.
+
+# GAIL
+
+To running GAIL algorithm on Atari, you need to do the following things:
+
+- Train an expert, by using the command listed in the above QRDQN section;
+- Generate buffer with noise: `python3 atari_qrdqn.py --task {your_task} --watch --resume-path log/{your_task}/qrdqn/policy.pth --eps-test 0.2 --buffer-size 1000000 --save-buffer-name expert.hdf5` (note that 1M Atari buffer cannot be saved as `.pkl` format because it is too large and will cause error);
+- Train CQL: `python3 atari_cql.py --task {your_task} --load-buffer-name expert.hdf5`.
+
+We test our CQL implementation on two example tasks (different from author's version, we use v4 instead of v0; one epoch means 10k gradient step):
+
+| Task                   | Online QRDQN | Behavioral | GAIL                               | parameters                                                   |
+| ---------------------- | ---------- | ---------- | --------------------------------- | ------------------------------------------------------------ |
+| PongNoFrameskip-v4     | 20.5         | 6.8        | 19.5 (epoch 20) | `python3 atari_gail.py --task "PongNoFrameskip-v4" --load-buffer-name log/PongNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 20` |
+| BreakoutNoFrameskip-v4 | 394.3        | 46.9       | 248.3 (epoch 12) | `python3 atari_gail.py --task "BreakoutNoFrameskip-v4" --load-buffer-name log/BreakoutNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 12` |

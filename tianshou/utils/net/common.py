@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
+from typing import Any, Dict, List, Type, Tuple, Union, Optional, Sequence
 
 ModuleType = Type[nn.Module]
 
