@@ -103,7 +103,7 @@ The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/ma
 
 ### Comprehensive Functionality
 
-| RL Platform                                                  | GitHub Stars                                                 | # of RL Alg. <sup>(1)</sup> | Custom Env                  | Batch Training                    | RNN Support        | Nested Obserbation | Backend    |
+| RL Platform                                                  | GitHub Stars                                                 | # of RL Alg. <sup>(1)</sup> | Custom Env                  | Batch Training                    | RNN Support        | Nested Observation | Backend    |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | --------------------------- | --------------------------- | --------------------------------- | ------------------ | ------------------ | ---------- |
 | [Baselines](https://github.com/openai/baselines)             | [![GitHub stars](https://img.shields.io/github/stars/openai/baselines)](https://github.com/openai/baselines/stargazers) | 9                           | :heavy_check_mark: (gym)    | :heavy_minus_sign: <sup>(2)</sup> | :heavy_check_mark: | :x:                | TF1        |
 | [Stable-Baselines](https://github.com/hill-a/stable-baselines) | [![GitHub stars](https://img.shields.io/github/stars/hill-a/stable-baselines)](https://github.com/hill-a/stable-baselines/stargazers) | 11                          | :heavy_check_mark: (gym)    | :heavy_minus_sign: <sup>(2)</sup> | :heavy_check_mark: | :x:                | TF1        |
