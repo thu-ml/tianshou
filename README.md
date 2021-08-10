@@ -7,7 +7,7 @@
 [![PyPI](https://img.shields.io/pypi/v/tianshou)](https://pypi.org/project/tianshou/)
 [![Conda](https://img.shields.io/conda/vn/conda-forge/tianshou)](https://github.com/conda-forge/tianshou-feedstock)
 [![Read the Docs](https://img.shields.io/readthedocs/tianshou)](https://tianshou.readthedocs.io/en/master)
-[![Read the Docs](https://img.shields.io/readthedocs/tianshou-docs-zh-cn?label=%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3)](https://tianshou.readthedocs.io/zh/latest/)
+[![Read the Docs](https://img.shields.io/readthedocs/tianshou-docs-zh-cn?label=%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3)](https://tianshou.readthedocs.io/zh/master/)
 [![Unittest](https://github.com/thu-ml/tianshou/workflows/Unittest/badge.svg?branch=master)](https://github.com/thu-ml/tianshou/actions)
 [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou)
 [![GitHub issues](https://img.shields.io/github/issues/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/issues)
@@ -44,7 +44,7 @@
 
 Here is Tianshou's other features:
 
-- Elegant framework, using only ~3000 lines of code
+- Elegant framework, using only ~4000 lines of code
 - State-of-the-art [MuJoCo benchmark](https://github.com/thu-ml/tianshou/tree/master/examples/mujoco) for REINFORCE/A2C/TRPO/PPO/DDPG/TD3/SAC algorithms
 - Support parallel environment simulation (synchronous or asynchronous) for all algorithms [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#parallel-sampling)
 - Support recurrent state representation in actor network and critic network (RNN-style training for POMDP) [Usage](https://tianshou.readthedocs.io/en/latest/tutorials/cheatsheet.html#rnn-style-training)
@@ -95,54 +95,63 @@ The tutorials and API documentation are hosted on [tianshou.readthedocs.io](http
 
 The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/master/test) folder and [examples/](https://github.com/thu-ml/tianshou/blob/master/examples) folder.
 
-中文文档位于 [https://tianshou.readthedocs.io/zh/latest/](https://tianshou.readthedocs.io/zh/latest/)。
+中文文档位于 [https://tianshou.readthedocs.io/zh/master/](https://tianshou.readthedocs.io/zh/master/)。
 
 <!-- 这里有一份天授平台简短的中文简介：https://www.zhihu.com/question/377263715 -->
 
 ## Why Tianshou?
 
-### Fast-speed
+### Comprehensive Functionality
 
-Tianshou is a lightweight but high-speed reinforcement learning platform. For example, here is a test on a laptop (i7-8750H + GTX1060). It only uses 3 seconds for training an agent based on vanilla policy gradient on the CartPole-v0 task: (seed may be different across different platform and device)
+| RL Platform                                                  | GitHub Stars                                                 | # of RL Alg. <sup>(1)</sup> | Custom Env                  | Batch Training                    | RNN Support        | Nested Obserbation | Backend    |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | --------------------------- | --------------------------- | --------------------------------- | ------------------ | ------------------ | ---------- |
+| [Baselines](https://github.com/openai/baselines)             | [![GitHub stars](https://img.shields.io/github/stars/openai/baselines)](https://github.com/openai/baselines/stargazers) | 9                           | :heavy_check_mark: (gym)    | :heavy_minus_sign: <sup>(2)</sup> | :heavy_check_mark: | :x:                | TF1        |
+| [Stable-Baselines](https://github.com/hill-a/stable-baselines) | [![GitHub stars](https://img.shields.io/github/stars/hill-a/stable-baselines)](https://github.com/hill-a/stable-baselines/stargazers) | 11                          | :heavy_check_mark: (gym)    | :heavy_minus_sign: <sup>(2)</sup> | :heavy_check_mark: | :x:                | TF1        |
+| [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3) | [![GitHub stars](https://img.shields.io/github/stars/DLR-RM/stable-baselines3)](https://github.com/DLR-RM/stable-baselines3/stargazers) | 7                           | :heavy_check_mark: (gym)    | :heavy_minus_sign: <sup>(2)</sup> | :x:                | :heavy_check_mark: | PyTorch    |
+| [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [![GitHub stars](https://img.shields.io/github/stars/ray-project/ray)](https://github.com/ray-project/ray/stargazers) | 16                          | :heavy_check_mark:          | :heavy_check_mark:                | :heavy_check_mark: | :heavy_check_mark: | TF/PyTorch |
+| [SpinningUp](https://github.com/openai/spinningup)           | [![GitHub stars](https://img.shields.io/github/stars/openai/spinningup)](https://github.com/openai/spinningupstargazers) | 6                           | :heavy_check_mark: (gym)    | :heavy_minus_sign: <sup>(2)</sup> | :x:                | :x:                | PyTorch    |
+| [Dopamine](https://github.com/google/dopamine)               | [![GitHub stars](https://img.shields.io/github/stars/google/dopamine)](https://github.com/google/dopamine/stargazers) | 7                           | :x:                         | :x:                               | :x:                | :x:                | TF/JAX     |
+| [ACME](https://github.com/deepmind/acme)                     | [![GitHub stars](https://img.shields.io/github/stars/deepmind/acme)](https://github.com/deepmind/acme/stargazers) | 14                          | :heavy_check_mark: (dm_env) | :heavy_check_mark:                | :heavy_check_mark: | :heavy_check_mark: | TF/JAX     |
+| [keras-rl](https://github.com/keras-rl/keras-rl)             | [![GitHub stars](https://img.shields.io/github/stars/keras-rl/keras-rl)](https://github.com/keras-rl/keras-rlstargazers) | 7                           | :heavy_check_mark: (gym)    | :x:                               | :x:                | :x:                | Keras      |
+| [rlpyt](https://github.com/astooke/rlpyt)                    | [![GitHub stars](https://img.shields.io/github/stars/astooke/rlpyt)](https://github.com/astooke/rlpyt/stargazers) | 11                          | :x:                         | :heavy_check_mark:                | :heavy_check_mark: | :heavy_check_mark: | PyTorch    |
+| [ChainerRL](https://github.com/chainer/chainerrl)            | [![GitHub stars](https://img.shields.io/github/stars/chainer/chainerrl)](https://github.com/chainer/chainerrl/stargazers) | 18                          | :heavy_check_mark: (gym)    | :heavy_check_mark:                | :heavy_check_mark: | :x:                | Chainer    |
+| [Sample Factory](https://github.com/alex-petrenko/sample-factory) | [![GitHub stars](https://img.shields.io/github/stars/alex-petrenko/sample-factory)](https://github.com/alex-petrenko/sample-factory/stargazers) | 1<sup>(3)</sup>             | :heavy_check_mark: (gym)    | :heavy_check_mark:                | :heavy_check_mark: | :heavy_check_mark: | PyTorch    |
+|                                                              |                                                              |                             |                             |                                   |                    |                    |            |
+| [Tianshou](https://github.com/thu-ml/tianshou)               | [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) | 20                          | :heavy_check_mark: (gym)    | :heavy_check_mark:                | :heavy_check_mark: | :heavy_check_mark: | PyTorch    |
 
-```bash
-$ python3 test/discrete/test_pg.py --seed 0 --render 0.03
-```
+<sup>(1): access date: 2021-08-08</sup>
 
-<div align="center">
-  <img src="docs/_static/images/testpg.gif"></a>
-</div>
+<sup>(2): not all algorithms support this feature</sup>
 
-We select some of famous reinforcement learning platforms: 2 GitHub repos with most stars in all RL platforms (OpenAI Baseline and RLlib) and 2 GitHub repos with most stars in PyTorch RL platforms (PyTorch DRL and rlpyt). Here is the benchmark result for other algorithms and platforms on toy scenarios: (tested on the same laptop as mentioned above)
+<sup>(3): super fast APPO!</sup>
 
-| RL Platform     | [Tianshou](https://github.com/thu-ml/tianshou)               | [Baselines](https://github.com/openai/baselines)             | [Stable-Baselines](https://github.com/hill-a/stable-baselines) | [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [PyTorch-DRL](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch) | [rlpyt](https://github.com/astooke/rlpyt)                    |
-| --------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| GitHub Stars    | [![GitHub stars](https://img.shields.io/github/stars/thu-ml/tianshou)](https://github.com/thu-ml/tianshou/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/openai/baselines)](https://github.com/openai/baselines/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/hill-a/stable-baselines)](https://github.com/hill-a/stable-baselines/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/ray-project/ray)](https://github.com/ray-project/ray/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch)](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch/stargazers) | [![GitHub stars](https://img.shields.io/github/stars/astooke/rlpyt)](https://github.com/astooke/rlpyt/stargazers) |
-| Algo - Task     | PyTorch                                                      | TensorFlow                                                   | TensorFlow                                                   | TF/PyTorch                                                   | PyTorch                                                      | PyTorch                                                      |
-| PG - CartPole   | 9.02±6.79s                                                   | None                                                         | None                                                         | 19.26±2.29s                                                  | None                                                         | ?                                                            |
-| DQN - CartPole  | 6.72±1.28s                                                   | 1046.34±291.27s                                              | 93.47±58.05s                                                 | 28.56±4.60s                                                  | 31.58±11.30s \*\*                                            | ?                                                            |
-| A2C - CartPole  | 15.33±4.48s                                                  | \*(~1612s)                                                   | 57.56±12.87s                                                 | 57.92±9.94s                                                  | \*(Not converged)                                            | ?                                                            |
-| PPO - CartPole  | 6.01±1.14s                                                   | \*(~1179s)                                                   | 34.79±17.02s                                                 | 44.60±17.04s                                                 | 23.99±9.26s \*\*                                             | ?                                                            |
-| PPO - Pendulum  | 16.18±2.49s                                                  | 745.43±160.82s                                               | 259.73±27.37s                                                | 123.62±44.23s                                                | Runtime Error                                                | ?                                                            |
-| DDPG - Pendulum | 37.26±9.55s                                                  | \*(>1h)                                                      | 277.52±92.67s                                                | 314.70±7.92s                                                 | 59.05±10.03s \*\*                                            | 172.18±62.48s                                                |
-| TD3 - Pendulum  | 44.04±6.37s                                                  | None                                                         | 99.75±21.63s                                                 | 149.90±7.54s                                                 | 57.52±17.71s \*\*                                            | 210.31±76.30s                                                |
-| SAC - Pendulum  | 36.02±0.77s                                                  | None                                                         | 124.85±79.14s                                                | 97.42±4.75s                                                  | 63.80±27.37s \*\*                                            | 295.92±140.85s                                               |
 
-*\*: Could not reach the target reward threshold in 1e6 steps in any of 5 runs. The total runtime is in the brackets.*
+### High quality software engineering standard
 
-*\*\*: Since no specific evaluation function is implemented in PyTorch-DRL, the condition is relaxed to "The average total reward for 20 consecutive complete games during training is greater than or equal to threshold".*
+| RL Platform                                                  | Documentation                                                | Code Coverage                                                | Type Hints         | Last Update                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------ | ------------------------------------------------------------ |
+| [Baselines](https://github.com/openai/baselines)             | :x:                                                          | :x:                                                          | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/baselines?label=last%20update) |
+| [Stable-Baselines](https://github.com/hill-a/stable-baselines) | [![Documentation Status](https://readthedocs.org/projects/stable-baselines/badge/?version=master)](https://stable-baselines.readthedocs.io/en/master/?badge=master) | [![Codacy Badge](https://api.codacy.com/project/badge/Coverage/3bcb4cd6d76a4270acb16b5fe6dd9efa)](https://www.codacy.com/app/baselines_janitors/stable-baselines?utm_source=github.com&utm_medium=referral&utm_content=hill-a/stable-baselines&utm_campaign=Badge_Coverage) | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/hill-a/stable-baselines?label=last%20update) |
+| [Stable-Baselines3](https://github.com/DLR-RM/stable-baselines3) | [![Documentation Status](https://readthedocs.org/projects/stable-baselines/badge/?version=master)](https://stable-baselines3.readthedocs.io/en/master/?badge=master) | [![coverage report](https://gitlab.com/araffin/stable-baselines3/badges/master/coverage.svg)](https://gitlab.com/araffin/stable-baselines3/-/commits/master) | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/DLR-RM/stable-baselines3?label=last%20update) |
+| [Ray/RLlib](https://github.com/ray-project/ray/tree/master/rllib/) | [![](https://readthedocs.org/projects/ray/badge/?version=master)](http://docs.ray.io/en/master/rllib.html) | :heavy_minus_sign:<sup>(1)</sup>                             | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/ray-project/ray?label=last%20update) |
+| [SpinningUp](https://github.com/openai/spinningup)           | [![](https://img.shields.io/readthedocs/spinningup)](https://spinningup.openai.com/) | :x:                                                          | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/openai/spinningup?label=last%20update) |
+| [Dopamine](https://github.com/google/dopamine)               | [![](https://img.shields.io/badge/docs-passing-green)](https://github.com/google/dopamine/tree/master/docs) | :x:                                                          | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/google/dopamine?label=last%20update) |
+| [ACME](https://github.com/deepmind/acme)                     | [![](https://img.shields.io/badge/docs-passing-green)](https://github.com/deepmind/acme/blob/master/docs/index.md) | :heavy_minus_sign:<sup>(1)</sup>                             | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/deepmind/acme?label=last%20update) |
+| [keras-rl](https://github.com/keras-rl/keras-rl)             | [![Documentation](https://readthedocs.org/projects/keras-rl/badge/)](http://keras-rl.readthedocs.io/) | :heavy_minus_sign:<sup>(1)</sup>                             | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/keras-rl/keras-rl?label=last%20update) |
+| [rlpyt](https://github.com/astooke/rlpyt)                    | [![Docs](https://readthedocs.org/projects/rlpyt/badge/?version=latest&style=flat)](https://rlpyt.readthedocs.io/en/latest/) | [![codecov](https://codecov.io/gh/astooke/rlpyt/graph/badge.svg)](https://codecov.io/gh/astooke/rlpyt) | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/astooke/rlpyt?label=last%20update) |
+| [ChainerRL](https://github.com/chainer/chainerrl)            | [![Documentation Status](https://readthedocs.org/projects/chainerrl/badge/?version=latest)](http://chainerrl.readthedocs.io/en/latest/?badge=latest) | [![Coverage Status](https://coveralls.io/repos/github/chainer/chainerrl/badge.svg?branch=master)](https://coveralls.io/github/chainer/chainerrl?branch=master) | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/chainer/chainerrl?label=last%20update) |
+| [Sample Factory](https://github.com/alex-petrenko/sample-factory) | [:heavy_minus_sign:](https://arxiv.org/abs/2006.11751)       | [![codecov](https://codecov.io/gh/alex-petrenko/sample-factory/branch/master/graph/badge.svg)](https://codecov.io/gh/alex-petrenko/sample-factory) | :x:                | ![GitHub last commit](https://img.shields.io/github/last-commit/alex-petrenko/sample-factory?label=last%20update) |
+|                                                              |                                                              |                                                              |                    |                                                              |
+| [Tianshou](https://github.com/thu-ml/tianshou)               | [![Read the Docs](https://img.shields.io/readthedocs/tianshou)](https://tianshou.readthedocs.io/en/master) | [![codecov](https://img.shields.io/codecov/c/gh/thu-ml/tianshou)](https://codecov.io/gh/thu-ml/tianshou) | :heavy_check_mark: | ![GitHub last commit](https://img.shields.io/github/last-commit/thu-ml/tianshou?label=last%20update) |
 
-*?: We have tried but it is nontrivial for running non-Atari game on rlpyt. See [here](https://github.com/astooke/rlpyt/issues/135).*
+<sup>(1): it has continuous integration but the coverage rate is not available</sup>
 
-All of the platforms use 5 different seeds for testing. We erase those trials which failed for training. The reward threshold is 195.0 in CartPole and -250.0 in Pendulum over consecutive 100 episodes' mean returns (except for PyTorch-DRL). 
 
-The Atari/Mujoco benchmark results are under [examples/atari/](examples/atari/) and [examples/mujoco/](examples/mujoco/) folders.
+### Reproducible and High Quality Result
 
-### Reproducible
+Tianshou has its unit tests. Different from other platforms, **the unit tests include the full agent training procedure for all of the implemented algorithms**. It would be failed once if it could not train an agent to perform well enough on limited epochs on toy scenarios. The unit tests secure the reproducibility of our platform. Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page for more detail.
 
-Tianshou has its unit tests. Different from other platforms, **the unit tests include the full agent training procedure for all of the implemented algorithms**. It would be failed once if it could not train an agent to perform well enough on limited epochs on toy scenarios. The unit tests secure the reproducibility of our platform. 
-
-Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page for more detail.
+The Atari/Mujoco benchmark results are under [examples/atari/](examples/atari/) and [examples/mujoco/](examples/mujoco/) folders. **Our Mujoco result can beat most of existing benchmark.**
 
 ### Modularized Policy
 
@@ -156,29 +165,6 @@ We decouple all of the algorithms roughly into the following parts:
 - `update`: the main interface for training, i.e., `process_fn -> learn -> post_process_fn`.
 
 Within this API, we can interact with different policies conveniently.
-
-### Elegant and Flexible
-
-Currently, the overall code of Tianshou platform is less than 2500 lines. Most of the implemented algorithms are less than 100 lines of python code. It is quite easy to go through the framework and understand how it works. We provide many flexible API as you wish, for instance, if you want to use your policy to interact with the environment with (at least) `n` steps:
-
-```python
-result = collector.collect(n_step=n)
-```
-If you have 3 environments in total and want to collect 4 episodes:
-
-```python
-result = collector.collect(n_episode=4)
-```
-
-Collector will collect exactly 4 episodes without any bias of episode length despite we only have 3 parallel environments.
-
-If you want to train the given policy with a sampled batch:
-
-```python
-result = policy.update(batch_size, collector.buffer)
-```
-
-You can check out the [documentation](https://tianshou.readthedocs.io) for further usage.
 
 ## Quick Start
 
@@ -272,26 +258,30 @@ $ tensorboard --logdir log/dqn
 
 You can check out the [documentation](https://tianshou.readthedocs.io) for advanced usage.
 
+It's worth a try: here is a test on a laptop (i7-8750H + GTX1060). It only uses **3** seconds for training an agent based on vanilla policy gradient on the CartPole-v0 task: (seed may be different across different platform and device)
+
+```bash
+$ python3 test/discrete/test_pg.py --seed 0 --render 0.03
+```
+
+<div align="center">
+  <img src="docs/_static/images/testpg.gif"></a>
+</div>
+
 ## Contributing
 
 Tianshou is still under development. More algorithms and features are going to be added and we always welcome contributions to help make Tianshou better. If you would like to contribute, please check out [this link](https://tianshou.readthedocs.io/en/latest/contributing.html).
-
-## TODO
-
-Check out the [Project](https://github.com/thu-ml/tianshou/projects) page for more detail.
 
 ## Citing Tianshou
 
 If you find Tianshou useful, please cite it in your publications.
 
 ```latex
-@misc{tianshou,
-  author = {Jiayi Weng, Huayu Chen, Alexis Duburcq, Kaichao You, Minghao Zhang, Dong Yan, Hang Su, Jun Zhu},
-  title = {Tianshou},
-  year = {2020},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/thu-ml/tianshou}},
+@article{weng2021tianshou,
+  title={Tianshou: a Highly Modularized Deep Reinforcement Learning Library},
+  author={Weng, Jiayi and Chen, Huayu and Yan, Dong and You, Kaichao and Duburcq, Alexis and Zhang, Minghao and Su, Hang and Zhu, Jun},
+  journal={arXiv preprint arXiv:2107.14171},
+  year={2021}
 }
 ```
 
