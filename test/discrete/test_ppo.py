@@ -20,12 +20,12 @@ def get_args():
     parser.add_argument('--task', type=str, default='CartPole-v0')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--step-per-epoch', type=int, default=50000)
-    parser.add_argument('--episode-per-collect', type=int, default=20)
-    parser.add_argument('--repeat-per-collect', type=int, default=2)
+    parser.add_argument('--step-per-collect', type=int, default=2000)
+    parser.add_argument('--repeat-per-collect', type=int, default=10)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument('--training-num', type=int, default=20)
@@ -41,15 +41,16 @@ def get_args():
     parser.add_argument('--eps-clip', type=float, default=0.2)
     parser.add_argument('--max-grad-norm', type=float, default=0.5)
     parser.add_argument('--gae-lambda', type=float, default=0.95)
-    parser.add_argument('--rew-norm', type=int, default=1)
+    parser.add_argument('--rew-norm', type=int, default=0)
+    parser.add_argument('--norm-adv', type=int, default=0)
+    parser.add_argument('--recompute-adv', type=int, default=0)
     parser.add_argument('--dual-clip', type=float, default=None)
-    parser.add_argument('--value-clip', type=int, default=1)
+    parser.add_argument('--value-clip', type=int, default=0)
     args = parser.parse_known_args()[0]
     return args
 
 
 def test_ppo(args=get_args()):
-    torch.set_num_threads(1)  # for poor CPU
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -90,7 +91,9 @@ def test_ppo(args=get_args()):
         dual_clip=args.dual_clip,
         value_clip=args.value_clip,
         action_space=env.action_space,
-        deterministic_eval=True)
+        deterministic_eval=True,
+        advantage_normalization=args.norm_adv,
+        recompute_advantage=args.recompute_adv)
     # collector
     train_collector = Collector(
         policy, train_envs,
@@ -111,7 +114,7 @@ def test_ppo(args=get_args()):
     result = onpolicy_trainer(
         policy, train_collector, test_collector, args.epoch,
         args.step_per_epoch, args.repeat_per_collect, args.test_num, args.batch_size,
-        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, save_fn=save_fn,
+        step_per_collect=args.step_per_collect, stop_fn=stop_fn, save_fn=save_fn,
         logger=logger)
     assert stop_fn(result['best_reward'])
 
