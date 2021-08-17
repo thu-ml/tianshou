@@ -1,6 +1,7 @@
 import os
 import torch
 import pprint
+import datetime
 import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
@@ -114,7 +115,9 @@ def test_rainbow(args=get_args()):
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'rainbow')
+    log_path = os.path.join(
+        args.logdir, args.task, 'rainbow',
+        f'seed_{args.seed}_{datetime.datetime.now().strftime("%m%d-%H%M%S")}')
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = BasicLogger(writer)
