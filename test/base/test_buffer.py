@@ -35,13 +35,13 @@ def test_replaybuffer(size=10, bufsize=20):
         assert len(buf) == min(bufsize, i + 1)
     assert buf.act.dtype == int
     assert buf.act.shape == (bufsize, 1)
-    data, indice = buf.sample(bufsize * 2)
-    assert (indice < len(buf)).all()
+    data, indices = buf.sample(bufsize * 2)
+    assert (indices < len(buf)).all()
     assert (data.obs < size).all()
     assert (0 <= data.done).all() and (data.done <= 1).all()
     b = ReplayBuffer(size=10)
     # neg bsz should return empty index
-    assert b.sample_index(-1).tolist() == []
+    assert b.sample_indices(-1).tolist() == []
     ptr, ep_rew, ep_len, ep_idx = b.add(
         Batch(obs=1, act=1, rew=1, done=1, obs_next='str',
               info={'a': 3, 'b': {'c': 5.0}}))
@@ -100,18 +100,18 @@ def test_ignore_obs_next(size=10):
                       rew=i,
                       done=i % 3 == 0,
                       info={'if': i}))
-    indice = np.arange(len(buf))
+    indices = np.arange(len(buf))
     orig = np.arange(len(buf))
-    data = buf[indice]
-    data2 = buf[indice]
+    data = buf[indices]
+    data2 = buf[indices]
     assert isinstance(data, Batch)
     assert isinstance(data2, Batch)
-    assert np.allclose(indice, orig)
+    assert np.allclose(indices, orig)
     assert np.allclose(data.obs_next.mask, data2.obs_next.mask)
     assert np.allclose(data.obs_next.mask, [0, 2, 3, 3, 5, 6, 6, 8, 9, 9])
     buf.stack_num = 4
-    data = buf[indice]
-    data2 = buf[indice]
+    data = buf[indices]
+    data2 = buf[indices]
     assert np.allclose(data.obs_next.mask, data2.obs_next.mask)
     assert np.allclose(data.obs_next.mask, np.array([
         [0, 0, 0, 0], [1, 1, 1, 2], [1, 1, 2, 3], [1, 1, 2, 3],
@@ -140,19 +140,19 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
         obs = obs_next
         if done:
             obs = env.reset(1)
-    indice = np.arange(len(buf))
-    assert np.allclose(buf.get(indice, 'obs')[..., 0], [
+    indices = np.arange(len(buf))
+    assert np.allclose(buf.get(indices, 'obs')[..., 0], [
         [1, 1, 1, 2], [1, 1, 2, 3], [1, 2, 3, 4],
         [1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 2, 3],
         [1, 2, 3, 4], [4, 4, 4, 4], [1, 1, 1, 1]])
-    assert np.allclose(buf.get(indice, 'obs'), buf3.get(indice, 'obs'))
-    assert np.allclose(buf.get(indice, 'obs'), buf3.get(indice, 'obs_next'))
-    _, indice = buf2.sample(0)
-    assert indice.tolist() == [2, 6]
-    _, indice = buf2.sample(1)
-    assert indice[0] in [2, 6]
-    batch, indice = buf2.sample(-1)  # neg bsz -> no data
-    assert indice.tolist() == [] and len(batch) == 0
+    assert np.allclose(buf.get(indices, 'obs'), buf3.get(indices, 'obs'))
+    assert np.allclose(buf.get(indices, 'obs'), buf3.get(indices, 'obs_next'))
+    _, indices = buf2.sample(0)
+    assert indices.tolist() == [2, 6]
+    _, indices = buf2.sample(1)
+    assert indices[0] in [2, 6]
+    batch, indices = buf2.sample(-1)  # neg bsz -> no data
+    assert indices.tolist() == [] and len(batch) == 0
     with pytest.raises(IndexError):
         buf[bufsize * 2]
 
@@ -171,7 +171,7 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
         buf.add(Batch.stack([batch]), buffer_ids=[0])
         buf2.add(batch_stack, buffer_ids=[0, 1, 2])
         obs = obs_next
-        data, indice = buf.sample(len(buf) // 2)
+        data, indices = buf.sample(len(buf) // 2)
         if len(buf) // 2 == 0:
             assert len(data) == len(buf)
         else:
@@ -182,15 +182,15 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
     assert buf.info.key.shape == (buf.maxsize,)
     assert buf.rew.dtype == float
     assert buf.done.dtype == bool
-    data, indice = buf.sample(len(buf) // 2)
-    buf.update_weight(indice, -data.weight / 2)
-    assert np.allclose(buf.weight[indice], np.abs(-data.weight / 2) ** buf._alpha)
+    data, indices = buf.sample(len(buf) // 2)
+    buf.update_weight(indices, -data.weight / 2)
+    assert np.allclose(buf.weight[indices], np.abs(-data.weight / 2) ** buf._alpha)
     # check multi buffer's data
     assert np.allclose(buf2[np.arange(buf2.maxsize)].weight, 1)
-    batch, indice = buf2.sample(10)
-    buf2.update_weight(indice, batch.weight * 0)
+    batch, indices = buf2.sample(10)
+    buf2.update_weight(indices, batch.weight * 0)
     weight = buf2[np.arange(buf2.maxsize)].weight
-    mask = np.isin(np.arange(buf2.maxsize), indice)
+    mask = np.isin(np.arange(buf2.maxsize), indices)
     assert np.all(weight[mask] == weight[mask][0])
     assert np.all(weight[~mask] == weight[~mask][0])
     assert weight[~mask][0] < weight[mask][0] and weight[mask][0] < 1
@@ -404,24 +404,24 @@ def test_replaybuffermanager():
         # ReplayBufferManager cannot be updated
         buf.update(buf)
     # sample index / prev / next / unfinished_index
-    indice = buf.sample_index(11000)
-    assert np.bincount(indice)[[0, 5, 10]].min() >= 3000  # uniform sample
-    batch, indice = buf.sample(0)
-    assert np.allclose(indice, [0, 5, 10])
-    indice_prev = buf.prev(indice)
-    assert np.allclose(indice_prev, indice), indice_prev
-    indice_next = buf.next(indice)
-    assert np.allclose(indice_next, indice), indice_next
+    indices = buf.sample_indices(11000)
+    assert np.bincount(indices)[[0, 5, 10]].min() >= 3000  # uniform sample
+    batch, indices = buf.sample(0)
+    assert np.allclose(indices, [0, 5, 10])
+    indices_prev = buf.prev(indices)
+    assert np.allclose(indices_prev, indices), indices_prev
+    indices_next = buf.next(indices)
+    assert np.allclose(indices_next, indices), indices_next
     assert np.allclose(buf.unfinished_index(), [0, 5])
     buf.add(Batch(obs=[4], act=[4], rew=[4], done=[1]), buffer_ids=[3])
     assert np.allclose(buf.unfinished_index(), [0, 5])
-    batch, indice = buf.sample(10)
-    batch, indice = buf.sample(0)
-    assert np.allclose(indice, [0, 5, 10, 15])
-    indice_prev = buf.prev(indice)
-    assert np.allclose(indice_prev, indice), indice_prev
-    indice_next = buf.next(indice)
-    assert np.allclose(indice_next, indice), indice_next
+    batch, indices = buf.sample(10)
+    batch, indices = buf.sample(0)
+    assert np.allclose(indices, [0, 5, 10, 15])
+    indices_prev = buf.prev(indices)
+    assert np.allclose(indices_prev, indices), indices_prev
+    indices_next = buf.next(indices)
+    assert np.allclose(indices_next, indices), indices_next
     data = np.array([0, 0, 0, 0])
     buf.add(Batch(obs=data, act=data, rew=data, done=data),
             buffer_ids=[0, 1, 2, 3])
@@ -433,11 +433,11 @@ def test_replaybuffermanager():
     buf.add(Batch(obs=data, act=data, rew=data, done=[0, 1, 0, 1]),
             buffer_ids=[0, 1, 2, 3])
     assert len(buf) == 20
-    indice = buf.sample_index(120000)
-    assert np.bincount(indice).min() >= 5000
-    batch, indice = buf.sample(10)
-    indice = buf.sample_index(0)
-    assert np.allclose(indice, np.arange(len(buf)))
+    indices = buf.sample_indices(120000)
+    assert np.bincount(indices).min() >= 5000
+    batch, indices = buf.sample(10)
+    indices = buf.sample_indices(0)
+    assert np.allclose(indices, np.arange(len(buf)))
     # check the actual data stored in buf._meta
     assert np.allclose(buf.done, [
         0, 0, 1, 0, 0,
@@ -445,13 +445,13 @@ def test_replaybuffermanager():
         1, 0, 1, 0, 0,
         1, 0, 1, 0, 1,
     ])
-    assert np.allclose(buf.prev(indice), [
+    assert np.allclose(buf.prev(indices), [
         0, 0, 1, 3, 3,
         5, 5, 6, 8, 8,
         10, 11, 11, 13, 13,
         15, 16, 16, 18, 18,
     ])
-    assert np.allclose(buf.next(indice), [
+    assert np.allclose(buf.next(indices), [
         1, 2, 2, 4, 4,
         6, 7, 7, 9, 9,
         10, 12, 12, 14, 14,
@@ -463,15 +463,15 @@ def test_replaybuffermanager():
     assert np.all(ep_len == [3]) and np.all(ep_rew == [1])
     assert np.all(ptr == [10]) and np.all(ep_idx == [13])
     assert np.allclose(buf.unfinished_index(), [4])
-    indice = list(sorted(buf.sample_index(0)))
-    assert np.allclose(indice, np.arange(len(buf)))
-    assert np.allclose(buf.prev(indice), [
+    indices = list(sorted(buf.sample_indices(0)))
+    assert np.allclose(indices, np.arange(len(buf)))
+    assert np.allclose(buf.prev(indices), [
         0, 0, 1, 3, 3,
         5, 5, 6, 8, 8,
         14, 11, 11, 13, 13,
         15, 16, 16, 18, 18,
     ])
-    assert np.allclose(buf.next(indice), [
+    assert np.allclose(buf.next(indices), [
         1, 2, 2, 4, 4,
         6, 7, 7, 9, 9,
         10, 12, 12, 14, 10,
@@ -484,37 +484,37 @@ def test_replaybuffermanager():
     batch.info = np.ones(buf.maxsize)
     buf.set_batch(batch)
     assert np.allclose(buf.buffers[-1].info, [1] * 5)
-    assert buf.sample_index(-1).tolist() == []
+    assert buf.sample_indices(-1).tolist() == []
     assert np.array([ReplayBuffer(0, ignore_obs_next=True)]).dtype == object
 
 
 def test_cachedbuffer():
     buf = CachedReplayBuffer(ReplayBuffer(10), 4, 5)
-    assert buf.sample_index(0).tolist() == []
+    assert buf.sample_indices(0).tolist() == []
     # check the normal function/usage/storage in CachedReplayBuffer
     ptr, ep_rew, ep_len, ep_idx = buf.add(
         Batch(obs=[1], act=[1], rew=[1], done=[0]), buffer_ids=[1])
     obs = np.zeros(buf.maxsize)
     obs[15] = 1
-    indice = buf.sample_index(0)
-    assert np.allclose(indice, [15])
-    assert np.allclose(buf.prev(indice), [15])
-    assert np.allclose(buf.next(indice), [15])
+    indices = buf.sample_indices(0)
+    assert np.allclose(indices, [15])
+    assert np.allclose(buf.prev(indices), [15])
+    assert np.allclose(buf.next(indices), [15])
     assert np.allclose(buf.obs, obs)
     assert np.all(ep_len == [0]) and np.all(ep_rew == [0.0])
     assert np.all(ptr == [15]) and np.all(ep_idx == [15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
         Batch(obs=[2], act=[2], rew=[2], done=[1]), buffer_ids=[3])
     obs[[0, 25]] = 2
-    indice = buf.sample_index(0)
-    assert np.allclose(indice, [0, 15])
-    assert np.allclose(buf.prev(indice), [0, 15])
-    assert np.allclose(buf.next(indice), [0, 15])
+    indices = buf.sample_indices(0)
+    assert np.allclose(indices, [0, 15])
+    assert np.allclose(buf.prev(indices), [0, 15])
+    assert np.allclose(buf.next(indices), [0, 15])
     assert np.allclose(buf.obs, obs)
     assert np.all(ep_len == [1]) and np.all(ep_rew == [2.0])
     assert np.all(ptr == [0]) and np.all(ep_idx == [0])
     assert np.allclose(buf.unfinished_index(), [15])
-    assert np.allclose(buf.sample_index(0), [0, 15])
+    assert np.allclose(buf.sample_indices(0), [0, 15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
         Batch(obs=[3, 4], act=[3, 4], rew=[3, 4], done=[0, 1]),
         buffer_ids=[3, 1])
@@ -523,13 +523,13 @@ def test_cachedbuffer():
     obs[[0, 1, 2, 15, 16, 25]] = [2, 1, 4, 1, 4, 3]
     assert np.allclose(buf.obs, obs)
     assert np.allclose(buf.unfinished_index(), [25])
-    indice = buf.sample_index(0)
-    assert np.allclose(indice, [0, 1, 2, 25])
-    assert np.allclose(buf.done[indice], [1, 0, 1, 0])
-    assert np.allclose(buf.prev(indice), [0, 1, 1, 25])
-    assert np.allclose(buf.next(indice), [0, 2, 2, 25])
-    indice = buf.sample_index(10000)
-    assert np.bincount(indice)[[0, 1, 2, 25]].min() > 2000  # uniform sample
+    indices = buf.sample_indices(0)
+    assert np.allclose(indices, [0, 1, 2, 25])
+    assert np.allclose(buf.done[indices], [1, 0, 1, 0])
+    assert np.allclose(buf.prev(indices), [0, 1, 1, 25])
+    assert np.allclose(buf.next(indices), [0, 2, 2, 25])
+    indices = buf.sample_indices(10000)
+    assert np.bincount(indices)[[0, 1, 2, 25]].min() > 2000  # uniform sample
     # cached buffer with main_buffer size == 0 (no update)
     # used in test_collector
     buf = CachedReplayBuffer(ReplayBuffer(0, sample_avail=True), 4, 5)
@@ -550,10 +550,10 @@ def test_cachedbuffer():
         0, 0, 0, 0, 0,
         0, 1, 0, 0, 0,
     ])
-    indice = buf.sample_index(0)
-    assert np.allclose(indice, [0, 1, 10, 11])
-    assert np.allclose(buf.prev(indice), [0, 0, 10, 10])
-    assert np.allclose(buf.next(indice), [1, 1, 11, 11])
+    indices = buf.sample_indices(0)
+    assert np.allclose(indices, [0, 1, 10, 11])
+    assert np.allclose(buf.prev(indices), [0, 0, 10, 10])
+    assert np.allclose(buf.next(indices), [1, 1, 11, 11])
 
 
 def test_multibuf_stack():
@@ -604,31 +604,31 @@ def test_multibuf_stack():
         0, 0, 0, 1, 0,  # cached_buffer[2]
     ]), buf4.done
     assert np.allclose(buf4.unfinished_index(), [10, 15, 20])
-    indice = sorted(buf4.sample_index(0))
-    assert np.allclose(indice, list(range(bufsize)) + [9, 10, 14, 15, 19, 20])
-    assert np.allclose(buf4[indice].obs[..., 0], [
+    indices = sorted(buf4.sample_indices(0))
+    assert np.allclose(indices, list(range(bufsize)) + [9, 10, 14, 15, 19, 20])
+    assert np.allclose(buf4[indices].obs[..., 0], [
         [11, 11, 11, 12], [11, 11, 12, 13], [11, 12, 13, 14],
         [4, 4, 4, 4], [6, 6, 6, 6], [6, 6, 6, 7],
         [6, 6, 7, 8], [6, 7, 8, 9], [11, 11, 11, 11],
         [1, 1, 1, 1], [1, 1, 1, 2], [6, 6, 6, 6],
         [6, 6, 6, 7], [11, 11, 11, 11], [11, 11, 11, 12],
     ])
-    assert np.allclose(buf4[indice].obs_next[..., 0], [
+    assert np.allclose(buf4[indices].obs_next[..., 0], [
         [11, 11, 12, 13], [11, 12, 13, 14], [11, 12, 13, 14],
         [4, 4, 4, 4], [6, 6, 6, 7], [6, 6, 7, 8],
         [6, 7, 8, 9], [6, 7, 8, 9], [11, 11, 11, 12],
         [1, 1, 1, 2], [1, 1, 1, 2], [6, 6, 6, 7],
         [6, 6, 6, 7], [11, 11, 11, 12], [11, 11, 11, 12],
     ])
-    indice = buf5.sample_index(0)
-    assert np.allclose(sorted(indice), [2, 7])
-    assert np.all(np.isin(buf5.sample_index(100), indice))
+    indices = buf5.sample_indices(0)
+    assert np.allclose(sorted(indices), [2, 7])
+    assert np.all(np.isin(buf5.sample_indices(100), indices))
     # manually change the stack num
     buf5.stack_num = 2
     for buf in buf5.buffers:
         buf.stack_num = 2
-    indice = buf5.sample_index(0)
-    assert np.allclose(sorted(indice), [0, 1, 2, 5, 6, 7, 10, 15, 20])
+    indices = buf5.sample_indices(0)
+    assert np.allclose(sorted(indices), [0, 1, 2, 5, 6, 7, 10, 15, 20])
     batch, _ = buf5.sample(0)
     # test Atari with CachedReplayBuffer, save_only_last_obs + ignore_obs_next
     buf6 = CachedReplayBuffer(

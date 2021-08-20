@@ -70,7 +70,7 @@ The following code snippet illustrates its usage, including:
 
 - the basic data storage: ``add()``;
 - get attribute, get slicing data, ...;
-- sample from buffer: ``sample_index(batch_size)`` and ``sample(batch_size)``;
+- sample from buffer: ``sample_indices(batch_size)`` and ``sample(batch_size)``;
 - get previous/next transition index within episodes: ``prev(index)`` and ``next(index)``;
 - save/load data from buffer: pickle and HDF5;
 
@@ -110,19 +110,19 @@ The following code snippet illustrates its usage, including:
             0,  0,  0,  0])
 
     >>> # get all available index by using batch_size = 0
-    >>> indice = buf.sample_index(0)
-    >>> indice
+    >>> indices = buf.sample_indices(0)
+    >>> indices
     array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12])
     >>> # get one step previous/next transition
-    >>> buf.prev(indice)
+    >>> buf.prev(indices)
     array([ 0,  0,  1,  2,  3,  4,  5,  7,  7,  8,  9, 11, 11])
-    >>> buf.next(indice)
+    >>> buf.next(indices)
     array([ 1,  2,  3,  4,  5,  6,  6,  8,  9, 10, 10, 12, 12])
 
     >>> # get a random sample from buffer
-    >>> # the batch_data is equal to buf[indice].
-    >>> batch_data, indice = buf.sample(batch_size=4)
-    >>> batch_data.obs == buf[indice].obs
+    >>> # the batch_data is equal to buf[indices].
+    >>> batch_data, indices = buf.sample(batch_size=4)
+    >>> batch_data.obs == buf[indices].obs
     array([ True,  True,  True,  True])
     >>> len(buf)
     13
@@ -319,17 +319,17 @@ Thus, we need a time-related interface for calculating the 2-step return. :meth:
     class DQN_2step(BasePolicy):
         """some code"""
 
-        def process_fn(self, batch, buffer, indice):
+        def process_fn(self, batch, buffer, indices):
             buffer_len = len(buffer)
-            batch_2 = buffer[(indice + 2) % buffer_len]
+            batch_2 = buffer[(indices + 2) % buffer_len]
             # this will return a batch data where batch_2.obs is s_t+2
             # we can also get s_t+2 through:
-            #   batch_2_obs = buffer.obs[(indice + 2) % buffer_len]
+            #   batch_2_obs = buffer.obs[(indices + 2) % buffer_len]
             # in short, buffer.obs[i] is equal to buffer[i].obs, but the former is more effecient.
             Q = self(batch_2, eps=0)  # shape: [batchsize, action_shape]
             maxQ = Q.max(dim=-1)
             batch.returns = batch.rew \
-                + self._gamma * buffer.rew[(indice + 1) % buffer_len] \
+                + self._gamma * buffer.rew[(indices + 1) % buffer_len] \
                 + self._gamma ** 2 * maxQ
             return batch
 
@@ -400,9 +400,9 @@ We give a high-level explanation through the pseudocode used in section :ref:`pr
         s = s_                                                      # collector.collect(...)
         if i % 1000 == 0:                                           # done in trainer
                                                                     # the following is done in policy.update(batch_size, buffer)
-            b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # batch, indice = buffer.sample(batch_size)
+            b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # batch, indices = buffer.sample(batch_size)
             # compute 2-step returns. How?
-            b_ret = compute_2_step_return(buffer, b_r, b_d, ...)    # policy.process_fn(batch, buffer, indice)
+            b_ret = compute_2_step_return(buffer, b_r, b_d, ...)    # policy.process_fn(batch, buffer, indices)
             # update DQN policy
             agent.update(b_s, b_a, b_s_, b_r, b_d, b_ret)           # policy.learn(batch, ...)
 

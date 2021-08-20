@@ -74,8 +74,8 @@ class DQNPolicy(BasePolicy):
         """Synchronize the weight for the target network."""
         self.model_old.load_state_dict(self.model.state_dict())
 
-    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
-        batch = buffer[indice]  # batch.obs_next: s_{t+n}
+    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
+        batch = buffer[indices]  # batch.obs_next: s_{t+n}
         result = self(batch, input="obs_next")
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
@@ -88,7 +88,7 @@ class DQNPolicy(BasePolicy):
             return target_q.max(dim=1)[0]
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
         """Compute the n-step return for Q-learning targets.
 
@@ -96,7 +96,7 @@ class DQNPolicy(BasePolicy):
         :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
         """
         batch = self.compute_nstep_return(
-            batch, buffer, indice, self._target_q,
+            batch, buffer, indices, self._target_q,
             self._gamma, self._n_step, self._rew_norm)
         return batch
 

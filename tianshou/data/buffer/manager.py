@@ -141,12 +141,12 @@ class ReplayBufferManager(ReplayBuffer):
             self._meta[ptrs] = batch
         return ptrs, np.array(ep_rews), np.array(ep_lens), np.array(ep_idxs)
 
-    def sample_index(self, batch_size: int) -> np.ndarray:
+    def sample_indices(self, batch_size: int) -> np.ndarray:
         if batch_size < 0:
             return np.array([], int)
         if self._sample_avail and self.stack_num > 1:
             all_indices = np.concatenate([
-                buf.sample_index(0) + offset
+                buf.sample_indices(0) + offset
                 for offset, buf in zip(self._offset, self.buffers)
             ])
             if batch_size == 0:
@@ -164,7 +164,7 @@ class ReplayBufferManager(ReplayBuffer):
             sample_num[sample_num == 0] = -1
 
         return np.concatenate([
-            buf.sample_index(bsz) + offset
+            buf.sample_indices(bsz) + offset
             for offset, buf, bsz in zip(self._offset, self.buffers, sample_num)
         ])
 

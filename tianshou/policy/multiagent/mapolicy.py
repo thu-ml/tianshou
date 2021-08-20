@@ -29,7 +29,7 @@ class MultiAgentPolicyManager(BasePolicy):
         policy.set_agent_id(agent_id)
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
         """Dispatch batch data from obs.agent_id to every policy's process_fn.
 
@@ -49,12 +49,12 @@ class MultiAgentPolicyManager(BasePolicy):
             if len(agent_index) == 0:
                 results[f"agent_{policy.agent_id}"] = Batch()
                 continue
-            tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
+            tmp_batch, tmp_indices = batch[agent_index], indices[agent_index]
             if has_rew:
                 tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
                 buffer._meta.rew = save_rew[:, policy.agent_id - 1]
             results[f"agent_{policy.agent_id}"] = policy.process_fn(
-                tmp_batch, buffer, tmp_indice)
+                tmp_batch, buffer, tmp_indices)
         if has_rew:  # restore from save_rew
             buffer._meta.rew = save_rew
         return Batch(results)

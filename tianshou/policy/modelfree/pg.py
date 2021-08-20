@@ -61,7 +61,7 @@ class PGPolicy(BasePolicy):
         self._deterministic_eval = deterministic_eval
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
         r"""Compute the discounted returns for each transition.
 
@@ -71,9 +71,9 @@ class PGPolicy(BasePolicy):
         where :math:`T` is the terminal time step, :math:`\gamma` is the
         discount factor, :math:`\gamma \in [0, 1]`.
         """
-        v_s_ = np.full(indice.shape, self.ret_rms.mean)
+        v_s_ = np.full(indices.shape, self.ret_rms.mean)
         unnormalized_returns, _ = self.compute_episodic_return(
-            batch, buffer, indice, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0)
+            batch, buffer, indices, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0)
         if self._rew_norm:
             batch.returns = (unnormalized_returns - self.ret_rms.mean) / \
                 np.sqrt(self.ret_rms.var + self._eps)
