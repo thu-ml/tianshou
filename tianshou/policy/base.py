@@ -287,8 +287,8 @@ class BasePolicy(ABC, nn.Module):
             sequential order. Mind that the end of each finished episode of batch
             should be marked by done flag, unfinished (or collecting) episodes will be
             recongized by buffer.unfinished_index().
-        :param numpy.ndarray indices: tell batch's location in buffer, batch is equal to
-            buffer[indices].
+        :param numpy.ndarray indices: tell batch's location in buffer, batch is equal
+            to buffer[indices].
         :param np.ndarray v_s_: the value function of all next states :math:`V(s')`.
         :param float gamma: the discount factor, should be in [0, 1]. Default to 0.99.
         :param float gae_lambda: the parameter for Generalized Advantage Estimation,
