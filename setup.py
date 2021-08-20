@@ -39,6 +39,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     keywords="reinforcement learning platform pytorch",
     packages=find_packages(
@@ -66,6 +67,7 @@ setup(
             "mypy",
             "pydocstyle",
             "doc8",
+            "scipy",
         ],
         "atari": ["atari_py", "opencv-python"],
         "mujoco": ["mujoco_py"],
