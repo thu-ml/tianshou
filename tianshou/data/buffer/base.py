@@ -143,7 +143,7 @@ class ReplayBuffer:
         if len(buffer) == 0 or self.maxsize == 0:
             return np.array([], int)
         stack_num, buffer.stack_num = buffer.stack_num, 1
-        from_indices = buffer.sample_index(0)  # get all available indices
+        from_indices = buffer.sample_indices(0)  # get all available indices
         buffer.stack_num = stack_num
         if len(from_indices) == 0:
             return np.array([], int)
@@ -235,7 +235,7 @@ class ReplayBuffer:
             self._meta[ptr] = batch
         return ptr, ep_rew, ep_len, ep_idx
 
-    def sample_index(self, batch_size: int) -> np.ndarray:
+    def sample_indices(self, batch_size: int) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
 
         Return all available indices in the buffer if batch_size is 0; return an empty
@@ -271,7 +271,7 @@ class ReplayBuffer:
 
         :return: Sample data and its corresponding index inside the buffer.
         """
-        indices = self.sample_index(batch_size)
+        indices = self.sample_indices(batch_size)
         return self[indices], indices
 
     def get(
@@ -302,16 +302,16 @@ class ReplayBuffer:
                 return val[index]
             stack: List[Any] = []
             if isinstance(index, list):
-                indice = np.array(index)
+                indices = np.array(index)
             else:
-                indice = index  # type: ignore
+                indices = index  # type: ignore
             for _ in range(stack_num):
-                stack = [val[indice]] + stack
-                indice = self.prev(indice)
+                stack = [val[indices]] + stack
+                indices = self.prev(indices)
             if isinstance(val, Batch):
-                return Batch.stack(stack, axis=indice.ndim)
+                return Batch.stack(stack, axis=indices.ndim)
             else:
-                return np.stack(stack, axis=indice.ndim)
+                return np.stack(stack, axis=indices.ndim)
         except IndexError as e:
             if not (isinstance(val, Batch) and val.is_empty()):
                 raise e  # val != Batch()
@@ -325,23 +325,23 @@ class ReplayBuffer:
         """
         if isinstance(index, slice):  # change slice to np array
             # buffer[:] will get all available data
-            indice = self.sample_index(0) if index == slice(None) \
+            indices = self.sample_indices(0) if index == slice(None) \
                 else self._indices[:len(self)][index]
         else:
-            indice = index
+            indices = index
         # raise KeyError first instead of AttributeError,
         # to support np.array([ReplayBuffer()])
-        obs = self.get(indice, "obs")
+        obs = self.get(indices, "obs")
         if self._save_obs_next:
-            obs_next = self.get(indice, "obs_next", Batch())
+            obs_next = self.get(indices, "obs_next", Batch())
         else:
-            obs_next = self.get(self.next(indice), "obs", Batch())
+            obs_next = self.get(self.next(indices), "obs", Batch())
         return Batch(
             obs=obs,
-            act=self.act[indice],
-            rew=self.rew[indice],
-            done=self.done[indice],
+            act=self.act[indices],
+            rew=self.rew[indices],
+            done=self.done[indices],
             obs_next=obs_next,
-            info=self.get(indice, "info", Batch()),
-            policy=self.get(indice, "policy", Batch()),
+            info=self.get(indices, "info", Batch()),
+            policy=self.get(indices, "policy", Batch()),
         )

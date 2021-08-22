@@ -84,12 +84,12 @@ class PPOPolicy(A2CPolicy):
         self._recompute_adv = recompute_advantage
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
         if self._recompute_adv:
-            # buffer input `buffer` and `indice` to be used in `learn()`.
-            self._buffer, self._indice = buffer, indice
-        batch = self._compute_returns(batch, buffer, indice)
+            # buffer input `buffer` and `indices` to be used in `learn()`.
+            self._buffer, self._indices = buffer, indices
+        batch = self._compute_returns(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
         old_log_prob = []
         with torch.no_grad():
@@ -104,7 +104,7 @@ class PPOPolicy(A2CPolicy):
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         for step in range(repeat):
             if self._recompute_adv and step > 0:
-                batch = self._compute_returns(batch, self._buffer, self._indice)
+                batch = self._compute_returns(batch, self._buffer, self._indices)
             for b in batch.split(batch_size, merge_last=True):
                 # calculate loss for actor
                 dist = self(b).dist

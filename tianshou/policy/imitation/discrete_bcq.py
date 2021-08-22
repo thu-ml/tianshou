@@ -67,8 +67,8 @@ class DiscreteBCQPolicy(DQNPolicy):
         self.imitator.train(mode)
         return self
 
-    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
-        batch = buffer[indice]  # batch.obs_next: s_{t+n}
+    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
+        batch = buffer[indices]  # batch.obs_next: s_{t+n}
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
         act = self(batch, input="obs_next").act
         target_q, _ = self.model_old(batch.obs_next)

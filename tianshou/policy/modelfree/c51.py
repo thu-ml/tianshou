@@ -57,8 +57,8 @@ class C51Policy(DQNPolicy):
         )
         self.delta_z = (v_max - v_min) / (num_atoms - 1)
 
-    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
-        return self.support.repeat(len(indice), 1)  # shape: [bsz, num_atoms]
+    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
+        return self.support.repeat(len(indices), 1)  # shape: [bsz, num_atoms]
 
     def compute_q_value(
         self, logits: torch.Tensor, mask: Optional[np.ndarray]

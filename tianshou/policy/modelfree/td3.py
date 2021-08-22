@@ -94,8 +94,8 @@ class TD3Policy(DDPGPolicy):
         for o, n in zip(self.critic2_old.parameters(), self.critic2.parameters()):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
 
-    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
-        batch = buffer[indice]  # batch.obs: s_{t+n}
+    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
+        batch = buffer[indices]  # batch.obs: s_{t+n}
         a_ = self(batch, model="actor_old", input="obs_next").act
         dev = a_.device
         noise = torch.randn(size=a_.shape, device=dev) * self._policy_noise

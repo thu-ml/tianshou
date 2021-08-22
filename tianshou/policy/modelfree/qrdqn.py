@@ -49,8 +49,8 @@ class QRDQNPolicy(DQNPolicy):
             ((tau[:-1] + tau[1:]) / 2).view(1, -1, 1), requires_grad=False)
         warnings.filterwarnings("ignore", message="Using a target size")
 
-    def _target_q(self, buffer: ReplayBuffer, indice: np.ndarray) -> torch.Tensor:
-        batch = buffer[indice]  # batch.obs_next: s_{t+n}
+    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
+        batch = buffer[indices]  # batch.obs_next: s_{t+n}
         if self._target:
             a = self(batch, input="obs_next").act
             next_dist = self(batch, model="model_old", input="obs_next").logits

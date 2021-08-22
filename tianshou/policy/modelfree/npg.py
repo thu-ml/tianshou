@@ -66,9 +66,9 @@ class NPGPolicy(A2CPolicy):
         self._damping = 0.1
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
-        batch = super().process_fn(batch, buffer, indice)
+        batch = super().process_fn(batch, buffer, indices)
         old_log_prob = []
         with torch.no_grad():
             for b in batch.split(self._batch, shuffle=False, merge_last=True):

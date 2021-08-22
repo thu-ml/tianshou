@@ -97,19 +97,19 @@ class DDPGPolicy(BasePolicy):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
 
     def _target_q(
-        self, buffer: ReplayBuffer, indice: np.ndarray
+        self, buffer: ReplayBuffer, indices: np.ndarray
     ) -> torch.Tensor:
-        batch = buffer[indice]  # batch.obs_next: s_{t+n}
+        batch = buffer[indices]  # batch.obs_next: s_{t+n}
         target_q = self.critic_old(
             batch.obs_next,
             self(batch, model='actor_old', input='obs_next').act)
         return target_q
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
         batch = self.compute_nstep_return(
-            batch, buffer, indice, self._target_q,
+            batch, buffer, indices, self._target_q,
             self._gamma, self._n_step, self._rew_norm)
         return batch
 

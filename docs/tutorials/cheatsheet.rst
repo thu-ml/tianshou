@@ -271,7 +271,7 @@ It shows that the state is a dictionary which has 3 keys. It will stored in :cla
 And the data batch sampled from this replay buffer:
 ::
 
-    >>> batch, indice = b.sample(2)
+    >>> batch, indices = b.sample(2)
     >>> batch.keys()
     ['act', 'done', 'info', 'obs', 'obs_next', 'policy', 'rew']
     >>> batch.obs[-1]

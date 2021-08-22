@@ -71,14 +71,14 @@ class A2CPolicy(PGPolicy):
         self._batch = max_batchsize
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
-        batch = self._compute_returns(batch, buffer, indice)
+        batch = self._compute_returns(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
         return batch
 
     def _compute_returns(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
         v_s, v_s_ = [], []
         with torch.no_grad():
@@ -96,7 +96,7 @@ class A2CPolicy(PGPolicy):
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps)
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps)
         unnormalized_returns, advantages = self.compute_episodic_return(
-            batch, buffer, indice, v_s_, v_s,
+            batch, buffer, indices, v_s_, v_s,
             gamma=self._gamma, gae_lambda=self._lambda)
         if self._rew_norm:
             batch.returns = unnormalized_returns / \
