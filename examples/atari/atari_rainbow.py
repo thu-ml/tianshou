@@ -36,6 +36,7 @@ def get_args():
     parser.add_argument('--alpha', type=float, default=0.5)
     parser.add_argument('--beta', type=float, default=0.4)
     parser.add_argument('--beta-final', type=float, default=1.)
+    parser.add_argument('--beta-anneal-step', type=int, default=5000000)
     parser.add_argument('--no-weight-norm', action='store_true', default=False)
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=500)
@@ -143,8 +144,8 @@ def test_rainbow(args=get_args()):
         policy.set_eps(eps)
         logger.write('train/eps', env_step, eps)
         if not args.no_priority:
-            if env_step <= 1e6:
-                beta = args.beta - env_step / 1e6 * \
+            if env_step <= args.beta_anneal_step:
+                beta = args.beta - env_step / args.beta_anneal_step * \
                     (args.beta - args.beta_final)
             else:
                 beta = args.beta_final

@@ -88,13 +88,13 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 
 | task                        | best reward | reward curve                          | parameters                                                   |
 | --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
-| PongNoFrameskip-v4          | 20.7        | ![](results/rainbow/Pong_rew.png)         | `python3 atari_rainbow.py --task "PongNoFrameskip-v4" --batch-size 64` |
-| BreakoutNoFrameskip-v4      | 56.7        | ![](results/rainbow/Breakout_rew.png)     | `python3 atari_rainbow.py --task "BreakoutNoFrameskip-v4" --n-step 1` |
-| EnduroNoFrameskip-v4        | 488.9       | ![](results/rainbow/Enduro_rew.png)       | `python3 atari_rainbow.py --task "EnduroNoFrameskip-v4"`  |
-| QbertNoFrameskip-v4         | 10452.5     | ![](results/rainbow/Qbert_rew.png)        | `python3 atari_rainbow.py --task "QbertNoFrameskip-v4"`  |
-| MsPacmanNoFrameskip-v4      | 1599        | ![](results/rainbow/MsPacman_rew.png)     | `python3 atari_rainbow.py --task "MsPacmanNoFrameskip-v4"`  |
-| SeaquestNoFrameskip-v4      | 10220       | ![](results/rainbow/Seaquest_rew.png)     | `python3 atari_rainbow.py --task "SeaquestNoFrameskip-v4"`  |
-| SpaceInvadersNoFrameskip-v4 | 729.5       | ![](results/rainbow/SpaceInvaders_rew.png) | `python3 atari_rainbow.py --task "SpaceInvadersNoFrameskip-v4"`  |
+| PongNoFrameskip-v4          | 20.4        | ![](results/rainbow/Pong_rew.png)         | `python3 atari_rainbow.py --task "PongNoFrameskip-v4" --batch-size 64` |
+| BreakoutNoFrameskip-v4      | 699.3        | ![](results/rainbow/Breakout_rew.png)     | `python3 atari_rainbow.py --task "BreakoutNoFrameskip-v4" --n-step 1 --no-noisy` |
+| EnduroNoFrameskip-v4        | 1645.6       | ![](results/rainbow/Enduro_rew.png)       | `python3 atari_rainbow.py --task "EnduroNoFrameskip-v4" --no-noisy`  |
+| QbertNoFrameskip-v4         | 17680     | ![](results/rainbow/Qbert_rew.png)        | `python3 atari_rainbow.py --task "QbertNoFrameskip-v4" --no-noisy`  |
+| MsPacmanNoFrameskip-v4      | 3304        | ![](results/rainbow/MsPacman_rew.png)     | `python3 atari_rainbow.py --task "MsPacmanNoFrameskip-v4" --no-noisy`  |
+| SeaquestNoFrameskip-v4      | 11267       | ![](results/rainbow/Seaquest_rew.png)     | `python3 atari_rainbow.py --task "SeaquestNoFrameskip-v4"`  |
+| SpaceInvadersNoFrameskip-v4 | 1398       | ![](results/rainbow/SpaceInvaders_rew.png) | `python3 atari_rainbow.py --task "SpaceInvadersNoFrameskip-v4" --no-noisy`  |
 
 # BCQ
 
