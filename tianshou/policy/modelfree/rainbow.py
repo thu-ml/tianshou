@@ -36,11 +36,3 @@ class RainbowPolicy(C51Policy):
         if self._target and sample_noise(self.model_old):
             self.model_old.train()  # so that NoisyLinear takes effect
         return super().learn(batch, **kwargs)
-
-    def exploration_noise(
-        self, act: Union[np.ndarray, Batch], batch: Batch
-    ) -> Union[np.ndarray, Batch]:
-        if self.training and sample_noise(self.model):
-            return act
-        else:
-            return super().exploration_noise(act, batch)
