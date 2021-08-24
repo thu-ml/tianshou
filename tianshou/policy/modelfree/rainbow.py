@@ -1,5 +1,4 @@
-import numpy as np
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 from tianshou.policy import C51Policy
 from tianshou.data import Batch
