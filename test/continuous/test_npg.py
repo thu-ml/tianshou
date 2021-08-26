@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Independent, Normal
 
 from tianshou.policy import NPGPolicy
-from tianshou.utils import BasicLogger
+from tianshou.utils import TensorboardLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import onpolicy_trainer
@@ -105,7 +105,7 @@ def test_npg(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'npg')
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(writer)
+    logger = TensorboardLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))

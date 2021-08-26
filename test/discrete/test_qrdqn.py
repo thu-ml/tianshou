@@ -7,7 +7,7 @@ import argparse
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils import BasicLogger
+from tianshou.utils import TensorboardLogger
 from tianshou.policy import QRDQNPolicy
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
@@ -92,7 +92,7 @@ def test_qrdqn(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'qrdqn')
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(writer)
+    logger = TensorboardLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))

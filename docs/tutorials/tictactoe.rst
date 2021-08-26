@@ -176,7 +176,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
     import numpy as np
     from copy import deepcopy
     from torch.utils.tensorboard import SummaryWriter
-    from tianshou.utils import BasicLogger
+    from tianshou.utils import TensorboardLogger
 
     from tianshou.env import DummyVectorEnv
     from tianshou.utils.net.common import Net
@@ -323,7 +323,7 @@ With the above preparation, we are close to the first learned agent. The followi
     log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    logger = BasicLogger(writer)
+    logger = TensorboardLogger(writer)
 
     # ======== callback functions used during training =========
 

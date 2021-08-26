@@ -8,7 +8,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector
-from tianshou.utils import BasicLogger
+from tianshou.utils import TensorboardLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.utils.net.common import Net
 from tianshou.trainer import offline_trainer
@@ -87,7 +87,7 @@ def test_discrete_bcq(args=get_args()):
 
     log_path = os.path.join(args.logdir, args.task, 'discrete_bcq')
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(writer, save_interval=args.save_interval)
+    logger = TensorboardLogger(writer, save_interval=args.save_interval)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
