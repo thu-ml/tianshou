@@ -83,7 +83,7 @@ class LazyLogger(BaseLogger):
     """A logger that does nothing. Used as the placeholder in trainer."""
 
     def __init__(self) -> None:
-        super().__init__(None)  # type: ignore
+        super().__init__(None)
 
     def write(self, key: str, x: int, y: WRITE_TYPE, **kwargs: Any) -> None:
         """The LazyLogger writes nothing."""

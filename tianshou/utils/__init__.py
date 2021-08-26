@@ -1,7 +1,9 @@
 from tianshou.utils.config import tqdm_config
 from tianshou.utils.statistics import MovAvg, RunningMeanStd
-from tianshou.utils.logger import TensorboardLogger, LazyLogger, BaseLogger, \
-    WandBLogger
+from tianshou.utils.logger.base import BaseLogger, LazyLogger
+from tianshou.utils.logger.tensorboard import TensorboardLogger
+from tianshou.utils.logger.wandb import WandBLogger
+
 
 __all__ = [
     "MovAvg",

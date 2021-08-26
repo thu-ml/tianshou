@@ -1,4 +1,6 @@
 from tianshou.utils import BaseLogger
+from tianshou.utils.logger.base import WRITE_TYPE
+from typing import Any
 import wandb
 
 
@@ -38,7 +40,7 @@ class WandBLogger(BaseLogger):
         self.last_log_test_step = -1
         self.last_log_update_step = -1
 
-    def write(self, key, x, y, **kwargs):
+    def write(self, key: str, x: int, y: WRITE_TYPE, **kwargs: Any) -> None:
         pass
 
     def log_train_data(self, collect_result: dict, step: int) -> None:
