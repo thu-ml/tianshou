@@ -5,7 +5,8 @@ import wandb
 
 
 class WandBLogger(BaseLogger):
-    """Weights and Biases logger that sends data to https://www.wandb.com/
+    """Weights and Biases logger that sends data to Weights and Biases.
+
     Creates three panels with plots: train, test and update.
     Make sure to select the correct access for each panel in weights and biases:
 
@@ -25,6 +26,7 @@ class WandBLogger(BaseLogger):
     :param int test_interval: the log interval in log_test_data(). Default to 1.
     :param int update_interval: the log interval in log_update_data().
         Default to 1000."""
+
     def __init__(
         self,
         train_interval: int = 1000,
