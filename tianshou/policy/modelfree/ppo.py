@@ -139,7 +139,7 @@ class PPOPolicy(A2CPolicy):
                 loss.backward()
                 if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
-                        list(self.actor.parameters()) + list(self.critic.parameters()),
+                        set(self.actor.parameters()).union(self.critic.parameters()),
                         max_norm=self._grad_norm)
                 self.optim.step()
                 clip_losses.append(clip_loss.item())
