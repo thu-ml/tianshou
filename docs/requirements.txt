@@ -1,7 +1,8 @@
 gym
-tqdm
-torch
 numba
-tensorboard
+numpy>=1.20
 sphinx<4
 sphinxcontrib-bibtex
+tensorboard
+torch
+tqdm

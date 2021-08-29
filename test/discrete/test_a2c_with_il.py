@@ -75,7 +75,7 @@ def test_a2c_with_il(args=get_args()):
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
     critic = Critic(net, device=args.device).to(args.device)
     optim = torch.optim.Adam(
-        list(actor.parameters()) + list(critic.parameters()), lr=args.lr)
+        set(actor.parameters()).union(critic.parameters()), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
         actor, critic, optim, dist,
