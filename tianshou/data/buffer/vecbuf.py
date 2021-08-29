@@ -55,3 +55,7 @@ class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
             PrioritizedReplayBuffer(size, **kwargs) for _ in range(buffer_num)
         ]
         super().__init__(buffer_list)
+
+    def set_beta(self, beta: float) -> None:
+        for buffer in self.buffers:
+            buffer.set_beta(beta)
