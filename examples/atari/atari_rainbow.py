@@ -7,7 +7,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import RainbowPolicy
-from tianshou.utils import BasicLogger
+from tianshou.utils import TensorboardLogger
 from tianshou.env import SubprocVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
@@ -121,7 +121,7 @@ def test_rainbow(args=get_args()):
         f'seed_{args.seed}_{datetime.datetime.now().strftime("%m%d-%H%M%S")}')
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    logger = BasicLogger(writer)
+    logger = TensorboardLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))

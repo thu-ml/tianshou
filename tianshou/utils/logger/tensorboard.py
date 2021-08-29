@@ -1,6 +1,9 @@
-from torch.utils.tensorboard import SummaryWriter
+import warnings
 from typing import Any, Tuple, Callable, Optional
+
+from torch.utils.tensorboard import SummaryWriter
 from tensorboard.backend.event_processing import event_accumulator
+
 from tianshou.utils.logger.base import BaseLogger, WRITE_TYPE
 
 
@@ -120,3 +123,16 @@ class TensorboardLogger(BaseLogger):
             env_step = 0
 
         return epoch, env_step, gradient_step
+
+
+class BasicLogger(TensorboardLogger):
+    """BasicLogger has changed its name to TensorboardLogger in #427.
+
+    This class is for compatibility.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        warnings.warn(
+            "BasicLogger has renamed to TensorboardLogger in #427.",
+            DeprecationWarning)
+        super().__init__(*args, **kwargs)
