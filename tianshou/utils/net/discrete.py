@@ -307,3 +307,83 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
             with torch.no_grad():
                 quantiles_tau = self._compute_quantiles(logits, taus[:, 1:-1])
         return (quantiles, fractions, quantiles_tau), h
+
+
+class NoisyLinear(nn.Module):
+    """Implementation of Noisy Networks. arXiv:1706.10295.
+
+    :param int in_features: the number of input features.
+    :param int out_features: the number of output features.
+    :param float noisy_std: initial standard deviation of noisy linear layers.
+
+    .. note::
+
+        Adapted from https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master
+        /fqf_iqn_qrdqn/network.py .
+    """
+
+    def __init__(
+        self, in_features: int, out_features: int, noisy_std: float = 0.5
+    ) -> None:
+        super().__init__()
+
+        # Learnable parameters.
+        self.mu_W = nn.Parameter(
+            torch.FloatTensor(out_features, in_features))
+        self.sigma_W = nn.Parameter(
+            torch.FloatTensor(out_features, in_features))
+        self.mu_bias = nn.Parameter(torch.FloatTensor(out_features))
+        self.sigma_bias = nn.Parameter(torch.FloatTensor(out_features))
+
+        # Factorized noise parameters.
+        self.register_buffer('eps_p', torch.FloatTensor(in_features))
+        self.register_buffer('eps_q', torch.FloatTensor(out_features))
+
+        self.in_features = in_features
+        self.out_features = out_features
+        self.sigma = noisy_std
+
+        self.reset()
+        self.sample()
+
+    def reset(self) -> None:
+        bound = 1 / np.sqrt(self.in_features)
+        self.mu_W.data.uniform_(-bound, bound)
+        self.mu_bias.data.uniform_(-bound, bound)
+        self.sigma_W.data.fill_(self.sigma / np.sqrt(self.in_features))
+        self.sigma_bias.data.fill_(self.sigma / np.sqrt(self.in_features))
+
+    def f(self, x: torch.Tensor) -> torch.Tensor:
+        x = torch.randn(x.size(0), device=x.device)
+        return x.sign().mul_(x.abs().sqrt_())
+
+    def sample(self) -> None:
+        self.eps_p.copy_(self.f(self.eps_p))  # type: ignore
+        self.eps_q.copy_(self.f(self.eps_q))  # type: ignore
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self.training:
+            weight = self.mu_W + self.sigma_W * (
+                self.eps_q.ger(self.eps_p)  # type: ignore
+            )
+            bias = self.mu_bias + self.sigma_bias * self.eps_q.clone()  # type: ignore
+        else:
+            weight = self.mu_W
+            bias = self.mu_bias
+
+        return F.linear(x, weight, bias)
+
+
+def sample_noise(model: nn.Module) -> bool:
+    """Sample the random noises of NoisyLinear modules in the model.
+
+    :param model: a PyTorch module which may have NoisyLinear submodules.
+    :returns: True if model has at least one NoisyLinear submodule;
+        otherwise, False.
+    """
+    done = False
+    for m in model.modules():
+        if isinstance(m, NoisyLinear):
+            m.sample()
+            done = True
+    return done
