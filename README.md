@@ -192,7 +192,7 @@ buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
 step_per_epoch, step_per_collect = 10000, 10
 writer = SummaryWriter('log/dqn')  # tensorboard is also supported!
-logger = ts.utils.BasicLogger(writer)
+logger = ts.utils.TensorboardLogger(writer)
 ```
 
 Make environments:

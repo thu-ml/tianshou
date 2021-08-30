@@ -7,7 +7,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.policy import DQNPolicy
-from tianshou.utils import BasicLogger
+from tianshou.utils import TensorboardLogger
 from tianshou.env import DummyVectorEnv
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils.net.common import Recurrent
@@ -78,7 +78,7 @@ def test_drqn(args=get_args()):
     # log
     log_path = os.path.join(args.logdir, args.task, 'drqn')
     writer = SummaryWriter(log_path)
-    logger = BasicLogger(writer)
+    logger = TensorboardLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))

@@ -148,9 +148,9 @@ The trainer supports `TensorBoard <https://www.tensorflow.org/tensorboard>`_ for
 ::
 
     from torch.utils.tensorboard import SummaryWriter
-    from tianshou.utils import BasicLogger
+    from tianshou.utils import TensorboardLogger
     writer = SummaryWriter('log/dqn')
-    logger = BasicLogger(writer)
+    logger = TensorboardLogger(writer)
 
 Pass the logger into the trainer, and the training result will be recorded into the TensorBoard.
 

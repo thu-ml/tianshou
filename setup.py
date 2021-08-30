@@ -63,6 +63,7 @@ setup(
             "pytest",
             "pytest-cov",
             "ray>=1.0.0",
+            "wandb>=0.12.0",
             "networkx",
             "mypy",
             "pydocstyle",

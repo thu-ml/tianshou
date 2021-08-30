@@ -22,7 +22,7 @@ class PPOPolicy(A2CPolicy):
     :param float dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
         where c > 1 is a constant indicating the lower bound.
         Default to 5.0 (set None if you do not want to use it).
-    :param bool value_clip: a parameter mentioned in arXiv:1811.02553 Sec. 4.1.
+    :param bool value_clip: a parameter mentioned in arXiv:1811.02553v3 Sec. 4.1.
         Default to True.
     :param bool advantage_normalization: whether to do per mini-batch advantage
         normalization. Default to True.

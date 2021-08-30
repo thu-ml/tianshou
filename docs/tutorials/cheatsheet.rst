@@ -40,8 +40,8 @@ This is related to `Issue 349 <https://github.com/thu-ml/tianshou/issues/349>`_.
 To resume training process from an existing checkpoint, you need to do the following things in the training process:
 
 1. Make sure you write ``save_checkpoint_fn`` which saves everything needed in the training process, i.e., policy, optim, buffer; pass it to trainer;
-2. Use ``BasicLogger`` which contains a tensorboard;
-3. To adjust the save frequency, specify ``save_interval`` when initializing BasicLogger.
+2. Use ``TensorboardLogger``;
+3. To adjust the save frequency, specify ``save_interval`` when initializing TensorboardLogger.
 
 And to successfully resume from a checkpoint:
 
