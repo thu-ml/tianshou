@@ -18,18 +18,14 @@ in the main directory. This installation is removable by
     $ python setup.py develop --uninstall
 
 
-PEP8 Code Style Check
----------------------
+PEP8 Code Style Check and Code Formatter
+----------------------------------------
 
-We follow PEP8 python code style. To check, in the main directory, run:
+We follow PEP8 python code style with flake8. To check, in the main directory, run:
 
 .. code-block:: bash
 
     $ make lint
-
-
-Code Formatter
---------------
 
 We use isort and yapf to format all codes. To format, in the main directory, run:
 
@@ -108,11 +104,11 @@ Documentation Generation Test
 
 We have the following three documentation tests:
 
-1. pydocstyle: test docstrings under ``tianshou/``. 
+1. pydocstyle: test docstrings under ``tianshou/``;
 
-2. doc8: test ReStructuredText formats. To check, in the main directory, run:
+2. doc8: test ReStructuredText formats;
 
-3. sphinx test: test if there is any errors/warnings when generating front-end html documentations. To check, in the main directory, run:
+3. sphinx test: test if there is any errors/warnings when generating front-end html documentations.
 
 To check, in the main directory, run:
 
