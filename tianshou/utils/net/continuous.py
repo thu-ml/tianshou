@@ -105,9 +105,17 @@ class Critic(nn.Module):
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Mapping: (s, a) -> logits -> Q(s, a)."""
-        s = torch.as_tensor(s, device=self.device, dtype=torch.float32).flatten(1)
+        s = torch.as_tensor(
+            s,
+            device=self.device,  # type: ignore
+            dtype=torch.float32,
+        ).flatten(1)
         if a is not None:
-            a = torch.as_tensor(a, device=self.device, dtype=torch.float32).flatten(1)
+            a = torch.as_tensor(
+                a,
+                device=self.device,  # type: ignore
+                dtype=torch.float32,
+            ).flatten(1)
             s = torch.cat([s, a], dim=1)
         logits, h = self.preprocess(s)
         logits = self.last(logits)
@@ -309,7 +317,11 @@ class RecurrentCritic(nn.Module):
         s, (h, c) = self.nn(s)
         s = s[:, -1]
         if a is not None:
-            a = torch.as_tensor(a, device=self.device, dtype=torch.float32)
+            a = torch.as_tensor(
+                a,
+                device=self.device,  # type: ignore
+                dtype=torch.float32,
+            )
             s = torch.cat([s, a], dim=1)
         s = self.fc2(s)
         return s
