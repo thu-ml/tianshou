@@ -20,6 +20,12 @@ jobs:
     - name: Lint with flake8
       run: |
         flake8 . --count --show-source --statistics
+    - name: yapf code formatter
+      run: |
+        yapf -r -d .
+    - name: isort code formatter
+      run: |
+        isort --check .
     - name: Type check
       run: |
         mypy

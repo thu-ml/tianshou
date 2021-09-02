@@ -60,6 +60,8 @@ setup(
             "sphinx_rtd_theme",
             "sphinxcontrib-bibtex",
             "flake8",
+            "yapf",
+            "isort",
             "pytest",
             "pytest-cov",
             "ray>=1.0.0",

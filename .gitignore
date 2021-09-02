@@ -147,3 +147,4 @@ MUJOCO_LOG.TXT
 *.swp
 *.pkl
 *.hdf5
+wandb/
