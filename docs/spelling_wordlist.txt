@@ -72,8 +72,9 @@ subclasses
 submodules
 tfevent
 dirichlet
-webpages
-docstrings
+docstring
+webpage
+formatter
 num
 py
 pythonic

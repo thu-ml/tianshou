@@ -39,7 +39,7 @@ check-docstyle:
 	$(call check_install, doc8)
 	$(call check_install, sphinx)
 	$(call check_install, sphinx_rtd_theme)
-	pydocstyle ${PROJECT_PATH} --convention=google && doc8 docs && cd docs && make html SPHINXOPTS="-W"
+	pydocstyle ${PROJECT_PATH} && doc8 docs && cd docs && make html SPHINXOPTS="-W"
 
 doc:
 	$(call check_install, sphinx)
