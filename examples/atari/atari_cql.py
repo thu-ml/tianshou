@@ -1,20 +1,20 @@
+import argparse
+import datetime
 import os
-import torch
 import pickle
 import pprint
-import datetime
-import argparse
+
 import numpy as np
-from torch.utils.tensorboard import SummaryWriter
-
-from tianshou.utils import TensorboardLogger
-from tianshou.env import SubprocVectorEnv
-from tianshou.trainer import offline_trainer
-from tianshou.policy import DiscreteCQLPolicy
-from tianshou.data import Collector, VectorReplayBuffer
-
+import torch
 from atari_network import QRDQN
 from atari_wrapper import wrap_deepmind
+from torch.utils.tensorboard import SummaryWriter
+
+from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.env import SubprocVectorEnv
+from tianshou.policy import DiscreteCQLPolicy
+from tianshou.trainer import offline_trainer
+from tianshou.utils import TensorboardLogger
 
 
 def get_args():
@@ -37,15 +37,19 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
     parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--watch", default=False, action="store_true",
-                        help="watch the play of pre-trained policy only")
+    parser.add_argument(
+        "--watch",
+        default=False,
+        action="store_true",
+        help="watch the play of pre-trained policy only"
+    )
     parser.add_argument("--log-interval", type=int, default=100)
     parser.add_argument(
-        "--load-buffer-name", type=str,
-        default="./expert_DQN_PongNoFrameskip-v4.hdf5")
+        "--load-buffer-name", type=str, default="./expert_DQN_PongNoFrameskip-v4.hdf5"
+    )
     parser.add_argument(
-        "--device", type=str,
-        default="cuda" if torch.cuda.is_available() else "cpu")
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+    )
     args = parser.parse_known_args()[0]
     return args
 
@@ -55,8 +59,12 @@ def make_atari_env(args):
 
 
 def make_atari_env_watch(args):
-    return wrap_deepmind(args.task, frame_stack=args.frames_stack,
-                         episode_life=False, clip_rewards=False)
+    return wrap_deepmind(
+        args.task,
+        frame_stack=args.frames_stack,
+        episode_life=False,
+        clip_rewards=False
+    )
 
 
 def test_discrete_cql(args=get_args()):
@@ -68,25 +76,29 @@ def test_discrete_cql(args=get_args()):
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
     # make environments
-    test_envs = SubprocVectorEnv([lambda: make_atari_env_watch(args)
-                                  for _ in range(args.test_num)])
+    test_envs = SubprocVectorEnv(
+        [lambda: make_atari_env_watch(args) for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = QRDQN(*args.state_shape, args.action_shape,
-                args.num_quantiles, args.device)
+    net = QRDQN(*args.state_shape, args.action_shape, args.num_quantiles, args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy = DiscreteCQLPolicy(
-        net, optim, args.gamma, args.num_quantiles, args.n_step,
-        args.target_update_freq, min_q_weight=args.min_q_weight
+        net,
+        optim,
+        args.gamma,
+        args.num_quantiles,
+        args.n_step,
+        args.target_update_freq,
+        min_q_weight=args.min_q_weight
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
-        policy.load_state_dict(torch.load(
-            args.resume_path, map_location=args.device))
+        policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
     assert os.path.exists(args.load_buffer_name), \
@@ -105,7 +117,8 @@ def test_discrete_cql(args=get_args()):
     # log
     log_path = os.path.join(
         args.logdir, args.task, 'cql',
-        f'seed_{args.seed}_{datetime.datetime.now().strftime("%m%d-%H%M%S")}')
+        f'seed_{args.seed}_{datetime.datetime.now().strftime("%m%d-%H%M%S")}'
+    )
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer, update_interval=args.log_interval)
@@ -124,8 +137,7 @@ def test_discrete_cql(args=get_args()):
         test_envs.seed(args.seed)
         print("Testing agent ...")
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num,
-                                        render=args.render)
+        result = test_collector.collect(n_episode=args.test_num, render=args.render)
         pprint.pprint(result)
         rew = result["rews"].mean()
         print(f'Mean reward (over {result["n/ep"]} episodes): {rew}')
@@ -135,9 +147,17 @@ def test_discrete_cql(args=get_args()):
         exit(0)
 
     result = offline_trainer(
-        policy, buffer, test_collector, args.epoch,
-        args.update_per_epoch, args.test_num, args.batch_size,
-        stop_fn=stop_fn, save_fn=save_fn, logger=logger)
+        policy,
+        buffer,
+        test_collector,
+        args.epoch,
+        args.update_per_epoch,
+        args.test_num,
+        args.batch_size,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger
+    )
 
     pprint.pprint(result)
     watch()

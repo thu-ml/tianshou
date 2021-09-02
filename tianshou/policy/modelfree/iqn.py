@@ -1,10 +1,11 @@
-import torch
-import numpy as np
-import torch.nn.functional as F
 from typing import Any, Dict, Optional, Union
 
-from tianshou.policy import QRDQNPolicy
+import numpy as np
+import torch
+import torch.nn.functional as F
+
 from tianshou.data import Batch, to_numpy
+from tianshou.policy import QRDQNPolicy
 
 
 class IQNPolicy(QRDQNPolicy):
@@ -31,7 +32,6 @@ class IQNPolicy(QRDQNPolicy):
         Please refer to :class:`~tianshou.policy.QRDQNPolicy` for more detailed
         explanation.
     """
-
     def __init__(
         self,
         model: torch.nn.Module,
@@ -45,8 +45,10 @@ class IQNPolicy(QRDQNPolicy):
         reward_normalization: bool = False,
         **kwargs: Any,
     ) -> None:
-        super().__init__(model, optim, discount_factor, sample_size, estimation_step,
-                         target_update_freq, reward_normalization, **kwargs)
+        super().__init__(
+            model, optim, discount_factor, sample_size, estimation_step,
+            target_update_freq, reward_normalization, **kwargs
+        )
         assert sample_size > 1, "sample_size should be greater than 1"
         assert online_sample_size > 1, "online_sample_size should be greater than 1"
         assert target_sample_size > 1, "target_sample_size should be greater than 1"
@@ -71,9 +73,8 @@ class IQNPolicy(QRDQNPolicy):
         model = getattr(self, model)
         obs = batch[input]
         obs_ = obs.obs if hasattr(obs, "obs") else obs
-        (logits, taus), h = model(
-            obs_, sample_size=sample_size, state=state, info=batch.info
-        )
+        (logits,
+         taus), h = model(obs_, sample_size=sample_size, state=state, info=batch.info)
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
@@ -92,9 +93,11 @@ class IQNPolicy(QRDQNPolicy):
         target_dist = batch.returns.unsqueeze(1)
         # calculate each element's difference between curr_dist and target_dist
         u = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
-        huber_loss = (u * (
-            taus.unsqueeze(2) - (target_dist - curr_dist).detach().le(0.).float()
-        ).abs()).sum(-1).mean(1)
+        huber_loss = (
+            u *
+            (taus.unsqueeze(2) -
+             (target_dist - curr_dist).detach().le(0.).float()).abs()
+        ).sum(-1).mean(1)
         loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130

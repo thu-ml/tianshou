@@ -1,20 +1,24 @@
-import os
-import torch
 import argparse
-import numpy as np
+import os
 from copy import deepcopy
 from typing import Optional, Tuple
+
+import numpy as np
+import torch
+from tic_tac_toe_env import TicTacToeEnv
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils import TensorboardLogger
-from tianshou.env import DummyVectorEnv
-from tianshou.utils.net.common import Net
-from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.policy import BasePolicy, DQNPolicy, RandomPolicy, \
-    MultiAgentPolicyManager
-
-from tic_tac_toe_env import TicTacToeEnv
+from tianshou.env import DummyVectorEnv
+from tianshou.policy import (
+    BasePolicy,
+    DQNPolicy,
+    MultiAgentPolicyManager,
+    RandomPolicy,
+)
+from tianshou.trainer import offpolicy_trainer
+from tianshou.utils import TensorboardLogger
+from tianshou.utils.net.common import Net
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -24,8 +28,9 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--eps-train', type=float, default=0.1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.9,
-                        help='a smaller gamma favors earlier win')
+    parser.add_argument(
+        '--gamma', type=float, default=0.9, help='a smaller gamma favors earlier win'
+    )
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=320)
     parser.add_argument('--epoch', type=int, default=20)
@@ -33,31 +38,49 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--step-per-collect', type=int, default=10)
     parser.add_argument('--update-per-step', type=float, default=0.1)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[128, 128, 128, 128])
+    parser.add_argument(
+        '--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128]
+    )
     parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.1)
     parser.add_argument('--board-size', type=int, default=6)
     parser.add_argument('--win-size', type=int, default=4)
-    parser.add_argument('--win-rate', type=float, default=0.9,
-                        help='the expected winning rate')
-    parser.add_argument('--watch', default=False, action='store_true',
-                        help='no training, '
-                             'watch the play of pre-trained models')
-    parser.add_argument('--agent-id', type=int, default=2,
-                        help='the learned agent plays as the'
-                             ' agent_id-th player. Choices are 1 and 2.')
-    parser.add_argument('--resume-path', type=str, default='',
-                        help='the path of agent pth file '
-                             'for resuming from a pre-trained agent')
-    parser.add_argument('--opponent-path', type=str, default='',
-                        help='the path of opponent agent pth file '
-                             'for resuming from a pre-trained agent')
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        '--win-rate', type=float, default=0.9, help='the expected winning rate'
+    )
+    parser.add_argument(
+        '--watch',
+        default=False,
+        action='store_true',
+        help='no training, '
+        'watch the play of pre-trained models'
+    )
+    parser.add_argument(
+        '--agent-id',
+        type=int,
+        default=2,
+        help='the learned agent plays as the'
+        ' agent_id-th player. Choices are 1 and 2.'
+    )
+    parser.add_argument(
+        '--resume-path',
+        type=str,
+        default='',
+        help='the path of agent pth file '
+        'for resuming from a pre-trained agent'
+    )
+    parser.add_argument(
+        '--opponent-path',
+        type=str,
+        default='',
+        help='the path of opponent agent pth file '
+        'for resuming from a pre-trained agent'
+    )
+    parser.add_argument(
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+    )
     return parser
 
 
@@ -77,14 +100,21 @@ def get_agents(
     args.action_shape = env.action_space.shape or env.action_space.n
     if agent_learn is None:
         # model
-        net = Net(args.state_shape, args.action_shape,
-                  hidden_sizes=args.hidden_sizes, device=args.device
-                  ).to(args.device)
+        net = Net(
+            args.state_shape,
+            args.action_shape,
+            hidden_sizes=args.hidden_sizes,
+            device=args.device
+        ).to(args.device)
         if optim is None:
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
         agent_learn = DQNPolicy(
-            net, optim, args.gamma, args.n_step,
-            target_update_freq=args.target_update_freq)
+            net,
+            optim,
+            args.gamma,
+            args.n_step,
+            target_update_freq=args.target_update_freq
+        )
         if args.resume_path:
             agent_learn.load_state_dict(torch.load(args.resume_path))
 
@@ -111,6 +141,7 @@ def train_agent(
 ) -> Tuple[dict, BasePolicy]:
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
+
     train_envs = DummyVectorEnv([env_func for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([env_func for _ in range(args.test_num)])
     # seed
@@ -120,14 +151,16 @@ def train_agent(
     test_envs.seed(args.seed)
 
     policy, optim = get_agents(
-        args, agent_learn=agent_learn,
-        agent_opponent=agent_opponent, optim=optim)
+        args, agent_learn=agent_learn, agent_opponent=agent_opponent, optim=optim
+    )
 
     # collector
     train_collector = Collector(
-        policy, train_envs,
+        policy,
+        train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True)
+        exploration_noise=True
+    )
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
@@ -142,10 +175,9 @@ def train_agent(
             model_save_path = args.model_save_path
         else:
             model_save_path = os.path.join(
-                args.logdir, 'tic_tac_toe', 'dqn', 'policy.pth')
-        torch.save(
-            policy.policies[args.agent_id - 1].state_dict(),
-            model_save_path)
+                args.logdir, 'tic_tac_toe', 'dqn', 'policy.pth'
+            )
+        torch.save(policy.policies[args.agent_id - 1].state_dict(), model_save_path)
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.win_rate
@@ -161,11 +193,23 @@ def train_agent(
 
     # trainer
     result = offpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, save_fn=save_fn, update_per_step=args.update_per_step,
-        logger=logger, test_in_train=False, reward_metric=reward_metric)
+        policy,
+        train_collector,
+        test_collector,
+        args.epoch,
+        args.step_per_epoch,
+        args.step_per_collect,
+        args.test_num,
+        args.batch_size,
+        train_fn=train_fn,
+        test_fn=test_fn,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        update_per_step=args.update_per_step,
+        logger=logger,
+        test_in_train=False,
+        reward_metric=reward_metric
+    )
 
     return result, policy.policies[args.agent_id - 1]
 
@@ -177,7 +221,8 @@ def watch(
 ) -> None:
     env = TicTacToeEnv(args.board_size, args.win_size)
     policy, optim = get_agents(
-        args, agent_learn=agent_learn, agent_opponent=agent_opponent)
+        args, agent_learn=agent_learn, agent_opponent=agent_opponent
+    )
     policy.eval()
     policy.policies[args.agent_id - 1].set_eps(args.eps_test)
     collector = Collector(policy, env, exploration_noise=True)

@@ -1,12 +1,12 @@
+from abc import ABC, abstractmethod
+from typing import Any, Callable, List, Optional, Tuple
+
 import gym
 import numpy as np
-from abc import ABC, abstractmethod
-from typing import Any, List, Tuple, Optional, Callable
 
 
 class EnvWorker(ABC):
     """An abstract worker for an environment."""
-
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self._env_fn = env_fn
         self.is_closed = False
@@ -43,7 +43,9 @@ class EnvWorker(ABC):
 
     @staticmethod
     def wait(
-        workers: List["EnvWorker"], wait_num: int, timeout: Optional[float] = None
+        workers: List["EnvWorker"],
+        wait_num: int,
+        timeout: Optional[float] = None
     ) -> List["EnvWorker"]:
         """Given a list of workers, return those ready ones."""
         raise NotImplementedError

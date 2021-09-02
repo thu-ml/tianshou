@@ -1,7 +1,8 @@
-import torch
-import numpy as np
 from numbers import Number
 from typing import List, Union
+
+import numpy as np
+import torch
 
 
 class MovAvg(object):
@@ -22,7 +23,6 @@ class MovAvg(object):
         >>> print(f'{stat.mean():.2f}±{stat.std():.2f}')
         6.50±1.12
     """
-
     def __init__(self, size: int = 100) -> None:
         super().__init__()
         self.size = size
@@ -70,9 +70,10 @@ class RunningMeanStd(object):
 
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     """
-
     def __init__(
-        self, mean: Union[float, np.ndarray] = 0.0, std: Union[float, np.ndarray] = 1.0
+        self,
+        mean: Union[float, np.ndarray] = 0.0,
+        std: Union[float, np.ndarray] = 1.0
     ) -> None:
         self.mean, self.var = mean, std
         self.count = 0
@@ -88,7 +89,7 @@ class RunningMeanStd(object):
         new_mean = self.mean + delta * batch_count / total_count
         m_a = self.var * self.count
         m_b = batch_var * batch_count
-        m_2 = m_a + m_b + delta ** 2 * self.count * batch_count / total_count
+        m_2 = m_a + m_b + delta**2 * self.count * batch_count / total_count
         new_var = m_2 / total_count
 
         self.mean, self.var = new_mean, new_var

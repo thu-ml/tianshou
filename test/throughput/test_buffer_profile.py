@@ -1,8 +1,10 @@
 import sys
-import gym
 import time
-import tqdm
+
+import gym
 import numpy as np
+import tqdm
+
 from tianshou.data import Batch, ReplayBuffer, VectorReplayBuffer
 
 

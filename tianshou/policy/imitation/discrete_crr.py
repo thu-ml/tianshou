@@ -1,11 +1,12 @@
-import torch
 from copy import deepcopy
 from typing import Any, Dict
+
+import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
-from tianshou.policy.modelfree.pg import PGPolicy
 from tianshou.data import Batch, to_torch, to_torch_as
+from tianshou.policy.modelfree.pg import PGPolicy
 
 
 class DiscreteCRRPolicy(PGPolicy):
@@ -33,7 +34,6 @@ class DiscreteCRRPolicy(PGPolicy):
         Please refer to :class:`~tianshou.policy.PGPolicy` for more detailed
         explanation.
     """
-
     def __init__(
         self,
         actor: torch.nn.Module,

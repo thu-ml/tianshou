@@ -1,9 +1,9 @@
-import torch
 import numpy as np
+import torch
 
-from tianshou.utils.net.common import MLP, Net
-from tianshou.utils import MovAvg, RunningMeanStd
 from tianshou.exploration import GaussianNoise, OUNoise
+from tianshou.utils import MovAvg, RunningMeanStd
+from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
 
 
@@ -20,14 +20,14 @@ def test_moving_average():
     stat = MovAvg(10)
     assert np.allclose(stat.get(), 0)
     assert np.allclose(stat.mean(), 0)
-    assert np.allclose(stat.std() ** 2, 0)
+    assert np.allclose(stat.std()**2, 0)
     stat.add(torch.tensor([1]))
     stat.add(np.array([2]))
     stat.add([3, 4])
     stat.add(5.)
     assert np.allclose(stat.get(), 3)
     assert np.allclose(stat.mean(), 3)
-    assert np.allclose(stat.std() ** 2, 2)
+    assert np.allclose(stat.std()**2, 2)
 
 
 def test_rms():
@@ -55,23 +55,36 @@ def test_net():
     action_shape = (5, )
     data = torch.rand([bsz, *state_shape])
     expect_output_shape = [bsz, *action_shape]
-    net = Net(state_shape, action_shape, hidden_sizes=[128, 128],
-              norm_layer=torch.nn.LayerNorm, activation=None)
+    net = Net(
+        state_shape,
+        action_shape,
+        hidden_sizes=[128, 128],
+        norm_layer=torch.nn.LayerNorm,
+        activation=None
+    )
     assert list(net(data)[0].shape) == expect_output_shape
     assert str(net).count("LayerNorm") == 2
     assert str(net).count("ReLU") == 0
     Q_param = V_param = {"hidden_sizes": [128, 128]}
-    net = Net(state_shape, action_shape, hidden_sizes=[128, 128],
-              dueling_param=(Q_param, V_param))
+    net = Net(
+        state_shape,
+        action_shape,
+        hidden_sizes=[128, 128],
+        dueling_param=(Q_param, V_param)
+    )
     assert list(net(data)[0].shape) == expect_output_shape
     # concat
-    net = Net(state_shape, action_shape, hidden_sizes=[128],
-              concat=True)
+    net = Net(state_shape, action_shape, hidden_sizes=[128], concat=True)
     data = torch.rand([bsz, np.prod(state_shape) + np.prod(action_shape)])
     expect_output_shape = [bsz, 128]
     assert list(net(data)[0].shape) == expect_output_shape
-    net = Net(state_shape, action_shape, hidden_sizes=[128],
-              concat=True, dueling_param=(Q_param, V_param))
+    net = Net(
+        state_shape,
+        action_shape,
+        hidden_sizes=[128],
+        concat=True,
+        dueling_param=(Q_param, V_param)
+    )
     assert list(net(data)[0].shape) == expect_output_shape
     # recurrent actor/critic
     data = torch.rand([bsz, *state_shape]).flatten(1)

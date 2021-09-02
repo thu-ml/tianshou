@@ -12,13 +12,20 @@ from tianshou.data import Batch
 def data():
     print("Initialising data...")
     np.random.seed(0)
-    batch_set = [Batch(a=[j for j in np.arange(1e3)],
-                       b={'b1': (3.14, 3.14), 'b2': np.arange(1e3)},
-                       c=i) for i in np.arange(int(1e4))]
+    batch_set = [
+        Batch(
+            a=[j for j in np.arange(1e3)],
+            b={
+                'b1': (3.14, 3.14),
+                'b2': np.arange(1e3)
+            },
+            c=i
+        ) for i in np.arange(int(1e4))
+    ]
     batch0 = Batch(
         a=np.ones((3, 4), dtype=np.float64),
         b=Batch(
-            c=np.ones((1,), dtype=np.float64),
+            c=np.ones((1, ), dtype=np.float64),
             d=torch.ones((3, 3, 3), dtype=torch.float32),
             e=list(range(3))
         )
@@ -26,19 +33,25 @@ def data():
     batchs1 = [copy.deepcopy(batch0) for _ in np.arange(1e4)]
     batchs2 = [copy.deepcopy(batch0) for _ in np.arange(1e4)]
     batch_len = int(1e4)
-    batch3 = Batch(obs=[np.arange(20) for _ in np.arange(batch_len)],
-                   reward=np.arange(batch_len))
-    indexs = np.random.choice(batch_len,
-                              size=batch_len // 10, replace=False)
-    slice_dict = {'obs': [np.arange(20)
-                          for _ in np.arange(batch_len // 10)],
-                  'reward': np.arange(batch_len // 10)}
-    dict_set = [{'obs': np.arange(20), 'info': "this is info", 'reward': 0}
-                for _ in np.arange(1e2)]
+    batch3 = Batch(
+        obs=[np.arange(20) for _ in np.arange(batch_len)], reward=np.arange(batch_len)
+    )
+    indexs = np.random.choice(batch_len, size=batch_len // 10, replace=False)
+    slice_dict = {
+        'obs': [np.arange(20) for _ in np.arange(batch_len // 10)],
+        'reward': np.arange(batch_len // 10)
+    }
+    dict_set = [
+        {
+            'obs': np.arange(20),
+            'info': "this is info",
+            'reward': 0
+        } for _ in np.arange(1e2)
+    ]
     batch4 = Batch(
         a=np.ones((10000, 4), dtype=np.float64),
         b=Batch(
-            c=np.ones((1,), dtype=np.float64),
+            c=np.ones((1, ), dtype=np.float64),
             d=torch.ones((1000, 1000), dtype=torch.float32),
             e=np.arange(1000)
         )

@@ -1,17 +1,18 @@
-import os
-import gym
-import torch
-import pprint
 import argparse
+import os
+import pprint
+
+import gym
 import numpy as np
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import PPOPolicy
-from tianshou.utils import TensorboardLogger
-from tianshou.env import DummyVectorEnv
-from tianshou.utils.net.common import Net
-from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.env import DummyVectorEnv
+from tianshou.policy import PPOPolicy
+from tianshou.trainer import onpolicy_trainer
+from tianshou.utils import TensorboardLogger
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor, Critic
 
 
@@ -33,8 +34,8 @@ def get_args():
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+    )
     # ppo special
     parser.add_argument('--vf-coef', type=float, default=0.5)
     parser.add_argument('--ent-coef', type=float, default=0.0)
@@ -57,18 +58,19 @@ def test_ppo(args=get_args()):
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)])
+        [lambda: gym.make(args.task) for _ in range(args.training_num)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: gym.make(args.task) for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
-              device=args.device)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
     critic = Critic(net, device=args.device).to(args.device)
     # orthogonal initialization
@@ -77,10 +79,14 @@ def test_ppo(args=get_args()):
             torch.nn.init.orthogonal_(m.weight)
             torch.nn.init.zeros_(m.bias)
     optim = torch.optim.Adam(
-        set(actor.parameters()).union(critic.parameters()), lr=args.lr)
+        set(actor.parameters()).union(critic.parameters()), lr=args.lr
+    )
     dist = torch.distributions.Categorical
     policy = PPOPolicy(
-        actor, critic, optim, dist,
+        actor,
+        critic,
+        optim,
+        dist,
         discount_factor=args.gamma,
         max_grad_norm=args.max_grad_norm,
         eps_clip=args.eps_clip,
@@ -93,11 +99,12 @@ def test_ppo(args=get_args()):
         action_space=env.action_space,
         deterministic_eval=True,
         advantage_normalization=args.norm_adv,
-        recompute_advantage=args.recompute_adv)
+        recompute_advantage=args.recompute_adv
+    )
     # collector
     train_collector = Collector(
-        policy, train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)))
+        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs))
+    )
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'ppo')
@@ -112,10 +119,19 @@ def test_ppo(args=get_args()):
 
     # trainer
     result = onpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.repeat_per_collect, args.test_num, args.batch_size,
-        step_per_collect=args.step_per_collect, stop_fn=stop_fn, save_fn=save_fn,
-        logger=logger)
+        policy,
+        train_collector,
+        test_collector,
+        args.epoch,
+        args.step_per_epoch,
+        args.repeat_per_collect,
+        args.test_num,
+        args.batch_size,
+        step_per_collect=args.step_per_collect,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger
+    )
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':

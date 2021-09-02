@@ -14,9 +14,9 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import sphinx_rtd_theme
 
 import tianshou
-import sphinx_rtd_theme
 
 # Get the version string
 version = tianshou.__version__
@@ -29,7 +29,6 @@ author = "Tianshou contributors"
 
 # The full version, including alpha/beta/rc tags
 release = version
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -59,7 +58,8 @@ master_doc = "index"
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 autodoc_default_options = {
-    "special-members": ", ".join(
+    "special-members":
+    ", ".join(
         [
             "__len__",
             "__call__",

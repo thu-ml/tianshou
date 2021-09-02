@@ -1,11 +1,12 @@
-import torch
-import numpy as np
-from torch import nn
-import torch.nn.functional as F
-from typing import Any, Dict, List, Type, Optional
+from typing import Any, Dict, List, Optional, Type
 
-from tianshou.policy import PGPolicy
+import numpy as np
+import torch
+import torch.nn.functional as F
+from torch import nn
+
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.policy import PGPolicy
 
 
 class A2CPolicy(PGPolicy):
@@ -47,7 +48,6 @@ class A2CPolicy(PGPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
     def __init__(
         self,
         actor: torch.nn.Module,
@@ -96,8 +96,14 @@ class A2CPolicy(PGPolicy):
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps)
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps)
         unnormalized_returns, advantages = self.compute_episodic_return(
-            batch, buffer, indices, v_s_, v_s,
-            gamma=self._gamma, gae_lambda=self._lambda)
+            batch,
+            buffer,
+            indices,
+            v_s_,
+            v_s,
+            gamma=self._gamma,
+            gae_lambda=self._lambda
+        )
         if self._rew_norm:
             batch.returns = unnormalized_returns / \
                 np.sqrt(self.ret_rms.var + self._eps)
@@ -130,7 +136,8 @@ class A2CPolicy(PGPolicy):
                 if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
                         set(self.actor.parameters()).union(self.critic.parameters()),
-                        max_norm=self._grad_norm)
+                        max_norm=self._grad_norm
+                    )
                 self.optim.step()
                 actor_losses.append(actor_loss.item())
                 vf_losses.append(vf_loss.item())

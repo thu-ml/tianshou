@@ -1,15 +1,16 @@
-import os
-import gym
-import torch
-import pprint
 import argparse
+import os
+import pprint
+
+import gym
 import numpy as np
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import PSRLPolicy
-from tianshou.trainer import onpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
+from tianshou.policy import PSRLPolicy
+from tianshou.trainer import onpolicy_trainer
 
 
 def get_args():
@@ -42,10 +43,12 @@ def test_psrl(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)])
+        [lambda: gym.make(args.task) for _ in range(args.training_num)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: gym.make(args.task) for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -59,12 +62,15 @@ def test_psrl(args=get_args()):
     rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)
     policy = PSRLPolicy(
         trans_count_prior, rew_mean_prior, rew_std_prior, args.gamma, args.eps,
-        args.add_done_loop)
+        args.add_done_loop
+    )
     # collector
     train_collector = Collector(
-        policy, train_envs,
+        policy,
+        train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True)
+        exploration_noise=True
+    )
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'psrl')
@@ -80,11 +86,19 @@ def test_psrl(args=get_args()):
     train_collector.collect(n_step=args.buffer_size, random=True)
     # trainer, test it without logger
     result = onpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, 1, args.test_num, 0,
-        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn,
+        policy,
+        train_collector,
+        test_collector,
+        args.epoch,
+        args.step_per_epoch,
+        1,
+        args.test_num,
+        0,
+        episode_per_collect=args.episode_per_collect,
+        stop_fn=stop_fn,
         # logger=logger,
-        test_in_train=False)
+        test_in_train=False
+    )
 
     if __name__ == '__main__':
         pprint.pprint(result)

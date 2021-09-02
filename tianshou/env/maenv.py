@@ -1,7 +1,8 @@
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Tuple
+
 import gym
 import numpy as np
-from typing import Any, Dict, Tuple
-from abc import ABC, abstractmethod
 
 
 class MultiAgentEnv(ABC, gym.Env):
@@ -21,7 +22,6 @@ class MultiAgentEnv(ABC, gym.Env):
     The available action's mask is set to 1, otherwise it is set to 0. Further
     usage can be found at :ref:`marl_example`.
     """
-
     def __init__(self) -> None:
         pass
 

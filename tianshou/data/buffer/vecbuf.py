@@ -1,8 +1,13 @@
-import numpy as np
 from typing import Any
 
-from tianshou.data import ReplayBuffer, ReplayBufferManager
-from tianshou.data import PrioritizedReplayBuffer, PrioritizedReplayBufferManager
+import numpy as np
+
+from tianshou.data import (
+    PrioritizedReplayBuffer,
+    PrioritizedReplayBufferManager,
+    ReplayBuffer,
+    ReplayBufferManager,
+)
 
 
 class VectorReplayBuffer(ReplayBufferManager):
@@ -22,7 +27,6 @@ class VectorReplayBuffer(ReplayBufferManager):
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
-
     def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
         assert buffer_num > 0
         size = int(np.ceil(total_size / buffer_num))
@@ -47,7 +51,6 @@ class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
-
     def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
         assert buffer_num > 0
         size = int(np.ceil(total_size / buffer_num))

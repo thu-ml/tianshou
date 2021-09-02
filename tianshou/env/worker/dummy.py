@@ -1,13 +1,13 @@
+from typing import Any, Callable, List, Optional
+
 import gym
 import numpy as np
-from typing import Any, List, Callable, Optional
 
 from tianshou.env.worker import EnvWorker
 
 
 class DummyEnvWorker(EnvWorker):
     """Dummy worker used in sequential vector environments."""
-
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self.env = env_fn()
         super().__init__(env_fn)

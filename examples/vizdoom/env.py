@@ -1,4 +1,5 @@
 import os
+
 import cv2
 import gym
 import numpy as np
@@ -33,9 +34,7 @@ def battle_button_comb():
 
 
 class Env(gym.Env):
-    def __init__(
-        self, cfg_path, frameskip=4, res=(4, 40, 60), save_lmp=False
-    ):
+    def __init__(self, cfg_path, frameskip=4, res=(4, 40, 60), save_lmp=False):
         super().__init__()
         self.save_lmp = save_lmp
         self.health_setting = "battle" in cfg_path
@@ -75,8 +74,7 @@ class Env(gym.Env):
         self.obs_buffer = np.zeros(self.res, dtype=np.uint8)
         self.get_obs()
         self.health = self.game.get_game_variable(vzd.GameVariable.HEALTH)
-        self.killcount = self.game.get_game_variable(
-            vzd.GameVariable.KILLCOUNT)
+        self.killcount = self.game.get_game_variable(vzd.GameVariable.KILLCOUNT)
         self.ammo2 = self.game.get_game_variable(vzd.GameVariable.AMMO2)
         return self.obs_buffer
 

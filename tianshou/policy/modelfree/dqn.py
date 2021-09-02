@@ -1,10 +1,11 @@
-import torch
-import numpy as np
 from copy import deepcopy
-from typing import Any, Dict, Union, Optional
+from typing import Any, Dict, Optional, Union
 
+import numpy as np
+import torch
+
+from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 from tianshou.policy import BasePolicy
-from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
 
 
 class DQNPolicy(BasePolicy):
@@ -31,7 +32,6 @@ class DQNPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
     def __init__(
         self,
         model: torch.nn.Module,
@@ -96,8 +96,9 @@ class DQNPolicy(BasePolicy):
         :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
         """
         batch = self.compute_nstep_return(
-            batch, buffer, indices, self._target_q,
-            self._gamma, self._n_step, self._rew_norm)
+            batch, buffer, indices, self._target_q, self._gamma, self._n_step,
+            self._rew_norm
+        )
         return batch
 
     def compute_q_value(
@@ -173,9 +174,8 @@ class DQNPolicy(BasePolicy):
         self._iter += 1
         return {"loss": loss.item()}
 
-    def exploration_noise(
-        self, act: Union[np.ndarray, Batch], batch: Batch
-    ) -> Union[np.ndarray, Batch]:
+    def exploration_noise(self, act: Union[np.ndarray, Batch],
+                          batch: Batch) -> Union[np.ndarray, Batch]:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps

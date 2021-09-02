@@ -1,10 +1,11 @@
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import h5py
 import numpy as np
-from typing import Any, Dict, List, Tuple, Union, Optional
 
 from tianshou.data import Batch
-from tianshou.data.utils.converter import to_hdf5, from_hdf5
-from tianshou.data.batch import _create_value, _alloc_by_keys_diff
+from tianshou.data.batch import _alloc_by_keys_diff, _create_value
+from tianshou.data.utils.converter import from_hdf5, to_hdf5
 
 
 class ReplayBuffer:
@@ -81,9 +82,8 @@ class ReplayBuffer:
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
-        assert (
-            key not in self._reserved_keys
-        ), "key '{}' is reserved and cannot be assigned".format(key)
+        assert (key not in self._reserved_keys
+                ), "key '{}' is reserved and cannot be assigned".format(key)
         super().__setattr__(key, value)
 
     def save_hdf5(self, path: str) -> None:
@@ -160,9 +160,8 @@ class ReplayBuffer:
         self._meta[to_indices] = buffer._meta[from_indices]
         return to_indices
 
-    def _add_index(
-        self, rew: Union[float, np.ndarray], done: bool
-    ) -> Tuple[int, Union[float, np.ndarray], int, int]:
+    def _add_index(self, rew: Union[float, np.ndarray],
+                   done: bool) -> Tuple[int, Union[float, np.ndarray], int, int]:
         """Maintain the buffer's state after adding one data batch.
 
         Return (index_to_be_modified, episode_reward, episode_length,
@@ -183,7 +182,9 @@ class ReplayBuffer:
             return ptr, self._ep_rew * 0.0, 0, self._ep_idx
 
     def add(
-        self, batch: Batch, buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
+        self,
+        batch: Batch,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into replay buffer.
 
@@ -246,7 +247,8 @@ class ReplayBuffer:
                 return np.random.choice(self._size, batch_size)
             elif batch_size == 0:  # construct current available indices
                 return np.concatenate(
-                    [np.arange(self._index, self._size), np.arange(self._index)]
+                    [np.arange(self._index, self._size),
+                     np.arange(self._index)]
                 )
             else:
                 return np.array([], int)
@@ -254,7 +256,8 @@ class ReplayBuffer:
             if batch_size < 0:
                 return np.array([], int)
             all_indices = prev_indices = np.concatenate(
-                [np.arange(self._index, self._size), np.arange(self._index)]
+                [np.arange(self._index, self._size),
+                 np.arange(self._index)]
             )
             for _ in range(self.stack_num - 2):
                 prev_indices = self.prev(prev_indices)

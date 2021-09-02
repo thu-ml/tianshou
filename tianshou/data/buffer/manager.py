@@ -1,9 +1,10 @@
+from typing import List, Optional, Sequence, Tuple, Union
+
 import numpy as np
 from numba import njit
-from typing import List, Tuple, Union, Sequence, Optional
 
-from tianshou.data import Batch, ReplayBuffer, PrioritizedReplayBuffer
-from tianshou.data.batch import _create_value, _alloc_by_keys_diff
+from tianshou.data import Batch, PrioritizedReplayBuffer, ReplayBuffer
+from tianshou.data.batch import _alloc_by_keys_diff, _create_value
 
 
 class ReplayBufferManager(ReplayBuffer):
@@ -19,7 +20,6 @@ class ReplayBufferManager(ReplayBuffer):
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
-
     def __init__(self, buffer_list: List[ReplayBuffer]) -> None:
         self.buffer_num = len(buffer_list)
         self.buffers = np.array(buffer_list, dtype=object)
@@ -63,33 +63,45 @@ class ReplayBufferManager(ReplayBuffer):
         self._set_batch_for_children()
 
     def unfinished_index(self) -> np.ndarray:
-        return np.concatenate([
-            buf.unfinished_index() + offset
-            for offset, buf in zip(self._offset, self.buffers)
-        ])
+        return np.concatenate(
+            [
+                buf.unfinished_index() + offset
+                for offset, buf in zip(self._offset, self.buffers)
+            ]
+        )
 
     def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
-            return _prev_index(np.asarray(index), self._extend_offset,
-                               self.done, self.last_index, self._lengths)
+            return _prev_index(
+                np.asarray(index), self._extend_offset, self.done, self.last_index,
+                self._lengths
+            )
         else:
-            return _prev_index(np.array([index]), self._extend_offset,
-                               self.done, self.last_index, self._lengths)[0]
+            return _prev_index(
+                np.array([index]), self._extend_offset, self.done, self.last_index,
+                self._lengths
+            )[0]
 
     def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
-            return _next_index(np.asarray(index), self._extend_offset,
-                               self.done, self.last_index, self._lengths)
+            return _next_index(
+                np.asarray(index), self._extend_offset, self.done, self.last_index,
+                self._lengths
+            )
         else:
-            return _next_index(np.array([index]), self._extend_offset,
-                               self.done, self.last_index, self._lengths)[0]
+            return _next_index(
+                np.array([index]), self._extend_offset, self.done, self.last_index,
+                self._lengths
+            )[0]
 
     def update(self, buffer: ReplayBuffer) -> np.ndarray:
         """The ReplayBufferManager cannot be updated by any buffer."""
         raise NotImplementedError
 
     def add(
-        self, batch: Batch, buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
+        self,
+        batch: Batch,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into ReplayBufferManager.
 
@@ -145,10 +157,12 @@ class ReplayBufferManager(ReplayBuffer):
         if batch_size < 0:
             return np.array([], int)
         if self._sample_avail and self.stack_num > 1:
-            all_indices = np.concatenate([
-                buf.sample_indices(0) + offset
-                for offset, buf in zip(self._offset, self.buffers)
-            ])
+            all_indices = np.concatenate(
+                [
+                    buf.sample_indices(0) + offset
+                    for offset, buf in zip(self._offset, self.buffers)
+                ]
+            )
             if batch_size == 0:
                 return all_indices
             else:
@@ -163,10 +177,12 @@ class ReplayBufferManager(ReplayBuffer):
             # avoid batch_size > 0 and sample_num == 0 -> get child's all data
             sample_num[sample_num == 0] = -1
 
-        return np.concatenate([
-            buf.sample_indices(bsz) + offset
-            for offset, buf, bsz in zip(self._offset, self.buffers, sample_num)
-        ])
+        return np.concatenate(
+            [
+                buf.sample_indices(bsz) + offset
+                for offset, buf, bsz in zip(self._offset, self.buffers, sample_num)
+            ]
+        )
 
 
 class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManager):
@@ -182,7 +198,6 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
-
     def __init__(self, buffer_list: Sequence[PrioritizedReplayBuffer]) -> None:
         ReplayBufferManager.__init__(self, buffer_list)  # type: ignore
         kwargs = buffer_list[0].options

@@ -1,10 +1,10 @@
 import warnings
-from typing import Any, Tuple, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
-from torch.utils.tensorboard import SummaryWriter
 from tensorboard.backend.event_processing import event_accumulator
+from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils.logger.base import BaseLogger, LOG_DATA_TYPE
+from tianshou.utils.logger.base import LOG_DATA_TYPE, BaseLogger
 
 
 class TensorboardLogger(BaseLogger):
@@ -18,7 +18,6 @@ class TensorboardLogger(BaseLogger):
     :param int save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
     """
-
     def __init__(
         self,
         writer: SummaryWriter,
@@ -48,8 +47,10 @@ class TensorboardLogger(BaseLogger):
             save_checkpoint_fn(epoch, env_step, gradient_step)
             self.write("save/epoch", epoch, {"save/epoch": epoch})
             self.write("save/env_step", env_step, {"save/env_step": env_step})
-            self.write("save/gradient_step", gradient_step,
-                       {"save/gradient_step": gradient_step})
+            self.write(
+                "save/gradient_step", gradient_step,
+                {"save/gradient_step": gradient_step}
+            )
 
     def restore_data(self) -> Tuple[int, int, int]:
         ea = event_accumulator.EventAccumulator(self.writer.log_dir)
@@ -76,8 +77,8 @@ class BasicLogger(TensorboardLogger):
 
     This class is for compatibility.
     """
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         warnings.warn(
-            "Deprecated soon: BasicLogger has renamed to TensorboardLogger in #427.")
+            "Deprecated soon: BasicLogger has renamed to TensorboardLogger in #427."
+        )
         super().__init__(*args, **kwargs)

@@ -1,15 +1,15 @@
-import gym
-import time
 import ctypes
-import numpy as np
+import time
 from collections import OrderedDict
-from multiprocessing.context import Process
 from multiprocessing import Array, Pipe, connection
-from typing import Any, List, Tuple, Union, Callable, Optional
+from multiprocessing.context import Process
+from typing import Any, Callable, List, Optional, Tuple, Union
 
-from tianshou.env.worker import EnvWorker
+import gym
+import numpy as np
+
 from tianshou.env.utils import CloudpickleWrapper
-
+from tianshou.env.worker import EnvWorker
 
 _NP_TO_CT = {
     np.bool_: ctypes.c_bool,
@@ -28,7 +28,6 @@ _NP_TO_CT = {
 
 class ShArray:
     """Wrapper of multiprocessing Array."""
-
     def __init__(self, dtype: np.generic, shape: Tuple[int]) -> None:
         self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))  # type: ignore
         self.dtype = dtype
@@ -115,7 +114,6 @@ def _worker(
 
 class SubprocEnvWorker(EnvWorker):
     """Subprocess worker used in SubprocVectorEnv and ShmemVectorEnv."""
-
     def __init__(
         self, env_fn: Callable[[], gym.Env], share_memory: bool = False
     ) -> None:

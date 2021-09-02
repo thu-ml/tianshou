@@ -1,18 +1,19 @@
-import os
-import gym
-import torch
-import pprint
 import argparse
+import os
+import pprint
+
+import gym
 import numpy as np
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils import TensorboardLogger
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
-from tianshou.utils.net.common import Net
 from tianshou.policy import DiscreteSACPolicy
 from tianshou.trainer import offpolicy_trainer
+from tianshou.utils import TensorboardLogger
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import Actor, Critic
-from tianshou.data import Collector, VectorReplayBuffer
 
 
 def get_args():
@@ -40,8 +41,8 @@ def get_args():
     parser.add_argument('--rew-norm', action="store_true", default=False)
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+    )
     args = parser.parse_known_args()[0]
     return args
 
@@ -52,27 +53,26 @@ def test_discrete_sac(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
 
     train_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)])
+        [lambda: gym.make(args.task) for _ in range(args.training_num)]
+    )
     test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: gym.make(args.task) for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
-              device=args.device)
-    actor = Actor(net, args.action_shape,
-                  softmax_output=False, device=args.device).to(args.device)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    actor = Actor(net, args.action_shape, softmax_output=False,
+                  device=args.device).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net_c1 = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
-                 device=args.device)
+    net_c1 = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     critic1 = Critic(net_c1, last_size=args.action_shape,
                      device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    net_c2 = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
-                 device=args.device)
+    net_c2 = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     critic2 = Critic(net_c2, last_size=args.action_shape,
                      device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
@@ -85,13 +85,22 @@ def test_discrete_sac(args=get_args()):
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = DiscreteSACPolicy(
-        actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-        args.tau, args.gamma, args.alpha, estimation_step=args.n_step,
-        reward_normalization=args.rew_norm)
+        actor,
+        actor_optim,
+        critic1,
+        critic1_optim,
+        critic2,
+        critic2_optim,
+        args.tau,
+        args.gamma,
+        args.alpha,
+        estimation_step=args.n_step,
+        reward_normalization=args.rew_norm
+    )
     # collector
     train_collector = Collector(
-        policy, train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)))
+        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs))
+    )
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
@@ -107,10 +116,20 @@ def test_discrete_sac(args=get_args()):
 
     # trainer
     result = offpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, logger=logger,
-        update_per_step=args.update_per_step, test_in_train=False)
+        policy,
+        train_collector,
+        test_collector,
+        args.epoch,
+        args.step_per_epoch,
+        args.step_per_collect,
+        args.test_num,
+        args.batch_size,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger,
+        update_per_step=args.update_per_step,
+        test_in_train=False
+    )
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':

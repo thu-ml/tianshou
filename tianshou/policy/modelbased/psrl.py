@@ -1,6 +1,7 @@
-import torch
+from typing import Any, Dict, Optional, Tuple, Union
+
 import numpy as np
-from typing import Any, Dict, Tuple, Union, Optional
+import torch
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy
@@ -18,7 +19,6 @@ class PSRLModel(object):
     :param float discount_factor: in [0, 1].
     :param float epsilon: for precision control in value iteration.
     """
-
     def __init__(
         self,
         trans_count_prior: np.ndarray,
@@ -70,14 +70,16 @@ class PSRLModel(object):
         sum_count = self.rew_count + rew_count
         self.rew_mean = (self.rew_mean * self.rew_count + rew_sum) / sum_count
         self.rew_square_sum += rew_square_sum
-        raw_std2 = self.rew_square_sum / sum_count - self.rew_mean ** 2
-        self.rew_std = np.sqrt(1 / (
-            sum_count / (raw_std2 + self.__eps) + 1 / self.rew_std_prior ** 2))
+        raw_std2 = self.rew_square_sum / sum_count - self.rew_mean**2
+        self.rew_std = np.sqrt(
+            1 / (sum_count / (raw_std2 + self.__eps) + 1 / self.rew_std_prior**2)
+        )
         self.rew_count = sum_count
 
     def sample_trans_prob(self) -> np.ndarray:
         sample_prob = torch.distributions.Dirichlet(
-            torch.from_numpy(self.trans_count)).sample().numpy()
+            torch.from_numpy(self.trans_count)
+        ).sample().numpy()
         return sample_prob
 
     def sample_reward(self) -> np.ndarray:
@@ -156,7 +158,6 @@ class PSRLPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
     def __init__(
         self,
         trans_count_prior: np.ndarray,
@@ -168,12 +169,10 @@ class PSRLPolicy(BasePolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        assert (
-            0.0 <= discount_factor <= 1.0
-        ), "discount factor should be in [0, 1]"
+        assert (0.0 <= discount_factor <= 1.0), "discount factor should be in [0, 1]"
         self.model = PSRLModel(
-            trans_count_prior, rew_mean_prior, rew_std_prior,
-            discount_factor, epsilon)
+            trans_count_prior, rew_mean_prior, rew_std_prior, discount_factor, epsilon
+        )
         self._add_done_loop = add_done_loop
 
     def forward(
@@ -195,9 +194,7 @@ class PSRLPolicy(BasePolicy):
         act = self.model(batch.obs, state=state, info=batch.info)
         return Batch(act=act)
 
-    def learn(
-        self, batch: Batch, *args: Any, **kwargs: Any
-    ) -> Dict[str, float]:
+    def learn(self, batch: Batch, *args: Any, **kwargs: Any) -> Dict[str, float]:
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
@@ -207,7 +204,7 @@ class PSRLPolicy(BasePolicy):
             obs, act, obs_next = b.obs, b.act, b.obs_next
             trans_count[obs, act, obs_next] += 1
             rew_sum[obs, act] += b.rew
-            rew_square_sum[obs, act] += b.rew ** 2
+            rew_square_sum[obs, act] += b.rew**2
             rew_count[obs, act] += 1
             if self._add_done_loop and b.done:
                 # special operation for terminal states: add a self-loop

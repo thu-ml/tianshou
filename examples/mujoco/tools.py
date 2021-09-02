@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
+import argparse
+import csv
 import os
 import re
-import csv
-import tqdm
-import argparse
-import numpy as np
 from collections import defaultdict
+
+import numpy as np
+import tqdm
 from tensorboard.backend.event_processing import event_accumulator
 
 
@@ -66,11 +67,13 @@ def convert_tfevents_to_csv(root_dir, refresh=False):
             initial_time = ea._first_event_timestamp
             content = [["env_step", "rew", "time"]]
             for test_rew in ea.scalars.Items("test/rew"):
-                content.append([
-                    round(test_rew.step, 4),
-                    round(test_rew.value, 4),
-                    round(test_rew.wall_time - initial_time, 4),
-                ])
+                content.append(
+                    [
+                        round(test_rew.step, 4),
+                        round(test_rew.value, 4),
+                        round(test_rew.wall_time - initial_time, 4),
+                    ]
+                )
             csv.writer(open(output_file, 'w')).writerows(content)
             result[output_file] = content
     return result
@@ -85,8 +88,10 @@ def merge_csv(csv_files, root_dir, remove_zero=False):
                 v.pop(1)
     sorted_keys = sorted(csv_files.keys())
     sorted_values = [csv_files[k][1:] for k in sorted_keys]
-    content = [["env_step", "rew", "rew:shaded"] + list(map(
-        lambda f: "rew:" + os.path.relpath(f, root_dir), sorted_keys))]
+    content = [
+        ["env_step", "rew", "rew:shaded"] +
+        list(map(lambda f: "rew:" + os.path.relpath(f, root_dir), sorted_keys))
+    ]
     for rows in zip(*sorted_values):
         array = np.array(rows)
         assert len(set(array[:, 0])) == 1, (set(array[:, 0]), array[:, 0])
@@ -101,11 +106,15 @@ def merge_csv(csv_files, root_dir, remove_zero=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--refresh', action="store_true",
-        help="Re-generate all csv files instead of using existing one.")
+        '--refresh',
+        action="store_true",
+        help="Re-generate all csv files instead of using existing one."
+    )
     parser.add_argument(
-        '--remove-zero', action="store_true",
-        help="Remove the data point of env_step == 0.")
+        '--remove-zero',
+        action="store_true",
+        help="Remove the data point of env_step == 0."
+    )
     parser.add_argument('--root-dir', type=str)
     args = parser.parse_args()
 

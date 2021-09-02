@@ -1,7 +1,8 @@
-import numpy as np
-from numbers import Number
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, Union, Callable, Optional
+from numbers import Number
+from typing import Callable, Dict, Optional, Tuple, Union
+
+import numpy as np
 
 LOG_DATA_TYPE = Dict[str, Union[int, Number, np.number, np.ndarray]]
 
@@ -15,7 +16,6 @@ class BaseLogger(ABC):
     :param int test_interval: the log interval in log_test_data(). Default to 1.
     :param int update_interval: the log interval in log_update_data(). Default to 1000.
     """
-
     def __init__(
         self,
         train_interval: int = 1000,
@@ -132,7 +132,6 @@ class BaseLogger(ABC):
 
 class LazyLogger(BaseLogger):
     """A logger that does nothing. Used as the placeholder in trainer."""
-
     def __init__(self) -> None:
         super().__init__()
 

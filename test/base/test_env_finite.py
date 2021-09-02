@@ -1,14 +1,15 @@
 # see issue #322 for detail
 
-import gym
 import copy
-import numpy as np
 from collections import Counter
-from torch.utils.data import Dataset, DataLoader, DistributedSampler
 
-from tianshou.policy import BasePolicy
-from tianshou.data import Collector, Batch
+import gym
+import numpy as np
+from torch.utils.data import DataLoader, Dataset, DistributedSampler
+
+from tianshou.data import Batch, Collector
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
+from tianshou.policy import BasePolicy
 
 
 class DummyDataset(Dataset):
@@ -32,7 +33,8 @@ class FiniteEnv(gym.Env):
         self.loader = DataLoader(
             dataset,
             sampler=DistributedSampler(dataset, num_replicas, rank),
-            batch_size=None)
+            batch_size=None
+        )
         self.iterator = None
 
     def reset(self):
@@ -79,6 +81,7 @@ class FiniteVectorEnv(BaseVectorEnv):
 
     def _get_default_info(self):
         return copy.deepcopy(self._default_info)
+
     # END
 
     def reset(self, id=None):
@@ -179,30 +182,32 @@ class MetricTracker:
 
 def test_finite_dummy_vector_env():
     dataset = DummyDataset(100)
-    envs = FiniteSubprocVectorEnv([
-        _finite_env_factory(dataset, 5, i) for i in range(5)])
+    envs = FiniteSubprocVectorEnv(
+        [_finite_env_factory(dataset, 5, i) for i in range(5)]
+    )
     policy = AnyPolicy()
     test_collector = Collector(policy, envs, exploration_noise=True)
 
     for _ in range(3):
         envs.tracker = MetricTracker()
         try:
-            test_collector.collect(n_step=10 ** 18)
+            test_collector.collect(n_step=10**18)
         except StopIteration:
             envs.tracker.validate()
 
 
 def test_finite_subproc_vector_env():
     dataset = DummyDataset(100)
-    envs = FiniteSubprocVectorEnv([
-        _finite_env_factory(dataset, 5, i) for i in range(5)])
+    envs = FiniteSubprocVectorEnv(
+        [_finite_env_factory(dataset, 5, i) for i in range(5)]
+    )
     policy = AnyPolicy()
     test_collector = Collector(policy, envs, exploration_noise=True)
 
     for _ in range(3):
         envs.tracker = MetricTracker()
         try:
-            test_collector.collect(n_step=10 ** 18)
+            test_collector.collect(n_step=10**18)
         except StopIteration:
             envs.tracker.validate()
 

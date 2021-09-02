@@ -1,13 +1,14 @@
-import gym
-import torch
-import numpy as np
-from torch import nn
-from numba import njit
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Tuple, Union, Optional, Callable
-from gym.spaces import Box, Discrete, MultiDiscrete, MultiBinary
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
-from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_numpy
+import gym
+import numpy as np
+import torch
+from gym.spaces import Box, Discrete, MultiBinary, MultiDiscrete
+from numba import njit
+from torch import nn
+
+from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 
 
 class BasePolicy(ABC, nn.Module):
@@ -56,7 +57,6 @@ class BasePolicy(ABC, nn.Module):
         torch.save(policy.state_dict(), "policy.pth")
         policy.load_state_dict(torch.load("policy.pth"))
     """
-
     def __init__(
         self,
         observation_space: Optional[gym.Space] = None,
@@ -84,9 +84,8 @@ class BasePolicy(ABC, nn.Module):
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
-    def exploration_noise(
-        self, act: Union[np.ndarray, Batch], batch: Batch
-    ) -> Union[np.ndarray, Batch]:
+    def exploration_noise(self, act: Union[np.ndarray, Batch],
+                          batch: Batch) -> Union[np.ndarray, Batch]:
         """Modify the action from policy.forward with exploration noise.
 
         :param act: a data batch or numpy.ndarray which is the action taken by
@@ -216,9 +215,8 @@ class BasePolicy(ABC, nn.Module):
         if hasattr(buffer, "update_weight") and hasattr(batch, "weight"):
             buffer.update_weight(indices, batch.weight)
 
-    def update(
-        self, sample_size: int, buffer: Optional[ReplayBuffer], **kwargs: Any
-    ) -> Dict[str, Any]:
+    def update(self, sample_size: int, buffer: Optional[ReplayBuffer],
+               **kwargs: Any) -> Dict[str, Any]:
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn. In

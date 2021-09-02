@@ -1,10 +1,11 @@
 import sys
 import time
+
 import numpy as np
 from gym.spaces.discrete import Discrete
+
 from tianshou.data import Batch
-from tianshou.env import DummyVectorEnv, SubprocVectorEnv, \
-    ShmemVectorEnv, RayVectorEnv
+from tianshou.env import DummyVectorEnv, RayVectorEnv, ShmemVectorEnv, SubprocVectorEnv
 
 if __name__ == '__main__':
     from env import MyTestEnv, NXEnv
@@ -24,17 +25,14 @@ def recurse_comp(a, b):
     try:
         if isinstance(a, np.ndarray):
             if a.dtype == object:
-                return np.array(
-                    [recurse_comp(m, n) for m, n in zip(a, b)]).all()
+                return np.array([recurse_comp(m, n) for m, n in zip(a, b)]).all()
             else:
                 return np.allclose(a, b)
         elif isinstance(a, (list, tuple)):
-            return np.array(
-                [recurse_comp(m, n) for m, n in zip(a, b)]).all()
+            return np.array([recurse_comp(m, n) for m, n in zip(a, b)]).all()
         elif isinstance(a, dict):
-            return np.array(
-                [recurse_comp(a[k], b[k]) for k in a.keys()]).all()
-    except(Exception):
+            return np.array([recurse_comp(a[k], b[k]) for k in a.keys()]).all()
+    except (Exception):
         return False
 
 
@@ -75,7 +73,7 @@ def test_async_env(size=10000, num=8, sleep=0.1):
             # truncate env_ids with the first terms
             # typically len(env_ids) == len(A) == len(action), except for the
             # last batch when actions are not enough
-            env_ids = env_ids[: len(action)]
+            env_ids = env_ids[:len(action)]
         spent_time = time.time() - spent_time
         Batch.cat(o)
         v.close()
@@ -85,10 +83,12 @@ def test_async_env(size=10000, num=8, sleep=0.1):
 
 
 def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
-    env_fns = [lambda: MyTestEnv(size=size, sleep=sleep * 2),
-               lambda: MyTestEnv(size=size, sleep=sleep * 3),
-               lambda: MyTestEnv(size=size, sleep=sleep * 5),
-               lambda: MyTestEnv(size=size, sleep=sleep * 7)]
+    env_fns = [
+        lambda: MyTestEnv(size=size, sleep=sleep * 2),
+        lambda: MyTestEnv(size=size, sleep=sleep * 3),
+        lambda: MyTestEnv(size=size, sleep=sleep * 5),
+        lambda: MyTestEnv(size=size, sleep=sleep * 7)
+    ]
     test_cls = [SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
         test_cls += [RayVectorEnv]
@@ -113,8 +113,10 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
             t = time.time() - t
             ids = Batch(info).env_id
             print(ids, t)
-            if not (len(ids) == len(res) and np.allclose(sorted(ids), res)
-                    and (t < timeout) == (len(res) == num - 1)):
+            if not (
+                len(ids) == len(res) and np.allclose(sorted(ids), res) and
+                (t < timeout) == (len(res) == num - 1)
+            ):
                 pass_check = 0
                 break
         total_pass += pass_check
@@ -172,8 +174,9 @@ def test_vecenv(size=10, num=8, sleep=0.001):
 
 def test_env_obs():
     for obs_type in ["array", "object"]:
-        envs = SubprocVectorEnv([
-            lambda i=x: NXEnv(i, obs_type) for x in [5, 10, 15, 20]])
+        envs = SubprocVectorEnv(
+            [lambda i=x: NXEnv(i, obs_type) for x in [5, 10, 15, 20]]
+        )
         obs = envs.reset()
         assert obs.dtype == object
         obs = envs.step([1, 1, 1, 1])[0]

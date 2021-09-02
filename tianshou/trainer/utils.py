@@ -1,6 +1,7 @@
 import time
+from typing import Any, Callable, Dict, Optional, Union
+
 import numpy as np
-from typing import Any, Dict, Union, Callable, Optional
 
 from tianshou.data import Collector
 from tianshou.policy import BasePolicy
@@ -71,11 +72,13 @@ def gather_info(
     if train_c is not None:
         model_time -= train_c.collect_time
         train_speed = train_c.collect_step / (duration - test_c.collect_time)
-        result.update({
-            "train_step": train_c.collect_step,
-            "train_episode": train_c.collect_episode,
-            "train_time/collector": f"{train_c.collect_time:.2f}s",
-            "train_time/model": f"{model_time:.2f}s",
-            "train_speed": f"{train_speed:.2f} step/s",
-        })
+        result.update(
+            {
+                "train_step": train_c.collect_step,
+                "train_episode": train_c.collect_episode,
+                "train_time/collector": f"{train_c.collect_time:.2f}s",
+                "train_time/model": f"{model_time:.2f}s",
+                "train_speed": f"{train_speed:.2f} step/s",
+            }
+        )
     return result

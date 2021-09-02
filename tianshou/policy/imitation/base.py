@@ -1,7 +1,8 @@
-import torch
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
+import torch
 import torch.nn.functional as F
-from typing import Any, Dict, Union, Optional
 
 from tianshou.data import Batch, to_torch
 from tianshou.policy import BasePolicy
@@ -20,7 +21,6 @@ class ImitationPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
     def __init__(
         self,
         model: torch.nn.Module,

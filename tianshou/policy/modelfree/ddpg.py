@@ -1,12 +1,13 @@
-import torch
 import warnings
-import numpy as np
 from copy import deepcopy
-from typing import Any, Dict, Tuple, Union, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 
-from tianshou.policy import BasePolicy
-from tianshou.exploration import BaseNoise, GaussianNoise
+import numpy as np
+import torch
+
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.exploration import BaseNoise, GaussianNoise
+from tianshou.policy import BasePolicy
 
 
 class DDPGPolicy(BasePolicy):
@@ -37,7 +38,6 @@ class DDPGPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
     def __init__(
         self,
         actor: Optional[torch.nn.Module],
@@ -53,8 +53,11 @@ class DDPGPolicy(BasePolicy):
         action_bound_method: str = "clip",
         **kwargs: Any,
     ) -> None:
-        super().__init__(action_scaling=action_scaling,
-                         action_bound_method=action_bound_method, **kwargs)
+        super().__init__(
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            **kwargs
+        )
         assert action_bound_method != "tanh", "tanh mapping is not supported" \
             "in policies where action is used as input of critic , because" \
             "raw action in range (-inf, inf) will cause instability in training"
@@ -96,21 +99,21 @@ class DDPGPolicy(BasePolicy):
         for o, n in zip(self.critic_old.parameters(), self.critic.parameters()):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
 
-    def _target_q(
-        self, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> torch.Tensor:
+    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
         target_q = self.critic_old(
             batch.obs_next,
-            self(batch, model='actor_old', input='obs_next').act)
+            self(batch, model='actor_old', input='obs_next').act
+        )
         return target_q
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
         batch = self.compute_nstep_return(
-            batch, buffer, indices, self._target_q,
-            self._gamma, self._n_step, self._rew_norm)
+            batch, buffer, indices, self._target_q, self._gamma, self._n_step,
+            self._rew_norm
+        )
         return batch
 
     def forward(
@@ -156,8 +159,7 @@ class DDPGPolicy(BasePolicy):
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # critic
-        td, critic_loss = self._mse_optimizer(
-            batch, self.critic, self.critic_optim)
+        td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         batch.weight = td  # prio-buffer
         # actor
         action = self(batch).act
@@ -171,9 +173,8 @@ class DDPGPolicy(BasePolicy):
             "loss/critic": critic_loss.item(),
         }
 
-    def exploration_noise(
-        self, act: Union[np.ndarray, Batch], batch: Batch
-    ) -> Union[np.ndarray, Batch]:
+    def exploration_noise(self, act: Union[np.ndarray, Batch],
+                          batch: Batch) -> Union[np.ndarray, Batch]:
         if self._noise is None:
             return act
         if isinstance(act, np.ndarray):

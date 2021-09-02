@@ -1,7 +1,9 @@
-import torch
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
+
 import numpy as np
+import torch
 from torch import nn
-from typing import Any, Dict, Tuple, Union, Optional, Sequence
+
 from tianshou.utils.net.discrete import NoisyLinear
 
 
@@ -11,7 +13,6 @@ class DQN(nn.Module):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
-
     def __init__(
         self,
         c: int,
@@ -27,15 +28,15 @@ class DQN(nn.Module):
             nn.Conv2d(c, 32, kernel_size=8, stride=4), nn.ReLU(inplace=True),
             nn.Conv2d(32, 64, kernel_size=4, stride=2), nn.ReLU(inplace=True),
             nn.Conv2d(64, 64, kernel_size=3, stride=1), nn.ReLU(inplace=True),
-            nn.Flatten())
+            nn.Flatten()
+        )
         with torch.no_grad():
-            self.output_dim = np.prod(
-                self.net(torch.zeros(1, c, h, w)).shape[1:])
+            self.output_dim = np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:])
         if not features_only:
             self.net = nn.Sequential(
-                self.net,
-                nn.Linear(self.output_dim, 512), nn.ReLU(inplace=True),
-                nn.Linear(512, np.prod(action_shape)))
+                self.net, nn.Linear(self.output_dim, 512), nn.ReLU(inplace=True),
+                nn.Linear(512, np.prod(action_shape))
+            )
             self.output_dim = np.prod(action_shape)
 
     def forward(
@@ -55,7 +56,6 @@ class C51(DQN):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
-
     def __init__(
         self,
         c: int,
@@ -88,7 +88,6 @@ class Rainbow(DQN):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
-
     def __init__(
         self,
         c: int,
@@ -113,12 +112,14 @@ class Rainbow(DQN):
 
         self.Q = nn.Sequential(
             linear(self.output_dim, 512), nn.ReLU(inplace=True),
-            linear(512, self.action_num * self.num_atoms))
+            linear(512, self.action_num * self.num_atoms)
+        )
         self._is_dueling = is_dueling
         if self._is_dueling:
             self.V = nn.Sequential(
                 linear(self.output_dim, 512), nn.ReLU(inplace=True),
-                linear(512, self.num_atoms))
+                linear(512, self.num_atoms)
+            )
         self.output_dim = self.action_num * self.num_atoms
 
     def forward(
@@ -148,7 +149,6 @@ class QRDQN(DQN):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
-
     def __init__(
         self,
         c: int,

@@ -1,10 +1,15 @@
+from typing import Any, Callable, List, Optional, Tuple, Union
+
 import gym
 import numpy as np
-from typing import Any, List, Tuple, Union, Optional, Callable
 
+from tianshou.env.worker import (
+    DummyEnvWorker,
+    EnvWorker,
+    RayEnvWorker,
+    SubprocEnvWorker,
+)
 from tianshou.utils import RunningMeanStd
-from tianshou.env.worker import EnvWorker, DummyEnvWorker, SubprocEnvWorker, \
-    RayEnvWorker
 
 
 class BaseVectorEnv(gym.Env):
@@ -64,7 +69,6 @@ class BaseVectorEnv(gym.Env):
         obs_rms should be passed in. Default to None.
     :param bool update_obs_rms: Whether to update obs_rms. Default to True.
     """
-
     def __init__(
         self,
         env_fns: List[Callable[[], gym.Env]],
@@ -122,8 +126,9 @@ class BaseVectorEnv(gym.Env):
         ``action_space``. However, we would like the attribute lookup to go straight
         into the worker (in fact, this vector env's action_space is always None).
         """
-        if key in ['metadata', 'reward_range', 'spec', 'action_space',
-                   'observation_space']:  # reserved keys in gym.Env
+        if key in [
+            'metadata', 'reward_range', 'spec', 'action_space', 'observation_space'
+        ]:  # reserved keys in gym.Env
             return self.__getattr__(key)
         else:
             return super().__getattribute__(key)
@@ -137,7 +142,8 @@ class BaseVectorEnv(gym.Env):
         return [getattr(worker, key) for worker in self.workers]
 
     def _wrap_id(
-        self, id: Optional[Union[int, List[int], np.ndarray]] = None
+        self,
+        id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> Union[List[int], np.ndarray]:
         if id is None:
             return list(range(self.env_num))
@@ -230,7 +236,8 @@ class BaseVectorEnv(gym.Env):
             ready_conns: List[EnvWorker] = []
             while not ready_conns:
                 ready_conns = self.worker_class.wait(
-                    self.waiting_conn, self.wait_num, self.timeout)
+                    self.waiting_conn, self.wait_num, self.timeout
+                )
             result = []
             for conn in ready_conns:
                 waiting_index = self.waiting_conn.index(conn)
@@ -246,13 +253,15 @@ class BaseVectorEnv(gym.Env):
         except ValueError:  # different len(obs)
             obs_stack = np.array(obs_list, dtype=object)
         rew_stack, done_stack, info_stack = map(
-            np.stack, [rew_list, done_list, info_list])
+            np.stack, [rew_list, done_list, info_list]
+        )
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs_stack)
         return self.normalize_obs(obs_stack), rew_stack, done_stack, info_stack
 
     def seed(
-        self, seed: Optional[Union[int, List[int]]] = None
+        self,
+        seed: Optional[Union[int, List[int]]] = None
     ) -> List[Optional[List[int]]]:
         """Set the seed for all environments.
 
@@ -279,7 +288,8 @@ class BaseVectorEnv(gym.Env):
         if self.is_async and len(self.waiting_id) > 0:
             raise RuntimeError(
                 f"Environments {self.waiting_id} are still stepping, cannot "
-                "render them now.")
+                "render them now."
+            )
         return [w.render(**kwargs) for w in self.workers]
 
     def close(self) -> None:
@@ -310,7 +320,6 @@ class DummyVectorEnv(BaseVectorEnv):
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
-
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
         super().__init__(env_fns, DummyEnvWorker, **kwargs)
 
@@ -322,7 +331,6 @@ class SubprocVectorEnv(BaseVectorEnv):
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
-
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=False)
@@ -339,7 +347,6 @@ class ShmemVectorEnv(BaseVectorEnv):
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
-
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
@@ -356,7 +363,6 @@ class RayVectorEnv(BaseVectorEnv):
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
-
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
         try:
             import ray

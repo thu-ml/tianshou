@@ -1,10 +1,11 @@
 # Borrow a lot from openai baselines:
 # https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py
 
+from collections import deque
+
 import cv2
 import gym
 import numpy as np
-from collections import deque
 
 
 class NoopResetEnv(gym.Wrapper):
@@ -14,7 +15,6 @@ class NoopResetEnv(gym.Wrapper):
     :param gym.Env env: the environment to wrap.
     :param int noop_max: the maximum value of no-ops to run.
     """
-
     def __init__(self, env, noop_max=30):
         super().__init__(env)
         self.noop_max = noop_max
@@ -38,7 +38,6 @@ class MaxAndSkipEnv(gym.Wrapper):
     :param gym.Env env: the environment to wrap.
     :param int skip: number of `skip`-th frame.
     """
-
     def __init__(self, env, skip=4):
         super().__init__(env)
         self._skip = skip
@@ -64,7 +63,6 @@ class EpisodicLifeEnv(gym.Wrapper):
 
     :param gym.Env env: the environment to wrap.
     """
-
     def __init__(self, env):
         super().__init__(env)
         self.lives = 0
@@ -104,7 +102,6 @@ class FireResetEnv(gym.Wrapper):
 
     :param gym.Env env: the environment to wrap.
     """
-
     def __init__(self, env):
         super().__init__(env)
         assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
@@ -120,20 +117,20 @@ class WarpFrame(gym.ObservationWrapper):
 
     :param gym.Env env: the environment to wrap.
     """
-
     def __init__(self, env):
         super().__init__(env)
         self.size = 84
         self.observation_space = gym.spaces.Box(
             low=np.min(env.observation_space.low),
             high=np.max(env.observation_space.high),
-            shape=(self.size, self.size), dtype=env.observation_space.dtype)
+            shape=(self.size, self.size),
+            dtype=env.observation_space.dtype
+        )
 
     def observation(self, frame):
         """returns the current observation from a frame"""
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        return cv2.resize(frame, (self.size, self.size),
-                          interpolation=cv2.INTER_AREA)
+        return cv2.resize(frame, (self.size, self.size), interpolation=cv2.INTER_AREA)
 
 
 class ScaledFloatFrame(gym.ObservationWrapper):
@@ -141,7 +138,6 @@ class ScaledFloatFrame(gym.ObservationWrapper):
 
     :param gym.Env env: the environment to wrap.
     """
-
     def __init__(self, env):
         super().__init__(env)
         low = np.min(env.observation_space.low)
@@ -149,8 +145,8 @@ class ScaledFloatFrame(gym.ObservationWrapper):
         self.bias = low
         self.scale = high - low
         self.observation_space = gym.spaces.Box(
-            low=0., high=1., shape=env.observation_space.shape,
-            dtype=np.float32)
+            low=0., high=1., shape=env.observation_space.shape, dtype=np.float32
+        )
 
     def observation(self, observation):
         return (observation - self.bias) / self.scale
@@ -161,7 +157,6 @@ class ClipRewardEnv(gym.RewardWrapper):
 
     :param gym.Env env: the environment to wrap.
     """
-
     def __init__(self, env):
         super().__init__(env)
         self.reward_range = (-1, 1)
@@ -177,16 +172,17 @@ class FrameStack(gym.Wrapper):
     :param gym.Env env: the environment to wrap.
     :param int n_frames: the number of frames to stack.
     """
-
     def __init__(self, env, n_frames):
         super().__init__(env)
         self.n_frames = n_frames
         self.frames = deque([], maxlen=n_frames)
-        shape = (n_frames,) + env.observation_space.shape
+        shape = (n_frames, ) + env.observation_space.shape
         self.observation_space = gym.spaces.Box(
             low=np.min(env.observation_space.low),
             high=np.max(env.observation_space.high),
-            shape=shape, dtype=env.observation_space.dtype)
+            shape=shape,
+            dtype=env.observation_space.dtype
+        )
 
     def reset(self):
         obs = self.env.reset()
@@ -205,8 +201,14 @@ class FrameStack(gym.Wrapper):
         return np.stack(self.frames, axis=0)
 
 
-def wrap_deepmind(env_id, episode_life=True, clip_rewards=True,
-                  frame_stack=4, scale=False, warp_frame=True):
+def wrap_deepmind(
+    env_id,
+    episode_life=True,
+    clip_rewards=True,
+    frame_stack=4,
+    scale=False,
+    warp_frame=True
+):
     """Configure environment for DeepMind-style Atari. The observation is
     channel-first: (c, h, w) instead of (h, w, c).
 

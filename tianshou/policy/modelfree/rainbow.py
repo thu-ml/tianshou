@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
-from tianshou.policy import C51Policy
 from tianshou.data import Batch
+from tianshou.policy import C51Policy
 from tianshou.utils.net.discrete import sample_noise
 
 
@@ -29,7 +29,6 @@ class RainbowPolicy(C51Policy):
         Please refer to :class:`~tianshou.policy.C51Policy` for more detailed
         explanation.
     """
-
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         sample_noise(self.model)
         if self._target and sample_noise(self.model_old):

@@ -1,9 +1,9 @@
-import torch
 import warnings
-import torch.nn.functional as F
 from typing import Any, Dict, List, Type
-from torch.distributions import kl_divergence
 
+import torch
+import torch.nn.functional as F
+from torch.distributions import kl_divergence
 
 from tianshou.data import Batch
 from tianshou.policy import NPGPolicy
@@ -48,7 +48,6 @@ class TRPOPolicy(NPGPolicy):
     :param bool deterministic_eval: whether to use deterministic action instead of
         stochastic action sampled by the policy. Default to False.
     """
-
     def __init__(
         self,
         actor: torch.nn.Module,
@@ -79,7 +78,8 @@ class TRPOPolicy(NPGPolicy):
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 actor_loss = -(ratio * b.adv).mean()
                 flat_grads = self._get_flat_grad(
-                    actor_loss, self.actor, retain_graph=True).detach()
+                    actor_loss, self.actor, retain_graph=True
+                ).detach()
 
                 # direction: calculate natural gradient
                 with torch.no_grad():
@@ -89,26 +89,30 @@ class TRPOPolicy(NPGPolicy):
                 # calculate first order gradient of kl with respect to theta
                 flat_kl_grad = self._get_flat_grad(kl, self.actor, create_graph=True)
                 search_direction = -self._conjugate_gradients(
-                    flat_grads, flat_kl_grad, nsteps=10)
+                    flat_grads, flat_kl_grad, nsteps=10
+                )
 
                 # stepsize: calculate max stepsize constrained by kl bound
-                step_size = torch.sqrt(2 * self._delta / (
-                    search_direction * self._MVP(search_direction, flat_kl_grad)
-                ).sum(0, keepdim=True))
+                step_size = torch.sqrt(
+                    2 * self._delta /
+                    (search_direction *
+                     self._MVP(search_direction, flat_kl_grad)).sum(0, keepdim=True)
+                )
 
                 # stepsize: linesearch stepsize
                 with torch.no_grad():
-                    flat_params = torch.cat([param.data.view(-1)
-                                             for param in self.actor.parameters()])
+                    flat_params = torch.cat(
+                        [param.data.view(-1) for param in self.actor.parameters()]
+                    )
                     for i in range(self._max_backtracks):
                         new_flat_params = flat_params + step_size * search_direction
                         self._set_from_flat_params(self.actor, new_flat_params)
                         # calculate kl and if in bound, loss actually down
                         new_dist = self(b).dist
-                        new_dratio = (
-                            new_dist.log_prob(b.act) - b.logp_old).exp().float()
-                        new_dratio = new_dratio.reshape(
-                            new_dratio.size(0), -1).transpose(0, 1)
+                        new_dratio = (new_dist.log_prob(b.act) -
+                                      b.logp_old).exp().float()
+                        new_dratio = new_dratio.reshape(new_dratio.size(0),
+                                                        -1).transpose(0, 1)
                         new_actor_loss = -(new_dratio * b.adv).mean()
                         kl = kl_divergence(old_dist, new_dist).mean()
 
@@ -121,8 +125,10 @@ class TRPOPolicy(NPGPolicy):
                         else:
                             self._set_from_flat_params(self.actor, new_flat_params)
                             step_size = torch.tensor([0.0])
-                            warnings.warn("Line search failed! It seems hyperparamters"
-                                          " are poor and need to be changed.")
+                            warnings.warn(
+                                "Line search failed! It seems hyperparamters"
+                                " are poor and need to be changed."
+                            )
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):

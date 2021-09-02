@@ -1,11 +1,12 @@
 import math
-import torch
-import numpy as np
-import torch.nn.functional as F
-from typing import Any, Dict, Union, Optional
+from typing import Any, Dict, Optional, Union
 
-from tianshou.policy import DQNPolicy
+import numpy as np
+import torch
+import torch.nn.functional as F
+
 from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.policy import DQNPolicy
 
 
 class DiscreteBCQPolicy(DQNPolicy):
@@ -32,7 +33,6 @@ class DiscreteBCQPolicy(DQNPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
     def __init__(
         self,
         model: torch.nn.Module,
@@ -47,8 +47,10 @@ class DiscreteBCQPolicy(DQNPolicy):
         reward_normalization: bool = False,
         **kwargs: Any,
     ) -> None:
-        super().__init__(model, optim, discount_factor, estimation_step,
-                         target_update_freq, reward_normalization, **kwargs)
+        super().__init__(
+            model, optim, discount_factor, estimation_step, target_update_freq,
+            reward_normalization, **kwargs
+        )
         assert target_update_freq > 0, "BCQ needs target network setting."
         self.imitator = imitator
         assert 0.0 <= unlikely_action_threshold < 1.0, \
@@ -93,8 +95,12 @@ class DiscreteBCQPolicy(DQNPolicy):
         mask = (ratio < self._log_tau).float()
         action = (q_value - np.inf * mask).argmax(dim=-1)
 
-        return Batch(act=action, state=state, q_value=q_value,
-                     imitation_logits=imitation_logits)
+        return Batch(
+            act=action,
+            state=state,
+            q_value=q_value,
+            imitation_logits=imitation_logits
+        )
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._iter % self._freq == 0:
@@ -108,7 +114,8 @@ class DiscreteBCQPolicy(DQNPolicy):
         act = to_torch(batch.act, dtype=torch.long, device=target_q.device)
         q_loss = F.smooth_l1_loss(current_q, target_q)
         i_loss = F.nll_loss(
-            F.log_softmax(imitation_logits, dim=-1), act)  # type: ignore
+            F.log_softmax(imitation_logits, dim=-1), act
+        )  # type: ignore
         reg_loss = imitation_logits.pow(2).mean()
         loss = q_loss + i_loss + self._weight_reg * reg_loss
 

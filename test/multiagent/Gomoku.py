@@ -1,16 +1,16 @@
 import os
 import pprint
-import numpy as np
 from copy import deepcopy
+
+import numpy as np
+from tic_tac_toe import get_agents, get_parser, train_agent, watch
+from tic_tac_toe_env import TicTacToeEnv
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.env import DummyVectorEnv
 from tianshou.data import Collector
+from tianshou.env import DummyVectorEnv
 from tianshou.policy import RandomPolicy
 from tianshou.utils import TensorboardLogger
-
-from tic_tac_toe_env import TicTacToeEnv
-from tic_tac_toe import get_parser, get_agents, train_agent, watch
 
 
 def get_args():
@@ -39,6 +39,7 @@ def gomoku(args=get_args()):
 
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
+
     test_envs = DummyVectorEnv([env_func for _ in range(args.test_num)])
     for r in range(args.self_play_round):
         rews = []
@@ -65,11 +66,11 @@ def gomoku(args=get_args()):
             # previous learner can only be used for forward
             agent.forward = opponent.forward
             args.model_save_path = os.path.join(
-                args.logdir, 'Gomoku', 'dqn',
-                f'policy_round_{r}_epoch_{epoch}.pth')
+                args.logdir, 'Gomoku', 'dqn', f'policy_round_{r}_epoch_{epoch}.pth'
+            )
             result, agent_learn = train_agent(
-                args, agent_learn=agent_learn,
-                agent_opponent=agent, optim=optim)
+                args, agent_learn=agent_learn, agent_opponent=agent, optim=optim
+            )
             print(f'round_{r}_epoch_{epoch}')
             pprint.pprint(result)
         learnt_agent = deepcopy(agent_learn)

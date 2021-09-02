@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
-import re
 import argparse
+import re
+from collections import defaultdict
+
 import numpy as np
 from tabulate import tabulate
-from collections import defaultdict
-from tools import find_all_files, group_files, csv2numpy
+from tools import csv2numpy, find_all_files, group_files
 
 
 def numerical_anysis(root_dir, xlim, norm=False):
@@ -20,13 +21,16 @@ def numerical_anysis(root_dir, xlim, norm=False):
     for f in csv_files:
         result = csv2numpy(f)
         if norm:
-            result = np.stack([
-                result['env_step'],
-                result['rew'] - result['rew'][0],
-                result['rew:shaded']])
+            result = np.stack(
+                [
+                    result['env_step'], result['rew'] - result['rew'][0],
+                    result['rew:shaded']
+                ]
+            )
         else:
-            result = np.stack([
-                result['env_step'], result['rew'], result['rew:shaded']])
+            result = np.stack(
+                [result['env_step'], result['rew'], result['rew:shaded']]
+            )
 
         if result[0, -1] < xlim:
             continue
@@ -79,11 +83,17 @@ def numerical_anysis(root_dir, xlim, norm=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--xlim', type=int, default=1000000,
-                        help='x-axis limitation (default: 1000000)')
+    parser.add_argument(
+        '--xlim',
+        type=int,
+        default=1000000,
+        help='x-axis limitation (default: 1000000)'
+    )
     parser.add_argument('--root-dir', type=str)
     parser.add_argument(
-        '--norm', action="store_true",
-        help="Normalize all results according to environment.")
+        '--norm',
+        action="store_true",
+        help="Normalize all results according to environment."
+    )
     args = parser.parse_args()
     numerical_anysis(args.root_dir, args.xlim, norm=args.norm)

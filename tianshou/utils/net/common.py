@@ -1,7 +1,8 @@
-import torch
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
+
 import numpy as np
+import torch
 from torch import nn
-from typing import Any, Dict, List, Type, Tuple, Union, Optional, Sequence
 
 ModuleType = Type[nn.Module]
 
@@ -46,7 +47,6 @@ class MLP(nn.Module):
     :param device: which device to create this model on. Default to None.
     :param linear_layer: use this module as linear layer. Default to nn.Linear.
     """
-
     def __init__(
         self,
         input_dim: int,
@@ -64,8 +64,7 @@ class MLP(nn.Module):
                 assert len(norm_layer) == len(hidden_sizes)
                 norm_layer_list = norm_layer
             else:
-                norm_layer_list = [
-                    norm_layer for _ in range(len(hidden_sizes))]
+                norm_layer_list = [norm_layer for _ in range(len(hidden_sizes))]
         else:
             norm_layer_list = [None] * len(hidden_sizes)
         if activation:
@@ -73,26 +72,22 @@ class MLP(nn.Module):
                 assert len(activation) == len(hidden_sizes)
                 activation_list = activation
             else:
-                activation_list = [
-                    activation for _ in range(len(hidden_sizes))]
+                activation_list = [activation for _ in range(len(hidden_sizes))]
         else:
             activation_list = [None] * len(hidden_sizes)
         hidden_sizes = [input_dim] + list(hidden_sizes)
         model = []
         for in_dim, out_dim, norm, activ in zip(
-                hidden_sizes[:-1], hidden_sizes[1:],
-                norm_layer_list, activation_list):
+            hidden_sizes[:-1], hidden_sizes[1:], norm_layer_list, activation_list
+        ):
             model += miniblock(in_dim, out_dim, norm, activ, linear_layer)
         if output_dim > 0:
             model += [linear_layer(hidden_sizes[-1], output_dim)]
         self.output_dim = output_dim or hidden_sizes[-1]
         self.model = nn.Sequential(*model)
 
-    def forward(
-        self, x: Union[np.ndarray, torch.Tensor]
-    ) -> torch.Tensor:
-        x = torch.as_tensor(
-            x, device=self.device, dtype=torch.float32)  # type: ignore
+    def forward(self, x: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+        x = torch.as_tensor(x, device=self.device, dtype=torch.float32)  # type: ignore
         return self.model(x.flatten(1))
 
 
@@ -138,7 +133,6 @@ class Net(nn.Module):
         :class:`~tianshou.utils.net.continuous.Critic`, etc, to see how it's
         suggested be used.
     """
-
     def __init__(
         self,
         state_shape: Union[int, Sequence[int]],
@@ -162,8 +156,9 @@ class Net(nn.Module):
             input_dim += action_dim
         self.use_dueling = dueling_param is not None
         output_dim = action_dim if not self.use_dueling and not concat else 0
-        self.model = MLP(input_dim, output_dim, hidden_sizes,
-                         norm_layer, activation, device)
+        self.model = MLP(
+            input_dim, output_dim, hidden_sizes, norm_layer, activation, device
+        )
         self.output_dim = self.model.output_dim
         if self.use_dueling:  # dueling DQN
             q_kwargs, v_kwargs = dueling_param  # type: ignore
@@ -172,10 +167,14 @@ class Net(nn.Module):
                 q_output_dim, v_output_dim = action_dim, num_atoms
             q_kwargs: Dict[str, Any] = {
                 **q_kwargs, "input_dim": self.output_dim,
-                "output_dim": q_output_dim, "device": self.device}
+                "output_dim": q_output_dim,
+                "device": self.device
+            }
             v_kwargs: Dict[str, Any] = {
                 **v_kwargs, "input_dim": self.output_dim,
-                "output_dim": v_output_dim, "device": self.device}
+                "output_dim": v_output_dim,
+                "device": self.device
+            }
             self.Q, self.V = MLP(**q_kwargs), MLP(**v_kwargs)
             self.output_dim = self.Q.output_dim
 
@@ -207,7 +206,6 @@ class Recurrent(nn.Module):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
-
     def __init__(
         self,
         layer_num: int,
@@ -239,8 +237,7 @@ class Recurrent(nn.Module):
         training mode, s should be with shape ``[bsz, len, dim]``. See the code
         and comment for more detail.
         """
-        s = torch.as_tensor(
-            s, device=self.device, dtype=torch.float32)  # type: ignore
+        s = torch.as_tensor(s, device=self.device, dtype=torch.float32)  # type: ignore
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -253,9 +250,12 @@ class Recurrent(nn.Module):
         else:
             # we store the stack data in [bsz, len, ...] format
             # but pytorch rnn needs [len, bsz, ...]
-            s, (h, c) = self.nn(s, (state["h"].transpose(0, 1).contiguous(),
-                                    state["c"].transpose(0, 1).contiguous()))
+            s, (h, c) = self.nn(
+                s, (
+                    state["h"].transpose(0, 1).contiguous(),
+                    state["c"].transpose(0, 1).contiguous()
+                )
+            )
         s = self.fc2(s[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
-        return s, {"h": h.transpose(0, 1).detach(),
-                   "c": c.transpose(0, 1).detach()}
+        return s, {"h": h.transpose(0, 1).detach(), "c": c.transpose(0, 1).detach()}

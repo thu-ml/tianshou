@@ -1,18 +1,19 @@
+import argparse
 import os
-import gym
-import torch
 import pickle
 import pprint
-import argparse
+
+import gym
 import numpy as np
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector
-from tianshou.utils import TensorboardLogger
 from tianshou.env import DummyVectorEnv
-from tianshou.utils.net.common import Net
-from tianshou.trainer import offline_trainer
 from tianshou.policy import DiscreteCQLPolicy
+from tianshou.trainer import offline_trainer
+from tianshou.utils import TensorboardLogger
+from tianshou.utils.net.common import Net
 
 
 def get_args():
@@ -29,17 +30,18 @@ def get_args():
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--update-per-epoch", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[64, 64])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
     parser.add_argument(
-        "--load-buffer-name", type=str,
+        "--load-buffer-name",
+        type=str,
         default="./expert_QRDQN_CartPole-v0.pkl",
     )
     parser.add_argument(
-        "--device", type=str,
+        "--device",
+        type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
     args = parser.parse_known_args()[0]
@@ -54,20 +56,31 @@ def test_discrete_cql(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: gym.make(args.task) for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, args.action_shape,
-              hidden_sizes=args.hidden_sizes, device=args.device,
-              softmax=False, num_atoms=args.num_quantiles)
+    net = Net(
+        args.state_shape,
+        args.action_shape,
+        hidden_sizes=args.hidden_sizes,
+        device=args.device,
+        softmax=False,
+        num_atoms=args.num_quantiles
+    )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
 
     policy = DiscreteCQLPolicy(
-        net, optim, args.gamma, args.num_quantiles, args.n_step,
-        args.target_update_freq, min_q_weight=args.min_q_weight
+        net,
+        optim,
+        args.gamma,
+        args.num_quantiles,
+        args.n_step,
+        args.target_update_freq,
+        min_q_weight=args.min_q_weight
     ).to(args.device)
     # buffer
     assert os.path.exists(args.load_buffer_name), \
@@ -88,9 +101,17 @@ def test_discrete_cql(args=get_args()):
         return mean_rewards >= env.spec.reward_threshold
 
     result = offline_trainer(
-        policy, buffer, test_collector,
-        args.epoch, args.update_per_epoch, args.test_num, args.batch_size,
-        stop_fn=stop_fn, save_fn=save_fn, logger=logger)
+        policy,
+        buffer,
+        test_collector,
+        args.epoch,
+        args.update_per_epoch,
+        args.test_num,
+        args.batch_size,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger
+    )
 
     assert stop_fn(result['best_reward'])
 

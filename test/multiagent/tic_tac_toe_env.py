@@ -1,7 +1,8 @@
+from functools import partial
+from typing import Optional, Tuple
+
 import gym
 import numpy as np
-from functools import partial
-from typing import Tuple, Optional
 
 from tianshou.env import MultiAgentEnv
 
@@ -16,7 +17,6 @@ class TicTacToeEnv(MultiAgentEnv):
     :param size: the size of the board (square board)
     :param win_size: how many units in a row is considered to win
     """
-
     def __init__(self, size: int = 3, win_size: int = 3):
         super().__init__()
         assert size > 0, f'board size should be positive, but got {size}'
@@ -27,7 +27,8 @@ class TicTacToeEnv(MultiAgentEnv):
             f'be larger than board size {size}'
         self.convolve_kernel = np.ones(win_size)
         self.observation_space = gym.spaces.Box(
-            low=-1.0, high=1.0, shape=(size, size), dtype=np.float32)
+            low=-1.0, high=1.0, shape=(size, size), dtype=np.float32
+        )
         self.action_space = gym.spaces.Discrete(size * size)
         self.current_board = None
         self.current_agent = None
@@ -45,11 +46,10 @@ class TicTacToeEnv(MultiAgentEnv):
             'mask': self.current_board.flatten() == 0
         }
 
-    def step(self, action: [int, np.ndarray]
-             ) -> Tuple[dict, np.ndarray, np.ndarray, dict]:
+    def step(self, action: [int,
+                            np.ndarray]) -> Tuple[dict, np.ndarray, np.ndarray, dict]:
         if self.current_agent is None:
-            raise ValueError(
-                "calling step() of unreset environment is prohibited!")
+            raise ValueError("calling step() of unreset environment is prohibited!")
         assert 0 <= action < self.size * self.size
         assert self.current_board.item(action) == 0
         _current_agent = self.current_agent
@@ -97,18 +97,28 @@ class TicTacToeEnv(MultiAgentEnv):
         rboard = self.current_board[row, :]
         cboard = self.current_board[:, col]
         current = self.current_board[row, col]
-        rightup = [self.current_board[row - i, col + i]
-                   for i in range(1, self.size - col) if row - i >= 0]
-        leftdown = [self.current_board[row + i, col - i]
-                    for i in range(1, col + 1) if row + i < self.size]
+        rightup = [
+            self.current_board[row - i, col + i] for i in range(1, self.size - col)
+            if row - i >= 0
+        ]
+        leftdown = [
+            self.current_board[row + i, col - i] for i in range(1, col + 1)
+            if row + i < self.size
+        ]
         rdiag = np.array(leftdown[::-1] + [current] + rightup)
-        rightdown = [self.current_board[row + i, col + i]
-                     for i in range(1, self.size - col) if row + i < self.size]
-        leftup = [self.current_board[row - i, col - i]
-                  for i in range(1, col + 1) if row - i >= 0]
+        rightdown = [
+            self.current_board[row + i, col + i] for i in range(1, self.size - col)
+            if row + i < self.size
+        ]
+        leftup = [
+            self.current_board[row - i, col - i] for i in range(1, col + 1)
+            if row - i >= 0
+        ]
         diag = np.array(leftup[::-1] + [current] + rightdown)
-        results = [np.convolve(k, self.convolve_kernel, mode='valid')
-                   for k in (rboard, cboard, rdiag, diag)]
+        results = [
+            np.convolve(k, self.convolve_kernel, mode='valid')
+            for k in (rboard, cboard, rdiag, diag)
+        ]
         return any([(np.abs(x) == self.win_size).any() for x in results])
 
     def seed(self, seed: Optional[int] = None) -> int:
@@ -128,6 +138,7 @@ class TicTacToeEnv(MultiAgentEnv):
             if number == -1:
                 return 'O' if last_move else 'o'
             return '_'
+
         for i, row in enumerate(self.current_board):
             print(pad + ' '.join(map(partial(f, i), enumerate(row))) + pad)
         print(top)

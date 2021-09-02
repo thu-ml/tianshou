@@ -1,5 +1,4 @@
-from tianshou import data, env, utils, policy, trainer, exploration
-
+from tianshou import data, env, exploration, policy, trainer, utils
 
 __version__ = "0.4.3"
 

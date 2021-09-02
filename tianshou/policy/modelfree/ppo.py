@@ -1,10 +1,11 @@
-import torch
-import numpy as np
-from torch import nn
-from typing import Any, Dict, List, Type, Optional
+from typing import Any, Dict, List, Optional, Type
 
-from tianshou.policy import A2CPolicy
+import numpy as np
+import torch
+from torch import nn
+
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.policy import A2CPolicy
 
 
 class PPOPolicy(A2CPolicy):
@@ -57,7 +58,6 @@ class PPOPolicy(A2CPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
     def __init__(
         self,
         actor: torch.nn.Module,
@@ -124,8 +124,8 @@ class PPOPolicy(A2CPolicy):
                 # calculate loss for critic
                 value = self.critic(b.obs).flatten()
                 if self._value_clip:
-                    v_clip = b.v_s + (value - b.v_s).clamp(
-                        -self._eps_clip, self._eps_clip)
+                    v_clip = b.v_s + (value -
+                                      b.v_s).clamp(-self._eps_clip, self._eps_clip)
                     vf1 = (b.returns - value).pow(2)
                     vf2 = (b.returns - v_clip).pow(2)
                     vf_loss = torch.max(vf1, vf2).mean()
@@ -140,7 +140,8 @@ class PPOPolicy(A2CPolicy):
                 if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
                         set(self.actor.parameters()).union(self.critic.parameters()),
-                        max_norm=self._grad_norm)
+                        max_norm=self._grad_norm
+                    )
                 self.optim.step()
                 clip_losses.append(clip_loss.item())
                 vf_losses.append(vf_loss.item())

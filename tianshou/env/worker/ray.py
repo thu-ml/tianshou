@@ -1,6 +1,7 @@
+from typing import Any, Callable, List, Optional, Tuple
+
 import gym
 import numpy as np
-from typing import Any, List, Callable, Tuple, Optional
 
 from tianshou.env.worker import EnvWorker
 
@@ -12,7 +13,6 @@ except ImportError:
 
 class RayEnvWorker(EnvWorker):
     """Ray worker used in RayVectorEnv."""
-
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self.env = ray.remote(gym.Wrapper).options(num_cpus=0).remote(env_fn())
         super().__init__(env_fn)

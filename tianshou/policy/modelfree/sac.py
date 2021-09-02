@@ -1,12 +1,13 @@
-import torch
-import numpy as np
 from copy import deepcopy
-from torch.distributions import Independent, Normal
-from typing import Any, Dict, Tuple, Union, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 
-from tianshou.policy import DDPGPolicy
-from tianshou.exploration import BaseNoise
+import numpy as np
+import torch
+from torch.distributions import Independent, Normal
+
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.exploration import BaseNoise
+from tianshou.policy import DDPGPolicy
 
 
 class SACPolicy(DDPGPolicy):
@@ -47,7 +48,6 @@ class SACPolicy(DDPGPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
-
     def __init__(
         self,
         actor: torch.nn.Module,
@@ -67,7 +67,8 @@ class SACPolicy(DDPGPolicy):
     ) -> None:
         super().__init__(
             None, None, None, None, tau, gamma, exploration_noise,
-            reward_normalization, estimation_step, **kwargs)
+            reward_normalization, estimation_step, **kwargs
+        )
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
@@ -123,15 +124,17 @@ class SACPolicy(DDPGPolicy):
         # in appendix C to get some understanding of this equation.
         if self.action_scaling and self.action_space is not None:
             action_scale = to_torch_as(
-                (self.action_space.high - self.action_space.low) / 2.0, act)
+                (self.action_space.high - self.action_space.low) / 2.0, act
+            )
         else:
             action_scale = 1.0  # type: ignore
         squashed_action = torch.tanh(act)
         log_prob = log_prob - torch.log(
             action_scale * (1 - squashed_action.pow(2)) + self.__eps
         ).sum(-1, keepdim=True)
-        return Batch(logits=logits, act=squashed_action,
-                     state=h, dist=dist, log_prob=log_prob)
+        return Batch(
+            logits=logits, act=squashed_action, state=h, dist=dist, log_prob=log_prob
+        )
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}
@@ -146,9 +149,11 @@ class SACPolicy(DDPGPolicy):
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(
-            batch, self.critic1, self.critic1_optim)
+            batch, self.critic1, self.critic1_optim
+        )
         td2, critic2_loss = self._mse_optimizer(
-            batch, self.critic2, self.critic2_optim)
+            batch, self.critic2, self.critic2_optim
+        )
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor
@@ -156,8 +161,10 @@ class SACPolicy(DDPGPolicy):
         a = obs_result.act
         current_q1a = self.critic1(batch.obs, a).flatten()
         current_q2a = self.critic2(batch.obs, a).flatten()
-        actor_loss = (self._alpha * obs_result.log_prob.flatten()
-                      - torch.min(current_q1a, current_q2a)).mean()
+        actor_loss = (
+            self._alpha * obs_result.log_prob.flatten() -
+            torch.min(current_q1a, current_q2a)
+        ).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()

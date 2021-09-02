@@ -1,18 +1,19 @@
-import os
-import gym
-import torch
-import pprint
 import argparse
+import os
+import pprint
+
+import gym
 import numpy as np
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils import TensorboardLogger
-from tianshou.env import DummyVectorEnv
-from tianshou.utils.net.common import Net
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.utils.net.discrete import Actor, Critic
+from tianshou.env import DummyVectorEnv
 from tianshou.policy import A2CPolicy, ImitationPolicy
-from tianshou.trainer import onpolicy_trainer, offpolicy_trainer
+from tianshou.trainer import offpolicy_trainer, onpolicy_trainer
+from tianshou.utils import TensorboardLogger
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.discrete import Actor, Critic
 
 
 def get_args():
@@ -31,17 +32,15 @@ def get_args():
     parser.add_argument('--update-per-step', type=float, default=1 / 16)
     parser.add_argument('--repeat-per-collect', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[64, 64])
-    parser.add_argument('--imitation-hidden-sizes', type=int,
-                        nargs='*', default=[128])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
+    parser.add_argument('--imitation-hidden-sizes', type=int, nargs='*', default=[128])
     parser.add_argument('--training-num', type=int, default=16)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+    )
     # a2c special
     parser.add_argument('--vf-coef', type=float, default=0.5)
     parser.add_argument('--ent-coef', type=float, default=0.0)
@@ -60,33 +59,42 @@ def test_a2c_with_il(args=get_args()):
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)])
+        [lambda: gym.make(args.task) for _ in range(args.training_num)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: gym.make(args.task) for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
-              device=args.device)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
     critic = Critic(net, device=args.device).to(args.device)
     optim = torch.optim.Adam(
-        set(actor.parameters()).union(critic.parameters()), lr=args.lr)
+        set(actor.parameters()).union(critic.parameters()), lr=args.lr
+    )
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
-        actor, critic, optim, dist,
-        discount_factor=args.gamma, gae_lambda=args.gae_lambda,
-        vf_coef=args.vf_coef, ent_coef=args.ent_coef,
-        max_grad_norm=args.max_grad_norm, reward_normalization=args.rew_norm,
-        action_space=env.action_space)
+        actor,
+        critic,
+        optim,
+        dist,
+        discount_factor=args.gamma,
+        gae_lambda=args.gae_lambda,
+        vf_coef=args.vf_coef,
+        ent_coef=args.ent_coef,
+        max_grad_norm=args.max_grad_norm,
+        reward_normalization=args.rew_norm,
+        action_space=env.action_space
+    )
     # collector
     train_collector = Collector(
-        policy, train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)))
+        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs))
+    )
     test_collector = Collector(policy, test_envs)
     # log
     log_path = os.path.join(args.logdir, args.task, 'a2c')
@@ -101,10 +109,19 @@ def test_a2c_with_il(args=get_args()):
 
     # trainer
     result = onpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.repeat_per_collect, args.test_num, args.batch_size,
-        episode_per_collect=args.episode_per_collect, stop_fn=stop_fn, save_fn=save_fn,
-        logger=logger)
+        policy,
+        train_collector,
+        test_collector,
+        args.epoch,
+        args.step_per_epoch,
+        args.repeat_per_collect,
+        args.test_num,
+        args.batch_size,
+        episode_per_collect=args.episode_per_collect,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger
+    )
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':
@@ -121,8 +138,7 @@ def test_a2c_with_il(args=get_args()):
     # here we define an imitation collector with a trivial policy
     if args.task == 'CartPole-v0':
         env.spec.reward_threshold = 190  # lower the goal
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
-              device=args.device)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     net = Actor(net, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(net, optim, action_space=env.action_space)
@@ -132,9 +148,18 @@ def test_a2c_with_il(args=get_args()):
     )
     train_collector.reset()
     result = offpolicy_trainer(
-        il_policy, train_collector, il_test_collector, args.epoch,
-        args.il_step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, logger=logger)
+        il_policy,
+        train_collector,
+        il_test_collector,
+        args.epoch,
+        args.il_step_per_epoch,
+        args.step_per_collect,
+        args.test_num,
+        args.batch_size,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger
+    )
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':

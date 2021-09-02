@@ -1,11 +1,11 @@
-import numpy as np
 from abc import ABC, abstractmethod
-from typing import Union, Optional, Sequence
+from typing import Optional, Sequence, Union
+
+import numpy as np
 
 
 class BaseNoise(ABC, object):
     """The action noise base class."""
-
     def __init__(self) -> None:
         super().__init__()
 
@@ -21,7 +21,6 @@ class BaseNoise(ABC, object):
 
 class GaussianNoise(BaseNoise):
     """The vanilla gaussian process, for exploration in DDPG by default."""
-
     def __init__(self, mu: float = 0.0, sigma: float = 1.0) -> None:
         super().__init__()
         self._mu = mu
@@ -48,7 +47,6 @@ class OUNoise(BaseNoise):
     vanilla gaussian process has little difference from using the
     Ornstein-Uhlenbeck process.
     """
-
     def __init__(
         self,
         mu: float = 0.0,
@@ -74,7 +72,8 @@ class OUNoise(BaseNoise):
         Return an numpy array which size is equal to ``size``.
         """
         if self._x is None or isinstance(
-                self._x, np.ndarray) and self._x.shape != size:
+            self._x, np.ndarray
+        ) and self._x.shape != size:
             self._x = 0.0
         if mu is None:
             mu = self._mu
