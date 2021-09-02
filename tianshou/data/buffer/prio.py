@@ -66,7 +66,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def get_weight(self, index: Union[int, np.ndarray]) -> Union[float, np.ndarray]:
         """Get the importance sampling weight.
 
-        The "weight" in the returned Batch is the weight on loss function to de-bias
+        The "weight" in the returned Batch is the weight on loss function to debias
         the sampling process (some transition tuples are sampled more often so their
         losses are weighted less).
         """

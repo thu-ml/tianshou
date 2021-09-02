@@ -60,7 +60,7 @@ The content of ``Batch`` objects can be defined by the following rules.
 
 2. The keys are always strings (they are names of corresponding values).
 
-3. The values can be scalars, tensors, or Batch objects. The recurse definition makes it possible to form a hierarchy of batches.
+3. The values can be scalars, tensors, or Batch objects. The recursive definition makes it possible to form a hierarchy of batches.
 
 4. Tensors are the most important values. In short, tensors are n-dimensional arrays of the same data type. We support two types of tensors: `PyTorch <https://pytorch.org/>`_ tensor type ``torch.Tensor`` and `NumPy <https://numpy.org/>`_ tensor type ``np.ndarray``.
 
@@ -348,7 +348,7 @@ The introduction of reserved keys gives rise to the need to check if a key is re
 
    </details><br>
 
-The ``Batch.is_empty`` function has an option to decide whether to identify direct emptiness (just a ``Batch()``) or to identify recurse emptiness (a ``Batch`` object without any scalar/tensor leaf nodes).
+The ``Batch.is_empty`` function has an option to decide whether to identify direct emptiness (just a ``Batch()``) or to identify recursive emptiness (a ``Batch`` object without any scalar/tensor leaf nodes).
 
 .. note::
 
@@ -492,7 +492,7 @@ Miscellaneous Notes
 
    </details><br>
 
-2. It is often the case that the observations returned from the environment are NumPy ndarrays but the policy requires ``torch.Tensor`` for prediction and learning. In this regard, Tianshou provides helper functions to convert the stored data in-place into Numpy arrays or Torch tensors.
+2. It is often the case that the observations returned from the environment are all NumPy ndarray but the policy requires ``torch.Tensor`` for prediction and learning. In this regard, Tianshou provides helper functions to convert the stored data in-place into Numpy arrays or Torch tensors.
 
 3. ``obj.stack_([a, b])`` is the same as ``Batch.stack([obj, a, b])``, and ``obj.cat_([a, b])`` is the same as ``Batch.cat([obj, a, b])``. Considering the frequent requirement of concatenating two ``Batch`` objects, Tianshou also supports ``obj.cat_(a)`` to be an alias of ``obj.cat_([a])``.
 

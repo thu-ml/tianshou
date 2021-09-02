@@ -53,7 +53,7 @@ def _to_array_with_correct_type(v: Any) -> np.ndarray:
         return v  # most often case
     # convert the value to np.ndarray
     # convert to object data type if neither bool nor number
-    # raises an exception if array's elements are tensors themself
+    # raises an exception if array's elements are tensors themselves
     v = np.asanyarray(v)
     if not issubclass(v.dtype.type, (np.bool_, np.number)):
         v = v.astype(object)
@@ -72,9 +72,11 @@ def _to_array_with_correct_type(v: Any) -> np.ndarray:
     return v
 
 
-def _create_value(inst: Any,
-                  size: int,
-                  stack: bool = True) -> Union["Batch", np.ndarray, torch.Tensor]:
+def _create_value(
+    inst: Any,
+    size: int,
+    stack: bool = True,
+) -> Union["Batch", np.ndarray, torch.Tensor]:
     """Create empty place-holders accroding to inst's shape.
 
     :param bool stack: whether to stack or to concatenate. E.g. if inst has shape of
@@ -167,11 +169,10 @@ def _alloc_by_keys_diff(
 class Batch:
     """The internal data structure in Tianshou.
 
-    Batch is a kind of supercharged array (of temporal data) stored
-    individually in a (recursive) dictionary of object that can be either numpy
-    array, torch tensor, or batch themself. It is designed to make it extremely
-    easily to access, manipulate and set partial view of the heterogeneous data
-    conveniently.
+    Batch is a kind of supercharged array (of temporal data) stored individually in a
+    (recursive) dictionary of object that can be either numpy array, torch tensor, or
+    batch themselves. It is designed to make it extremely easily to access, manipulate
+    and set partial view of the heterogeneous data conveniently.
 
     For a detailed description, please refer to :ref:`batch_concept`.
     """

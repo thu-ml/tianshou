@@ -15,7 +15,7 @@ class DiscreteBCQPolicy(DQNPolicy):
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> q_value)
     :param torch.nn.Module imitator: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> imtation_logits)
+        :class:`~tianshou.policy.BasePolicy`. (s -> imitation_logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float discount_factor: in [0, 1].
     :param int estimation_step: the number of steps to look ahead. Default to 1.
@@ -23,7 +23,7 @@ class DiscreteBCQPolicy(DQNPolicy):
     :param float eval_eps: the epsilon-greedy noise added in evaluation.
     :param float unlikely_action_threshold: the threshold (tau) for unlikely
         actions, as shown in Equ. (17) in the paper. Default to 0.3.
-    :param float imitation_logits_penalty: reguralization weight for imitation
+    :param float imitation_logits_penalty: regularization weight for imitation
         logits. Default to 1e-2.
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.

@@ -14,7 +14,7 @@ from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 class BasePolicy(ABC, nn.Module):
     """The base class for any RL policy.
 
-    Tianshou aims to modularizing RL algorithms. It comes into several classes of
+    Tianshou aims to modularize RL algorithms. It comes into several classes of
     policies in Tianshou. All of the policy classes must inherit
     :class:`~tianshou.policy.BasePolicy`.
 
@@ -285,7 +285,7 @@ class BasePolicy(ABC, nn.Module):
         :param Batch batch: a data batch which contains several episodes of data in
             sequential order. Mind that the end of each finished episode of batch
             should be marked by done flag, unfinished (or collecting) episodes will be
-            recongized by buffer.unfinished_index().
+            recognized by buffer.unfinished_index().
         :param numpy.ndarray indices: tell batch's location in buffer, batch is equal
             to buffer[indices].
         :param np.ndarray v_s_: the value function of all next states :math:`V(s')`.

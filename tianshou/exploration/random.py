@@ -21,7 +21,7 @@ class BaseNoise(ABC, object):
 
 
 class GaussianNoise(BaseNoise):
-    """The vanilla gaussian process, for exploration in DDPG by default."""
+    """The vanilla Gaussian process, for exploration in DDPG by default."""
 
     def __init__(self, mu: float = 0.0, sigma: float = 1.0) -> None:
         super().__init__()
@@ -46,7 +46,7 @@ class OUNoise(BaseNoise):
 
     For required parameters, you can refer to the stackoverflow page. However,
     our experiment result shows that (similar to OpenAI SpinningUp) using
-    vanilla gaussian process has little difference from using the
+    vanilla Gaussian process has little difference from using the
     Ornstein-Uhlenbeck process.
     """
 

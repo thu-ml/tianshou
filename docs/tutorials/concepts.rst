@@ -219,7 +219,7 @@ Tianshou provides other type of data buffer such as :class:`~tianshou.data.Prior
 Policy
 ------
 
-Tianshou aims to modularizing RL algorithms. It comes into several classes of policies in Tianshou. All of the policy classes must inherit :class:`~tianshou.policy.BasePolicy`.
+Tianshou aims to modularize RL algorithms. It comes into several classes of policies in Tianshou. All of the policy classes must inherit :class:`~tianshou.policy.BasePolicy`.
 
 A policy class typically has the following parts:
 

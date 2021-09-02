@@ -44,7 +44,7 @@ def offpolicy_trainer(
     :param int step_per_epoch: the number of transitions collected per epoch.
     :param int step_per_collect: the number of transitions the collector would collect
         before the network update, i.e., trainer will collect "step_per_collect"
-        transitions and do some policy network update repeatly in each epoch.
+        transitions and do some policy network update repeatedly in each epoch.
     :param episode_per_test: the number of episodes for one policy evaluation.
     :param int batch_size: the batch size of sample data, which is going to feed in the
         policy network.

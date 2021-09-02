@@ -1,7 +1,5 @@
-"""Policy package.
-
-isort:skip_file
-"""
+"""Policy package."""
+# isort:skip_file
 
 from tianshou.policy.base import BasePolicy
 from tianshou.policy.random import RandomPolicy

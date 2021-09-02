@@ -25,7 +25,7 @@ class DiscreteSACPolicy(SACPolicy):
     :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
         regularization coefficient. Default to 0.2.
         If a tuple (target_entropy, log_alpha, alpha_optim) is provided, the
-        alpha is automatatically tuned.
+        alpha is automatically tuned.
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.
 

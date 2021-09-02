@@ -67,7 +67,7 @@ class MovAvg(object):
 
 
 class RunningMeanStd(object):
-    """Calulates the running mean and std of a data stream.
+    """Calculates the running mean and std of a data stream.
 
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     """

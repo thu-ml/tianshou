@@ -49,7 +49,7 @@ class BaseVectorEnv(gym.Env):
 
         Otherwise, the outputs of these envs may be the same with each other.
 
-    :param env_fns: a list of callable envs, ``env_fns[i]()`` generates the ith env.
+    :param env_fns: a list of callable envs, ``env_fns[i]()`` generates the i-th env.
     :param worker_fn: a callable worker, ``worker_fn(env_fns[i])`` generates a
         worker which contains the i-th env.
     :param int wait_num: use in asynchronous simulation if the time cost of
@@ -61,7 +61,7 @@ class BaseVectorEnv(gym.Env):
     :param float timeout: use in asynchronous simulation same as above, in each
         vectorized step it only deal with those environments spending time
         within ``timeout`` seconds.
-    :param bool norm_obs: Whether to track mean/std of data and normalise observation
+    :param bool norm_obs: Whether to track mean/std of data and normalize observation
         on return. For now, observation normalization only support observation of
         type np.ndarray.
     :param obs_rms: class to track mean&std of observation. If not given, it will

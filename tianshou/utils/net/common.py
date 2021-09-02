@@ -33,7 +33,7 @@ class MLP(nn.Module):
     :param int input_dim: dimension of the input vector.
     :param int output_dim: dimension of the output vector. If set to 0, there
         is no final linear layer.
-    :param hidden_sizes: shape of MLP passed in as a list, not incluing
+    :param hidden_sizes: shape of MLP passed in as a list, not including
         input_dim and output_dim.
     :param norm_layer: use which normalization before activation, e.g.,
         ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
@@ -41,7 +41,7 @@ class MLP(nn.Module):
         of hidden_sizes, to use different normalization module in different
         layers. Default to no normalization.
     :param activation: which activation to use after each layer, can be both
-        the same actvition for all layers if passed in nn.Module, or different
+        the same activation for all layers if passed in nn.Module, or different
         activation for different Modules if passed in a list. Default to
         nn.ReLU.
     :param device: which device to create this model on. Default to None.
@@ -107,7 +107,7 @@ class Net(nn.Module):
         of hidden_sizes, to use different normalization module in different
         layers. Default to no normalization.
     :param activation: which activation to use after each layer, can be both
-        the same actvition for all layers if passed in nn.Module, or different
+        the same activation for all layers if passed in nn.Module, or different
         activation for different Modules if passed in a list. Default to
         nn.ReLU.
     :param device: specify the device when the network actually runs. Default

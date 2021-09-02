@@ -51,10 +51,10 @@ def onpolicy_trainer(
         policy network.
     :param int step_per_collect: the number of transitions the collector would collect
         before the network update, i.e., trainer will collect "step_per_collect"
-        transitions and do some policy network update repeatly in each epoch.
+        transitions and do some policy network update repeatedly in each epoch.
     :param int episode_per_collect: the number of episodes the collector would collect
         before the network update, i.e., trainer will collect "episode_per_collect"
-        episodes and do some policy network update repeatly in each epoch.
+        episodes and do some policy network update repeatedly in each epoch.
     :param function train_fn: a hook called at the beginning of training in each epoch.
         It can be used to perform custom additional operations, with the signature ``f(
         num_epoch: int, step_idx: int) -> None``.
