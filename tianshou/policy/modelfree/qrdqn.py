@@ -29,6 +29,7 @@ class QRDQNPolicy(DQNPolicy):
         Please refer to :class:`~tianshou.policy.DQNPolicy` for more detailed
         explanation.
     """
+
     def __init__(
         self,
         model: torch.nn.Module,

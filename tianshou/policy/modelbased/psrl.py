@@ -19,6 +19,7 @@ class PSRLModel(object):
     :param float discount_factor: in [0, 1].
     :param float epsilon: for precision control in value iteration.
     """
+
     def __init__(
         self,
         trans_count_prior: np.ndarray,
@@ -158,6 +159,7 @@ class PSRLPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
     def __init__(
         self,
         trans_count_prior: np.ndarray,

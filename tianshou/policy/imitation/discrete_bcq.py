@@ -33,6 +33,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
     def __init__(
         self,
         model: torch.nn.Module,

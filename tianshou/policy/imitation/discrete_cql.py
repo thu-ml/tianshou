@@ -28,6 +28,7 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         Please refer to :class:`~tianshou.policy.QRDQNPolicy` for more detailed
         explanation.
     """
+
     def __init__(
         self,
         model: torch.nn.Module,

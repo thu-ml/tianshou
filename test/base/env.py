@@ -11,6 +11,7 @@ from gym.spaces import Box, Dict, Discrete, MultiDiscrete, Tuple
 class MyTestEnv(gym.Env):
     """This is a "going right" task. The task is to go right ``size`` steps.
     """
+
     def __init__(
         self,
         size,
@@ -140,6 +141,7 @@ class MyTestEnv(gym.Env):
 
 
 class NXEnv(gym.Env):
+
     def __init__(self, size, obs_type, feat_dim=32):
         self.size = size
         self.feat_dim = feat_dim

@@ -13,6 +13,7 @@ from tianshou.policy import BasePolicy
 
 
 class DummyDataset(Dataset):
+
     def __init__(self, length):
         self.length = length
         self.episodes = [3 * i % 5 + 1 for i in range(self.length)]
@@ -26,6 +27,7 @@ class DummyDataset(Dataset):
 
 
 class FiniteEnv(gym.Env):
+
     def __init__(self, dataset, num_replicas, rank):
         self.dataset = dataset
         self.num_replicas = num_replicas
@@ -56,6 +58,7 @@ class FiniteEnv(gym.Env):
 
 
 class FiniteVectorEnv(BaseVectorEnv):
+
     def __init__(self, env_fns, **kwargs):
         super().__init__(env_fns, **kwargs)
         self._alive_env_ids = set()
@@ -150,6 +153,7 @@ class FiniteSubprocVectorEnv(FiniteVectorEnv, SubprocVectorEnv):
 
 
 class AnyPolicy(BasePolicy):
+
     def forward(self, batch, state=None):
         return Batch(act=np.stack([1] * len(batch)))
 
@@ -162,6 +166,7 @@ def _finite_env_factory(dataset, num_replicas, rank):
 
 
 class MetricTracker:
+
     def __init__(self):
         self.counter = Counter()
         self.finished = set()

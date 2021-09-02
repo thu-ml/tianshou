@@ -12,6 +12,7 @@ else:  # pytest
 
 
 class MyPolicy(BasePolicy):
+
     def __init__(self, dict_state=False, need_state=True):
         """
         :param bool dict_state: if the observation of the environment is a dict

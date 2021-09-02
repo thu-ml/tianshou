@@ -45,6 +45,7 @@ class NPGPolicy(A2CPolicy):
     :param bool deterministic_eval: whether to use deterministic action instead of
         stochastic action sampled by the policy. Default to False.
     """
+
     def __init__(
         self,
         actor: torch.nn.Module,

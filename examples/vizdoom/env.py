@@ -34,6 +34,7 @@ def battle_button_comb():
 
 
 class Env(gym.Env):
+
     def __init__(self, cfg_path, frameskip=4, res=(4, 40, 60), save_lmp=False):
         super().__init__()
         self.save_lmp = save_lmp

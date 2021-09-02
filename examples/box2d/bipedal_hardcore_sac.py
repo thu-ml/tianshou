@@ -48,6 +48,7 @@ def get_args():
 
 class Wrapper(gym.Wrapper):
     """Env wrapper for reward scale, action repeat and removing done penalty"""
+
     def __init__(self, env, action_repeat=3, reward_scale=5, rm_done=True):
         super().__init__(env)
         self.action_repeat = action_repeat

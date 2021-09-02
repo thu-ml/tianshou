@@ -34,6 +34,7 @@ class DiscreteCRRPolicy(PGPolicy):
         Please refer to :class:`~tianshou.policy.PGPolicy` for more detailed
         explanation.
     """
+
     def __init__(
         self,
         actor: torch.nn.Module,

@@ -69,6 +69,7 @@ class BaseVectorEnv(gym.Env):
         obs_rms should be passed in. Default to None.
     :param bool update_obs_rms: Whether to update obs_rms. Default to True.
     """
+
     def __init__(
         self,
         env_fns: List[Callable[[], gym.Env]],
@@ -320,6 +321,7 @@ class DummyVectorEnv(BaseVectorEnv):
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
+
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
         super().__init__(env_fns, DummyEnvWorker, **kwargs)
 
@@ -331,7 +333,9 @@ class SubprocVectorEnv(BaseVectorEnv):
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
+
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
+
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=False)
 
@@ -347,7 +351,9 @@ class ShmemVectorEnv(BaseVectorEnv):
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
+
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
+
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
 
@@ -363,6 +369,7 @@ class RayVectorEnv(BaseVectorEnv):
 
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
+
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
         try:
             import ray

@@ -34,6 +34,7 @@ class Actor(nn.Module):
         Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
         of how preprocess_net is suggested to be defined.
     """
+
     def __init__(
         self,
         preprocess_net: nn.Module,
@@ -86,6 +87,7 @@ class Critic(nn.Module):
         Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
         of how preprocess_net is suggested to be defined.
     """
+
     def __init__(
         self,
         preprocess_net: nn.Module,
@@ -121,6 +123,7 @@ class CosineEmbeddingNetwork(nn.Module):
         From https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master
         /fqf_iqn_qrdqn/network.py .
     """
+
     def __init__(self, num_cosines: int, embedding_dim: int) -> None:
         super().__init__()
         self.net = nn.Sequential(nn.Linear(num_cosines, embedding_dim), nn.ReLU())
@@ -163,6 +166,7 @@ class ImplicitQuantileNetwork(Critic):
 
         The second item of the first return value is tau vector.
     """
+
     def __init__(
         self,
         preprocess_net: nn.Module,
@@ -209,6 +213,7 @@ class FractionProposalNetwork(nn.Module):
         Adapted from https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master
         /fqf_iqn_qrdqn/network.py .
     """
+
     def __init__(self, num_fractions: int, embedding_dim: int) -> None:
         super().__init__()
         self.net = nn.Linear(embedding_dim, num_fractions)
@@ -251,6 +256,7 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         The first return value is a tuple of (quantiles, fractions, quantiles_tau),
         where fractions is a Batch(taus, tau_hats, entropies).
     """
+
     def __init__(
         self,
         preprocess_net: nn.Module,
@@ -310,6 +316,7 @@ class NoisyLinear(nn.Module):
         Adapted from https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master
         /fqf_iqn_qrdqn/network.py .
     """
+
     def __init__(
         self, in_features: int, out_features: int, noisy_std: float = 0.5
     ) -> None:

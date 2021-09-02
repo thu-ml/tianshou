@@ -23,6 +23,7 @@ class MovAvg(object):
         >>> print(f'{stat.mean():.2f}±{stat.std():.2f}')
         6.50±1.12
     """
+
     def __init__(self, size: int = 100) -> None:
         super().__init__()
         self.size = size
@@ -70,6 +71,7 @@ class RunningMeanStd(object):
 
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     """
+
     def __init__(
         self,
         mean: Union[float, np.ndarray] = 0.0,

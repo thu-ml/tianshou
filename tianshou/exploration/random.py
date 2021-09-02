@@ -6,6 +6,7 @@ import numpy as np
 
 class BaseNoise(ABC, object):
     """The action noise base class."""
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -21,6 +22,7 @@ class BaseNoise(ABC, object):
 
 class GaussianNoise(BaseNoise):
     """The vanilla gaussian process, for exploration in DDPG by default."""
+
     def __init__(self, mu: float = 0.0, sigma: float = 1.0) -> None:
         super().__init__()
         self._mu = mu
@@ -47,6 +49,7 @@ class OUNoise(BaseNoise):
     vanilla gaussian process has little difference from using the
     Ornstein-Uhlenbeck process.
     """
+
     def __init__(
         self,
         mu: float = 0.0,

@@ -30,6 +30,7 @@ class WandBLogger(BaseLogger):
     :param int update_interval: the log interval in log_update_data().
         Default to 1000.
     """
+
     def __init__(
         self,
         train_interval: int = 1000,

@@ -175,6 +175,7 @@ class Batch:
 
     For a detailed description, please refer to :ref:`batch_concept`.
     """
+
     def __init__(
         self,
         batch_dict: Optional[Union[dict, "Batch", Sequence[Union[dict, "Batch"]],

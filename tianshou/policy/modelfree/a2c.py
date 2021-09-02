@@ -48,6 +48,7 @@ class A2CPolicy(PGPolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
     """
+
     def __init__(
         self,
         actor: torch.nn.Module,

@@ -18,6 +18,7 @@ class TensorboardLogger(BaseLogger):
     :param int save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
     """
+
     def __init__(
         self,
         writer: SummaryWriter,
@@ -77,6 +78,7 @@ class BasicLogger(TensorboardLogger):
 
     This class is for compatibility.
     """
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         warnings.warn(
             "Deprecated soon: BasicLogger has renamed to TensorboardLogger in #427."

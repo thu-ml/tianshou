@@ -17,6 +17,7 @@ class TicTacToeEnv(MultiAgentEnv):
     :param size: the size of the board (square board)
     :param win_size: how many units in a row is considered to win
     """
+
     def __init__(self, size: int = 3, win_size: int = 3):
         super().__init__()
         assert size > 0, f'board size should be positive, but got {size}'

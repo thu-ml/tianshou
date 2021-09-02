@@ -57,6 +57,7 @@ class BasePolicy(ABC, nn.Module):
         torch.save(policy.state_dict(), "policy.pth")
         policy.load_state_dict(torch.load("policy.pth"))
     """
+
     def __init__(
         self,
         observation_space: Optional[gym.Space] = None,

@@ -20,6 +20,7 @@ class ReplayBufferManager(ReplayBuffer):
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
+
     def __init__(self, buffer_list: List[ReplayBuffer]) -> None:
         self.buffer_num = len(buffer_list)
         self.buffers = np.array(buffer_list, dtype=object)
@@ -198,6 +199,7 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
+
     def __init__(self, buffer_list: Sequence[PrioritizedReplayBuffer]) -> None:
         ReplayBufferManager.__init__(self, buffer_list)  # type: ignore
         kwargs = buffer_list[0].options

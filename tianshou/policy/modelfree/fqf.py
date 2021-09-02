@@ -33,6 +33,7 @@ class FQFPolicy(QRDQNPolicy):
         Please refer to :class:`~tianshou.policy.QRDQNPolicy` for more detailed
         explanation.
     """
+
     def __init__(
         self,
         model: FullQuantileFunction,

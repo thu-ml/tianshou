@@ -80,6 +80,7 @@ Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]  # type: ignore
 
 def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
     """Copy object into HDF5 group."""
+
     def to_hdf5_via_pickle(x: object, y: h5py.Group, key: str) -> None:
         """Pickle, convert to numpy array and write to HDF5 dataset."""
         data = np.frombuffer(pickle.dumps(x), dtype=np.byte)

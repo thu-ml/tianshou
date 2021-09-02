@@ -11,6 +11,7 @@ class RandomPolicy(BasePolicy):
 
     It randomly chooses an action from the legal action.
     """
+
     def forward(
         self,
         batch: Batch,

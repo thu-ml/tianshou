@@ -139,6 +139,7 @@ def train_agent(
     agent_opponent: Optional[BasePolicy] = None,
     optim: Optional[torch.optim.Optimizer] = None,
 ) -> Tuple[dict, BasePolicy]:
+
     def env_func():
         return TicTacToeEnv(args.board_size, args.win_size)
 

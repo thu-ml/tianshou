@@ -15,6 +15,7 @@ class NoopResetEnv(gym.Wrapper):
     :param gym.Env env: the environment to wrap.
     :param int noop_max: the maximum value of no-ops to run.
     """
+
     def __init__(self, env, noop_max=30):
         super().__init__(env)
         self.noop_max = noop_max
@@ -38,6 +39,7 @@ class MaxAndSkipEnv(gym.Wrapper):
     :param gym.Env env: the environment to wrap.
     :param int skip: number of `skip`-th frame.
     """
+
     def __init__(self, env, skip=4):
         super().__init__(env)
         self._skip = skip
@@ -63,6 +65,7 @@ class EpisodicLifeEnv(gym.Wrapper):
 
     :param gym.Env env: the environment to wrap.
     """
+
     def __init__(self, env):
         super().__init__(env)
         self.lives = 0
@@ -102,6 +105,7 @@ class FireResetEnv(gym.Wrapper):
 
     :param gym.Env env: the environment to wrap.
     """
+
     def __init__(self, env):
         super().__init__(env)
         assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
@@ -117,6 +121,7 @@ class WarpFrame(gym.ObservationWrapper):
 
     :param gym.Env env: the environment to wrap.
     """
+
     def __init__(self, env):
         super().__init__(env)
         self.size = 84
@@ -138,6 +143,7 @@ class ScaledFloatFrame(gym.ObservationWrapper):
 
     :param gym.Env env: the environment to wrap.
     """
+
     def __init__(self, env):
         super().__init__(env)
         low = np.min(env.observation_space.low)
@@ -157,6 +163,7 @@ class ClipRewardEnv(gym.RewardWrapper):
 
     :param gym.Env env: the environment to wrap.
     """
+
     def __init__(self, env):
         super().__init__(env)
         self.reward_range = (-1, 1)
@@ -172,6 +179,7 @@ class FrameStack(gym.Wrapper):
     :param gym.Env env: the environment to wrap.
     :param int n_frames: the number of frames to stack.
     """
+
     def __init__(self, env, n_frames):
         super().__init__(env)
         self.n_frames = n_frames

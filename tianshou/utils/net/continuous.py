@@ -33,6 +33,7 @@ class Actor(nn.Module):
         Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
         of how preprocess_net is suggested to be defined.
     """
+
     def __init__(
         self,
         preprocess_net: nn.Module,
@@ -82,6 +83,7 @@ class Critic(nn.Module):
         Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
         of how preprocess_net is suggested to be defined.
     """
+
     def __init__(
         self,
         preprocess_net: nn.Module,
@@ -138,6 +140,7 @@ class ActorProb(nn.Module):
         Please refer to :class:`~tianshou.utils.net.common.Net` as an instance
         of how preprocess_net is suggested to be defined.
     """
+
     def __init__(
         self,
         preprocess_net: nn.Module,
@@ -191,6 +194,7 @@ class RecurrentActorProb(nn.Module):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
+
     def __init__(
         self,
         layer_num: int,
@@ -268,6 +272,7 @@ class RecurrentCritic(nn.Module):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
+
     def __init__(
         self,
         layer_num: int,

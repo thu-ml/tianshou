@@ -28,6 +28,7 @@ _NP_TO_CT = {
 
 class ShArray:
     """Wrapper of multiprocessing Array."""
+
     def __init__(self, dtype: np.generic, shape: Tuple[int]) -> None:
         self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))  # type: ignore
         self.dtype = dtype
@@ -61,6 +62,7 @@ def _worker(
     env_fn_wrapper: CloudpickleWrapper,
     obs_bufs: Optional[Union[dict, tuple, ShArray]] = None,
 ) -> None:
+
     def _encode_obs(
         obs: Union[dict, tuple, np.ndarray], buffer: Union[dict, tuple, ShArray]
     ) -> None:
@@ -114,6 +116,7 @@ def _worker(
 
 class SubprocEnvWorker(EnvWorker):
     """Subprocess worker used in SubprocVectorEnv and ShmemVectorEnv."""
+
     def __init__(
         self, env_fn: Callable[[], gym.Env], share_memory: bool = False
     ) -> None:
@@ -142,6 +145,7 @@ class SubprocEnvWorker(EnvWorker):
         return self.parent_remote.recv()
 
     def _decode_obs(self) -> Union[dict, tuple, np.ndarray]:
+
         def decode_obs(
             buffer: Optional[Union[dict, tuple, ShArray]]
         ) -> Union[dict, tuple, np.ndarray]:

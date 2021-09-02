@@ -8,6 +8,7 @@ from tianshou.env.worker import EnvWorker
 
 class DummyEnvWorker(EnvWorker):
     """Dummy worker used in sequential vector environments."""
+
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self.env = env_fn()
         super().__init__(env_fn)

@@ -47,6 +47,7 @@ class Collector(object):
         Please make sure the given environment has a time limitation if using n_episode
         collect option.
     """
+
     def __init__(
         self,
         policy: BasePolicy,
@@ -327,6 +328,7 @@ class AsyncCollector(Collector):
     The arguments are exactly the same as :class:`~tianshou.data.Collector`, please
     refer to :class:`~tianshou.data.Collector` for more detailed explanation.
     """
+
     def __init__(
         self,
         policy: BasePolicy,

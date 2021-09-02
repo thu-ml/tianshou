@@ -47,6 +47,7 @@ class MLP(nn.Module):
     :param device: which device to create this model on. Default to None.
     :param linear_layer: use this module as linear layer. Default to nn.Linear.
     """
+
     def __init__(
         self,
         input_dim: int,
@@ -133,6 +134,7 @@ class Net(nn.Module):
         :class:`~tianshou.utils.net.continuous.Critic`, etc, to see how it's
         suggested be used.
     """
+
     def __init__(
         self,
         state_shape: Union[int, Sequence[int]],
@@ -206,6 +208,7 @@ class Recurrent(nn.Module):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
+
     def __init__(
         self,
         layer_num: int,

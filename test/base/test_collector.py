@@ -22,6 +22,7 @@ else:  # pytest
 
 
 class MyPolicy(BasePolicy):
+
     def __init__(self, dict_state=False, need_state=True):
         """
         :param bool dict_state: if the observation of the environment is a dict
@@ -46,6 +47,7 @@ class MyPolicy(BasePolicy):
 
 
 class Logger:
+
     def __init__(self, writer):
         self.cnt = 0
         self.writer = writer

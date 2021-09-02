@@ -15,6 +15,7 @@ class MultiAgentPolicyManager(BasePolicy):
     and "learn": it splits the data and feeds them to each policy. A figure in
     :ref:`marl_example` can help you better understand this procedure.
     """
+
     def __init__(self, policies: List[BasePolicy], **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.policies = policies

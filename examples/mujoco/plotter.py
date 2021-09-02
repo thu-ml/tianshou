@@ -97,6 +97,7 @@ def plot_ax(
     shaded_std=True,
     legend_outside=False,
 ):
+
     def legend_fn(x):
         # return os.path.split(os.path.join(
         #     args.root_dir, x))[0].replace('/', '_') + " (10)"

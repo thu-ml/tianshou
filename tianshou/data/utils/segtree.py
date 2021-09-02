@@ -17,6 +17,7 @@ class SegmentTree:
 
     :param int size: the size of segment tree.
     """
+
     def __init__(self, size: int) -> None:
         bound = 1
         while bound < size:

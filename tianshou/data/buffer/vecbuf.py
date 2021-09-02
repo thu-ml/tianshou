@@ -27,6 +27,7 @@ class VectorReplayBuffer(ReplayBufferManager):
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
+
     def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
         assert buffer_num > 0
         size = int(np.ceil(total_size / buffer_num))
@@ -51,6 +52,7 @@ class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
 
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
+
     def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
         assert buffer_num > 0
         size = int(np.ceil(total_size / buffer_num))

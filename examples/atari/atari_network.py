@@ -13,6 +13,7 @@ class DQN(nn.Module):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
+
     def __init__(
         self,
         c: int,
@@ -56,6 +57,7 @@ class C51(DQN):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
+
     def __init__(
         self,
         c: int,
@@ -88,6 +90,7 @@ class Rainbow(DQN):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
+
     def __init__(
         self,
         c: int,
@@ -149,6 +152,7 @@ class QRDQN(DQN):
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
     """
+
     def __init__(
         self,
         c: int,
