@@ -25,7 +25,23 @@ We follow PEP8 python code style. To check, in the main directory, run:
 
 .. code-block:: bash
 
-    $ flake8 . --count --show-source --statistics
+    $ make lint
+
+
+Code Formatter
+--------------
+
+We use isort and yapf to format all codes. To format, in the main directory, run:
+
+.. code-block:: bash
+
+    $ make format
+
+To check if formatted correctly, in the main directory, run:
+
+.. code-block:: bash
+
+    $ make check-codestyle
 
 
 Type Check
@@ -35,7 +51,7 @@ We use `mypy <https://github.com/python/mypy/>`_ to check the type annotations. 
 
 .. code-block:: bash
 
-    $ mypy
+    $ make mypy
 
 
 Test Locally
@@ -45,7 +61,7 @@ This command will run automatic tests in the main directory
 
 .. code-block:: bash
 
-    $ pytest test --cov tianshou -s --durations 0 -v
+    $ make pytest
 
 
 Test by GitHub Actions
@@ -80,9 +96,9 @@ To compile documentation into webpages, run
 
 .. code-block:: bash
 
-    $ make html
+    $ make doc
 
-under the ``docs/`` directory. The generated webpages are in ``docs/_build`` and can be viewed with browsers.
+The generated webpages are in ``docs/_build`` and can be viewed with browsers.
 
 Chinese documentation is in https://tianshou.readthedocs.io/zh/latest/.
 
@@ -92,21 +108,14 @@ Documentation Generation Test
 
 We have the following three documentation tests:
 
-1. pydocstyle: test docstrings under ``tianshou/``. To check, in the main directory, run:
-
-.. code-block:: bash
-
-    $ pydocstyle tianshou
+1. pydocstyle: test docstrings under ``tianshou/``. 
 
 2. doc8: test ReStructuredText formats. To check, in the main directory, run:
 
-.. code-block:: bash
-
-    $ doc8 docs
-
 3. sphinx test: test if there is any errors/warnings when generating front-end html documentations. To check, in the main directory, run:
 
+To check, in the main directory, run:
+
 .. code-block:: bash
 
-    $ cd docs
-    $ make html SPHINXOPTS="-W"
+    $ make check-docstyle

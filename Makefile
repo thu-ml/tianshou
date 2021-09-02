@@ -10,7 +10,7 @@ pytest:
 	$(call check_install, pytest)
 	$(call check_install, pytest_cov)
 	$(call check_install, pytest_xdist)
-	pytest tests --cov ${PROJECT_PATH} --durations 0 -v --cov-report term-missing
+	pytest test --cov ${PROJECT_PATH} --durations 0 -v --cov-report term-missing
 
 mypy:
 	$(call check_install, mypy)
