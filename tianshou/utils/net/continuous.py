@@ -1,10 +1,10 @@
-import torch
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
+
 import numpy as np
+import torch
 from torch import nn
-from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
 from tianshou.utils.net.common import MLP
-
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2
@@ -47,10 +47,8 @@ class Actor(nn.Module):
         self.device = device
         self.preprocess = preprocess_net
         self.output_dim = int(np.prod(action_shape))
-        input_dim = getattr(preprocess_net, "output_dim",
-                            preprocess_net_output_dim)
-        self.last = MLP(input_dim, self.output_dim,
-                        hidden_sizes, device=self.device)
+        input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
+        self.last = MLP(input_dim, self.output_dim, hidden_sizes, device=self.device)
         self._max = max_action
 
     def forward(
@@ -97,8 +95,7 @@ class Critic(nn.Module):
         self.device = device
         self.preprocess = preprocess_net
         self.output_dim = 1
-        input_dim = getattr(preprocess_net, "output_dim",
-                            preprocess_net_output_dim)
+        input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
         self.last = MLP(input_dim, 1, hidden_sizes, device=self.device)
 
     def forward(
@@ -109,11 +106,15 @@ class Critic(nn.Module):
     ) -> torch.Tensor:
         """Mapping: (s, a) -> logits -> Q(s, a)."""
         s = torch.as_tensor(
-            s, device=self.device, dtype=torch.float32  # type: ignore
+            s,
+            device=self.device,  # type: ignore
+            dtype=torch.float32,
         ).flatten(1)
         if a is not None:
             a = torch.as_tensor(
-                a, device=self.device, dtype=torch.float32  # type: ignore
+                a,
+                device=self.device,  # type: ignore
+                dtype=torch.float32,
             ).flatten(1)
             s = torch.cat([s, a], dim=1)
         logits, h = self.preprocess(s)
@@ -163,14 +164,13 @@ class ActorProb(nn.Module):
         self.preprocess = preprocess_net
         self.device = device
         self.output_dim = int(np.prod(action_shape))
-        input_dim = getattr(preprocess_net, "output_dim",
-                            preprocess_net_output_dim)
-        self.mu = MLP(input_dim, self.output_dim,
-                      hidden_sizes, device=self.device)
+        input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
+        self.mu = MLP(input_dim, self.output_dim, hidden_sizes, device=self.device)
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
-            self.sigma = MLP(input_dim, self.output_dim,
-                             hidden_sizes, device=self.device)
+            self.sigma = MLP(
+                input_dim, self.output_dim, hidden_sizes, device=self.device
+            )
         else:
             self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
         self._max = max_action
@@ -188,9 +188,7 @@ class ActorProb(nn.Module):
         if not self._unbounded:
             mu = self._max * torch.tanh(mu)
         if self._c_sigma:
-            sigma = torch.clamp(
-                self.sigma(logits), min=SIGMA_MIN, max=SIGMA_MAX
-            ).exp()
+            sigma = torch.clamp(self.sigma(logits), min=SIGMA_MIN, max=SIGMA_MAX).exp()
         else:
             shape = [1] * len(mu.shape)
             shape[1] = -1
@@ -241,8 +239,7 @@ class RecurrentActorProb(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict[str, torch.Tensor]]:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        s = torch.as_tensor(
-            s, device=self.device, dtype=torch.float32)  # type: ignore
+        s = torch.as_tensor(s, device=self.device, dtype=torch.float32)  # type: ignore
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -254,23 +251,27 @@ class RecurrentActorProb(nn.Module):
         else:
             # we store the stack data in [bsz, len, ...] format
             # but pytorch rnn needs [len, bsz, ...]
-            s, (h, c) = self.nn(s, (state["h"].transpose(0, 1).contiguous(),
-                                    state["c"].transpose(0, 1).contiguous()))
+            s, (h, c) = self.nn(
+                s, (
+                    state["h"].transpose(0, 1).contiguous(),
+                    state["c"].transpose(0, 1).contiguous()
+                )
+            )
         logits = s[:, -1]
         mu = self.mu(logits)
         if not self._unbounded:
             mu = self._max * torch.tanh(mu)
         if self._c_sigma:
-            sigma = torch.clamp(
-                self.sigma(logits), min=SIGMA_MIN, max=SIGMA_MAX
-            ).exp()
+            sigma = torch.clamp(self.sigma(logits), min=SIGMA_MIN, max=SIGMA_MAX).exp()
         else:
             shape = [1] * len(mu.shape)
             shape[1] = -1
             sigma = (self.sigma_param.view(shape) + torch.zeros_like(mu)).exp()
         # please ensure the first dim is batch size: [bsz, len, ...]
-        return (mu, sigma), {"h": h.transpose(0, 1).detach(),
-                             "c": c.transpose(0, 1).detach()}
+        return (mu, sigma), {
+            "h": h.transpose(0, 1).detach(),
+            "c": c.transpose(0, 1).detach()
+        }
 
 
 class RecurrentCritic(nn.Module):
@@ -307,8 +308,7 @@ class RecurrentCritic(nn.Module):
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        s = torch.as_tensor(
-            s, device=self.device, dtype=torch.float32)  # type: ignore
+        s = torch.as_tensor(s, device=self.device, dtype=torch.float32)  # type: ignore
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -318,7 +318,10 @@ class RecurrentCritic(nn.Module):
         s = s[:, -1]
         if a is not None:
             a = torch.as_tensor(
-                a, device=self.device, dtype=torch.float32)  # type: ignore
+                a,
+                device=self.device,  # type: ignore
+                dtype=torch.float32,
+            )
             s = torch.cat([s, a], dim=1)
         s = self.fc2(s)
         return s

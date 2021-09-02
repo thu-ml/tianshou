@@ -1,15 +1,15 @@
-import gym
-import time
 import ctypes
-import numpy as np
+import time
 from collections import OrderedDict
-from multiprocessing.context import Process
 from multiprocessing import Array, Pipe, connection
-from typing import Any, List, Tuple, Union, Callable, Optional
+from multiprocessing.context import Process
+from typing import Any, Callable, List, Optional, Tuple, Union
 
-from tianshou.env.worker import EnvWorker
+import gym
+import numpy as np
+
 from tianshou.env.utils import CloudpickleWrapper
-
+from tianshou.env.worker import EnvWorker
 
 _NP_TO_CT = {
     np.bool_: ctypes.c_bool,
@@ -62,6 +62,7 @@ def _worker(
     env_fn_wrapper: CloudpickleWrapper,
     obs_bufs: Optional[Union[dict, tuple, ShArray]] = None,
 ) -> None:
+
     def _encode_obs(
         obs: Union[dict, tuple, np.ndarray], buffer: Union[dict, tuple, ShArray]
     ) -> None:
@@ -144,6 +145,7 @@ class SubprocEnvWorker(EnvWorker):
         return self.parent_remote.recv()
 
     def _decode_obs(self) -> Union[dict, tuple, np.ndarray]:
+
         def decode_obs(
             buffer: Optional[Union[dict, tuple, ShArray]]
         ) -> Union[dict, tuple, np.ndarray]:

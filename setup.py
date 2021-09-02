@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import os
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 
 def get_version() -> str:
@@ -60,6 +61,9 @@ setup(
             "sphinx_rtd_theme",
             "sphinxcontrib-bibtex",
             "flake8",
+            "flake8-bugbear",
+            "yapf",
+            "isort",
             "pytest",
             "pytest-cov",
             "ray>=1.0.0",

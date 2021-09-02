@@ -20,13 +20,14 @@ jobs:
     - name: Lint with flake8
       run: |
         flake8 . --count --show-source --statistics
+    - name: Code formatter
+      run: |
+        yapf -r -d .
+        isort --check .
     - name: Type check
       run: |
         mypy
     - name: Documentation test
       run: |
-        pydocstyle tianshou
-        doc8 docs --max-line-length 1000
-        cd docs
-        make html SPHINXOPTS="-W"
-        cd ..
+        make check-docstyle
+        make spelling

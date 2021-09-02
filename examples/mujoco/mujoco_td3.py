@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 
-import os
-import gym
-import torch
-import pprint
-import datetime
 import argparse
+import datetime
+import os
+import pprint
+
+import gym
 import numpy as np
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import TD3Policy
-from tianshou.utils import TensorboardLogger
-from tianshou.env import SubprocVectorEnv
-from tianshou.utils.net.common import Net
-from tianshou.exploration import GaussianNoise
-from tianshou.trainer import offpolicy_trainer
-from tianshou.utils.net.continuous import Actor, Critic
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
+from tianshou.env import SubprocVectorEnv
+from tianshou.exploration import GaussianNoise
+from tianshou.policy import TD3Policy
+from tianshou.trainer import offpolicy_trainer
+from tianshou.utils import TensorboardLogger
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import Actor, Critic
 
 
 def get_args():
@@ -45,11 +46,15 @@ def get_args():
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+    )
     parser.add_argument('--resume-path', type=str, default=None)
-    parser.add_argument('--watch', default=False, action='store_true',
-                        help='watch the play of pre-trained policy only')
+    parser.add_argument(
+        '--watch',
+        default=False,
+        action='store_true',
+        help='watch the play of pre-trained policy only'
+    )
     return parser.parse_args()
 
 
@@ -63,17 +68,18 @@ def test_td3(args=get_args()):
     args.noise_clip = args.noise_clip * args.max_action
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    print("Action range:", np.min(env.action_space.low),
-          np.max(env.action_space.high))
+    print("Action range:", np.min(env.action_space.low), np.max(env.action_space.high))
     # train_envs = gym.make(args.task)
     if args.training_num > 1:
         train_envs = SubprocVectorEnv(
-            [lambda: gym.make(args.task) for _ in range(args.training_num)])
+            [lambda: gym.make(args.task) for _ in range(args.training_num)]
+        )
     else:
         train_envs = gym.make(args.task)
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: gym.make(args.task) for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -82,27 +88,44 @@ def test_td3(args=get_args()):
     # model
     net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(
-        net_a, args.action_shape, max_action=args.max_action,
-        device=args.device).to(args.device)
+        net_a, args.action_shape, max_action=args.max_action, device=args.device
+    ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net_c1 = Net(args.state_shape, args.action_shape,
-                 hidden_sizes=args.hidden_sizes,
-                 concat=True, device=args.device)
-    net_c2 = Net(args.state_shape, args.action_shape,
-                 hidden_sizes=args.hidden_sizes,
-                 concat=True, device=args.device)
+    net_c1 = Net(
+        args.state_shape,
+        args.action_shape,
+        hidden_sizes=args.hidden_sizes,
+        concat=True,
+        device=args.device
+    )
+    net_c2 = Net(
+        args.state_shape,
+        args.action_shape,
+        hidden_sizes=args.hidden_sizes,
+        concat=True,
+        device=args.device
+    )
     critic1 = Critic(net_c1, device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     policy = TD3Policy(
-        actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-        tau=args.tau, gamma=args.gamma,
+        actor,
+        actor_optim,
+        critic1,
+        critic1_optim,
+        critic2,
+        critic2_optim,
+        tau=args.tau,
+        gamma=args.gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
-        policy_noise=args.policy_noise, update_actor_freq=args.update_actor_freq,
-        noise_clip=args.noise_clip, estimation_step=args.n_step,
-        action_space=env.action_space)
+        policy_noise=args.policy_noise,
+        update_actor_freq=args.update_actor_freq,
+        noise_clip=args.noise_clip,
+        estimation_step=args.n_step,
+        action_space=env.action_space
+    )
 
     # load a previous policy
     if args.resume_path:
@@ -131,10 +154,19 @@ def test_td3(args=get_args()):
     if not args.watch:
         # trainer
         result = offpolicy_trainer(
-            policy, train_collector, test_collector, args.epoch,
-            args.step_per_epoch, args.step_per_collect, args.test_num,
-            args.batch_size, save_fn=save_fn, logger=logger,
-            update_per_step=args.update_per_step, test_in_train=False)
+            policy,
+            train_collector,
+            test_collector,
+            args.epoch,
+            args.step_per_epoch,
+            args.step_per_collect,
+            args.test_num,
+            args.batch_size,
+            save_fn=save_fn,
+            logger=logger,
+            update_per_step=args.update_per_step,
+            test_in_train=False
+        )
         pprint.pprint(result)
 
     # Let's watch its performance!

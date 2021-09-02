@@ -1,10 +1,15 @@
+from typing import Any, Callable, List, Optional, Tuple, Union
+
 import gym
 import numpy as np
-from typing import Any, List, Tuple, Union, Optional, Callable
 
+from tianshou.env.worker import (
+    DummyEnvWorker,
+    EnvWorker,
+    RayEnvWorker,
+    SubprocEnvWorker,
+)
 from tianshou.utils import RunningMeanStd
-from tianshou.env.worker import EnvWorker, DummyEnvWorker, SubprocEnvWorker, \
-    RayEnvWorker
 
 
 class BaseVectorEnv(gym.Env):
@@ -44,7 +49,7 @@ class BaseVectorEnv(gym.Env):
 
         Otherwise, the outputs of these envs may be the same with each other.
 
-    :param env_fns: a list of callable envs, ``env_fns[i]()`` generates the ith env.
+    :param env_fns: a list of callable envs, ``env_fns[i]()`` generates the i-th env.
     :param worker_fn: a callable worker, ``worker_fn(env_fns[i])`` generates a
         worker which contains the i-th env.
     :param int wait_num: use in asynchronous simulation if the time cost of
@@ -56,7 +61,7 @@ class BaseVectorEnv(gym.Env):
     :param float timeout: use in asynchronous simulation same as above, in each
         vectorized step it only deal with those environments spending time
         within ``timeout`` seconds.
-    :param bool norm_obs: Whether to track mean/std of data and normalise observation
+    :param bool norm_obs: Whether to track mean/std of data and normalize observation
         on return. For now, observation normalization only support observation of
         type np.ndarray.
     :param obs_rms: class to track mean&std of observation. If not given, it will
@@ -122,8 +127,9 @@ class BaseVectorEnv(gym.Env):
         ``action_space``. However, we would like the attribute lookup to go straight
         into the worker (in fact, this vector env's action_space is always None).
         """
-        if key in ['metadata', 'reward_range', 'spec', 'action_space',
-                   'observation_space']:  # reserved keys in gym.Env
+        if key in [
+            'metadata', 'reward_range', 'spec', 'action_space', 'observation_space'
+        ]:  # reserved keys in gym.Env
             return self.__getattr__(key)
         else:
             return super().__getattribute__(key)
@@ -137,7 +143,8 @@ class BaseVectorEnv(gym.Env):
         return [getattr(worker, key) for worker in self.workers]
 
     def _wrap_id(
-        self, id: Optional[Union[int, List[int], np.ndarray]] = None
+        self,
+        id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> Union[List[int], np.ndarray]:
         if id is None:
             return list(range(self.env_num))
@@ -222,7 +229,7 @@ class BaseVectorEnv(gym.Env):
             if action is not None:
                 self._assert_id(id)
                 assert len(action) == len(id)
-                for i, (act, env_id) in enumerate(zip(action, id)):
+                for act, env_id in zip(action, id):
                     self.workers[env_id].send_action(act)
                     self.waiting_conn.append(self.workers[env_id])
                     self.waiting_id.append(env_id)
@@ -230,7 +237,8 @@ class BaseVectorEnv(gym.Env):
             ready_conns: List[EnvWorker] = []
             while not ready_conns:
                 ready_conns = self.worker_class.wait(
-                    self.waiting_conn, self.wait_num, self.timeout)
+                    self.waiting_conn, self.wait_num, self.timeout
+                )
             result = []
             for conn in ready_conns:
                 waiting_index = self.waiting_conn.index(conn)
@@ -246,13 +254,15 @@ class BaseVectorEnv(gym.Env):
         except ValueError:  # different len(obs)
             obs_stack = np.array(obs_list, dtype=object)
         rew_stack, done_stack, info_stack = map(
-            np.stack, [rew_list, done_list, info_list])
+            np.stack, [rew_list, done_list, info_list]
+        )
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs_stack)
         return self.normalize_obs(obs_stack), rew_stack, done_stack, info_stack
 
     def seed(
-        self, seed: Optional[Union[int, List[int]]] = None
+        self,
+        seed: Optional[Union[int, List[int]]] = None
     ) -> List[Optional[List[int]]]:
         """Set the seed for all environments.
 
@@ -279,7 +289,8 @@ class BaseVectorEnv(gym.Env):
         if self.is_async and len(self.waiting_id) > 0:
             raise RuntimeError(
                 f"Environments {self.waiting_id} are still stepping, cannot "
-                "render them now.")
+                "render them now."
+            )
         return [w.render(**kwargs) for w in self.workers]
 
     def close(self) -> None:
@@ -324,6 +335,7 @@ class SubprocVectorEnv(BaseVectorEnv):
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
+
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=False)
 
@@ -341,6 +353,7 @@ class ShmemVectorEnv(BaseVectorEnv):
     """
 
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
+
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
 

@@ -1,7 +1,8 @@
-import numpy as np
-from numbers import Number
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, Union, Callable, Optional
+from numbers import Number
+from typing import Callable, Dict, Optional, Tuple, Union
+
+import numpy as np
 
 LOG_DATA_TYPE = Dict[str, Union[int, Number, np.number, np.ndarray]]
 

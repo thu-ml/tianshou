@@ -1,17 +1,18 @@
-import os
-import gym
-import torch
-import pprint
 import argparse
+import os
+import pprint
+
+import gym
 import numpy as np
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import DQNPolicy
-from tianshou.utils import TensorboardLogger
-from tianshou.env import DummyVectorEnv
-from tianshou.trainer import offpolicy_trainer
-from tianshou.utils.net.common import Recurrent
 from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.env import DummyVectorEnv
+from tianshou.policy import DQNPolicy
+from tianshou.trainer import offpolicy_trainer
+from tianshou.utils import TensorboardLogger
+from tianshou.utils.net.common import Recurrent
 
 
 def get_args():
@@ -37,8 +38,8 @@ def get_args():
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+    )
     args = parser.parse_known_args()[0]
     return args
 
@@ -50,26 +51,35 @@ def test_drqn(args=get_args()):
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)])
+        [lambda: gym.make(args.task) for _ in range(args.training_num)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: gym.make(args.task) for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Recurrent(args.layer_num, args.state_shape,
-                    args.action_shape, args.device).to(args.device)
+    net = Recurrent(args.layer_num, args.state_shape, args.action_shape,
+                    args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
-        net, optim, args.gamma, args.n_step,
-        target_update_freq=args.target_update_freq)
+        net,
+        optim,
+        args.gamma,
+        args.n_step,
+        target_update_freq=args.target_update_freq
+    )
     # collector
     buffer = VectorReplayBuffer(
-        args.buffer_size, buffer_num=len(train_envs),
-        stack_num=args.stack_num, ignore_obs_next=True)
+        args.buffer_size,
+        buffer_num=len(train_envs),
+        stack_num=args.stack_num,
+        ignore_obs_next=True
+    )
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     # the stack_num is for RNN training: sample framestack obs
     test_collector = Collector(policy, test_envs, exploration_noise=True)
@@ -94,11 +104,21 @@ def test_drqn(args=get_args()):
 
     # trainer
     result = offpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, update_per_step=args.update_per_step,
-        train_fn=train_fn, test_fn=test_fn, stop_fn=stop_fn,
-        save_fn=save_fn, logger=logger)
+        policy,
+        train_collector,
+        test_collector,
+        args.epoch,
+        args.step_per_epoch,
+        args.step_per_collect,
+        args.test_num,
+        args.batch_size,
+        update_per_step=args.update_per_step,
+        train_fn=train_fn,
+        test_fn=test_fn,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger
+    )
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
-import os
 import csv
-import sys
 import json
+import os
+import sys
 
 
 def merge(rootdir):
     """format: $rootdir/$algo/*.csv"""
     result = []
-    for path, dirnames, filenames in os.walk(rootdir):
+    for path, _, filenames in os.walk(rootdir):
         filenames = [f for f in filenames if f.endswith('.csv')]
         if len(filenames) == 0:
             continue
@@ -19,12 +19,14 @@ def merge(rootdir):
         algo = os.path.relpath(path, rootdir).upper()
         reader = csv.DictReader(open(os.path.join(path, filenames[0])))
         for row in reader:
-            result.append({
-                'env_step': int(row['env_step']),
-                'rew': float(row['rew']),
-                'rew_std': float(row['rew:shaded']),
-                'Agent': algo,
-            })
+            result.append(
+                {
+                    'env_step': int(row['env_step']),
+                    'rew': float(row['rew']),
+                    'rew_std': float(row['rew:shaded']),
+                    'Agent': algo,
+                }
+            )
     open(os.path.join(rootdir, 'result.json'), 'w').write(json.dumps(result))
 
 

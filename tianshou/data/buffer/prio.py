@@ -1,8 +1,9 @@
-import torch
-import numpy as np
-from typing import Any, List, Tuple, Union, Optional
+from typing import Any, List, Optional, Tuple, Union
 
-from tianshou.data import Batch, SegmentTree, to_numpy, ReplayBuffer
+import numpy as np
+import torch
+
+from tianshou.data import Batch, ReplayBuffer, SegmentTree, to_numpy
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
@@ -39,7 +40,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._weight_norm = weight_norm
 
     def init_weight(self, index: Union[int, np.ndarray]) -> None:
-        self.weight[index] = self._max_prio ** self._alpha
+        self.weight[index] = self._max_prio**self._alpha
 
     def update(self, buffer: ReplayBuffer) -> np.ndarray:
         indices = super().update(buffer)
@@ -47,7 +48,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         return indices
 
     def add(
-        self, batch: Batch, buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
+        self,
+        batch: Batch,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         ptr, ep_rew, ep_len, ep_idx = super().add(batch, buffer_ids)
         self.init_weight(ptr)
@@ -63,14 +66,14 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def get_weight(self, index: Union[int, np.ndarray]) -> Union[float, np.ndarray]:
         """Get the importance sampling weight.
 
-        The "weight" in the returned Batch is the weight on loss function to de-bias
+        The "weight" in the returned Batch is the weight on loss function to debias
         the sampling process (some transition tuples are sampled more often so their
         losses are weighted less).
         """
         # important sampling weight calculation
         # original formula: ((p_j/p_sum*N)**(-beta))/((p_min/p_sum*N)**(-beta))
         # simplified formula: (p_j/p_min)**(-beta)
-        return (self.weight[index] / self._min_prio) ** (-self._beta)
+        return (self.weight[index] / self._min_prio)**(-self._beta)
 
     def update_weight(
         self, index: np.ndarray, new_weight: Union[np.ndarray, torch.Tensor]
@@ -81,7 +84,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         :param np.ndarray new_weight: new priority weight you want to update.
         """
         weight = np.abs(to_numpy(new_weight)) + self.__eps
-        self.weight[index] = weight ** self._alpha
+        self.weight[index] = weight**self._alpha
         self._max_prio = max(self._max_prio, weight.max())
         self._min_prio = min(self._min_prio, weight.min())
 

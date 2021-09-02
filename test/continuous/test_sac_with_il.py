@@ -1,17 +1,18 @@
-import os
-import gym
-import torch
-import pprint
 import argparse
+import os
+import pprint
+
+import gym
 import numpy as np
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.utils import TensorboardLogger
-from tianshou.env import DummyVectorEnv
-from tianshou.utils.net.common import Net
-from tianshou.trainer import offpolicy_trainer
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.policy import SACPolicy, ImitationPolicy
+from tianshou.env import DummyVectorEnv
+from tianshou.policy import ImitationPolicy, SACPolicy
+from tianshou.trainer import offpolicy_trainer
+from tianshou.utils import TensorboardLogger
+from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, ActorProb, Critic
 
 
@@ -34,10 +35,10 @@ def get_args():
     parser.add_argument('--step-per-collect', type=int, default=10)
     parser.add_argument('--update-per-step', type=float, default=0.1)
     parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[128, 128])
-    parser.add_argument('--imitation-hidden-sizes', type=int,
-                        nargs='*', default=[128, 128])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
+    parser.add_argument(
+        '--imitation-hidden-sizes', type=int, nargs='*', default=[128, 128]
+    )
     parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
@@ -45,8 +46,8 @@ def get_args():
     parser.add_argument('--rew-norm', action="store_true", default=False)
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+    )
     args = parser.parse_known_args()[0]
     return args
 
@@ -62,29 +63,43 @@ def test_sac_with_il(args=get_args()):
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)])
+        [lambda: gym.make(args.task) for _ in range(args.training_num)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: gym.make(args.task) for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
-              device=args.device)
-    actor = ActorProb(net, args.action_shape, max_action=args.max_action,
-                      device=args.device, unbounded=True).to(args.device)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    actor = ActorProb(
+        net,
+        args.action_shape,
+        max_action=args.max_action,
+        device=args.device,
+        unbounded=True
+    ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net_c1 = Net(args.state_shape, args.action_shape,
-                 hidden_sizes=args.hidden_sizes,
-                 concat=True, device=args.device)
+    net_c1 = Net(
+        args.state_shape,
+        args.action_shape,
+        hidden_sizes=args.hidden_sizes,
+        concat=True,
+        device=args.device
+    )
     critic1 = Critic(net_c1, device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    net_c2 = Net(args.state_shape, args.action_shape,
-                 hidden_sizes=args.hidden_sizes,
-                 concat=True, device=args.device)
+    net_c2 = Net(
+        args.state_shape,
+        args.action_shape,
+        hidden_sizes=args.hidden_sizes,
+        concat=True,
+        device=args.device
+    )
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
@@ -95,15 +110,26 @@ def test_sac_with_il(args=get_args()):
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = SACPolicy(
-        actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-        tau=args.tau, gamma=args.gamma, alpha=args.alpha,
+        actor,
+        actor_optim,
+        critic1,
+        critic1_optim,
+        critic2,
+        critic2_optim,
+        tau=args.tau,
+        gamma=args.gamma,
+        alpha=args.alpha,
         reward_normalization=args.rew_norm,
-        estimation_step=args.n_step, action_space=env.action_space)
+        estimation_step=args.n_step,
+        action_space=env.action_space
+    )
     # collector
     train_collector = Collector(
-        policy, train_envs,
+        policy,
+        train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True)
+        exploration_noise=True
+    )
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
@@ -119,10 +145,19 @@ def test_sac_with_il(args=get_args()):
 
     # trainer
     result = offpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.step_per_collect, args.test_num, args.batch_size,
-        update_per_step=args.update_per_step, stop_fn=stop_fn,
-        save_fn=save_fn, logger=logger)
+        policy,
+        train_collector,
+        test_collector,
+        args.epoch,
+        args.step_per_epoch,
+        args.step_per_collect,
+        args.test_num,
+        args.batch_size,
+        update_per_step=args.update_per_step,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger
+    )
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':
@@ -140,23 +175,41 @@ def test_sac_with_il(args=get_args()):
     if args.task == 'Pendulum-v0':
         env.spec.reward_threshold = -300  # lower the goal
     net = Actor(
-        Net(args.state_shape, hidden_sizes=args.imitation_hidden_sizes,
-            device=args.device),
-        args.action_shape, max_action=args.max_action, device=args.device
+        Net(
+            args.state_shape,
+            hidden_sizes=args.imitation_hidden_sizes,
+            device=args.device
+        ),
+        args.action_shape,
+        max_action=args.max_action,
+        device=args.device
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(
-        net, optim, action_space=env.action_space,
-        action_scaling=True, action_bound_method="clip")
+        net,
+        optim,
+        action_space=env.action_space,
+        action_scaling=True,
+        action_bound_method="clip"
+    )
     il_test_collector = Collector(
         il_policy,
         DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     )
     train_collector.reset()
     result = offpolicy_trainer(
-        il_policy, train_collector, il_test_collector, args.epoch,
-        args.il_step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, stop_fn=stop_fn, save_fn=save_fn, logger=logger)
+        il_policy,
+        train_collector,
+        il_test_collector,
+        args.epoch,
+        args.il_step_per_epoch,
+        args.step_per_collect,
+        args.test_num,
+        args.batch_size,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger
+    )
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':

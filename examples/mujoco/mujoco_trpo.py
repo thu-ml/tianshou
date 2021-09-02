@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 
-import os
-import gym
-import torch
-import pprint
-import datetime
 import argparse
+import datetime
+import os
+import pprint
+
+import gym
 import numpy as np
+import torch
 from torch import nn
+from torch.distributions import Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
-from torch.distributions import Independent, Normal
 
-from tianshou.policy import TRPOPolicy
-from tianshou.utils import TensorboardLogger
-from tianshou.env import SubprocVectorEnv
-from tianshou.utils.net.common import Net
-from tianshou.trainer import onpolicy_trainer
-from tianshou.utils.net.continuous import ActorProb, Critic
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
+from tianshou.env import SubprocVectorEnv
+from tianshou.policy import TRPOPolicy
+from tianshou.trainer import onpolicy_trainer
+from tianshou.utils import TensorboardLogger
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():
@@ -26,8 +27,9 @@ def get_args():
     parser.add_argument('--task', type=str, default='HalfCheetah-v3')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=4096)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*',
-                        default=[64, 64])  # baselines [32, 32]
+    parser.add_argument(
+        '--hidden-sizes', type=int, nargs='*', default=[64, 64]
+    )  # baselines [32, 32]
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=100)
@@ -52,11 +54,15 @@ def get_args():
     parser.add_argument('--backtrack-coeff', type=float, default=0.8)
     parser.add_argument('--max-backtracks', type=int, default=10)
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+    )
     parser.add_argument('--resume-path', type=str, default=None)
-    parser.add_argument('--watch', default=False, action='store_true',
-                        help='watch the play of pre-trained policy only')
+    parser.add_argument(
+        '--watch',
+        default=False,
+        action='store_true',
+        help='watch the play of pre-trained policy only'
+    )
     return parser.parse_args()
 
 
@@ -67,16 +73,18 @@ def test_trpo(args=get_args()):
     args.max_action = env.action_space.high[0]
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    print("Action range:", np.min(env.action_space.low),
-          np.max(env.action_space.high))
+    print("Action range:", np.min(env.action_space.low), np.max(env.action_space.high))
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)],
-        norm_obs=True)
+        [lambda: gym.make(args.task) for _ in range(args.training_num)], norm_obs=True
+    )
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)],
-        norm_obs=True, obs_rms=train_envs.obs_rms, update_obs_rms=False)
+        norm_obs=True,
+        obs_rms=train_envs.obs_rms,
+        update_obs_rms=False
+    )
 
     # seed
     np.random.seed(args.seed)
@@ -84,12 +92,25 @@ def test_trpo(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
-                activation=nn.Tanh, device=args.device)
-    actor = ActorProb(net_a, args.action_shape, max_action=args.max_action,
-                      unbounded=True, device=args.device).to(args.device)
-    net_c = Net(args.state_shape, hidden_sizes=args.hidden_sizes,
-                activation=nn.Tanh, device=args.device)
+    net_a = Net(
+        args.state_shape,
+        hidden_sizes=args.hidden_sizes,
+        activation=nn.Tanh,
+        device=args.device
+    )
+    actor = ActorProb(
+        net_a,
+        args.action_shape,
+        max_action=args.max_action,
+        unbounded=True,
+        device=args.device
+    ).to(args.device)
+    net_c = Net(
+        args.state_shape,
+        hidden_sizes=args.hidden_sizes,
+        activation=nn.Tanh,
+        device=args.device
+    )
     critic = Critic(net_c, device=args.device).to(args.device)
     torch.nn.init.constant_(actor.sigma_param, -0.5)
     for m in list(actor.modules()) + list(critic.modules()):
@@ -110,24 +131,34 @@ def test_trpo(args=get_args()):
     if args.lr_decay:
         # decay learning rate to 0 linearly
         max_update_num = np.ceil(
-            args.step_per_epoch / args.step_per_collect) * args.epoch
+            args.step_per_epoch / args.step_per_collect
+        ) * args.epoch
 
         lr_scheduler = LambdaLR(
-            optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
+            optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num
+        )
 
     def dist(*logits):
         return Independent(Normal(*logits), 1)
 
-    policy = TRPOPolicy(actor, critic, optim, dist, discount_factor=args.gamma,
-                        gae_lambda=args.gae_lambda,
-                        reward_normalization=args.rew_norm, action_scaling=True,
-                        action_bound_method=args.bound_action_method,
-                        lr_scheduler=lr_scheduler, action_space=env.action_space,
-                        advantage_normalization=args.norm_adv,
-                        optim_critic_iters=args.optim_critic_iters,
-                        max_kl=args.max_kl,
-                        backtrack_coeff=args.backtrack_coeff,
-                        max_backtracks=args.max_backtracks)
+    policy = TRPOPolicy(
+        actor,
+        critic,
+        optim,
+        dist,
+        discount_factor=args.gamma,
+        gae_lambda=args.gae_lambda,
+        reward_normalization=args.rew_norm,
+        action_scaling=True,
+        action_bound_method=args.bound_action_method,
+        lr_scheduler=lr_scheduler,
+        action_space=env.action_space,
+        advantage_normalization=args.norm_adv,
+        optim_critic_iters=args.optim_critic_iters,
+        max_kl=args.max_kl,
+        backtrack_coeff=args.backtrack_coeff,
+        max_backtracks=args.max_backtracks
+    )
 
     # load a previous policy
     if args.resume_path:
@@ -155,10 +186,19 @@ def test_trpo(args=get_args()):
     if not args.watch:
         # trainer
         result = onpolicy_trainer(
-            policy, train_collector, test_collector, args.epoch, args.step_per_epoch,
-            args.repeat_per_collect, args.test_num, args.batch_size,
-            step_per_collect=args.step_per_collect, save_fn=save_fn, logger=logger,
-            test_in_train=False)
+            policy,
+            train_collector,
+            test_collector,
+            args.epoch,
+            args.step_per_epoch,
+            args.repeat_per_collect,
+            args.test_num,
+            args.batch_size,
+            step_per_collect=args.step_per_collect,
+            save_fn=save_fn,
+            logger=logger,
+            test_in_train=False
+        )
         pprint.pprint(result)
 
     # Let's watch its performance!

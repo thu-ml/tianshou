@@ -1,19 +1,20 @@
+import argparse
 import os
-import gym
-import torch
 import pickle
 import pprint
-import argparse
+
+import gym
 import numpy as np
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.policy import RainbowPolicy
-from tianshou.utils import TensorboardLogger
+from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
+from tianshou.policy import RainbowPolicy
+from tianshou.trainer import offpolicy_trainer
+from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import NoisyLinear
-from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, VectorReplayBuffer, PrioritizedVectorReplayBuffer
 
 
 def get_args():
@@ -36,21 +37,21 @@ def get_args():
     parser.add_argument('--step-per-collect', type=int, default=8)
     parser.add_argument('--update-per-step', type=float, default=0.125)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int,
-                        nargs='*', default=[128, 128, 128, 128])
+    parser.add_argument(
+        '--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128]
+    )
     parser.add_argument('--training-num', type=int, default=8)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--prioritized-replay',
-                        action="store_true", default=False)
+    parser.add_argument('--prioritized-replay', action="store_true", default=False)
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
     parser.add_argument('--beta-final', type=float, default=1.)
     parser.add_argument('--resume', action="store_true")
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+    )
     parser.add_argument("--save-interval", type=int, default=4)
     args = parser.parse_known_args()[0]
     return args
@@ -63,35 +64,56 @@ def test_rainbow(args=get_args()):
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)])
+        [lambda: gym.make(args.task) for _ in range(args.training_num)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)])
+        [lambda: gym.make(args.task) for _ in range(args.test_num)]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
+
     # model
 
     def noisy_linear(x, y):
         return NoisyLinear(x, y, args.noisy_std)
 
-    net = Net(args.state_shape, args.action_shape,
-              hidden_sizes=args.hidden_sizes, device=args.device,
-              softmax=True, num_atoms=args.num_atoms,
-              dueling_param=({"linear_layer": noisy_linear},
-                             {"linear_layer": noisy_linear}))
+    net = Net(
+        args.state_shape,
+        args.action_shape,
+        hidden_sizes=args.hidden_sizes,
+        device=args.device,
+        softmax=True,
+        num_atoms=args.num_atoms,
+        dueling_param=({
+            "linear_layer": noisy_linear
+        }, {
+            "linear_layer": noisy_linear
+        })
+    )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = RainbowPolicy(
-        net, optim, args.gamma, args.num_atoms, args.v_min, args.v_max,
-        args.n_step, target_update_freq=args.target_update_freq
+        net,
+        optim,
+        args.gamma,
+        args.num_atoms,
+        args.v_min,
+        args.v_max,
+        args.n_step,
+        target_update_freq=args.target_update_freq
     ).to(args.device)
     # buffer
     if args.prioritized_replay:
         buf = PrioritizedVectorReplayBuffer(
-            args.buffer_size, buffer_num=len(train_envs),
-            alpha=args.alpha, beta=args.beta, weight_norm=True)
+            args.buffer_size,
+            buffer_num=len(train_envs),
+            alpha=args.alpha,
+            beta=args.beta,
+            weight_norm=True
+        )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
     # collector
@@ -136,12 +158,16 @@ def test_rainbow(args=get_args()):
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
-        torch.save({
-            'model': policy.state_dict(),
-            'optim': optim.state_dict(),
-        }, os.path.join(log_path, 'checkpoint.pth'))
-        pickle.dump(train_collector.buffer,
-                    open(os.path.join(log_path, 'train_buffer.pkl'), "wb"))
+        torch.save(
+            {
+                'model': policy.state_dict(),
+                'optim': optim.state_dict(),
+            }, os.path.join(log_path, 'checkpoint.pth')
+        )
+        pickle.dump(
+            train_collector.buffer,
+            open(os.path.join(log_path, 'train_buffer.pkl'), "wb")
+        )
 
     if args.resume:
         # load from existing checkpoint
@@ -163,11 +189,23 @@ def test_rainbow(args=get_args()):
 
     # trainer
     result = offpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, update_per_step=args.update_per_step, train_fn=train_fn,
-        test_fn=test_fn, stop_fn=stop_fn, save_fn=save_fn, logger=logger,
-        resume_from_log=args.resume, save_checkpoint_fn=save_checkpoint_fn)
+        policy,
+        train_collector,
+        test_collector,
+        args.epoch,
+        args.step_per_epoch,
+        args.step_per_collect,
+        args.test_num,
+        args.batch_size,
+        update_per_step=args.update_per_step,
+        train_fn=train_fn,
+        test_fn=test_fn,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger,
+        resume_from_log=args.resume,
+        save_checkpoint_fn=save_checkpoint_fn
+    )
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':

@@ -1,13 +1,14 @@
 import time
-import tqdm
-import numpy as np
 from collections import defaultdict
-from typing import Dict, Union, Callable, Optional
+from typing import Callable, Dict, Optional, Union
 
-from tianshou.policy import BasePolicy
-from tianshou.utils import tqdm_config, MovAvg, BaseLogger, LazyLogger
+import numpy as np
+import tqdm
+
 from tianshou.data import Collector, ReplayBuffer
-from tianshou.trainer import test_episode, gather_info
+from tianshou.policy import BasePolicy
+from tianshou.trainer import gather_info, test_episode
+from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 
 
 def offline_trainer(
@@ -74,17 +75,17 @@ def offline_trainer(
     start_time = time.time()
     test_collector.reset_stat()
 
-    test_result = test_episode(policy, test_collector, test_fn, start_epoch,
-                               episode_per_test, logger, gradient_step, reward_metric)
+    test_result = test_episode(
+        policy, test_collector, test_fn, start_epoch, episode_per_test, logger,
+        gradient_step, reward_metric
+    )
     best_epoch = start_epoch
     best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
 
     for epoch in range(1 + start_epoch, 1 + max_epoch):
         policy.train()
-        with tqdm.trange(
-            update_per_epoch, desc=f"Epoch #{epoch}", **tqdm_config
-        ) as t:
-            for i in t:
+        with tqdm.trange(update_per_epoch, desc=f"Epoch #{epoch}", **tqdm_config) as t:
+            for _ in t:
                 gradient_step += 1
                 losses = policy.update(batch_size, buffer)
                 data = {"gradient_step": str(gradient_step)}
@@ -96,8 +97,9 @@ def offline_trainer(
                 t.set_postfix(**data)
         # test
         test_result = test_episode(
-            policy, test_collector, test_fn, epoch, episode_per_test,
-            logger, gradient_step, reward_metric)
+            policy, test_collector, test_fn, epoch, episode_per_test, logger,
+            gradient_step, reward_metric
+        )
         rew, rew_std = test_result["rew"], test_result["rew_std"]
         if best_epoch < 0 or best_reward < rew:
             best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
@@ -105,8 +107,10 @@ def offline_trainer(
                 save_fn(policy)
         logger.save_data(epoch, 0, gradient_step, save_checkpoint_fn)
         if verbose:
-            print(f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
-                  f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
+            print(
+                f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
+                f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
+            )
         if stop_fn and stop_fn(best_reward):
             break
     return gather_info(start_time, None, test_collector, best_reward, best_reward_std)

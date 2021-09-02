@@ -1,7 +1,8 @@
-import torch
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
+
 import numpy as np
+import torch
 from torch import nn
-from typing import Any, Dict, List, Type, Tuple, Union, Optional, Sequence
 
 ModuleType = Type[nn.Module]
 
@@ -32,7 +33,7 @@ class MLP(nn.Module):
     :param int input_dim: dimension of the input vector.
     :param int output_dim: dimension of the output vector. If set to 0, there
         is no final linear layer.
-    :param hidden_sizes: shape of MLP passed in as a list, not incluing
+    :param hidden_sizes: shape of MLP passed in as a list, not including
         input_dim and output_dim.
     :param norm_layer: use which normalization before activation, e.g.,
         ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
@@ -40,7 +41,7 @@ class MLP(nn.Module):
         of hidden_sizes, to use different normalization module in different
         layers. Default to no normalization.
     :param activation: which activation to use after each layer, can be both
-        the same actvition for all layers if passed in nn.Module, or different
+        the same activation for all layers if passed in nn.Module, or different
         activation for different Modules if passed in a list. Default to
         nn.ReLU.
     :param device: which device to create this model on. Default to None.
@@ -64,8 +65,7 @@ class MLP(nn.Module):
                 assert len(norm_layer) == len(hidden_sizes)
                 norm_layer_list = norm_layer
             else:
-                norm_layer_list = [
-                    norm_layer for _ in range(len(hidden_sizes))]
+                norm_layer_list = [norm_layer for _ in range(len(hidden_sizes))]
         else:
             norm_layer_list = [None] * len(hidden_sizes)
         if activation:
@@ -73,26 +73,22 @@ class MLP(nn.Module):
                 assert len(activation) == len(hidden_sizes)
                 activation_list = activation
             else:
-                activation_list = [
-                    activation for _ in range(len(hidden_sizes))]
+                activation_list = [activation for _ in range(len(hidden_sizes))]
         else:
             activation_list = [None] * len(hidden_sizes)
         hidden_sizes = [input_dim] + list(hidden_sizes)
         model = []
         for in_dim, out_dim, norm, activ in zip(
-                hidden_sizes[:-1], hidden_sizes[1:],
-                norm_layer_list, activation_list):
+            hidden_sizes[:-1], hidden_sizes[1:], norm_layer_list, activation_list
+        ):
             model += miniblock(in_dim, out_dim, norm, activ, linear_layer)
         if output_dim > 0:
             model += [linear_layer(hidden_sizes[-1], output_dim)]
         self.output_dim = output_dim or hidden_sizes[-1]
         self.model = nn.Sequential(*model)
 
-    def forward(
-        self, x: Union[np.ndarray, torch.Tensor]
-    ) -> torch.Tensor:
-        x = torch.as_tensor(
-            x, device=self.device, dtype=torch.float32)  # type: ignore
+    def forward(self, x: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+        x = torch.as_tensor(x, device=self.device, dtype=torch.float32)  # type: ignore
         return self.model(x.flatten(1))
 
 
@@ -111,7 +107,7 @@ class Net(nn.Module):
         of hidden_sizes, to use different normalization module in different
         layers. Default to no normalization.
     :param activation: which activation to use after each layer, can be both
-        the same actvition for all layers if passed in nn.Module, or different
+        the same activation for all layers if passed in nn.Module, or different
         activation for different Modules if passed in a list. Default to
         nn.ReLU.
     :param device: specify the device when the network actually runs. Default
@@ -162,8 +158,9 @@ class Net(nn.Module):
             input_dim += action_dim
         self.use_dueling = dueling_param is not None
         output_dim = action_dim if not self.use_dueling and not concat else 0
-        self.model = MLP(input_dim, output_dim, hidden_sizes,
-                         norm_layer, activation, device)
+        self.model = MLP(
+            input_dim, output_dim, hidden_sizes, norm_layer, activation, device
+        )
         self.output_dim = self.model.output_dim
         if self.use_dueling:  # dueling DQN
             q_kwargs, v_kwargs = dueling_param  # type: ignore
@@ -172,10 +169,14 @@ class Net(nn.Module):
                 q_output_dim, v_output_dim = action_dim, num_atoms
             q_kwargs: Dict[str, Any] = {
                 **q_kwargs, "input_dim": self.output_dim,
-                "output_dim": q_output_dim, "device": self.device}
+                "output_dim": q_output_dim,
+                "device": self.device
+            }
             v_kwargs: Dict[str, Any] = {
                 **v_kwargs, "input_dim": self.output_dim,
-                "output_dim": v_output_dim, "device": self.device}
+                "output_dim": v_output_dim,
+                "device": self.device
+            }
             self.Q, self.V = MLP(**q_kwargs), MLP(**v_kwargs)
             self.output_dim = self.Q.output_dim
 
@@ -239,8 +240,7 @@ class Recurrent(nn.Module):
         training mode, s should be with shape ``[bsz, len, dim]``. See the code
         and comment for more detail.
         """
-        s = torch.as_tensor(
-            s, device=self.device, dtype=torch.float32)  # type: ignore
+        s = torch.as_tensor(s, device=self.device, dtype=torch.float32)  # type: ignore
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -253,9 +253,12 @@ class Recurrent(nn.Module):
         else:
             # we store the stack data in [bsz, len, ...] format
             # but pytorch rnn needs [len, bsz, ...]
-            s, (h, c) = self.nn(s, (state["h"].transpose(0, 1).contiguous(),
-                                    state["c"].transpose(0, 1).contiguous()))
+            s, (h, c) = self.nn(
+                s, (
+                    state["h"].transpose(0, 1).contiguous(),
+                    state["c"].transpose(0, 1).contiguous()
+                )
+            )
         s = self.fc2(s[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
-        return s, {"h": h.transpose(0, 1).detach(),
-                   "c": c.transpose(0, 1).detach()}
+        return s, {"h": h.transpose(0, 1).detach(), "c": c.transpose(0, 1).detach()}

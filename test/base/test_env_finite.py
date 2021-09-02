@@ -1,17 +1,19 @@
 # see issue #322 for detail
 
-import gym
 import copy
-import numpy as np
 from collections import Counter
-from torch.utils.data import Dataset, DataLoader, DistributedSampler
 
-from tianshou.policy import BasePolicy
-from tianshou.data import Collector, Batch
+import gym
+import numpy as np
+from torch.utils.data import DataLoader, Dataset, DistributedSampler
+
+from tianshou.data import Batch, Collector
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
+from tianshou.policy import BasePolicy
 
 
 class DummyDataset(Dataset):
+
     def __init__(self, length):
         self.length = length
         self.episodes = [3 * i % 5 + 1 for i in range(self.length)]
@@ -25,6 +27,7 @@ class DummyDataset(Dataset):
 
 
 class FiniteEnv(gym.Env):
+
     def __init__(self, dataset, num_replicas, rank):
         self.dataset = dataset
         self.num_replicas = num_replicas
@@ -32,7 +35,8 @@ class FiniteEnv(gym.Env):
         self.loader = DataLoader(
             dataset,
             sampler=DistributedSampler(dataset, num_replicas, rank),
-            batch_size=None)
+            batch_size=None
+        )
         self.iterator = None
 
     def reset(self):
@@ -54,6 +58,7 @@ class FiniteEnv(gym.Env):
 
 
 class FiniteVectorEnv(BaseVectorEnv):
+
     def __init__(self, env_fns, **kwargs):
         super().__init__(env_fns, **kwargs)
         self._alive_env_ids = set()
@@ -79,6 +84,7 @@ class FiniteVectorEnv(BaseVectorEnv):
 
     def _get_default_info(self):
         return copy.deepcopy(self._default_info)
+
     # END
 
     def reset(self, id=None):
@@ -147,6 +153,7 @@ class FiniteSubprocVectorEnv(FiniteVectorEnv, SubprocVectorEnv):
 
 
 class AnyPolicy(BasePolicy):
+
     def forward(self, batch, state=None):
         return Batch(act=np.stack([1] * len(batch)))
 
@@ -159,6 +166,7 @@ def _finite_env_factory(dataset, num_replicas, rank):
 
 
 class MetricTracker:
+
     def __init__(self):
         self.counter = Counter()
         self.finished = set()
@@ -179,30 +187,32 @@ class MetricTracker:
 
 def test_finite_dummy_vector_env():
     dataset = DummyDataset(100)
-    envs = FiniteSubprocVectorEnv([
-        _finite_env_factory(dataset, 5, i) for i in range(5)])
+    envs = FiniteSubprocVectorEnv(
+        [_finite_env_factory(dataset, 5, i) for i in range(5)]
+    )
     policy = AnyPolicy()
     test_collector = Collector(policy, envs, exploration_noise=True)
 
     for _ in range(3):
         envs.tracker = MetricTracker()
         try:
-            test_collector.collect(n_step=10 ** 18)
+            test_collector.collect(n_step=10**18)
         except StopIteration:
             envs.tracker.validate()
 
 
 def test_finite_subproc_vector_env():
     dataset = DummyDataset(100)
-    envs = FiniteSubprocVectorEnv([
-        _finite_env_factory(dataset, 5, i) for i in range(5)])
+    envs = FiniteSubprocVectorEnv(
+        [_finite_env_factory(dataset, 5, i) for i in range(5)]
+    )
     policy = AnyPolicy()
     test_collector = Collector(policy, envs, exploration_noise=True)
 
     for _ in range(3):
         envs.tracker = MetricTracker()
         try:
-            test_collector.collect(n_step=10 ** 18)
+            test_collector.collect(n_step=10**18)
         except StopIteration:
             envs.tracker.validate()
 

@@ -1,10 +1,11 @@
-import torch
-import numpy as np
-from typing import Any, Dict, List, Type, Union, Optional
+from typing import Any, Dict, List, Optional, Type, Union
 
+import numpy as np
+import torch
+
+from tianshou.data import Batch, ReplayBuffer, to_torch_as
 from tianshou.policy import BasePolicy
 from tianshou.utils import RunningMeanStd
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
 
 
 class PGPolicy(BasePolicy):
@@ -47,8 +48,11 @@ class PGPolicy(BasePolicy):
         deterministic_eval: bool = False,
         **kwargs: Any,
     ) -> None:
-        super().__init__(action_scaling=action_scaling,
-                         action_bound_method=action_bound_method, **kwargs)
+        super().__init__(
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            **kwargs
+        )
         self.actor = model
         self.optim = optim
         self.lr_scheduler = lr_scheduler
@@ -73,7 +77,8 @@ class PGPolicy(BasePolicy):
         """
         v_s_ = np.full(indices.shape, self.ret_rms.mean)
         unnormalized_returns, _ = self.compute_episodic_return(
-            batch, buffer, indices, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0)
+            batch, buffer, indices, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0
+        )
         if self._rew_norm:
             batch.returns = (unnormalized_returns - self.ret_rms.mean) / \
                 np.sqrt(self.ret_rms.var + self._eps)

@@ -1,3 +1,6 @@
+"""Policy package."""
+# isort:skip_file
+
 from tianshou.policy.base import BasePolicy
 from tianshou.policy.random import RandomPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
@@ -21,7 +24,6 @@ from tianshou.policy.imitation.discrete_cql import DiscreteCQLPolicy
 from tianshou.policy.imitation.discrete_crr import DiscreteCRRPolicy
 from tianshou.policy.modelbased.psrl import PSRLPolicy
 from tianshou.policy.multiagent.mapolicy import MultiAgentPolicyManager
-
 
 __all__ = [
     "BasePolicy",

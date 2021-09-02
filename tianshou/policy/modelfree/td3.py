@@ -1,11 +1,12 @@
-import torch
-import numpy as np
 from copy import deepcopy
 from typing import Any, Dict, Optional
 
-from tianshou.policy import DDPGPolicy
+import numpy as np
+import torch
+
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.exploration import BaseNoise, GaussianNoise
+from tianshou.policy import DDPGPolicy
 
 
 class TD3Policy(DDPGPolicy):
@@ -64,9 +65,10 @@ class TD3Policy(DDPGPolicy):
         estimation_step: int = 1,
         **kwargs: Any,
     ) -> None:
-        super().__init__(actor, actor_optim, None, None, tau, gamma,
-                         exploration_noise, reward_normalization,
-                         estimation_step, **kwargs)
+        super().__init__(
+            actor, actor_optim, None, None, tau, gamma, exploration_noise,
+            reward_normalization, estimation_step, **kwargs
+        )
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
         self.critic1_optim = critic1_optim
@@ -103,16 +105,18 @@ class TD3Policy(DDPGPolicy):
             noise = noise.clamp(-self._noise_clip, self._noise_clip)
         a_ += noise
         target_q = torch.min(
-            self.critic1_old(batch.obs_next, a_),
-            self.critic2_old(batch.obs_next, a_))
+            self.critic1_old(batch.obs_next, a_), self.critic2_old(batch.obs_next, a_)
+        )
         return target_q
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(
-            batch, self.critic1, self.critic1_optim)
+            batch, self.critic1, self.critic1_optim
+        )
         td2, critic2_loss = self._mse_optimizer(
-            batch, self.critic2, self.critic2_optim)
+            batch, self.critic2, self.critic2_optim
+        )
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor

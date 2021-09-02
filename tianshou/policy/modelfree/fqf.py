@@ -1,10 +1,11 @@
-import torch
-import numpy as np
-import torch.nn.functional as F
 from typing import Any, Dict, Optional, Union
 
+import numpy as np
+import torch
+import torch.nn.functional as F
+
+from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.policy import DQNPolicy, QRDQNPolicy
-from tianshou.data import Batch, to_numpy, ReplayBuffer
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 
 
@@ -88,12 +89,14 @@ class FQFPolicy(QRDQNPolicy):
             )
         else:
             (logits, _, quantiles_tau), h = model(
-                obs_, propose_model=self.propose_model, fractions=fractions,
-                state=state, info=batch.info
+                obs_,
+                propose_model=self.propose_model,
+                fractions=fractions,
+                state=state,
+                info=batch.info
             )
-        weighted_logits = (
-            fractions.taus[:, 1:] - fractions.taus[:, :-1]
-        ).unsqueeze(1) * logits
+        weighted_logits = (fractions.taus[:, 1:] -
+                           fractions.taus[:, :-1]).unsqueeze(1) * logits
         q = DQNPolicy.compute_q_value(
             self, weighted_logits.sum(2), getattr(obs, "mask", None)
         )
@@ -101,7 +104,10 @@ class FQFPolicy(QRDQNPolicy):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         return Batch(
-            logits=logits, act=act, state=h, fractions=fractions,
+            logits=logits,
+            act=act,
+            state=h,
+            fractions=fractions,
             quantiles_tau=quantiles_tau
         )
 
@@ -117,9 +123,12 @@ class FQFPolicy(QRDQNPolicy):
         target_dist = batch.returns.unsqueeze(1)
         # calculate each element's difference between curr_dist and target_dist
         u = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
-        huber_loss = (u * (
-            tau_hats.unsqueeze(2) - (target_dist - curr_dist).detach().le(0.).float()
-        ).abs()).sum(-1).mean(1)
+        huber_loss = (
+            u * (
+                tau_hats.unsqueeze(2) -
+                (target_dist - curr_dist).detach().le(0.).float()
+            ).abs()
+        ).sum(-1).mean(1)
         quantile_loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
@@ -131,16 +140,18 @@ class FQFPolicy(QRDQNPolicy):
             # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
             # blob/master/fqf_iqn_qrdqn/agent/fqf_agent.py L169
             values_1 = sa_quantiles - sa_quantile_hats[:, :-1]
-            signs_1 = sa_quantiles > torch.cat([
-                sa_quantile_hats[:, :1], sa_quantiles[:, :-1]], dim=1)
+            signs_1 = sa_quantiles > torch.cat(
+                [sa_quantile_hats[:, :1], sa_quantiles[:, :-1]], dim=1
+            )
 
             values_2 = sa_quantiles - sa_quantile_hats[:, 1:]
-            signs_2 = sa_quantiles < torch.cat([
-                sa_quantiles[:, 1:], sa_quantile_hats[:, -1:]], dim=1)
+            signs_2 = sa_quantiles < torch.cat(
+                [sa_quantiles[:, 1:], sa_quantile_hats[:, -1:]], dim=1
+            )
 
             gradient_of_taus = (
-                torch.where(signs_1, values_1, -values_1)
-                + torch.where(signs_2, values_2, -values_2)
+                torch.where(signs_1, values_1, -values_1) +
+                torch.where(signs_2, values_2, -values_2)
             )
         fraction_loss = (gradient_of_taus * taus[:, 1:-1]).sum(1).mean()
         # calculate entropy loss

@@ -1,6 +1,7 @@
-import numpy as np
 from abc import ABC, abstractmethod
-from typing import Union, Optional, Sequence
+from typing import Optional, Sequence, Union
+
+import numpy as np
 
 
 class BaseNoise(ABC, object):
@@ -20,7 +21,7 @@ class BaseNoise(ABC, object):
 
 
 class GaussianNoise(BaseNoise):
-    """The vanilla gaussian process, for exploration in DDPG by default."""
+    """The vanilla Gaussian process, for exploration in DDPG by default."""
 
     def __init__(self, mu: float = 0.0, sigma: float = 1.0) -> None:
         super().__init__()
@@ -45,7 +46,7 @@ class OUNoise(BaseNoise):
 
     For required parameters, you can refer to the stackoverflow page. However,
     our experiment result shows that (similar to OpenAI SpinningUp) using
-    vanilla gaussian process has little difference from using the
+    vanilla Gaussian process has little difference from using the
     Ornstein-Uhlenbeck process.
     """
 
@@ -74,7 +75,8 @@ class OUNoise(BaseNoise):
         Return an numpy array which size is equal to ``size``.
         """
         if self._x is None or isinstance(
-                self._x, np.ndarray) and self._x.shape != size:
+            self._x, np.ndarray
+        ) and self._x.shape != size:
             self._x = 0.0
         if mu is None:
             mu = self._mu

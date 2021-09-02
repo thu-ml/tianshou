@@ -1,10 +1,11 @@
-import torch
-import numpy as np
-import torch.nn.functional as F
 from typing import Any, Dict
 
-from tianshou.policy import QRDQNPolicy
+import numpy as np
+import torch
+import torch.nn.functional as F
+
 from tianshou.data import Batch, to_torch
+from tianshou.policy import QRDQNPolicy
 
 
 class DiscreteCQLPolicy(QRDQNPolicy):
@@ -40,8 +41,10 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         min_q_weight: float = 10.0,
         **kwargs: Any,
     ) -> None:
-        super().__init__(model, optim, discount_factor, num_quantiles, estimation_step,
-                         target_update_freq, reward_normalization, **kwargs)
+        super().__init__(
+            model, optim, discount_factor, num_quantiles, estimation_step,
+            target_update_freq, reward_normalization, **kwargs
+        )
         self._min_q_weight = min_q_weight
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
@@ -55,9 +58,10 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         target_dist = batch.returns.unsqueeze(1)
         # calculate each element's difference between curr_dist and target_dist
         u = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
-        huber_loss = (u * (
-            self.tau_hat - (target_dist - curr_dist).detach().le(0.).float()
-        ).abs()).sum(-1).mean(1)
+        huber_loss = (
+            u * (self.tau_hat -
+                 (target_dist - curr_dist).detach().le(0.).float()).abs()
+        ).sum(-1).mean(1)
         qr_loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130

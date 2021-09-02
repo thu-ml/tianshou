@@ -1,7 +1,8 @@
+from abc import ABC, abstractmethod
+from typing import Any, Callable, List, Optional, Tuple
+
 import gym
 import numpy as np
-from abc import ABC, abstractmethod
-from typing import Any, List, Tuple, Optional, Callable
 
 
 class EnvWorker(ABC):
@@ -11,7 +12,7 @@ class EnvWorker(ABC):
         self._env_fn = env_fn
         self.is_closed = False
         self.result: Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-        self.action_space = getattr(self, "action_space")
+        self.action_space = getattr(self, "action_space")  # noqa: B009
 
     @abstractmethod
     def __getattr__(self, key: str) -> Any:
@@ -43,7 +44,9 @@ class EnvWorker(ABC):
 
     @staticmethod
     def wait(
-        workers: List["EnvWorker"], wait_num: int, timeout: Optional[float] = None
+        workers: List["EnvWorker"],
+        wait_num: int,
+        timeout: Optional[float] = None
     ) -> List["EnvWorker"]:
         """Given a list of workers, return those ready ones."""
         raise NotImplementedError

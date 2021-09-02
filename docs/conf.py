@@ -14,9 +14,9 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import sphinx_rtd_theme
 
 import tianshou
-import sphinx_rtd_theme
 
 # Get the version string
 version = tianshou.__version__
@@ -29,7 +29,6 @@ author = "Tianshou contributors"
 
 # The full version, including alpha/beta/rc tags
 release = version
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -51,7 +50,7 @@ extensions = [
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
-source_suffix = [".rst", ".md"]
+source_suffix = [".rst"]
 master_doc = "index"
 
 # List of patterns, relative to source directory, that match files and
@@ -59,7 +58,8 @@ master_doc = "index"
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 autodoc_default_options = {
-    "special-members": ", ".join(
+    "special-members":
+    ", ".join(
         [
             "__len__",
             "__call__",

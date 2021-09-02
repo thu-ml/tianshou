@@ -1,9 +1,9 @@
-import tqdm
 import numpy as np
+import tqdm
 
-from tianshou.policy import BasePolicy
+from tianshou.data import AsyncCollector, Batch, Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
-from tianshou.data import Batch, Collector, AsyncCollector, VectorReplayBuffer
+from tianshou.policy import BasePolicy
 
 if __name__ == '__main__':
     from env import MyTestEnv
@@ -12,6 +12,7 @@ else:  # pytest
 
 
 class MyPolicy(BasePolicy):
+
     def __init__(self, dict_state=False, need_state=True):
         """
         :param bool dict_state: if the observation of the environment is a dict
@@ -40,8 +41,7 @@ def test_collector_nstep():
     env_fns = [lambda x=i: MyTestEnv(size=x) for i in np.arange(2, 11)]
     dum = DummyVectorEnv(env_fns)
     num = len(env_fns)
-    c3 = Collector(policy, dum,
-                   VectorReplayBuffer(total_size=40000, buffer_num=num))
+    c3 = Collector(policy, dum, VectorReplayBuffer(total_size=40000, buffer_num=num))
     for i in tqdm.trange(1, 400, desc="test step collector n_step"):
         c3.reset()
         result = c3.collect(n_step=i * len(env_fns))
@@ -53,8 +53,7 @@ def test_collector_nepisode():
     env_fns = [lambda x=i: MyTestEnv(size=x) for i in np.arange(2, 11)]
     dum = DummyVectorEnv(env_fns)
     num = len(env_fns)
-    c3 = Collector(policy, dum,
-                   VectorReplayBuffer(total_size=40000, buffer_num=num))
+    c3 = Collector(policy, dum, VectorReplayBuffer(total_size=40000, buffer_num=num))
     for i in tqdm.trange(1, 400, desc="test step collector n_episode"):
         c3.reset()
         result = c3.collect(n_episode=i)
@@ -64,22 +63,22 @@ def test_collector_nepisode():
 
 def test_asynccollector():
     env_lens = [2, 3, 4, 5]
-    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True)
-               for i in env_lens]
+    env_fns = [
+        lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens
+    ]
 
     venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
     policy = MyPolicy()
     bufsize = 300
     c1 = AsyncCollector(
-        policy, venv,
-        VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4))
+        policy, venv, VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4)
+    )
     ptr = [0, 0, 0, 0]
     for n_episode in tqdm.trange(1, 100, desc="test async n_episode"):
         result = c1.collect(n_episode=n_episode)
         assert result["n/ep"] >= n_episode
         # check buffer data, obs and obs_next, env_id
-        for i, count in enumerate(
-                np.bincount(result["lens"], minlength=6)[2:]):
+        for i, count in enumerate(np.bincount(result["lens"], minlength=6)[2:]):
             env_len = i + 2
             total = env_len * count
             indices = np.arange(ptr[i], ptr[i] + total) % bufsize
@@ -88,8 +87,7 @@ def test_asynccollector():
             buf = c1.buffer.buffers[i]
             assert np.all(buf.info.env_id[indices] == i)
             assert np.all(buf.obs[indices].reshape(count, env_len) == seq)
-            assert np.all(buf.obs_next[indices].reshape(
-                count, env_len) == seq + 1)
+            assert np.all(buf.obs_next[indices].reshape(count, env_len) == seq + 1)
     # test async n_step, for now the buffer should be full of data
     for n_step in tqdm.trange(1, 150, desc="test async n_step"):
         result = c1.collect(n_step=n_step)

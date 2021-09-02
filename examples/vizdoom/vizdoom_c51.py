@@ -1,18 +1,18 @@
-import os
-import torch
-import pprint
 import argparse
+import os
+import pprint
+
 import numpy as np
-from torch.utils.tensorboard import SummaryWriter
-
-from tianshou.policy import C51Policy
-from tianshou.utils import TensorboardLogger
-from tianshou.env import SubprocVectorEnv
-from tianshou.trainer import offpolicy_trainer
-from tianshou.data import Collector, VectorReplayBuffer
-
+import torch
 from env import Env
 from network import C51
+from torch.utils.tensorboard import SummaryWriter
+
+from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.env import SubprocVectorEnv
+from tianshou.policy import C51Policy
+from tianshou.trainer import offpolicy_trainer
+from tianshou.utils import TensorboardLogger
 
 
 def get_args():
@@ -40,15 +40,23 @@ def get_args():
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
-        '--device', type=str,
-        default='cuda' if torch.cuda.is_available() else 'cpu')
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+    )
     parser.add_argument('--frames-stack', type=int, default=4)
     parser.add_argument('--skip-num', type=int, default=4)
     parser.add_argument('--resume-path', type=str, default=None)
-    parser.add_argument('--watch', default=False, action='store_true',
-                        help='watch the play of pre-trained policy only')
-    parser.add_argument('--save-lmp', default=False, action='store_true',
-                        help='save lmp file for replay whole episode')
+    parser.add_argument(
+        '--watch',
+        default=False,
+        action='store_true',
+        help='watch the play of pre-trained policy only'
+    )
+    parser.add_argument(
+        '--save-lmp',
+        default=False,
+        action='store_true',
+        help='save lmp file for replay whole episode'
+    )
     parser.add_argument('--save-buffer-name', type=str, default=None)
     return parser.parse_args()
 
@@ -64,26 +72,36 @@ def test_c51(args=get_args()):
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
     # make environments
-    train_envs = SubprocVectorEnv([
-        lambda: Env(args.cfg_path, args.frames_stack, args.res)
-        for _ in range(args.training_num)])
-    test_envs = SubprocVectorEnv([
-        lambda: Env(args.cfg_path, args.frames_stack,
-                    args.res, args.save_lmp)
-        for _ in range(min(os.cpu_count() - 1, args.test_num))])
+    train_envs = SubprocVectorEnv(
+        [
+            lambda: Env(args.cfg_path, args.frames_stack, args.res)
+            for _ in range(args.training_num)
+        ]
+    )
+    test_envs = SubprocVectorEnv(
+        [
+            lambda: Env(args.cfg_path, args.frames_stack, args.res, args.save_lmp)
+            for _ in range(min(os.cpu_count() - 1, args.test_num))
+        ]
+    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # define model
-    net = C51(*args.state_shape, args.action_shape,
-              args.num_atoms, args.device)
+    net = C51(*args.state_shape, args.action_shape, args.num_atoms, args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy = C51Policy(
-        net, optim, args.gamma, args.num_atoms, args.v_min, args.v_max,
-        args.n_step, target_update_freq=args.target_update_freq
+        net,
+        optim,
+        args.gamma,
+        args.num_atoms,
+        args.v_min,
+        args.v_max,
+        args.n_step,
+        target_update_freq=args.target_update_freq
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
@@ -92,8 +110,12 @@ def test_c51(args=get_args()):
     # replay buffer: `save_last_obs` and `stack_num` can be removed together
     # when you have enough RAM
     buffer = VectorReplayBuffer(
-        args.buffer_size, buffer_num=len(train_envs), ignore_obs_next=True,
-        save_only_last_obs=True, stack_num=args.frames_stack)
+        args.buffer_size,
+        buffer_num=len(train_envs),
+        ignore_obs_next=True,
+        save_only_last_obs=True,
+        stack_num=args.frames_stack
+    )
     # collector
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs, exploration_noise=True)
@@ -136,11 +158,13 @@ def test_c51(args=get_args()):
         if args.save_buffer_name:
             print(f"Generate buffer with size {args.buffer_size}")
             buffer = VectorReplayBuffer(
-                args.buffer_size, buffer_num=len(test_envs),
-                ignore_obs_next=True, save_only_last_obs=True,
-                stack_num=args.frames_stack)
-            collector = Collector(policy, test_envs, buffer,
-                                  exploration_noise=True)
+                args.buffer_size,
+                buffer_num=len(test_envs),
+                ignore_obs_next=True,
+                save_only_last_obs=True,
+                stack_num=args.frames_stack
+            )
+            collector = Collector(policy, test_envs, buffer, exploration_noise=True)
             result = collector.collect(n_step=args.buffer_size)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
@@ -148,8 +172,9 @@ def test_c51(args=get_args()):
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(n_episode=args.test_num,
-                                            render=args.render)
+            result = test_collector.collect(
+                n_episode=args.test_num, render=args.render
+            )
         rew = result["rews"].mean()
         lens = result["lens"].mean() * args.skip_num
         print(f'Mean reward (over {result["n/ep"]} episodes): {rew}')
@@ -163,11 +188,22 @@ def test_c51(args=get_args()):
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # trainer
     result = offpolicy_trainer(
-        policy, train_collector, test_collector, args.epoch,
-        args.step_per_epoch, args.step_per_collect, args.test_num,
-        args.batch_size, train_fn=train_fn, test_fn=test_fn,
-        stop_fn=stop_fn, save_fn=save_fn, logger=logger,
-        update_per_step=args.update_per_step, test_in_train=False)
+        policy,
+        train_collector,
+        test_collector,
+        args.epoch,
+        args.step_per_epoch,
+        args.step_per_collect,
+        args.test_num,
+        args.batch_size,
+        train_fn=train_fn,
+        test_fn=test_fn,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger,
+        update_per_step=args.update_per_step,
+        test_in_train=False
+    )
 
     pprint.pprint(result)
     watch()

@@ -1,10 +1,11 @@
-import torch
-import numpy as np
-from torch.distributions import Categorical
-from typing import Any, Dict, Tuple, Union, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 
-from tianshou.policy import SACPolicy
+import numpy as np
+import torch
+from torch.distributions import Categorical
+
 from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.policy import SACPolicy
 
 
 class DiscreteSACPolicy(SACPolicy):
@@ -24,7 +25,7 @@ class DiscreteSACPolicy(SACPolicy):
     :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
         regularization coefficient. Default to 0.2.
         If a tuple (target_entropy, log_alpha, alpha_optim) is provided, the
-        alpha is automatatically tuned.
+        alpha is automatically tuned.
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.
 
@@ -50,9 +51,21 @@ class DiscreteSACPolicy(SACPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-            tau, gamma, alpha, reward_normalization, estimation_step,
-            action_scaling=False, action_bound_method="", **kwargs)
+            actor,
+            actor_optim,
+            critic1,
+            critic1_optim,
+            critic2,
+            critic2_optim,
+            tau,
+            gamma,
+            alpha,
+            reward_normalization,
+            estimation_step,
+            action_scaling=False,
+            action_bound_method="",
+            **kwargs
+        )
         self._alpha: Union[float, torch.Tensor]
 
     def forward(  # type: ignore
@@ -68,9 +81,7 @@ class DiscreteSACPolicy(SACPolicy):
         act = dist.sample()
         return Batch(logits=logits, act=act, state=h, dist=dist)
 
-    def _target_q(
-        self, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> torch.Tensor:
+    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}
         obs_next_result = self(batch, input="obs_next")
         dist = obs_next_result.dist
@@ -85,7 +96,8 @@ class DiscreteSACPolicy(SACPolicy):
         weight = batch.pop("weight", 1.0)
         target_q = batch.returns.flatten()
         act = to_torch(
-            batch.act[:, np.newaxis], device=target_q.device, dtype=torch.long)
+            batch.act[:, np.newaxis], device=target_q.device, dtype=torch.long
+        )
 
         # critic 1
         current_q1 = self.critic1(batch.obs).gather(1, act).flatten()
@@ -139,7 +151,6 @@ class DiscreteSACPolicy(SACPolicy):
 
         return result
 
-    def exploration_noise(
-        self, act: Union[np.ndarray, Batch], batch: Batch
-    ) -> Union[np.ndarray, Batch]:
+    def exploration_noise(self, act: Union[np.ndarray, Batch],
+                          batch: Batch) -> Union[np.ndarray, Batch]:
         return act

@@ -1,13 +1,14 @@
 import time
-import tqdm
-import numpy as np
 from collections import defaultdict
-from typing import Dict, Union, Callable, Optional
+from typing import Callable, Dict, Optional, Union
+
+import numpy as np
+import tqdm
 
 from tianshou.data import Collector
 from tianshou.policy import BasePolicy
-from tianshou.trainer import test_episode, gather_info
-from tianshou.utils import tqdm_config, MovAvg, BaseLogger, LazyLogger
+from tianshou.trainer import gather_info, test_episode
+from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 
 
 def onpolicy_trainer(
@@ -50,10 +51,10 @@ def onpolicy_trainer(
         policy network.
     :param int step_per_collect: the number of transitions the collector would collect
         before the network update, i.e., trainer will collect "step_per_collect"
-        transitions and do some policy network update repeatly in each epoch.
+        transitions and do some policy network update repeatedly in each epoch.
     :param int episode_per_collect: the number of episodes the collector would collect
         before the network update, i.e., trainer will collect "episode_per_collect"
-        episodes and do some policy network update repeatly in each epoch.
+        episodes and do some policy network update repeatedly in each epoch.
     :param function train_fn: a hook called at the beginning of training in each epoch.
         It can be used to perform custom additional operations, with the signature ``f(
         num_epoch: int, step_idx: int) -> None``.
@@ -97,8 +98,10 @@ def onpolicy_trainer(
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
-    test_result = test_episode(policy, test_collector, test_fn, start_epoch,
-                               episode_per_test, logger, env_step, reward_metric)
+    test_result = test_episode(
+        policy, test_collector, test_fn, start_epoch, episode_per_test, logger,
+        env_step, reward_metric
+    )
     best_epoch = start_epoch
     best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
 
@@ -111,8 +114,9 @@ def onpolicy_trainer(
             while t.n < t.total:
                 if train_fn:
                     train_fn(epoch, env_step)
-                result = train_collector.collect(n_step=step_per_collect,
-                                                 n_episode=episode_per_collect)
+                result = train_collector.collect(
+                    n_step=step_per_collect, n_episode=episode_per_collect
+                )
                 if result["n/ep"] > 0 and reward_metric:
                     result["rews"] = reward_metric(result["rews"])
                 env_step += int(result["n/st"])
@@ -130,25 +134,32 @@ def onpolicy_trainer(
                 if result["n/ep"] > 0:
                     if test_in_train and stop_fn and stop_fn(result["rew"]):
                         test_result = test_episode(
-                            policy, test_collector, test_fn,
-                            epoch, episode_per_test, logger, env_step)
+                            policy, test_collector, test_fn, epoch, episode_per_test,
+                            logger, env_step
+                        )
                         if stop_fn(test_result["rew"]):
                             if save_fn:
                                 save_fn(policy)
                             logger.save_data(
-                                epoch, env_step, gradient_step, save_checkpoint_fn)
+                                epoch, env_step, gradient_step, save_checkpoint_fn
+                            )
                             t.set_postfix(**data)
                             return gather_info(
                                 start_time, train_collector, test_collector,
-                                test_result["rew"], test_result["rew_std"])
+                                test_result["rew"], test_result["rew_std"]
+                            )
                         else:
                             policy.train()
                 losses = policy.update(
-                    0, train_collector.buffer,
-                    batch_size=batch_size, repeat=repeat_per_collect)
+                    0,
+                    train_collector.buffer,
+                    batch_size=batch_size,
+                    repeat=repeat_per_collect
+                )
                 train_collector.reset_buffer(keep_statistics=True)
-                step = max([1] + [
-                    len(v) for v in losses.values() if isinstance(v, list)])
+                step = max(
+                    [1] + [len(v) for v in losses.values() if isinstance(v, list)]
+                )
                 gradient_step += step
                 for k in losses.keys():
                     stat[k].add(losses[k])
@@ -159,8 +170,10 @@ def onpolicy_trainer(
             if t.n <= t.total:
                 t.update()
         # test
-        test_result = test_episode(policy, test_collector, test_fn, epoch,
-                                   episode_per_test, logger, env_step, reward_metric)
+        test_result = test_episode(
+            policy, test_collector, test_fn, epoch, episode_per_test, logger, env_step,
+            reward_metric
+        )
         rew, rew_std = test_result["rew"], test_result["rew_std"]
         if best_epoch < 0 or best_reward < rew:
             best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
@@ -168,9 +181,12 @@ def onpolicy_trainer(
                 save_fn(policy)
         logger.save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
         if verbose:
-            print(f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
-                  f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
+            print(
+                f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
+                f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
+            )
         if stop_fn and stop_fn(best_reward):
             break
-    return gather_info(start_time, train_collector, test_collector,
-                       best_reward, best_reward_std)
+    return gather_info(
+        start_time, train_collector, test_collector, best_reward, best_reward_std
+    )

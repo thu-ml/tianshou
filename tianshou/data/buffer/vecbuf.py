@@ -1,8 +1,13 @@
-import numpy as np
 from typing import Any
 
-from tianshou.data import ReplayBuffer, ReplayBufferManager
-from tianshou.data import PrioritizedReplayBuffer, PrioritizedReplayBufferManager
+import numpy as np
+
+from tianshou.data import (
+    PrioritizedReplayBuffer,
+    PrioritizedReplayBufferManager,
+    ReplayBuffer,
+    ReplayBufferManager,
+)
 
 
 class VectorReplayBuffer(ReplayBufferManager):

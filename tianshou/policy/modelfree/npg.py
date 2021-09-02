@@ -1,13 +1,13 @@
-import torch
-import numpy as np
-from torch import nn
-import torch.nn.functional as F
 from typing import Any, Dict, List, Type
+
+import numpy as np
+import torch
+import torch.nn.functional as F
+from torch import nn
 from torch.distributions import kl_divergence
 
-
-from tianshou.policy import A2CPolicy
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.policy import A2CPolicy
 
 
 class NPGPolicy(A2CPolicy):
@@ -82,7 +82,7 @@ class NPGPolicy(A2CPolicy):
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
         actor_losses, vf_losses, kls = [], [], []
-        for step in range(repeat):
+        for _ in range(repeat):
             for b in batch.split(batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
@@ -91,7 +91,8 @@ class NPGPolicy(A2CPolicy):
                 log_prob = log_prob.reshape(log_prob.size(0), -1).transpose(0, 1)
                 actor_loss = -(log_prob * b.adv).mean()
                 flat_grads = self._get_flat_grad(
-                    actor_loss, self.actor, retain_graph=True).detach()
+                    actor_loss, self.actor, retain_graph=True
+                ).detach()
 
                 # direction: calculate natural gradient
                 with torch.no_grad():
@@ -101,12 +102,14 @@ class NPGPolicy(A2CPolicy):
                 # calculate first order gradient of kl with respect to theta
                 flat_kl_grad = self._get_flat_grad(kl, self.actor, create_graph=True)
                 search_direction = -self._conjugate_gradients(
-                    flat_grads, flat_kl_grad, nsteps=10)
+                    flat_grads, flat_kl_grad, nsteps=10
+                )
 
                 # step
                 with torch.no_grad():
-                    flat_params = torch.cat([param.data.view(-1)
-                                             for param in self.actor.parameters()])
+                    flat_params = torch.cat(
+                        [param.data.view(-1) for param in self.actor.parameters()]
+                    )
                     new_flat_params = flat_params + self._step_size * search_direction
                     self._set_from_flat_params(self.actor, new_flat_params)
                     new_dist = self(b).dist
@@ -138,8 +141,8 @@ class NPGPolicy(A2CPolicy):
         """Matrix vector product."""
         # caculate second order gradient of kl with respect to theta
         kl_v = (flat_kl_grad * v).sum()
-        flat_kl_grad_grad = self._get_flat_grad(
-            kl_v, self.actor, retain_graph=True).detach()
+        flat_kl_grad_grad = self._get_flat_grad(kl_v, self.actor,
+                                                retain_graph=True).detach()
         return flat_kl_grad_grad + v * self._damping
 
     def _conjugate_gradients(
@@ -154,7 +157,7 @@ class NPGPolicy(A2CPolicy):
         # Note: should be 'r, p = b - MVP(x)', but for x=0, MVP(x)=0.
         # Change if doing warm start.
         rdotr = r.dot(r)
-        for i in range(nsteps):
+        for _ in range(nsteps):
             z = self._MVP(p, flat_kl_grad)
             alpha = rdotr / p.dot(z)
             x += alpha * p
@@ -179,6 +182,7 @@ class NPGPolicy(A2CPolicy):
         for param in model.parameters():
             flat_size = int(np.prod(list(param.size())))
             param.data.copy_(
-                flat_params[prev_ind:prev_ind + flat_size].view(param.size()))
+                flat_params[prev_ind:prev_ind + flat_size].view(param.size())
+            )
             prev_ind += flat_size
         return model

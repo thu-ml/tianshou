@@ -1,13 +1,14 @@
 import time
-import tqdm
-import numpy as np
 from collections import defaultdict
-from typing import Dict, Union, Callable, Optional
+from typing import Callable, Dict, Optional, Union
+
+import numpy as np
+import tqdm
 
 from tianshou.data import Collector
 from tianshou.policy import BasePolicy
-from tianshou.trainer import test_episode, gather_info
-from tianshou.utils import tqdm_config, MovAvg, BaseLogger, LazyLogger
+from tianshou.trainer import gather_info, test_episode
+from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 
 
 def offpolicy_trainer(
@@ -43,7 +44,7 @@ def offpolicy_trainer(
     :param int step_per_epoch: the number of transitions collected per epoch.
     :param int step_per_collect: the number of transitions the collector would collect
         before the network update, i.e., trainer will collect "step_per_collect"
-        transitions and do some policy network update repeatly in each epoch.
+        transitions and do some policy network update repeatedly in each epoch.
     :param episode_per_test: the number of episodes for one policy evaluation.
     :param int batch_size: the batch size of sample data, which is going to feed in the
         policy network.
@@ -91,8 +92,10 @@ def offpolicy_trainer(
     train_collector.reset_stat()
     test_collector.reset_stat()
     test_in_train = test_in_train and train_collector.policy == policy
-    test_result = test_episode(policy, test_collector, test_fn, start_epoch,
-                               episode_per_test, logger, env_step, reward_metric)
+    test_result = test_episode(
+        policy, test_collector, test_fn, start_epoch, episode_per_test, logger,
+        env_step, reward_metric
+    )
     best_epoch = start_epoch
     best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
 
@@ -123,20 +126,23 @@ def offpolicy_trainer(
                 if result["n/ep"] > 0:
                     if test_in_train and stop_fn and stop_fn(result["rew"]):
                         test_result = test_episode(
-                            policy, test_collector, test_fn,
-                            epoch, episode_per_test, logger, env_step)
+                            policy, test_collector, test_fn, epoch, episode_per_test,
+                            logger, env_step
+                        )
                         if stop_fn(test_result["rew"]):
                             if save_fn:
                                 save_fn(policy)
                             logger.save_data(
-                                epoch, env_step, gradient_step, save_checkpoint_fn)
+                                epoch, env_step, gradient_step, save_checkpoint_fn
+                            )
                             t.set_postfix(**data)
                             return gather_info(
                                 start_time, train_collector, test_collector,
-                                test_result["rew"], test_result["rew_std"])
+                                test_result["rew"], test_result["rew_std"]
+                            )
                         else:
                             policy.train()
-                for i in range(round(update_per_step * result["n/st"])):
+                for _ in range(round(update_per_step * result["n/st"])):
                     gradient_step += 1
                     losses = policy.update(batch_size, train_collector.buffer)
                     for k in losses.keys():
@@ -148,8 +154,10 @@ def offpolicy_trainer(
             if t.n <= t.total:
                 t.update()
         # test
-        test_result = test_episode(policy, test_collector, test_fn, epoch,
-                                   episode_per_test, logger, env_step, reward_metric)
+        test_result = test_episode(
+            policy, test_collector, test_fn, epoch, episode_per_test, logger, env_step,
+            reward_metric
+        )
         rew, rew_std = test_result["rew"], test_result["rew_std"]
         if best_epoch < 0 or best_reward < rew:
             best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
@@ -157,9 +165,12 @@ def offpolicy_trainer(
                 save_fn(policy)
         logger.save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
         if verbose:
-            print(f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
-                  f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}")
+            print(
+                f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
+                f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
+            )
         if stop_fn and stop_fn(best_reward):
             break
-    return gather_info(start_time, train_collector, test_collector,
-                       best_reward, best_reward_std)
+    return gather_info(
+        start_time, train_collector, test_collector, best_reward, best_reward_std
+    )

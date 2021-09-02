@@ -341,7 +341,7 @@ With the flexible core APIs, Tianshou can support multi-agent reinforcement lear
 
 Currently, we support three types of multi-agent reinforcement learning paradigms:
 
-1. Simultaneous move: at each timestep, all the agents take their actions (example: moba games)
+1. Simultaneous move: at each timestep, all the agents take their actions (example: MOBA games)
 
 2. Cyclic move: players take action in turn (example: Go game)
 
@@ -371,4 +371,4 @@ By constructing a new state ``state_ = (state, agent_id, mask)``, essentially we
     action = policy(state_)
     next_state_, reward = env.step(action)
 
-Following this idea, we write a tiny example of playing `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ against a random player by using a Q-lerning algorithm. The tutorial is at :doc:`/tutorials/tictactoe`.
+Following this idea, we write a tiny example of playing `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ against a random player by using a Q-learning algorithm. The tutorial is at :doc:`/tutorials/tictactoe`.

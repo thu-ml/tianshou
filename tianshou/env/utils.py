@@ -1,5 +1,6 @@
-import cloudpickle
 from typing import Any
+
+import cloudpickle
 
 
 class CloudpickleWrapper(object):

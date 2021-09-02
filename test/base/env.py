@@ -1,19 +1,28 @@
-import gym
-import time
 import random
-import numpy as np
-import networkx as nx
+import time
 from copy import deepcopy
-from gym.spaces import Discrete, MultiDiscrete, Box, Dict, Tuple
+
+import gym
+import networkx as nx
+import numpy as np
+from gym.spaces import Box, Dict, Discrete, MultiDiscrete, Tuple
 
 
 class MyTestEnv(gym.Env):
     """This is a "going right" task. The task is to go right ``size`` steps.
     """
 
-    def __init__(self, size, sleep=0, dict_state=False, recurse_state=False,
-                 ma_rew=0, multidiscrete_action=False, random_sleep=False,
-                 array_state=False):
+    def __init__(
+        self,
+        size,
+        sleep=0,
+        dict_state=False,
+        recurse_state=False,
+        ma_rew=0,
+        multidiscrete_action=False,
+        random_sleep=False,
+        array_state=False
+    ):
         assert dict_state + recurse_state + array_state <= 1, \
             "dict_state / recurse_state / array_state can be only one true"
         self.size = size
@@ -28,17 +37,32 @@ class MyTestEnv(gym.Env):
         self.steps = 0
         if dict_state:
             self.observation_space = Dict(
-                {"index": Box(shape=(1, ), low=0, high=size - 1),
-                 "rand": Box(shape=(1,), low=0, high=1, dtype=np.float64)})
+                {
+                    "index": Box(shape=(1, ), low=0, high=size - 1),
+                    "rand": Box(shape=(1, ), low=0, high=1, dtype=np.float64)
+                }
+            )
         elif recurse_state:
             self.observation_space = Dict(
-                {"index": Box(shape=(1, ), low=0, high=size - 1),
-                 "dict": Dict({
-                     "tuple": Tuple((Discrete(2), Box(shape=(2,),
-                                     low=0, high=1, dtype=np.float64))),
-                     "rand": Box(shape=(1, 2), low=0, high=1,
-                                 dtype=np.float64)})
-                 })
+                {
+                    "index":
+                    Box(shape=(1, ), low=0, high=size - 1),
+                    "dict":
+                    Dict(
+                        {
+                            "tuple":
+                            Tuple(
+                                (
+                                    Discrete(2),
+                                    Box(shape=(2, ), low=0, high=1, dtype=np.float64)
+                                )
+                            ),
+                            "rand":
+                            Box(shape=(1, 2), low=0, high=1, dtype=np.float64)
+                        }
+                    )
+                }
+            )
         elif array_state:
             self.observation_space = Box(shape=(4, 84, 84), low=0, high=255)
         else:
@@ -70,13 +94,18 @@ class MyTestEnv(gym.Env):
     def _get_state(self):
         """Generate state(observation) of MyTestEnv"""
         if self.dict_state:
-            return {'index': np.array([self.index], dtype=np.float32),
-                    'rand': self.rng.rand(1)}
+            return {
+                'index': np.array([self.index], dtype=np.float32),
+                'rand': self.rng.rand(1)
+            }
         elif self.recurse_state:
-            return {'index': np.array([self.index], dtype=np.float32),
-                    'dict': {"tuple": (np.array([1],
-                                       dtype=int), self.rng.rand(2)),
-                             "rand": self.rng.rand(1, 2)}}
+            return {
+                'index': np.array([self.index], dtype=np.float32),
+                'dict': {
+                    "tuple": (np.array([1], dtype=int), self.rng.rand(2)),
+                    "rand": self.rng.rand(1, 2)
+                }
+            }
         elif self.array_state:
             img = np.zeros([4, 84, 84], int)
             img[3, np.arange(84), np.arange(84)] = self.index
@@ -112,6 +141,7 @@ class MyTestEnv(gym.Env):
 
 
 class NXEnv(gym.Env):
+
     def __init__(self, size, obs_type, feat_dim=32):
         self.size = size
         self.feat_dim = feat_dim

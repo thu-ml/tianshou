@@ -1,7 +1,8 @@
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Tuple
+
 import gym
 import numpy as np
-from typing import Any, Dict, Tuple
-from abc import ABC, abstractmethod
 
 
 class MultiAgentEnv(ABC, gym.Env):

@@ -1,7 +1,8 @@
-import torch
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
+import torch
 import torch.nn.functional as F
-from typing import Any, Dict, Union, Optional
 
 from tianshou.data import Batch, to_torch
 from tianshou.policy import BasePolicy

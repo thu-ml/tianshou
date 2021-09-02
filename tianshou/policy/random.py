@@ -1,5 +1,6 @@
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
-from typing import Any, Dict, Union, Optional
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy

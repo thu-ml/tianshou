@@ -1,8 +1,10 @@
 import sys
-import gym
 import time
-import tqdm
+
+import gym
 import numpy as np
+import tqdm
+
 from tianshou.data import Batch, ReplayBuffer, VectorReplayBuffer
 
 
@@ -12,7 +14,7 @@ def test_replaybuffer(task="Pendulum-v0"):
         env = gym.make(task)
         buf = ReplayBuffer(10000)
         obs = env.reset()
-        for i in range(100000):
+        for _ in range(100000):
             act = env.action_space.sample()
             obs_next, rew, done, info = env.step(act)
             batch = Batch(
@@ -35,7 +37,7 @@ def test_vectorbuffer(task="Pendulum-v0"):
         env = gym.make(task)
         buf = VectorReplayBuffer(total_size=10000, buffer_num=1)
         obs = env.reset()
-        for i in range(100000):
+        for _ in range(100000):
             act = env.action_space.sample()
             obs_next, rew, done, info = env.step(act)
             batch = Batch(

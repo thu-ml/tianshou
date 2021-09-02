@@ -1,6 +1,7 @@
+from typing import Optional, Union
+
 import numpy as np
 from numba import njit
-from typing import Union, Optional
 
 
 class SegmentTree:
@@ -29,9 +30,7 @@ class SegmentTree:
     def __len__(self) -> int:
         return self._size
 
-    def __getitem__(
-        self, index: Union[int, np.ndarray]
-    ) -> Union[float, np.ndarray]:
+    def __getitem__(self, index: Union[int, np.ndarray]) -> Union[float, np.ndarray]:
         """Return self[index]."""
         return self._value[index + self._bound]
 
@@ -64,9 +63,8 @@ class SegmentTree:
             end += self._size
         return _reduce(self._value, start + self._bound - 1, end + self._bound)
 
-    def get_prefix_sum_idx(
-        self, value: Union[float, np.ndarray]
-    ) -> Union[int, np.ndarray]:
+    def get_prefix_sum_idx(self, value: Union[float,
+                                              np.ndarray]) -> Union[int, np.ndarray]:
         r"""Find the index with given value.
 
         Return the minimum index for each ``v`` in ``value`` so that
@@ -122,9 +120,7 @@ def _reduce(tree: np.ndarray, start: int, end: int) -> float:
 
 
 @njit
-def _get_prefix_sum_idx(
-    value: np.ndarray, bound: int, sums: np.ndarray
-) -> np.ndarray:
+def _get_prefix_sum_idx(value: np.ndarray, bound: int, sums: np.ndarray) -> np.ndarray:
     """Numba version (v0.51), 5x speed up with size=100000 and bsz=64.
 
     vectorized np: 0.0923 (numpy best) -> 0.024 (now)

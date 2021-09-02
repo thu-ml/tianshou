@@ -1,12 +1,13 @@
-import torch
-import numpy as np
 from copy import deepcopy
-from torch.distributions import Independent, Normal
-from typing import Any, Dict, Tuple, Union, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 
-from tianshou.policy import DDPGPolicy
-from tianshou.exploration import BaseNoise
+import numpy as np
+import torch
+from torch.distributions import Independent, Normal
+
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.exploration import BaseNoise
+from tianshou.policy import DDPGPolicy
 
 
 class SACPolicy(DDPGPolicy):
@@ -26,7 +27,7 @@ class SACPolicy(DDPGPolicy):
     :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
         regularization coefficient. Default to 0.2.
         If a tuple (target_entropy, log_alpha, alpha_optim) is provided, then
-        alpha is automatatically tuned.
+        alpha is automatically tuned.
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.
     :param BaseNoise exploration_noise: add a noise to action for exploration.
@@ -67,7 +68,8 @@ class SACPolicy(DDPGPolicy):
     ) -> None:
         super().__init__(
             None, None, None, None, tau, gamma, exploration_noise,
-            reward_normalization, estimation_step, **kwargs)
+            reward_normalization, estimation_step, **kwargs
+        )
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
         self.critic1_old.eval()
@@ -123,15 +125,17 @@ class SACPolicy(DDPGPolicy):
         # in appendix C to get some understanding of this equation.
         if self.action_scaling and self.action_space is not None:
             action_scale = to_torch_as(
-                (self.action_space.high - self.action_space.low) / 2.0, act)
+                (self.action_space.high - self.action_space.low) / 2.0, act
+            )
         else:
             action_scale = 1.0  # type: ignore
         squashed_action = torch.tanh(act)
         log_prob = log_prob - torch.log(
             action_scale * (1 - squashed_action.pow(2)) + self.__eps
         ).sum(-1, keepdim=True)
-        return Batch(logits=logits, act=squashed_action,
-                     state=h, dist=dist, log_prob=log_prob)
+        return Batch(
+            logits=logits, act=squashed_action, state=h, dist=dist, log_prob=log_prob
+        )
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}
@@ -146,9 +150,11 @@ class SACPolicy(DDPGPolicy):
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(
-            batch, self.critic1, self.critic1_optim)
+            batch, self.critic1, self.critic1_optim
+        )
         td2, critic2_loss = self._mse_optimizer(
-            batch, self.critic2, self.critic2_optim)
+            batch, self.critic2, self.critic2_optim
+        )
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor
@@ -156,8 +162,10 @@ class SACPolicy(DDPGPolicy):
         a = obs_result.act
         current_q1a = self.critic1(batch.obs, a).flatten()
         current_q2a = self.critic2(batch.obs, a).flatten()
-        actor_loss = (self._alpha * obs_result.log_prob.flatten()
-                      - torch.min(current_q1a, current_q2a)).mean()
+        actor_loss = (
+            self._alpha * obs_result.log_prob.flatten() -
+            torch.min(current_q1a, current_q2a)
+        ).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()

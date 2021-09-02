@@ -10,11 +10,12 @@
 
 from __future__ import print_function
 
-from time import sleep
-import vizdoom as vzd
 from argparse import ArgumentParser
-# import cv2
+from time import sleep
 
+import vizdoom as vzd
+
+# import cv2
 
 if __name__ == "__main__":
     parser = ArgumentParser("ViZDoom example showing how to use SPECTATOR mode.")

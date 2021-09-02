@@ -1,9 +1,10 @@
-import torch
-import numpy as np
 from typing import Any, Dict, Optional
 
-from tianshou.policy import DQNPolicy
+import numpy as np
+import torch
+
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.policy import DQNPolicy
 
 
 class C51Policy(DQNPolicy):
@@ -44,8 +45,10 @@ class C51Policy(DQNPolicy):
         reward_normalization: bool = False,
         **kwargs: Any,
     ) -> None:
-        super().__init__(model, optim, discount_factor, estimation_step,
-                         target_update_freq, reward_normalization, **kwargs)
+        super().__init__(
+            model, optim, discount_factor, estimation_step, target_update_freq,
+            reward_normalization, **kwargs
+        )
         assert num_atoms > 1, "num_atoms should be greater than 1"
         assert v_min < v_max, "v_max should be larger than v_min"
         self._num_atoms = num_atoms
@@ -77,9 +80,10 @@ class C51Policy(DQNPolicy):
         target_support = batch.returns.clamp(self._v_min, self._v_max)
         # An amazing trick for calculating the projection gracefully.
         # ref: https://github.com/ShangtongZhang/DeepRL
-        target_dist = (1 - (target_support.unsqueeze(1) -
-                            self.support.view(1, -1, 1)).abs() / self.delta_z
-                       ).clamp(0, 1) * next_dist.unsqueeze(1)
+        target_dist = (
+            1 - (target_support.unsqueeze(1) - self.support.view(1, -1, 1)).abs() /
+            self.delta_z
+        ).clamp(0, 1) * next_dist.unsqueeze(1)
         return target_dist.sum(-1)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
@@ -92,7 +96,7 @@ class C51Policy(DQNPolicy):
         curr_dist = self(batch).logits
         act = batch.act
         curr_dist = curr_dist[np.arange(len(act)), act, :]
-        cross_entropy = - (target_dist * torch.log(curr_dist + 1e-8)).sum(1)
+        cross_entropy = -(target_dist * torch.log(curr_dist + 1e-8)).sum(1)
         loss = (cross_entropy * weight).mean()
         # ref: https://github.com/Kaixhin/Rainbow/blob/master/agent.py L94-100
         batch.weight = cross_entropy.detach()  # prio-buffer
