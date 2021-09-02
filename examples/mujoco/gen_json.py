@@ -9,7 +9,7 @@ import sys
 def merge(rootdir):
     """format: $rootdir/$algo/*.csv"""
     result = []
-    for path, dirnames, filenames in os.walk(rootdir):
+    for path, _, filenames in os.walk(rootdir):
         filenames = [f for f in filenames if f.endswith('.csv')]
         if len(filenames) == 0:
             continue

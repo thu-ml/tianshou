@@ -114,8 +114,9 @@ class DiscreteBCQPolicy(DQNPolicy):
         act = to_torch(batch.act, dtype=torch.long, device=target_q.device)
         q_loss = F.smooth_l1_loss(current_q, target_q)
         i_loss = F.nll_loss(
-            F.log_softmax(imitation_logits, dim=-1), act
-        )  # type: ignore
+            F.log_softmax(imitation_logits, dim=-1),
+            act  # type: ignore
+        )
         reg_loss = imitation_logits.pow(2).mean()
         loss = q_loss + i_loss + self._weight_reg * reg_loss
 

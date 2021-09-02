@@ -61,6 +61,7 @@ setup(
             "sphinx_rtd_theme",
             "sphinxcontrib-bibtex",
             "flake8",
+            "flake8-bugbear",
             "yapf",
             "isort",
             "pytest",

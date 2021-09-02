@@ -83,7 +83,7 @@ def merge_csv(csv_files, root_dir, remove_zero=False):
     """Merge result in csv_files into a single csv file."""
     assert len(csv_files) > 0
     if remove_zero:
-        for k, v in csv_files.items():
+        for v in csv_files.values():
             if v[1][0] == 0:
                 v.pop(1)
     sorted_keys = sorted(csv_files.keys())

@@ -140,7 +140,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         v.seed(0)
     action_list = [1] * 5 + [0] * 10 + [1] * 20
     o = [v.reset() for v in venv]
-    for i, a in enumerate(action_list):
+    for a in action_list:
         o = []
         for v in venv:
             A, B, C, D = v.step([a] * num)
@@ -152,6 +152,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
                 continue
             for info in infos:
                 assert recurse_comp(infos[0], info)
+
     if __name__ == '__main__':
         t = [0] * len(venv)
         for i, e in enumerate(venv):
@@ -164,6 +165,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
             t[i] = time.time() - t[i]
         for i, v in enumerate(venv):
             print(f'{type(v)}: {t[i]:.6f}s')
+
     for v in venv:
         assert v.size == list(range(size, size + num))
         assert v.env_num == num

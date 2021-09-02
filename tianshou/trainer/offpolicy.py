@@ -142,7 +142,7 @@ def offpolicy_trainer(
                             )
                         else:
                             policy.train()
-                for i in range(round(update_per_step * result["n/st"])):
+                for _ in range(round(update_per_step * result["n/st"])):
                     gradient_step += 1
                     losses = policy.update(batch_size, train_collector.buffer)
                     for k in losses.keys():

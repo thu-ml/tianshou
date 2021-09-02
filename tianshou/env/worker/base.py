@@ -11,7 +11,7 @@ class EnvWorker(ABC):
         self._env_fn = env_fn
         self.is_closed = False
         self.result: Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-        self.action_space = getattr(self, "action_space")
+        self.action_space = getattr(self, "action_space")  # noqa: B009
 
     @abstractmethod
     def __getattr__(self, key: str) -> Any:

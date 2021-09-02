@@ -69,7 +69,7 @@ class TRPOPolicy(NPGPolicy):
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
         actor_losses, vf_losses, step_sizes, kls = [], [], [], []
-        for step in range(repeat):
+        for _ in range(repeat):
             for b in batch.split(batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient

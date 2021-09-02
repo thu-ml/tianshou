@@ -81,7 +81,7 @@ class NPGPolicy(A2CPolicy):
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
         actor_losses, vf_losses, kls = [], [], []
-        for step in range(repeat):
+        for _ in range(repeat):
             for b in batch.split(batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
@@ -156,7 +156,7 @@ class NPGPolicy(A2CPolicy):
         # Note: should be 'r, p = b - MVP(x)', but for x=0, MVP(x)=0.
         # Change if doing warm start.
         rdotr = r.dot(r)
-        for i in range(nsteps):
+        for _ in range(nsteps):
             z = self._MVP(p, flat_kl_grad)
             alpha = rdotr / p.dot(z)
             x += alpha * p

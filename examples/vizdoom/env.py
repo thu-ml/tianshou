@@ -119,7 +119,7 @@ if __name__ == '__main__':
     obs = env.reset()
     print(env.spec.reward_threshold)
     print(obs.shape, action_num)
-    for i in range(4000):
+    for _ in range(4000):
         obs, rew, done, info = env.step(0)
         if done:
             env.reset()

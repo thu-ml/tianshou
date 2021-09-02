@@ -47,7 +47,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         reward, and max over last observations.
         """
         obs_list, total_reward, done = [], 0., False
-        for i in range(self._skip):
+        for _ in range(self._skip):
             obs, reward, done, info = self.env.step(action)
             obs_list.append(obs)
             total_reward += reward

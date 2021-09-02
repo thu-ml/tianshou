@@ -178,7 +178,7 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
     buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
     buf3 = ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True)
     obs = env.reset(1)
-    for i in range(16):
+    for _ in range(16):
         obs_next, rew, done, info = env.step(1)
         buf.add(Batch(obs=obs, act=1, rew=rew, done=done, info=info))
         buf2.add(Batch(obs=obs, act=1, rew=rew, done=done, info=info))
@@ -313,7 +313,7 @@ def test_segtree():
         naive[index] = value
         tree[index] = value
         assert np.allclose(realop(naive), tree.reduce())
-        for i in range(10):
+        for _ in range(10):
             left = np.random.randint(actual_len)
             right = np.random.randint(left + 1, actual_len + 1)
             assert np.allclose(realop(naive[left:right]), tree.reduce(left, right))
@@ -327,7 +327,7 @@ def test_segtree():
         naive[index] = value
         tree[index] = value
         assert np.allclose(realop(naive), tree.reduce())
-        for i in range(10):
+        for _ in range(10):
             left = np.random.randint(actual_len)
             right = np.random.randint(left + 1, actual_len + 1)
             assert np.allclose(realop(naive[left:right]), tree.reduce(left, right))

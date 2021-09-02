@@ -228,7 +228,7 @@ class BaseVectorEnv(gym.Env):
             if action is not None:
                 self._assert_id(id)
                 assert len(action) == len(id)
-                for i, (act, env_id) in enumerate(zip(action, id)):
+                for act, env_id in zip(action, id):
                     self.workers[env_id].send_action(act)
                     self.waiting_conn.append(self.workers[env_id])
                     self.waiting_id.append(env_id)

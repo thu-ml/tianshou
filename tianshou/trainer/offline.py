@@ -85,7 +85,7 @@ def offline_trainer(
     for epoch in range(1 + start_epoch, 1 + max_epoch):
         policy.train()
         with tqdm.trange(update_per_epoch, desc=f"Epoch #{epoch}", **tqdm_config) as t:
-            for i in t:
+            for _ in t:
                 gradient_step += 1
                 losses = policy.update(batch_size, buffer)
                 data = {"gradient_step": str(gradient_step)}
