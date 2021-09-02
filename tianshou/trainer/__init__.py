@@ -1,4 +1,8 @@
-"""isort:skip_file"""
+"""Trainer package.
+
+isort:skip_file
+"""
+
 from tianshou.trainer.utils import test_episode, gather_info
 from tianshou.trainer.onpolicy import onpolicy_trainer
 from tianshou.trainer.offpolicy import offpolicy_trainer

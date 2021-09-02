@@ -230,9 +230,8 @@ class Collector(object):
             # get bounded and remapped actions first (not saved into buffer)
             action_remap = self.policy.map_action(self.data.act)
             # step in env
-            obs_next, rew, done, info = self.env.step(
-                action_remap, ready_env_ids  # type: ignore
-            )
+            result = self.env.step(action_remap, ready_env_ids)  # type: ignore
+            obs_next, rew, done, info = result
 
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
             if self.preprocess_fn:
@@ -449,9 +448,8 @@ class AsyncCollector(Collector):
             # get bounded and remapped actions first (not saved into buffer)
             action_remap = self.policy.map_action(self.data.act)
             # step in env
-            obs_next, rew, done, info = self.env.step(
-                action_remap, ready_env_ids  # type: ignore
-            )
+            result = self.env.step(action_remap, ready_env_ids)  # type: ignore
+            obs_next, rew, done, info = result
 
             # change self.data here because ready_env_ids has changed
             ready_env_ids = np.array([i["env_id"] for i in info])
