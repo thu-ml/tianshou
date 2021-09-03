@@ -144,7 +144,10 @@ class DDPGPolicy(BasePolicy):
 
     @staticmethod
     def _mse_optimizer(
-        batch: Batch, critic: torch.nn.Module, optimizer: torch.optim.Optimizer, **kwargs: Any
+        batch: Batch,
+        critic: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        **kwargs: Any,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """A simple wrapper script for updating critic network."""
         weight = getattr(batch, "weight", 1.0)
@@ -162,7 +165,9 @@ class DDPGPolicy(BasePolicy):
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # critic
-        td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim, **kwargs)
+        td, critic_loss = self._mse_optimizer(
+            batch, self.critic, self.critic_optim, **kwargs
+        )
         batch.weight = td  # prio-buffer
         # actor
         action = self(batch).act

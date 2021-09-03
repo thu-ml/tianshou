@@ -185,6 +185,11 @@ class BasePolicy(ABC, nn.Module):
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, Any]:
         """Update policy with a given batch of data.
 
+        If you only want :meth:`learn` calls to accumulate gradients and not
+        actually update the weight, you can specify ``accumulate_grad=True``
+        in the argument. This doesn't block calls to function calls like
+        ``sync_weight``, please use with caution.
+
         :return: A dict, including the data needed to be logged (e.g., loss).
 
         .. note::
