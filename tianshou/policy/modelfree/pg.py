@@ -127,7 +127,8 @@ class PGPolicy(BasePolicy):
         losses = []
         for _ in range(repeat):
             for b in batch.split(batch_size, merge_last=True):
-                self.optim.zero_grad()
+                if not kwargs.get('accumulate_grad'):
+                    self.optim.zero_grad()
                 result = self(b)
                 dist = result.dist
                 a = to_torch_as(b.act, result.act)
@@ -135,7 +136,8 @@ class PGPolicy(BasePolicy):
                 log_prob = dist.log_prob(a).reshape(len(ret), -1).transpose(0, 1)
                 loss = -(log_prob * ret).mean()
                 loss.backward()
-                self.optim.step()
+                if not kwargs.get('accumulate_grad'):
+                    self.optim.step()
                 losses.append(loss.item())
         # update learning rate if lr_scheduler is given
         if self.lr_scheduler is not None:

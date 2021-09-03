@@ -144,7 +144,7 @@ class DDPGPolicy(BasePolicy):
 
     @staticmethod
     def _mse_optimizer(
-        batch: Batch, critic: torch.nn.Module, optimizer: torch.optim.Optimizer
+        batch: Batch, critic: torch.nn.Module, optimizer: torch.optim.Optimizer, **kwargs: Any
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """A simple wrapper script for updating critic network."""
         weight = getattr(batch, "weight", 1.0)
@@ -153,22 +153,26 @@ class DDPGPolicy(BasePolicy):
         td = current_q - target_q
         # critic_loss = F.mse_loss(current_q1, target_q)
         critic_loss = (td.pow(2) * weight).mean()
-        optimizer.zero_grad()
+        if not kwargs.get('accumulate_grad'):
+            optimizer.zero_grad()
         critic_loss.backward()
-        optimizer.step()
+        if not kwargs.get('accumulate_grad'):
+            optimizer.step()
         return td, critic_loss
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # critic
-        td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
+        td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim, **kwargs)
         batch.weight = td  # prio-buffer
         # actor
         action = self(batch).act
         actor_loss = -self.critic(batch.obs, action).mean()
-        self.actor_optim.zero_grad()
+        if not kwargs.get('accumulate_grad'):
+            self.actor_optim.zero_grad()
         actor_loss.backward()
-        self.actor_optim.step()
-        self.sync_weight()
+        if not kwargs.get('accumulate_grad'):
+            self.actor_optim.step()
+            self.sync_weight()
         return {
             "loss/actor": actor_loss.item(),
             "loss/critic": critic_loss.item(),

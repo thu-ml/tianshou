@@ -119,9 +119,11 @@ class NPGPolicy(A2CPolicy):
                 for _ in range(self._optim_critic_iters):
                     value = self.critic(b.obs).flatten()
                     vf_loss = F.mse_loss(b.returns, value)
-                    self.optim.zero_grad()
+                    if not kwargs.get('accumulate_grad'):
+                        self.optim.zero_grad()
                     vf_loss.backward()
-                    self.optim.step()
+                    if not kwargs.get('accumulate_grad'):
+                        self.optim.step()
 
                 actor_losses.append(actor_loss.item())
                 vf_losses.append(vf_loss.item())

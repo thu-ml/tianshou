@@ -50,7 +50,8 @@ class DiscreteCQLPolicy(QRDQNPolicy):
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
-        self.optim.zero_grad()
+        if not kwargs.get('accumulate_grad'):
+            self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
         all_dist = self(batch).logits
         act = to_torch(batch.act, dtype=torch.long, device=all_dist.device)
@@ -73,7 +74,8 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         min_q_loss = negative_sampling - dataset_expec
         loss = qr_loss + min_q_loss * self._min_q_weight
         loss.backward()
-        self.optim.step()
+        if not kwargs.get('accumulate_grad'):
+            self.optim.step()
         self._iter += 1
         return {
             "loss": loss.item(),

@@ -126,9 +126,11 @@ class DiscreteSACPolicy(SACPolicy):
             current_q2a = self.critic2(batch.obs)
             q = torch.min(current_q1a, current_q2a)
         actor_loss = -(self._alpha * entropy + (dist.probs * q).sum(dim=-1)).mean()
-        self.actor_optim.zero_grad()
+        if not kwargs.get('accumulate_grad'):
+            self.actor_optim.zero_grad()
         actor_loss.backward()
-        self.actor_optim.step()
+        if not kwargs.get('accumulate_grad'):
+            self.actor_optim.step()
 
         if self._is_auto_alpha:
             log_prob = -entropy.detach() + self._target_entropy

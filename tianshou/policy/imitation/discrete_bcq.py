@@ -121,9 +121,11 @@ class DiscreteBCQPolicy(DQNPolicy):
         reg_loss = imitation_logits.pow(2).mean()
         loss = q_loss + i_loss + self._weight_reg * reg_loss
 
-        self.optim.zero_grad()
+        if not kwargs.get('accumulate_grad'):
+            self.optim.zero_grad()
         loss.backward()
-        self.optim.step()
+        if not kwargs.get('accumulate_grad'):
+            self.optim.step()
 
         return {
             "loss": loss.item(),

@@ -48,7 +48,8 @@ class ImitationPolicy(BasePolicy):
         return Batch(logits=logits, act=a, state=h)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        self.optim.zero_grad()
+        if not kwargs.get('accumulate_grad'):
+            self.optim.zero_grad()
         if self.action_type == "continuous":  # regression
             a = self(batch).act
             a_ = to_torch(batch.act, dtype=torch.float32, device=a.device)
@@ -58,5 +59,6 @@ class ImitationPolicy(BasePolicy):
             a_ = to_torch(batch.act, dtype=torch.long, device=a.device)
             loss = F.nll_loss(a, a_)  # type: ignore
         loss.backward()
-        self.optim.step()
+        if not kwargs.get('accumulate_grad'):
+            self.optim.step()
         return {"loss": loss.item()}

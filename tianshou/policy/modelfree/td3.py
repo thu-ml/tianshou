@@ -122,10 +122,12 @@ class TD3Policy(DDPGPolicy):
         # actor
         if self._cnt % self._freq == 0:
             actor_loss = -self.critic1(batch.obs, self(batch, eps=0.0).act).mean()
-            self.actor_optim.zero_grad()
+            if not kwargs.get('accumulate_grad'):
+                self.actor_optim.zero_grad()
             actor_loss.backward()
             self._last = actor_loss.item()
-            self.actor_optim.step()
+            if not kwargs.get('accumulate_grad'):
+                self.actor_optim.step()
             self.sync_weight()
         self._cnt += 1
         return {

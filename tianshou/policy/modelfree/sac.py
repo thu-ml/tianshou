@@ -166,16 +166,20 @@ class SACPolicy(DDPGPolicy):
             self._alpha * obs_result.log_prob.flatten() -
             torch.min(current_q1a, current_q2a)
         ).mean()
-        self.actor_optim.zero_grad()
+        if not kwargs.get('accumulate_grad'):
+            self.actor_optim.zero_grad()
         actor_loss.backward()
-        self.actor_optim.step()
+        if not kwargs.get('accumulate_grad'):
+            self.actor_optim.step()
 
         if self._is_auto_alpha:
             log_prob = obs_result.log_prob.detach() + self._target_entropy
             alpha_loss = -(self._log_alpha * log_prob).mean()
-            self._alpha_optim.zero_grad()
+            if not kwargs.get('accumulate_grad'):
+                self._alpha_optim.zero_grad()
             alpha_loss.backward()
-            self._alpha_optim.step()
+            if not kwargs.get('accumulate_grad'):
+                self._alpha_optim.step()
             self._alpha = self._log_alpha.detach().exp()
 
         self.sync_weight()

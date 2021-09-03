@@ -136,14 +136,16 @@ class PPOPolicy(A2CPolicy):
                 ent_loss = dist.entropy().mean()
                 loss = clip_loss + self._weight_vf * vf_loss \
                     - self._weight_ent * ent_loss
-                self.optim.zero_grad()
+                if not kwargs.get('accumulate_grad'):
+                    self.optim.zero_grad()
                 loss.backward()
                 if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
                         set(self.actor.parameters()).union(self.critic.parameters()),
                         max_norm=self._grad_norm
                     )
-                self.optim.step()
+                if not kwargs.get('accumulate_grad'):
+                    self.optim.step()
                 clip_losses.append(clip_loss.item())
                 vf_losses.append(vf_loss.item())
                 ent_losses.append(ent_loss.item())

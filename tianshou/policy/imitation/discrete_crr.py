@@ -82,7 +82,8 @@ class DiscreteCRRPolicy(PGPolicy):
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:  # type: ignore
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
-        self.optim.zero_grad()
+        if not kwargs.get('accumulate_grad'):
+            self.optim.zero_grad()
         q_t, _ = self.critic(batch.obs)
         act = to_torch(batch.act, dtype=torch.long, device=q_t.device)
         qa_t = q_t.gather(1, act.unsqueeze(1))
@@ -114,7 +115,8 @@ class DiscreteCRRPolicy(PGPolicy):
         min_q_loss = (q_t.logsumexp(1) - qa_t).mean()
         loss = actor_loss + critic_loss + self._min_q_weight * min_q_loss
         loss.backward()
-        self.optim.step()
+        if not kwargs.get('accumulate_grad'):
+            self.optim.step()
         self._iter += 1
         return {
             "loss": loss.item(),

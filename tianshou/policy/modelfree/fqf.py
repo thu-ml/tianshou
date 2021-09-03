@@ -157,12 +157,15 @@ class FQFPolicy(QRDQNPolicy):
         # calculate entropy loss
         entropy_loss = out.fractions.entropies.mean()
         fraction_entropy_loss = fraction_loss - self._ent_coef * entropy_loss
-        self._fraction_optim.zero_grad()
+        if not kwargs.get('accumulate_grad'):
+            self._fraction_optim.zero_grad()
         fraction_entropy_loss.backward(retain_graph=True)
-        self._fraction_optim.step()
-        self.optim.zero_grad()
+        if not kwargs.get('accumulate_grad'):
+            self._fraction_optim.step()
+            self.optim.zero_grad()
         quantile_loss.backward()
-        self.optim.step()
+        if not kwargs.get('accumulate_grad'):
+            self.optim.step()
         self._iter += 1
         return {
             "loss": quantile_loss.item() + fraction_entropy_loss.item(),
