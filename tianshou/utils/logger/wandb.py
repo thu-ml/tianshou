@@ -46,10 +46,7 @@ class WandbLogger(BaseLogger):
     ) -> None:
         super().__init__(train_interval, test_interval, update_interval)
         self.last_save_step = -1
-        self.train_interval = train_interval
-        self.test_interval = test_interval
         self.save_interval = save_interval
-        self.update_interval = update_interval
         self.restored = False
 
         self.wandb_run = wandb.init(
