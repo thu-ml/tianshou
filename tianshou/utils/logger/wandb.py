@@ -78,7 +78,6 @@ class WandbLogger(BaseLogger):
         :param function save_checkpoint_fn: a hook defined by user, see trainer
             documentation for detail.
         """
-        print("save ---", epoch - self.last_save_step >= self.save_interval)
         if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
             self.last_save_step = epoch
             checkpoint_path = save_checkpoint_fn(epoch, env_step, gradient_step)
@@ -95,7 +94,6 @@ class WandbLogger(BaseLogger):
             )
             checkpoint_artifact.add_file(str(checkpoint_path))
             self.wandb_run.log_artifact(checkpoint_artifact)
-            print("saved")
 
     def restore_data(self) -> Tuple[int, int, int]:
         checkpoint_artifact = self.wandb_run.use_artifact(
