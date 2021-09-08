@@ -9,7 +9,7 @@ from atari_wrapper import wrap_deepmind
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv
+from tianshou.env import ShmemVectorEnv
 from tianshou.policy import IQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -78,10 +78,10 @@ def test_iqn(args=get_args()):
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
     # make environments
-    train_envs = SubprocVectorEnv(
+    train_envs = ShmemVectorEnv(
         [lambda: make_atari_env(args) for _ in range(args.training_num)]
     )
-    test_envs = SubprocVectorEnv(
+    test_envs = ShmemVectorEnv(
         [lambda: make_atari_env_watch(args) for _ in range(args.test_num)]
     )
     # seed

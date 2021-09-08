@@ -11,7 +11,7 @@ from atari_wrapper import wrap_deepmind
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv
+from tianshou.env import ShmemVectorEnv
 from tianshou.policy import DiscreteCRRPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger
@@ -77,7 +77,7 @@ def test_discrete_crr(args=get_args()):
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
     # make environments
-    test_envs = SubprocVectorEnv(
+    test_envs = ShmemVectorEnv(
         [lambda: make_atari_env_watch(args) for _ in range(args.test_num)]
     )
     # seed

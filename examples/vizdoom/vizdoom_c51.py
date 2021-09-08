@@ -9,7 +9,7 @@ from network import C51
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv
+from tianshou.env import ShmemVectorEnv
 from tianshou.policy import C51Policy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -72,13 +72,13 @@ def test_c51(args=get_args()):
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
     # make environments
-    train_envs = SubprocVectorEnv(
+    train_envs = ShmemVectorEnv(
         [
             lambda: Env(args.cfg_path, args.frames_stack, args.res)
             for _ in range(args.training_num)
         ]
     )
-    test_envs = SubprocVectorEnv(
+    test_envs = ShmemVectorEnv(
         [
             lambda: Env(args.cfg_path, args.frames_stack, args.res, args.save_lmp)
             for _ in range(min(os.cpu_count() - 1, args.test_num))
