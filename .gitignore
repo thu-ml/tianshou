@@ -148,3 +148,4 @@ MUJOCO_LOG.TXT
 *.pkl
 *.hdf5
 wandb/
+videos/

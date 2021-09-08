@@ -9,7 +9,7 @@ from atari_wrapper import wrap_deepmind
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv
+from tianshou.env import ShmemVectorEnv
 from tianshou.policy import FQFPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -78,10 +78,10 @@ def test_fqf(args=get_args()):
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
     # make environments
-    train_envs = SubprocVectorEnv(
+    train_envs = ShmemVectorEnv(
         [lambda: make_atari_env(args) for _ in range(args.training_num)]
     )
-    test_envs = SubprocVectorEnv(
+    test_envs = ShmemVectorEnv(
         [lambda: make_atari_env_watch(args) for _ in range(args.test_num)]
     )
     # seed
@@ -158,7 +158,8 @@ def test_fqf(args=get_args()):
         else:
             eps = args.eps_train_final
         policy.set_eps(eps)
-        logger.write('train/eps', env_step, eps)
+        if env_step % 1000 == 0:
+            logger.write("train/env_step", env_step, {"train/eps": eps})
 
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
