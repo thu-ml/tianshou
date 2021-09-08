@@ -153,7 +153,8 @@ def test_iqn(args=get_args()):
         else:
             eps = args.eps_train_final
         policy.set_eps(eps)
-        logger.write('train/eps', env_step, eps)
+        if env_step % 1000 == 0:
+            logger.write("train/env_step", env_step, {"train/eps": eps})
 
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)

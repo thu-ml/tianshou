@@ -174,7 +174,8 @@ def test_rainbow(args=get_args()):
         else:
             eps = args.eps_train_final
         policy.set_eps(eps)
-        logger.write('train/eps', env_step, eps)
+        if env_step % 1000 == 0:
+            logger.write("train/env_step", env_step, {"train/eps": eps})
         if not args.no_priority:
             if env_step <= args.beta_anneal_step:
                 beta = args.beta - env_step / args.beta_anneal_step * \
@@ -182,7 +183,8 @@ def test_rainbow(args=get_args()):
             else:
                 beta = args.beta_final
             buffer.set_beta(beta)
-            logger.write('train/beta', env_step, beta)
+            if env_step % 1000 == 0:
+                logger.write("train/env_step", env_step, {"train/beta": beta})
 
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
