@@ -42,7 +42,7 @@ class WandbLogger(BaseLogger):
         save_interval: int = 1000,
         project: str = 'tianshou',
         name: Optional[str] = None,
-        run_id=None
+        run_id: Optional[str] = None
     ) -> None:
         super().__init__(train_interval, test_interval, update_interval)
         self.last_save_step = -1
@@ -53,7 +53,7 @@ class WandbLogger(BaseLogger):
         self.restored = False
 
         self.wandb_run = wandb.init(
-            project=project, name=name, id=run_id, resume="allow"
+            project=project, name=name, id=run_id, resume="allow", monitor_gym=True
         ) if not wandb.run else wandb.run
 
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
