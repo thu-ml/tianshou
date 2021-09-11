@@ -1,9 +1,10 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
-
+import gym
 import numpy as np
+from pettingzoo.utils.env import AECEnv
+from typing import Any, Dict, List, Tuple, Union, Optional
 
-from tianshou.data import Batch, ReplayBuffer
 from tianshou.policy import BasePolicy
+from tianshou.data import Batch, ReplayBuffer
 
 
 class MultiAgentPolicyManager(BasePolicy):
@@ -16,21 +17,24 @@ class MultiAgentPolicyManager(BasePolicy):
     :ref:`marl_example` can help you better understand this procedure.
     """
 
-    def __init__(self, policies: List[BasePolicy], **kwargs: Any) -> None:
+    def __init__(self, policies: List[BasePolicy], env: AECEnv, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.policies = policies
+        assert (len(policies) == len(env.agents)), "One policy must be assigned for each agent."
+        self.agent_idx = env.agent_idx
         for i, policy in enumerate(policies):
             # agent_id 0 is reserved for the environment proxy
             # (this MultiAgentPolicyManager)
-            policy.set_agent_id(i + 1)
+            policy.set_agent_id(env.agents[i])
+
+        self.policies = dict(zip(env.agents, policies))
 
     def replace_policy(self, policy: BasePolicy, agent_id: int) -> None:
         """Replace the "agent_id"th policy in this manager."""
-        self.policies[agent_id - 1] = policy
         policy.set_agent_id(agent_id)
+        self.policies[agent_id] = policy
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
+        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
     ) -> Batch:
         """Dispatch batch data from obs.agent_id to every policy's process_fn.
 
@@ -45,32 +49,31 @@ class MultiAgentPolicyManager(BasePolicy):
             # Since we do not override buffer.__setattr__, here we use _meta to
             # change buffer.rew, otherwise buffer.rew = Batch() has no effect.
             save_rew, buffer._meta.rew = buffer.rew, Batch()
-        for policy in self.policies:
-            agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
+        for agent_id, policy in self.policies.items():
+            agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
-                results[f"agent_{policy.agent_id}"] = Batch()
+                results[agent_id] = Batch()
                 continue
-            tmp_batch, tmp_indices = batch[agent_index], indices[agent_index]
+            tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
             if has_rew:
                 tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
                 buffer._meta.rew = save_rew[:, policy.agent_id - 1]
-            results[f"agent_{policy.agent_id}"] = policy.process_fn(
-                tmp_batch, buffer, tmp_indices
-            )
+            results[policy.agent_id] = policy.process_fn(
+                tmp_batch, buffer, tmp_indice)
         if has_rew:  # restore from save_rew
             buffer._meta.rew = save_rew
         return Batch(results)
 
-    def exploration_noise(self, act: Union[np.ndarray, Batch],
-                          batch: Batch) -> Union[np.ndarray, Batch]:
+    def exploration_noise(
+        self, act: Union[np.ndarray, Batch], batch: Batch
+    ) -> Union[np.ndarray, Batch]:
         """Add exploration noise from sub-policy onto act."""
-        for policy in self.policies:
-            agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
+        for agent_id, policy in self.policies.items():
+            agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
                 continue
             act[agent_index] = policy.exploration_noise(
-                act[agent_index], batch[agent_index]
-            )
+                act[agent_index], batch[agent_index])
         return act
 
     def forward(  # type: ignore
@@ -102,9 +105,9 @@ class MultiAgentPolicyManager(BasePolicy):
                     "agent_n": xxx}
             }
         """
-        results: List[Tuple[bool, np.ndarray, Batch, Union[np.ndarray, Batch],
-                            Batch]] = []
-        for policy in self.policies:
+        results: List[Tuple[bool, np.ndarray, Batch,
+                            Union[np.ndarray, Batch], Batch]] = []                            
+        for agent_id, policy in self.policies.items():
             # This part of code is difficult to understand.
             # Let's follow an example with two agents
             # batch.obs.agent_id is [1, 2, 1, 2, 1, 2] (with batch_size == 6)
@@ -112,7 +115,7 @@ class MultiAgentPolicyManager(BasePolicy):
             # agent_index for agent 1 is [0, 2, 4]
             # agent_index for agent 2 is [1, 3, 5]
             # we separate the transition of each agent according to agent_id
-            agent_index = np.nonzero(batch.obs.agent_id == policy.agent_id)[0]
+            agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
                 # (has_data, agent_index, out, act, state)
                 results.append((False, np.array([-1]), Batch(), Batch(), Batch()))
@@ -120,39 +123,32 @@ class MultiAgentPolicyManager(BasePolicy):
             tmp_batch = batch[agent_index]
             if isinstance(tmp_batch.rew, np.ndarray):
                 # reward can be empty Batch (after initial reset) or nparray.
-                tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
-            out = policy(
-                batch=tmp_batch,
-                state=None if state is None else state["agent_" +
-                                                       str(policy.agent_id)],
-                **kwargs
-            )
+                tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent_id]]
+            out = policy(batch=tmp_batch, state=None if state is None
+                         else state[agent_id],
+                         **kwargs)
             act = out.act
             each_state = out.state \
                 if (hasattr(out, "state") and out.state is not None) \
                 else Batch()
             results.append((True, agent_index, out, act, each_state))
-        holder = Batch.cat(
-            [
-                {
-                    "act": act
-                } for (has_data, agent_index, out, act, each_state) in results
-                if has_data
-            ]
-        )
+        holder = Batch.cat([{"act": act} for
+                            (has_data, agent_index, out, act, each_state)
+                            in results if has_data])
         state_dict, out_dict = {}, {}
-        for policy, (has_data, agent_index, out, act,
-                     state) in zip(self.policies, results):
+        for (agent_id, policy), (has_data, agent_index, out, act, state) in zip(
+                self.policies.items(), results):
             if has_data:
                 holder.act[agent_index] = act
-            state_dict["agent_" + str(policy.agent_id)] = state
-            out_dict["agent_" + str(policy.agent_id)] = out
+            state_dict[agent_id] = state
+            out_dict[agent_id] = out
         holder["out"] = out_dict
         holder["state"] = state_dict
         return holder
 
-    def learn(self, batch: Batch,
-              **kwargs: Any) -> Dict[str, Union[float, List[float]]]:
+    def learn(
+        self, batch: Batch, **kwargs: Any
+    ) -> Dict[str, Union[float, List[float]]]:
         """Dispatch the data to all policies for learning.
 
         :return: a dict with the following contents:
@@ -168,10 +164,10 @@ class MultiAgentPolicyManager(BasePolicy):
             }
         """
         results = {}
-        for policy in self.policies:
-            data = batch[f"agent_{policy.agent_id}"]
+        for agent_id, policy in self.policies.items():
+            data = batch[agent_id]
             if not data.is_empty():
                 out = policy.learn(batch=data, **kwargs)
                 for k, v in out.items():
-                    results["agent_" + str(policy.agent_id) + "/" + k] = v
+                    results[agent_id + "/" + k] = v
         return results
