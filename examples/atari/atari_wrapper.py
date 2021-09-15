@@ -232,8 +232,6 @@ def wrap_deepmind(
     env = gym.make(env_id)
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)
-    env = gym.wrappers.RecordVideo(env, "videos")
-
     if episode_life:
         env = EpisodicLifeEnv(env)
     if 'FIRE' in env.unwrapped.get_action_meanings():
