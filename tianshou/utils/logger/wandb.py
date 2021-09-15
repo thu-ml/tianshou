@@ -58,13 +58,11 @@ class WandbLogger(BaseLogger):
             entity=entity,
             monitor_gym=True
         ) if not wandb.run else wandb.run
+        self.wandb_run._label(repo="tianshou")
 
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
-        if isinstance(data, dict):
-            data[step_type] = step
-            wandb.log(data)
-        elif isinstance(data, float):
-            wandb.log({step_type: data})
+        data[step_type] = step
+        wandb.log(data)
 
     def save_data(
         self,
