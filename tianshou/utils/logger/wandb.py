@@ -58,7 +58,7 @@ class WandbLogger(BaseLogger):
             entity=entity,
             monitor_gym=True
         ) if not wandb.run else wandb.run
-        self.wandb_run._label(repo="tianshou")
+        self.wandb_run._label(repo="tianshou")  # type: ignore
 
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
         data[step_type] = step
@@ -84,7 +84,7 @@ class WandbLogger(BaseLogger):
             checkpoint_path = save_checkpoint_fn(epoch, env_step, gradient_step)
 
             checkpoint_artifact = wandb.Artifact(
-                'run_' + self.wandb_run.id + '_checkpoint',
+                'run_' + self.wandb_run.id + '_checkpoint',  # type: ignore
                 type='model',
                 metadata={
                     "save/epoch": epoch,
@@ -94,11 +94,11 @@ class WandbLogger(BaseLogger):
                 }
             )
             checkpoint_artifact.add_file(str(checkpoint_path))
-            self.wandb_run.log_artifact(checkpoint_artifact)
+            self.wandb_run.log_artifact(checkpoint_artifact)  # type: ignore
 
     def restore_data(self) -> Tuple[int, int, int]:
-        checkpoint_artifact = self.wandb_run.use_artifact(
-            'run_' + self.wandb_run.id + '_checkpoint:latest'
+        checkpoint_artifact = self.wandb_run.use_artifact(    # type: ignore
+            'run_' + self.wandb_run.id + '_checkpoint:latest' # type: ignore
         )
         assert checkpoint_artifact is not None, "W&B dataset artifact doesn\'t exist"
 
