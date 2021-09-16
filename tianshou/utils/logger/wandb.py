@@ -98,7 +98,7 @@ class WandbLogger(BaseLogger):
 
     def restore_data(self) -> Tuple[int, int, int]:
         checkpoint_artifact = self.wandb_run.use_artifact(    # type: ignore
-            'run_' + self.wandb_run.id + '_checkpoint:latest' # type: ignore
+            'run_' + self.wandb_run.id + '_checkpoint:latest'  # type: ignore
         )
         assert checkpoint_artifact is not None, "W&B dataset artifact doesn\'t exist"
 
