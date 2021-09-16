@@ -10,7 +10,6 @@ from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import WandbLogger
-import gym_toytext
 
 
 def get_args():
