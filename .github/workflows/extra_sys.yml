@@ -24,4 +24,5 @@ jobs:
         python -m pip install ".[dev]" --upgrade
     - name: Test with pytest
       run: |
+        export WANDB_API_KEY=${{ secrets.WANDB_API_KEY }}
         pytest test/base test/continuous --cov=tianshou --durations=0 -v
