@@ -37,7 +37,7 @@ class WandbLogger(BaseLogger):
     :param str name: W&B run name. Default to None. If None, random name is assigned.
     :param str entity: W&B team/organization name. Default to None.
     :param str run_id: run id of W&B run to be resumed. Default to None.
-    :param argparse.Namespace config: experiment configurations. Default to None. 
+    :param argparse.Namespace config: experiment configurations. Default to None.
     """
 
     def __init__(
