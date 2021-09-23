@@ -23,7 +23,5 @@ jobs:
         wandb login e2366d661b89f2bee877c40bee15502d67b7abef
     - name: Test with pytest
       # ignore test/throughput which only profiles the code
-      env:
-        WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
       run: |
         pytest test --ignore-glob='*profile.py' --cov=tianshou --cov-report=xml --durations=0 -v

@@ -11,9 +11,9 @@ except ImportError:
 
 
 class WandbLogger(BaseLogger):
-    """Weights and Biases logger that sends data to Weights and Biases.
+    """Weights and Biases logger that sends data to https://wandb.ai/home.
 
-    Creates three panels with plots: train, test, and update.
+    This logger creates three panels with plots: train, test, and update.
     Make sure to select the correct access for each panel in weights and biases:
 
     - ``train/env_step`` for train plots
@@ -32,6 +32,10 @@ class WandbLogger(BaseLogger):
     :param int test_interval: the log interval in log_test_data(). Default to 1.
     :param int update_interval: the log interval in log_update_data().
         Default to 1000.
+    :param str project: TODO. Default to "tianshou".
+    :param str name: TODO. Default to None.
+    :param str entity: TODO. Default to None.
+    :param str run_id: TODO. Default to None.
     """
 
     def __init__(
@@ -100,7 +104,7 @@ class WandbLogger(BaseLogger):
         checkpoint_artifact = self.wandb_run.use_artifact(    # type: ignore
             'run_' + self.wandb_run.id + '_checkpoint:latest'  # type: ignore
         )
-        assert checkpoint_artifact is not None, "W&B dataset artifact doesn\'t exist"
+        assert checkpoint_artifact is not None, "W&B dataset artifact doesn't exist"
 
         checkpoint_artifact.download(
             os.path.dirname(checkpoint_artifact.metadata['checkpoint_path'])
