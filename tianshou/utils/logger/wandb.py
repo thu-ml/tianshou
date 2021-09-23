@@ -11,7 +11,7 @@ except ImportError:
 
 
 class WandbLogger(BaseLogger):
-    """Weights and Biases logger that sends data to https://wandb.ai/home.
+    """Weights and Biases logger that sends data to https://wandb.ai/.
 
     This logger creates three panels with plots: train, test, and update.
     Make sure to select the correct access for each panel in weights and biases:
