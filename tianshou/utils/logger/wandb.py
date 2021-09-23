@@ -33,7 +33,7 @@ class WandbLogger(BaseLogger):
     :param int update_interval: the log interval in log_update_data().
         Default to 1000.
     :param str project: W&B project name. Default to "tianshou".
-    :param str name: W&B run name. Default to None. When None, a random name is assigned.
+    :param str name: W&B run name. Default to None. If None, random name is assigned.
     :param str entity: W&B team/organization name. Default to None.
     :param str run_id: run id of W&B run to be resumed. Default to None.
     """
