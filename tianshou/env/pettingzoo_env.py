@@ -1,5 +1,6 @@
 from pettingzoo.utils.env import AECEnv
 
+
 class PettingZooEnv(AECEnv):
 
     def __init__(self, env):
@@ -80,4 +81,3 @@ class PettingZooEnv(AECEnv):
 
     def render(self, mode="human"):
         return self.env.render(mode)
-

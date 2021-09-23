@@ -1,4 +1,3 @@
-import gym
 import numpy as np
 from pettingzoo.utils.env import AECEnv
 from typing import Any, Dict, List, Tuple, Union, Optional

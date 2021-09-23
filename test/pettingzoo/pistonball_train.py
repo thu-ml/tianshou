@@ -6,8 +6,10 @@ from tianshou.policy import RandomPolicy, MultiAgentPolicyManager
 import numpy as np
 import torch
 
+
 def get_env():
     return PettingZooEnv(pistonball_v4.env(continuous=False))
+
 
 train_envs = DummyVectorEnv([get_env for _ in range(10)])
 # test_envs = DummyVectorEnv([get_env for _ in range(100)])
@@ -25,5 +27,5 @@ train_collector = Collector(policy, train_envs,
         VectorReplayBuffer(6, len(train_envs)),
         exploration_noise=True)
 # test_collector = Collector(policy, test_envs, exploration_noise=True)
-    # policy.set_eps(1)
+# policy.set_eps(1)
 train_collector.collect(n_step=640, render=0.0001)
