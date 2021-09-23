@@ -11,7 +11,7 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import onpolicy_trainer
-from tianshou.utils import WandbLogger, TensorboardLogger, LazyLogger
+from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 
 
 def get_args():
@@ -31,7 +31,12 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--eps', type=float, default=0.01)
     parser.add_argument('--add-done-loop', action="store_true", default=False)
-    parser.add_argument('--logger', type=str, default="wandb", choices=["wandb", "tensorboard", "none"])
+    parser.add_argument(
+        '--logger',
+        type=str,
+        default="wandb",
+        choices=["wandb", "tensorboard", "none"]
+    )
     return parser.parse_known_args()[0]
 
 
