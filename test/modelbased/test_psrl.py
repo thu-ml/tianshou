@@ -31,7 +31,12 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--eps', type=float, default=0.01)
     parser.add_argument('--add-done-loop', action="store_true", default=False)
-    parser.add_argument('--logger', type=str, default="wandb", choices=["wandb", "tensorboard", "none"])
+    parser.add_argument(
+        '--logger',
+        type=str,
+        default="wandb",
+        choices=["wandb", "tensorboard", "none"]
+    )
     return parser.parse_known_args()[0]
 
 
@@ -76,7 +81,9 @@ def test_psrl(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # Logger
     if args.logger == "wandb":
-        logger = WandbLogger(save_interval=1, project='psrl', name='wandb_test')
+        logger = WandbLogger(
+            save_interval=1, project='psrl', name='wandb_test', config=args
+        )
     elif args.logger == "tensorboard":
         log_path = os.path.join(args.logdir, args.task, 'psrl')
         writer = SummaryWriter(log_path)

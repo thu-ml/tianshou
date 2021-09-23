@@ -1,4 +1,5 @@
 import os
+import argparse
 from typing import Callable, Optional, Tuple
 
 from tianshou.utils import BaseLogger
@@ -36,6 +37,7 @@ class WandbLogger(BaseLogger):
     :param str name: W&B run name. Default to None. If None, random name is assigned.
     :param str entity: W&B team/organization name. Default to None.
     :param str run_id: run id of W&B run to be resumed. Default to None.
+    :param argparse.Namespace config: experiment configurations. Default to None. 
     """
 
     def __init__(
@@ -47,7 +49,8 @@ class WandbLogger(BaseLogger):
         project: str = 'tianshou',
         name: Optional[str] = None,
         entity: Optional[str] = None,
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
+        config: Optional[argparse.Namespace] = None
     ) -> None:
         super().__init__(train_interval, test_interval, update_interval)
         self.last_save_step = -1
@@ -60,7 +63,8 @@ class WandbLogger(BaseLogger):
             id=run_id,
             resume="allow",
             entity=entity,
-            monitor_gym=True
+            monitor_gym=True,
+            config=config
         ) if not wandb.run else wandb.run
         self.wandb_run._label(repo="tianshou")  # type: ignore
 

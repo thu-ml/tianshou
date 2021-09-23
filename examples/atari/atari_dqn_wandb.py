@@ -95,8 +95,13 @@ def test_dqn(args=get_args()):
     )
     # load a previous policy
     log_path = os.path.join(args.logdir, args.task, 'dqn')
+    print(type(args))
     logger = WandbLogger(
-        save_interval=1, project='atari', name='test_resume', run_id=args.resume_id
+        save_interval=1,
+        project='atari',
+        name='test_resume',
+        run_id=args.resume_id,
+        config=args
     )
     if args.resume_id:
         logger.restore_data()
