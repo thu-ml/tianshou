@@ -35,7 +35,7 @@ def get_args():
         '--logger',
         type=str,
         default="wandb",
-        choices=["wandb", "tensorboard", "none"]
+        choices=["wandb", "tensorboard", "none"],
     )
     return parser.parse_known_args()[0]
 
@@ -112,7 +112,7 @@ def test_psrl(args=get_args()):
         episode_per_collect=args.episode_per_collect,
         stop_fn=stop_fn,
         logger=logger,
-        test_in_train=False
+        test_in_train=False,
     )
 
     if __name__ == '__main__':

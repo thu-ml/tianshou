@@ -1,5 +1,5 @@
-import os
 import argparse
+import os
 from typing import Callable, Optional, Tuple
 
 from tianshou.utils import BaseLogger
@@ -50,7 +50,7 @@ class WandbLogger(BaseLogger):
         name: Optional[str] = None,
         entity: Optional[str] = None,
         run_id: Optional[str] = None,
-        config: Optional[argparse.Namespace] = None
+        config: Optional[argparse.Namespace] = None,
     ) -> None:
         super().__init__(train_interval, test_interval, update_interval)
         self.last_save_step = -1
@@ -64,7 +64,7 @@ class WandbLogger(BaseLogger):
             resume="allow",
             entity=entity,
             monitor_gym=True,
-            config=config
+            config=config,  # type: ignore
         ) if not wandb.run else wandb.run
         self.wandb_run._label(repo="tianshou")  # type: ignore
 

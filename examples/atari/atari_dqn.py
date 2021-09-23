@@ -42,7 +42,12 @@ def get_args():
     parser.add_argument('--frames-stack', type=int, default=4)
     parser.add_argument('--resume-path', type=str, default=None)
     parser.add_argument('--resume-id', type=str, default=None)
-    parser.add_argument('--logger', type=str, default="tensorboard", choices=["tensorboard", "wandb"],)
+    parser.add_argument(
+        '--logger',
+        type=str,
+        default="tensorboard",
+        choices=["tensorboard", "wandb"],
+    )
     parser.add_argument(
         '--watch',
         default=False,
