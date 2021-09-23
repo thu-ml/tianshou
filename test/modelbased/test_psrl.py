@@ -11,7 +11,7 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import onpolicy_trainer
-from tianshou.utils import WandbLogger, TensorboardLogger, LazyLogger
+from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 
 
 def get_args():
