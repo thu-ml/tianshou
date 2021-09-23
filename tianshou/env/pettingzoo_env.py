@@ -68,7 +68,7 @@ class PettingZooEnv(AECEnv):
                 'obs': observation,
                 'mask': [True] * self.action_spaces[self.env.agent_selection].n
             }
-        
+
         for agent_id, reward in self.env.rewards.items():
             self.rewards[self.agent_idx[agent_id]] = reward
         return obs, self.rewards, done, info

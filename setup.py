@@ -74,6 +74,7 @@ setup(
             "pydocstyle",
             "doc8",
             "scipy",
+            "pillow",
         ],
         "atari": ["atari_py", "opencv-python"],
         "mujoco": ["mujoco_py"],

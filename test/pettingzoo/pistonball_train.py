@@ -20,12 +20,14 @@ torch.manual_seed(1626)
 train_envs.seed(1626)
 # test_envs.seed(1626)
 
-policy = MultiAgentPolicyManager([RandomPolicy() for _ in range(len(get_env().agents))], get_env())
+policy = MultiAgentPolicyManager([RandomPolicy() 
+                                 for _ in range(len(get_env().agents))],
+                                 get_env())
 
 # collector
 train_collector = Collector(policy, train_envs,
-        VectorReplayBuffer(6, len(train_envs)),
-        exploration_noise=True)
+                            VectorReplayBuffer(6, len(train_envs)),
+                            exploration_noise=True)
 # test_collector = Collector(policy, test_envs, exploration_noise=True)
 # policy.set_eps(1)
 train_collector.collect(n_step=640, render=0.0001)

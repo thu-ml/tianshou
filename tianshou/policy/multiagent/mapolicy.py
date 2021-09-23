@@ -18,7 +18,8 @@ class MultiAgentPolicyManager(BasePolicy):
 
     def __init__(self, policies: List[BasePolicy], env: AECEnv, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        assert (len(policies) == len(env.agents)), "One policy must be assigned for each agent."
+        assert (len(policies) == len(env.agents)), "One policy must be \
+        assigned for each agent."
         self.agent_idx = env.agent_idx
         for i, policy in enumerate(policies):
             # agent_id 0 is reserved for the environment proxy
@@ -105,7 +106,7 @@ class MultiAgentPolicyManager(BasePolicy):
             }
         """
         results: List[Tuple[bool, np.ndarray, Batch,
-                            Union[np.ndarray, Batch], Batch]] = []                            
+                            Union[np.ndarray, Batch], Batch]] = []
         for agent_id, policy in self.policies.items():
             # This part of code is difficult to understand.
             # Let's follow an example with two agents
