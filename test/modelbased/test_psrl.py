@@ -11,6 +11,7 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import onpolicy_trainer
+from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 
 
 def get_args():
@@ -30,6 +31,12 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--eps', type=float, default=0.01)
     parser.add_argument('--add-done-loop', action="store_true", default=False)
+    parser.add_argument(
+        '--logger',
+        type=str,
+        default="wandb",
+        choices=["wandb", "tensorboard", "none"],
+    )
     return parser.parse_known_args()[0]
 
 
@@ -72,10 +79,18 @@ def test_psrl(args=get_args()):
         exploration_noise=True
     )
     test_collector = Collector(policy, test_envs)
-    # log
-    log_path = os.path.join(args.logdir, args.task, 'psrl')
-    writer = SummaryWriter(log_path)
-    writer.add_text("args", str(args))
+    # Logger
+    if args.logger == "wandb":
+        logger = WandbLogger(
+            save_interval=1, project='psrl', name='wandb_test', config=args
+        )
+    elif args.logger == "tensorboard":
+        log_path = os.path.join(args.logdir, args.task, 'psrl')
+        writer = SummaryWriter(log_path)
+        writer.add_text("args", str(args))
+        logger = TensorboardLogger(writer)
+    else:
+        logger = LazyLogger()
 
     def stop_fn(mean_rewards):
         if env.spec.reward_threshold:
@@ -96,8 +111,8 @@ def test_psrl(args=get_args()):
         0,
         episode_per_collect=args.episode_per_collect,
         stop_fn=stop_fn,
-        # logger=logger,
-        test_in_train=False
+        logger=logger,
+        test_in_train=False,
     )
 
     if __name__ == '__main__':
