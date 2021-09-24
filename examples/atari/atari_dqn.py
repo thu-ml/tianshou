@@ -12,7 +12,7 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ShmemVectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.trainer import offpolicy_trainer
-from tianshou.utils import TensorboardLogger
+from tianshou.utils import TensorboardLogger, WandbLogger
 
 
 def get_args():
@@ -41,6 +41,13 @@ def get_args():
     )
     parser.add_argument('--frames-stack', type=int, default=4)
     parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument('--resume-id', type=str, default=None)
+    parser.add_argument(
+        '--logger',
+        type=str,
+        default="tensorboard",
+        choices=["tensorboard", "wandb"],
+    )
     parser.add_argument(
         '--watch',
         default=False,
@@ -112,9 +119,18 @@ def test_dqn(args=get_args()):
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # log
     log_path = os.path.join(args.logdir, args.task, 'dqn')
-    writer = SummaryWriter(log_path)
-    writer.add_text("args", str(args))
-    logger = TensorboardLogger(writer)
+    if args.logger == "tensorboard":
+        writer = SummaryWriter(log_path)
+        writer.add_text("args", str(args))
+        logger = TensorboardLogger(writer)
+    else:
+        logger = WandbLogger(
+            save_interval=1,
+            project=args.task,
+            name='dqn',
+            run_id=args.resume_id,
+            config=args,
+        )
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
@@ -140,6 +156,12 @@ def test_dqn(args=get_args()):
 
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
+
+    def save_checkpoint_fn(epoch, env_step, gradient_step):
+        # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
+        ckpt_path = os.path.join(log_path, 'checkpoint.pth')
+        torch.save({'model': policy.state_dict()}, ckpt_path)
+        return ckpt_path
 
     # watch agent's performance
     def watch():
@@ -192,7 +214,9 @@ def test_dqn(args=get_args()):
         save_fn=save_fn,
         logger=logger,
         update_per_step=args.update_per_step,
-        test_in_train=False
+        test_in_train=False,
+        resume_from_log=args.resume_id is not None,
+        save_checkpoint_fn=save_checkpoint_fn,
     )
 
     pprint.pprint(result)
