@@ -20,7 +20,7 @@ torch.manual_seed(1626)
 train_envs.seed(1626)
 # test_envs.seed(1626)
 
-policy = MultiAgentPolicyManager([RandomPolicy() 
+policy = MultiAgentPolicyManager([RandomPolicy()
                                  for _ in range(len(get_env().agents))],
                                  get_env())
 

@@ -136,7 +136,7 @@ class MultiAgentPolicyManager(BasePolicy):
                             (has_data, agent_index, out, act, each_state)
                             in results if has_data])
         state_dict, out_dict = {}, {}
-        for (agent_id, policy), (has_data, agent_index, out, act, state) in zip(
+        for (agent_id, _), (has_data, agent_index, out, act, state) in zip(
                 self.policies.items(), results):
             if has_data:
                 holder.act[agent_index] = act
