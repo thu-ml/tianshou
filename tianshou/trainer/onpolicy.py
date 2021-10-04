@@ -104,7 +104,8 @@ def onpolicy_trainer(
     )
     best_epoch = start_epoch
     best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
-    save_fn(policy)
+    if save_fn:
+        save_fn(policy)
 
     for epoch in range(1 + start_epoch, 1 + max_epoch):
         # train
