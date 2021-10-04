@@ -338,7 +338,7 @@ class AsyncCollector(Collector):
         preprocess_fn: Optional[Callable[..., Batch]] = None,
         exploration_noise: bool = False,
     ) -> None:
-        assert env.is_async
+        # assert env.is_async
         super().__init__(policy, env, buffer, preprocess_fn, exploration_noise)
 
     def reset_env(self) -> None:
@@ -452,7 +452,10 @@ class AsyncCollector(Collector):
             obs_next, rew, done, info = result
 
             # change self.data here because ready_env_ids has changed
-            ready_env_ids = np.array([i["env_id"] for i in info])
+            try:
+                ready_env_ids = info["env_id"]
+            except Exception:
+                ready_env_ids = np.array([i["env_id"] for i in info])
             self.data = whole_data[ready_env_ids]
 
             self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)

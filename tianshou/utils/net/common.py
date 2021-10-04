@@ -262,3 +262,19 @@ class Recurrent(nn.Module):
         s = self.fc2(s[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
         return s, {"h": h.transpose(0, 1).detach(), "c": c.transpose(0, 1).detach()}
+
+
+class ActorCritic(nn.Module):
+    """An actor-critic network for parsing parameters.
+
+    Using ``actor_critic.parameters()`` instead of set.union or list+list to avoid
+    issue #449.
+
+    :param nn.Module actor: the actor network.
+    :param nn.Module critic: the critic network.
+    """
+
+    def __init__(self, actor: nn.Module, critic: nn.Module) -> None:
+        super().__init__()
+        self.actor = actor
+        self.critic = critic
