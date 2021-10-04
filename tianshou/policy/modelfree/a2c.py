@@ -7,6 +7,7 @@ from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
 from tianshou.policy import PGPolicy
+from tianshou.utils.net.common import ActorCritic
 
 
 class A2CPolicy(PGPolicy):
@@ -70,6 +71,7 @@ class A2CPolicy(PGPolicy):
         self._weight_ent = ent_coef
         self._grad_norm = max_grad_norm
         self._batch = max_batchsize
+        self._actor_critic = ActorCritic(self.actor, self.critic)
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
@@ -136,8 +138,7 @@ class A2CPolicy(PGPolicy):
                 loss.backward()
                 if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
-                        set(self.actor.parameters()).union(self.critic.parameters()),
-                        max_norm=self._grad_norm
+                        self._actor_critic.parameters(), max_norm=self._grad_norm
                     )
                 self.optim.step()
                 actor_losses.append(actor_loss.item())
