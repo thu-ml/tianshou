@@ -454,7 +454,7 @@ class AsyncCollector(Collector):
             # change self.data here because ready_env_ids has changed
             try:
                 ready_env_ids = info["env_id"]
-            except TypeError:
+            except Exception:
                 ready_env_ids = np.array([i["env_id"] for i in info])
             self.data = whole_data[ready_env_ids]
 
