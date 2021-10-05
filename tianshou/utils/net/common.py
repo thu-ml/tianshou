@@ -91,8 +91,8 @@ class MLP(nn.Module):
         if self.device is not None:
             s = torch.as_tensor(
                 s,
-                device=self.device,
-                dtype=torch.float32  # type: ignore
+                device=self.device,  # type: ignore
+                dtype=torch.float32,
             )
         return self.model(s.flatten(1))  # type: ignore
 
