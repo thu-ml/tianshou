@@ -205,7 +205,7 @@ Multi-GPU Training
 To enable training an RL agent with multiple GPUs for a standard environment (i.e., without nested observation) with default networks provided by Tianshou:
 
 1. Import :class:`~tianshou.utils.net.common.DataParallelNet` from ``tianshou.utils.net.common``;
-2. Change the ``device`` argument to ``None`` in existing network such as ``Net``, ``Actor``, ``Critic``, ``ActorProb``
+2. Change the ``device`` argument to ``None`` in the existing networks such as ``Net``, ``Actor``, ``Critic``, ``ActorProb``
 3. Apply ``DataParallelNet`` wrapper to these networks.
 
 ::
@@ -217,9 +217,9 @@ To enable training an RL agent with multiple GPUs for a standard environment (i.
     critic = DataParallelNet(Critic(net, device=None).to(args.device))
 
 Yes, that's all! This general approach can be applied to almost all kinds of algorithms implemented in Tianshou.
-We provide a full script to show how to run multi-GPU: `test/discrete/test_ppo.py <https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_ppo.py>`_
+We provide a complete script to show how to run multi-GPU: `test/discrete/test_ppo.py <https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_ppo.py>`_
 
-As for other cases such as customized network or environments that has a nested observation, here is the rules:
+As for other cases such as customized network or environments that have a nested observation, here are the rules:
 
 1. The data format transformation (numpy -> cuda) is done in the ``DataParallelNet`` wrapper; your customized network should not apply any kinds of data format transformation;
 2. Create a similar class that inherit ``DataParallelNet``, which is only in charge of data format transformation (numpy -> cuda);
