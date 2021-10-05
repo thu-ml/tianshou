@@ -89,8 +89,12 @@ class MLP(nn.Module):
 
     def forward(self, s: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
         if self.device is not None:
-            s = torch.as_tensor(s, device=self.device, dtype=torch.float32)
-        return self.model(s.flatten(1))
+            s = torch.as_tensor(
+                s,
+                device=self.device,
+                dtype=torch.float32  # type: ignore
+            )
+        return self.model(s.flatten(1))  # type: ignore
 
 
 class Net(nn.Module):

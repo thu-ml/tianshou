@@ -71,8 +71,14 @@ def test_ppo(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = DataParallelNet(Actor(net, args.action_shape, device=None).to(args.device))
-    critic = DataParallelNet(Critic(net, device=None).to(args.device))
+    if torch.cuda.is_available():
+        actor = DataParallelNet(
+            Actor(net, args.action_shape, device=None).to(args.device)
+        )
+        critic = DataParallelNet(Critic(net, device=None).to(args.device))
+    else:
+        actor = Actor(net, args.action_shape, device=args.device).to(args.device)
+        critic = Critic(net, device=args.device).to(args.device)
     actor_critic = ActorCritic(actor, critic)
     # orthogonal initialization
     for m in actor_critic.modules():
