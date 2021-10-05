@@ -288,7 +288,7 @@ class ActorCritic(nn.Module):
 class DataParallelNet(nn.Module):
     """DataParallel wrapper for training agent with multi-GPU.
 
-    This class does only the convertion of input data type, from numpy array to torch's
+    This class does only the conversion of input data type, from numpy array to torch's
     Tensor. If the input is a nested dictionary, the user should create a similar class
     to do the same thing.
 

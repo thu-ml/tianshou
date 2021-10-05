@@ -33,6 +33,7 @@ fn
 boolean
 pre
 np
+cuda
 rnn
 rew
 pre
