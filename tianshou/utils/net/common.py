@@ -303,4 +303,4 @@ class DataParallelNet(nn.Module):
                 **kwargs: Any) -> Tuple[Any, Any]:
         if not isinstance(s, torch.Tensor):
             s = torch.as_tensor(s, dtype=torch.float32)
-        return self.net.forward(s=s.cuda(), *args, **kwargs)
+        return self.net(s=s.cuda(), *args, **kwargs)
