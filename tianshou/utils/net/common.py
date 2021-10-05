@@ -87,9 +87,10 @@ class MLP(nn.Module):
         self.output_dim = output_dim or hidden_sizes[-1]
         self.model = nn.Sequential(*model)
 
-    def forward(self, x: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
-        x = torch.as_tensor(x, device=self.device, dtype=torch.float32)  # type: ignore
-        return self.model(x.flatten(1))
+    def forward(self, s: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+        if self.device is not None:
+            s = torch.as_tensor(s, device=self.device, dtype=torch.float32)
+        return self.model(s.flatten(1))
 
 
 class Net(nn.Module):
@@ -278,3 +279,24 @@ class ActorCritic(nn.Module):
         super().__init__()
         self.actor = actor
         self.critic = critic
+
+
+class DataParallelNet(nn.Module):
+    """DataParallel wrapper for training agent with multi-GPU.
+
+    This class does only the convertion of input data type, from numpy array to torch's
+    Tensor. If the input is a nested dictionary, the user should create a similar class
+    to do the same thing.
+
+    :param nn.Module net: the network to be distributed in different GPUs.
+    """
+
+    def __init__(self, net: nn.Module) -> None:
+        super().__init__()
+        self.net = nn.DataParallel(net)
+
+    def forward(self, s: Union[np.ndarray, torch.Tensor], *args: Any,
+                **kwargs: Any) -> Tuple[Any, Any]:
+        if not isinstance(s, torch.Tensor):
+            s = torch.as_tensor(s, dtype=torch.float32)
+        return self.net.forward(s=s.cuda(), *args, **kwargs)

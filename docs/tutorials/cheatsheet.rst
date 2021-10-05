@@ -197,6 +197,35 @@ The above code supports only stacked-observation. If you want to use stacked-act
 - After applying wrapper: ``([s, a], a, [s', a'], r, d)`` stored in replay buffer, and get both stacked s and a.
 
 
+.. _multi_gpu:
+
+Multi-GPU Training
+------------------
+
+To enable training an RL agent with multiple GPUs for a standard environment (i.e., without nested observation) with default networks provided by Tianshou:
+
+1. Import :class:`~tianshou.utils.net.common.DataParallelNet` from ``tianshou.utils.net.common``;
+2. Change the ``device`` argument to ``None`` in existing network such as ``Net``, ``Actor``, ``Critic``, ``ActorProb``
+3. Apply ``DataParallelNet`` wrapper to these networks.
+
+::
+
+    from tianshou.utils.net.common import Net, DataParallelNet
+    from tianshou.utils.net.discrete import Actor, Critic
+
+    actor = DataParallelNet(Actor(net, args.action_shape, device=None).to(args.device))
+    critic = DataParallelNet(Critic(net, device=None).to(args.device))
+
+Yes, that's all! This general approach can be applied to almost all kinds of algorithms implemented in Tianshou.
+We provide a full script to show how to run multi-GPU: `test/discrete/test_ppo.py <https://github.com/thu-ml/tianshou/blob/master/test/discrete/test_ppo.py>`_
+
+As for other cases such as customized network or environments that has a nested observation, here is the rules:
+
+1. The data format transformation (numpy -> cuda) is done in the ``DataParallelNet`` wrapper; your customized network should not apply any kinds of data format transformation;
+2. Create a similar class that inherit ``DataParallelNet``, which is only in charge of data format transformation (numpy -> cuda);
+3. Do the same things above.
+
+
 .. _self_defined_env:
 
 User-defined Environment and Different State Representation
