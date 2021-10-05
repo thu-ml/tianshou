@@ -110,8 +110,7 @@ def test_ppo(args=get_args()):
         reward_normalization=args.rew_norm,
         advantage_normalization=args.norm_adv,
         recompute_advantage=args.recompute_adv,
-        # dual_clip=args.dual_clip,
-        # dual clip cause monotonically increasing log_std :)
+        dual_clip=args.dual_clip,
         value_clip=args.value_clip,
         gae_lambda=args.gae_lambda,
         action_space=env.action_space
