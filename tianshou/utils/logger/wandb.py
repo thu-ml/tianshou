@@ -33,6 +33,7 @@ class WandbLogger(BaseLogger):
     :param int test_interval: the log interval in log_test_data(). Default to 1.
     :param int update_interval: the log interval in log_update_data().
         Default to 1000.
+    :param save_interval: the log interval for checkpoints
     :param str project: W&B project name. Default to "tianshou".
     :param str name: W&B run name. Default to None. If None, random name is assigned.
     :param str entity: W&B team/organization name. Default to None.
