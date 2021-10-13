@@ -112,7 +112,8 @@ def offpolicy_trainer(
                     train_fn(epoch, env_step)
                 result = train_collector.collect(n_step=step_per_collect)
                 if result["n/ep"] > 0 and reward_metric:
-                    result["rews"] = reward_metric(result["rews"])
+                    rew = reward_metric(result["rews"])
+                    result.update(rews=rew, rew=rew.mean(), rew_std=rew.std())
                 env_step += int(result["n/st"])
                 t.update(result["n/st"])
                 logger.log_train_data(result, env_step)
