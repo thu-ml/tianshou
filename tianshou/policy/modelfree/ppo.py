@@ -6,6 +6,7 @@ from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
 from tianshou.policy import A2CPolicy
+from tianshou.utils.net.common import ActorCritic
 
 
 class PPOPolicy(A2CPolicy):
@@ -83,6 +84,7 @@ class PPOPolicy(A2CPolicy):
                 "value clip is available only when `reward_normalization` is True"
         self._norm_adv = advantage_normalization
         self._recompute_adv = recompute_advantage
+        self._actor_critic: ActorCritic
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray

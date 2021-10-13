@@ -167,6 +167,10 @@ class Collector(object):
             * ``rews`` array of episode reward over collected episodes.
             * ``lens`` array of episode length over collected episodes.
             * ``idxs`` array of episode start index in buffer over collected episodes.
+            * ``rew`` mean of episodic rewards.
+            * ``len`` mean of episodic lengths.
+            * ``rew_std`` standard error of episodic rewards.
+            * ``len_std`` standard error of episodic lengths.
         """
         assert not self.env.is_async, "Please use AsyncCollector if using async venv."
         if n_step is not None:
@@ -311,8 +315,11 @@ class Collector(object):
                     [episode_rews, episode_lens, episode_start_indices]
                 )
             )
+            rew_mean, rew_std = rews.mean(), rews.std()
+            len_mean, len_std = lens.mean(), lens.std()
         else:
             rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
+            rew_mean = rew_std = len_mean = len_std = 0
 
         return {
             "n/ep": episode_count,
@@ -320,6 +327,10 @@ class Collector(object):
             "rews": rews,
             "lens": lens,
             "idxs": idxs,
+            "rew": rew_mean,
+            "len": len_mean,
+            "rew_std": rew_std,
+            "len_std": len_std,
         }
 
 
@@ -380,6 +391,10 @@ class AsyncCollector(Collector):
             * ``rews`` array of episode reward over collected episodes.
             * ``lens`` array of episode length over collected episodes.
             * ``idxs`` array of episode start index in buffer over collected episodes.
+            * ``rew`` mean of episodic rewards.
+            * ``len`` mean of episodic lengths.
+            * ``rew_std`` standard error of episodic rewards.
+            * ``len_std`` standard error of episodic lengths.
         """
         # collect at least n_step or n_episode
         if n_step is not None:
@@ -530,8 +545,11 @@ class AsyncCollector(Collector):
                     [episode_rews, episode_lens, episode_start_indices]
                 )
             )
+            rew_mean, rew_std = rews.mean(), rews.std()
+            len_mean, len_std = lens.mean(), lens.std()
         else:
             rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
+            rew_mean = rew_std = len_mean = len_std = 0
 
         return {
             "n/ep": episode_count,
@@ -539,4 +557,8 @@ class AsyncCollector(Collector):
             "rews": rews,
             "lens": lens,
             "idxs": idxs,
+            "rew": rew_mean,
+            "len": len_mean,
+            "rew_std": rew_std,
+            "len_std": len_std,
         }

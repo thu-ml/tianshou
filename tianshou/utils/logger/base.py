@@ -47,14 +47,8 @@ class BaseLogger(ABC):
         :param collect_result: a dict containing information of data collected in
             training stage, i.e., returns of collector.collect().
         :param int step: stands for the timestep the collect_result being logged.
-
-        .. note::
-
-            ``collect_result`` will be modified in-place with "rew" and "len" keys.
         """
         if collect_result["n/ep"] > 0:
-            collect_result["rew"] = collect_result["rews"].mean()
-            collect_result["len"] = collect_result["lens"].mean()
             if step - self.last_log_train_step >= self.train_interval:
                 log_data = {
                     "train/episode": collect_result["n/ep"],
@@ -70,23 +64,15 @@ class BaseLogger(ABC):
         :param collect_result: a dict containing information of data collected in
             evaluating stage, i.e., returns of collector.collect().
         :param int step: stands for the timestep the collect_result being logged.
-
-        .. note::
-
-            ``collect_result`` will be modified in-place with "rew", "rew_std", "len",
-            and "len_std" keys.
         """
         assert collect_result["n/ep"] > 0
-        rews, lens = collect_result["rews"], collect_result["lens"]
-        rew, rew_std, len_, len_std = rews.mean(), rews.std(), lens.mean(), lens.std()
-        collect_result.update(rew=rew, rew_std=rew_std, len=len_, len_std=len_std)
         if step - self.last_log_test_step >= self.test_interval:
             log_data = {
                 "test/env_step": step,
-                "test/reward": rew,
-                "test/length": len_,
-                "test/reward_std": rew_std,
-                "test/length_std": len_std,
+                "test/reward": collect_result["rew"],
+                "test/length": collect_result["len"],
+                "test/reward_std": collect_result["rew_std"],
+                "test/length_std": collect_result["len_std"],
             }
             self.write("test/env_step", step, log_data)
             self.last_log_test_step = step
