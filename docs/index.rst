@@ -93,6 +93,7 @@ Tianshou is still under development, you can also check out the documents in sta
    tutorials/concepts
    tutorials/batch
    tutorials/tictactoe
+   tutorials/logger
    tutorials/benchmark
    tutorials/cheatsheet
 
