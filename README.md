@@ -194,6 +194,7 @@ buffer_size = 20000
 eps_train, eps_test = 0.1, 0.05
 step_per_epoch, step_per_collect = 10000, 10
 logger = ts.utils.TensorboardLogger(SummaryWriter('log/dqn'))  # TensorBoard is supported!
+# For other loggers: https://tianshou.readthedocs.io/en/master/tutorials/logger.html
 ```
 
 Make environments:
