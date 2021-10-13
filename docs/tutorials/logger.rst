@@ -49,7 +49,7 @@ For logging checkpoints on any device, you need to define a ``save_checkpoint_fn
         # save model
         return ckpt_path
 
-Then, use this checkpointing function with ``WandbLogger`` to automatically version your experiment checkpoints after every ``save_interval`` step.
+Then, use this function with ``WandbLogger`` to automatically version your experiment checkpoints after every ``save_interval`` step.
 
 For resuming runs from checkpoint artifacts on any device, pass the W&B ``run_id`` of the run that you want to continue in ``WandbLogger``. It will then download the latest version of the checkpoint and resume your runs from the checkpoint.
 
