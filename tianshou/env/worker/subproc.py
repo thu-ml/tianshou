@@ -107,6 +107,8 @@ def _worker(
                 p.send(env.seed(data) if hasattr(env, "seed") else None)
             elif cmd == "getattr":
                 p.send(getattr(env, data) if hasattr(env, data) else None)
+            elif cmd == "setattr":
+                setattr(env, data["key"], data["value"])
             else:
                 p.close()
                 raise NotImplementedError
@@ -140,9 +142,12 @@ class SubprocEnvWorker(EnvWorker):
         self.child_remote.close()
         super().__init__(env_fn)
 
-    def __getattr__(self, key: str) -> Any:
+    def get_env_attr(self, key: str) -> Any:
         self.parent_remote.send(["getattr", key])
         return self.parent_remote.recv()
+
+    def set_env_attr(self, key: str, value: Any) -> None:
+        self.parent_remote.send(["setattr", {"key": key, "value": value}])
 
     def _decode_obs(self) -> Union[dict, tuple, np.ndarray]:
 

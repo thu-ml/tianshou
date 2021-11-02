@@ -10,7 +10,7 @@ from tianshou.data import Batch
 
 @pytest.fixture(scope="module")
 def data():
-    print("Initialising data...")
+    print("Initializing data...")
     np.random.seed(0)
     batch_set = [
         Batch(
@@ -19,7 +19,7 @@ def data():
                 'b1': (3.14, 3.14),
                 'b2': np.arange(1e3)
             },
-            c=i
+            c=i,
         ) for i in np.arange(int(1e4))
     ]
     batch0 = Batch(
@@ -27,8 +27,8 @@ def data():
         b=Batch(
             c=np.ones((1, ), dtype=np.float64),
             d=torch.ones((3, 3, 3), dtype=torch.float32),
-            e=list(range(3))
-        )
+            e=list(range(3)),
+        ),
     )
     batchs1 = [copy.deepcopy(batch0) for _ in np.arange(1e4)]
     batchs2 = [copy.deepcopy(batch0) for _ in np.arange(1e4)]
@@ -39,13 +39,13 @@ def data():
     indexs = np.random.choice(batch_len, size=batch_len // 10, replace=False)
     slice_dict = {
         'obs': [np.arange(20) for _ in np.arange(batch_len // 10)],
-        'reward': np.arange(batch_len // 10)
+        'reward': np.arange(batch_len // 10),
     }
     dict_set = [
         {
             'obs': np.arange(20),
             'info': "this is info",
-            'reward': 0
+            'reward': 0,
         } for _ in np.arange(1e2)
     ]
     batch4 = Batch(
@@ -53,11 +53,11 @@ def data():
         b=Batch(
             c=np.ones((1, ), dtype=np.float64),
             d=torch.ones((1000, 1000), dtype=torch.float32),
-            e=np.arange(1000)
-        )
+            e=np.arange(1000),
+        ),
     )
 
-    print("Initialised")
+    print("Initialized")
     return {
         'batch_set': batch_set,
         'batch0': batch0,
@@ -67,7 +67,7 @@ def data():
         'indexs': indexs,
         'dict_set': dict_set,
         'slice_dict': slice_dict,
-        'batch4': batch4
+        'batch4': batch4,
     }
 
 
@@ -106,7 +106,7 @@ def test_set_attr(data):
 
 def test_numpy_torch_convert(data):
     """Test conversion between numpy and torch."""
-    for _ in np.arange(1e5):
+    for _ in np.arange(1e4):  # not sure what's wrong in torch==1.10.0
         data['batch4'].to_torch()
         data['batch4'].to_numpy()
 

@@ -12,10 +12,14 @@ class EnvWorker(ABC):
         self._env_fn = env_fn
         self.is_closed = False
         self.result: Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-        self.action_space = getattr(self, "action_space")  # noqa: B009
+        self.action_space = self.get_env_attr("action_space")  # noqa: B009
 
     @abstractmethod
-    def __getattr__(self, key: str) -> Any:
+    def get_env_attr(self, key: str) -> Any:
+        pass
+
+    @abstractmethod
+    def set_env_attr(self, key: str, value: Any) -> None:
         pass
 
     @abstractmethod
