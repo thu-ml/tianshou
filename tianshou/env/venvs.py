@@ -130,17 +130,56 @@ class BaseVectorEnv(gym.Env):
         if key in [
             'metadata', 'reward_range', 'spec', 'action_space', 'observation_space'
         ]:  # reserved keys in gym.Env
-            return self.__getattr__(key)
+            return self.get_env_attr(key)
         else:
             return super().__getattribute__(key)
 
-    def __getattr__(self, key: str) -> List[Any]:
-        """Fetch a list of env attributes.
+    def get_env_attr(
+        self,
+        key: str,
+        id: Optional[Union[int, List[int], np.ndarray]] = None
+    ) -> List[Any]:
+        """Get an attribute from the underlying environments.
 
-        This function tries to retrieve an attribute from each individual wrapped
-        environment, if it does not belong to the wrapping vector environment class.
+        If id is an int, retrieve the attribute denoted by key from the environment
+        underlying the worker at index id. The result is returned as a list with one
+        element. Otherwise, retrieve the attribute for all workers at indices id and
+        return a list that is ordered correspondingly to id.
+
+        :param str key:  The key of the desired attribute
+        :param id: Indices of the desired workers
+
+        :return list: The list of environment attributes
         """
-        return [getattr(worker, key) for worker in self.workers]
+        self._assert_is_not_closed()
+        id = self._wrap_id(id)
+        if self.is_async:
+            self._assert_id(id)
+
+        return [self.workers[j].get_env_attr(key) for j in id]
+
+    def set_env_attr(
+        self,
+        key: str,
+        value: Any,
+        id: Optional[Union[int, List[int], np.ndarray]] = None
+    ) -> None:
+        """Set an attribute in the underlying environments.
+
+        If id is an int, set the attribute denoted by key from the environment
+        underlying the worker at index id to value.
+        Otherwise, set the attribute for all workers at indices id.
+
+        :param str key: The key of the desired attribute
+        :param Any value: The new value of the attribute
+        :param id: Indices of the desired workers
+        """
+        self._assert_is_not_closed()
+        id = self._wrap_id(id)
+        if self.is_async:
+            self._assert_id(id)
+        for j in id:
+            self.workers[j].set_env_attr(key, value)
 
     def _wrap_id(
         self,

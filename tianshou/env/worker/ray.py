@@ -11,15 +11,27 @@ except ImportError:
     pass
 
 
+class _SetAttrWrapper(gym.Wrapper):
+
+    def set_env_attr(self, key: str, value: Any) -> None:
+        setattr(self.env, key, value)
+
+    def get_env_attr(self, key: str) -> Any:
+        getattr(self.env, key)
+
+
 class RayEnvWorker(EnvWorker):
     """Ray worker used in RayVectorEnv."""
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
-        self.env = ray.remote(gym.Wrapper).options(num_cpus=0).remote(env_fn())
+        self.env = ray.remote(_SetAttrWrapper).options(num_cpus=0).remote(env_fn())
         super().__init__(env_fn)
 
-    def __getattr__(self, key: str) -> Any:
-        return ray.get(self.env.__getattr__.remote(key))
+    def get_env_attr(self, key: str) -> Any:
+        return ray.get(self.env.get_env_attr.remote(key))
+
+    def set_env_attr(self, key: str, value: Any) -> None:
+        ray.get(self.env.set_env_attribute.remote(key, value))
 
     def reset(self) -> Any:
         return ray.get(self.env.reset.remote())
