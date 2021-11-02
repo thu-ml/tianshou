@@ -167,7 +167,6 @@ def test_vecenv(size=10, num=8, sleep=0.001):
             print(f'{type(v)}: {t[i]:.6f}s')
 
     def assert_get(v, expected):
-        print(expected, v.get_env_attr("size"))
         assert v.get_env_attr("size") == expected
         assert v.get_env_attr("size", id=0) == [expected[0]]
         assert v.get_env_attr("size", id=[0, 1, 2]) == expected[:3]

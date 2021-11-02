@@ -17,7 +17,7 @@ class _SetAttrWrapper(gym.Wrapper):
         setattr(self.env, key, value)
 
     def get_env_attr(self, key: str) -> Any:
-        getattr(self.env, key)
+        return getattr(self.env, key)
 
 
 class RayEnvWorker(EnvWorker):
@@ -31,7 +31,7 @@ class RayEnvWorker(EnvWorker):
         return ray.get(self.env.get_env_attr.remote(key))
 
     def set_env_attr(self, key: str, value: Any) -> None:
-        ray.get(self.env.set_env_attribute.remote(key, value))
+        ray.get(self.env.set_env_attr.remote(key, value))
 
     def reset(self) -> Any:
         return ray.get(self.env.reset.remote())
