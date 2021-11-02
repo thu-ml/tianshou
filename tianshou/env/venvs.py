@@ -147,7 +147,7 @@ class BaseVectorEnv(gym.Env):
         return a list that is ordered correspondingly to id.
 
         :param str key: The key of the desired attribute.
-        :param id: Indices of the desired workers.
+        :param id: Indice(s) of the desired worker(s). Default to None for all env_id.
 
         :return list: The list of environment attributes.
         """
@@ -172,7 +172,7 @@ class BaseVectorEnv(gym.Env):
 
         :param str key: The key of the desired attribute.
         :param Any value: The new value of the attribute.
-        :param id: Indices of the desired workers.
+        :param id: Indice(s) of the desired worker(s). Default to None for all env_id.
         """
         self._assert_is_not_closed()
         id = self._wrap_id(id)
