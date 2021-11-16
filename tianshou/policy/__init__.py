@@ -20,6 +20,7 @@ from tianshou.policy.modelfree.sac import SACPolicy
 from tianshou.policy.modelfree.discrete_sac import DiscreteSACPolicy
 from tianshou.policy.imitation.base import ImitationPolicy
 from tianshou.policy.imitation.discrete_bcq import DiscreteBCQPolicy
+from tianshou.policy.imitation.continuous_bcq import ContinuousBCQPolicy
 from tianshou.policy.imitation.discrete_cql import DiscreteCQLPolicy
 from tianshou.policy.imitation.discrete_crr import DiscreteCRRPolicy
 from tianshou.policy.modelbased.psrl import PSRLPolicy
@@ -45,6 +46,7 @@ __all__ = [
     "DiscreteSACPolicy",
     "ImitationPolicy",
     "DiscreteBCQPolicy",
+    "ContinuousBCQPolicy",
     "DiscreteCQLPolicy",
     "DiscreteCRRPolicy",
     "PSRLPolicy",
