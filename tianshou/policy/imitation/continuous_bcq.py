@@ -1,4 +1,5 @@
-from typing import Any, Dict, Optional, Union
+import copy
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -7,16 +8,16 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch
 from tianshou.policy import BasePolicy
-import copy
 
 
 class Perturbation(nn.Module):
+
     def __init__(
-            self,
-            preprocess_net: nn.Module,
-            max_action,
-            device: Union[str, int, torch.device] = "cpu",
-            phi: float = 0.05
+        self,
+        preprocess_net: nn.Module,
+        max_action: float,
+        device: Union[str, int, torch.device] = "cpu",
+        phi: float = 0.05
     ):
         # preprocess_net: input_dim=state_dim+action_dim, output_dim=action_dim
         super(Perturbation, self).__init__()
@@ -25,7 +26,7 @@ class Perturbation(nn.Module):
         self.max_action = max_action
         self.phi = phi
 
-    def forward(self, state, action):
+    def forward(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         # preprocess_net
         logits = self.preprocess_net(torch.cat([state, action], 1))[0]
         a = self.phi * self.max_action * torch.tanh(logits)  # TODO
@@ -34,8 +35,16 @@ class Perturbation(nn.Module):
 
 
 class VAE(nn.Module):
-    def __init__(self, encoder: nn.Module, decoder: nn.Module,
-                 hidden_dim, latent_dim, max_action, device):
+
+    def __init__(
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        hidden_dim: int,
+        latent_dim: int,
+        max_action: float,
+        device: Union[str, torch.device] = "cpu"
+    ):
         """
         encoder: input_dim=state_dim+action_dim, the last layer is ReLU
         decoder: input_dim=state_dim+action_dim, output_dim=action_dim
@@ -67,7 +76,9 @@ class VAE(nn.Module):
         self.latent_dim = latent_dim
         self.device = device
 
-    def forward(self, state, action):
+    def forward(
+        self, state: torch.Tensor, action: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # [state, action] -> z , [state, z] -> action
         z = self.encoder(torch.cat([state, action], 1))
         # shape of z: (state.shape[0], hidden_dim=750)
@@ -83,7 +94,11 @@ class VAE(nn.Module):
         u = self.decode(state, z)  # (state.shape[0], action_dim)
         return u, mean, std
 
-    def decode(self, state, z=None):
+    def decode(
+        self,
+        state: torch.Tensor,
+        z: Union[torch.Tensor, None] = None
+    ) -> torch.Tensor:
         """
         decode(state) -> action
         """
@@ -97,7 +112,7 @@ class VAE(nn.Module):
         return self.max_action * torch.tanh(self.decoder(torch.cat([state, z], 1)))
 
 
-class ContinuousBCQPolicy(BasePolicy):  # TODO: 可能要改成Object
+class ContinuousBCQPolicy(BasePolicy):
     """Implementation of continuous BCQ algorithm. arXiv:1812.02900.
         :param torch.nn.Module actor: the actor perturbation (s, a -> perturbed a)
         :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
@@ -122,14 +137,15 @@ class ContinuousBCQPolicy(BasePolicy):  # TODO: 可能要改成Object
 
     def __init__(
         self,
-        actor: torch.nn.Module,
+        actor: Perturbation,
         actor_optim: torch.optim.Optimizer,
         critic1: torch.nn.Module,
         critic1_optim: torch.optim.Optimizer,
         critic2: torch.nn.Module,
         critic2_optim: torch.optim.Optimizer,
-        vae: torch.nn.Module,
+        vae: VAE,
         vae_optim: torch.optim.Optimizer,
+        device: Optional[Union[str, torch.device]] = "cpu",
         gamma: float = 0.99,
         tau: float = 0.005,
         lmbda: float = 0.75,
@@ -155,9 +171,7 @@ class ContinuousBCQPolicy(BasePolicy):  # TODO: 可能要改成Object
         self.gamma = gamma
         self.tau = tau
         self.lmbda = lmbda
-        self.device = vae.device
-
-        # assert target_update_freq > 0, "BCQ needs target network setting."
+        self.device = device
 
     def train(self, mode: bool = True) -> "ContinuousBCQPolicy":
         self.training = mode
@@ -166,7 +180,7 @@ class ContinuousBCQPolicy(BasePolicy):  # TODO: 可能要改成Object
         self.critic2.train(mode)
         return self
 
-    def forward(  # type: ignore
+    def forward(
         self,
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
@@ -176,27 +190,26 @@ class ContinuousBCQPolicy(BasePolicy):  # TODO: 可能要改成Object
         # state: None, input: "obs"
         # There is "obs" in the Batch
         # obs: 10 groups. Each group has a state. shape: (10, state_dim)
-        obs = batch["obs"]
+        obs_group = torch.FloatTensor(batch["obs"]).to(self.device)
 
         act = []
         with torch.no_grad():
-            for state in obs:
-                # now state is (state_dim)
-                state = torch.FloatTensor(state.reshape(1, -1)).repeat(100, 1)\
-                    .to(self.device)
-                # now state is (100, state_dim)
+            for obs in obs_group:
+                # now obs is (state_dim)
+                obs = (obs.reshape(1, -1)).repeat(100, 1)
+                # now obs is (100, state_dim)
 
-                # decode(state) generates action and actor perturbs it
-                action = self.actor(state, self.vae.decode(state))
+                # decode(obs) generates action and actor perturbs it
+                action = self.actor(obs, self.vae.decode(obs))
                 # now action is (100, action_dim)
-                q1 = self.critic1(state, action)
+                q1 = self.critic1(obs, action)
                 # q1 is (100, 1)
                 ind = q1.argmax(0)
                 act.append(action[ind].cpu().data.numpy().flatten())
         act = np.array(act)
         return Batch(act=act)
 
-    def sync_weight(self):
+    def sync_weight(self) -> None:
         for param, target_param in \
                 zip(self.critic1.parameters(), self.critic1_target.parameters()):
             target_param.data.copy_(
@@ -217,15 +230,15 @@ class ContinuousBCQPolicy(BasePolicy):  # TODO: 可能要改成Object
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
-        obs = torch.FloatTensor(batch["obs"]).to(self.device)
+        obs = torch.FloatTensor(batch["obs"]).to(device=self.device)
         # (batch_size, action_dim)
-        act = torch.FloatTensor(batch["act"]).to(self.device)
+        act = torch.FloatTensor(batch["act"]).to(device=self.device)
         # (batch_size)
-        rew = torch.FloatTensor(batch["rew"]).to(self.device)
+        rew = torch.FloatTensor(batch["rew"]).to(device=self.device)
         # (batch_size)
-        done = torch.IntTensor(batch["done"]).to(self.device)
+        done = torch.IntTensor(batch["done"]).to(device=self.device)
         # (batch_size, state_dim)
-        obs_next = torch.FloatTensor(batch["obs_next"]).to(self.device)
+        obs_next = torch.FloatTensor(batch["obs_next"]).to(device=self.device)
 
         batch_size = obs.shape[0]
 
@@ -233,7 +246,7 @@ class ContinuousBCQPolicy(BasePolicy):  # TODO: 可能要改成Object
         recon, mean, std = self.vae(obs, act)
         recon_loss = F.mse_loss(act, recon)
         # (....) is D_KL( N(mu, sigma) || N(0,1) )
-        KL_loss = (- torch.log(std) + (std.pow(2) + mean.pow(2) - 1) / 2).mean()
+        KL_loss = (-torch.log(std) + (std.pow(2) + mean.pow(2) - 1) / 2).mean()
         vae_loss = recon_loss + KL_loss / 2
 
         self.vae_optim.zero_grad()
