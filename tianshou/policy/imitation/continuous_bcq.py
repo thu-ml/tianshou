@@ -11,7 +11,18 @@ from tianshou.policy import BasePolicy
 
 
 class Perturbation(nn.Module):
+    """Implementation of vae in continuous BCQ algorithm.
 
+    :param torch.nn.Module preprocess_net: the encoder in vae. Its input_dim must be
+        state_dim + action_dim, and output_dim must be hidden_dim.
+    :param float max_action: the maximum value of each dimension of action.
+    :param Union[str, int, torch.device] device: which device to create this model on.
+        Default to cpu.
+    :param float phi: max perturbation parameter for BCQ. Default to 0.05.
+
+    .. seealso::
+        You can refer to `examples/mujoco/mujoco_bcq.py` to see how to use it.
+    """
     def __init__(
         self,
         preprocess_net: nn.Module,
@@ -35,7 +46,21 @@ class Perturbation(nn.Module):
 
 
 class VAE(nn.Module):
+    """Implementation of vae in continuous BCQ algorithm.
 
+    :param torch.nn.Module encoder: the encoder in vae. Its input_dim must be
+        state_dim + action_dim, and output_dim must be hidden_dim.
+    :param torch.nn.Module decoder: the decoder in vae. Its input_dim must be
+        state_dim + action_dim, and output_dim must be action_dim.
+    :param int hidden_dim: the size of the last linear-layer in encoder.
+    :param int latent_dim: the size of latent layer.
+    :param float max_action: the maximum value of each dimension of action.
+    :param Union[str, torch.device] device: which device to create this model on.
+        Default to cpu.
+
+    .. seealso::
+        You can refer to `examples/mujoco/mujoco_bcq.py` to see how to use it.
+    """
     def __init__(
         self,
         encoder: nn.Module,
@@ -45,25 +70,6 @@ class VAE(nn.Module):
         max_action: float,
         device: Union[str, torch.device] = "cpu"
     ):
-        """
-        encoder: input_dim=state_dim+action_dim, the last layer is ReLU
-        decoder: input_dim=state_dim+action_dim, output_dim=action_dim
-        for example:
-        vae_encoder = MLP(
-            input_dim=args.state_dim + args.action_dim,
-            hidden_sizes=args.vae_hidden_sizes,
-            device=args.device
-        )
-        args.latent_dim = args.action_dim * 2
-        vae_decoder = MLP(
-            input_dim=args.state_dim + args.latent_dim,
-            output_dim=args.action_dim,
-            hidden_sizes=args.vae_hidden_sizes,
-            device=args.device
-        )
-        """
-        # hidden_dim = the size of the last linear-layer in encoder
-        # latent_dim = 2 * action_dim
         super(VAE, self).__init__()
         self.encoder = encoder
 
@@ -99,9 +105,7 @@ class VAE(nn.Module):
         state: torch.Tensor,
         z: Union[torch.Tensor, None] = None
     ) -> torch.Tensor:
-        """
-        decode(state) -> action
-        """
+        # decode(state) -> action
         if z is None:
             # state.shape[0] may be batch_size
             # latent vector clipped to [-0.5, 0.5]
@@ -114,25 +118,31 @@ class VAE(nn.Module):
 
 class ContinuousBCQPolicy(BasePolicy):
     """Implementation of continuous BCQ algorithm. arXiv:1812.02900.
-        :param torch.nn.Module actor: the actor perturbation (s, a -> perturbed a)
-        :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
-        :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s, a))
-        :param torch.optim.Optimizer critic1_optim: the optimizer for the first
-            critic network.
-        :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s, a))
-        :param torch.optim.Optimizer critic2_optim: the optimizer for the second
-            critic network.
-        :param torch.nn.Module vae: the vae network, generating actions similar
-            to those in batch. (s, a -> generated a)
-        :param torch.optim.Optimizer vae_optim: the optimizer for the vae network.
-        :param float gamma: discount factor, in [0, 1]. Default to 0.99.
-        :param float tau: param for soft update of the target network.
-            Default to 0.005.
-        :param float lmbda: param for Clipped Double Q-learning. Default to 0.75.
+
+    :param torch.nn.Module actor: the actor perturbation (s, a -> perturbed a)
+    :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
+    :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s, a))
+    :param torch.optim.Optimizer critic1_optim: the optimizer for the first
+        critic network.
+    :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s, a))
+    :param torch.optim.Optimizer critic2_optim: the optimizer for the second
+        critic network.
+    :param torch.nn.Module vae: the vae network, generating actions similar
+        to those in batch. (s, a -> generated a)
+    :param torch.optim.Optimizer vae_optim: the optimizer for the vae network.
+    :param Union[str, torch.device] device: which device to create this model on.
+        Default to cpu.
+    :param float gamma: discount factor, in [0, 1]. Default to 0.99.
+    :param float tau: param for soft update of the target network.
+        Default to 0.005.
+    :param float lmbda: param for Clipped Double Q-learning. Default to 0.75.
+
     .. seealso::
 
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
+
+        You can refer to `examples/mujoco/mujoco_bcq.py` to see how to use it.
     """
 
     def __init__(
