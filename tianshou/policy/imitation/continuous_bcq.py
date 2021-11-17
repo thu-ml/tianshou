@@ -23,6 +23,7 @@ class Perturbation(nn.Module):
     .. seealso::
         You can refer to `examples/mujoco/mujoco_bcq.py` to see how to use it.
     """
+
     def __init__(
         self,
         preprocess_net: nn.Module,
@@ -61,6 +62,7 @@ class VAE(nn.Module):
     .. seealso::
         You can refer to `examples/mujoco/mujoco_bcq.py` to see how to use it.
     """
+
     def __init__(
         self,
         encoder: nn.Module,
