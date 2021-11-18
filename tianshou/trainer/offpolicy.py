@@ -117,8 +117,8 @@ def offpolicy_trainer(
                 env_step += int(result["n/st"])
                 t.update(result["n/st"])
                 logger.log_train_data(result, env_step)
-                last_rew = result['rew'] if 'rew' in result else last_rew
-                last_len = result['len'] if 'len' in result else last_len
+                last_rew = result['rew'] if result["n/ep"] > 0 else last_rew
+                last_len = result['len'] if result["n/ep"] > 0 else last_len
                 data = {
                     "env_step": str(env_step),
                     "rew": f"{last_rew:.2f}",
