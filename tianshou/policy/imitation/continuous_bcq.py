@@ -21,7 +21,7 @@ class Perturbation(nn.Module):
     :param float phi: max perturbation parameter for BCQ. Default to 0.05.
 
     .. seealso::
-        You can refer to `examples/mujoco/mujoco_bcq.py` to see how to use it.
+        You can refer to `examples/offline/offline_bcq.py` to see how to use it.
     """
 
     def __init__(
@@ -60,7 +60,7 @@ class VAE(nn.Module):
         Default to cpu.
 
     .. seealso::
-        You can refer to `examples/mujoco/mujoco_bcq.py` to see how to use it.
+        You can refer to `examples/offline/offline_bcq.py` to see how to use it.
     """
 
     def __init__(
@@ -144,7 +144,7 @@ class ContinuousBCQPolicy(BasePolicy):
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
 
-        You can refer to `examples/mujoco/mujoco_bcq.py` to see how to use it.
+        You can refer to `examples/offline/offline_bcq.py` to see how to use it.
     """
 
     def __init__(
