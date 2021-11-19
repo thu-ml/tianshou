@@ -41,7 +41,7 @@ class Perturbation(nn.Module):
     def forward(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         # preprocess_net
         logits = self.preprocess_net(torch.cat([state, action], 1))[0]
-        a = self.phi * self.max_action * torch.tanh(logits)  # TODO
+        a = self.phi * self.max_action * torch.tanh(logits)
         # clip to [-max_action, max_action]
         return (a + action).clamp(-self.max_action, self.max_action)
 
@@ -118,7 +118,7 @@ class VAE(nn.Module):
         return self.max_action * torch.tanh(self.decoder(torch.cat([state, z], 1)))
 
 
-class ContinuousBCQPolicy(BasePolicy):
+class BCQPolicy(BasePolicy):
     """Implementation of continuous BCQ algorithm. arXiv:1812.02900.
 
     :param torch.nn.Module actor: the actor perturbation (s, a -> perturbed a)
@@ -185,7 +185,7 @@ class ContinuousBCQPolicy(BasePolicy):
         self.lmbda = lmbda
         self.device = device
 
-    def train(self, mode: bool = True) -> "ContinuousBCQPolicy":
+    def train(self, mode: bool = True) -> "BCQPolicy":
         self.training = mode
         self.actor.train(mode)
         self.critic1.train(mode)

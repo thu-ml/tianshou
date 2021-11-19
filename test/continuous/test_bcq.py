@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
-from tianshou.policy import ContinuousBCQPolicy, SACPolicy
+from tianshou.policy import BCQPolicy, SACPolicy
 from tianshou.policy.imitation.continuous_bcq import VAE, Perturbation
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import BasicLogger, TensorboardLogger
@@ -258,7 +258,7 @@ def test_bcq():
     ).to(args.device)
     vae_optim = torch.optim.Adam(vae.parameters())
 
-    policy = ContinuousBCQPolicy(
+    policy = BCQPolicy(
         actor,
         actor_optim,
         critic1,
