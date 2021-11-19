@@ -23,12 +23,13 @@ def get_args():
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer_size', type=int, default=20000)
-    parser.add_argument('--hidden_sizes', type=int, nargs='*', default=[400, 300])
+    parser.add_argument('--sac_hidden_sizes', type=int, nargs='*', default=[128, 128])
+    parser.add_argument('--hidden_sizes', type=int, nargs='*', default=[200, 150])
     parser.add_argument('--actor_lr', type=float, default=1e-3)
     parser.add_argument('--critic_lr', type=float, default=1e-3)
     parser.add_argument("--start_timesteps", type=int, default=50000)
-    parser.add_argument('--epoch', type=int, default=5)
-    parser.add_argument('--step_per_epoch', type=int, default=24000)
+    parser.add_argument('--epoch', type=int, default=7)
+    parser.add_argument('--step_per_epoch', type=int, default=8000)
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--training_num', type=int, default=10)
     parser.add_argument('--test_num', type=int, default=10)
@@ -37,7 +38,7 @@ def get_args():
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
 
-    parser.add_argument("--vae_hidden_sizes", type=int, nargs='*', default=[750, 750])
+    parser.add_argument("--vae_hidden_sizes", type=int, nargs='*', default=[375, 375])
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument("--tau", default=0.005)
     # Weighting for Clipped Double Q-learning in BCQ
@@ -55,9 +56,6 @@ def get_args():
         help='watch the play of pre-trained policy only'
     )
     # sac:
-    parser.add_argument(
-        '--imitation_hidden_sizes', type=int, nargs='*', default=[128, 128]
-    )
     parser.add_argument('--alpha', type=float, default=0.2)
     parser.add_argument('--auto_alpha', type=int, default=1)
     parser.add_argument('--alpha_lr', type=float, default=3e-4)
@@ -90,7 +88,7 @@ def gather_data():
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+    net = Net(args.state_shape, hidden_sizes=args.sac_hidden_sizes, device=args.device)
     actor = ActorProb(
         net,
         args.action_shape,
@@ -102,7 +100,7 @@ def gather_data():
     net_c1 = Net(
         args.state_shape,
         args.action_shape,
-        hidden_sizes=args.hidden_sizes,
+        hidden_sizes=args.sac_hidden_sizes,
         concat=True,
         device=args.device
     )
@@ -111,7 +109,7 @@ def gather_data():
     net_c2 = Net(
         args.state_shape,
         args.action_shape,
-        hidden_sizes=args.hidden_sizes,
+        hidden_sizes=args.sac_hidden_sizes,
         concat=True,
         device=args.device
     )
@@ -181,7 +179,7 @@ def test_bcq():
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]  # float
     if args.task == 'Pendulum-v0':
-        env.spec.reward_threshold = -500
+        env.spec.reward_threshold = -800
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]
