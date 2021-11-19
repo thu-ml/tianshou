@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-# try:
-#     from local_debug_logger import local_trace
-# except ImportError:
-#     local_trace = lambda: None
-# import mujoco_py
 import argparse
 import datetime
 import os
@@ -36,12 +31,12 @@ def get_args():
     parser.add_argument("--start_timesteps", type=int, default=10000)
     parser.add_argument('--epoch', type=int, default=200)
     parser.add_argument('--step_per_epoch', type=int, default=5000)
-    parser.add_argument('--n_step', type=int, default=1)
+    parser.add_argument('--n_step', type=int, default=3)
     parser.add_argument('--batch_size', type=int, default=256)
-    parser.add_argument('--training_num', type=int, default=1)
+    parser.add_argument('--training_num', type=int, default=10)
     parser.add_argument('--test_num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument('--render', type=float, default=1 / 35)
 
     parser.add_argument("--vae_hidden_sizes", type=int, nargs='*', default=[750, 750])
     parser.add_argument("--gamma", default=0.99)
@@ -53,7 +48,7 @@ def get_args():
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
-    parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument('--resume_path', type=str, default=None)
     parser.add_argument(
         '--watch',
         default=False,
@@ -193,10 +188,12 @@ def test_bcq():
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def watch():
+        policy_path = args.resume_path \
+            if args.resume_path is not None \
+            else os.path.join(log_path, 'policy.pth')
+
         policy.load_state_dict(
-            torch.load(
-                os.path.join(log_path, 'policy.pth'), map_location=torch.device('cpu')
-            )
+            torch.load(policy_path, map_location=torch.device('cpu'))
         )  # log_path,
         policy.eval()
         collector = Collector(policy, env)
@@ -233,20 +230,15 @@ def test_bcq():
             logger=logger
         )
         pprint.pprint(result)
+    else:
+        watch()
 
     # Let's watch its performance!
-
     policy.eval()
     test_envs.seed(args.seed)
     test_collector.reset()
-    result = test_collector.collect(
-        n_episode=args.test_num, render=1 / 35
-    )  # args.render
-    # watch()
-    print(
-        f'Final reward: {result["rews"].mean()}, '
-        f'length: {result["lens"].mean()}'
-    )
+    result = test_collector.collect(n_episode=args.test_num, render=args.render)
+    print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
 
 
 if __name__ == '__main__':
