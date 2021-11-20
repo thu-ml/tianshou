@@ -20,9 +20,9 @@ python offline_bcq.py --task halfcheetah-expert-v1
 
 After 1M steps:
 
-![halfcheetah-expert-v1_reward](/media/thk/新加卷/MachineLearning/tianshou/examples/offline/results/bcq/halfcheetah-expert-v1_reward.png)
+![halfcheetah-expert-v1_reward](results/bcq/halfcheetah-expert-v1_reward.png)
 
-`halfcheetah-expert-v1` is a mujoco environment. The setting of hyperparameters can refer to the offpolicy algorithms in mujoco.
+`halfcheetah-expert-v1` is a mujoco environment. The setting of hyperparameters are similar to the offpolicy algorithms in mujoco environment.
 
 
 
