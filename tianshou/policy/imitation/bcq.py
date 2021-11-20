@@ -119,9 +119,9 @@ class VAE(nn.Module):
 
 
 class BCQPolicy(BasePolicy):
-    """Implementation of continuous BCQ algorithm. arXiv:1812.02900.
+    """Implementation of BCQ algorithm. arXiv:1812.02900.
 
-    :param torch.nn.Module actor: the actor perturbation (s, a -> perturbed a)
+    :param Perturbation actor: the actor perturbation (s, a -> perturbed a)
     :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
     :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic1_optim: the optimizer for the first
@@ -129,9 +129,9 @@ class BCQPolicy(BasePolicy):
     :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic2_optim: the optimizer for the second
         critic network.
-    :param torch.nn.Module vae: the vae network, generating actions similar
+    :param VAE vae: the VAE network, generating actions similar
         to those in batch. (s, a -> generated a)
-    :param torch.optim.Optimizer vae_optim: the optimizer for the vae network.
+    :param torch.optim.Optimizer vae_optim: the optimizer for the VAE network.
     :param Union[str, torch.device] device: which device to create this model on.
         Default to cpu.
     :param float gamma: discount factor, in [0, 1]. Default to 0.99.
@@ -143,8 +143,6 @@ class BCQPolicy(BasePolicy):
 
         Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
         explanation.
-
-        You can refer to `examples/offline/offline_bcq.py` to see how to use it.
     """
 
     def __init__(
@@ -186,6 +184,7 @@ class BCQPolicy(BasePolicy):
         self.device = device
 
     def train(self, mode: bool = True) -> "BCQPolicy":
+        """Set the module in training mode, except for the target network."""
         self.training = mode
         self.actor.train(mode)
         self.critic1.train(mode)
@@ -199,6 +198,7 @@ class BCQPolicy(BasePolicy):
         input: str = "obs",
         **kwargs: Any,
     ) -> Batch:
+        """Compute action over the given batch data."""
         # state: None, input: "obs"
         # There is "obs" in the Batch
         # obs: 10 groups. Each group has a state. shape: (10, state_dim)
@@ -222,6 +222,7 @@ class BCQPolicy(BasePolicy):
         return Batch(act=act)
 
     def sync_weight(self) -> None:
+        """Soft-update the weight for the target network."""
         for param, target_param in \
                 zip(self.critic1.parameters(), self.critic1_target.parameters()):
             target_param.data.copy_(

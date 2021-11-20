@@ -104,12 +104,12 @@ Off-policy
 Imitation
 ---------
 
-.. autoclass:: tianshou.policy.BCQPolicy
+.. autoclass:: tianshou.policy.ImitationPolicy
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. autoclass:: tianshou.policy.ImitationPolicy
+.. autoclass:: tianshou.policy.BCQPolicy
    :members:
    :undoc-members:
    :show-inheritance:
