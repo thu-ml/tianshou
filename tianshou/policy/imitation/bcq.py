@@ -11,10 +11,10 @@ from tianshou.policy import BasePolicy
 
 
 class Perturbation(nn.Module):
-    """Implementation of vae in continuous BCQ algorithm.
+    """Implementation of perturbation network in BCQ algorithm.
 
-    :param torch.nn.Module preprocess_net: the encoder in vae. Its input_dim must be
-        state_dim + action_dim, and output_dim must be hidden_dim.
+    :param torch.nn.Module preprocess_net: a self-defined preprocess_net which output a
+        flattened hidden state.
     :param float max_action: the maximum value of each dimension of action.
     :param Union[str, int, torch.device] device: which device to create this model on.
         Default to cpu.
@@ -47,7 +47,7 @@ class Perturbation(nn.Module):
 
 
 class VAE(nn.Module):
-    """Implementation of vae in continuous BCQ algorithm.
+    """Implementation of vae in BCQ algorithm.
 
     :param torch.nn.Module encoder: the encoder in vae. Its input_dim must be
         state_dim + action_dim, and output_dim must be hidden_dim.

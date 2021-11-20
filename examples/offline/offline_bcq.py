@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import BCQPolicy
-from tianshou.policy.imitation.continuous_bcq import VAE, Perturbation
+from tianshou.policy.imitation.bcq import VAE, Perturbation
 from tianshou.trainer import offline_trainer
 from tianshou.utils import BasicLogger
 from tianshou.utils.net.common import MLP, Net
