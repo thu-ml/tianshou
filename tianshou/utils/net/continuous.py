@@ -410,7 +410,7 @@ class VAE(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # [state, action] -> z , [state, z] -> action
         z = self.encoder(torch.cat([state, action], 1))
-        # shape of z: (state.shape[0], hidden_dim=750)
+        # shape of z: (state.shape[0], hidden_dim)
 
         mean = self.mean(z)
         # Clamped for numerical stability

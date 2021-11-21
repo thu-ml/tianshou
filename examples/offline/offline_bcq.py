@@ -38,6 +38,8 @@ def get_args():
     parser.add_argument('--render', type=float, default=1 / 35)
 
     parser.add_argument("--vae_hidden_sizes", type=int, nargs='*', default=[750, 750])
+    # default to 2 * action_dim
+    parser.add_argument('--latent_dim', type=int)
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument("--tau", default=0.005)
     # Weighting for Clipped Double Q-learning in BCQ
@@ -122,21 +124,20 @@ def test_bcq():
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     # vae
-    # args.vae_hidden_sizes = [750, 750]
     # output_dim = 0, so the last Module in the encoder is ReLU
     vae_encoder = MLP(
         input_dim=args.state_dim + args.action_dim,
         hidden_sizes=args.vae_hidden_sizes,
         device=args.device
     )
-    args.latent_dim = args.action_dim * 2
+    if not args.latent_dim:
+        args.latent_dim = args.action_dim * 2
     vae_decoder = MLP(
         input_dim=args.state_dim + args.latent_dim,
         output_dim=args.action_dim,
         hidden_sizes=args.vae_hidden_sizes,
         device=args.device
     )
-    # latent_dim = action_dim * 2
     vae = VAE(
         vae_encoder,
         vae_decoder,
