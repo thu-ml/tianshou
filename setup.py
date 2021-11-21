@@ -53,6 +53,7 @@ setup(
         "tensorboard>=2.5.0",
         "torch>=1.4.0",
         "numba>=0.51.0",
+        "dill",
         "h5py>=2.10.0",  # to match tensorflow's minimal requirements
     ],
     extras_require={
