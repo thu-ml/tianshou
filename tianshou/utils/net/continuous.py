@@ -325,3 +325,115 @@ class RecurrentCritic(nn.Module):
             s = torch.cat([s, a], dim=1)
         s = self.fc2(s)
         return s
+
+
+class Perturbation(nn.Module):
+    """Implementation of perturbation network in BCQ algorithm. Given a state and
+        action, it can generate perturbed action.
+
+    :param torch.nn.Module preprocess_net: a self-defined preprocess_net which output a
+        flattened hidden state.
+    :param float max_action: the maximum value of each dimension of action.
+    :param Union[str, int, torch.device] device: which device to create this model on.
+        Default to cpu.
+    :param float phi: max perturbation parameter for BCQ. Default to 0.05.
+
+    .. seealso::
+        You can refer to `examples/offline/offline_bcq.py` to see how to use it.
+    """
+
+    def __init__(
+        self,
+        preprocess_net: nn.Module,
+        max_action: float,
+        device: Union[str, int, torch.device] = "cpu",
+        phi: float = 0.05
+    ):
+        # preprocess_net: input_dim=state_dim+action_dim, output_dim=action_dim
+        super(Perturbation, self).__init__()
+        self.preprocess_net = preprocess_net
+        self.device = device
+        self.max_action = max_action
+        self.phi = phi
+
+    def forward(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+        # preprocess_net
+        logits = self.preprocess_net(torch.cat([state, action], 1))[0]
+        a = self.phi * self.max_action * torch.tanh(logits)
+        # clip to [-max_action, max_action]
+        return (a + action).clamp(-self.max_action, self.max_action)
+
+
+class VAE(nn.Module):
+    """Implementation of VAE. It models the distribution of action. Given a
+        state, it can generate actions similar to those in batch. It is used
+        in BCQ algorithm.
+
+    :param torch.nn.Module encoder: the encoder in VAE. Its input_dim must be
+        state_dim + action_dim, and output_dim must be hidden_dim.
+    :param torch.nn.Module decoder: the decoder in VAE. Its input_dim must be
+        state_dim + action_dim, and output_dim must be action_dim.
+    :param int hidden_dim: the size of the last linear-layer in encoder.
+    :param int latent_dim: the size of latent layer.
+    :param float max_action: the maximum value of each dimension of action.
+    :param Union[str, torch.device] device: which device to create this model on.
+        Default to "cpu".
+
+    .. seealso::
+
+        You can refer to `examples/offline/offline_bcq.py` to see how to use it.
+    """
+
+    def __init__(
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        hidden_dim: int,
+        latent_dim: int,
+        max_action: float,
+        device: Union[str, torch.device] = "cpu"
+    ):
+        super(VAE, self).__init__()
+        self.encoder = encoder
+
+        self.mean = nn.Linear(hidden_dim, latent_dim)
+        self.log_std = nn.Linear(hidden_dim, latent_dim)
+
+        self.decoder = decoder
+
+        self.max_action = max_action
+        self.latent_dim = latent_dim
+        self.device = device
+
+    def forward(
+        self, state: torch.Tensor, action: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # [state, action] -> z , [state, z] -> action
+        z = self.encoder(torch.cat([state, action], 1))
+        # shape of z: (state.shape[0], hidden_dim=750)
+
+        mean = self.mean(z)
+        # Clamped for numerical stability
+        log_std = self.log_std(z).clamp(-4, 15)
+        std = torch.exp(log_std)
+        # shape of mean, std: (state.shape[0], latent_dim)
+
+        z = mean + std * torch.randn_like(std)  # (state.shape[0], latent_dim)
+
+        u = self.decode(state, z)  # (state.shape[0], action_dim)
+        return u, mean, std
+
+    def decode(
+        self,
+        state: torch.Tensor,
+        z: Union[torch.Tensor, None] = None
+    ) -> torch.Tensor:
+        # decode(state) -> action
+        if z is None:
+            # state.shape[0] may be batch_size
+            # latent vector clipped to [-0.5, 0.5]
+            z = torch.randn((state.shape[0], self.latent_dim))\
+                .to(self.device).clamp(-0.5, 0.5)
+
+        # decode z with state!
+        return self.max_action * torch.tanh(self.decoder(torch.cat([state, z], 1)))
