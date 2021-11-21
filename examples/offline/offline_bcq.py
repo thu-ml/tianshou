@@ -188,13 +188,12 @@ def test_bcq():
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def watch():
-        policy_path = args.resume_path \
-            if args.resume_path is not None \
-            else os.path.join(log_path, 'policy.pth')
+        if args.resume_path is None:
+            args.resume_path = os.path.join(log_path, 'policy.pth')
 
         policy.load_state_dict(
-            torch.load(policy_path, map_location=torch.device('cpu'))
-        )  # log_path,
+            torch.load(args.resume_path, map_location=torch.device('cpu'))
+        )
         policy.eval()
         collector = Collector(policy, env)
         collector.collect(n_episode=1, render=1 / 35)

@@ -28,8 +28,7 @@ After 1M steps:
 
 ## Results
 
-| Environment \\ Algorithm | BCQ           |      |
-| ------------------------ | ------------- | ---- |
-| halfcheetah-expert-v1    | 10624.0±181.4 |      |
-|                          |               |      |
+| Environment \\ Algorithm | BCQ             |
+| ------------------------ | --------------- |
+| halfcheetah-expert-v1    | 10624.0 ± 181.4 |
 

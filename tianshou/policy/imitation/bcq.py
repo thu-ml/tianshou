@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from tianshou.data import Batch
+from tianshou.data import Batch, to_torch
 from tianshou.policy import BasePolicy
 
 
@@ -47,11 +47,11 @@ class Perturbation(nn.Module):
 
 
 class VAE(nn.Module):
-    """Implementation of vae in BCQ algorithm.
+    """Implementation of VAE in BCQ algorithm.
 
-    :param torch.nn.Module encoder: the encoder in vae. Its input_dim must be
+    :param torch.nn.Module encoder: the encoder in VAE. Its input_dim must be
         state_dim + action_dim, and output_dim must be hidden_dim.
-    :param torch.nn.Module decoder: the decoder in vae. Its input_dim must be
+    :param torch.nn.Module decoder: the decoder in VAE. Its input_dim must be
         state_dim + action_dim, and output_dim must be action_dim.
     :param int hidden_dim: the size of the last linear-layer in encoder.
     :param int latent_dim: the size of latent layer.
@@ -121,7 +121,7 @@ class VAE(nn.Module):
 class BCQPolicy(BasePolicy):
     """Implementation of BCQ algorithm. arXiv:1812.02900.
 
-    :param Perturbation actor: the actor perturbation (s, a -> perturbed a)
+    :param Perturbation actor: the actor perturbation. (s, a -> perturbed a)
     :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
     :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s, a))
     :param torch.optim.Optimizer critic1_optim: the optimizer for the first
@@ -133,7 +133,7 @@ class BCQPolicy(BasePolicy):
         to those in batch. (s, a -> generated a)
     :param torch.optim.Optimizer vae_optim: the optimizer for the VAE network.
     :param Union[str, torch.device] device: which device to create this model on.
-        Default to cpu.
+        Default to "cpu".
     :param float gamma: discount factor, in [0, 1]. Default to 0.99.
     :param float tau: param for soft update of the target network.
         Default to 0.005.
@@ -155,7 +155,7 @@ class BCQPolicy(BasePolicy):
         critic2_optim: torch.optim.Optimizer,
         vae: VAE,
         vae_optim: torch.optim.Optimizer,
-        device: Optional[Union[str, torch.device]] = "cpu",
+        device: Union[str, torch.device] = "cpu",
         gamma: float = 0.99,
         tau: float = 0.005,
         lmbda: float = 0.75,
@@ -201,8 +201,9 @@ class BCQPolicy(BasePolicy):
         """Compute action over the given batch data."""
         # state: None, input: "obs"
         # There is "obs" in the Batch
-        # obs: 10 groups. Each group has a state. shape: (10, state_dim)
-        obs_group = torch.FloatTensor(batch["obs"]).to(self.device)
+        # obs_group: several groups. Each group has a state. shape: (?, state_dim)
+        obs_group = to_torch(batch["obs"], device=self.device)
+        assert isinstance(obs_group, torch.Tensor)
 
         act = []
         with torch.no_grad():
@@ -243,15 +244,20 @@ class BCQPolicy(BasePolicy):
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
-        obs = torch.FloatTensor(batch["obs"]).to(device=self.device)
+        obs = to_torch(batch["obs"], dtype=torch.float, device=self.device)
+        assert isinstance(obs, torch.Tensor)
         # (batch_size, action_dim)
-        act = torch.FloatTensor(batch["act"]).to(device=self.device)
+        act = to_torch(batch["act"], dtype=torch.float, device=self.device)
+        assert isinstance(act, torch.Tensor)
         # (batch_size)
-        rew = torch.FloatTensor(batch["rew"]).to(device=self.device)
+        rew = to_torch(batch["rew"], dtype=torch.float, device=self.device)
+        assert isinstance(rew, torch.Tensor)
         # (batch_size)
-        done = torch.IntTensor(batch["done"]).to(device=self.device)
+        done = to_torch(batch["done"], dtype=torch.int, device=self.device)
+        assert isinstance(done, torch.Tensor)
         # (batch_size, state_dim)
-        obs_next = torch.FloatTensor(batch["obs_next"]).to(device=self.device)
+        obs_next = to_torch(batch["obs_next"], dtype=torch.float, device=self.device)
+        assert isinstance(obs_next, torch.Tensor)
 
         batch_size = obs.shape[0]
 
