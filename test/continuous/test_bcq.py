@@ -14,7 +14,7 @@ from tianshou.policy import BCQPolicy, SACPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import BasicLogger, TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
-from tianshou.utils.net.continuous import ActorProb, Critic, VAE, Perturbation
+from tianshou.utils.net.continuous import VAE, ActorProb, Critic, Perturbation
 
 
 def get_args():

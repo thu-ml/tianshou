@@ -16,7 +16,7 @@ from tianshou.policy import BCQPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import BasicLogger
 from tianshou.utils.net.common import MLP, Net
-from tianshou.utils.net.continuous import Critic, VAE, Perturbation
+from tianshou.utils.net.continuous import VAE, Critic, Perturbation
 
 
 def get_args():

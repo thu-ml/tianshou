@@ -328,8 +328,8 @@ class RecurrentCritic(nn.Module):
 
 
 class Perturbation(nn.Module):
-    """Implementation of perturbation network in BCQ algorithm. Given a state and
-        action, it can generate perturbed action.
+    """Implementation of perturbation network in BCQ algorithm. Given a state and \
+    action, it can generate perturbed action.
 
     :param torch.nn.Module preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
@@ -337,6 +337,9 @@ class Perturbation(nn.Module):
     :param Union[str, int, torch.device] device: which device to create this model on.
         Default to cpu.
     :param float phi: max perturbation parameter for BCQ. Default to 0.05.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
 
     .. seealso::
         You can refer to `examples/offline/offline_bcq.py` to see how to use it.
@@ -365,9 +368,9 @@ class Perturbation(nn.Module):
 
 
 class VAE(nn.Module):
-    """Implementation of VAE. It models the distribution of action. Given a
-        state, it can generate actions similar to those in batch. It is used
-        in BCQ algorithm.
+    """Implementation of VAE. It models the distribution of action. Given a \
+    state, it can generate actions similar to those in batch. It is used \
+    in BCQ algorithm.
 
     :param torch.nn.Module encoder: the encoder in VAE. Its input_dim must be
         state_dim + action_dim, and output_dim must be hidden_dim.
@@ -378,6 +381,9 @@ class VAE(nn.Module):
     :param float max_action: the maximum value of each dimension of action.
     :param Union[str, torch.device] device: which device to create this model on.
         Default to "cpu".
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
 
     .. seealso::
 
