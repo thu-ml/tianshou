@@ -11,7 +11,8 @@ from tianshou.policy import BasePolicy
 
 
 class Perturbation(nn.Module):
-    """Implementation of perturbation network in BCQ algorithm.
+    """Implementation of perturbation network in BCQ algorithm. Given a state and
+        action, it can generate perturbed action.
 
     :param torch.nn.Module preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
@@ -57,9 +58,10 @@ class VAE(nn.Module):
     :param int latent_dim: the size of latent layer.
     :param float max_action: the maximum value of each dimension of action.
     :param Union[str, torch.device] device: which device to create this model on.
-        Default to cpu.
+        Default to "cpu".
 
     .. seealso::
+
         You can refer to `examples/offline/offline_bcq.py` to see how to use it.
     """
 
@@ -199,9 +201,8 @@ class BCQPolicy(BasePolicy):
         **kwargs: Any,
     ) -> Batch:
         """Compute action over the given batch data."""
-        # state: None, input: "obs"
         # There is "obs" in the Batch
-        # obs_group: several groups. Each group has a state. shape: (?, state_dim)
+        # obs_group: several groups. Each group has a state.
         obs_group = to_torch(batch["obs"], device=self.device)
         assert isinstance(obs_group, torch.Tensor)
 
