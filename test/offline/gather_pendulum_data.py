@@ -20,35 +20,26 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer_size', type=int, default=20000)
-    parser.add_argument('--sac_hidden_sizes', type=int, nargs='*', default=[128, 128])
-    parser.add_argument('--hidden_sizes', type=int, nargs='*', default=[200, 150])
-    parser.add_argument('--actor_lr', type=float, default=1e-3)
-    parser.add_argument('--critic_lr', type=float, default=1e-3)
-    parser.add_argument("--start_timesteps", type=int, default=50000)
+    parser.add_argument('--buffer-size', type=int, default=20000)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
+    parser.add_argument('--actor-lr', type=float, default=1e-3)
+    parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--epoch', type=int, default=7)
-    parser.add_argument('--step_per_epoch', type=int, default=8000)
-    parser.add_argument('--batch_size', type=int, default=256)
-    parser.add_argument('--training_num', type=int, default=10)
-    parser.add_argument('--test_num', type=int, default=10)
-    parser.add_argument('--step_per_collect', type=int, default=10)
-    parser.add_argument('--update_per_step', type=float, default=0.125)
+    parser.add_argument('--step-per-epoch', type=int, default=8000)
+    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--training-num', type=int, default=10)
+    parser.add_argument('--test-num', type=int, default=10)
+    parser.add_argument('--step-per-collect', type=int, default=10)
+    parser.add_argument('--update-per-step', type=float, default=0.125)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
 
-    parser.add_argument("--vae_hidden_sizes", type=int, nargs='*', default=[375, 375])
-    # default to 2 * action_dim
-    parser.add_argument('--latent_dim', type=int)
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument("--tau", default=0.005)
-    # Weighting for Clipped Double Q-learning in BCQ
-    parser.add_argument("--lmbda", default=0.75)
-    # Max perturbation hyper-parameter for BCQ
-    parser.add_argument("--phi", default=0.05)
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
-    parser.add_argument('--resume_path', type=str, default=None)
+    parser.add_argument('--resume-path', type=str, default=None)
     parser.add_argument(
         '--watch',
         default=False,
@@ -57,10 +48,10 @@ def get_args():
     )
     # sac:
     parser.add_argument('--alpha', type=float, default=0.2)
-    parser.add_argument('--auto_alpha', type=int, default=1)
-    parser.add_argument('--alpha_lr', type=float, default=3e-4)
-    parser.add_argument('--rew_norm', action="store_true", default=False)
-    parser.add_argument('--n_step', type=int, default=3)
+    parser.add_argument('--auto-alpha', type=int, default=1)
+    parser.add_argument('--alpha-lr', type=float, default=3e-4)
+    parser.add_argument('--rew-norm', action="store_true", default=False)
+    parser.add_argument('--n-step', type=int, default=3)
     args = parser.parse_known_args()[0]
     return args
 
@@ -89,30 +80,30 @@ def gather_data():
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.sac_hidden_sizes, device=args.device)
+    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(
         net,
         args.action_shape,
         max_action=args.max_action,
         device=args.device,
-        unbounded=True
+        unbounded=True,
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c1 = Net(
         args.state_shape,
         args.action_shape,
-        hidden_sizes=args.sac_hidden_sizes,
+        hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device
+        device=args.device,
     )
     critic1 = Critic(net_c1, device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
     net_c2 = Net(
         args.state_shape,
         args.action_shape,
-        hidden_sizes=args.sac_hidden_sizes,
+        hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device
+        device=args.device,
     )
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
@@ -135,7 +126,7 @@ def gather_data():
         alpha=args.alpha,
         reward_normalization=args.rew_norm,
         estimation_step=args.n_step,
-        action_space=env.action_space
+        action_space=env.action_space,
     )
     # collector
     buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
@@ -166,8 +157,9 @@ def gather_data():
         update_per_step=args.update_per_step,
         save_fn=save_fn,
         stop_fn=stop_fn,
-        logger=logger
+        logger=logger,
     )
     train_collector.reset()
+    train_collector.collect(n_step=args.buffer_size)
     dill.dump(train_collector, open("./pendulum_data.pkl", "wb"))
     return train_collector

@@ -27,25 +27,23 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer_size', type=int, default=20000)
-    parser.add_argument('--sac_hidden_sizes', type=int, nargs='*', default=[128, 128])
-    parser.add_argument('--hidden_sizes', type=int, nargs='*', default=[200, 150])
-    parser.add_argument('--actor_lr', type=float, default=1e-3)
-    parser.add_argument('--critic_lr', type=float, default=1e-3)
-    parser.add_argument("--start_timesteps", type=int, default=50000)
+    parser.add_argument('--buffer-size', type=int, default=20000)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[200, 150])
+    parser.add_argument('--actor-lr', type=float, default=1e-3)
+    parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--epoch', type=int, default=7)
-    parser.add_argument('--step_per_epoch', type=int, default=8000)
-    parser.add_argument('--batch_size', type=int, default=256)
-    parser.add_argument('--training_num', type=int, default=10)
-    parser.add_argument('--test_num', type=int, default=10)
-    parser.add_argument('--step_per_collect', type=int, default=10)
-    parser.add_argument('--update_per_step', type=float, default=0.125)
+    parser.add_argument('--step-per-epoch', type=int, default=8000)
+    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--training-num', type=int, default=10)
+    parser.add_argument('--test-num', type=int, default=10)
+    parser.add_argument('--step-per-collect', type=int, default=10)
+    parser.add_argument('--update-per-step', type=float, default=0.125)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
 
-    parser.add_argument("--vae_hidden_sizes", type=int, nargs='*', default=[375, 375])
+    parser.add_argument("--vae-hidden-sizes", type=int, nargs='*', default=[375, 375])
     # default to 2 * action_dim
-    parser.add_argument('--latent_dim', type=int)
+    parser.add_argument('--latent_dim', type=int, default=None)
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument("--tau", default=0.005)
     # Weighting for Clipped Double Q-learning in BCQ
@@ -55,19 +53,13 @@ def get_args():
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
-    parser.add_argument('--resume_path', type=str, default=None)
+    parser.add_argument('--resume-path', type=str, default=None)
     parser.add_argument(
         '--watch',
         default=False,
         action='store_true',
-        help='watch the play of pre-trained policy only'
+        help='watch the play of pre-trained policy only',
     )
-    # sac:
-    parser.add_argument('--alpha', type=float, default=0.2)
-    parser.add_argument('--auto_alpha', type=int, default=1)
-    parser.add_argument('--alpha_lr', type=float, default=3e-4)
-    parser.add_argument('--rew_norm', action="store_true", default=False)
-    parser.add_argument('--n_step', type=int, default=3)
     args = parser.parse_known_args()[0]
     return args
 
@@ -84,7 +76,7 @@ def test_bcq():
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]  # float
     if args.task == 'Pendulum-v0':
-        env.spec.reward_threshold = -800
+        env.spec.reward_threshold = -800  # too low?
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]
@@ -186,7 +178,6 @@ def test_bcq():
     # buffer has been gathered
     # train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
-    # train_collector.collect(n_step=args.start_timesteps, random=True)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
     log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_bcq'
