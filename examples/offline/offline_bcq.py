@@ -23,23 +23,23 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='halfcheetah-expert-v1')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer_size', type=int, default=1000000)
-    parser.add_argument('--hidden_sizes', type=int, nargs='*', default=[400, 300])
-    parser.add_argument('--actor_lr', type=float, default=1e-3)
-    parser.add_argument('--critic_lr', type=float, default=1e-3)
-    parser.add_argument("--start_timesteps", type=int, default=10000)
+    parser.add_argument('--buffer-size', type=int, default=1000000)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[400, 300])
+    parser.add_argument('--actor-lr', type=float, default=1e-3)
+    parser.add_argument('--critic-lr', type=float, default=1e-3)
+    parser.add_argument("--start-timesteps", type=int, default=10000)
     parser.add_argument('--epoch', type=int, default=200)
-    parser.add_argument('--step_per_epoch', type=int, default=5000)
-    parser.add_argument('--n_step', type=int, default=3)
-    parser.add_argument('--batch_size', type=int, default=256)
-    parser.add_argument('--training_num', type=int, default=10)
-    parser.add_argument('--test_num', type=int, default=10)
+    parser.add_argument('--step-per-epoch', type=int, default=5000)
+    parser.add_argument('--n-step', type=int, default=3)
+    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--training-num', type=int, default=10)
+    parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=1 / 35)
 
-    parser.add_argument("--vae_hidden_sizes", type=int, nargs='*', default=[750, 750])
+    parser.add_argument("--vae-hidden-sizes", type=int, nargs='*', default=[750, 750])
     # default to 2 * action_dim
-    parser.add_argument('--latent_dim', type=int)
+    parser.add_argument('--latent-dim', type=int)
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument("--tau", default=0.005)
     # Weighting for Clipped Double Q-learning in BCQ
@@ -49,7 +49,7 @@ def get_args():
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
-    parser.add_argument('--resume_path', type=str, default=None)
+    parser.add_argument('--resume-path', type=str, default=None)
     parser.add_argument(
         '--watch',
         default=False,
