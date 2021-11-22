@@ -342,6 +342,7 @@ class Perturbation(nn.Module):
     :ref:`build_the_network`.
 
     .. seealso::
+
         You can refer to `examples/offline/offline_bcq.py` to see how to use it.
     """
 
