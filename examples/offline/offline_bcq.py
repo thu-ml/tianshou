@@ -54,7 +54,7 @@ def get_args():
         '--watch',
         default=False,
         action='store_true',
-        help='watch the play of pre-trained policy only'
+        help='watch the play of pre-trained policy only',
     )
     return parser.parse_args()
 
@@ -75,12 +75,9 @@ def test_bcq():
     print("Max_action", args.max_action)
 
     # train_envs = gym.make(args.task)
-    if args.training_num > 1:
-        train_envs = SubprocVectorEnv(
-            [lambda: gym.make(args.task) for _ in range(args.training_num)]
-        )
-    else:
-        train_envs = gym.make(args.task)
+    train_envs = SubprocVectorEnv(
+        [lambda: gym.make(args.task) for _ in range(args.training_num)]
+    )
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
@@ -97,7 +94,7 @@ def test_bcq():
         input_dim=args.state_dim + args.action_dim,
         output_dim=args.action_dim,
         hidden_sizes=args.hidden_sizes,
-        device=args.device
+        device=args.device,
     )
     actor = Perturbation(
         net_a, max_action=args.max_action, device=args.device, phi=args.phi
@@ -109,14 +106,14 @@ def test_bcq():
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device
+        device=args.device,
     )
     net_c2 = Net(
         args.state_shape,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device
+        device=args.device,
     )
     critic1 = Critic(net_c1, device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
@@ -128,7 +125,7 @@ def test_bcq():
     vae_encoder = MLP(
         input_dim=args.state_dim + args.action_dim,
         hidden_sizes=args.vae_hidden_sizes,
-        device=args.device
+        device=args.device,
     )
     if not args.latent_dim:
         args.latent_dim = args.action_dim * 2
@@ -136,7 +133,7 @@ def test_bcq():
         input_dim=args.state_dim + args.latent_dim,
         output_dim=args.action_dim,
         hidden_sizes=args.vae_hidden_sizes,
-        device=args.device
+        device=args.device,
     )
     vae = VAE(
         vae_encoder,
@@ -144,7 +141,7 @@ def test_bcq():
         hidden_dim=args.vae_hidden_sizes[-1],
         latent_dim=args.latent_dim,
         max_action=args.max_action,
-        device=args.device
+        device=args.device,
     ).to(args.device)
     vae_optim = torch.optim.Adam(vae.parameters())
 
@@ -160,7 +157,7 @@ def test_bcq():
         device=args.device,
         gamma=args.gamma,
         tau=args.tau,
-        lmbda=args.lmbda
+        lmbda=args.lmbda,
     )
 
     # load a previous policy
@@ -212,7 +209,7 @@ def test_bcq():
                     act=dataset['actions'][i],
                     rew=dataset['rewards'][i],
                     done=dataset['terminals'][i],
-                    obs_next=dataset['next_observations'][i]
+                    obs_next=dataset['next_observations'][i],
                 )
             )
         print("dataset loaded")
@@ -226,7 +223,7 @@ def test_bcq():
             args.test_num,
             args.batch_size,
             save_fn=save_fn,
-            logger=logger
+            logger=logger,
         )
         pprint.pprint(result)
     else:
