@@ -134,7 +134,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         SubprocVectorEnv(env_fns),
         ShmemVectorEnv(env_fns),
     ]
-    if has_ray():
+    if has_ray() and sys.platform == "linux":
         venv += [RayVectorEnv(env_fns)]
     for v in venv:
         v.seed(0)
