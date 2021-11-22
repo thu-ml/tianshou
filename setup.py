@@ -73,7 +73,6 @@ setup(
             "pydocstyle",
             "doc8",
             "scipy",
-            "dill",
         ],
         "atari": ["atari_py", "opencv-python"],
         "mujoco": ["mujoco_py"],

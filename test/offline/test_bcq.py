@@ -1,9 +1,9 @@
 import argparse
 import datetime
 import os
+import pickle
 import pprint
 
-import dill
 import gym
 import numpy as np
 import torch
@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import BCQPolicy
-from tianshou.trainer import offpolicy_trainer
+from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
@@ -27,17 +27,13 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[200, 150])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--epoch', type=int, default=7)
-    parser.add_argument('--step-per-epoch', type=int, default=8000)
+    parser.add_argument('--step-per-epoch', type=int, default=2000)
     parser.add_argument('--batch-size', type=int, default=256)
-    parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=10)
-    parser.add_argument('--step-per-collect', type=int, default=10)
-    parser.add_argument('--update-per-step', type=float, default=0.125)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
 
@@ -60,17 +56,18 @@ def get_args():
         action='store_true',
         help='watch the play of pre-trained policy only',
     )
+    parser.add_argument(
+        "--load-buffer-name", type=str, default="./expert_SAC_Pendulum-v0.pkl"
+    )
     args = parser.parse_known_args()[0]
     return args
 
 
-def test_bcq():
-    data_path = "./pendulum_data.pkl"
-    if os.path.exists(data_path) and os.path.isfile(data_path):
-        train_collector = dill.load(open(data_path, "rb"))
+def test_bcq(args=get_args()):
+    if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
+        buffer = pickle.load(open(args.load_buffer_name, "rb"))
     else:
-        train_collector = gather_data()
-    args = get_args()
+        buffer = gather_data()
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -80,13 +77,6 @@ def test_bcq():
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]
-    # train_envs = gym.make(args.task)
-    if args.training_num > 1:
-        train_envs = SubprocVectorEnv(
-            [lambda: gym.make(args.task) for _ in range(args.training_num)]
-        )
-    else:
-        train_envs = gym.make(args.task)
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
@@ -94,7 +84,6 @@ def test_bcq():
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
     # model
@@ -203,27 +192,23 @@ def test_bcq():
         collector.collect(n_episode=1, render=1 / 35)
 
     # trainer
-    result = offpolicy_trainer(
+    result = offline_trainer(
         policy,
-        train_collector,
+        buffer,
         test_collector,
         args.epoch,
         args.step_per_epoch,
-        args.step_per_collect,
         args.test_num,
         args.batch_size,
         save_fn=save_fn,
         stop_fn=stop_fn,
         logger=logger,
-        update_per_step=args.update_per_step,
-        test_in_train=False,
     )
     assert stop_fn(result['best_reward'])
 
     # Let's watch its performance!
     if __name__ == '__main__':
         pprint.pprint(result)
-        # Let's watch its performance!
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)

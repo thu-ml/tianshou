@@ -1,7 +1,7 @@
 import argparse
 import os
+import pickle
 
-import dill
 import gym
 import numpy as np
 import torch
@@ -20,7 +20,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer-size', type=int, default=20000)
+    parser.add_argument('--buffer-size', type=int, default=200000)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
@@ -52,12 +52,15 @@ def get_args():
     parser.add_argument('--alpha-lr', type=float, default=3e-4)
     parser.add_argument('--rew-norm', action="store_true", default=False)
     parser.add_argument('--n-step', type=int, default=3)
+    parser.add_argument(
+        "--save-buffer-name", type=str, default="./expert_SAC_Pendulum-v0.pkl"
+    )
     args = parser.parse_known_args()[0]
     return args
 
 
 def gather_data():
-    """return train_collector"""
+    """Return expert buffer data."""
     args = get_args()
     env = gym.make(args.task)
     if args.task == 'Pendulum-v0':
@@ -160,6 +163,8 @@ def gather_data():
         logger=logger,
     )
     train_collector.reset()
-    train_collector.collect(n_step=args.buffer_size)
-    dill.dump(train_collector, open("./pendulum_data.pkl", "wb"))
-    return train_collector
+    result = train_collector.collect(n_step=args.buffer_size)
+    rews, lens = result["rews"], result["lens"]
+    print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
+    pickle.dump(buffer, open(args.save_buffer_name, "wb"))
+    return buffer
