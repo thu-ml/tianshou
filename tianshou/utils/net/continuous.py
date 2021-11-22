@@ -361,7 +361,7 @@ class Perturbation(nn.Module):
 
     def forward(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         # preprocess_net
-        logits = self.preprocess_net(torch.cat([state, action], 1))[0]
+        logits = self.preprocess_net(torch.cat([state, action], -1))[0]
         a = self.phi * self.max_action * torch.tanh(logits)
         # clip to [-max_action, max_action]
         return (a + action).clamp(-self.max_action, self.max_action)
@@ -375,7 +375,7 @@ class VAE(nn.Module):
     :param torch.nn.Module encoder: the encoder in VAE. Its input_dim must be
         state_dim + action_dim, and output_dim must be hidden_dim.
     :param torch.nn.Module decoder: the decoder in VAE. Its input_dim must be
-        state_dim + action_dim, and output_dim must be action_dim.
+        state_dim + latent_dim, and output_dim must be action_dim.
     :param int hidden_dim: the size of the last linear-layer in encoder.
     :param int latent_dim: the size of latent layer.
     :param float max_action: the maximum value of each dimension of action.
@@ -415,18 +415,18 @@ class VAE(nn.Module):
         self, state: torch.Tensor, action: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # [state, action] -> z , [state, z] -> action
-        z = self.encoder(torch.cat([state, action], 1))
-        # shape of z: (state.shape[0], hidden_dim)
+        z = self.encoder(torch.cat([state, action], -1))
+        # shape of z: (state.shape[0:-1], hidden_dim)
 
         mean = self.mean(z)
         # Clamped for numerical stability
         log_std = self.log_std(z).clamp(-4, 15)
         std = torch.exp(log_std)
-        # shape of mean, std: (state.shape[0], latent_dim)
+        # shape of mean, std: (state.shape[0:-1], latent_dim)
 
-        z = mean + std * torch.randn_like(std)  # (state.shape[0], latent_dim)
+        z = mean + std * torch.randn_like(std)  # (state.shape[0:-1], latent_dim)
 
-        u = self.decode(state, z)  # (state.shape[0], action_dim)
+        u = self.decode(state, z)  # (state.shape[0:-1], action_dim)
         return u, mean, std
 
     def decode(
@@ -438,8 +438,8 @@ class VAE(nn.Module):
         if z is None:
             # state.shape[0] may be batch_size
             # latent vector clipped to [-0.5, 0.5]
-            z = torch.randn((state.shape[0], self.latent_dim))\
+            z = torch.randn(state.shape[0:-1] + (self.latent_dim, ))\
                 .to(self.device).clamp(-0.5, 0.5)
 
         # decode z with state!
-        return self.max_action * torch.tanh(self.decoder(torch.cat([state, z], 1)))
+        return self.max_action * torch.tanh(self.decoder(torch.cat([state, z], -1)))
