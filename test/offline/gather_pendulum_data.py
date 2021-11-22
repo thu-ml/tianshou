@@ -169,5 +169,5 @@ def gather_data():
         logger=logger
     )
     train_collector.reset()
-    dill.dump(train_collector, open("test/continuous/pendulum_data.pkl", "wb"))
+    dill.dump(train_collector, open("./pendulum_data.pkl", "wb"))
     return train_collector

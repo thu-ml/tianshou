@@ -2,7 +2,6 @@ import argparse
 import datetime
 import os
 import pprint
-from test.offline.gather_pendulum_data import gather_data
 
 import dill
 import gym
@@ -14,9 +13,14 @@ from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import BCQPolicy
 from tianshou.trainer import offpolicy_trainer
-from tianshou.utils import BasicLogger
+from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
+
+if __name__ == "__main__":
+    from gather_pendulum_data import gather_data
+else:  # pytest
+    from test.offline.gather_pendulum_data import gather_data
 
 
 def get_args():
@@ -69,7 +73,7 @@ def get_args():
 
 
 def test_bcq():
-    data_path = "test/continuous/pendulum_data.pkl"
+    data_path = "./pendulum_data.pkl"
     if os.path.exists(data_path) and os.path.isfile(data_path):
         train_collector = dill.load(open(data_path, "rb"))
     else:
@@ -107,7 +111,7 @@ def test_bcq():
         input_dim=args.state_dim + args.action_dim,
         output_dim=args.action_dim,
         hidden_sizes=args.hidden_sizes,
-        device=args.device
+        device=args.device,
     )
     actor = Perturbation(
         net_a, max_action=args.max_action, device=args.device, phi=args.phi
@@ -119,14 +123,14 @@ def test_bcq():
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device
+        device=args.device,
     )
     net_c2 = Net(
         args.state_shape,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
-        device=args.device
+        device=args.device,
     )
     critic1 = Critic(net_c1, device=args.device).to(args.device)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
@@ -138,7 +142,7 @@ def test_bcq():
     vae_encoder = MLP(
         input_dim=args.state_dim + args.action_dim,
         hidden_sizes=args.vae_hidden_sizes,
-        device=args.device
+        device=args.device,
     )
     if not args.latent_dim:
         args.latent_dim = args.action_dim * 2
@@ -146,7 +150,7 @@ def test_bcq():
         input_dim=args.state_dim + args.latent_dim,
         output_dim=args.action_dim,
         hidden_sizes=args.vae_hidden_sizes,
-        device=args.device
+        device=args.device,
     )
     vae = VAE(
         vae_encoder,
@@ -154,7 +158,7 @@ def test_bcq():
         hidden_dim=args.vae_hidden_sizes[-1],
         latent_dim=args.latent_dim,
         max_action=args.max_action,
-        device=args.device
+        device=args.device,
     ).to(args.device)
     vae_optim = torch.optim.Adam(vae.parameters())
 
@@ -170,7 +174,7 @@ def test_bcq():
         device=args.device,
         gamma=args.gamma,
         tau=args.tau,
-        lmbda=args.lmbda
+        lmbda=args.lmbda,
     )
 
     # load a previous policy
@@ -189,7 +193,7 @@ def test_bcq():
     log_path = os.path.join(args.logdir, args.task, 'bcq', log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    logger = BasicLogger(writer)
+    logger = TensorboardLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
@@ -221,7 +225,7 @@ def test_bcq():
         stop_fn=stop_fn,
         logger=logger,
         update_per_step=args.update_per_step,
-        test_in_train=False
+        test_in_train=False,
     )
     assert stop_fn(result['best_reward'])
 
