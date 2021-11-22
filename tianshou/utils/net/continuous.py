@@ -417,17 +417,17 @@ class VAE(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # [state, action] -> z , [state, z] -> action
         z = self.encoder(torch.cat([state, action], -1))
-        # shape of z: (state.shape[0:-1], hidden_dim)
+        # shape of z: (state.shape[:-1], hidden_dim)
 
         mean = self.mean(z)
         # Clamped for numerical stability
         log_std = self.log_std(z).clamp(-4, 15)
         std = torch.exp(log_std)
-        # shape of mean, std: (state.shape[0:-1], latent_dim)
+        # shape of mean, std: (state.shape[:-1], latent_dim)
 
-        z = mean + std * torch.randn_like(std)  # (state.shape[0:-1], latent_dim)
+        z = mean + std * torch.randn_like(std)  # (state.shape[:-1], latent_dim)
 
-        u = self.decode(state, z)  # (state.shape[0:-1], action_dim)
+        u = self.decode(state, z)  # (state.shape[:-1], action_dim)
         return u, mean, std
 
     def decode(
@@ -439,7 +439,7 @@ class VAE(nn.Module):
         if z is None:
             # state.shape[0] may be batch_size
             # latent vector clipped to [-0.5, 0.5]
-            z = torch.randn(state.shape[0:-1] + (self.latent_dim, ))\
+            z = torch.randn(state.shape[:-1] + (self.latent_dim, )) \
                 .to(self.device).clamp(-0.5, 0.5)
 
         # decode z with state!

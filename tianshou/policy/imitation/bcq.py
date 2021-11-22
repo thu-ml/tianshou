@@ -100,8 +100,8 @@ class BCQPolicy(BasePolicy):
         **kwargs: Any,
     ) -> Batch:
         """Compute action over the given batch data."""
-        # # There is "obs" in the Batch
-        # # obs_group: several groups. Each group has a state.
+        # There is "obs" in the Batch
+        # obs_group: several groups. Each group has a state.
         obs_group: torch.Tensor = to_torch(  # type: ignore
             batch.obs, device=self.device
         )
