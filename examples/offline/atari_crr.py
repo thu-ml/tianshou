@@ -6,10 +6,10 @@ import pprint
 
 import numpy as np
 import torch
-from atari_network import DQN
-from atari_wrapper import wrap_deepmind
 from torch.utils.tensorboard import SummaryWriter
 
+from examples.atari.atari_network import DQN
+from examples.atari.atari_wrapper import wrap_deepmind
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ShmemVectorEnv
 from tianshou.policy import DiscreteCRRPolicy
