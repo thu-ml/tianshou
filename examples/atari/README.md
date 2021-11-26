@@ -154,7 +154,7 @@ We test our CRR implementation on two example tasks (different from author's ver
 
 | Task                   | Online QRDQN | Behavioral | CRR            | CRR w/ CQL        | parameters                                                   |
 | ---------------------- | ---------- | ---------- | ---------------- | ----------------- | ------------------------------------------------------------ |
-| PongNoFrameskip-v4     | 20.5         | 6.8        | -21 (epoch 5)   |  16.1 (epoch 5)  | `python3 atari_crr.py --task "PongNoFrameskip-v4" --load-buffer-name log/PongNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 5` |
-| BreakoutNoFrameskip-v4 | 394.3        | 46.9       | 26.4 (epoch 12) | 125.0 (epoch 12) | `python3 atari_crr.py --task "BreakoutNoFrameskip-v4" --load-buffer-name log/BreakoutNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 12 --min-q-weight 50` |
+| PongNoFrameskip-v4     | 20.5         | 6.8        | -21 (epoch 5)   |  17.7 (epoch 5)  | `python3 atari_crr.py --task "PongNoFrameskip-v4" --load-buffer-name log/PongNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 5` |
+| BreakoutNoFrameskip-v4 | 394.3        | 46.9       | 23.3 (epoch 12) | 76.9 (epoch 12) | `python3 atari_crr.py --task "BreakoutNoFrameskip-v4" --load-buffer-name log/BreakoutNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 12 --min-q-weight 50` |
 
 Note that CRR itself does not work well in Atari tasks but adding CQL loss/regularizer helps.

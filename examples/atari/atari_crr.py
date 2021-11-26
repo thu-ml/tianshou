@@ -15,7 +15,8 @@ from tianshou.env import ShmemVectorEnv
 from tianshou.policy import DiscreteCRRPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.discrete import Actor
+from tianshou.utils.net.common import ActorCritic
+from tianshou.utils.net.discrete import Actor, Critic
 
 
 def get_args():
@@ -91,15 +92,18 @@ def test_discrete_crr(args=get_args()):
     actor = Actor(
         feature_net,
         args.action_shape,
-        device=args.device,
         hidden_sizes=args.hidden_sizes,
+        device=args.device,
         softmax_output=False
     ).to(args.device)
-    critic = DQN(*args.state_shape, args.action_shape,
-                 device=args.device).to(args.device)
-    optim = torch.optim.Adam(
-        list(actor.parameters()) + list(critic.parameters()), lr=args.lr
-    )
+    critic = Critic(
+        feature_net,
+        hidden_sizes=args.hidden_sizes,
+        last_size=np.prod(args.action_shape),
+        device=args.device
+    ).to(args.device)
+    actor_critic = ActorCritic(actor, critic)
+    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     # define policy
     policy = DiscreteCRRPolicy(
         actor,

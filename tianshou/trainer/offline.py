@@ -27,6 +27,7 @@ def offline_trainer(
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
+    test_in_train: bool = True,
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for offline trainer procedure.
 
@@ -65,6 +66,7 @@ def offline_trainer(
     :param BaseLogger logger: A logger that logs statistics during updating/testing.
         Default to a logger that doesn't log anything.
     :param bool verbose: whether to print the information. Default to True.
+    :param bool test_in_train: whether to test in the training phase. Default to True.
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
@@ -75,12 +77,13 @@ def offline_trainer(
     start_time = time.time()
     test_collector.reset_stat()
 
-    test_result = test_episode(
-        policy, test_collector, test_fn, start_epoch, episode_per_test, logger,
-        gradient_step, reward_metric
-    )
-    best_epoch = start_epoch
-    best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
+    if test_in_train:
+        test_result = test_episode(
+            policy, test_collector, test_fn, start_epoch, episode_per_test, logger,
+            gradient_step, reward_metric
+        )
+        best_epoch = start_epoch
+        best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
     if save_fn:
         save_fn(policy)
 
@@ -98,17 +101,18 @@ def offline_trainer(
                 logger.log_update_data(losses, gradient_step)
                 t.set_postfix(**data)
         # test
-        test_result = test_episode(
-            policy, test_collector, test_fn, epoch, episode_per_test, logger,
-            gradient_step, reward_metric
-        )
-        rew, rew_std = test_result["rew"], test_result["rew_std"]
-        if best_epoch < 0 or best_reward < rew:
-            best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
-            if save_fn:
-                save_fn(policy)
+        if test_in_train:
+            test_result = test_episode(
+                policy, test_collector, test_fn, epoch, episode_per_test, logger,
+                gradient_step, reward_metric
+            )
+            rew, rew_std = test_result["rew"], test_result["rew_std"]
+            if best_epoch < 0 or best_reward < rew:
+                best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
+                if save_fn:
+                    save_fn(policy)
         logger.save_data(epoch, 0, gradient_step, save_checkpoint_fn)
-        if verbose:
+        if verbose and test_in_train:
             print(
                 f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
                 f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
