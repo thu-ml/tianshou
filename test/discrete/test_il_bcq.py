@@ -13,7 +13,8 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import DiscreteBCQPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import ActorCritic, Net
+from tianshou.utils.net.discrete import Actor
 
 
 def get_args():
@@ -65,21 +66,16 @@ def test_discrete_bcq(args=get_args()):
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    policy_net = Net(
+    net = Net(
         args.state_shape,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device
-    ).to(args.device)
-    imitation_net = Net(
-        args.state_shape,
-        args.action_shape,
-        hidden_sizes=args.hidden_sizes,
-        device=args.device
-    ).to(args.device)
-    optim = torch.optim.Adam(
-        list(policy_net.parameters()) + list(imitation_net.parameters()), lr=args.lr
     )
+    policy_net = Actor(net, args.action_shape, device=args.device).to(args.device)
+    imitation_net = Actor(net, args.action_shape, device=args.device).to(args.device)
+    actor_critic = ActorCritic(policy_net, imitation_net)
+    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
 
     policy = DiscreteBCQPolicy(
         policy_net,
