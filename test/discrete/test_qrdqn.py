@@ -1,6 +1,5 @@
 import argparse
 import os
-import pickle
 import pprint
 
 import gym
