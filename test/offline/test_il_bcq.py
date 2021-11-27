@@ -70,16 +70,10 @@ def test_discrete_bcq(args=get_args()):
     # model
     net = Net(args.state_shape, args.hidden_sizes[0], device=args.device)
     policy_net = Actor(
-        net,
-        args.action_shape,
-        hidden_sizes=args.hidden_sizes,
-        device=args.device
+        net, args.action_shape, hidden_sizes=args.hidden_sizes, device=args.device
     ).to(args.device)
     imitation_net = Actor(
-        net,
-        args.action_shape,
-        hidden_sizes=args.hidden_sizes,
-        device=args.device
+        net, args.action_shape, hidden_sizes=args.hidden_sizes, device=args.device
     ).to(args.device)
     actor_critic = ActorCritic(policy_net, imitation_net)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
