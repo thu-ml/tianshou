@@ -94,14 +94,14 @@ def test_discrete_bcq(args=get_args()):
         args.action_shape,
         device=args.device,
         hidden_sizes=args.hidden_sizes,
-        softmax_output=False
+        softmax_output=False,
     ).to(args.device)
     imitation_net = Actor(
         feature_net,
         args.action_shape,
         device=args.device,
         hidden_sizes=args.hidden_sizes,
-        softmax_output=False
+        softmax_output=False,
     ).to(args.device)
     actor_critic = ActorCritic(policy_net, imitation_net)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
@@ -171,7 +171,7 @@ def test_discrete_bcq(args=get_args()):
         args.batch_size,
         stop_fn=stop_fn,
         save_fn=save_fn,
-        logger=logger
+        logger=logger,
     )
 
     pprint.pprint(result)

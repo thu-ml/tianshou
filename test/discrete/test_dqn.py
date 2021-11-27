@@ -81,7 +81,7 @@ def test_dqn(args=get_args()):
         optim,
         args.gamma,
         args.n_step,
-        target_update_freq=args.target_update_freq
+        target_update_freq=args.target_update_freq,
     )
     # buffer
     if args.prioritized_replay:
@@ -89,7 +89,7 @@ def test_dqn(args=get_args()):
             args.buffer_size,
             buffer_num=len(train_envs),
             alpha=args.alpha,
-            beta=args.beta
+            beta=args.beta,
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
@@ -138,7 +138,7 @@ def test_dqn(args=get_args()):
         test_fn=test_fn,
         stop_fn=stop_fn,
         save_fn=save_fn,
-        logger=logger
+        logger=logger,
     )
     assert stop_fn(result['best_reward'])
 

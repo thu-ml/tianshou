@@ -94,7 +94,7 @@ def test_discrete_cql(args=get_args()):
         args.num_quantiles,
         args.n_step,
         args.target_update_freq,
-        min_q_weight=args.min_q_weight
+        min_q_weight=args.min_q_weight,
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
@@ -156,7 +156,7 @@ def test_discrete_cql(args=get_args()):
         args.batch_size,
         stop_fn=stop_fn,
         save_fn=save_fn,
-        logger=logger
+        logger=logger,
     )
 
     pprint.pprint(result)

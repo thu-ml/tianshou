@@ -94,13 +94,13 @@ def test_discrete_crr(args=get_args()):
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
-        softmax_output=False
+        softmax_output=False,
     ).to(args.device)
     critic = Critic(
         feature_net,
         hidden_sizes=args.hidden_sizes,
         last_size=np.prod(args.action_shape),
-        device=args.device
+        device=args.device,
     ).to(args.device)
     actor_critic = ActorCritic(actor, critic)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
@@ -114,7 +114,7 @@ def test_discrete_crr(args=get_args()):
         ratio_upper_bound=args.ratio_upper_bound,
         beta=args.beta,
         min_q_weight=args.min_q_weight,
-        target_update_freq=args.target_update_freq
+        target_update_freq=args.target_update_freq,
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
@@ -175,7 +175,7 @@ def test_discrete_crr(args=get_args()):
         args.batch_size,
         stop_fn=stop_fn,
         save_fn=save_fn,
-        logger=logger
+        logger=logger,
     )
 
     pprint.pprint(result)

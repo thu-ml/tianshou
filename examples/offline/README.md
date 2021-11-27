@@ -30,8 +30,7 @@ After 1M steps:
 
 ## Discrete control
 
-For discrete control, we currently use ad hod Atari data generated from a trained QRDQN agent. In the future, we can switch
-to better benchmarks such as the Atari portion of [RL Unplugged](https://github.com/deepmind/deepmind-research/tree/master/rl_unplugged).
+For discrete control, we currently use ad hoc Atari data generated from a trained QRDQN agent. In the future, we can switch to better benchmarks such as the Atari portion of [RL Unplugged](https://github.com/deepmind/deepmind-research/tree/master/rl_unplugged).
 
 ### Gather Data
 
