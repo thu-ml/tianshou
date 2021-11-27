@@ -44,9 +44,6 @@ def get_args():
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
     parser.add_argument(
-        '--save-buffer-name', type=str, default="./expert_QRDQN_CartPole-v0.pkl"
-    )
-    parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
     args = parser.parse_known_args()[0]
@@ -160,14 +157,6 @@ def test_qrdqn(args=get_args()):
         result = collector.collect(n_episode=1, render=args.render)
         rews, lens = result["rews"], result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
-
-    # save buffer in pickle format, for imitation learning unittest
-    buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
-    policy.set_eps(0.9)  # 10% of expert data as demonstrated in the original paper
-    collector = Collector(policy, test_envs, buf, exploration_noise=True)
-    result = collector.collect(n_step=args.buffer_size)
-    pickle.dump(buf, open(args.save_buffer_name, "wb"))
-    print(result["rews"].mean())
 
 
 def test_pqrdqn(args=get_args()):

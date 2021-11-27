@@ -59,7 +59,10 @@ def gather_info(
     """
     duration = time.time() - start_time
     model_time = duration - test_c.collect_time
-    test_speed = test_c.collect_step / test_c.collect_time
+    try:
+        test_speed = test_c.collect_step / test_c.collect_time
+    except ZeroDivisionError:
+        test_speed = 0.0
     result: Dict[str, Union[float, str]] = {
         "test_step": test_c.collect_step,
         "test_episode": test_c.collect_episode,
