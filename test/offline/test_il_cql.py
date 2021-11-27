@@ -10,11 +10,12 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DiscreteBCQPolicy
+from tianshou.policy import DiscreteCQLPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import ActorCritic, Net
-from tianshou.utils.net.discrete import Actor
+from tianshou.utils.net.common import Net
+
+from .gather_cartpole_data import gather_data
 
 
 def get_args():
@@ -22,14 +23,14 @@ def get_args():
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--eps-test", type=float, default=0.001)
-    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--lr", type=float, default=7e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument('--num-quantiles', type=int, default=200)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--target-update-freq", type=int, default=320)
-    parser.add_argument("--unlikely-action-threshold", type=float, default=0.6)
-    parser.add_argument("--imitation-logits-penalty", type=float, default=0.01)
+    parser.add_argument("--min-q-weight", type=float, default=10.)
     parser.add_argument("--epoch", type=int, default=5)
-    parser.add_argument("--update-per-epoch", type=int, default=2000)
+    parser.add_argument("--update-per-epoch", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument("--test-num", type=int, default=100)
@@ -38,24 +39,22 @@ def get_args():
     parser.add_argument(
         "--load-buffer-name",
         type=str,
-        default="./expert_DQN_CartPole-v0.pkl",
+        default="./expert_QRDQN_CartPole-v0.pkl",
     )
     parser.add_argument(
         "--device",
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--save-interval", type=int, default=4)
     args = parser.parse_known_args()[0]
     return args
 
 
-def test_discrete_bcq(args=get_args()):
+def test_discrete_cql(args=get_args()):
     # envs
     env = gym.make(args.task)
     if args.task == 'CartPole-v0':
-        env.spec.reward_threshold = 190  # lower the goal
+        env.spec.reward_threshold = 185  # lower the goal
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     test_envs = DummyVectorEnv(
@@ -70,62 +69,39 @@ def test_discrete_bcq(args=get_args()):
         args.state_shape,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
-        device=args.device
+        device=args.device,
+        softmax=False,
+        num_atoms=args.num_quantiles
     )
-    policy_net = Actor(net, args.action_shape, device=args.device).to(args.device)
-    imitation_net = Actor(net, args.action_shape, device=args.device).to(args.device)
-    actor_critic = ActorCritic(policy_net, imitation_net)
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
+    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
 
-    policy = DiscreteBCQPolicy(
-        policy_net,
-        imitation_net,
+    policy = DiscreteCQLPolicy(
+        net,
         optim,
         args.gamma,
+        args.num_quantiles,
         args.n_step,
         args.target_update_freq,
-        args.eps_test,
-        args.unlikely_action_threshold,
-        args.imitation_logits_penalty,
-    )
+        min_q_weight=args.min_q_weight
+    ).to(args.device)
     # buffer
-    assert os.path.exists(args.load_buffer_name), \
-        "Please run test_dqn.py first to get expert's data buffer."
-    buffer = pickle.load(open(args.load_buffer_name, "rb"))
+    if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
+        buffer = pickle.load(open(args.load_buffer_name, "rb"))
+    else:
+        buffer = gather_data()
 
     # collector
     test_collector = Collector(policy, test_envs, exploration_noise=True)
 
-    log_path = os.path.join(args.logdir, args.task, 'discrete_bcq')
+    log_path = os.path.join(args.logdir, args.task, 'discrete_cql')
     writer = SummaryWriter(log_path)
-    logger = TensorboardLogger(writer, save_interval=args.save_interval)
+    logger = TensorboardLogger(writer)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= env.spec.reward_threshold
-
-    def save_checkpoint_fn(epoch, env_step, gradient_step):
-        # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
-        torch.save(
-            {
-                'model': policy.state_dict(),
-                'optim': optim.state_dict(),
-            }, os.path.join(log_path, 'checkpoint.pth')
-        )
-
-    if args.resume:
-        # load from existing checkpoint
-        print(f"Loading agent under {log_path}")
-        ckpt_path = os.path.join(log_path, 'checkpoint.pth')
-        if os.path.exists(ckpt_path):
-            checkpoint = torch.load(ckpt_path, map_location=args.device)
-            policy.load_state_dict(checkpoint['model'])
-            optim.load_state_dict(checkpoint['optim'])
-            print("Successfully restore policy and optim.")
-        else:
-            print("Fail to restore policy and optim.")
 
     result = offline_trainer(
         policy,
@@ -137,10 +113,9 @@ def test_discrete_bcq(args=get_args()):
         args.batch_size,
         stop_fn=stop_fn,
         save_fn=save_fn,
-        logger=logger,
-        resume_from_log=args.resume,
-        save_checkpoint_fn=save_checkpoint_fn
+        logger=logger
     )
+
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':
@@ -155,10 +130,5 @@ def test_discrete_bcq(args=get_args()):
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
-def test_discrete_bcq_resume(args=get_args()):
-    args.resume = True
-    test_discrete_bcq(args)
-
-
 if __name__ == "__main__":
-    test_discrete_bcq(get_args())
+    test_discrete_cql(get_args())

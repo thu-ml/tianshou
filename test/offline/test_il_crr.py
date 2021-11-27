@@ -16,6 +16,8 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
 
+from .gather_cartpole_data import gather_data
+
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -35,7 +37,7 @@ def get_args():
     parser.add_argument(
         "--load-buffer-name",
         type=str,
-        default="./expert_DQN_CartPole-v0.pkl",
+        default="./expert_QRDQN_CartPole-v0.pkl",
     )
     parser.add_argument(
         "--device",
@@ -61,9 +63,20 @@ def test_discrete_crr(args=get_args()):
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
-    critic = Critic(net, last_size=np.prod(args.action_shape), device=args.device)
+    net = Net(args.state_shape, args.hidden_sizes[0], device=args.device)
+    actor = Actor(
+        net,
+        args.action_shape,
+        hidden_sizes=args.hidden_sizes,
+        device=args.device,
+        softmax_output=False
+    )
+    critic = Critic(
+        net,
+        hidden_sizes=args.hidden_sizes,
+        last_size=np.prod(args.action_shape),
+        device=args.device
+    )
     actor_critic = ActorCritic(actor, critic)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
 
@@ -75,14 +88,15 @@ def test_discrete_crr(args=get_args()):
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer
-    assert os.path.exists(args.load_buffer_name), \
-        "Please run test_dqn.py first to get expert's data buffer."
-    buffer = pickle.load(open(args.load_buffer_name, "rb"))
+    if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
+        buffer = pickle.load(open(args.load_buffer_name, "rb"))
+    else:
+        buffer = gather_data()
 
     # collector
     test_collector = Collector(policy, test_envs, exploration_noise=True)
 
-    log_path = os.path.join(args.logdir, args.task, 'discrete_cql')
+    log_path = os.path.join(args.logdir, args.task, 'discrete_crr')
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
