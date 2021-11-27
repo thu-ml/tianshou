@@ -1,7 +1,6 @@
 import argparse
 import os
 import pickle
-import pprint
 
 import gym
 import numpy as np
