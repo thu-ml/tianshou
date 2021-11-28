@@ -106,8 +106,8 @@ def onpolicy_trainer(
         test_c: Collector = test_collector  # for mypy
         test_collector.reset_stat()
         test_result = test_episode(
-            policy, test_c, test_fn, start_epoch, episode_per_test, logger,
-            env_step, reward_metric
+            policy, test_c, test_fn, start_epoch, episode_per_test, logger, env_step,
+            reward_metric
         )
         best_epoch = start_epoch
         best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
@@ -144,8 +144,8 @@ def onpolicy_trainer(
                 if result["n/ep"] > 0:
                     if test_in_train and stop_fn and stop_fn(result["rew"]):
                         test_result = test_episode(
-                            policy, test_c, test_fn, epoch, episode_per_test,
-                            logger, env_step
+                            policy, test_c, test_fn, epoch, episode_per_test, logger,
+                            env_step
                         )
                         if stop_fn(test_result["rew"]):
                             if save_fn:
@@ -182,8 +182,8 @@ def onpolicy_trainer(
         # test
         if test_collector is not None:
             test_result = test_episode(
-                policy, test_c, test_fn, epoch, episode_per_test, logger,
-                env_step, reward_metric
+                policy, test_c, test_fn, epoch, episode_per_test, logger, env_step,
+                reward_metric
             )
             rew, rew_std = test_result["rew"], test_result["rew_std"]
             if best_epoch < 0 or best_reward < rew:
