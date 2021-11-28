@@ -77,9 +77,10 @@ def offline_trainer(
     best_reward, best_reward_std = 0, 0
 
     if test_collector is not None:
+        test_c: Collector = test_collector
         test_collector.reset_stat()
         test_result = test_episode(
-            policy, test_collector, test_fn, start_epoch, episode_per_test, logger,
+            policy, test_c, test_fn, start_epoch, episode_per_test, logger,
             gradient_step, reward_metric
         )
         best_epoch = start_epoch
@@ -103,7 +104,7 @@ def offline_trainer(
         # test
         if test_collector is not None:
             test_result = test_episode(
-                policy, test_collector, test_fn, epoch, episode_per_test, logger,
+                policy, test_c, test_fn, epoch, episode_per_test, logger,
                 gradient_step, reward_metric
             )
             rew, rew_std = test_result["rew"], test_result["rew_std"]
