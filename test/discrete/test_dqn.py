@@ -1,6 +1,5 @@
 import argparse
 import os
-import pickle
 import pprint
 
 import gym
@@ -43,9 +42,6 @@ def get_args():
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
     parser.add_argument(
-        '--save-buffer-name', type=str, default="./expert_DQN_CartPole-v0.pkl"
-    )
-    parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
     args = parser.parse_known_args()[0]
@@ -85,7 +81,7 @@ def test_dqn(args=get_args()):
         optim,
         args.gamma,
         args.n_step,
-        target_update_freq=args.target_update_freq
+        target_update_freq=args.target_update_freq,
     )
     # buffer
     if args.prioritized_replay:
@@ -93,7 +89,7 @@ def test_dqn(args=get_args()):
             args.buffer_size,
             buffer_num=len(train_envs),
             alpha=args.alpha,
-            beta=args.beta
+            beta=args.beta,
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
@@ -142,7 +138,7 @@ def test_dqn(args=get_args()):
         test_fn=test_fn,
         stop_fn=stop_fn,
         save_fn=save_fn,
-        logger=logger
+        logger=logger,
     )
     assert stop_fn(result['best_reward'])
 
@@ -156,14 +152,6 @@ def test_dqn(args=get_args()):
         result = collector.collect(n_episode=1, render=args.render)
         rews, lens = result["rews"], result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
-
-    # save buffer in pickle format, for imitation learning unittest
-    buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
-    policy.set_eps(0.2)
-    collector = Collector(policy, test_envs, buf, exploration_noise=True)
-    result = collector.collect(n_step=args.buffer_size)
-    pickle.dump(buf, open(args.save_buffer_name, "wb"))
-    print(result["rews"].mean())
 
 
 def test_pdqn(args=get_args()):

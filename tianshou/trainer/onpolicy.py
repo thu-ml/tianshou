@@ -14,7 +14,7 @@ from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 def onpolicy_trainer(
     policy: BasePolicy,
     train_collector: Collector,
-    test_collector: Collector,
+    test_collector: Optional[Collector],
     max_epoch: int,
     step_per_epoch: int,
     repeat_per_collect: int,
@@ -39,7 +39,8 @@ def onpolicy_trainer(
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param Collector train_collector: the collector used for training.
-    :param Collector test_collector: the collector used for testing.
+    :param Collector test_collector: the collector used for testing. If it's None, then
+        no testing will be performed.
     :param int max_epoch: the maximum number of epochs for training. The training
         process might be finished before reaching ``max_epoch`` if ``stop_fn`` is set.
     :param int step_per_epoch: the number of transitions collected per epoch.
@@ -96,14 +97,19 @@ def onpolicy_trainer(
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     train_collector.reset_stat()
-    test_collector.reset_stat()
-    test_in_train = test_in_train and train_collector.policy == policy
-    test_result = test_episode(
-        policy, test_collector, test_fn, start_epoch, episode_per_test, logger,
-        env_step, reward_metric
+    test_in_train = test_in_train and (
+        train_collector.policy == policy and test_collector is not None
     )
-    best_epoch = start_epoch
-    best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
+
+    if test_collector is not None:
+        test_c: Collector = test_collector  # for mypy
+        test_collector.reset_stat()
+        test_result = test_episode(
+            policy, test_c, test_fn, start_epoch, episode_per_test, logger, env_step,
+            reward_metric
+        )
+        best_epoch = start_epoch
+        best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
     if save_fn:
         save_fn(policy)
 
@@ -137,8 +143,8 @@ def onpolicy_trainer(
                 if result["n/ep"] > 0:
                     if test_in_train and stop_fn and stop_fn(result["rew"]):
                         test_result = test_episode(
-                            policy, test_collector, test_fn, epoch, episode_per_test,
-                            logger, env_step
+                            policy, test_c, test_fn, epoch, episode_per_test, logger,
+                            env_step
                         )
                         if stop_fn(test_result["rew"]):
                             if save_fn:
@@ -172,24 +178,32 @@ def onpolicy_trainer(
                 t.set_postfix(**data)
             if t.n <= t.total:
                 t.update()
-        # test
-        test_result = test_episode(
-            policy, test_collector, test_fn, epoch, episode_per_test, logger, env_step,
-            reward_metric
-        )
-        rew, rew_std = test_result["rew"], test_result["rew_std"]
-        if best_epoch < 0 or best_reward < rew:
-            best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
-            if save_fn:
-                save_fn(policy)
         logger.save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
-        if verbose:
-            print(
-                f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
-                f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
+        # test
+        if test_collector is not None:
+            test_result = test_episode(
+                policy, test_c, test_fn, epoch, episode_per_test, logger, env_step,
+                reward_metric
             )
-        if stop_fn and stop_fn(best_reward):
-            break
-    return gather_info(
-        start_time, train_collector, test_collector, best_reward, best_reward_std
-    )
+            rew, rew_std = test_result["rew"], test_result["rew_std"]
+            if best_epoch < 0 or best_reward < rew:
+                best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
+                if save_fn:
+                    save_fn(policy)
+            if verbose:
+                print(
+                    f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
+                    f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
+                )
+            if stop_fn and stop_fn(best_reward):
+                break
+
+    if test_collector is None and save_fn:
+        save_fn(policy)
+
+    if test_collector is None:
+        return gather_info(start_time, train_collector, None, 0.0, 0.0)
+    else:
+        return gather_info(
+            start_time, train_collector, test_collector, best_reward, best_reward_std
+        )
