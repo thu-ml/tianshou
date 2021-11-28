@@ -100,6 +100,7 @@ def offline_trainer(
                     data[k] = f"{losses[k]:.3f}"
                 logger.log_update_data(losses, gradient_step)
                 t.set_postfix(**data)
+        logger.save_data(epoch, 0, gradient_step, save_checkpoint_fn)
         # test
         if test_collector is not None:
             test_result = test_episode(
@@ -116,9 +117,8 @@ def offline_trainer(
                     f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
                     f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
                 )
-        logger.save_data(epoch, 0, gradient_step, save_checkpoint_fn)
-        if stop_fn and stop_fn(best_reward):
-            break
+            if stop_fn and stop_fn(best_reward):
+                break
 
     if test_collector is None and save_fn:
         save_fn(policy)

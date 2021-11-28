@@ -15,7 +15,10 @@ from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
-from .gather_cartpole_data import gather_data
+if __name__ == "__main__":
+    from gather_cartpole_data import gather_data
+else:  # pytest
+    from test.offline.gather_cartpole_data import gather_data
 
 
 def get_args():

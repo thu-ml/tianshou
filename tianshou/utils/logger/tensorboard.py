@@ -35,6 +35,7 @@ class TensorboardLogger(BaseLogger):
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
         for k, v in data.items():
             self.writer.add_scalar(k, v, global_step=step)
+        self.writer.flush()  # issue #482
 
     def save_data(
         self,
