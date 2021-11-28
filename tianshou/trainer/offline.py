@@ -14,7 +14,7 @@ from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 def offline_trainer(
     policy: BasePolicy,
     buffer: ReplayBuffer,
-    test_collector: Collector,
+    test_collector: Optional[Collector],
     max_epoch: int,
     update_per_epoch: int,
     episode_per_test: int,
@@ -27,14 +27,14 @@ def offline_trainer(
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
-    disable_test: bool = False,
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for offline trainer procedure.
 
     The "step" in offline trainer means a gradient step.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
-    :param Collector test_collector: the collector used for testing.
+    :param Collector test_collector: the collector used for testing. If it's None, then
+        no testing will be performed.
     :param int max_epoch: the maximum number of epochs for training. The training
         process might be finished before reaching ``max_epoch`` if ``stop_fn`` is set.
     :param int update_per_epoch: the number of policy network updates, so-called
@@ -66,7 +66,6 @@ def offline_trainer(
     :param BaseLogger logger: A logger that logs statistics during updating/testing.
         Default to a logger that doesn't log anything.
     :param bool verbose: whether to print the information. Default to True.
-    :param bool disable_test: whether to run tests at all. Default to False.
 
     :return: See :func:`~tianshou.trainer.gather_info`.
     """
@@ -75,10 +74,10 @@ def offline_trainer(
         start_epoch, _, gradient_step = logger.restore_data()
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
-    test_collector.reset_stat()
     best_reward, best_reward_std = 0, 0
 
-    if not disable_test:
+    if test_collector is not None:
+        test_collector.reset_stat()
         test_result = test_episode(
             policy, test_collector, test_fn, start_epoch, episode_per_test, logger,
             gradient_step, reward_metric
@@ -102,7 +101,7 @@ def offline_trainer(
                 logger.log_update_data(losses, gradient_step)
                 t.set_postfix(**data)
         # test
-        if not disable_test:
+        if test_collector is not None:
             test_result = test_episode(
                 policy, test_collector, test_fn, epoch, episode_per_test, logger,
                 gradient_step, reward_metric
@@ -112,16 +111,16 @@ def offline_trainer(
                 best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
                 if save_fn:
                     save_fn(policy)
+            if verbose:
+                print(
+                    f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
+                    f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
+                )
         logger.save_data(epoch, 0, gradient_step, save_checkpoint_fn)
-        if verbose and not disable_test:
-            print(
-                f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
-                f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
-            )
         if stop_fn and stop_fn(best_reward):
             break
 
-    if disable_test and save_fn:
+    if test_collector is None and save_fn:
         save_fn(policy)
 
     return gather_info(start_time, None, test_collector, best_reward, best_reward_std)
