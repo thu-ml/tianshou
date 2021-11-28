@@ -91,7 +91,7 @@ def offpolicy_trainer(
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
     train_collector.reset_stat()
-    best_reward, best_reward_std = 0, 0
+    best_reward, best_reward_std = 0.0, 0.0
     test_in_train = test_in_train and (
         train_collector.policy == policy and test_collector is not None
     )

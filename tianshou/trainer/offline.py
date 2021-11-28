@@ -74,7 +74,7 @@ def offline_trainer(
         start_epoch, _, gradient_step = logger.restore_data()
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
-    best_reward, best_reward_std = 0, 0
+    best_reward, best_reward_std = 0.0, 0.0
 
     if test_collector is not None:
         test_c: Collector = test_collector
