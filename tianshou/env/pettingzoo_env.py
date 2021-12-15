@@ -17,20 +17,19 @@ class PettingZooEnv(AECEnv):
         self.rewards = [0] * len(self.agents)
 
         # Get first observation space, assuming all agents have equal space
-        self.observation_space = self.observation_spaces[self.agents[0]]
+        self.observation_space = self.observation_space(self.agents[0])
 
         # Get first action space, assuming all agents have equal space
-        self.action_space = self.action_spaces[self.agents[0]]
+        self.action_space = self.action_space(self.agents[0])
 
-        assert all(obs_space == self.observation_space
-                   for obs_space
-                   in self.env.observation_spaces.values()), \
+        assert all(self.env.observation_space(agent) == self.observation_space
+                   for agent in self.agents), \
             "Observation spaces for all agents must be identical. Perhaps " \
             "SuperSuit's pad_observations wrapper can help (useage: " \
             "`supersuit.aec_wrappers.pad_observations(env)`"
 
-        assert all(act_space == self.action_space
-                   for act_space in self.env.action_spaces.values()), \
+        assert all(self.env.action_space(agent) == self.action_space
+                   for agent in self.agents), \
             "Action spaces for all agents must be identical. Perhaps " \
             "SuperSuit's pad_action_space wrapper can help (useage: " \
             "`supersuit.aec_wrappers.pad_action_space(env)`"
@@ -50,7 +49,7 @@ class PettingZooEnv(AECEnv):
             return {
                 'agent_id': self.env.agent_selection,
                 'obs': observation,
-                'mask': [True] * self.action_spaces[self.env.agent_selection].n
+                'mask': [True] * self.env.action_space(self.env.agent_selection).n
             }
 
     def step(self, action):
@@ -66,7 +65,7 @@ class PettingZooEnv(AECEnv):
             obs = {
                 'agent_id': self.env.agent_selection,
                 'obs': observation,
-                'mask': [True] * self.action_spaces[self.env.agent_selection].n
+                'mask': [True] * self.env.action_space(self.env.agent_selection).n
             }
 
         for agent_id, reward in self.env.rewards.items():
