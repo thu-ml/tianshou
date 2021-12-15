@@ -58,7 +58,7 @@ class Collector(object):
         exploration_noise: bool = False,
     ) -> None:
         super().__init__()
-        if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
+        if (isinstance(env, gym.Env) or isinstance(env, pettingzoo.AECEnv)) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
             env = DummyVectorEnv([lambda: env])
         self.env = env
