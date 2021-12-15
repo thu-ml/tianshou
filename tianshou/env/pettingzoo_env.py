@@ -1,9 +1,12 @@
+from pettingzoo.utils.wrappers import BaseWrapper
 from pettingzoo.utils.env import AECEnv
+from typing import Any, Dict, List, Tuple
 
 
 class PettingZooEnv(AECEnv):
 
-    def __init__(self, env):
+    def __init__(self, env: BaseWrapper):
+        super().__init__()
         self.env = env
         # agent idx list
         self.agents = self.env.possible_agents
@@ -17,10 +20,10 @@ class PettingZooEnv(AECEnv):
         self.rewards = [0] * len(self.agents)
 
         # Get first observation space, assuming all agents have equal space
-        self.observation_space = self.observation_space(self.agents[0])
+        self.observation_space: Any = self.observation_space(self.agents[0])
 
         # Get first action space, assuming all agents have equal space
-        self.action_space = self.action_space(self.agents[0])
+        self.action_space: Any = self.action_space(self.agents[0])
 
         assert all(self.env.observation_space(agent) == self.observation_space
                    for agent in self.agents), \
@@ -36,7 +39,7 @@ class PettingZooEnv(AECEnv):
 
         self.reset()
 
-    def reset(self):
+    def reset(self) -> dict:
         self.env.reset()
         observation = self.env.observe(self.env.agent_selection)
         if isinstance(observation, dict) and 'action_mask' in observation:
@@ -44,7 +47,7 @@ class PettingZooEnv(AECEnv):
                 'agent_id': self.env.agent_selection,
                 'obs': observation['observation'],
                 'mask':
-                [True if obm == 1 else False for obm in observation['action_mask']]
+                    [True if obm == 1 else False for obm in observation['action_mask']]
             }
         else:
             return {
@@ -53,7 +56,7 @@ class PettingZooEnv(AECEnv):
                 'mask': [True] * self.env.action_space(self.env.agent_selection).n
             }
 
-    def step(self, action):
+    def step(self, action: Any) -> Tuple[Dict, List[int], bool, Dict]:
         self.env.step(action)
         observation, rew, done, info = self.env.last()
         if isinstance(observation, dict) and 'action_mask' in observation:
@@ -61,7 +64,7 @@ class PettingZooEnv(AECEnv):
                 'agent_id': self.env.agent_selection,
                 'obs': observation['observation'],
                 'mask':
-                [True if obm == 1 else False for obm in observation['action_mask']]
+                    [True if obm == 1 else False for obm in observation['action_mask']]
             }
         else:
             obs = {
@@ -74,11 +77,11 @@ class PettingZooEnv(AECEnv):
             self.rewards[self.agent_idx[agent_id]] = reward
         return obs, self.rewards, done, info
 
-    def close(self):
+    def close(self) -> None:
         self.env.close()
 
-    def seed(self, seed=None):
+    def seed(self, seed: Any = None) -> None:
         self.env.seed(seed)
 
-    def render(self, mode="human"):
+    def render(self, mode: str = "human") -> Any:
         return self.env.render(mode)
