@@ -323,7 +323,10 @@ class DummyVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: List[Callable[[], Union[gym.Env, pettingzoo.AECEnv]]], **kwargs: Any) -> None:
+    def __init__(
+        self, env_fns: List[Callable[[], Union[gym.Env, pettingzoo.AECEnv]]],
+        **kwargs: Any
+    ) -> None:
         super().__init__(env_fns, DummyEnvWorker, **kwargs)
 
 

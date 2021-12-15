@@ -1,26 +1,17 @@
 import argparse
 import os
-from copy import deepcopy
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 import gym
 import numpy as np
-import torch
-
 import pettingzoo.butterfly.pistonball_v4 as pistonball_v4
-
-from tianshou.env.pettingzoo_env import PettingZooEnv
-
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import (
-    BasePolicy,
-    DQNPolicy,
-    MultiAgentPolicyManager,
-    RandomPolicy,
-)
+from tianshou.env.pettingzoo_env import PettingZooEnv
+from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -36,14 +27,19 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--gamma', type=float, default=0.9, help='a smaller gamma favors earlier win'
     )
-    parser.add_argument('--n-pistons', type=int, default=20, help='Number of pistons(agents) in the env')
-    parser.add_argument('--n-step', type=int, default=3)
+    parser.add_argument(
+        '--n-pistons',
+        type=int,
+        default=20,
+        help='Number of pistons(agents) in the env'
+    )
+    parser.add_argument('--n-step', type=int, default=200)
     parser.add_argument('--target-update-freq', type=int, default=320)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=5000)
     parser.add_argument('--step-per-collect', type=int, default=10)
     parser.add_argument('--update-per-step', type=float, default=0.1)
-    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--batch-size', type=int, default=200)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
     parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
@@ -56,7 +52,7 @@ def get_parser() -> argparse.ArgumentParser:
         default=False,
         action='store_true',
         help='no training, '
-             'watch the play of pre-trained models'
+        'watch the play of pre-trained models'
     )
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
@@ -74,13 +70,14 @@ def get_env(args: argparse.Namespace = get_args()):
 
 
 def get_agents(
-        args: argparse.Namespace = get_args(),
-        agents: Optional[List[BasePolicy]] = None,
-        optims: Optional[List[torch.optim.Optimizer]] = None,
+    args: argparse.Namespace = get_args(),
+    agents: Optional[List[BasePolicy]] = None,
+    optims: Optional[List[torch.optim.Optimizer]] = None,
 ) -> Tuple[BasePolicy, List[torch.optim.Optimizer], List]:
     env = get_env()
-    observation_space = env.observation_space['observation'] if isinstance(env.observation_space,
-                                                                           gym.spaces.Dict) else env.observation_space
+    observation_space = env.observation_space['observation'] if isinstance(
+        env.observation_space, gym.spaces.Dict
+    ) else env.observation_space
     args.state_shape = observation_space.shape or observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     if agents is None:
@@ -110,9 +107,9 @@ def get_agents(
 
 
 def train_agent(
-        args: argparse.Namespace = get_args(),
-        agents: Optional[List[BasePolicy]] = None,
-        optims: Optional[List[torch.optim.Optimizer]] = None,
+    args: argparse.Namespace = get_args(),
+    agents: Optional[List[BasePolicy]] = None,
+    optims: Optional[List[torch.optim.Optimizer]] = None,
 ) -> Tuple[dict, BasePolicy]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
@@ -178,8 +175,7 @@ def train_agent(
 
 
 def watch(
-        args: argparse.Namespace = get_args(),
-        policy: Optional[BasePolicy] = None
+    args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None
 ) -> None:
     env = get_env()
     policy.eval()

@@ -6,15 +6,12 @@ from typing import Optional, Tuple
 import gym
 import numpy as np
 import torch
-
 from pettingzoo.classic import tictactoe_v3
-
-from tianshou.env.pettingzoo_env import PettingZooEnv
-
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
+from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import (
     BasePolicy,
     DQNPolicy,
@@ -25,7 +22,6 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
-from pettingzoo.classic import go_v5
 
 def get_env():
     return PettingZooEnv(tictactoe_v3.env())
@@ -48,40 +44,45 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--step-per-collect', type=int, default=10)
     parser.add_argument('--update-per-step', type=float, default=0.1)
     parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128])
+    parser.add_argument(
+        '--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128]
+    )
     parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument(
-        '--win-rate', type=float, default=0.6, help='the expected winning rate: Optimal policy can get 0.7'
+        '--win-rate',
+        type=float,
+        default=0.6,
+        help='the expected winning rate: Optimal policy can get 0.7'
     )
     parser.add_argument(
         '--watch',
         default=False,
         action='store_true',
         help='no training, '
-             'watch the play of pre-trained models'
+        'watch the play of pre-trained models'
     )
     parser.add_argument(
         '--agent-id',
         type=int,
         default=2,
         help='the learned agent plays as the'
-             ' agent_id-th player. Choices are 1 and 2.'
+        ' agent_id-th player. Choices are 1 and 2.'
     )
     parser.add_argument(
         '--resume-path',
         type=str,
         default='',
         help='the path of agent pth file '
-             'for resuming from a pre-trained agent'
+        'for resuming from a pre-trained agent'
     )
     parser.add_argument(
         '--opponent-path',
         type=str,
         default='',
         help='the path of opponent agent pth file '
-             'for resuming from a pre-trained agent'
+        'for resuming from a pre-trained agent'
     )
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
@@ -101,7 +102,9 @@ def get_agents(
     optim: Optional[torch.optim.Optimizer] = None,
 ) -> Tuple[BasePolicy, torch.optim.Optimizer, list]:
     env = get_env()
-    observation_space = env.observation_space['observation'] if isinstance(env.observation_space, gym.spaces.Dict) else env.observation_space
+    observation_space = env.observation_space['observation'] if isinstance(
+        env.observation_space, gym.spaces.Dict
+    ) else env.observation_space
     args.state_shape = observation_space.shape or observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     if agent_learn is None:
@@ -181,7 +184,9 @@ def train_agent(
             model_save_path = os.path.join(
                 args.logdir, 'tic_tac_toe', 'dqn', 'policy.pth'
             )
-        torch.save(policy.policies[agents[args.agent_id - 1]].state_dict(), model_save_path)
+        torch.save(
+            policy.policies[agents[args.agent_id - 1]].state_dict(), model_save_path
+        )
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.win_rate
@@ -193,7 +198,7 @@ def train_agent(
         policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
 
     def reward_metric(rews):
-        return rews[:, args.agent_id - 1 ]
+        return rews[:, args.agent_id - 1]
 
     # trainer
     result = offpolicy_trainer(
