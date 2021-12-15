@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 import gym
 import numpy as np
+import pettingzoo
 import torch
 
 from tianshou.data import (
@@ -51,7 +52,7 @@ class Collector(object):
     def __init__(
         self,
         policy: BasePolicy,
-        env: Union[gym.Env, BaseVectorEnv],
+        env: Union[gym.Env, BaseVectorEnv, pettingzoo.AECEnv],
         buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
         exploration_noise: bool = False,
