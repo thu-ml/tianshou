@@ -43,7 +43,7 @@ class PettingZooEnv(AECEnv):
             return {
                 'agent_id': self.env.agent_selection,
                 'obs': observation['observation'],
-                'mask': observation['action_mask']
+                'mask': [True if obm == 1 else False for obm in observation['action_mask']]
             }
         else:
             return {
@@ -59,7 +59,7 @@ class PettingZooEnv(AECEnv):
             obs = {
                 'agent_id': self.env.agent_selection,
                 'obs': observation['observation'],
-                'mask': observation['action_mask']
+                'mask': [True if obm == 1 else False for obm in observation['action_mask']]
             }
         else:
             obs = {
