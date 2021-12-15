@@ -11,7 +11,11 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager
+from tianshou.policy import (
+    BasePolicy,
+    DQNPolicy,
+    MultiAgentPolicyManager
+)
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -30,23 +34,21 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--n-pistons',
         type=int,
-        default=20,
+        default=3,
         help='Number of pistons(agents) in the env'
     )
-    parser.add_argument('--n-step', type=int, default=200)
+    parser.add_argument('--n-step', type=int, default=100)
     parser.add_argument('--target-update-freq', type=int, default=320)
-    parser.add_argument('--epoch', type=int, default=100)
-    parser.add_argument('--step-per-epoch', type=int, default=5000)
+    parser.add_argument('--epoch', type=int, default=3)
+    parser.add_argument('--step-per-epoch', type=int, default=500)
     parser.add_argument('--step-per-collect', type=int, default=10)
     parser.add_argument('--update-per-step', type=float, default=0.1)
-    parser.add_argument('--batch-size', type=int, default=200)
+    parser.add_argument('--batch-size', type=int, default=100)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
     parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument(
-        '--win-rate', type=float, default=0.9, help='the expected winning rate'
-    )
+
     parser.add_argument(
         '--watch',
         default=False,
@@ -140,7 +142,7 @@ def train_agent(
         pass
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= args.win_rate
+        return False
 
     def train_fn(epoch, env_step):
         [agent.set_eps(args.eps_train) for agent in policy.policies.values()]
