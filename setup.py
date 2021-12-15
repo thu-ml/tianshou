@@ -75,6 +75,8 @@ setup(
             "doc8",
             "scipy",
             "pillow",
+            "pygame>=2.1.0",  # pettingzoo test cases pistonball
+            "pymunk>=6.2.1",  # pettingzoo test cases pistonball
         ],
         "atari": ["atari_py", "opencv-python"],
         "mujoco": ["mujoco_py"],
