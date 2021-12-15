@@ -1,6 +1,7 @@
-from pettingzoo.utils.wrappers import BaseWrapper
-from pettingzoo.utils.env import AECEnv
 from typing import Any, Dict, List, Tuple
+
+from pettingzoo.utils.env import AECEnv
+from pettingzoo.utils.wrappers import BaseWrapper
 
 
 class PettingZooEnv(AECEnv):
@@ -47,7 +48,7 @@ class PettingZooEnv(AECEnv):
                 'agent_id': self.env.agent_selection,
                 'obs': observation['observation'],
                 'mask':
-                    [True if obm == 1 else False for obm in observation['action_mask']]
+                [True if obm == 1 else False for obm in observation['action_mask']]
             }
         else:
             return {
@@ -64,7 +65,7 @@ class PettingZooEnv(AECEnv):
                 'agent_id': self.env.agent_selection,
                 'obs': observation['observation'],
                 'mask':
-                    [True if obm == 1 else False for obm in observation['action_mask']]
+                [True if obm == 1 else False for obm in observation['action_mask']]
             }
         else:
             obs = {
