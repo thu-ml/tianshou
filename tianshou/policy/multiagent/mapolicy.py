@@ -1,9 +1,10 @@
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 from pettingzoo.utils.env import AECEnv
-from typing import Any, Dict, List, Tuple, Union, Optional
 
-from tianshou.policy import BasePolicy
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.policy import BasePolicy
 
 
 class MultiAgentPolicyManager(BasePolicy):
@@ -18,8 +19,11 @@ class MultiAgentPolicyManager(BasePolicy):
 
     def __init__(self, policies: List[BasePolicy], env: AECEnv, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        assert (len(policies) == len(env.agents)), "One policy must be \
+        assert (
+            len(policies) == len(env.agents)
+        ), "One policy must be \
         assigned for each agent."
+
         self.agent_idx = env.agent_idx
         for i, policy in enumerate(policies):
             # agent_id 0 is reserved for the environment proxy
@@ -49,31 +53,30 @@ class MultiAgentPolicyManager(BasePolicy):
             # Since we do not override buffer.__setattr__, here we use _meta to
             # change buffer.rew, otherwise buffer.rew = Batch() has no effect.
             save_rew, buffer._meta.rew = buffer.rew, Batch()
-        for agent_id, policy in self.policies.items():
-            agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
+        for agent, policy in self.policies.items():
+            agent_index = np.nonzero(batch.obs.agent_id == agent)[0]
             if len(agent_index) == 0:
-                results[agent_id] = Batch()
+                results[agent] = Batch()
                 continue
             tmp_batch, tmp_indice = batch[agent_index], indice[agent_index]
             if has_rew:
-                tmp_batch.rew = tmp_batch.rew[:, policy.agent_id - 1]
-                buffer._meta.rew = save_rew[:, policy.agent_id - 1]
-            results[policy.agent_id] = policy.process_fn(
-                tmp_batch, buffer, tmp_indice)
+                tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent]]
+                buffer._meta.rew = save_rew[:, self.agent_idx[agent]]
+            results[agent] = policy.process_fn(tmp_batch, buffer, tmp_indice)
         if has_rew:  # restore from save_rew
             buffer._meta.rew = save_rew
         return Batch(results)
 
-    def exploration_noise(
-        self, act: Union[np.ndarray, Batch], batch: Batch
-    ) -> Union[np.ndarray, Batch]:
+    def exploration_noise(self, act: Union[np.ndarray, Batch],
+                          batch: Batch) -> Union[np.ndarray, Batch]:
         """Add exploration noise from sub-policy onto act."""
         for agent_id, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
                 continue
             act[agent_index] = policy.exploration_noise(
-                act[agent_index], batch[agent_index])
+                act[agent_index], batch[agent_index]
+            )
         return act
 
     def forward(  # type: ignore
@@ -105,8 +108,8 @@ class MultiAgentPolicyManager(BasePolicy):
                     "agent_n": xxx}
             }
         """
-        results: List[Tuple[bool, np.ndarray, Batch,
-                            Union[np.ndarray, Batch], Batch]] = []
+        results: List[Tuple[bool, np.ndarray, Batch, Union[np.ndarray, Batch],
+                            Batch]] = []
         for agent_id, policy in self.policies.items():
             # This part of code is difficult to understand.
             # Let's follow an example with two agents
@@ -124,20 +127,27 @@ class MultiAgentPolicyManager(BasePolicy):
             if isinstance(tmp_batch.rew, np.ndarray):
                 # reward can be empty Batch (after initial reset) or nparray.
                 tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent_id]]
-            out = policy(batch=tmp_batch, state=None if state is None
-                         else state[agent_id],
-                         **kwargs)
+            out = policy(
+                batch=tmp_batch,
+                state=None if state is None else state[agent_id],
+                **kwargs
+            )
             act = out.act
             each_state = out.state \
                 if (hasattr(out, "state") and out.state is not None) \
                 else Batch()
             results.append((True, agent_index, out, act, each_state))
-        holder = Batch.cat([{"act": act} for
-                            (has_data, agent_index, out, act, each_state)
-                            in results if has_data])
+        holder = Batch.cat(
+            [
+                {
+                    "act": act
+                } for (has_data, agent_index, out, act, each_state) in results
+                if has_data
+            ]
+        )
         state_dict, out_dict = {}, {}
-        for (agent_id, _), (has_data, agent_index, out, act, state) in zip(
-                self.policies.items(), results):
+        for (agent_id, _), (has_data, agent_index, out, act,
+                            state) in zip(self.policies.items(), results):
             if has_data:
                 holder.act[agent_index] = act
             state_dict[agent_id] = state
@@ -146,9 +156,8 @@ class MultiAgentPolicyManager(BasePolicy):
         holder["state"] = state_dict
         return holder
 
-    def learn(
-        self, batch: Batch, **kwargs: Any
-    ) -> Dict[str, Union[float, List[float]]]:
+    def learn(self, batch: Batch,
+              **kwargs: Any) -> Dict[str, Union[float, List[float]]]:
         """Dispatch the data to all policies for learning.
 
         :return: a dict with the following contents:
