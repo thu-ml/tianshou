@@ -12,7 +12,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import offpolicy_trainer, onpolicy_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
 
 
@@ -74,9 +74,7 @@ def test_a2c_with_il(args=get_args()):
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
     critic = Critic(net, device=args.device).to(args.device)
-    optim = torch.optim.Adam(
-        set(actor.parameters()).union(critic.parameters()), lr=args.lr
-    )
+    optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
         actor,

@@ -13,8 +13,11 @@ class DummyEnvWorker(EnvWorker):
         self.env = env_fn()
         super().__init__(env_fn)
 
-    def __getattr__(self, key: str) -> Any:
+    def get_env_attr(self, key: str) -> Any:
         return getattr(self.env, key)
+
+    def set_env_attr(self, key: str, value: Any) -> None:
+        setattr(self.env, key, value)
 
     def reset(self) -> Any:
         return self.env.reset()

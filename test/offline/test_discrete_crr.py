@@ -10,23 +10,26 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import DiscreteCQLPolicy
+from tianshou.policy import DiscreteCRRPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import ActorCritic, Net
+from tianshou.utils.net.discrete import Actor, Critic
+
+if __name__ == "__main__":
+    from gather_cartpole_data import gather_data
+else:  # pytest
+    from test.offline.gather_cartpole_data import gather_data
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=7e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument('--num-quantiles', type=int, default=200)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--target-update-freq", type=int, default=320)
-    parser.add_argument("--min-q-weight", type=float, default=10.)
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--update-per-epoch", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=64)
@@ -48,11 +51,11 @@ def get_args():
     return args
 
 
-def test_discrete_cql(args=get_args()):
+def test_discrete_crr(args=get_args()):
     # envs
     env = gym.make(args.task)
     if args.task == 'CartPole-v0':
-        env.spec.reward_threshold = 185  # lower the goal
+        env.spec.reward_threshold = 190  # lower the goal
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     test_envs = DummyVectorEnv(
@@ -63,34 +66,40 @@ def test_discrete_cql(args=get_args()):
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = Net(
-        args.state_shape,
+    net = Net(args.state_shape, args.hidden_sizes[0], device=args.device)
+    actor = Actor(
+        net,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
-        softmax=False,
-        num_atoms=args.num_quantiles
+        softmax_output=False
     )
-    optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-
-    policy = DiscreteCQLPolicy(
+    critic = Critic(
         net,
+        hidden_sizes=args.hidden_sizes,
+        last_size=np.prod(args.action_shape),
+        device=args.device
+    )
+    actor_critic = ActorCritic(actor, critic)
+    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
+
+    policy = DiscreteCRRPolicy(
+        actor,
+        critic,
         optim,
         args.gamma,
-        args.num_quantiles,
-        args.n_step,
-        args.target_update_freq,
-        min_q_weight=args.min_q_weight
+        target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer
-    assert os.path.exists(args.load_buffer_name), \
-        "Please run test_qrdqn.py first to get expert's data buffer."
-    buffer = pickle.load(open(args.load_buffer_name, "rb"))
+    if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
+        buffer = pickle.load(open(args.load_buffer_name, "rb"))
+    else:
+        buffer = gather_data()
 
     # collector
     test_collector = Collector(policy, test_envs, exploration_noise=True)
 
-    log_path = os.path.join(args.logdir, args.task, 'discrete_cql')
+    log_path = os.path.join(args.logdir, args.task, 'discrete_crr')
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
@@ -120,7 +129,6 @@ def test_discrete_cql(args=get_args()):
         # Let's watch its performance!
         env = gym.make(args.task)
         policy.eval()
-        policy.set_eps(args.eps_test)
         collector = Collector(policy, env)
         result = collector.collect(n_episode=1, render=args.render)
         rews, lens = result["rews"], result["lens"]
@@ -128,4 +136,4 @@ def test_discrete_cql(args=get_args()):
 
 
 if __name__ == "__main__":
-    test_discrete_cql(get_args())
+    test_discrete_crr(get_args())

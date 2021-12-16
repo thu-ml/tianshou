@@ -67,7 +67,7 @@ setup(
             "isort",
             "pytest",
             "pytest-cov",
-            "ray>=1.0.0",
+            "ray>=1.0.0,<1.7.0",
             "wandb>=0.12.0",
             "networkx",
             "mypy",

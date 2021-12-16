@@ -13,7 +13,13 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import DiscreteBCQPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import ActorCritic, Net
+from tianshou.utils.net.discrete import Actor
+
+if __name__ == "__main__":
+    from gather_cartpole_data import gather_data
+else:  # pytest
+    from test.offline.gather_cartpole_data import gather_data
 
 
 def get_args():
@@ -37,7 +43,7 @@ def get_args():
     parser.add_argument(
         "--load-buffer-name",
         type=str,
-        default="./expert_DQN_CartPole-v0.pkl",
+        default="./expert_QRDQN_CartPole-v0.pkl",
     )
     parser.add_argument(
         "--device",
@@ -65,21 +71,15 @@ def test_discrete_bcq(args=get_args()):
     torch.manual_seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    policy_net = Net(
-        args.state_shape,
-        args.action_shape,
-        hidden_sizes=args.hidden_sizes,
-        device=args.device
+    net = Net(args.state_shape, args.hidden_sizes[0], device=args.device)
+    policy_net = Actor(
+        net, args.action_shape, hidden_sizes=args.hidden_sizes, device=args.device
     ).to(args.device)
-    imitation_net = Net(
-        args.state_shape,
-        args.action_shape,
-        hidden_sizes=args.hidden_sizes,
-        device=args.device
+    imitation_net = Actor(
+        net, args.action_shape, hidden_sizes=args.hidden_sizes, device=args.device
     ).to(args.device)
-    optim = torch.optim.Adam(
-        list(policy_net.parameters()) + list(imitation_net.parameters()), lr=args.lr
-    )
+    actor_critic = ActorCritic(policy_net, imitation_net)
+    optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
 
     policy = DiscreteBCQPolicy(
         policy_net,
@@ -93,9 +93,10 @@ def test_discrete_bcq(args=get_args()):
         args.imitation_logits_penalty,
     )
     # buffer
-    assert os.path.exists(args.load_buffer_name), \
-        "Please run test_dqn.py first to get expert's data buffer."
-    buffer = pickle.load(open(args.load_buffer_name, "rb"))
+    if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
+        buffer = pickle.load(open(args.load_buffer_name, "rb"))
+    else:
+        buffer = gather_data()
 
     # collector
     test_collector = Collector(policy, test_envs, exploration_noise=True)
