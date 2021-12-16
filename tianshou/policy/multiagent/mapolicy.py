@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from pettingzoo.utils.env import AECEnv
+from tianshou.env.pettingzoo_env import PettingZooEnv
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.policy import BasePolicy
@@ -17,8 +17,8 @@ class MultiAgentPolicyManager(BasePolicy):
     :ref:`marl_example` can help you better understand this procedure.
     """
 
-    def __init__(self, policies: List[BasePolicy], env: AECEnv, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    def __init__(self, policies: List[BasePolicy], env: PettingZooEnv, **kwargs: Any) -> None:
+        super().__init__(action_space=env.action_space, **kwargs)
         assert (
             len(policies) == len(env.agents)
         ), "One policy must be \
@@ -62,6 +62,8 @@ class MultiAgentPolicyManager(BasePolicy):
             if has_rew:
                 tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent]]
                 buffer._meta.rew = save_rew[:, self.agent_idx[agent]]
+            tmp_batch.obs = tmp_batch.obs.obs
+            tmp_batch.obs_next = tmp_batch.obs_next.obs
             results[agent] = policy.process_fn(tmp_batch, buffer, tmp_indice)
         if has_rew:  # restore from save_rew
             buffer._meta.rew = save_rew
@@ -127,6 +129,9 @@ class MultiAgentPolicyManager(BasePolicy):
             if isinstance(tmp_batch.rew, np.ndarray):
                 # reward can be empty Batch (after initial reset) or nparray.
                 tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent_id]]
+            tmp_batch.obs = tmp_batch.obs.obs
+            if 'obs' in tmp_batch.obs_next:
+                tmp_batch.obs_next = tmp_batch.obs_next.obs
             out = policy(
                 batch=tmp_batch,
                 state=None if state is None else state[agent_id],
