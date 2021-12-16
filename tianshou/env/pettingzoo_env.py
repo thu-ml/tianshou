@@ -1,10 +1,28 @@
+from abc import ABC
+
+import gym.spaces
+from pettingzoo.utils.wrappers import BaseWrapper
+from pettingzoo.utils.env import AECEnv
 from typing import Any, Dict, List, Tuple
 
-from pettingzoo.utils.env import AECEnv
-from pettingzoo.utils.wrappers import BaseWrapper
 
+class PettingZooEnv(AECEnv, ABC):
+    """The interface for petting zoo environments.
 
-class PettingZooEnv(AECEnv):
+        Multi-agent environments must be wrapped as
+        :class:`~tianshou.env.PettingZooEnv`. Here is the usage:
+        ::
+
+            env = PettingZooEnv(...)
+            # obs is a dict containing obs, agent_id, and mask
+            obs = env.reset()
+            action = policy(obs)
+            obs, rew, done, info = env.step(action)
+            env.close()
+
+        The available action's mask is set to True, otherwise it is set to False. Further
+        usage can be found at :ref:`marl_example`.
+        """
 
     def __init__(self, env: BaseWrapper):
         super().__init__()
@@ -48,14 +66,20 @@ class PettingZooEnv(AECEnv):
                 'agent_id': self.env.agent_selection,
                 'obs': observation['observation'],
                 'mask':
-                [True if obm == 1 else False for obm in observation['action_mask']]
+                    [True if obm == 1 else False for obm in observation['action_mask']]
             }
         else:
-            return {
-                'agent_id': self.env.agent_selection,
-                'obs': observation,
-                'mask': [True] * self.env.action_space(self.env.agent_selection).n
-            }
+            if isinstance(self.action_space, gym.spaces.Discrete):
+                return {
+                    'agent_id': self.env.agent_selection,
+                    'obs': observation,
+                    'mask': [True] * self.env.action_space(self.env.agent_selection).n
+                }
+            else:
+                return {
+                    'agent_id': self.env.agent_selection,
+                    'obs': observation
+                }
 
     def step(self, action: Any) -> Tuple[Dict, List[int], bool, Dict]:
         self.env.step(action)
@@ -65,14 +89,20 @@ class PettingZooEnv(AECEnv):
                 'agent_id': self.env.agent_selection,
                 'obs': observation['observation'],
                 'mask':
-                [True if obm == 1 else False for obm in observation['action_mask']]
+                    [True if obm == 1 else False for obm in observation['action_mask']]
             }
         else:
-            obs = {
-                'agent_id': self.env.agent_selection,
-                'obs': observation,
-                'mask': [True] * self.env.action_space(self.env.agent_selection).n
-            }
+            if isinstance(self.action_space, gym.spaces.Discrete):
+                obs = {
+                    'agent_id': self.env.agent_selection,
+                    'obs': observation,
+                    'mask': [True] * self.env.action_space(self.env.agent_selection).n
+                }
+            else:
+                obs = {
+                    'agent_id': self.env.agent_selection,
+                    'obs': observation
+                }
 
         for agent_id, reward in self.env.rewards.items():
             self.rewards[self.agent_idx[agent_id]] = reward
