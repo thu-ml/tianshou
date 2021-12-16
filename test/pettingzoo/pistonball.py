@@ -11,7 +11,11 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager
+from tianshou.policy import (
+    BasePolicy,
+    DQNPolicy,
+    MultiAgentPolicyManager
+)
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -44,6 +48,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
+    parser.add_argument('--render', type=float, default=0.0)
 
     parser.add_argument(
         '--watch',
