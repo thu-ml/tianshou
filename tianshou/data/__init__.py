@@ -16,6 +16,7 @@ from tianshou.data.buffer.vecbuf import (
 )
 from tianshou.data.buffer.cached import CachedReplayBuffer
 from tianshou.data.collector import Collector, AsyncCollector
+from tianshou.data.her_collector import HERCollector
 
 __all__ = [
     "Batch",
