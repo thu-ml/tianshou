@@ -32,5 +32,6 @@ __all__ = [
     "PrioritizedVectorReplayBuffer",
     "CachedReplayBuffer",
     "Collector",
+    "HERCollector",
     "AsyncCollector",
 ]

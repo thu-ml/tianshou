@@ -1,18 +1,18 @@
-from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple, Union
 
 import gym.spaces as space
 import numpy as np
 import torch
 
-from tianshou.exploration import BaseNoise
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
-from tianshou.policy import SACPolicy, BasePolicy
+from tianshou.exploration import BaseNoise
+from tianshou.policy import BasePolicy, SACPolicy
+
 
 class SACHERPolicy(SACPolicy):
     """Implementation of Hindsight Experience Replay Based on SAC. arXiv:1707.01495.
-    The key difference is that we redesigned the process_fn to get relabel return. 
-    If the replay strategy is `offline`, then it will behave the same as `SACPolicy`.
+    The key difference is that we redesigned the process_fn to get relabel return,
+    if the replay strategy is `offline`, then it will behave the same as `SACPolicy`.
 
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
@@ -49,6 +49,7 @@ class SACHERPolicy(SACPolicy):
         Please refer to :class:`~tianshou.policy.SACPolicy` for more detailed
         explanation.
     """
+
     def __init__(
         self,
         actor: torch.nn.Module,
@@ -71,8 +72,9 @@ class SACHERPolicy(SACPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim,
-            tau, gamma, alpha, reward_normalization, estimation_step, exploration_noise, deterministic_eval, **kwargs
+            actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim, tau,
+            gamma, alpha, reward_normalization, estimation_step, exploration_noise,
+            deterministic_eval, **kwargs
         )
         self.future_k = future_k
         self.strategy = strategy
@@ -82,40 +84,45 @@ class SACHERPolicy(SACPolicy):
         self.dict_observation_space = dict_observation_space
         current_idx = 0
         self.index_range = {}
-        for (key,s) in dict_observation_space.spaces.items():
-            self.index_range[key] = np.arange(current_idx, current_idx+s.shape[0])
+        for (key, s) in dict_observation_space.spaces.items():
+            self.index_range[key] = np.arange(current_idx, current_idx + s.shape[0])
             current_idx += s.shape[0]
 
-    def process_fn(self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray) -> Batch:
+    def process_fn(
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> Batch:
         # Step1: get all index needed
         if self.strategy == 'offline':
             return super(SACHERPolicy, self).process_fn(batch, buffer, indices)
         assert not self._rew_norm, \
             "Reward normalization in computing n-step returns is unsupported now."
         end_flag = buffer.done.copy()
-        end_flag[buffer.unfinished_index()] = True # consider unfinished case: remove it
-        bsz = len(indices) # get indice of sampled transitions
-        indices = [indices] # turn to list, prepare for expand next state e.g. [1,3]
+        end_flag[buffer.unfinished_index()
+                 ] = True  # consider unfinished case: remove it
+        bsz = len(indices)  # get indice of sampled transitions
+        indices = [indices]  # turn to list, prepare for expand next state e.g. [1,3]
         for _ in range(self._n_step - 1):
-            indices.append(buffer.next(indices[-1])) # append next state index e.g. [[1,3][2,4]]
-        indices = np.stack(indices) 
-        terminal = indices[-1] # next state
+            indices.append(
+                buffer.next(indices[-1])
+            )  # append next state index e.g. [[1,3][2,4]]
+        indices = np.stack(indices)
+        terminal = indices[-1]  # next state
 
         # Step2: sample new goal
         batch = buffer[terminal]  # batch.obs: s_{t+n}
-        new_goal = batch.obs_next[:,self.index_range['desired_goal']]
+        new_goal = batch.obs_next[:, self.index_range['desired_goal']]
         for i in range(bsz):
-            if np.random.random()<self.future_p:
+            if np.random.random() < self.future_p:
                 goals = batch.info.achieved_goal[i]
-                try: # make sure the goal exists
-                    new_goal[i] = goals[int(np.random.random()*len(goals))]
-                except:
-                    pass
+                if len(goals) != 0:
+                    new_goal[i] = goals[int(np.random.random() * len(goals))]
 
         # Step3: relabel batch's obs, obs_next, reward, calculate Q
-        batch.obs[:,self.index_range['desired_goal']] = new_goal
-        batch.obs_next[:,self.index_range['desired_goal']] = new_goal
-        batch.rew = self.reward_fn(batch.obs_next[:,self.index_range['achieved_goal']], new_goal, None)
+        batch.obs[:, self.index_range['desired_goal']] = new_goal
+        batch.obs_next[:, self.index_range['desired_goal']] = new_goal
+        batch.rew = self.reward_fn(
+            batch.obs_next[:, self.index_range['achieved_goal']], new_goal, None
+        )
         with torch.no_grad():
             obs_next_result = self(batch, input='obs_next')
             a_ = obs_next_result.act
@@ -134,7 +141,7 @@ class SACHERPolicy(SACPolicy):
         bsz = target_shape[0]
         # change target_q to 2d array
         target_q = target_q.reshape(bsz, -1)
-        returns = np.zeros(target_q.shape) # n_step returrn
+        returns = np.zeros(target_q.shape)  # n_step returrn
         gammas = np.full(indices[0].shape, self._n_step)
         for n in range(self._n_step - 1, -1, -1):
             now = indices[n]
@@ -142,11 +149,15 @@ class SACHERPolicy(SACPolicy):
             returns[end_flag[now] > 0] = 0.0
             new_rew = []
             old_obs_next = buffer.obs_next[now]
-            new_rew.append(self.reward_fn(old_obs_next[:,self.index_range['achieved_goal']], new_goal, None))
+            new_rew.append(
+                self.reward_fn(
+                    old_obs_next[:, self.index_range['achieved_goal']], new_goal, None
+                )
+            )
             returns = np.array(new_rew).reshape(bsz, 1) + self._gamma * returns
         target_q = target_q * gamma_buffer[gammas].reshape(bsz, 1) + returns
         target_q = target_q.reshape(target_shape)
-        #return values
+        # return values
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
             batch.weight = to_torch_as(batch.weight, target_q_torch)

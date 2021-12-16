@@ -1,36 +1,36 @@
-from typing import Any, Callable, List, Dict, Optional, Union
-import gym.spaces as space
-import warnings
 import time
+import warnings
+from typing import Any, Callable, Dict, Optional
 
+import gym.spaces as space
 import numpy as np
 import torch
 
-from tianshou.data import Collector
+from tianshou.data import Batch, Collector, ReplayBuffer, to_numpy
 from tianshou.env import BaseVectorEnv
 from tianshou.policy import BasePolicy
-from tianshou.data import (
-    Batch,
-    ReplayBuffer,
-    to_numpy,
-)
+
 
 class HERCollector(Collector):
-    """Hindsight Experience Replay Collector is implemented based on Collector, \
-    enables it construct hindsight trajectory from achieved goals after one trajectory \
-    is fully collected. HER Collector provides two methods for relabel: `online` and `offline`. \
+    """Hindsight Experience Replay Collector is implemented based on Collector,
+    enables it construct hindsight trajectory from achieved goals after one trajectory
+    is fully collected. HER Collector provides two methods for relabel:
+    `online` and `offline`.
     For details, please refer to https://arxiv.org/abs/1707.01495
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param env: a ``gym.Env`` environment or an instance of the
         :class:`~tianshou.env.BaseVectorEnv` class.
-    :param dict_observation_space: a ``gym.spaces.Dict`` instance, which is used for get goal and achieved goal
-        in the flattened observation
-    :param function reward_fn: a function called to calculate reward. Often defined as `env.compute_reward()`
-    :param str strategy: can be `online` or `offline`. `offline` strategy will add relabeled data directly back 
-        to the buffer, while `online` strategy will store the future achieved goal in the info of each batch, 
+    :param dict_observation_space: a ``gym.spaces.Dict`` instance, which is
+        used to get goal and achieved goal in the flattened observation
+    :param function reward_fn: a function called to calculate reward.
+        Often defined as `env.compute_reward()`
+    :param str strategy: can be `online` or `offline`. `offline` strategy will add
+        relabeled data directly back to the buffer, while `online` strategy will store
+        the future achieved goal in  `batch.info.achieved_goal`,
         which can be used in `process_fn`to relabel data during the training process.
-    :param int replay_k: proportion of data to be relabeled. For example, if `replay_k` is set to 4, then the collector will 
+    :param int replay_k: proportion of data to be relabeled.
+        For example, if `replay_k` is set to 4, then the collector will
         generate 4 new trajectory with relabeled data.
     :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
         If set to None, it will not store the data. Default to None.
@@ -42,11 +42,14 @@ class HERCollector(Collector):
         exploration noise into action. Default to False.
 
     .. note::
-        1. According to the result reported in the paper, only future replay is implemented in this collector.
-        2. Make use your environment's `info` has `achieved_goal` attribution before use `online` replay strategy. 
-            it will be used for a Batch place holder.
-        3. Observation normalization in the environment is not recommended, which bias the relabel.
-        4. Success rate is also provided in the return to monitor the training progress. 
+        1. According to the result reported in the paper, only future replay
+        is implemented in this collector.
+        2. Make use your environment's `info` has `achieved_goal` attribution
+        before use `online` replay strategy. it will be used for a Batch place holder.
+        3. Observation normalization in the environment is not recommended,
+        which bias the relabel.
+        4. Success rate is also provided in the return to monitor the training
+        progress.
     """
 
     def __init__(
@@ -68,14 +71,18 @@ class HERCollector(Collector):
         self.reward_fn = reward_fn
         assert replay_k > 0, f'Replay k = {replay_k}, it must be a positive integer'
         self.replay_k = replay_k
-        assert strategy == 'offline' or strategy == 'online', f'Unsupported {strategy} replay strategy'
+        assert strategy == 'offline' or strategy == 'online', \
+            f'Unsupported {strategy} replay strategy'
         self.strategy = strategy
-        # Record the index of goal, achieved goal, and observation in obs, 
-        # which save the 80% of time to get goal compared to use OpenAI gym's unflatten() function
+        # Record the index of goal, achieved goal, and observation in obs,
+        # which save the 80% of time to get goal compared to
+        # use OpenAI gym's unflatten() function
         current_idx = 0
         self.obs_index_range = {}
-        for (key,s) in dict_observation_space.spaces.items():
-            self.obs_index_range[key] = np.arange(current_idx, current_idx+s.shape[0])
+        for (key, s) in dict_observation_space.spaces.items():
+            self.obs_index_range[key] = np.arange(
+                current_idx, current_idx + s.shape[0]
+            )
             current_idx += s.shape[0]
 
     def collect(
@@ -165,7 +172,7 @@ class HERCollector(Collector):
                 )
 
             if render:
-                self.env.render(mode = 'rgb_array')
+                self.env.render(mode='rgb_array')
                 if render > 0 and not np.isclose(render, 0):
                     time.sleep(render)
 
@@ -207,32 +214,44 @@ class HERCollector(Collector):
                         self.data = self.data[mask]
 
                 # use HER to create more trajectory
-                for env_id in env_ind_global: # enumerate env
+                for env_id in env_ind_global:  # enumerate env
                     # get recently collected data from buffer
                     env_buffer = self.buffer.buffers[env_id]
                     env_buffer_len = env_buffer.last_index[0] + 1
                     traj_len = ep_len[env_id]
-                    obs_index_range = np.arange(env_buffer_len-traj_len, env_buffer_len) % len(env_buffer)
+                    obs_index_range = np.arange(
+                        env_buffer_len - traj_len, env_buffer_len
+                    ) % len(env_buffer)
                     original_trajectory = env_buffer[obs_index_range]
                     if self.strategy == 'offline':
-                        new_trajactory_len = (np.random.random(size=self.replay_k)*traj_len).astype(int)+1
+                        new_trajactory_len = (
+                            np.random.random(size=self.replay_k) * traj_len
+                        ).astype(int) + 1
                         # relabel data and add back
-                        for length in new_trajactory_len: # use different mid goal to resample
-                            trajectory = Batch(original_trajectory[:length], copy = True)
-                            new_goal = trajectory.obs_next[length-1, self.obs_index_range['achieved_goal']]
+                        for length in new_trajactory_len:
+                            trajectory = Batch(original_trajectory[:length], copy=True)
+                            new_goal = trajectory.obs_next[
+                                length - 1, self.obs_index_range['achieved_goal']]
                             new_goals = np.repeat([new_goal], length, axis=0)
-                            trajectory.obs[:,self.obs_index_range['desired_goal']] = new_goals
-                            trajectory.obs_next[:,self.obs_index_range['desired_goal']] = new_goals
-                            trajectory.rew = self.reward_fn(trajectory.obs_next[:,self.obs_index_range['achieved_goal']], new_goals, None)
+                            trajectory.obs[:, self.
+                                           obs_index_range['desired_goal']] = new_goals
+                            trajectory.obs_next[:, self.obs_index_range['desired_goal']
+                                                ] = new_goals
+                            trajectory.rew = self.reward_fn(
+                                trajectory.obs_next[:, self.
+                                                    obs_index_range['achieved_goal']],
+                                new_goals, None
+                            )
                             trajectory.done[-1] = True
                             for transition in trajectory:
                                 env_buffer.add(transition)
                     elif self.strategy == 'online':
-                        # record the achieved goal of future steps, to reduce the relabel time during the trainning
-                        ag = original_trajectory.obs_next[:, self.obs_index_range['achieved_goal']]
+                        # record the achieved goal of future steps,
+                        # to reduce the relabel time during the trainning
+                        ag = original_trajectory.obs_next[:, self.obs_index_range[
+                            'achieved_goal']]
                         for i, idx in enumerate(obs_index_range):
                             env_buffer.info.achieved_goal[idx] = ag[i:]
-
 
             self.data.obs = self.data.obs_next
 
@@ -252,16 +271,20 @@ class HERCollector(Collector):
             self.reset_env()
 
         if episode_count > 0:
-            rews, success , lens, idxs = list(
+            rews, success, lens, idxs = list(
                 map(
-                    np.concatenate,
-                    [episode_rews, episode_success, episode_lens, episode_start_indices]
+                    np.concatenate, [
+                        episode_rews, episode_success, episode_lens,
+                        episode_start_indices
+                    ]
                 )
             )
             rew_mean, rew_std = rews.mean(), rews.std()
             len_mean, len_std = lens.mean(), lens.std()
         else:
-            rews, success, lens, idxs = np.array([]), np.array([]), np.array([], int), np.array([], int)
+            rews, success, lens, idxs = np.array([]), np.array(
+                []
+            ), np.array([], int), np.array([], int)
             rew_mean = rew_std = len_mean = len_std = 0
 
         return {
