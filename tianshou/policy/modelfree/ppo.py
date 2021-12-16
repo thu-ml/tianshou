@@ -6,6 +6,7 @@ from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
 from tianshou.policy import A2CPolicy
+from tianshou.utils.net.common import ActorCritic
 
 
 class PPOPolicy(A2CPolicy):
@@ -83,6 +84,7 @@ class PPOPolicy(A2CPolicy):
                 "value clip is available only when `reward_normalization` is True"
         self._norm_adv = advantage_normalization
         self._recompute_adv = recompute_advantage
+        self._actor_critic: ActorCritic
 
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
@@ -140,8 +142,7 @@ class PPOPolicy(A2CPolicy):
                 loss.backward()
                 if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
-                        set(self.actor.parameters()).union(self.critic.parameters()),
-                        max_norm=self._grad_norm
+                        self._actor_critic.parameters(), max_norm=self._grad_norm
                     )
                 self.optim.step()
                 clip_losses.append(clip_loss.item())

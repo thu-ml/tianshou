@@ -14,7 +14,7 @@ from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 def offline_trainer(
     policy: BasePolicy,
     buffer: ReplayBuffer,
-    test_collector: Collector,
+    test_collector: Optional[Collector],
     max_epoch: int,
     update_per_epoch: int,
     episode_per_test: int,
@@ -33,7 +33,8 @@ def offline_trainer(
     The "step" in offline trainer means a gradient step.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
-    :param Collector test_collector: the collector used for testing.
+    :param Collector test_collector: the collector used for testing. If it's None, then
+        no testing will be performed.
     :param int max_epoch: the maximum number of epochs for training. The training
         process might be finished before reaching ``max_epoch`` if ``stop_fn`` is set.
     :param int update_per_epoch: the number of policy network updates, so-called
@@ -73,14 +74,18 @@ def offline_trainer(
         start_epoch, _, gradient_step = logger.restore_data()
     stat: Dict[str, MovAvg] = defaultdict(MovAvg)
     start_time = time.time()
-    test_collector.reset_stat()
 
-    test_result = test_episode(
-        policy, test_collector, test_fn, start_epoch, episode_per_test, logger,
-        gradient_step, reward_metric
-    )
-    best_epoch = start_epoch
-    best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
+    if test_collector is not None:
+        test_c: Collector = test_collector
+        test_collector.reset_stat()
+        test_result = test_episode(
+            policy, test_c, test_fn, start_epoch, episode_per_test, logger,
+            gradient_step, reward_metric
+        )
+        best_epoch = start_epoch
+        best_reward, best_reward_std = test_result["rew"], test_result["rew_std"]
+    if save_fn:
+        save_fn(policy)
 
     for epoch in range(1 + start_epoch, 1 + max_epoch):
         policy.train()
@@ -95,22 +100,32 @@ def offline_trainer(
                     data[k] = f"{losses[k]:.3f}"
                 logger.log_update_data(losses, gradient_step)
                 t.set_postfix(**data)
-        # test
-        test_result = test_episode(
-            policy, test_collector, test_fn, epoch, episode_per_test, logger,
-            gradient_step, reward_metric
-        )
-        rew, rew_std = test_result["rew"], test_result["rew_std"]
-        if best_epoch < 0 or best_reward < rew:
-            best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
-            if save_fn:
-                save_fn(policy)
         logger.save_data(epoch, 0, gradient_step, save_checkpoint_fn)
-        if verbose:
-            print(
-                f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
-                f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
+        # test
+        if test_collector is not None:
+            test_result = test_episode(
+                policy, test_c, test_fn, epoch, episode_per_test, logger,
+                gradient_step, reward_metric
             )
-        if stop_fn and stop_fn(best_reward):
-            break
-    return gather_info(start_time, None, test_collector, best_reward, best_reward_std)
+            rew, rew_std = test_result["rew"], test_result["rew_std"]
+            if best_epoch < 0 or best_reward < rew:
+                best_epoch, best_reward, best_reward_std = epoch, rew, rew_std
+                if save_fn:
+                    save_fn(policy)
+            if verbose:
+                print(
+                    f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
+                    f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
+                )
+            if stop_fn and stop_fn(best_reward):
+                break
+
+    if test_collector is None and save_fn:
+        save_fn(policy)
+
+    if test_collector is None:
+        return gather_info(start_time, None, None, 0.0, 0.0)
+    else:
+        return gather_info(
+            start_time, None, test_collector, best_reward, best_reward_std
+        )

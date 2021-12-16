@@ -134,7 +134,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         SubprocVectorEnv(env_fns),
         ShmemVectorEnv(env_fns),
     ]
-    if has_ray():
+    if has_ray() and sys.platform == "linux":
         venv += [RayVectorEnv(env_fns)]
     for v in venv:
         v.seed(0)
@@ -166,10 +166,25 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         for i, v in enumerate(venv):
             print(f'{type(v)}: {t[i]:.6f}s')
 
+    def assert_get(v, expected):
+        assert v.get_env_attr("size") == expected
+        assert v.get_env_attr("size", id=0) == [expected[0]]
+        assert v.get_env_attr("size", id=[0, 1, 2]) == expected[:3]
+
     for v in venv:
-        assert v.size == list(range(size, size + num))
+        assert_get(v, list(range(size, size + num)))
         assert v.env_num == num
         assert v.action_space == [Discrete(2)] * num
+
+        v.set_env_attr("size", 0)
+        assert_get(v, [0] * num)
+
+        v.set_env_attr("size", 1, 0)
+        assert_get(v, [1] + [0] * (num - 1))
+
+        v.set_env_attr("size", 2, [1, 2, 3])
+        assert_get(v, [1] + [2] * 3 + [0] * (num - 4))
+
     for v in venv:
         v.close()
 
