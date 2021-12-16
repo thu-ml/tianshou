@@ -8,7 +8,7 @@ import tqdm
 from tianshou.data import Batch, ReplayBuffer, VectorReplayBuffer
 
 
-def test_replaybuffer(task="Pendulum-v1"):
+def test_replaybuffer(task="Pendulum-v0"):
     total_count = 5
     for _ in tqdm.trange(total_count, desc="ReplayBuffer"):
         env = gym.make(task)
@@ -31,7 +31,7 @@ def test_replaybuffer(task="Pendulum-v1"):
                 obs = env.reset()
 
 
-def test_vectorbuffer(task="Pendulum-v1"):
+def test_vectorbuffer(task="Pendulum-v0"):
     total_count = 5
     for _ in tqdm.trange(total_count, desc="VectorReplayBuffer"):
         env = gym.make(task)
