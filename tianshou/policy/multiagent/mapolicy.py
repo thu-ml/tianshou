@@ -1,9 +1,9 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from tianshou.env.pettingzoo_env import PettingZooEnv
 
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy
 
 
@@ -17,7 +17,9 @@ class MultiAgentPolicyManager(BasePolicy):
     :ref:`marl_example` can help you better understand this procedure.
     """
 
-    def __init__(self, policies: List[BasePolicy], env: PettingZooEnv, **kwargs: Any) -> None:
+    def __init__(
+        self, policies: List[BasePolicy], env: PettingZooEnv, **kwargs: Any
+    ) -> None:
         super().__init__(action_space=env.action_space, **kwargs)
         assert (
             len(policies) == len(env.agents)

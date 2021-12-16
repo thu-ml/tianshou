@@ -6,21 +6,17 @@ import gym
 import numpy as np
 import pettingzoo.butterfly.pistonball_v4 as pistonball_v4
 import torch
+from torch.distributions import Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.policy import (
-    BasePolicy,
-    PPOPolicy,
-    MultiAgentPolicyManager
-)
+from tianshou.policy import BasePolicy, MultiAgentPolicyManager, PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
-from torch.distributions import Independent, Normal
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -108,16 +104,18 @@ def get_agents(
         optims = []
         for _ in range(args.n_pistons):
             # model
-            net = Net(args.state_shape,
-                      hidden_sizes=args.hidden_sizes,
-                      device=args.device
-                      ).to(args.device)
-            actor = ActorProb(net, args.action_shape,
-                              max_action=args.max_action,
-                              device=args.device
-                              ).to(args.device)
+            net = Net(
+                args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device
+            ).to(args.device)
+            actor = ActorProb(
+                net, args.action_shape, max_action=args.max_action, device=args.device
+            ).to(args.device)
             critic = Critic(
-                Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device),
+                Net(
+                    args.state_shape,
+                    hidden_sizes=args.hidden_sizes,
+                    device=args.device
+                ),
                 device=args.device
             ).to(args.device)
             for m in set(actor.modules()).union(critic.modules()):
@@ -154,9 +152,9 @@ def get_agents(
             agents.append(agent)
             optims.append(optim)
 
-    policy = MultiAgentPolicyManager(agents, env,
-                                     action_scaling=True,
-                                     action_bound_method='clip')
+    policy = MultiAgentPolicyManager(
+        agents, env, action_scaling=True, action_bound_method='clip'
+    )
     return policy, optims, env.agents
 
 

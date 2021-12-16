@@ -20,8 +20,8 @@ class PettingZooEnv(AECEnv, ABC):
             obs, rew, done, info = env.step(action)
             env.close()
 
-        The available action's mask is set to True, otherwise it is set to False. Further
-        usage can be found at :ref:`marl_example`.
+        The available action's mask is set to True, otherwise it is set to False.
+        Further usage can be found at :ref:`marl_example`.
         """
 
     def __init__(self, env: BaseWrapper):
