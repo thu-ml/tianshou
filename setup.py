@@ -54,7 +54,7 @@ setup(
         "torch>=1.4.0",
         "numba>=0.51.0",
         "h5py>=2.10.0",  # to match tensorflow's minimal requirements
-        "pettingzoo>=1.11.0",
+        "pettingzoo>=1.12,<=1.13",
     ],
     extras_require={
         "dev": [
