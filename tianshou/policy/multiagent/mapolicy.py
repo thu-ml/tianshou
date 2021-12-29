@@ -23,8 +23,7 @@ class MultiAgentPolicyManager(BasePolicy):
         super().__init__(action_space=env.action_space, **kwargs)
         assert (
             len(policies) == len(env.agents)
-        ), "One policy must be \
-        assigned for each agent."
+        ), "One policy must be assigned for each agent."
 
         self.agent_idx = env.agent_idx
         for i, policy in enumerate(policies):
