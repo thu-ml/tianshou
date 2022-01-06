@@ -137,6 +137,11 @@ Model-based
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.ICMPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Multi-agent
 -----------
 

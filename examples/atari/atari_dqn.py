@@ -11,8 +11,11 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ShmemVectorEnv
 from tianshou.policy import DQNPolicy
+from tianshou.policy.modelbased.icm import ICMPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
+from tianshou.utils.net.common import MLP
+from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 
 def get_args():
@@ -55,6 +58,24 @@ def get_args():
         help='watch the play of pre-trained policy only'
     )
     parser.add_argument('--save-buffer-name', type=str, default=None)
+    parser.add_argument(
+        '--icm-lr-scale',
+        type=float,
+        default=0.,
+        help='use intrinsic curiosity module with this lr scale'
+    )
+    parser.add_argument(
+        '--icm-reward-scale',
+        type=float,
+        default=0.01,
+        help='scaling factor for intrinsic curiosity reward'
+    )
+    parser.add_argument(
+        '--icm-forward-loss-weight',
+        type=float,
+        default=0.2,
+        help='weight for the forward model loss in ICM'
+    )
     return parser.parse_args()
 
 
@@ -101,6 +122,24 @@ def test_dqn(args=get_args()):
         args.n_step,
         target_update_freq=args.target_update_freq
     )
+    if args.icm_lr_scale > 0:
+        feature_net = DQN(
+            *args.state_shape, args.action_shape, args.device, features_only=True
+        )
+        action_dim = np.prod(args.action_shape)
+        feature_dim = feature_net.output_dim
+        icm_net = IntrinsicCuriosityModule(
+            feature_net.net,
+            feature_dim,
+            action_dim,
+            hidden_sizes=[512],
+            device=args.device
+        )
+        icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
+        policy = ICMPolicy(
+            policy, icm_net, icm_optim, args.icm_lr_scale, args.icm_reward_scale,
+            args.icm_forward_loss_weight
+        ).to(args.device)
     # load a previous policy
     if args.resume_path:
         policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
@@ -118,7 +157,8 @@ def test_dqn(args=get_args()):
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'dqn')
+    log_name = 'dqn_icm' if args.icm_lr_scale > 0 else 'dqn'
+    log_path = os.path.join(args.logdir, args.task, log_name)
     if args.logger == "tensorboard":
         writer = SummaryWriter(log_path)
         writer.add_text("args", str(args))
@@ -127,7 +167,7 @@ def test_dqn(args=get_args()):
         logger = WandbLogger(
             save_interval=1,
             project=args.task,
-            name='dqn',
+            name=log_name,
             run_id=args.resume_id,
             config=args,
         )
