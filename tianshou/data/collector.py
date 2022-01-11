@@ -46,6 +46,11 @@ class Collector(object):
 
         Please make sure the given environment has a time limitation if using n_episode
         collect option.
+
+    .. note::
+        In past versions of Tianshou, the replay buffer that was passed to `__init__`
+        was automatically reset. This is not done in the current implementation.
+        Moreover, the `reset` method no longer resets the replay buffer.
     """
 
     def __init__(
@@ -95,14 +100,17 @@ class Collector(object):
         self.buffer = buffer
 
     def reset(self) -> None:
-        """Reset all related variables in the collector."""
+        """
+        Reset the environment, statistics and current data. This method will *not*
+        reset the replay buffer. If you would like to reset the buffer,
+        call `collector.reset_buffer()`.
+        """
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
         self.data = Batch(
             obs={}, act={}, rew={}, done={}, obs_next={}, info={}, policy={}
         )
         self.reset_env()
-        self.reset_buffer()
         self.reset_stat()
 
     def reset_stat(self) -> None:
