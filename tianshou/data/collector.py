@@ -100,10 +100,10 @@ class Collector(object):
         self.buffer = buffer
 
     def reset(self) -> None:
-        """
-        Reset the environment, statistics and current data. This method will *not*
-        reset the replay buffer. If you would like to reset the buffer,
-        call `collector.reset_buffer()`.
+        """Reset the environment, statistics and current data.
+
+        This method will *not* reset the replay buffer.
+        If you would like to reset the buffer, call `collector.reset_buffer()`.
         """
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
