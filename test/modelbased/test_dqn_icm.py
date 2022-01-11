@@ -12,7 +12,7 @@ from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQNPolicy, ICMPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net, MLP
+from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 

@@ -9,10 +9,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
-from tianshou.policy import PPOPolicy, ICMPolicy
+from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import ActorCritic, DataParallelNet, Net, MLP
+from tianshou.utils.net.common import MLP, ActorCritic, DataParallelNet, Net
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
 
