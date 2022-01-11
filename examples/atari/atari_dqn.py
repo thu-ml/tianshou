@@ -14,7 +14,6 @@ from tianshou.policy import DQNPolicy
 from tianshou.policy.modelbased.icm import ICMPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
-from tianshou.utils.net.common import MLP
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 
