@@ -50,7 +50,6 @@ class Collector(object):
     .. note::
         In past versions of Tianshou, the replay buffer that was passed to `__init__`
         was automatically reset. This is not done in the current implementation.
-        Moreover, the `reset` method no longer resets the replay buffer.
     """
 
     def __init__(
