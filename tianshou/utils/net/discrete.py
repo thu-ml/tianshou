@@ -49,7 +49,8 @@ class Actor(nn.Module):
         self.preprocess = preprocess_net
         self.output_dim = int(np.prod(action_shape))
         input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        self.last = MLP(input_dim, self.output_dim, hidden_sizes, device=self.device)
+        self.last = MLP(input_dim,  # type: ignore
+                        self.output_dim, hidden_sizes, device=self.device)
         self.softmax_output = softmax_output
 
     def forward(
@@ -101,7 +102,8 @@ class Critic(nn.Module):
         self.preprocess = preprocess_net
         self.output_dim = last_size
         input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        self.last = MLP(input_dim, last_size, hidden_sizes, device=self.device)
+        self.last = MLP(input_dim,  # type: ignore
+                        last_size, hidden_sizes, device=self.device)
 
     def forward(
         self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
@@ -183,8 +185,9 @@ class ImplicitQuantileNetwork(Critic):
         self.input_dim = getattr(
             preprocess_net, "output_dim", preprocess_net_output_dim
         )
-        self.embed_model = CosineEmbeddingNetwork(num_cosines,
-                                                  self.input_dim).to(device)
+        self.embed_model = CosineEmbeddingNetwork(
+            num_cosines, self.input_dim  # type: ignore
+        ).to(device)
 
     def forward(  # type: ignore
         self, s: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
