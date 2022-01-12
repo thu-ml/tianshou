@@ -73,7 +73,7 @@ class Collector(object):
         self.preprocess_fn = preprocess_fn
         self._action_space = env.action_space
         # avoid creating attribute outside __init__
-        self.reset()
+        self.reset(False)
 
     def _assign_buffer(self, buffer: Optional[ReplayBuffer]) -> None:
         """Check if the buffer matches the constraint."""
@@ -99,11 +99,11 @@ class Collector(object):
                 )
         self.buffer = buffer
 
-    def reset(self) -> None:
-        """Reset the environment, statistics and current data.
+    def reset(self, reset_buffer: bool = True) -> None:
+        """Reset the environment, statistics, current data and possibly replay memory.
 
-        This method will *not* reset the replay buffer.
-        If you would like to reset the buffer, call `collector.reset_buffer()`.
+        :param bool reset_buffer: if true, reset the replay buffer that is attached
+            to the collector.
         """
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
@@ -111,6 +111,8 @@ class Collector(object):
             obs={}, act={}, rew={}, done={}, obs_next={}, info={}, policy={}
         )
         self.reset_env()
+        if reset_buffer:
+            self.reset_buffer()
         self.reset_stat()
 
     def reset_stat(self) -> None:
