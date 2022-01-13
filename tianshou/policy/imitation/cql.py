@@ -71,29 +71,6 @@ class CQLPolicy(SACPolicy):
         self.critic2.train(mode)
         return self
 
-    def forward(
-        self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
-        **kwargs: Any,
-    ) -> Batch:
-        """Compute action over the given batch data."""
-        # There is "obs" in the Batch
-        obs: torch.Tensor = to_torch(  # type: ignore
-            batch.obs, device=self.device
-        )
-        if self.training:
-            (mu, sigma), h = self.actor.forward(obs)
-            dist = torch.distributions.Normal(mu, sigma)
-            e = dist.rsample().to(self.device)
-            act = torch.tanh(e)
-        else:
-            # eval
-            (mu, sigma), h = self.actor.forward(obs)
-            act = torch.tanh(mu)
-        act = np.array(act.cpu())
-        return Batch(logits=(mu, sigma), act=act, state=h)
-
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
         for net, net_old in [
@@ -106,21 +83,24 @@ class CQLPolicy(SACPolicy):
 
     def actor_pred(self, obs, epsilon=1e-6):
         # use obs to predict action
-        mu, sigma = self.actor.forward(obs)[0]
-        dist = torch.distributions.Normal(mu, sigma)
-        e = dist.rsample().to(self.device)
-        act_pred = torch.tanh(e)
-        # act_pred.shape: (batch_size, action_dim)
-        log_prob = (dist.log_prob(e) -
-                    torch.log(1 - act_pred.pow(2) + epsilon)).sum(1, keepdim=True)
-        return act_pred, log_prob
+        # mu, sigma = self.actor.forward(obs)[0]
+        # dist = torch.distributions.Normal(mu, sigma)
+        # e = dist.rsample().to(self.device)
+        # act_pred = torch.tanh(e)
+        # # act_pred.shape: (batch_size, action_dim)
+        # log_prob = (dist.log_prob(e) -
+        #             torch.log(1 - act_pred.pow(2) + epsilon)).sum(1, keepdim=True)
+        # return act_pred, log_prob
+        batch = Batch(obs=obs, info=None)
+        obs_result = self(batch)
+        return obs_result.act, obs_result.log_prob
 
-    def calc_actor_loss(self, obs, alpha):
+    def calc_actor_loss(self, obs):
         act_pred, log_pi = self.actor_pred(obs)
         q1 = self.critic1(obs, act_pred)
         q2 = self.critic2(obs, act_pred)
         min_Q = torch.min(q1, q2)
-        actor_loss = (alpha * log_pi - min_Q).mean()
+        actor_loss = (self._alpha * log_pi - min_Q).mean()
         return actor_loss, log_pi
 
     def calc_pi_values(self, obs_pi, obs_q):
@@ -133,10 +113,10 @@ class CQLPolicy(SACPolicy):
 
     def calc_random_values(self, obs, act):
         random_value1 = self.critic1(obs, act)
-        random_log_prob1 = math.log(0.5**act.shape[-1])
+        random_log_prob1 = math.log(0.5 ** act.shape[-1])
 
         random_value2 = self.critic2(obs, act)
-        random_log_prob2 = math.log(0.5**act.shape[-1])
+        random_log_prob2 = math.log(0.5 ** act.shape[-1])
 
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
@@ -154,22 +134,22 @@ class CQLPolicy(SACPolicy):
 
         # compute actor loss and update actor
         # prevent alpha from being modified
-        current_alpha = copy.deepcopy(self._alpha)
-        actor_loss, log_prob = self.calc_actor_loss(obs, current_alpha)
+        # current_alpha = copy.deepcopy(self._alpha)
+        actor_loss, log_pi = self.calc_actor_loss(obs)
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
 
         # compute alpha loss
         if self._is_auto_alpha:
-            log_prob = log_prob.detach() + self._target_entropy
-            alpha_loss = -(self._log_alpha.exp() * log_prob).mean()
+            log_pi = log_pi.detach() + self._target_entropy
+            alpha_loss = -(self._log_alpha.exp() * log_pi).mean()
             self._alpha_optim.zero_grad()
             # update log_alpha
             alpha_loss.backward()
             self._alpha_optim.step()
             # update alpha
-            self._alpha = self._log_alpha.exp().detach()
+            self._alpha = self._log_alpha.detach().exp()
 
         # compute target_Q
         with torch.no_grad():
@@ -185,6 +165,7 @@ class CQLPolicy(SACPolicy):
         current_Q1 = self.critic1(obs, act)
         current_Q2 = self.critic2(obs, act)
 
+        # TODO: size problem?
         critic1_loss = F.mse_loss(current_Q1, target_Q)
         critic2_loss = F.mse_loss(current_Q2, target_Q)
 
