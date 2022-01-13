@@ -196,7 +196,7 @@ def test_bcq():
 
     if not args.watch:
         dataset = d4rl.qlearning_dataset(env)
-        dataset_size = dataset['rewards'].size // 100
+        dataset_size = dataset['rewards'].size
 
         print("dataset_size", dataset_size)
         replay_buffer = ReplayBuffer(dataset_size)
