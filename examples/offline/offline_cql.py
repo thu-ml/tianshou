@@ -16,7 +16,7 @@ from tianshou.policy import CQLPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import BasicLogger
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import Critic, ActorProb
+from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():
@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument('--actor-lr', type=float, default=3e-4)
     parser.add_argument('--critic-lr', type=float, default=3e-4)
     parser.add_argument('--alpha', type=float, default=0.2)
-    parser.add_argument('--auto-alpha', default=False, action='store_true')
+    parser.add_argument('--auto-alpha', default=True, action='store_true')
     parser.add_argument('--alpha-lr', type=float, default=3e-4)
     parser.add_argument("--start-timesteps", type=int, default=10000)
     parser.add_argument('--epoch', type=int, default=200)
@@ -36,13 +36,12 @@ def get_args():
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--batch-size', type=int, default=256)
 
-    parser.add_argument("--tau", default=0.005)
+    parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--cql-weight", type=float, default=1.0)
     parser.add_argument("--with-lagrange", type=bool, default=True)
     parser.add_argument("--lagrange-threshold", type=float, default=10.0)
-    parser.add_argument("--tau", type=float, default=5e-3)
-    parser.add_argument("--gamma", default=0.99)
+    parser.add_argument("--gamma", type=float, default=0.99)
 
     parser.add_argument("--eval-freq", type=int, default=1)
     parser.add_argument('--training-num', type=int, default=10)
@@ -104,7 +103,10 @@ def test_bcq():
         device=args.device,
     )
     actor = ActorProb(
-        net_a, action_shape=args.action_shape, max_action=args.max_action, device=args.device,
+        net_a,
+        action_shape=args.action_shape,
+        max_action=args.max_action,
+        device=args.device,
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
@@ -152,6 +154,8 @@ def test_bcq():
         temperature=args.temperature,
         with_lagrange=args.with_lagrange,
         lagrange_threshold=args.lagrange_threshold,
+        min_action=np.min(env.action_space.low),
+        max_action=np.max(env.action_space.high),
         device=args.device,
     )
 
@@ -192,7 +196,7 @@ def test_bcq():
 
     if not args.watch:
         dataset = d4rl.qlearning_dataset(env)
-        dataset_size = dataset['rewards'].size
+        dataset_size = dataset['rewards'].size // 100
 
         print("dataset_size", dataset_size)
         replay_buffer = ReplayBuffer(dataset_size)
