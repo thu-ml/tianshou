@@ -15,30 +15,30 @@ from tianshou.utils.net.continuous import ActorProb
 class CQLPolicy(SACPolicy):
 
     def __init__(
-            self,
-            actor: ActorProb,
-            actor_optim: torch.optim.Optimizer,
-            critic1: torch.nn.Module,
-            critic1_optim: torch.optim.Optimizer,
-            critic2: torch.nn.Module,
-            critic2_optim: torch.optim.Optimizer,
-            cql_log_alpha: torch.Tensor,
-            cql_alpha_optim: torch.optim.Optimizer,
-            cql_weight: float = 1.0,
-            tau: float = 0.005,
-            gamma: float = 0.99,
-            alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
-            temperature: float = 1.0,
-            with_lagrange: bool = True,
-            lagrange_threshold: float = 10.0,
-            min_action: float = -1.0,
-            max_action: float = 1.0,
-            num_repeat_actions: int = 10,
-            alpha_min: float = 0.0,
-            alpha_max: float = 1e6,
-            clip_grad: float = 1.0,
-            device: Union[str, torch.device] = "cpu",
-            **kwargs: Any
+        self,
+        actor: ActorProb,
+        actor_optim: torch.optim.Optimizer,
+        critic1: torch.nn.Module,
+        critic1_optim: torch.optim.Optimizer,
+        critic2: torch.nn.Module,
+        critic2_optim: torch.optim.Optimizer,
+        cql_log_alpha: torch.Tensor,
+        cql_alpha_optim: torch.optim.Optimizer,
+        cql_weight: float = 1.0,
+        tau: float = 0.005,
+        gamma: float = 0.99,
+        alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
+        temperature: float = 1.0,
+        with_lagrange: bool = True,
+        lagrange_threshold: float = 10.0,
+        min_action: float = -1.0,
+        max_action: float = 1.0,
+        num_repeat_actions: int = 10,
+        alpha_min: float = 0.0,
+        alpha_max: float = 1e6,
+        clip_grad: float = 1.0,
+        device: Union[str, torch.device] = "cpu",
+        **kwargs: Any
     ) -> None:
         super().__init__(
             actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim, tau,
@@ -72,10 +72,10 @@ class CQLPolicy(SACPolicy):
         return self
 
     def forward(
-            self,
-            batch: Batch,
-            state: Optional[Union[dict, Batch, np.ndarray]] = None,
-            **kwargs: Any,
+        self,
+        batch: Batch,
+        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        **kwargs: Any,
     ) -> Batch:
         """Compute action over the given batch data."""
         # There is "obs" in the Batch
@@ -116,44 +116,43 @@ class CQLPolicy(SACPolicy):
         return act_pred, log_prob
 
     def calc_actor_loss(self, obs, alpha):
-        act_pred, log_prob = self.actor_pred(obs)
+        act_pred, log_pi = self.actor_pred(obs)
         q1 = self.critic1(obs, act_pred)
         q2 = self.critic2(obs, act_pred)
         min_Q = torch.min(q1, q2)
-        actor_loss = (alpha * log_prob - min_Q).mean()
-        return actor_loss, log_prob
+        actor_loss = (alpha * log_pi - min_Q).mean()
+        return actor_loss, log_pi
 
     def calc_pi_values(self, obs_pi, obs_q):
-        act_pred, log_pis = self.actor_pred(obs_pi)
+        act_pred, log_pi = self.actor_pred(obs_pi)
 
         q1 = self.critic1(obs_q, act_pred)
         q2 = self.critic2(obs_q, act_pred)
 
-        return q1 - log_pis.detach(), q2 - log_pis.detach()
+        return q1 - log_pi.detach(), q2 - log_pi.detach()
 
     def calc_random_values(self, obs, act):
         random_value1 = self.critic1(obs, act)
-        random_log_prob1 = math.log(0.5 ** act.shape[-1])
+        random_log_prob1 = math.log(0.5**act.shape[-1])
 
         random_value2 = self.critic2(obs, act)
-        random_log_prob2 = math.log(0.5 ** act.shape[-1])
+        random_log_prob2 = math.log(0.5**act.shape[-1])
 
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
     def process_fn(
-            self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
         return batch
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        # (batch_size, state_dim)
         batch: Batch = to_torch(  # type: ignore
             batch, dtype=torch.float, device=self.device,
         )
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]
 
-        # compute actor loss
+        # compute actor loss and update actor
         # prevent alpha from being modified
         current_alpha = copy.deepcopy(self._alpha)
         actor_loss, log_prob = self.calc_actor_loss(obs, current_alpha)
@@ -233,12 +232,12 @@ class CQLPolicy(SACPolicy):
                 self.alpha_min,
                 self.alpha_max,
             )
-            cql1_scaled_loss = cql_alpha * \
-                               (cql1_scaled_loss - self.lagrange_threshold)
-            cql2_scaled_loss = cql_alpha * \
-                               (cql2_scaled_loss - self.lagrange_threshold)
+            cql1_scaled_loss = \
+                cql_alpha * (cql1_scaled_loss - self.lagrange_threshold)
+            cql2_scaled_loss = \
+                cql_alpha * (cql2_scaled_loss - self.lagrange_threshold)
             self.cql_alpha_optim.zero_grad()
-            cql_alpha_loss = - (cql1_scaled_loss + cql2_scaled_loss) * 0.5
+            cql_alpha_loss = -(cql1_scaled_loss + cql2_scaled_loss) * 0.5
             cql_alpha_loss.backward(retain_graph=True)
             self.cql_alpha_optim.step()
 
