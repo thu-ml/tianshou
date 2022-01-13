@@ -157,15 +157,18 @@ class CQLPolicy(SACPolicy):
 
             target_Q1 = self.critic1_old(obs_next, act_next)
             target_Q2 = self.critic2_old(obs_next, act_next)
+
             target_Q = torch.min(target_Q1, target_Q2) - self._alpha * new_log_pi
 
-            target_Q = rew + self._gamma * (1 - batch.done) * target_Q
+            target_Q = \
+                rew + self._gamma * (1 - batch.done) * target_Q.squeeze()
+            # shape: (batch_size)
 
         # compute critic loss
-        current_Q1 = self.critic1(obs, act)
-        current_Q2 = self.critic2(obs, act)
+        current_Q1 = self.critic1(obs, act).squeeze()
+        current_Q2 = self.critic2(obs, act).squeeze()
+        # shape: (batch_size)
 
-        # TODO: size problem?
         critic1_loss = F.mse_loss(current_Q1, target_Q)
         critic2_loss = F.mse_loss(current_Q2, target_Q)
 
