@@ -13,8 +13,8 @@ from tianshou.env import ShmemVectorEnv
 from tianshou.policy import A2CPolicy, ICMPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 from tianshou.utils.net.common import ActorCritic
+from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
 
 def get_args():
