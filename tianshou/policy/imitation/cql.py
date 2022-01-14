@@ -144,9 +144,8 @@ class CQLPolicy(SACPolicy):
 
         # compute alpha loss
         if self._is_auto_alpha:
-            # TODO: is this right? make it similar to SAC
-            log_pi = log_pi.detach() + self._target_entropy
-            alpha_loss = -(self._log_alpha * log_pi).mean()
+            log_pi = log_pi + self._target_entropy
+            alpha_loss = -(self._log_alpha * log_pi.detach()).mean()
             self._alpha_optim.zero_grad()
             # update log_alpha
             alpha_loss.backward()
@@ -176,7 +175,7 @@ class CQLPolicy(SACPolicy):
         critic2_loss = F.mse_loss(current_Q2, target_Q)
 
         # CQL
-        """random_actions = torch.FloatTensor(
+        random_actions = torch.FloatTensor(
             batch_size * self.num_repeat_actions, act.shape[-1]
         ).uniform_(-self.min_action, self.max_action).to(self.device)
         tmp_obs = obs.unsqueeze(1) \
@@ -203,13 +202,14 @@ class CQLPolicy(SACPolicy):
         cat_q2 = torch.cat([random_value2, current_pi_value2, next_pi_value2], 1)
         # shape: (batch_size, 3 * num_repeat, 1)
 
+        # TODO: - current_Q1.mean() * self.cql_weight ?
         cql1_scaled_loss = \
-            (torch.logsumexp(cat_q1 / self.temperature, dim=1).mean() *
-             self.cql_weight * self.temperature - current_Q1.mean()) * \
+            torch.logsumexp(cat_q1 / self.temperature, dim=1).mean() * \
+            self.cql_weight * self.temperature - current_Q1.mean() * \
             self.cql_weight
         cql2_scaled_loss = \
-            (torch.logsumexp(cat_q2 / self.temperature, dim=1).mean() *
-             self.cql_weight * self.temperature - current_Q2.mean()) * \
+            torch.logsumexp(cat_q2 / self.temperature, dim=1).mean() * \
+            self.cql_weight * self.temperature - current_Q2.mean() * \
             self.cql_weight
         # shape: (1)
 
@@ -223,24 +223,26 @@ class CQLPolicy(SACPolicy):
                 cql_alpha * (cql1_scaled_loss - self.lagrange_threshold)
             cql2_scaled_loss = \
                 cql_alpha * (cql2_scaled_loss - self.lagrange_threshold)
+
             self.cql_alpha_optim.zero_grad()
             cql_alpha_loss = -(cql1_scaled_loss + cql2_scaled_loss) * 0.5
             cql_alpha_loss.backward(retain_graph=True)
             self.cql_alpha_optim.step()
 
         critic1_loss = critic1_loss + cql1_scaled_loss
-        critic2_loss = critic2_loss + cql2_scaled_loss"""
+        critic2_loss = critic2_loss + cql2_scaled_loss
 
         # update critic
         self.critic1_optim.zero_grad()
-        critic1_loss.backward()  # retain_graph=True
+        critic1_loss.backward(retain_graph=True)
         # clip grad, prevent the vanishing gradient problem
-        clip_grad_norm_(self.critic1.parameters(), self.clip_grad)
+        # TODO: It seems to be not necessary
+        # clip_grad_norm_(self.critic1.parameters(), self.clip_grad)
         self.critic1_optim.step()
 
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
-        clip_grad_norm_(self.critic2.parameters(), self.clip_grad)
+        # clip_grad_norm_(self.critic2.parameters(), self.clip_grad)
         self.critic2_optim.step()
 
         self.sync_weight()
@@ -253,7 +255,7 @@ class CQLPolicy(SACPolicy):
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
             result["alpha"] = self._alpha.item()
-        # if self.with_lagrange:
-        #     result["loss/cql_alpha"] = cql_alpha_loss.item()
-        #     result["cql_alpha"] = cql_alpha.item()
+        if self.with_lagrange:
+            result["loss/cql_alpha"] = cql_alpha_loss.item()
+            result["cql_alpha"] = cql_alpha.item()
         return result
