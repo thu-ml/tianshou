@@ -233,7 +233,7 @@ class CQLPolicy(SACPolicy):
 
         # update critic
         self.critic1_optim.zero_grad()
-        critic1_loss.backward(retain_graph=True)
+        critic1_loss.backward()  # retain_graph=True
         # clip grad, prevent the vanishing gradient problem
         clip_grad_norm_(self.critic1.parameters(), self.clip_grad)
         self.critic1_optim.step()
