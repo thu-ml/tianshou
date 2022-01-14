@@ -163,8 +163,9 @@ def test_a2c(args=get_args()):
 
     def stop_fn(mean_rewards):
         return False
-    # watch agent's performance
+
     def watch():
+        # watch agent's performance
         print("Setup test envs ...")
         policy.eval()
         test_envs.seed(args.seed)
