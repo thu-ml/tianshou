@@ -101,6 +101,7 @@ class CQLPolicy(SACPolicy):
         q2 = self.critic2(obs, act_pred)
         min_Q = torch.min(q1, q2)
         actor_loss = (self._alpha * log_pi - min_Q).mean()
+        # actor_loss.shape: (), log_pi.shape: (batch_size, 1)
         return actor_loss, log_pi
 
     def calc_pi_values(self, obs_pi, obs_q):
@@ -135,6 +136,7 @@ class CQLPolicy(SACPolicy):
         # compute actor loss and update actor
         # prevent alpha from being modified
         # current_alpha = copy.deepcopy(self._alpha)
+        # TODO: fix alpha here?
         actor_loss, log_pi = self.calc_actor_loss(obs)
         self.actor_optim.zero_grad()
         actor_loss.backward()
@@ -142,6 +144,7 @@ class CQLPolicy(SACPolicy):
 
         # compute alpha loss
         if self._is_auto_alpha:
+            # TODO: is this right? make it similar to SAC
             log_pi = log_pi.detach() + self._target_entropy
             alpha_loss = -(self._log_alpha.exp() * log_pi).mean()
             self._alpha_optim.zero_grad()
@@ -173,7 +176,7 @@ class CQLPolicy(SACPolicy):
         critic2_loss = F.mse_loss(current_Q2, target_Q)
 
         # CQL
-        random_actions = torch.FloatTensor(
+        """random_actions = torch.FloatTensor(
             batch_size * self.num_repeat_actions, act.shape[-1]
         ).uniform_(-self.min_action, self.max_action).to(self.device)
         tmp_obs = obs.unsqueeze(1) \
@@ -226,7 +229,7 @@ class CQLPolicy(SACPolicy):
             self.cql_alpha_optim.step()
 
         critic1_loss = critic1_loss + cql1_scaled_loss
-        critic2_loss = critic2_loss + cql2_scaled_loss
+        critic2_loss = critic2_loss + cql2_scaled_loss"""
 
         # update critic
         self.critic1_optim.zero_grad()
@@ -250,7 +253,7 @@ class CQLPolicy(SACPolicy):
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
             result["alpha"] = self._alpha.item()
-        if self.with_lagrange:
-            result["loss/cql_alpha"] = cql_alpha_loss.item()
-            result["cql_alpha"] = cql_alpha.item()
+        # if self.with_lagrange:
+        #     result["loss/cql_alpha"] = cql_alpha_loss.item()
+        #     result["cql_alpha"] = cql_alpha.item()
         return result
