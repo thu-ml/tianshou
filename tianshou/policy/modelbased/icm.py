@@ -55,13 +55,7 @@ class ICMPolicy(BasePolicy):
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         **kwargs: Any,
     ) -> Batch:
-        """Compute action over the given batch data.
-
-        :return: A :class:`~tianshou.data.Batch` which has at least 3 keys:
-
-            * ``act`` the action.
-            * ``logits`` the network's raw output.
-            * ``state`` the hidden state.
+        """Compute action over the given batch data by inner policy.
 
         .. seealso::
 
