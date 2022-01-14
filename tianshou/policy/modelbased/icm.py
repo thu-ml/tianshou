@@ -42,7 +42,7 @@ class ICMPolicy(BasePolicy):
         self.reward_scale = reward_scale
         self.forward_loss_weight = forward_loss_weight
 
-    def train(self, mode: bool = True) -> BasePolicy:
+    def train(self, mode: bool = True) -> "ICMPolicy":
         """Set the module in training mode."""
         self.policy.train(mode)
         self.training = mode
@@ -77,7 +77,7 @@ class ICMPolicy(BasePolicy):
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
         if hasattr(self.policy, "set_eps"):
-            self.policy.set_eps(eps)
+            self.policy.set_eps(eps)  # type: ignore
         else:
             raise NotImplementedError()
 
@@ -108,7 +108,9 @@ class ICMPolicy(BasePolicy):
         res = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
-        act = to_torch(batch.act, dtype=torch.long, device=act_hat.device)
+        act: torch.Tensor = to_torch(
+            batch.act, dtype=torch.long, device=act_hat.device
+        )
         inverse_loss = F.cross_entropy(act_hat, act).mean()
         forward_loss = batch.policy.mse_loss.mean()
         loss = (

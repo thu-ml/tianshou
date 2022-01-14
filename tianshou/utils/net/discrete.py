@@ -431,7 +431,7 @@ class IntrinsicCuriosityModule(nn.Module):
         self.action_dim = action_dim
         self.device = device
 
-    def forward(  # type: ignore
+    def forward(
         self,
         s1: Union[np.ndarray, torch.Tensor],
         act: Union[np.ndarray, torch.Tensor],
