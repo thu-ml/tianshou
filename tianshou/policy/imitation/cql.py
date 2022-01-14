@@ -146,7 +146,7 @@ class CQLPolicy(SACPolicy):
         if self._is_auto_alpha:
             # TODO: is this right? make it similar to SAC
             log_pi = log_pi.detach() + self._target_entropy
-            alpha_loss = -(self._log_alpha.exp() * log_pi).mean()
+            alpha_loss = -(self._log_alpha * log_pi).mean()
             self._alpha_optim.zero_grad()
             # update log_alpha
             alpha_loss.backward()
