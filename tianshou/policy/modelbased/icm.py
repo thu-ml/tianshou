@@ -108,9 +108,9 @@ class ICMPolicy(BasePolicy):
         res = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
-        act: torch.Tensor = to_torch(
+        act = to_torch(
             batch.act, dtype=torch.long, device=act_hat.device
-        )
+        )  # type: ignore
         inverse_loss = F.cross_entropy(act_hat, act).mean()
         forward_loss = batch.policy.mse_loss.mean()
         loss = (
