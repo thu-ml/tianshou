@@ -12,7 +12,7 @@ from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 class ICMPolicy(BasePolicy):
     """Implementation of Intrinsic Curiosity Module. arXiv:1705.05363.
 
-    :param BasePolicy policy: a base policy to add ICM.
+    :param BasePolicy policy: a base policy to add ICM to.
     :param IntrinsicCuriosityModule model: the ICM model.
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float lr_scale: the scaling factor for ICM learning.
@@ -57,23 +57,7 @@ class ICMPolicy(BasePolicy):
     ) -> Batch:
         """Compute action over the given batch data.
 
-        If you need to mask the action, please add a "mask" into batch.obs, for
-        example, if we have an environment that has "0/1/2" three actions:
-        ::
-
-            batch == Batch(
-                obs=Batch(
-                    obs="original obs, with batch_size=1 for demonstration",
-                    mask=np.array([[False, True, False]]),
-                    # action 1 is available
-                    # action 0 and 2 are unavailable
-                ),
-                ...
-            )
-
-        :param float eps: in [0, 1], for epsilon-greedy exploration method.
-
-        :return: A :class:`~tianshou.data.Batch` which has 3 keys:
+        :return: A :class:`~tianshou.data.Batch` which has at least 3 keys:
 
             * ``act`` the action.
             * ``logits`` the network's raw output.
@@ -133,9 +117,11 @@ class ICMPolicy(BasePolicy):
         ) * self.lr_scale
         loss.backward()
         self.optim.step()
-        return {
-            "loss/policy": res["loss"],
-            "loss/icm": loss.item(),
-            "loss/icm/forward": forward_loss.item(),
-            "loss/icm/inverse": inverse_loss.item()
-        }
+        res.update(
+            {
+                "loss/icm": loss.item(),
+                "loss/icm/forward": forward_loss.item(),
+                "loss/icm/inverse": inverse_loss.item()
+            }
+        )
+        return res
