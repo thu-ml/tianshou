@@ -432,11 +432,9 @@ class IntrinsicCuriosityModule(nn.Module):
         self.device = device
 
     def forward(
-        self,
-        s1: Union[np.ndarray, torch.Tensor],
-        act: Union[np.ndarray, torch.Tensor],
-        s2: Union[np.ndarray, torch.Tensor],
-        **kwargs: Any
+        self, s1: Union[np.ndarray, torch.Tensor],
+        act: Union[np.ndarray, torch.Tensor], s2: Union[np.ndarray,
+                                                        torch.Tensor], **kwargs: Any
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         r"""Mapping: s1, act, s2 -> mse_loss, act_hat."""
         s1 = to_torch(s1, dtype=torch.float32, device=self.device)
