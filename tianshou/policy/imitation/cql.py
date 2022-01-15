@@ -286,7 +286,7 @@ class CQLPolicy(SACPolicy):
         }
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
-            result["alpha"] = self._alpha.item()
+            result["alpha"] = self._alpha.item()  # type: ignore
         if self.with_lagrange:
             result["loss/cql_alpha"] = cql_alpha_loss.item()
             result["cql_alpha"] = cql_alpha.item()
