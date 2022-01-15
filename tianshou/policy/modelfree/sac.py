@@ -172,7 +172,6 @@ class SACPolicy(DDPGPolicy):
 
         if self._is_auto_alpha:
             log_prob = obs_result.log_prob.detach() + self._target_entropy
-            # Is there self._log_alpha.exp()?
             alpha_loss = -(self._log_alpha * log_prob).mean()
             self._alpha_optim.zero_grad()
             alpha_loss.backward()
