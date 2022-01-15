@@ -114,6 +114,11 @@ Imitation
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.CQLPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: tianshou.policy.DiscreteBCQPolicy
    :members:
    :undoc-members:

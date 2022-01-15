@@ -13,6 +13,47 @@ from tianshou.utils.net.continuous import ActorProb
 
 
 class CQLPolicy(SACPolicy):
+    """Implementation of CQL algorithm. arXiv:2006.04779.
+
+    :param ActorProb actor: the actor network following the rules in
+        :class:`~tianshou.policy.BasePolicy`. (s -> a)
+    :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
+    :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s, a))
+    :param torch.optim.Optimizer critic1_optim: the optimizer for the first
+        critic network.
+    :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s, a))
+    :param torch.optim.Optimizer critic2_optim: the optimizer for the second
+        critic network.
+    :param float cql_alpha_lr: the learning rate of cql_log_alpha. Default to 1e-4.
+    :param float cql_weight: the value of alpha. Default to 1.0.
+    :param float tau: param for soft update of the target network.
+        Default to 0.005.
+    :param float gamma: discount factor, in [0, 1]. Default to 0.99.
+    :param (float, torch.Tensor, torch.optim.Optimizer) or float alpha: entropy
+        regularization coefficient. Default to 0.2.
+        If a tuple (target_entropy, log_alpha, alpha_optim) is provided, then
+        alpha is automatically tuned.
+    :param float temperature: the value of temperature. Default to 1.0.
+    :param bool with_lagrange: whether to use lagrange. Default to True.
+    :param float lagrange_threshold: the value of tau in CQL(lagrange).
+        Default to 10.0.
+    :param float min_action: The minimum value of each dimension of action.
+        Default to -1.0.
+    :param float max_action: The maximum value of each dimension of action.
+        Default to 1.0.
+    :param int num_repeat_actions: The number of times the action is repeated
+        when calculating log-sum-exp. Default to 10.
+    :param float alpha_min: lower bound for clipping cql_alpha. Default to 0.0.
+    :param float alpha_max: upper bound for clipping cql_alpha. Default to 1e6.
+    :param float clip_grad: clip_grad for updating critic network. Default to 1.0.
+    :param Union[str, torch.device] device: which device to create this model on.
+        Default to "cpu".
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
+        explanation.
+    """
 
     def __init__(
         self,
@@ -22,8 +63,7 @@ class CQLPolicy(SACPolicy):
         critic1_optim: torch.optim.Optimizer,
         critic2: torch.nn.Module,
         critic2_optim: torch.optim.Optimizer,
-        cql_log_alpha: torch.Tensor,
-        cql_alpha_optim: torch.optim.Optimizer,
+        cql_alpha_lr: float = 1e-4,
         cql_weight: float = 1.0,
         tau: float = 0.005,
         gamma: float = 0.99,
@@ -51,8 +91,10 @@ class CQLPolicy(SACPolicy):
         self.lagrange_threshold = lagrange_threshold
 
         self.cql_weight = cql_weight
-        self.cql_log_alpha = cql_log_alpha.to(device)
-        self.cql_alpha_optim = cql_alpha_optim
+
+        self.cql_log_alpha = torch.tensor([0.0], requires_grad=True)
+        self.cql_alpha_optim = torch.optim.Adam([self.cql_log_alpha], lr=cql_alpha_lr)
+        self.cql_log_alpha = self.cql_log_alpha.to(device)
 
         self.min_action = min_action
         self.max_action = max_action
@@ -81,16 +123,7 @@ class CQLPolicy(SACPolicy):
                     self._tau * param.data + (1 - self._tau) * target_param.data
                 )
 
-    def actor_pred(self, obs, epsilon=1e-6):
-        # use obs to predict action
-        # mu, sigma = self.actor.forward(obs)[0]
-        # dist = torch.distributions.Normal(mu, sigma)
-        # e = dist.rsample().to(self.device)
-        # act_pred = torch.tanh(e)
-        # # act_pred.shape: (batch_size, action_dim)
-        # log_prob = (dist.log_prob(e) -
-        #             torch.log(1 - act_pred.pow(2) + epsilon)).sum(1, keepdim=True)
-        # return act_pred, log_prob
+    def actor_pred(self, obs):
         batch = Batch(obs=obs, info=None)
         obs_result = self(batch)
         return obs_result.act, obs_result.log_prob
@@ -134,9 +167,6 @@ class CQLPolicy(SACPolicy):
         batch_size = obs.shape[0]
 
         # compute actor loss and update actor
-        # prevent alpha from being modified
-        # current_alpha = copy.deepcopy(self._alpha)
-        # TODO: fix alpha here?
         actor_loss, log_pi = self.calc_actor_loss(obs)
         self.actor_optim.zero_grad()
         actor_loss.backward()
@@ -202,7 +232,6 @@ class CQLPolicy(SACPolicy):
         cat_q2 = torch.cat([random_value2, current_pi_value2, next_pi_value2], 1)
         # shape: (batch_size, 3 * num_repeat, 1)
 
-        # TODO: - current_Q1.mean() * self.cql_weight ?
         cql1_scaled_loss = \
             torch.logsumexp(cat_q1 / self.temperature, dim=1).mean() * \
             self.cql_weight * self.temperature - current_Q1.mean() * \
@@ -236,13 +265,13 @@ class CQLPolicy(SACPolicy):
         self.critic1_optim.zero_grad()
         critic1_loss.backward(retain_graph=True)
         # clip grad, prevent the vanishing gradient problem
-        # TODO: It seems to be not necessary
-        # clip_grad_norm_(self.critic1.parameters(), self.clip_grad)
+        # It doesn't seem necessary
+        clip_grad_norm_(self.critic1.parameters(), self.clip_grad)
         self.critic1_optim.step()
 
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
-        # clip_grad_norm_(self.critic2.parameters(), self.clip_grad)
+        clip_grad_norm_(self.critic2.parameters(), self.clip_grad)
         self.critic2_optim.step()
 
         self.sync_weight()
