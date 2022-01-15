@@ -133,6 +133,7 @@ class CQLPolicy(SACPolicy):
         q1 = self.critic1(obs, act_pred)
         q2 = self.critic2(obs, act_pred)
         min_Q = torch.min(q1, q2)
+        self._alpha: Union[float, torch.Tensor]
         actor_loss = (self._alpha * log_pi - min_Q).mean()
         # actor_loss.shape: (), log_pi.shape: (batch_size, 1)
         return actor_loss, log_pi
@@ -285,7 +286,7 @@ class CQLPolicy(SACPolicy):
         }
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
-            result["alpha"] = self._alpha.item()  # type: ignore
+            result["alpha"] = self._alpha.item()
         if self.with_lagrange:
             result["loss/cql_alpha"] = cql_alpha_loss.item()
             result["cql_alpha"] = cql_alpha.item()
