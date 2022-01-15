@@ -1,16 +1,15 @@
 import argparse
 import datetime
 import os
+import pickle
 import pprint
 
-import d4rl
-import pickle
 import gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
+from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import CQLPolicy
 from tianshou.trainer import offline_trainer
@@ -28,13 +27,13 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[256, 256])
-    parser.add_argument('--actor-lr', type=float, default=1e-4)
-    parser.add_argument('--critic-lr', type=float, default=3e-4)
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
+    parser.add_argument('--actor-lr', type=float, default=1e-3)
+    parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--alpha', type=float, default=0.2)
     parser.add_argument('--auto-alpha', default=True, action='store_true')
-    parser.add_argument('--alpha-lr', type=float, default=1e-4)
-    parser.add_argument('--cql-alpha-lr', type=float, default=3e-4)
+    parser.add_argument('--alpha-lr', type=float, default=1e-3)
+    parser.add_argument('--cql-alpha-lr', type=float, default=1e-3)
     parser.add_argument("--start-timesteps", type=int, default=10000)
     parser.add_argument('--epoch', type=int, default=20)
     parser.add_argument('--step-per-epoch', type=int, default=2000)

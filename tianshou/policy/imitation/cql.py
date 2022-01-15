@@ -1,6 +1,4 @@
-import copy
-import math
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import torch
@@ -123,12 +121,14 @@ class CQLPolicy(SACPolicy):
                     self._tau * param.data + (1 - self._tau) * target_param.data
                 )
 
-    def actor_pred(self, obs):
+    def actor_pred(self, obs: torch.Tensor) -> \
+            Tuple[torch.Tensor, torch.Tensor]:
         batch = Batch(obs=obs, info=None)
         obs_result = self(batch)
         return obs_result.act, obs_result.log_prob
 
-    def calc_actor_loss(self, obs):
+    def calc_actor_loss(self, obs: torch.Tensor) -> \
+            Tuple[torch.Tensor, torch.Tensor]:
         act_pred, log_pi = self.actor_pred(obs)
         q1 = self.critic1(obs, act_pred)
         q2 = self.critic2(obs, act_pred)
@@ -137,7 +137,8 @@ class CQLPolicy(SACPolicy):
         # actor_loss.shape: (), log_pi.shape: (batch_size, 1)
         return actor_loss, log_pi
 
-    def calc_pi_values(self, obs_pi, obs_to_pred):
+    def calc_pi_values(self, obs_pi: torch.Tensor, obs_to_pred: torch.Tensor) -> \
+            Tuple[torch.Tensor, torch.Tensor]:
         act_pred, log_pi = self.actor_pred(obs_pi)
 
         q1 = self.critic1(obs_to_pred, act_pred)
@@ -145,12 +146,13 @@ class CQLPolicy(SACPolicy):
 
         return q1 - log_pi.detach(), q2 - log_pi.detach()
 
-    def calc_random_values(self, obs, act):
+    def calc_random_values(self, obs: torch.Tensor, act: torch.Tensor) -> \
+            Tuple[torch.Tensor, torch.Tensor]:
         random_value1 = self.critic1(obs, act)
-        random_log_prob1 = np.log(0.5 ** act.shape[-1])
+        random_log_prob1 = np.log(0.5**act.shape[-1])
 
         random_value2 = self.critic2(obs, act)
-        random_log_prob2 = np.log(0.5 ** act.shape[-1])
+        random_log_prob2 = np.log(0.5**act.shape[-1])
 
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
@@ -283,7 +285,7 @@ class CQLPolicy(SACPolicy):
         }
         if self._is_auto_alpha:
             result["loss/alpha"] = alpha_loss.item()
-            result["alpha"] = self._alpha.item()
+            result["alpha"] = self._alpha.item()  # type: ignore
         if self.with_lagrange:
             result["loss/cql_alpha"] = cql_alpha_loss.item()
             result["cql_alpha"] = cql_alpha.item()

@@ -6,7 +6,7 @@ In offline reinforcement learning setting, the agent learns a policy from a fixe
 
 Once the dataset is collected, it will not be changed during training. We use [d4rl](https://github.com/rail-berkeley/d4rl) datasets to train offline agent for continuous control. You can refer to [d4rl](https://github.com/rail-berkeley/d4rl) to see how to use d4rl datasets. 
 
-We provide Implementation of BCQ and CQL algorithm for continuous control.
+We provide implementation of BCQ and CQL algorithm for continuous control.
 
 ### Train
 
