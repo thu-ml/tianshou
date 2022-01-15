@@ -79,7 +79,7 @@ def test_cql(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]  # float
     if args.task == 'Pendulum-v0':
-        env.spec.reward_threshold = -800  # too low?
+        env.spec.reward_threshold = -1200  # too low?
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]
