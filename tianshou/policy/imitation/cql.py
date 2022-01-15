@@ -32,8 +32,8 @@ class CQLPolicy(SACPolicy):
         If a tuple (target_entropy, log_alpha, alpha_optim) is provided, then
         alpha is automatically tuned.
     :param float temperature: the value of temperature. Default to 1.0.
-    :param bool with_lagrange: whether to use lagrange. Default to True.
-    :param float lagrange_threshold: the value of tau in CQL(lagrange).
+    :param bool with_lagrange: whether to use Lagrange. Default to True.
+    :param float lagrange_threshold: the value of tau in CQL(Lagrange).
         Default to 10.0.
     :param float min_action: The minimum value of each dimension of action.
         Default to -1.0.
