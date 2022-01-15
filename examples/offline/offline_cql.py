@@ -107,6 +107,8 @@ def test_bcq():
         action_shape=args.action_shape,
         max_action=args.max_action,
         device=args.device,
+        unbounded=True,
+        conditioned_sigma=True
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 

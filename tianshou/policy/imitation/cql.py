@@ -104,20 +104,20 @@ class CQLPolicy(SACPolicy):
         # actor_loss.shape: (), log_pi.shape: (batch_size, 1)
         return actor_loss, log_pi
 
-    def calc_pi_values(self, obs_pi, obs_q):
+    def calc_pi_values(self, obs_pi, obs_to_pred):
         act_pred, log_pi = self.actor_pred(obs_pi)
 
-        q1 = self.critic1(obs_q, act_pred)
-        q2 = self.critic2(obs_q, act_pred)
+        q1 = self.critic1(obs_to_pred, act_pred)
+        q2 = self.critic2(obs_to_pred, act_pred)
 
         return q1 - log_pi.detach(), q2 - log_pi.detach()
 
     def calc_random_values(self, obs, act):
         random_value1 = self.critic1(obs, act)
-        random_log_prob1 = math.log(0.5 ** act.shape[-1])
+        random_log_prob1 = np.log(0.5 ** act.shape[-1])
 
         random_value2 = self.critic2(obs, act)
-        random_log_prob2 = math.log(0.5 ** act.shape[-1])
+        random_log_prob2 = np.log(0.5 ** act.shape[-1])
 
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
@@ -163,12 +163,12 @@ class CQLPolicy(SACPolicy):
             target_Q = torch.min(target_Q1, target_Q2) - self._alpha * new_log_pi
 
             target_Q = \
-                rew + self._gamma * (1 - batch.done) * target_Q.squeeze()
+                rew + self._gamma * (1 - batch.done) * target_Q.flatten()
             # shape: (batch_size)
 
         # compute critic loss
-        current_Q1 = self.critic1(obs, act).squeeze()
-        current_Q2 = self.critic2(obs, act).squeeze()
+        current_Q1 = self.critic1(obs, act).flatten()
+        current_Q2 = self.critic2(obs, act).flatten()
         # shape: (batch_size)
 
         critic1_loss = F.mse_loss(current_Q1, target_Q)
