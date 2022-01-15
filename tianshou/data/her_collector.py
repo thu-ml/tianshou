@@ -57,15 +57,13 @@ class HERCollector(Collector):
         policy: BasePolicy,
         env: BaseVectorEnv,
         dict_observation_space: space.Dict,
-        reward_fn: Callable[[np.ndarray, np.ndarray], None],
+        reward_fn: Callable[[np.ndarray, np.ndarray, Optional[dict]], np.ndarray],
         replay_k: int = 4,
         strategy: str = 'offline',
         buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
         exploration_noise: bool = False,
     ) -> None:
-        # assert env.is_async
-        super().__init__(policy, env, buffer, preprocess_fn, exploration_noise)
         # HER need dict observation space
         self.dict_observation_space = dict_observation_space
         self.reward_fn = reward_fn
@@ -84,6 +82,10 @@ class HERCollector(Collector):
                 current_idx, current_idx + s.shape[0]
             )
             current_idx += s.shape[0]
+        # assert type in base class
+        self.data: Batch
+        self.buffer: ReplayBuffer
+        super().__init__(policy, env, buffer, preprocess_fn, exploration_noise)
 
     def collect(
         self,
@@ -243,8 +245,8 @@ class HERCollector(Collector):
                                 new_goals, None
                             )
                             trajectory.done[-1] = True
-                            for transition in trajectory:
-                                env_buffer.add(transition)
+                            for i in range(length):
+                                env_buffer.add(trajectory[i])
                     elif self.strategy == 'online':
                         # record the achieved goal of future steps,
                         # to reduce the relabel time during the trainning
