@@ -12,10 +12,11 @@ from tianshou.policy import BasePolicy
 
 
 class HERCollector(Collector):
-    """Hindsight Experience Replay Collector is implemented based on Collector,
-    enables it construct hindsight trajectory from achieved goals after one trajectory
-    is fully collected. HER Collector provides two methods for relabel:
-    `online` and `offline`.
+    """Hindsight Experience Replay Collector.
+
+    The collector will construct hindsight trajectory from achieved goals
+    after one trajectory is fully collected.
+    HER Collector provides two methods for relabel: `online` and `offline`.
     For details, please refer to https://arxiv.org/abs/1707.01495
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.

@@ -11,6 +11,7 @@ from tianshou.policy import BasePolicy, SACPolicy
 
 class SACHERPolicy(SACPolicy):
     """Implementation of Hindsight Experience Replay Based on SAC. arXiv:1707.01495.
+    
     The key difference is that we redesigned the process_fn to get relabel return,
     if the replay strategy is `offline`, then it will behave the same as `SACPolicy`.
 
