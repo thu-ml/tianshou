@@ -73,9 +73,9 @@ class C51Policy(DQNPolicy):
             act = self(batch, input="obs_next").act
             next_dist = self(batch, model="model_old", input="obs_next").logits
         else:
-            next_b = self(batch, input="obs_next")
-            act = next_b.act
-            next_dist = next_b.logits
+            next_batch = self(batch, input="obs_next")
+            act = next_batch.act
+            next_dist = next_batch.logits
         next_dist = next_dist[np.arange(len(act)), act, :]
         target_support = batch.returns.clamp(self._v_min, self._v_max)
         # An amazing trick for calculating the projection gracefully.

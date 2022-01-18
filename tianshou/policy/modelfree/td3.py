@@ -89,18 +89,17 @@ class TD3Policy(DDPGPolicy):
         return self
 
     def sync_weight(self) -> None:
-        for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(self.critic1_old.parameters(), self.critic1.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(self.critic2_old.parameters(), self.critic2.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
+        for target_param, param in zip(self.actor_old.parameters(), self.actor.parameters()):
+            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
+        for target_param, param in zip(self.critic1_old.parameters(), self.critic1.parameters()):
+            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
+        for target_param, param in zip(self.critic2_old.parameters(), self.critic2.parameters()):
+            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs: s_{t+n}
+        batch = buffer[indices]  # batch.obs: s_{t+param}
         act = self(batch, model="actor_old", input="obs_next").act
-        dev = act.device
-        noise = torch.randn(size=act.shape, device=dev) * self._policy_noise
+        noise = torch.randn(size=act.shape, device=act.device) * self._policy_noise
         if self._noise_clip > 0.0:
             noise = noise.clamp(-self._noise_clip, self._noise_clip)
         act += noise

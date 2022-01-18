@@ -65,9 +65,9 @@ class FQFPolicy(QRDQNPolicy):
                 batch, model="model_old", input="obs_next", fractions=fractions
             ).logits
         else:
-            next_b = self(batch, input="obs_next")
-            act = next_b.act
-            next_dist = next_b.logits
+            next_batch = self(batch, input="obs_next")
+            act = next_batch.act
+            next_dist = next_batch.logits
         next_dist = next_dist[np.arange(len(act)), act, :]
         return next_dist  # shape: [bsz, num_quantiles]
 
@@ -84,11 +84,11 @@ class FQFPolicy(QRDQNPolicy):
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         if fractions is None:
-            (logits, fractions, quantiles_tau), h = model(
+            (logits, fractions, quantiles_tau), hidden = model(
                 obs_next, propose_model=self.propose_model,
                 state=state, info=batch.info)
         else:
-            (logits, _, quantiles_tau), h = model(
+            (logits, _, quantiles_tau), hidden = model(
                 obs_next,
                 propose_model=self.propose_model,
                 fractions=fractions,
@@ -106,7 +106,7 @@ class FQFPolicy(QRDQNPolicy):
         return Batch(
             logits=logits,
             act=act,
-            state=h,
+            state=hidden,
             fractions=fractions,
             quantiles_tau=quantiles_tau
         )

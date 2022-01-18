@@ -95,10 +95,10 @@ class DDPGPolicy(BasePolicy):
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(self.critic_old.parameters(), self.critic.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
+        for target_param, param in zip(self.actor_old.parameters(), self.actor.parameters()):
+            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
+        for target_param, param in zip(self.critic_old.parameters(), self.critic.parameters()):
+            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}

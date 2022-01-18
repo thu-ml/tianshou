@@ -99,10 +99,10 @@ class SACPolicy(DDPGPolicy):
         return self
 
     def sync_weight(self) -> None:
-        for o, n in zip(self.critic1_old.parameters(), self.critic1.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(self.critic2_old.parameters(), self.critic2.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
+        for target_param, param in zip(self.critic1_old.parameters(), self.critic1.parameters()):
+            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
+        for target_param, param in zip(self.critic2_old.parameters(), self.critic2.parameters()):
+            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
 
     def forward(  # type: ignore
         self,
@@ -139,7 +139,7 @@ class SACPolicy(DDPGPolicy):
         )
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs: s_{t+n}
+        batch = buffer[indices]  # batch.obs: s_{t+param}
         obs_next_result = self(batch, input='obs_next')
         act = obs_next_result.act
         target_q = torch.min(

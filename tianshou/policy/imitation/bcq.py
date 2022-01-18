@@ -116,8 +116,8 @@ class BCQPolicy(BasePolicy):
             # now action is (forward_sampled_times, action_dim)
             q1 = self.critic1(obs, act)
             # q1 is (forward_sampled_times, 1)
-            ind = q1.argmax(0)
-            act_group.append(act[ind].cpu().data.numpy().flatten())
+            max_indice = q1.argmax(0)
+            act_group.append(act[max_indice].cpu().data.numpy().flatten())
         act_group = np.array(act_group)
         return Batch(act=act_group)
 

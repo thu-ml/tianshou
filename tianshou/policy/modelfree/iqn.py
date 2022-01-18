@@ -87,8 +87,8 @@ class IQNPolicy(QRDQNPolicy):
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
-        out = self(batch)
-        curr_dist, taus = out.logits, out.taus
+        action_batch = self(batch)
+        curr_dist, taus = action_batch.logits, action_batch.taus
         act = batch.act
         curr_dist = curr_dist[np.arange(len(act)), act, :].unsqueeze(2)
         target_dist = batch.returns.unsqueeze(1)

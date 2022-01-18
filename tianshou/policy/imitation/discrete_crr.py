@@ -97,8 +97,8 @@ class DiscreteCRRPolicy(PGPolicy):
             target = rew.unsqueeze(1) + self._gamma * expected_target_q
         critic_loss = 0.5 * F.mse_loss(qa_t, target)
         # Actor loss
-        a_t, _ = self.actor(batch.obs)
-        dist = Categorical(logits=a_t)
+        act_target, _ = self.actor(batch.obs)
+        dist = Categorical(logits=act_target)
         expected_policy_q = (q_t * dist.probs).sum(-1, keepdim=True)
         advantage = qa_t - expected_policy_q
         if self._policy_improvement_mode == "binary":

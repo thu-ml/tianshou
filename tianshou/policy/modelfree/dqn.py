@@ -166,9 +166,9 @@ class DQNPolicy(BasePolicy):
         q = self(batch).logits
         q = q[np.arange(len(q)), batch.act]
         returns = to_torch_as(batch.returns.flatten(), q)
-        td = returns - q
-        loss = (td.pow(2) * weight).mean()
-        batch.weight = td  # prio-buffer
+        td_error = returns - q
+        loss = (td_error.pow(2) * weight).mean()
+        batch.weight = td_error  # prio-buffer
         loss.backward()
         self.optim.step()
         self._iter += 1

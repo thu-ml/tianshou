@@ -107,7 +107,7 @@ class PGPolicy(BasePolicy):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
-        logits, h = self.actor(batch.obs, state=state)
+        logits, hidden = self.actor(batch.obs, state=state)
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
@@ -119,7 +119,7 @@ class PGPolicy(BasePolicy):
                 act = logits[0]
         else:
             act = dist.sample()
-        return Batch(logits=logits, act=act, state=h, dist=dist)
+        return Batch(logits=logits, act=act, state=hidden, dist=dist)
 
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
