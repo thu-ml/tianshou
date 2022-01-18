@@ -112,7 +112,7 @@ class SACPolicy(DDPGPolicy):
         **kwargs: Any,
     ) -> Batch:
         obs = batch[input]
-        logits, h = self.actor(obs, state=state, info=batch.info)
+        logits, hidden = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
         dist = Independent(Normal(*logits), 1)
         if self._deterministic_eval and not self.training:
@@ -134,7 +134,7 @@ class SACPolicy(DDPGPolicy):
             action_scale * (1 - squashed_action.pow(2)) + self.__eps
         ).sum(-1, keepdim=True)
         return Batch(
-            logits=logits, act=squashed_action, state=h, dist=dist, log_prob=log_prob
+            logits=logits, act=squashed_action, state=hidden, dist=dist, log_prob=log_prob
         )
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:

@@ -76,10 +76,10 @@ class DiscreteSACPolicy(SACPolicy):
         **kwargs: Any,
     ) -> Batch:
         obs = batch[input]
-        logits, h = self.actor(obs, state=state, info=batch.info)
+        logits, hidden = self.actor(obs, state=state, info=batch.info)
         dist = Categorical(logits=logits)
         act = dist.sample()
-        return Batch(logits=logits, act=act, state=h, dist=dist)
+        return Batch(logits=logits, act=act, state=hidden, dist=dist)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}

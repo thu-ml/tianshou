@@ -260,13 +260,14 @@ class Recurrent(nn.Module):
             # but pytorch rnn needs [len, bsz, ...]
             obs, (h, c) = self.nn(
                 obs, (
-                    state["h"].transpose(0, 1).contiguous(),
-                    state["c"].transpose(0, 1).contiguous()
+                    state["hidden"].transpose(0, 1).contiguous(),
+                    state["cell"].transpose(0, 1).contiguous()
                 )
             )
         obs = self.fc2(obs[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
-        return obs, {"h": h.transpose(0, 1).detach(), "c": c.transpose(0, 1).detach()}
+        return obs, {"hidden": h.transpose(0, 1).detach(),
+                     "cell": c.transpose(0, 1).detach()}
 
 
 class ActorCritic(nn.Module):

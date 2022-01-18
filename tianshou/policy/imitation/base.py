@@ -40,12 +40,12 @@ class ImitationPolicy(BasePolicy):
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         **kwargs: Any,
     ) -> Batch:
-        logits, h = self.model(batch.obs, state=state, info=batch.info)
+        logits, hidden = self.model(batch.obs, state=state, info=batch.info)
         if self.action_type == "discrete":
             act = logits.max(dim=1)[1]
         else:
             act = logits
-        return Batch(logits=logits, act=act, state=h)
+        return Batch(logits=logits, act=act, state=hidden)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         self.optim.zero_grad()

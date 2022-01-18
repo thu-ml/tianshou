@@ -387,10 +387,10 @@ def _gae_return(
 ) -> np.ndarray:
     returns = np.zeros(rew.shape)
     delta = rew + v_s_ * gamma - v_s
-    m = (1.0 - end_flag) * (gamma * gae_lambda)
+    discount = (1.0 - end_flag) * (gamma * gae_lambda)
     gae = 0.0
     for i in range(len(rew) - 1, -1, -1):
-        gae = delta[i] + m[i] * gae
+        gae = delta[i] + discount[i] * gae
         returns[i] = gae
     return returns
 

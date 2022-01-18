@@ -63,9 +63,9 @@ class Actor(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> logits -> action."""
-        logits, h = self.preprocess(obs, state)
+        logits, hidden = self.preprocess(obs, state)
         logits = self._max * torch.tanh(self.last(logits))
-        return logits, h
+        return logits, hidden
 
 
 class Critic(nn.Module):
@@ -127,7 +127,7 @@ class Critic(nn.Module):
                 dtype=torch.float32,
             ).flatten(1)
             obs = torch.cat([obs, act], dim=1)
-        logits, h = self.preprocess(obs)
+        logits, hidden = self.preprocess(obs)
         logits = self.last(logits)
         return logits
 
@@ -201,7 +201,7 @@ class ActorProb(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Any]:
         """Mapping: obs -> logits -> (mu, sigma)."""
-        logits, h = self.preprocess(obs, state)
+        logits, hidden = self.preprocess(obs, state)
         mu = self.mu(logits)
         if not self._unbounded:
             mu = self._max * torch.tanh(mu)
@@ -265,14 +265,14 @@ class RecurrentActorProb(nn.Module):
             obs = obs.unsqueeze(-2)
         self.nn.flatten_parameters()
         if state is None:
-            obs, (h, c) = self.nn(obs)
+            obs, (hidden, cell) = self.nn(obs)
         else:
             # we store the stack data in [bsz, len, ...] format
             # but pytorch rnn needs [len, bsz, ...]
-            obs, (h, c) = self.nn(
+            obs, (hidden, cell) = self.nn(
                 obs, (
-                    state["h"].transpose(0, 1).contiguous(),
-                    state["c"].transpose(0, 1).contiguous()
+                    state["hidden"].transpose(0, 1).contiguous(),
+                    state["cell"].transpose(0, 1).contiguous()
                 )
             )
         logits = obs[:, -1]
@@ -287,8 +287,8 @@ class RecurrentActorProb(nn.Module):
             sigma = (self.sigma_param.view(shape) + torch.zeros_like(mu)).exp()
         # please ensure the first dim is batch size: [bsz, len, ...]
         return (mu, sigma), {
-            "h": h.transpose(0, 1).detach(),
-            "c": c.transpose(0, 1).detach()
+            "hidden": hidden.transpose(0, 1).detach(),
+            "cell": cell.transpose(0, 1).detach()
         }
 
 
@@ -332,7 +332,7 @@ class RecurrentCritic(nn.Module):
         # in evaluation phase.
         assert len(obs.shape) == 3
         self.nn.flatten_parameters()
-        obs, (h, c) = self.nn(obs)
+        obs, (hidden, cell) = self.nn(obs)
         obs = obs[:, -1]
         if act is not None:
             act = torch.as_tensor(
@@ -434,31 +434,31 @@ class VAE(nn.Module):
         self, state: torch.Tensor, action: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # [state, action] -> z , [state, z] -> action
-        z = self.encoder(torch.cat([state, action], -1))
+        latent_z = self.encoder(torch.cat([state, action], -1))
         # shape of z: (state.shape[:-1], hidden_dim)
 
-        mean = self.mean(z)
+        mean = self.mean(latent_z)
         # Clamped for numerical stability
-        log_std = self.log_std(z).clamp(-4, 15)
+        log_std = self.log_std(latent_z).clamp(-4, 15)
         std = torch.exp(log_std)
         # shape of mean, std: (state.shape[:-1], latent_dim)
 
-        z = mean + std * torch.randn_like(std)  # (state.shape[:-1], latent_dim)
+        latent_z = mean + std * torch.randn_like(std)  # (state.shape[:-1], latent_dim)
 
-        u = self.decode(state, z)  # (state.shape[:-1], action_dim)
-        return u, mean, std
+        reconstruction = self.decode(state, latent_z)  # (state.shape[:-1], action_dim)
+        return reconstruction, mean, std
 
     def decode(
         self,
         state: torch.Tensor,
-        z: Union[torch.Tensor, None] = None
+        latent_z: Union[torch.Tensor, None] = None
     ) -> torch.Tensor:
         # decode(state) -> action
-        if z is None:
+        if latent_z is None:
             # state.shape[0] may be batch_size
             # latent vector clipped to [-0.5, 0.5]
-            z = torch.randn(state.shape[:-1] + (self.latent_dim, )) \
+            latent_z = torch.randn(state.shape[:-1] + (self.latent_dim, )) \
                 .to(self.device).clamp(-0.5, 0.5)
 
         # decode z with state!
-        return self.max_action * torch.tanh(self.decoder(torch.cat([state, z], -1)))
+        return self.max_action * torch.tanh(self.decoder(torch.cat([state, latent_z], -1)))

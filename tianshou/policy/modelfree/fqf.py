@@ -122,9 +122,9 @@ class FQFPolicy(QRDQNPolicy):
         curr_dist = curr_dist_orig[np.arange(len(act)), act, :].unsqueeze(2)
         target_dist = batch.returns.unsqueeze(1)
         # calculate each element's difference between curr_dist and target_dist
-        u = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
+        dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            u * (
+            dist_diff * (
                 tau_hats.unsqueeze(2) -
                 (target_dist - curr_dist).detach().le(0.).float()
             ).abs()
@@ -132,7 +132,7 @@ class FQFPolicy(QRDQNPolicy):
         quantile_loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
-        batch.weight = u.detach().abs().sum(-1).mean(1)  # prio-buffer
+        batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
         # calculate fraction loss
         with torch.no_grad():
             sa_quantile_hats = curr_dist_orig[np.arange(len(act)), act, :]

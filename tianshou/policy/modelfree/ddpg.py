@@ -139,8 +139,8 @@ class DDPGPolicy(BasePolicy):
         """
         model = getattr(self, model)
         obs = batch[input]
-        actions, h = model(obs, state=state, info=batch.info)
-        return Batch(act=actions, state=h)
+        actions, hidden = model(obs, state=state, info=batch.info)
+        return Batch(act=actions, state=hidden)
 
     @staticmethod
     def _mse_optimizer(

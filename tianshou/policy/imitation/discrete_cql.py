@@ -57,15 +57,15 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         curr_dist = all_dist[np.arange(len(act)), act, :].unsqueeze(2)
         target_dist = batch.returns.unsqueeze(1)
         # calculate each element's difference between curr_dist and target_dist
-        u = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
+        dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            u * (self.tau_hat -
+            dist_diff * (self.tau_hat -
                  (target_dist - curr_dist).detach().le(0.).float()).abs()
         ).sum(-1).mean(1)
         qr_loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
-        batch.weight = u.detach().abs().sum(-1).mean(1)  # prio-buffer
+        batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
         # add CQL loss
         q = self.compute_q_value(all_dist, None)
         dataset_expec = q.gather(1, act.unsqueeze(1)).mean()
