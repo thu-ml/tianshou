@@ -96,8 +96,8 @@ class PPOPolicy(A2CPolicy):
         batch.act = to_torch_as(batch.act, batch.v_s)
         old_log_prob = []
         with torch.no_grad():
-            for b in batch.split(self._batch, shuffle=False, merge_last=True):
-                old_log_prob.append(self(b).dist.log_prob(b.act))
+            for minibatch in batch.split(self._batch, shuffle=False, merge_last=True):
+                old_log_prob.append(self(minibatch).dist.log_prob(minibatch.act))
         batch.logp_old = torch.cat(old_log_prob, dim=0)
         return batch
 
@@ -108,32 +108,34 @@ class PPOPolicy(A2CPolicy):
         for step in range(repeat):
             if self._recompute_adv and step > 0:
                 batch = self._compute_returns(batch, self._buffer, self._indices)
-            for b in batch.split(batch_size, merge_last=True):
+            for minibatch in batch.split(batch_size, merge_last=True):
                 # calculate loss for actor
-                dist = self(b).dist
+                dist = self(minibatch).dist
                 if self._norm_adv:
-                    mean, std = b.adv.mean(), b.adv.std()
-                    b.adv = (b.adv - mean) / std  # per-batch norm
-                ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
+                    mean, std = minibatch.adv.mean(), minibatch.adv.std()
+                    minibatch.adv = (minibatch.adv - mean) / std  # per-batch norm
+                ratio = (dist.log_prob(minibatch.act) -
+                         minibatch.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
-                surr1 = ratio * b.adv
-                surr2 = ratio.clamp(1.0 - self._eps_clip, 1.0 + self._eps_clip) * b.adv
+                surr1 = ratio * minibatch.adv
+                surr2 = ratio.clamp(
+                    1.0 - self._eps_clip, 1.0 + self._eps_clip) * minibatch.adv
                 if self._dual_clip:
                     clip1 = torch.min(surr1, surr2)
-                    clip2 = torch.max(clip1, self._dual_clip * b.adv)
-                    clip_loss = -torch.where(b.adv < 0, clip2, clip1).mean()
+                    clip2 = torch.max(clip1, self._dual_clip * minibatch.adv)
+                    clip_loss = -torch.where(minibatch.adv < 0, clip2, clip1).mean()
                 else:
                     clip_loss = -torch.min(surr1, surr2).mean()
                 # calculate loss for critic
-                value = self.critic(b.obs).flatten()
+                value = self.critic(minibatch.obs).flatten()
                 if self._value_clip:
-                    v_clip = b.v_s + (value -
-                                      b.v_s).clamp(-self._eps_clip, self._eps_clip)
-                    vf1 = (b.returns - value).pow(2)
-                    vf2 = (b.returns - v_clip).pow(2)
+                    v_clip = minibatch.v_s + \
+                        (value - minibatch.v_s).clamp(-self._eps_clip, self._eps_clip)
+                    vf1 = (minibatch.returns - value).pow(2)
+                    vf2 = (minibatch.returns - v_clip).pow(2)
                     vf_loss = torch.max(vf1, vf2).mean()
                 else:
-                    vf_loss = (b.returns - value).pow(2).mean()
+                    vf_loss = (minibatch.returns - value).pow(2).mean()
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
                 loss = clip_loss + self._weight_vf * vf_loss \

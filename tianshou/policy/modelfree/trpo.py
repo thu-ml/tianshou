@@ -71,20 +71,21 @@ class TRPOPolicy(NPGPolicy):
     ) -> Dict[str, List[float]]:
         actor_losses, vf_losses, step_sizes, kls = [], [], [], []
         for _ in range(repeat):
-            for b in batch.split(batch_size, merge_last=True):
+            for minibatch in batch.split(batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
-                dist = self(b).dist  # TODO could come from batch
-                ratio = (dist.log_prob(b.act) - b.logp_old).exp().float()
+                dist = self(minibatch).dist  # TODO could come from batch
+                ratio = (dist.log_prob(minibatch.act) -
+                         minibatch.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
-                actor_loss = -(ratio * b.adv).mean()
+                actor_loss = -(ratio * minibatch.adv).mean()
                 flat_grads = self._get_flat_grad(
                     actor_loss, self.actor, retain_graph=True
                 ).detach()
 
                 # direction: calculate natural gradient
                 with torch.no_grad():
-                    old_dist = self(b).dist
+                    old_dist = self(minibatch).dist
 
                 kl = kl_divergence(old_dist, dist).mean()
                 # calculate first order gradient of kl with respect to theta
@@ -109,12 +110,12 @@ class TRPOPolicy(NPGPolicy):
                         new_flat_params = flat_params + step_size * search_direction
                         self._set_from_flat_params(self.actor, new_flat_params)
                         # calculate kl and if in bound, loss actually down
-                        new_dist = self(b).dist
-                        new_dratio = (new_dist.log_prob(b.act) -
-                                      b.logp_old).exp().float()
+                        new_dist = self(minibatch).dist
+                        new_dratio = (new_dist.log_prob(minibatch.act) -
+                                      minibatch.logp_old).exp().float()
                         new_dratio = new_dratio.reshape(new_dratio.size(0),
                                                         -1).transpose(0, 1)
-                        new_actor_loss = -(new_dratio * b.adv).mean()
+                        new_actor_loss = -(new_dratio * minibatch.adv).mean()
                         kl = kl_divergence(old_dist, new_dist).mean()
 
                         if kl < self._delta and new_actor_loss < actor_loss:
@@ -133,8 +134,8 @@ class TRPOPolicy(NPGPolicy):
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):
-                    value = self.critic(b.obs).flatten()
-                    vf_loss = F.mse_loss(b.returns, value)
+                    value = self.critic(minibatch.obs).flatten()
+                    vf_loss = F.mse_loss(minibatch.returns, value)
                     self.optim.zero_grad()
                     vf_loss.backward()
                     self.optim.step()

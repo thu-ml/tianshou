@@ -126,12 +126,12 @@ class PGPolicy(BasePolicy):
     ) -> Dict[str, List[float]]:
         losses = []
         for _ in range(repeat):
-            for b in batch.split(batch_size, merge_last=True):
+            for minibatch in batch.split(batch_size, merge_last=True):
                 self.optim.zero_grad()
-                result = self(b)
+                result = self(minibatch)
                 dist = result.dist
-                act = to_torch_as(b.act, result.act)
-                ret = to_torch_as(b.returns, result.act)
+                act = to_torch_as(minibatch.act, result.act)
+                ret = to_torch_as(minibatch.returns, result.act)
                 log_prob = dist.log_prob(act).reshape(len(ret), -1).transpose(0, 1)
                 loss = -(log_prob * ret).mean()
                 loss.backward()

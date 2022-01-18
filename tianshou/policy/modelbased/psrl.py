@@ -202,13 +202,13 @@ class PSRLPolicy(BasePolicy):
         rew_sum = np.zeros((n_s, n_a))
         rew_square_sum = np.zeros((n_s, n_a))
         rew_count = np.zeros((n_s, n_a))
-        for b in batch.split(size=1):
-            obs, act, obs_next = b.obs, b.act, b.obs_next
+        for minibatch in batch.split(size=1):
+            obs, act, obs_next = minibatch.obs, minibatch.act, minibatch.obs_next
             trans_count[obs, act, obs_next] += 1
-            rew_sum[obs, act] += b.rew
-            rew_square_sum[obs, act] += b.rew**2
+            rew_sum[obs, act] += minibatch.rew
+            rew_square_sum[obs, act] += minibatch.rew**2
             rew_count[obs, act] += 1
-            if self._add_done_loop and b.done:
+            if self._add_done_loop and minibatch.done:
                 # special operation for terminal states: add a self-loop
                 trans_count[obs_next, :, obs_next] += 1
                 rew_count[obs_next, :] += 1

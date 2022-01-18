@@ -71,8 +71,8 @@ class NPGPolicy(A2CPolicy):
         batch = super().process_fn(batch, buffer, indices)
         old_log_prob = []
         with torch.no_grad():
-            for b in batch.split(self._batch, shuffle=False, merge_last=True):
-                old_log_prob.append(self(b).dist.log_prob(b.act))
+            for minibatch in batch.split(self._batch, shuffle=False, merge_last=True):
+                old_log_prob.append(self(minibatch).dist.log_prob(minibatch.act))
         batch.logp_old = torch.cat(old_log_prob, dim=0)
         if self._norm_adv:
             batch.adv = (batch.adv - batch.adv.mean()) / batch.adv.std()
@@ -83,20 +83,20 @@ class NPGPolicy(A2CPolicy):
     ) -> Dict[str, List[float]]:
         actor_losses, vf_losses, kls = [], [], []
         for _ in range(repeat):
-            for b in batch.split(batch_size, merge_last=True):
+            for minibatch in batch.split(batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
-                dist = self(b).dist
-                log_prob = dist.log_prob(b.act)
+                dist = self(minibatch).dist
+                log_prob = dist.log_prob(minibatch.act)
                 log_prob = log_prob.reshape(log_prob.size(0), -1).transpose(0, 1)
-                actor_loss = -(log_prob * b.adv).mean()
+                actor_loss = -(log_prob * minibatch.adv).mean()
                 flat_grads = self._get_flat_grad(
                     actor_loss, self.actor, retain_graph=True
                 ).detach()
 
                 # direction: calculate natural gradient
                 with torch.no_grad():
-                    old_dist = self(b).dist
+                    old_dist = self(minibatch).dist
 
                 kl = kl_divergence(old_dist, dist).mean()
                 # calculate first order gradient of kl with respect to theta
@@ -112,13 +112,13 @@ class NPGPolicy(A2CPolicy):
                     )
                     new_flat_params = flat_params + self._step_size * search_direction
                     self._set_from_flat_params(self.actor, new_flat_params)
-                    new_dist = self(b).dist
+                    new_dist = self(minibatch).dist
                     kl = kl_divergence(old_dist, new_dist).mean()
 
                 # optimize citirc
                 for _ in range(self._optim_critic_iters):
-                    value = self.critic(b.obs).flatten()
-                    vf_loss = F.mse_loss(b.returns, value)
+                    value = self.critic(minibatch.obs).flatten()
+                    vf_loss = F.mse_loss(minibatch.returns, value)
                     self.optim.zero_grad()
                     vf_loss.backward()
                     self.optim.step()
@@ -147,14 +147,14 @@ class NPGPolicy(A2CPolicy):
 
     def _conjugate_gradients(
         self,
-        b: torch.Tensor,
+        minibatch: torch.Tensor,
         flat_kl_grad: torch.Tensor,
         nsteps: int = 10,
         residual_tol: float = 1e-10
     ) -> torch.Tensor:
-        x = torch.zeros_like(b)
-        r, p = b.clone(), b.clone()
-        # Note: should be 'r, p = b - MVP(x)', but for x=0, MVP(x)=0.
+        x = torch.zeros_like(minibatch)
+        r, p = minibatch.clone(), minibatch.clone()
+        # Note: should be 'r, p = minibatch - MVP(x)', but for x=0, MVP(x)=0.
         # Change if doing warm start.
         rdotr = r.dot(r)
         for _ in range(nsteps):
