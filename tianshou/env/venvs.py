@@ -412,10 +412,10 @@ class RayVectorEnv(BaseVectorEnv):
     def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
         try:
             import ray
-        except ImportError as e:
+        except ImportError as exception:
             raise ImportError(
                 "Please install ray to support RayVectorEnv: pip install ray"
-            ) from e
+            ) from exception
         if not ray.is_initialized():
             ray.init()
         super().__init__(env_fns, RayEnvWorker, **kwargs)
