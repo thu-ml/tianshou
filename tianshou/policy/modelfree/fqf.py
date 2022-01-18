@@ -82,14 +82,14 @@ class FQFPolicy(QRDQNPolicy):
     ) -> Batch:
         model = getattr(self, model)
         obs = batch[input]
-        obs_ = obs.obs if hasattr(obs, "obs") else obs
+        obs_next = obs.obs if hasattr(obs, "obs") else obs
         if fractions is None:
             (logits, fractions, quantiles_tau), h = model(
-                obs_, propose_model=self.propose_model, state=state, info=batch.info
-            )
+                obs_next, propose_model=self.propose_model,
+                state=state, info=batch.info)
         else:
             (logits, _, quantiles_tau), h = model(
-                obs_,
+                obs_next,
                 propose_model=self.propose_model,
                 fractions=fractions,
                 state=state,

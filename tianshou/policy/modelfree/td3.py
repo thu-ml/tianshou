@@ -105,7 +105,8 @@ class TD3Policy(DDPGPolicy):
             noise = noise.clamp(-self._noise_clip, self._noise_clip)
         act += noise
         target_q = torch.min(
-            self.critic1_old(batch.obs_next, act), self.critic2_old(batch.obs_next, act)
+            self.critic1_old(batch.obs_next, act),
+            self.critic2_old(batch.obs_next, act)
         )
         return target_q
 

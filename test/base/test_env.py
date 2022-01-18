@@ -63,11 +63,11 @@ def test_async_env(size=10000, num=8, sleep=0.1):
         o = []
         spent_time = time.time()
         while current_idx_start < len(action_list):
-            A, B, C, D = v.step(action=action, id=env_ids)
+            A, B, C, D = v.step(action=act, id=env_ids)
             b = Batch({'obs': A, 'rew': B, 'done': C, 'info': D})
             env_ids = b.info.env_id
             o.append(b)
-            current_idx_start += len(action)
+            current_idx_start += len(act)
             # len of action may be smaller than len(A) in the end
             act = action_list[current_idx_start:current_idx_start + len(A)]
             # truncate env_ids with the first terms

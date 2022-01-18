@@ -73,9 +73,9 @@ class IQNPolicy(QRDQNPolicy):
             sample_size = self._sample_size
         model = getattr(self, model)
         obs = batch[input]
-        obs_ = obs.obs if hasattr(obs, "obs") else obs
+        obs_next = obs.obs if hasattr(obs, "obs") else obs
         (logits, taus), hidden = model(
-           obs_, sample_size=sample_size, state=state, info=batch.info)
+            obs_next, sample_size=sample_size, state=state, info=batch.info)
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]

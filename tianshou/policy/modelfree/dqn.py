@@ -150,8 +150,8 @@ class DQNPolicy(BasePolicy):
         """
         model = getattr(self, model)
         obs = batch[input]
-        obs_ = obs.obs if hasattr(obs, "obs") else obs
-        logits, hidden = model(obs_, state=state, info=batch.info)
+        obs_next = obs.obs if hasattr(obs, "obs") else obs
+        logits, hidden = model(obs_next, state=state, info=batch.info)
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]

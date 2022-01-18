@@ -257,7 +257,8 @@ class RecurrentActorProb(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict[str, torch.Tensor]]:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)  # type: ignore
+        obs = torch.as_tensor(obs,
+                              device=self.device, dtype=torch.float32)  # type: ignore
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -326,7 +327,8 @@ class RecurrentCritic(nn.Module):
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)  # type: ignore
+        obs = torch.as_tensor(obs,
+                              device=self.device, dtype=torch.float32)  # type: ignore
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -461,4 +463,5 @@ class VAE(nn.Module):
                 .to(self.device).clamp(-0.5, 0.5)
 
         # decode z with state!
-        return self.max_action * torch.tanh(self.decoder(torch.cat([state, latent_z], -1)))
+        return self.max_action * \
+            torch.tanh(self.decoder(torch.cat([state, latent_z], -1)))
