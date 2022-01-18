@@ -59,12 +59,12 @@ class Actor(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, h = self.preprocess(s, state)
+        logits, h = self.preprocess(obs, state)
         logits = self.last(logits)
         if self.softmax_output:
             logits = F.softmax(logits, dim=-1)
@@ -114,10 +114,10 @@ class Critic(nn.Module):
         )
 
     def forward(
-        self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
+        self, obs: Union[np.ndarray, torch.Tensor], **kwargs: Any
     ) -> torch.Tensor:
         """Mapping: s -> V(s)."""
-        logits, _ = self.preprocess(s, state=kwargs.get("state", None))
+        logits, _ = self.preprocess(obs, state=kwargs.get("state", None))
         return self.last(logits)
 
 
@@ -199,10 +199,10 @@ class ImplicitQuantileNetwork(Critic):
         ).to(device)
 
     def forward(  # type: ignore
-        self, s: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
+        self, obs: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
     ) -> Tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, h = self.preprocess(s, state=kwargs.get("state", None))
+        logits, h = self.preprocess(obs, state=kwargs.get("state", None))
         # Sample fractions.
         batch_size = logits.size(0)
         taus = torch.rand(
@@ -294,13 +294,13 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         return quantiles
 
     def forward(  # type: ignore
-        self, s: Union[np.ndarray, torch.Tensor],
+        self, obs: Union[np.ndarray, torch.Tensor],
         propose_model: FractionProposalNetwork,
         fractions: Optional[Batch] = None,
         **kwargs: Any
     ) -> Tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, h = self.preprocess(s, state=kwargs.get("state", None))
+        logits, h = self.preprocess(obs, state=kwargs.get("state", None))
         # Propose fractions
         if fractions is None:
             taus, tau_hats, entropies = propose_model(logits.detach())

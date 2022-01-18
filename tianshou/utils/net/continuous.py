@@ -58,12 +58,12 @@ class Actor(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
-        """Mapping: s -> logits -> action."""
-        logits, h = self.preprocess(s, state)
+        """Mapping: obs -> logits -> action."""
+        logits, h = self.preprocess(obs, state)
         logits = self._max * torch.tanh(self.last(logits))
         return logits, h
 
@@ -110,24 +110,24 @@ class Critic(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
-        a: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        obs: Union[np.ndarray, torch.Tensor],
+        act: Optional[Union[np.ndarray, torch.Tensor]] = None,
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Mapping: (s, a) -> logits -> Q(s, a)."""
-        s = torch.as_tensor(
-            s,
+        obs = torch.as_tensor(
+            obs,
             device=self.device,  # type: ignore
             dtype=torch.float32,
         ).flatten(1)
-        if a is not None:
-            a = torch.as_tensor(
-                a,
+        if act is not None:
+            act = torch.as_tensor(
+                act,
                 device=self.device,  # type: ignore
                 dtype=torch.float32,
             ).flatten(1)
-            s = torch.cat([s, a], dim=1)
-        logits, h = self.preprocess(s)
+            obs = torch.cat([obs, act], dim=1)
+        logits, h = self.preprocess(obs)
         logits = self.last(logits)
         return logits
 
@@ -196,12 +196,12 @@ class ActorProb(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Any]:
-        """Mapping: s -> logits -> (mu, sigma)."""
-        logits, h = self.preprocess(s, state)
+        """Mapping: obs -> logits -> (mu, sigma)."""
+        logits, h = self.preprocess(obs, state)
         mu = self.mu(logits)
         if not self._unbounded:
             mu = self._max * torch.tanh(mu)
@@ -252,30 +252,30 @@ class RecurrentActorProb(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Dict[str, torch.Tensor]] = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict[str, torch.Tensor]]:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        s = torch.as_tensor(s, device=self.device, dtype=torch.float32)  # type: ignore
-        # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
+        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)  # type: ignore
+        # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
-        if len(s.shape) == 2:
-            s = s.unsqueeze(-2)
+        if len(obs.shape) == 2:
+            obs = obs.unsqueeze(-2)
         self.nn.flatten_parameters()
         if state is None:
-            s, (h, c) = self.nn(s)
+            obs, (h, c) = self.nn(obs)
         else:
             # we store the stack data in [bsz, len, ...] format
             # but pytorch rnn needs [len, bsz, ...]
-            s, (h, c) = self.nn(
-                s, (
+            obs, (h, c) = self.nn(
+                obs, (
                     state["h"].transpose(0, 1).contiguous(),
                     state["c"].transpose(0, 1).contiguous()
                 )
             )
-        logits = s[:, -1]
+        logits = obs[:, -1]
         mu = self.mu(logits)
         if not self._unbounded:
             mu = self._max * torch.tanh(mu)
@@ -321,28 +321,28 @@ class RecurrentCritic(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
-        a: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        obs: Union[np.ndarray, torch.Tensor],
+        act: Optional[Union[np.ndarray, torch.Tensor]] = None,
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        s = torch.as_tensor(s, device=self.device, dtype=torch.float32)  # type: ignore
-        # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
+        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)  # type: ignore
+        # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
-        assert len(s.shape) == 3
+        assert len(obs.shape) == 3
         self.nn.flatten_parameters()
-        s, (h, c) = self.nn(s)
-        s = s[:, -1]
-        if a is not None:
-            a = torch.as_tensor(
-                a,
+        obs, (h, c) = self.nn(obs)
+        obs = obs[:, -1]
+        if act is not None:
+            act = torch.as_tensor(
+                act,
                 device=self.device,  # type: ignore
                 dtype=torch.float32,
             )
-            s = torch.cat([s, a], dim=1)
-        s = self.fc2(s)
-        return s
+            obs = torch.cat([obs, act], dim=1)
+        obs = self.fc2(obs)
+        return obs
 
 
 class Perturbation(nn.Module):
@@ -381,9 +381,9 @@ class Perturbation(nn.Module):
     def forward(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         # preprocess_net
         logits = self.preprocess_net(torch.cat([state, action], -1))[0]
-        a = self.phi * self.max_action * torch.tanh(logits)
+        noise = self.phi * self.max_action * torch.tanh(logits)
         # clip to [-max_action, max_action]
-        return (a + action).clamp(-self.max_action, self.max_action)
+        return (noise + action).clamp(-self.max_action, self.max_action)
 
 
 class VAE(nn.Module):

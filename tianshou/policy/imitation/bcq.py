@@ -105,21 +105,21 @@ class BCQPolicy(BasePolicy):
         obs_group: torch.Tensor = to_torch(  # type: ignore
             batch.obs, device=self.device
         )
-        act = []
+        act_group = []
         for obs in obs_group:
             # now obs is (state_dim)
             obs = (obs.reshape(1, -1)).repeat(self.forward_sampled_times, 1)
             # now obs is (forward_sampled_times, state_dim)
 
             # decode(obs) generates action and actor perturbs it
-            action = self.actor(obs, self.vae.decode(obs))
+            act = self.actor(obs, self.vae.decode(obs))
             # now action is (forward_sampled_times, action_dim)
-            q1 = self.critic1(obs, action)
+            q1 = self.critic1(obs, act)
             # q1 is (forward_sampled_times, 1)
             ind = q1.argmax(0)
-            act.append(action[ind].cpu().data.numpy().flatten())
-        act = np.array(act)
-        return Batch(act=act)
+            act_group.append(act[ind].cpu().data.numpy().flatten())
+        act_group = np.array(act_group)
+        return Batch(act=act_group)
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""

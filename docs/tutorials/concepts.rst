@@ -298,14 +298,14 @@ where :math:`\gamma` is the discount factor, :math:`\gamma \in [0, 1]`. Here is 
 ::
 
     # pseudocode, cannot work
-    s = env.reset()
+    obs = env.reset()
     buffer = Buffer(size=10000)
     agent = DQN()
     for i in range(int(1e6)):
-        a = agent.compute_action(s)
-        s_, r, d, _ = env.step(a)
-        buffer.store(s, a, s_, r, d)
-        s = s_
+        act = agent.compute_action(obs)
+        obs_next, rew, done, _ = env.step(act)
+        buffer.store(obs, act, obs_next, rew, done)
+        obs = obs_next
         if i % 1000 == 0:
             b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)
             # compute 2-step returns. How?
@@ -390,14 +390,14 @@ We give a high-level explanation through the pseudocode used in section :ref:`pr
 ::
 
     # pseudocode, cannot work                                       # methods in tianshou
-    s = env.reset()
+    obs = env.reset()
     buffer = Buffer(size=10000)                                     # buffer = tianshou.data.ReplayBuffer(size=10000)
     agent = DQN()                                                   # policy.__init__(...)
     for i in range(int(1e6)):                                       # done in trainer
-        a = agent.compute_action(s)                                 # act = policy(batch, ...).act
-        s_, r, d, _ = env.step(a)                                   # collector.collect(...)
-        buffer.store(s, a, s_, r, d)                                # collector.collect(...)
-        s = s_                                                      # collector.collect(...)
+        act = agent.compute_action(obs)                                 # act = policy(batch, ...).act
+        obs_next, rew, done, _ = env.step(act)                                   # collector.collect(...)
+        buffer.store(obs, act, obs_next, rew, done)                                # collector.collect(...)
+        obs = obs_next                                                      # collector.collect(...)
         if i % 1000 == 0:                                           # done in trainer
                                                                     # the following is done in policy.update(batch_size, buffer)
             b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # batch, indices = buffer.sample(batch_size)

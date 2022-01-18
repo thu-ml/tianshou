@@ -140,10 +140,10 @@ class SACPolicy(DDPGPolicy):
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}
         obs_next_result = self(batch, input='obs_next')
-        a_ = obs_next_result.act
+        act = obs_next_result.act
         target_q = torch.min(
-            self.critic1_old(batch.obs_next, a_),
-            self.critic2_old(batch.obs_next, a_),
+            self.critic1_old(batch.obs_next, act),
+            self.critic2_old(batch.obs_next, act),
         ) - self._alpha * obs_next_result.log_prob
         return target_q
 
@@ -159,9 +159,9 @@ class SACPolicy(DDPGPolicy):
 
         # actor
         obs_result = self(batch)
-        a = obs_result.act
-        current_q1a = self.critic1(batch.obs, a).flatten()
-        current_q2a = self.critic2(batch.obs, a).flatten()
+        act = obs_result.act
+        current_q1a = self.critic1(batch.obs, act).flatten()
+        current_q2a = self.critic2(batch.obs, act).flatten()
         actor_loss = (
             self._alpha * obs_result.log_prob.flatten() -
             torch.min(current_q1a, current_q2a)

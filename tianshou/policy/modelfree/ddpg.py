@@ -163,8 +163,7 @@ class DDPGPolicy(BasePolicy):
         td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         batch.weight = td  # prio-buffer
         # actor
-        action = self(batch).act
-        actor_loss = -self.critic(batch.obs, action).mean()
+        actor_loss = -self.critic(batch.obs, self(batch).act).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()

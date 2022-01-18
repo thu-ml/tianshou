@@ -56,13 +56,13 @@ class QRDQNPolicy(DQNPolicy):
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
         if self._target:
-            a = self(batch, input="obs_next").act
+            act = self(batch, input="obs_next").act
             next_dist = self(batch, model="model_old", input="obs_next").logits
         else:
             next_b = self(batch, input="obs_next")
-            a = next_b.act
+            act = next_b.act
             next_dist = next_b.logits
-        next_dist = next_dist[np.arange(len(a)), a, :]
+        next_dist = next_dist[np.arange(len(act)), act, :]
         return next_dist  # shape: [bsz, num_quantiles]
 
     def compute_q_value(

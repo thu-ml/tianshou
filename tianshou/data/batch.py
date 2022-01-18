@@ -273,17 +273,17 @@ class Batch:
     def __iadd__(self, other: Union["Batch", Number, np.number]) -> "Batch":
         """Algebraic addition with another Batch instance in-place."""
         if isinstance(other, Batch):
-            for (k, r), v in zip(
+            for (k, v), value in zip(
                 self.__dict__.items(), other.__dict__.values()
             ):  # TODO are keys consistent?
-                if isinstance(r, Batch) and r.is_empty():
+                if isinstance(v, Batch) and v.is_empty():
                     continue
                 else:
-                    self.__dict__[k] += v
+                    self.__dict__[k] += value
             return self
         elif _is_number(other):
-            for k, r in self.items():
-                if isinstance(r, Batch) and r.is_empty():
+            for k, v in self.items():
+                if isinstance(v, Batch) and v.is_empty():
                     continue
                 else:
                     self.__dict__[k] += other
@@ -298,8 +298,8 @@ class Batch:
     def __imul__(self, val: Union[Number, np.number]) -> "Batch":
         """Algebraic multiplication with a scalar value in-place."""
         assert _is_number(val), "Only multiplication by a number is supported."
-        for k, r in self.__dict__.items():
-            if isinstance(r, Batch) and r.is_empty():
+        for k, v in self.__dict__.items():
+            if isinstance(v, Batch) and v.is_empty():
                 continue
             self.__dict__[k] *= val
         return self
@@ -311,8 +311,8 @@ class Batch:
     def __itruediv__(self, val: Union[Number, np.number]) -> "Batch":
         """Algebraic division with a scalar value in-place."""
         assert _is_number(val), "Only division by a number is supported."
-        for k, r in self.__dict__.items():
-            if isinstance(r, Batch) and r.is_empty():
+        for k, v in self.__dict__.items():
+            if isinstance(v, Batch) and v.is_empty():
                 continue
             self.__dict__[k] /= val
         return self
@@ -323,18 +323,18 @@ class Batch:
 
     def __repr__(self) -> str:
         """Return str(self)."""
-        s = self.__class__.__name__ + "(\n"
+        self_str = self.__class__.__name__ + "(\n"
         flag = False
         for k, v in self.__dict__.items():
             rpl = "\n" + " " * (6 + len(k))
             obj = pprint.pformat(v).replace("\n", rpl)
-            s += f"    {k}: {obj},\n"
+            self_str += f"    {k}: {obj},\n"
             flag = True
         if flag:
-            s += ")"
+            self_str += ")"
         else:
-            s = self.__class__.__name__ + "()"
-        return s
+            self_str = self.__class__.__name__ + "()"
+        return self_str
 
     def to_numpy(self) -> None:
         """Change all torch.Tensor to numpy.ndarray in-place."""
@@ -665,19 +665,19 @@ class Batch:
 
     def __len__(self) -> int:
         """Return len(self)."""
-        r = []
+        lens = []
         for v in self.__dict__.values():
             if isinstance(v, Batch) and v.is_empty(recurse=True):
                 continue
             elif hasattr(v, "__len__") and (isinstance(v, Batch) or v.ndim > 0):
-                r.append(len(v))
+                lens.append(len(v))
             else:
                 raise TypeError(f"Object {v} in {self} has no len()")
-        if len(r) == 0:
+        if len(lens) == 0:
             # empty batch has the shape of any, like the tensorflow '?' shape.
             # So it has no length.
             raise TypeError(f"Object {self} has no len()")
-        return min(r)
+        return min(lens)
 
     def is_empty(self, recurse: bool = False) -> bool:
         """Test if a Batch is empty.
