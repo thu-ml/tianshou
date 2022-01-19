@@ -11,6 +11,7 @@ from tianshou.data import (
     CachedReplayBuffer,
     ReplayBuffer,
     ReplayBufferManager,
+    SimpleReplayBuffer,
     VectorReplayBuffer,
     to_numpy,
 )
@@ -570,4 +571,119 @@ class AsyncCollector(Collector):
             "len": len_mean,
             "rew_std": rew_std,
             "len_std": len_std,
+        }
+
+
+class RolloutsCollector(Collector):
+    """RolloutsCollector collects model rollouts.
+
+    The arguments are exactly the same as :class:`~tianshou.data.Collector`, please
+    refer to :class:`~tianshou.data.Collector` for more detailed explanation.
+    """
+
+    def _assign_buffer(self, buffer: Optional[ReplayBuffer]) -> None:
+        """Only SimpleReplayBuffer is used."""
+        assert isinstance(buffer, SimpleReplayBuffer)
+        self.buffer = buffer
+
+    def reset_buffer(self) -> None:
+        """Reset the data buffer."""
+        self.buffer.reset()
+
+    def collect(
+        self,
+        n_step: Optional[int] = None,
+        no_grad: bool = True,
+    ) -> Dict[str, Any]:
+        """Collect a specified number of step or episode.
+
+        :param int n_step: how many steps you want to collect.
+        :param bool no_grad: whether to retain gradient in policy.forward(). Default to
+            True (no gradient retaining).
+
+        :return: A dict including the following keys
+
+            * ``n/ep`` collected number of episodes.
+            * ``n/st`` collected number of steps.
+        """
+        if n_step is not None:
+            assert n_step > 0
+            if not n_step % self.env_num == 0:
+                warnings.warn(
+                    f"n_step={n_step} is not a multiple of #env ({self.env_num}), "
+                    "which may cause extra transitions collected into the buffer."
+                )
+        else:
+            raise TypeError("Please specify n_step in RolloutsCollector.collect().")
+
+        start_time = time.time()
+
+        step_count = 0
+        episode_count = 0
+
+        while True:
+            # restore the state: if the last state is None, it won't store
+            last_state = self.data.policy.pop("hidden_state", None)
+
+            # get the next action
+            if no_grad:
+                with torch.no_grad():  # faster than retain_grad version
+                    # self.data.obs will be used by agent to get result
+                    result = self.policy(self.data, last_state)
+            else:
+                result = self.policy(self.data, last_state)
+            # update state / act / policy into self.data
+            policy = result.get("policy", Batch())
+            assert isinstance(policy, Batch)
+            state = result.get("state", None)
+            if state is not None:
+                policy.hidden_state = state  # save state into buffer
+            act = to_numpy(result.act)
+            if self.exploration_noise:
+                act = self.policy.exploration_noise(act, self.data)
+            self.data.update(policy=policy, act=act)
+
+            # get bounded and remapped actions first (not saved into buffer)
+            action_remap = self.policy.map_action(self.data.act)
+            # step in env
+            result = self.env.step(action_remap)  # type: ignore
+            obs_next, rew, done, info = result
+
+            self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
+            if self.preprocess_fn:
+                self.data.update(
+                    self.preprocess_fn(
+                        obs_next=self.data.obs_next,
+                        rew=self.data.rew,
+                        done=self.data.done,
+                        info=self.data.info,
+                        policy=self.data.policy,
+                    )
+                )
+
+            # add data into the buffer
+            self.buffer.add(self.data)
+
+            # collect statistics
+            step_count += self.env_num
+
+            if np.any(done):
+                env_ind_local = np.where(done)[0]
+                episode_count += len(env_ind_local)
+                for i in env_ind_local:
+                    self._reset_state(i)
+
+            self.data.obs = self.data.obs_next
+
+            if n_step and step_count >= n_step:
+                break
+
+        # generate statistics
+        self.collect_step += step_count
+        self.collect_episode += episode_count
+        self.collect_time += max(time.time() - start_time, 1e-9)
+
+        return {
+            "n/ep": episode_count,
+            "n/st": step_count,
         }

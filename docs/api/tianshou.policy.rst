@@ -101,6 +101,11 @@ Off-policy
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.REDQPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Imitation
 ---------
 
@@ -143,6 +148,11 @@ Model-based
    :show-inheritance:
 
 .. autoclass:: tianshou.policy.ICMPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: tianshou.policy.MBPOPolicy
    :members:
    :undoc-members:
    :show-inheritance:

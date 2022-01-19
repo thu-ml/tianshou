@@ -35,6 +35,7 @@
 - [Twin Delayed DDPG (TD3)](https://arxiv.org/pdf/1802.09477.pdf)
 - [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf)
 - [Discrete Soft Actor-Critic (SAC-Discrete)](https://arxiv.org/pdf/1910.07207.pdf)
+- [Randomized Ensembled Double Q-Learning (REDQ)](https://arxiv.org/pdf/2101.05982.pdf)
 - Vanilla Imitation Learning
 - [Batch-Constrained deep Q-Learning (BCQ)](https://arxiv.org/pdf/1812.02900.pdf)
 - [Conservative Q-Learning (CQL)](https://arxiv.org/pdf/2006.04779.pdf)
@@ -45,6 +46,7 @@
 - [Generalized Advantage Estimator (GAE)](https://arxiv.org/pdf/1506.02438.pdf)
 - [Posterior Sampling Reinforcement Learning (PSRL)](https://www.ece.uvic.ca/~bctill/papers/learning/Strens_2000.pdf)
 - [Intrinsic Curiosity Module (ICM)](https://arxiv.org/pdf/1705.05363.pdf)
+- [Model-Based Policy Optimization (MBPO)](https://arxiv.org/pdf/1906.08253.pdf)
 
 Here is Tianshou's other features:
 

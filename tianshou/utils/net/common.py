@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 ModuleType = Type[nn.Module]
@@ -304,3 +305,322 @@ class DataParallelNet(nn.Module):
         if not isinstance(s, torch.Tensor):
             s = torch.as_tensor(s, dtype=torch.float32)
         return self.net(s=s.cuda(), *args, **kwargs)
+
+
+class EnsembleLinear(nn.Module):
+    """Linear Layer of Ensemble network.
+
+    :param int ensemble_size: Number of subnets in the ensemble.
+    :param int inp_feature: dimension of the input vector.
+    :param int out_feature: dimension of the output vector.
+    :param bool bias: whether to include an additive bias, default to be True.
+    """
+
+    def __init__(
+        self,
+        ensemble_size: int,
+        in_feature: int,
+        out_feature: int,
+        bias: bool = True,
+    ) -> None:
+        super().__init__()
+
+        # To be consistent with PyTorch default initializer
+        k = np.sqrt(1. / in_feature)
+        weight_data = torch.rand((ensemble_size, in_feature, out_feature)) \
+            * 2 * k - k
+        self.weight = nn.Parameter(
+            weight_data,
+            requires_grad=True,
+        )
+
+        self.bias: Union[nn.Parameter, None]
+        if bias:
+            bias_data = torch.rand((ensemble_size, 1, out_feature)) \
+                * 2 * k - k
+            self.bias = nn.Parameter(
+                bias_data,
+                requires_grad=True,
+            )
+        else:
+            self.bias = None
+
+    def forward(
+        self,
+        x: torch.Tensor,
+    ) -> torch.Tensor:
+        x = torch.matmul(x, self.weight)
+        if self.bias is not None:
+            x = x + self.bias
+        return x
+
+
+class EnsembleMLP(nn.Module):
+    """Ensemble MLP backbone.
+
+    Create an Ensemble MLP each of size input_dim * hidden_sizes[0] *
+    hidden_sizes[1] * ... * hidden_sizes[-1] * output_dim
+
+    :param int ensemble_size: number of subnet in the ensemble
+    :param int input_dim: dimension of the input vector.
+    :param int output_dim: dimension of the output vector. If set to 0, there
+        is no final linear layer.
+    :param hidden_sizes: shape of MLP passed in as a list, not including
+        input_dim and output_dim.
+    :param norm_layer: use which normalization before activation, e.g.,
+        ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
+        You can also pass a list of normalization modules with the same length
+        of hidden_sizes, to use different normalization module in different
+        layers. Default to no normalization.
+    :param activation: which activation to use after each layer, can be both
+        the same activation for all layers if passed in nn.Module, or different
+        activation for different Modules if passed in a list. Default to
+        nn.ReLU.
+    :param device: which device to create this model on. Default to None.
+    :param linear_layer: use this module as linear layer. Default to nn.Linear.
+    """
+
+    def __init__(
+        self,
+        ensemble_size: int,
+        input_dim: int,
+        output_dim: int,
+        hidden_sizes: Sequence[int] = (),
+        norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
+        activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
+        device: Optional[Union[str, int, torch.device]] = None,
+    ) -> None:
+        super().__init__()
+        self.ensemble_size = ensemble_size
+        self.device = device
+        if norm_layer:
+            if isinstance(norm_layer, list):
+                assert len(norm_layer) == len(hidden_sizes)
+                norm_layer_list = norm_layer
+            else:
+                norm_layer_list = [norm_layer for _ in range(len(hidden_sizes))]
+        else:
+            norm_layer_list = [None] * len(hidden_sizes)
+        if activation:
+            if isinstance(activation, list):
+                assert len(activation) == len(hidden_sizes)
+                activation_list = activation
+            else:
+                activation_list = [activation for _ in range(len(hidden_sizes))]
+        else:
+            activation_list = [None] * len(hidden_sizes)
+        hidden_sizes = [input_dim] + list(hidden_sizes)
+        model = []
+        for in_dim, out_dim, norm, activ in zip(
+            hidden_sizes[:-1], hidden_sizes[1:], norm_layer_list, activation_list
+        ):
+            model += [EnsembleLinear(ensemble_size, in_dim, out_dim)]
+            if norm is not None:
+                model += [norm(out_dim)]
+            if activ is not None:
+                model += [activ()]
+        if output_dim > 0:
+            model += [EnsembleLinear(ensemble_size, hidden_sizes[-1], output_dim)]
+        self.output_dim = output_dim or hidden_sizes[-1]
+        self.model = nn.Sequential(*model)
+
+    def forward(self, x: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+        x = torch.as_tensor(x, device=self.device, dtype=torch.float32)  # type: ignore
+        return self.model(x)
+
+
+class EnsembleNet(nn.Module):
+    """Wrapper of EnsembleMLP to support more specific DRL usage.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+
+    :param int ensemble_size: number of subsets in the ensemble.
+    :param state_shape: int or a sequence of int of the shape of state.
+    :param action_shape: int or a sequence of int of the shape of action.
+    :param hidden_sizes: shape of MLP passed in as a list.
+    :param norm_layer: use which normalization before activation, e.g.,
+        ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
+        You can also pass a list of normalization modules with the same length
+        of hidden_sizes, to use different normalization module in different
+        layers. Default to no normalization.
+    :param activation: which activation to use after each layer, can be both
+        the same activation for all layers if passed in nn.Module, or different
+        activation for different Modules if passed in a list. Default to
+        nn.ReLU.
+    :param device: specify the device when the network actually runs. Default
+        to "cpu".
+    :param bool softmax: whether to apply a softmax layer over the last layer's
+        output.
+    :param bool concat: whether the input shape is concatenated by state_shape
+        and action_shape. If it is True, ``action_shape`` is not the output
+        shape, but affects the input shape only.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.utils.net.common.EnsembleMLP` for more
+        detailed explanation on the usage of activation, norm_layer, etc.
+
+        You can also refer to
+        :class:`~tianshou.utils.net.continuous.EnsembleCritic`, etc, to see
+        how it's suggested be used.
+    """
+
+    def __init__(
+        self,
+        ensemble_size: int,
+        state_shape: Union[int, Sequence[int]],
+        action_shape: Union[int, Sequence[int]] = 0,
+        hidden_sizes: Sequence[int] = (),
+        norm_layer: Optional[ModuleType] = None,
+        activation: Optional[ModuleType] = nn.ReLU,
+        device: Union[str, int, torch.device] = "cpu",
+        softmax: bool = False,
+        concat: bool = False,
+    ) -> None:
+        super().__init__()
+        self.device = device
+        self.softmax = softmax
+        input_dim = int(np.prod(state_shape))
+        action_dim = int(np.prod(action_shape))
+        if concat:
+            input_dim += action_dim
+        output_dim = action_dim if not concat else 0
+        self.model = EnsembleMLP(
+            ensemble_size,
+            input_dim,
+            output_dim,
+            hidden_sizes,
+            norm_layer,
+            activation,
+            device=device
+        )
+        self.output_dim = self.model.output_dim
+
+    def forward(
+        self,
+        s: Union[np.ndarray, torch.Tensor],
+        state: Any = None,
+    ) -> Tuple[torch.Tensor, Any]:
+        """Mapping: s -> flatten (inside MLP)-> logits."""
+        logits = self.model(s)
+        if self.softmax:
+            logits = torch.softmax(logits, dim=-1)
+        return logits, state
+
+
+class EnsembleMLPGaussian(nn.Module):
+    """Ensemble of Gaussian distribution network.
+
+    :param int ensemble_size: number of subnets in the ensemble.
+    :param Sequence[int] state_shape: a sequence of for the shape of state.
+    :param Sequence[int] action_shape: a sequence of int for the shape of action.
+    :param hidden_sizes: a sequence of int for constructing the ensemble MLP
+        not including input_dim and output_dim. Default to empty sequence.
+    :param norm_layer: use which normalization before activation. You can also
+        pass a list of normalization modules with the same length of hidden_sizes,
+        to use different normalization module in different layers.
+        Default to no normalization.
+    :param activation: which activation to use after each layer, can be both
+        the same activation for all layers if passed in nn.Module, or different
+        activation for different Modules if passed in a list. Default to None.
+    :param float init_max: initial maximum logarithm of variance.
+    :param float init_min: initial minimum logarithm of variance.
+    :param Union[str, torch.device] device: which device to create this model on.
+        Default to None.
+    """
+
+    def __init__(
+        self,
+        ensemble_size: int,
+        state_shape: Sequence[int],
+        action_shape: Sequence[int],
+        hidden_sizes: Sequence[int] = (),
+        norm_layer: Optional[ModuleType] = None,
+        activation: Optional[ModuleType] = nn.ReLU,
+        init_max: float = 0.5,
+        init_min: float = -10.,
+        device: Optional[Union[str, int, torch.device]] = None,
+    ) -> None:
+        super().__init__()
+        self.device = device
+        input_dim = int(np.prod(state_shape)) + int(np.prod(action_shape))
+        output_dim = int(np.prod(state_shape)) + 1
+        self.output_dim = output_dim
+        self.model = EnsembleMLP(
+            ensemble_size=ensemble_size,
+            input_dim=input_dim,
+            output_dim=output_dim * 2,
+            hidden_sizes=hidden_sizes,
+            norm_layer=norm_layer,
+            activation=activation,
+            device=device,
+        )
+
+        max_logvar = torch.ones(
+            (1, 1, output_dim),
+            device=device,
+            dtype=torch.float32,
+        ) * init_max
+        min_logvar = torch.ones(
+            (1, 1, output_dim),
+            device=device,
+            dtype=torch.float32,
+        ) * init_min
+        self.max_logvar = nn.Parameter(
+            max_logvar,
+            requires_grad=True,
+        )
+        self.min_logvar = nn.Parameter(
+            min_logvar,
+            requires_grad=True,
+        )
+
+    def forward(
+        self,
+        x: Union[np.ndarray, torch.Tensor],
+    ) -> Tuple[torch.Tensor, torch.Tensor, nn.Parameter, nn.Parameter]:
+        x = torch.as_tensor(x, device=self.device, dtype=torch.float32)
+        x = self.model(x)
+        mean, logvar = torch.split(x, self.output_dim, dim=-1)
+        logvar = self.max_logvar - F.softplus(self.max_logvar - logvar)
+        logvar = self.min_logvar + F.softplus(logvar - self.min_logvar)
+        return mean, logvar, self.max_logvar, self.min_logvar
+
+
+class GaussianMLELoss(object):
+    """Loss function from Maximum Likelihood Estimate of Gaussian distribution.
+
+    :param float coeff: Coefficient of optional variable normalization.
+    """
+
+    def __init__(
+        self,
+        coeff: float = 0.01,
+    ) -> None:
+        self.opt_coeff = coeff
+
+    def __call__(
+        self,
+        mean: torch.Tensor,
+        logvar: torch.Tensor,
+        max_logvar: torch.Tensor,
+        min_logvar: torch.Tensor,
+        y: torch.Tensor,
+    ) -> torch.Tensor:
+        """Execute loss calculation.
+
+        :param torch.Tensor mean: tensor of mean from the network output.
+        :param torch.Tensor logvar: tensor of logarithm of variance
+            from the network output.
+        :param torch.Tensor max_logvar: tensor of maximum logarithm of variance.
+        :param torch.Tensor min_logvar: tensor of minimum logarithm of variance.
+        :param torch.Tensor y: tensor of target.
+        """
+        inv_var = torch.exp(-logvar)
+        mse = torch.mean(torch.square(mean - y) * inv_var)
+        var_loss = torch.mean(logvar)
+        opt_loss = self.opt_coeff * (torch.sum(max_logvar) - torch.sum(min_logvar))
+        loss = mse + var_loss + opt_loss
+
+        return loss

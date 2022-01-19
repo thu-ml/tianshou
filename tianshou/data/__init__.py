@@ -15,7 +15,12 @@ from tianshou.data.buffer.vecbuf import (
     PrioritizedVectorReplayBuffer,
 )
 from tianshou.data.buffer.cached import CachedReplayBuffer
-from tianshou.data.collector import Collector, AsyncCollector
+from tianshou.data.buffer.simple import SimpleReplayBuffer
+from tianshou.data.collector import (
+    Collector,
+    AsyncCollector,
+    RolloutsCollector,
+)
 
 __all__ = [
     "Batch",
@@ -30,6 +35,8 @@ __all__ = [
     "VectorReplayBuffer",
     "PrioritizedVectorReplayBuffer",
     "CachedReplayBuffer",
+    "SimpleReplayBuffer",
     "Collector",
     "AsyncCollector",
+    "RolloutsCollector",
 ]
