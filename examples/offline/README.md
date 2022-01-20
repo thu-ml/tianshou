@@ -2,9 +2,11 @@
 
 In offline reinforcement learning setting, the agent learns a policy from a fixed dataset which is collected once with any policy. And the agent does not interact with environment anymore. 
 
-## Continous control
+## Continuous control
 
 Once the dataset is collected, it will not be changed during training. We use [d4rl](https://github.com/rail-berkeley/d4rl) datasets to train offline agent for continuous control. You can refer to [d4rl](https://github.com/rail-berkeley/d4rl) to see how to use d4rl datasets. 
+
+We provide implementation of BCQ and CQL algorithm for continuous control.
 
 ### Train
 
@@ -20,7 +22,7 @@ After 1M steps:
 
 ![halfcheetah-expert-v1_reward](results/bcq/halfcheetah-expert-v1_reward.png)
 
-`halfcheetah-expert-v1` is a mujoco environment. The setting of hyperparameters are similar to the offpolicy algorithms in mujoco environment.
+`halfcheetah-expert-v1` is a mujoco environment. The setting of hyperparameters are similar to the off-policy algorithms in mujoco environment.
 
 ## Results
 

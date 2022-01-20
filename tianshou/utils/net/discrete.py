@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from tianshou.data import Batch
+from tianshou.data import Batch, to_torch
 from tianshou.utils.net.common import MLP
 
 
@@ -49,7 +49,12 @@ class Actor(nn.Module):
         self.preprocess = preprocess_net
         self.output_dim = int(np.prod(action_shape))
         input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        self.last = MLP(input_dim, self.output_dim, hidden_sizes, device=self.device)
+        self.last = MLP(
+            input_dim,  # type: ignore
+            self.output_dim,
+            hidden_sizes,
+            device=self.device
+        )
         self.softmax_output = softmax_output
 
     def forward(
@@ -101,7 +106,12 @@ class Critic(nn.Module):
         self.preprocess = preprocess_net
         self.output_dim = last_size
         input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        self.last = MLP(input_dim, last_size, hidden_sizes, device=self.device)
+        self.last = MLP(
+            input_dim,  # type: ignore
+            last_size,
+            hidden_sizes,
+            device=self.device
+        )
 
     def forward(
         self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
@@ -183,8 +193,10 @@ class ImplicitQuantileNetwork(Critic):
         self.input_dim = getattr(
             preprocess_net, "output_dim", preprocess_net_output_dim
         )
-        self.embed_model = CosineEmbeddingNetwork(num_cosines,
-                                                  self.input_dim).to(device)
+        self.embed_model = CosineEmbeddingNetwork(
+            num_cosines,
+            self.input_dim  # type: ignore
+        ).to(device)
 
     def forward(  # type: ignore
         self, s: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
@@ -380,3 +392,58 @@ def sample_noise(model: nn.Module) -> bool:
             m.sample()
             done = True
     return done
+
+
+class IntrinsicCuriosityModule(nn.Module):
+    """Implementation of Intrinsic Curiosity Module. arXiv:1705.05363.
+
+    :param torch.nn.Module feature_net: a self-defined feature_net which output a
+        flattened hidden state.
+    :param int feature_dim: input dimension of the feature net.
+    :param int action_dim: dimension of the action space.
+    :param hidden_sizes: hidden layer sizes for forward and inverse models.
+    :param device: device for the module.
+    """
+
+    def __init__(
+        self,
+        feature_net: nn.Module,
+        feature_dim: int,
+        action_dim: int,
+        hidden_sizes: Sequence[int] = (),
+        device: Union[str, torch.device] = "cpu"
+    ) -> None:
+        super().__init__()
+        self.feature_net = feature_net
+        self.forward_model = MLP(
+            feature_dim + action_dim,
+            output_dim=feature_dim,
+            hidden_sizes=hidden_sizes,
+            device=device
+        )
+        self.inverse_model = MLP(
+            feature_dim * 2,
+            output_dim=action_dim,
+            hidden_sizes=hidden_sizes,
+            device=device
+        )
+        self.feature_dim = feature_dim
+        self.action_dim = action_dim
+        self.device = device
+
+    def forward(
+        self, s1: Union[np.ndarray, torch.Tensor],
+        act: Union[np.ndarray, torch.Tensor], s2: Union[np.ndarray,
+                                                        torch.Tensor], **kwargs: Any
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        r"""Mapping: s1, act, s2 -> mse_loss, act_hat."""
+        s1 = to_torch(s1, dtype=torch.float32, device=self.device)
+        s2 = to_torch(s2, dtype=torch.float32, device=self.device)
+        phi1, phi2 = self.feature_net(s1), self.feature_net(s2)
+        act = to_torch(act, dtype=torch.long, device=self.device)
+        phi2_hat = self.forward_model(
+            torch.cat([phi1, F.one_hot(act, num_classes=self.action_dim)], dim=1)
+        )
+        mse_loss = 0.5 * F.mse_loss(phi2_hat, phi2, reduction="none").sum(1)
+        act_hat = self.inverse_model(torch.cat([phi1, phi2], dim=1))
+        return mse_loss, act_hat
