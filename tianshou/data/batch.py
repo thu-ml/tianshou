@@ -570,7 +570,7 @@ class Batch:
                     continue
                 value = batch.get(key)
                 if isinstance(value, Batch) and value.is_empty():  # type: ignore
-                    continue
+                    continue  # type: ignore
                 try:
                     self.__dict__[key][i] = value
                 except KeyError:
