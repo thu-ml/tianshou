@@ -12,7 +12,6 @@ def soft_update(module_tar: nn.Module, module_src: nn.Module, tau: float) -> Non
     of source module"""
     for param, tar_param in zip(module_tar.parameters(), module_src.parameters()):
         tar_param.data.copy_(tau * param.data + (1 - tau) * tar_param.data)
-    return module_tar
 
 
 def miniblock(
@@ -254,8 +253,10 @@ class Recurrent(nn.Module):
         and comment for more detail.
         """
         obs = torch.as_tensor(
-            obs, device=self.device, dtype=torch.float32
-        )  # type: ignore
+            obs,
+            device=self.device,  # type: ignore
+            dtype=torch.float32,
+        )
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
