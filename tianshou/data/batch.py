@@ -569,7 +569,7 @@ class Batch:
                 if key not in batch.__dict__:
                     continue
                 value = batch.get(key)
-                if isinstance(value, Batch) and value.is_empty():
+                if isinstance(value, Batch) and value.is_empty():  # type: ignore
                     continue
                 try:
                     self.__dict__[key][i] = value
