@@ -85,8 +85,11 @@ class FQFPolicy(QRDQNPolicy):
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         if fractions is None:
             (logits, fractions, quantiles_tau), hidden = model(
-                obs_next, propose_model=self.propose_model,
-                state=state, info=batch.info)
+                obs_next,
+                propose_model=self.propose_model,
+                state=state,
+                info=batch.info
+            )
         else:
             (logits, _, quantiles_tau), hidden = model(
                 obs_next,

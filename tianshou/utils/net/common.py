@@ -253,8 +253,9 @@ class Recurrent(nn.Module):
         training mode, `obs` should be with shape ``[bsz, len, dim]``. See the code
         and comment for more detail.
         """
-        obs = torch.as_tensor(obs,
-                              device=self.device, dtype=torch.float32)  # type: ignore
+        obs = torch.as_tensor(
+            obs, device=self.device, dtype=torch.float32
+        )  # type: ignore
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -275,8 +276,10 @@ class Recurrent(nn.Module):
             )
         obs = self.fc2(obs[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
-        return obs, {"hidden": hidden.transpose(0, 1).detach(),
-                     "cell": cell.transpose(0, 1).detach()}
+        return obs, {
+            "hidden": hidden.transpose(0, 1).detach(),
+            "cell": cell.transpose(0, 1).detach()
+        }
 
 
 class ActorCritic(nn.Module):

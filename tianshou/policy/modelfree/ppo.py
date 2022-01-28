@@ -119,7 +119,8 @@ class PPOPolicy(A2CPolicy):
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 surr1 = ratio * minibatch.adv
                 surr2 = ratio.clamp(
-                    1.0 - self._eps_clip, 1.0 + self._eps_clip) * minibatch.adv
+                    1.0 - self._eps_clip, 1.0 + self._eps_clip
+                ) * minibatch.adv
                 if self._dual_clip:
                     clip1 = torch.min(surr1, surr2)
                     clip2 = torch.max(clip1, self._dual_clip * minibatch.adv)

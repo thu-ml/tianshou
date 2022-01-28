@@ -467,8 +467,9 @@ class Batch:
             # x.is_empty(recurse=True) here means x is a nested empty batch
             # like Batch(a=Batch), and we have to treat it as length zero and
             # keep it.
-            lens = [0 if batch.is_empty(recurse=True) else len(batch)
-                    for batch in batches]
+            lens = [
+                0 if batch.is_empty(recurse=True) else len(batch) for batch in batches
+            ]
         except TypeError as element:
             raise ValueError(
                 "Batch.cat_ meets an exception. Maybe because there is any "
@@ -718,8 +719,7 @@ class Batch:
         if not recurse:
             return False
         return all(
-            False if not isinstance(obj, Batch)
-            else obj.is_empty(recurse=True)
+            False if not isinstance(obj, Batch) else obj.is_empty(recurse=True)
             for obj in self.values()
         )
 

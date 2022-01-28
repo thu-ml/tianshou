@@ -133,8 +133,11 @@ class SACPolicy(DDPGPolicy):
             action_scale * (1 - squashed_action.pow(2)) + self.__eps
         ).sum(-1, keepdim=True)
         return Batch(
-            logits=logits, act=squashed_action,
-            state=hidden, dist=dist, log_prob=log_prob
+            logits=logits,
+            act=squashed_action,
+            state=hidden,
+            dist=dist,
+            log_prob=log_prob
         )
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:

@@ -35,7 +35,9 @@ def test_replaybuffer(size=10, bufsize=20):
     for i, act in enumerate(action_list):
         obs_next, rew, done, info = env.step(act)
         buf.add(
-            Batch(obs=obs, act=[act], rew=rew, done=done, obs_next=obs_next, info=info)
+            Batch(
+                obs=obs, act=[act], rew=rew, done=done, obs_next=obs_next, info=info
+            )
         )
         obs = obs_next
         assert len(buf) == min(bufsize, i + 1)

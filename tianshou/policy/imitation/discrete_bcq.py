@@ -96,10 +96,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         act = (q_value - np.inf * mask).argmax(dim=-1)
 
         return Batch(
-            act=act,
-            state=state,
-            q_value=q_value,
-            imitation_logits=imitation_logits
+            act=act, state=state, q_value=q_value, imitation_logits=imitation_logits
         )
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
