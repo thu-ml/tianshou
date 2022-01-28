@@ -83,7 +83,7 @@ class QRDQNPolicy(DQNPolicy):
         dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
             dist_diff * (self.tau_hat -
-                 (target_dist - curr_dist).detach().le(0.).float()).abs()
+                         (target_dist - curr_dist).detach().le(0.).float()).abs()
         ).sum(-1).mean(1)
         loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/

@@ -8,6 +8,7 @@ from torch.distributions import Independent, Normal
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
+from tianshou.utils.net.common import soft_update
 
 
 class SACPolicy(DDPGPolicy):
@@ -99,10 +100,8 @@ class SACPolicy(DDPGPolicy):
         return self
 
     def sync_weight(self) -> None:
-        for target_param, param in zip(self.critic1_old.parameters(), self.critic1.parameters()):
-            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
-        for target_param, param in zip(self.critic2_old.parameters(), self.critic2.parameters()):
-            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
+        soft_update(self.critic1_old, self.critic1, self._tau)
+        soft_update(self.critic2_old, self.critic2, self._tau)
 
     def forward(  # type: ignore
         self,

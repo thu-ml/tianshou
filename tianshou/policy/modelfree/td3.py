@@ -7,6 +7,7 @@ import torch
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import DDPGPolicy
+from tianshou.utils.net.common import soft_update
 
 
 class TD3Policy(DDPGPolicy):
@@ -89,12 +90,9 @@ class TD3Policy(DDPGPolicy):
         return self
 
     def sync_weight(self) -> None:
-        for target_param, param in zip(self.actor_old.parameters(), self.actor.parameters()):
-            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
-        for target_param, param in zip(self.critic1_old.parameters(), self.critic1.parameters()):
-            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
-        for target_param, param in zip(self.critic2_old.parameters(), self.critic2.parameters()):
-            target_param.data.copy_(target_param.data * (1.0 - self._tau) + param.data * self._tau)
+        soft_update(self.critic1_old, self.critic1, self._tau)
+        soft_update(self.critic2_old, self.critic2, self._tau)
+        soft_update(self.actor_old, self.actor, self._tau)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+param}

@@ -7,6 +7,7 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, to_torch
 from tianshou.policy import BasePolicy
+from tianshou.utils.net.common import soft_update
 from tianshou.utils.net.continuous import VAE
 
 
@@ -79,7 +80,7 @@ class BCQPolicy(BasePolicy):
         self.vae_optim = vae_optim
 
         self.gamma = gamma
-        self.tau = tau
+        self._tau = tau
         self.lmbda = lmbda
         self.device = device
         self.forward_sampled_times = forward_sampled_times
@@ -123,14 +124,9 @@ class BCQPolicy(BasePolicy):
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        for net, net_target in [
-            [self.critic1, self.critic1_target], [self.critic2, self.critic2_target],
-            [self.actor, self.actor_target]
-        ]:
-            for param, target_param in zip(net.parameters(), net_target.parameters()):
-                target_param.data.copy_(
-                    self.tau * param.data + (1 - self.tau) * target_param.data
-                )
+        soft_update(self.critic1_target, self.critic1, self._tau)
+        soft_update(self.critic2_target, self.critic2, self._tau)
+        soft_update(self.actor_target, self.actor, self._tau)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # batch: obs, act, rew, done, obs_next. (numpy array)

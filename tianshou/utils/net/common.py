@@ -7,6 +7,14 @@ from torch import nn
 ModuleType = Type[nn.Module]
 
 
+def soft_update(module_tar: nn.Module, module_src: nn.Module, tau: float) -> None:
+    """Softly update the parameters of target module towards the parameters \
+    of source module"""
+    for param, tar_param in zip(module_tar.parameters(), module_src.parameters()):
+        tar_param.data.copy_(tau * param.data + (1 - tau) * tar_param.data)
+    return module_tar
+
+
 def miniblock(
     input_size: int,
     output_size: int = 0,
