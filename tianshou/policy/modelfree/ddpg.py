@@ -8,7 +8,6 @@ import torch
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import BasePolicy
-from tianshou.utils.net.common import soft_update
 
 
 class DDPGPolicy(BasePolicy):
@@ -74,7 +73,7 @@ class DDPGPolicy(BasePolicy):
             self.critic_old.eval()
             self.critic_optim: torch.optim.Optimizer = critic_optim
         assert 0.0 <= tau <= 1.0, "tau should be in [0, 1]"
-        self._tau = tau
+        self.tau = tau
         assert 0.0 <= gamma <= 1.0, "gamma should be in [0, 1]"
         self._gamma = gamma
         self._noise = exploration_noise
@@ -96,8 +95,8 @@ class DDPGPolicy(BasePolicy):
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        soft_update(self.actor_old, self.actor, self._tau)
-        soft_update(self.critic_old, self.critic, self._tau)
+        self.soft_update(self.actor_old, self.actor, self.tau)
+        self.soft_update(self.critic_old, self.critic, self.tau)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}

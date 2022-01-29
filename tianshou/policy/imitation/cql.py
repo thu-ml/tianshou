@@ -7,7 +7,6 @@ from torch.nn.utils import clip_grad_norm_
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.policy import SACPolicy
-from tianshou.utils.net.common import soft_update
 from tianshou.utils.net.continuous import ActorProb
 
 
@@ -114,8 +113,8 @@ class CQLPolicy(SACPolicy):
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        soft_update(self.critic1_old, self.critic1, self._tau)
-        soft_update(self.critic2_old, self.critic2, self._tau)
+        self.soft_update(self.critic1_old, self.critic1, self.tau)
+        self.soft_update(self.critic2_old, self.critic2, self.tau)
 
     def actor_pred(self, obs: torch.Tensor) -> \
             Tuple[torch.Tensor, torch.Tensor]:
