@@ -125,9 +125,8 @@ class A2CPolicy(PGPolicy):
             for minibatch in batch.split(batch_size, merge_last=True):
                 # calculate loss for actor
                 dist = self(minibatch).dist
-                log_prob = dist.log_prob(minibatch.act
-                                         ).reshape(len(minibatch.adv),
-                                                   -1).transpose(0, 1)
+                log_prob = dist.log_prob(minibatch.act)
+                log_prob = log_prob.reshape(len(minibatch.adv), -1).transpose(0, 1)
                 actor_loss = -(log_prob * minibatch.adv).mean()
                 # calculate loss for critic
                 value = self.critic(minibatch.obs).flatten()

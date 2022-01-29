@@ -79,6 +79,7 @@ class DQNPolicy(BasePolicy):
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
         result = self(batch, input="obs_next")
         if self._target:
+            # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
             target_q = self(batch, model="model_old", input="obs_next").logits
         else:
             target_q = result.logits

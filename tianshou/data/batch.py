@@ -470,12 +470,12 @@ class Batch:
             lens = [
                 0 if batch.is_empty(recurse=True) else len(batch) for batch in batches
             ]
-        except TypeError as element:
+        except TypeError as exception:
             raise ValueError(
                 "Batch.cat_ meets an exception. Maybe because there is any "
                 f"scalar in {batches} but Batch.cat_ does not support the "
                 "concatenation of scalar."
-            ) from element
+            ) from exception
         if not self.is_empty():
             batches = [self] + list(batches)
             lens = [0 if self.is_empty(recurse=True) else len(self)] + lens

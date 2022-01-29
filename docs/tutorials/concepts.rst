@@ -394,10 +394,10 @@ We give a high-level explanation through the pseudocode used in section :ref:`pr
     buffer = Buffer(size=10000)                                     # buffer = tianshou.data.ReplayBuffer(size=10000)
     agent = DQN()                                                   # policy.__init__(...)
     for i in range(int(1e6)):                                       # done in trainer
-        act = agent.compute_action(obs)                                 # act = policy(batch, ...).act
-        obs_next, rew, done, _ = env.step(act)                                   # collector.collect(...)
-        buffer.store(obs, act, obs_next, rew, done)                                # collector.collect(...)
-        obs = obs_next                                                      # collector.collect(...)
+        act = agent.compute_action(obs)                             # act = policy(batch, ...).act
+        obs_next, rew, done, _ = env.step(act)                      # collector.collect(...)
+        buffer.store(obs, act, obs_next, rew, done)                 # collector.collect(...)
+        obs = obs_next                                              # collector.collect(...)
         if i % 1000 == 0:                                           # done in trainer
                                                                     # the following is done in policy.update(batch_size, buffer)
             b_s, b_a, b_s_, b_r, b_d = buffer.get(size=64)          # batch, indices = buffer.sample(batch_size)

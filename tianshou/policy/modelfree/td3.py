@@ -95,15 +95,15 @@ class TD3Policy(DDPGPolicy):
         soft_update(self.actor_old, self.actor, self._tau)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs: s_{t+param}
-        act = self(batch, model="actor_old", input="obs_next").act
-        noise = torch.randn(size=act.shape, device=act.device) * self._policy_noise
+        batch = buffer[indices]  # batch.obs: s_{t+n}
+        act_ = self(batch, model="actor_old", input="obs_next").act
+        noise = torch.randn(size=act_.shape, device=act_.device) * self._policy_noise
         if self._noise_clip > 0.0:
             noise = noise.clamp(-self._noise_clip, self._noise_clip)
-        act += noise
+        act_ += noise
         target_q = torch.min(
-            self.critic1_old(batch.obs_next, act),
-            self.critic2_old(batch.obs_next, act)
+            self.critic1_old(batch.obs_next, act_),
+            self.critic2_old(batch.obs_next, act_),
         )
         return target_q
 
