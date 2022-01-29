@@ -69,8 +69,8 @@ class ReplayBuffer:
         """Return self.key."""
         try:
             return self._meta[key]
-        except KeyError as e:
-            raise AttributeError from e
+        except KeyError as exception:
+            raise AttributeError from exception
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
         """Unpickling interface.
@@ -198,10 +198,10 @@ class ReplayBuffer:
         episode_reward is 0.
         """
         # preprocess batch
-        b = Batch()
+        new_batch = Batch()
         for key in set(self._reserved_keys).intersection(batch.keys()):
-            b.__dict__[key] = batch[key]
-        batch = b
+            new_batch.__dict__[key] = batch[key]
+        batch = new_batch
         assert set(["obs", "act", "rew", "done"]).issubset(batch.keys())
         stacked_batch = buffer_ids is not None
         if stacked_batch:
@@ -315,9 +315,9 @@ class ReplayBuffer:
                 return Batch.stack(stack, axis=indices.ndim)
             else:
                 return np.stack(stack, axis=indices.ndim)
-        except IndexError as e:
+        except IndexError as exception:
             if not (isinstance(val, Batch) and val.is_empty()):
-                raise e  # val != Batch()
+                raise exception  # val != Batch()
             return Batch()
 
     def __getitem__(self, index: Union[slice, int, List[int], np.ndarray]) -> Batch:

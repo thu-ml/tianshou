@@ -114,10 +114,10 @@ class ReplayBufferManager(ReplayBuffer):
         episode_reward is 0.
         """
         # preprocess batch
-        b = Batch()
+        new_batch = Batch()
         for key in set(self._reserved_keys).intersection(batch.keys()):
-            b.__dict__[key] = batch[key]
-        batch = b
+            new_batch.__dict__[key] = batch[key]
+        batch = new_batch
         assert set(["obs", "act", "rew", "done"]).issubset(batch.keys())
         if self._save_only_last_obs:
             batch.obs = batch.obs[:, -1]

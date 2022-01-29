@@ -56,13 +56,13 @@ class QRDQNPolicy(DQNPolicy):
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
         if self._target:
-            a = self(batch, input="obs_next").act
+            act = self(batch, input="obs_next").act
             next_dist = self(batch, model="model_old", input="obs_next").logits
         else:
-            next_b = self(batch, input="obs_next")
-            a = next_b.act
-            next_dist = next_b.logits
-        next_dist = next_dist[np.arange(len(a)), a, :]
+            next_batch = self(batch, input="obs_next")
+            act = next_batch.act
+            next_dist = next_batch.logits
+        next_dist = next_dist[np.arange(len(act)), act, :]
         return next_dist  # shape: [bsz, num_quantiles]
 
     def compute_q_value(
@@ -80,15 +80,15 @@ class QRDQNPolicy(DQNPolicy):
         curr_dist = curr_dist[np.arange(len(act)), act, :].unsqueeze(2)
         target_dist = batch.returns.unsqueeze(1)
         # calculate each element's difference between curr_dist and target_dist
-        u = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
+        dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            u * (self.tau_hat -
-                 (target_dist - curr_dist).detach().le(0.).float()).abs()
+            dist_diff *
+            (self.tau_hat - (target_dist - curr_dist).detach().le(0.).float()).abs()
         ).sum(-1).mean(1)
         loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
-        batch.weight = u.detach().abs().sum(-1).mean(1)  # prio-buffer
+        batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
         loss.backward()
         self.optim.step()
         self._iter += 1

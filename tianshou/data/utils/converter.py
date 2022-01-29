@@ -111,11 +111,11 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
                 # and possibly in other cases like structured arrays.
                 try:
                     to_hdf5_via_pickle(v, y, k)
-                except Exception as e:
+                except Exception as exception:
                     raise RuntimeError(
                         f"Attempted to pickle {v.__class__.__name__} due to "
                         "data type not supported by HDF5 and failed."
-                    ) from e
+                    ) from exception
                 y[k].attrs["__data_type__"] = "pickled_ndarray"
         elif isinstance(v, (int, float)):
             # ints and floats are stored as attributes of groups
@@ -123,11 +123,11 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
         else:  # resort to pickle for any other type of object
             try:
                 to_hdf5_via_pickle(v, y, k)
-            except Exception as e:
+            except Exception as exception:
                 raise NotImplementedError(
                     f"No conversion to HDF5 for object of type '{type(v)}' "
                     "implemented and fallback to pickle failed."
-                ) from e
+                ) from exception
             y[k].attrs["__data_type__"] = v.__class__.__name__
 
 

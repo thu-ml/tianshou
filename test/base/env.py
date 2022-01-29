@@ -86,10 +86,10 @@ class MyTestEnv(gym.Env):
 
     def _get_reward(self):
         """Generate a non-scalar reward if ma_rew is True."""
-        x = int(self.done)
+        end_flag = int(self.done)
         if self.ma_rew > 0:
-            return [x] * self.ma_rew
-        return x
+            return [end_flag] * self.ma_rew
+        return end_flag
 
     def _get_state(self):
         """Generate state(observation) of MyTestEnv"""

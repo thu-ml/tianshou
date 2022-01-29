@@ -15,8 +15,8 @@ class MultiAgentEnv(ABC, gym.Env):
         env = MultiAgentEnv(...)
         # obs is a dict containing obs, agent_id, and mask
         obs = env.reset()
-        action = policy(obs)
-        obs, rew, done, info = env.step(action)
+        act = policy(obs)
+        obs, rew, done, info = env.step(act)
         env.close()
 
     The available action's mask is set to 1, otherwise it is set to 0. Further
