@@ -99,10 +99,8 @@ class SACPolicy(DDPGPolicy):
         return self
 
     def sync_weight(self) -> None:
-        for o, n in zip(self.critic1_old.parameters(), self.critic1.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(self.critic2_old.parameters(), self.critic2.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
+        self.soft_update(self.critic1_old, self.critic1, self.tau)
+        self.soft_update(self.critic2_old, self.critic2, self.tau)
 
     def forward(  # type: ignore
         self,
@@ -112,7 +110,7 @@ class SACPolicy(DDPGPolicy):
         **kwargs: Any,
     ) -> Batch:
         obs = batch[input]
-        logits, h = self.actor(obs, state=state, info=batch.info)
+        logits, hidden = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
         dist = Independent(Normal(*logits), 1)
         if self._deterministic_eval and not self.training:
@@ -134,16 +132,20 @@ class SACPolicy(DDPGPolicy):
             action_scale * (1 - squashed_action.pow(2)) + self.__eps
         ).sum(-1, keepdim=True)
         return Batch(
-            logits=logits, act=squashed_action, state=h, dist=dist, log_prob=log_prob
+            logits=logits,
+            act=squashed_action,
+            state=hidden,
+            dist=dist,
+            log_prob=log_prob
         )
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}
-        obs_next_result = self(batch, input='obs_next')
-        a_ = obs_next_result.act
+        obs_next_result = self(batch, input="obs_next")
+        act_ = obs_next_result.act
         target_q = torch.min(
-            self.critic1_old(batch.obs_next, a_),
-            self.critic2_old(batch.obs_next, a_),
+            self.critic1_old(batch.obs_next, act_),
+            self.critic2_old(batch.obs_next, act_),
         ) - self._alpha * obs_next_result.log_prob
         return target_q
 
@@ -159,9 +161,9 @@ class SACPolicy(DDPGPolicy):
 
         # actor
         obs_result = self(batch)
-        a = obs_result.act
-        current_q1a = self.critic1(batch.obs, a).flatten()
-        current_q2a = self.critic2(batch.obs, a).flatten()
+        act = obs_result.act
+        current_q1a = self.critic1(batch.obs, act).flatten()
+        current_q2a = self.critic2(batch.obs, act).flatten()
         actor_loss = (
             self._alpha * obs_result.log_prob.flatten() -
             torch.min(current_q1a, current_q2a)

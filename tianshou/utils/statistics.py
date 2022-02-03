@@ -31,20 +31,20 @@ class MovAvg(object):
         self.banned = [np.inf, np.nan, -np.inf]
 
     def add(
-        self, x: Union[Number, np.number, list, np.ndarray, torch.Tensor]
+        self, data_array: Union[Number, np.number, list, np.ndarray, torch.Tensor]
     ) -> float:
         """Add a scalar into :class:`MovAvg`.
 
         You can add ``torch.Tensor`` with only one element, a python scalar, or
         a list of python scalar.
         """
-        if isinstance(x, torch.Tensor):
-            x = x.flatten().cpu().numpy()
-        if np.isscalar(x):
-            x = [x]
-        for i in x:  # type: ignore
-            if i not in self.banned:
-                self.cache.append(i)
+        if isinstance(data_array, torch.Tensor):
+            data_array = data_array.flatten().cpu().numpy()
+        if np.isscalar(data_array):
+            data_array = [data_array]
+        for number in data_array:  # type: ignore
+            if number not in self.banned:
+                self.cache.append(number)
         if self.size > 0 and len(self.cache) > self.size:
             self.cache = self.cache[-self.size:]
         return self.get()
@@ -80,10 +80,10 @@ class RunningMeanStd(object):
         self.mean, self.var = mean, std
         self.count = 0
 
-    def update(self, x: np.ndarray) -> None:
+    def update(self, data_array: np.ndarray) -> None:
         """Add a batch of item into RMS with the same shape, modify mean/var/count."""
-        batch_mean, batch_var = np.mean(x, axis=0), np.var(x, axis=0)
-        batch_count = len(x)
+        batch_mean, batch_var = np.mean(data_array, axis=0), np.var(data_array, axis=0)
+        batch_count = len(data_array)
 
         delta = batch_mean - self.mean
         total_count = self.count + batch_count

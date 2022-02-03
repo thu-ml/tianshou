@@ -59,16 +59,16 @@ class Actor(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, h = self.preprocess(s, state)
+        logits, hidden = self.preprocess(obs, state)
         logits = self.last(logits)
         if self.softmax_output:
             logits = F.softmax(logits, dim=-1)
-        return logits, h
+        return logits, hidden
 
 
 class Critic(nn.Module):
@@ -114,10 +114,10 @@ class Critic(nn.Module):
         )
 
     def forward(
-        self, s: Union[np.ndarray, torch.Tensor], **kwargs: Any
+        self, obs: Union[np.ndarray, torch.Tensor], **kwargs: Any
     ) -> torch.Tensor:
         """Mapping: s -> V(s)."""
-        logits, _ = self.preprocess(s, state=kwargs.get("state", None))
+        logits, _ = self.preprocess(obs, state=kwargs.get("state", None))
         return self.last(logits)
 
 
@@ -199,10 +199,10 @@ class ImplicitQuantileNetwork(Critic):
         ).to(device)
 
     def forward(  # type: ignore
-        self, s: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
+        self, obs: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
     ) -> Tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, h = self.preprocess(s, state=kwargs.get("state", None))
+        logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
         # Sample fractions.
         batch_size = logits.size(0)
         taus = torch.rand(
@@ -211,7 +211,7 @@ class ImplicitQuantileNetwork(Critic):
         embedding = (logits.unsqueeze(1) *
                      self.embed_model(taus)).view(batch_size * sample_size, -1)
         out = self.last(embedding).view(batch_size, sample_size, -1).transpose(1, 2)
-        return (out, taus), h
+        return (out, taus), hidden
 
 
 class FractionProposalNetwork(nn.Module):
@@ -235,17 +235,17 @@ class FractionProposalNetwork(nn.Module):
         self.embedding_dim = embedding_dim
 
     def forward(
-        self, state_embeddings: torch.Tensor
+        self, obs_embeddings: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Calculate (log of) probabilities q_i in the paper.
-        m = torch.distributions.Categorical(logits=self.net(state_embeddings))
-        taus_1_N = torch.cumsum(m.probs, dim=1)
+        dist = torch.distributions.Categorical(logits=self.net(obs_embeddings))
+        taus_1_N = torch.cumsum(dist.probs, dim=1)
         # Calculate \tau_i (i=0,...,N).
         taus = F.pad(taus_1_N, (1, 0))
         # Calculate \hat \tau_i (i=0,...,N-1).
         tau_hats = (taus[:, :-1] + taus[:, 1:]).detach() / 2.0
         # Calculate entropies of value distributions.
-        entropies = m.entropy()
+        entropies = dist.entropy()
         return taus, tau_hats, entropies
 
 
@@ -294,13 +294,13 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         return quantiles
 
     def forward(  # type: ignore
-        self, s: Union[np.ndarray, torch.Tensor],
+        self, obs: Union[np.ndarray, torch.Tensor],
         propose_model: FractionProposalNetwork,
         fractions: Optional[Batch] = None,
         **kwargs: Any
     ) -> Tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
-        logits, h = self.preprocess(s, state=kwargs.get("state", None))
+        logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
         # Propose fractions
         if fractions is None:
             taus, tau_hats, entropies = propose_model(logits.detach())
@@ -313,7 +313,7 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         if self.training:
             with torch.no_grad():
                 quantiles_tau = self._compute_quantiles(logits, taus[:, 1:-1])
-        return (quantiles, fractions, quantiles_tau), h
+        return (quantiles, fractions, quantiles_tau), hidden
 
 
 class NoisyLinear(nn.Module):

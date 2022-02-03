@@ -107,7 +107,7 @@ class PGPolicy(BasePolicy):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
-        logits, h = self.actor(batch.obs, state=state)
+        logits, hidden = self.actor(batch.obs, state=state)
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
@@ -119,20 +119,20 @@ class PGPolicy(BasePolicy):
                 act = logits[0]
         else:
             act = dist.sample()
-        return Batch(logits=logits, act=act, state=h, dist=dist)
+        return Batch(logits=logits, act=act, state=hidden, dist=dist)
 
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
         losses = []
         for _ in range(repeat):
-            for b in batch.split(batch_size, merge_last=True):
+            for minibatch in batch.split(batch_size, merge_last=True):
                 self.optim.zero_grad()
-                result = self(b)
+                result = self(minibatch)
                 dist = result.dist
-                a = to_torch_as(b.act, result.act)
-                ret = to_torch_as(b.returns, result.act)
-                log_prob = dist.log_prob(a).reshape(len(ret), -1).transpose(0, 1)
+                act = to_torch_as(minibatch.act, result.act)
+                ret = to_torch_as(minibatch.returns, result.act)
+                log_prob = dist.log_prob(act).reshape(len(ret), -1).transpose(0, 1)
                 loss = -(log_prob * ret).mean()
                 loss.backward()
                 self.optim.step()

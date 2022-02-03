@@ -41,7 +41,7 @@ def gomoku(args=get_args()):
         return TicTacToeEnv(args.board_size, args.win_size)
 
     test_envs = DummyVectorEnv([env_func for _ in range(args.test_num)])
-    for r in range(args.self_play_round):
+    for round in range(args.self_play_round):
         rews = []
         agent_learn.set_eps(0.0)
         # compute the reward over previous learner
@@ -66,12 +66,12 @@ def gomoku(args=get_args()):
             # previous learner can only be used for forward
             agent.forward = opponent.forward
             args.model_save_path = os.path.join(
-                args.logdir, 'Gomoku', 'dqn', f'policy_round_{r}_epoch_{epoch}.pth'
+                args.logdir, 'Gomoku', 'dqn', f'policy_round_{round}_epoch_{epoch}.pth'
             )
             result, agent_learn = train_agent(
                 args, agent_learn=agent_learn, agent_opponent=agent, optim=optim
             )
-            print(f'round_{r}_epoch_{epoch}')
+            print(f'round_{round}_epoch_{epoch}')
             pprint.pprint(result)
         learnt_agent = deepcopy(agent_learn)
         learnt_agent.set_eps(0.0)

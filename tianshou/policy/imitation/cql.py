@@ -113,13 +113,8 @@ class CQLPolicy(SACPolicy):
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        for net, net_old in [
-            [self.critic1, self.critic1_old], [self.critic2, self.critic2_old]
-        ]:
-            for param, target_param in zip(net.parameters(), net_old.parameters()):
-                target_param.data.copy_(
-                    self._tau * param.data + (1 - self._tau) * target_param.data
-                )
+        self.soft_update(self.critic1_old, self.critic1, self.tau)
+        self.soft_update(self.critic2_old, self.critic2, self.tau)
 
     def actor_pred(self, obs: torch.Tensor) -> \
             Tuple[torch.Tensor, torch.Tensor]:

@@ -105,32 +105,27 @@ class BCQPolicy(BasePolicy):
         obs_group: torch.Tensor = to_torch(  # type: ignore
             batch.obs, device=self.device
         )
-        act = []
+        act_group = []
         for obs in obs_group:
             # now obs is (state_dim)
             obs = (obs.reshape(1, -1)).repeat(self.forward_sampled_times, 1)
             # now obs is (forward_sampled_times, state_dim)
 
             # decode(obs) generates action and actor perturbs it
-            action = self.actor(obs, self.vae.decode(obs))
+            act = self.actor(obs, self.vae.decode(obs))
             # now action is (forward_sampled_times, action_dim)
-            q1 = self.critic1(obs, action)
+            q1 = self.critic1(obs, act)
             # q1 is (forward_sampled_times, 1)
-            ind = q1.argmax(0)
-            act.append(action[ind].cpu().data.numpy().flatten())
-        act = np.array(act)
-        return Batch(act=act)
+            max_indice = q1.argmax(0)
+            act_group.append(act[max_indice].cpu().data.numpy().flatten())
+        act_group = np.array(act_group)
+        return Batch(act=act_group)
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        for net, net_target in [
-            [self.critic1, self.critic1_target], [self.critic2, self.critic2_target],
-            [self.actor, self.actor_target]
-        ]:
-            for param, target_param in zip(net.parameters(), net_target.parameters()):
-                target_param.data.copy_(
-                    self.tau * param.data + (1 - self.tau) * target_param.data
-                )
+        self.soft_update(self.critic1_target, self.critic1, self.tau)
+        self.soft_update(self.critic2_target, self.critic2, self.tau)
+        self.soft_update(self.actor_target, self.actor, self.tau)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # batch: obs, act, rew, done, obs_next. (numpy array)
