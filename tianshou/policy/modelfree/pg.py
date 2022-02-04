@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer, to_torch_as, to_torch
+from tianshou.data import Batch, ReplayBuffer, to_torch, to_torch_as
 from tianshou.policy import BasePolicy
 from tianshou.utils import RunningMeanStd
 
