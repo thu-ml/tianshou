@@ -131,7 +131,7 @@ class PGPolicy(BasePolicy):
                 result = self(minibatch)
                 dist = result.dist
                 act = to_torch_as(minibatch.act, result.act)
-                ret = to_torch_as(minibatch.returns, result.act)
+                ret = to_torch(minibatch.returns, result.act.device, torch.float)
                 log_prob = dist.log_prob(act).reshape(len(ret), -1).transpose(0, 1)
                 loss = -(log_prob * ret).mean()
                 loss.backward()
