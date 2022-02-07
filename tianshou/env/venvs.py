@@ -209,7 +209,13 @@ class BaseVectorEnv(gym.Env):
         id = self._wrap_id(id)
         if self.is_async:
             self._assert_id(id)
-        obs_list = [self.workers[i].reset() for i in id]
+        # send(None) == reset() in worker
+        for i, j in enumerate(id):
+            self.workers[j].send(None)
+        obs_list = []
+        for j in id:
+            obs = self.workers[j].recv()
+            obs_list.append(obs)
         try:
             obs = np.stack(obs_list)
         except ValueError:  # different len(obs)
