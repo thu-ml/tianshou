@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 import gym
 import numpy as np
-import pettingzoo
+
 import torch
 
 from tianshou.data import (
