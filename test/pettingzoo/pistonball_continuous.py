@@ -1,6 +1,6 @@
 import argparse
 import os
-from typing import List, Optional, Tuple, Union, Any, Dict
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
@@ -16,7 +16,6 @@ from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, MultiAgentPolicyManager, PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
@@ -57,6 +56,7 @@ class DQN(nn.Module):
         r"""Mapping: x -> Q(x, \*)."""
         x = torch.as_tensor(x, device=self.device, dtype=torch.float32)
         return self.net(x.reshape(-1, self.c, self.w, self.h)), state
+
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
@@ -143,21 +143,23 @@ def get_agents(
         optims = []
         for _ in range(args.n_pistons):
             # model
-            net = DQN(observation_space.shape[2], observation_space.shape[1], observation_space.shape[0],
-                      device=args.device).to(args.device)
-            # net = Net(
-            #     args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device
-            # ).to(args.device)
+            net = DQN(
+                observation_space.shape[2],
+                observation_space.shape[1],
+                observation_space.shape[0],
+                device=args.device
+            ).to(args.device)
+
             actor = ActorProb(
                 net, args.action_shape, max_action=args.max_action, device=args.device
             ).to(args.device)
-            # net2 = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-            net2 = DQN(observation_space.shape[2], observation_space.shape[1], observation_space.shape[0],
-                      device=args.device).to(args.device)
-            critic = Critic(
-                net2,
+            net2 = DQN(
+                observation_space.shape[2],
+                observation_space.shape[1],
+                observation_space.shape[0],
                 device=args.device
             ).to(args.device)
+            critic = Critic(net2, device=args.device).to(args.device)
             for m in set(actor.modules()).union(critic.modules()):
                 if isinstance(m, torch.nn.Linear):
                     torch.nn.init.orthogonal_(m.weight)
