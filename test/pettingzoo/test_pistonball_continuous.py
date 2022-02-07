@@ -9,7 +9,7 @@ def test_piston_ball_continuous(args=get_args()):
         return
 
     result, agent = train_agent(args)
-    # assert result["best_reward"] >= args.win_rate
+    assert result["best_reward"] >= 30.0
 
     if __name__ == '__main__':
         pprint.pprint(result)

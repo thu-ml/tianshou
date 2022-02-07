@@ -1,11 +1,12 @@
 import argparse
 import os
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union, Any, Dict
 
 import gym
 import numpy as np
 import pettingzoo.butterfly.pistonball_v4 as pistonball_v4
 import torch
+import torch.nn as nn
 from torch.distributions import Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
@@ -18,6 +19,44 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
+
+class DQN(nn.Module):
+    """Reference: Human-level control through deep reinforcement learning.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
+    def __init__(
+        self,
+        c: int,
+        h: int,
+        w: int,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
+        super().__init__()
+        self.device = device
+        self.c = c
+        self.h = h
+        self.w = w
+        self.net = nn.Sequential(
+            nn.Conv2d(c, 32, kernel_size=8, stride=4), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2), nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1), nn.ReLU(inplace=True),
+            nn.Flatten()
+        )
+        with torch.no_grad():
+            self.output_dim = np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:])
+
+    def forward(
+        self,
+        x: Union[np.ndarray, torch.Tensor],
+        state: Optional[Any] = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[torch.Tensor, Any]:
+        r"""Mapping: x -> Q(x, \*)."""
+        x = torch.as_tensor(x, device=self.device, dtype=torch.float32)
+        return self.net(x.reshape(-1, self.c, self.w, self.h)), state
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
@@ -37,7 +76,7 @@ def get_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument('--n-step', type=int, default=100)
     parser.add_argument('--target-update-freq', type=int, default=320)
-    parser.add_argument('--epoch', type=int, default=3)
+    parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=500)
     parser.add_argument('--step-per-collect', type=int, default=10)
     parser.add_argument('--episode-per-collect', type=int, default=16)
@@ -45,7 +84,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--update-per-step', type=float, default=0.1)
     parser.add_argument('--batch-size', type=int, default=100)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--training-num', type=int, default=10)
+    parser.add_argument('--training-num', type=int, default=1000)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
 
@@ -104,18 +143,19 @@ def get_agents(
         optims = []
         for _ in range(args.n_pistons):
             # model
-            net = Net(
-                args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device
-            ).to(args.device)
+            net = DQN(observation_space.shape[2], observation_space.shape[1], observation_space.shape[0],
+                      device=args.device).to(args.device)
+            # net = Net(
+            #     args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device
+            # ).to(args.device)
             actor = ActorProb(
                 net, args.action_shape, max_action=args.max_action, device=args.device
             ).to(args.device)
+            # net2 = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
+            net2 = DQN(observation_space.shape[2], observation_space.shape[1], observation_space.shape[0],
+                      device=args.device).to(args.device)
             critic = Critic(
-                Net(
-                    args.state_shape,
-                    hidden_sizes=args.hidden_sizes,
-                    device=args.device
-                ),
+                net2,
                 device=args.device
             ).to(args.device)
             for m in set(actor.modules()).union(critic.modules()):
