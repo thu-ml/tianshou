@@ -97,9 +97,9 @@ class DiscreteCRRPolicy(PGPolicy):
             target = rew.unsqueeze(1) + self._gamma * expected_target_q
         critic_loss = 0.5 * F.mse_loss(qa_t, target)
         # Actor loss
-        a_t, _ = self.actor(batch.obs)
-        m = Categorical(logits=a_t)
-        expected_policy_q = (q_t * m.probs).sum(-1, keepdim=True)
+        act_target, _ = self.actor(batch.obs)
+        dist = Categorical(logits=act_target)
+        expected_policy_q = (q_t * dist.probs).sum(-1, keepdim=True)
         advantage = qa_t - expected_policy_q
         if self._policy_improvement_mode == "binary":
             actor_loss_coef = (advantage > 0).float()
@@ -109,7 +109,7 @@ class DiscreteCRRPolicy(PGPolicy):
             )
         else:
             actor_loss_coef = 1.0  # effectively behavior cloning
-        actor_loss = (-m.log_prob(act) * actor_loss_coef).mean()
+        actor_loss = (-dist.log_prob(act) * actor_loss_coef).mean()
         # CQL loss/regularizer
         min_q_loss = (q_t.logsumexp(1) - qa_t).mean()
         loss = actor_loss + critic_loss + self._min_q_weight * min_q_loss

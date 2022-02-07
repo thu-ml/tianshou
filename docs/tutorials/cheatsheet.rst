@@ -350,7 +350,7 @@ But the state stored in the buffer may be a shallow-copy. To make sure each of y
 
     def reset():
         return copy.deepcopy(self.graph)
-    def step(a):
+    def step(action):
         ...
         return copy.deepcopy(self.graph), reward, done, {}
 
@@ -391,13 +391,13 @@ In addition, legal actions in multi-agent RL often vary with timestep (just like
 The above description gives rise to the following formulation of multi-agent RL:
 ::
 
-    action = policy(state, agent_id, mask)
-    (next_state, next_agent_id, next_mask), reward = env.step(action)
+    act = policy(state, agent_id, mask)
+    (next_state, next_agent_id, next_mask), reward = env.step(act)
 
 By constructing a new state ``state_ = (state, agent_id, mask)``, essentially we can return to the typical formulation of RL:
 ::
 
-    action = policy(state_)
-    next_state_, reward = env.step(action)
+    act = policy(state_)
+    next_state_, reward = env.step(act)
 
 Following this idea, we write a tiny example of playing `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ against a random player by using a Q-learning algorithm. The tutorial is at :doc:`/tutorials/tictactoe`.

@@ -73,36 +73,37 @@ class IQNPolicy(QRDQNPolicy):
             sample_size = self._sample_size
         model = getattr(self, model)
         obs = batch[input]
-        obs_ = obs.obs if hasattr(obs, "obs") else obs
-        (logits,
-         taus), h = model(obs_, sample_size=sample_size, state=state, info=batch.info)
+        obs_next = obs.obs if hasattr(obs, "obs") else obs
+        (logits, taus), hidden = model(
+            obs_next, sample_size=sample_size, state=state, info=batch.info
+        )
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
-        return Batch(logits=logits, act=act, state=h, taus=taus)
+        return Batch(logits=logits, act=act, state=hidden, taus=taus)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
-        out = self(batch)
-        curr_dist, taus = out.logits, out.taus
+        action_batch = self(batch)
+        curr_dist, taus = action_batch.logits, action_batch.taus
         act = batch.act
         curr_dist = curr_dist[np.arange(len(act)), act, :].unsqueeze(2)
         target_dist = batch.returns.unsqueeze(1)
         # calculate each element's difference between curr_dist and target_dist
-        u = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
+        dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            u *
+            dist_diff *
             (taus.unsqueeze(2) -
              (target_dist - curr_dist).detach().le(0.).float()).abs()
         ).sum(-1).mean(1)
         loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
-        batch.weight = u.detach().abs().sum(-1).mean(1)  # prio-buffer
+        batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
         loss.backward()
         self.optim.step()
         self._iter += 1

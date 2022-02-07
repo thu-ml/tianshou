@@ -94,13 +94,10 @@ class DiscreteBCQPolicy(DQNPolicy):
         # mask actions for argmax
         ratio = imitation_logits - imitation_logits.max(dim=-1, keepdim=True).values
         mask = (ratio < self._log_tau).float()
-        action = (q_value - np.inf * mask).argmax(dim=-1)
+        act = (q_value - np.inf * mask).argmax(dim=-1)
 
         return Batch(
-            act=action,
-            state=state,
-            q_value=q_value,
-            imitation_logits=imitation_logits
+            act=act, state=state, q_value=q_value, imitation_logits=imitation_logits
         )
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:

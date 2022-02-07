@@ -331,20 +331,20 @@ def test_collector_with_ma():
     policy = MyPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100), Logger.single_preprocess_fn)
     # n_step=3 will collect a full episode
-    r = c0.collect(n_step=3)['rews']
-    assert len(r) == 0
-    r = c0.collect(n_episode=2)['rews']
-    assert r.shape == (2, 4) and np.all(r == 1)
+    rew = c0.collect(n_step=3)['rews']
+    assert len(rew) == 0
+    rew = c0.collect(n_episode=2)['rews']
+    assert rew.shape == (2, 4) and np.all(rew == 1)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     c1 = Collector(
         policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4),
         Logger.single_preprocess_fn
     )
-    r = c1.collect(n_step=12)['rews']
-    assert r.shape == (2, 4) and np.all(r == 1), r
-    r = c1.collect(n_episode=8)['rews']
-    assert r.shape == (8, 4) and np.all(r == 1)
+    rew = c1.collect(n_step=12)['rews']
+    assert rew.shape == (2, 4) and np.all(rew == 1), rew
+    rew = c1.collect(n_episode=8)['rews']
+    assert rew.shape == (8, 4) and np.all(rew == 1)
     batch, _ = c1.buffer.sample(10)
     print(batch)
     c0.buffer.update(c1.buffer)
@@ -446,8 +446,8 @@ def test_collector_with_ma():
         policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
         Logger.single_preprocess_fn
     )
-    r = c2.collect(n_episode=10)['rews']
-    assert r.shape == (10, 4) and np.all(r == 1)
+    rew = c2.collect(n_episode=10)['rews']
+    assert rew.shape == (10, 4) and np.all(rew == 1)
     batch, _ = c2.buffer.sample(10)
 
 

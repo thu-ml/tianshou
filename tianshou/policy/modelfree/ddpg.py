@@ -73,7 +73,7 @@ class DDPGPolicy(BasePolicy):
             self.critic_old.eval()
             self.critic_optim: torch.optim.Optimizer = critic_optim
         assert 0.0 <= tau <= 1.0, "tau should be in [0, 1]"
-        self._tau = tau
+        self.tau = tau
         assert 0.0 <= gamma <= 1.0, "gamma should be in [0, 1]"
         self._gamma = gamma
         self._noise = exploration_noise
@@ -95,10 +95,8 @@ class DDPGPolicy(BasePolicy):
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(self.critic_old.parameters(), self.critic.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
+        self.soft_update(self.actor_old, self.actor, self.tau)
+        self.soft_update(self.critic_old, self.critic, self.tau)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
@@ -139,8 +137,8 @@ class DDPGPolicy(BasePolicy):
         """
         model = getattr(self, model)
         obs = batch[input]
-        actions, h = model(obs, state=state, info=batch.info)
-        return Batch(act=actions, state=h)
+        actions, hidden = model(obs, state=state, info=batch.info)
+        return Batch(act=actions, state=hidden)
 
     @staticmethod
     def _mse_optimizer(
@@ -163,8 +161,7 @@ class DDPGPolicy(BasePolicy):
         td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         batch.weight = td  # prio-buffer
         # actor
-        action = self(batch).act
-        actor_loss = -self.critic(batch.obs, action).mean()
+        actor_loss = -self.critic(batch.obs, self(batch).act).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()

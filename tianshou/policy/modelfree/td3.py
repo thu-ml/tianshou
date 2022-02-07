@@ -89,23 +89,20 @@ class TD3Policy(DDPGPolicy):
         return self
 
     def sync_weight(self) -> None:
-        for o, n in zip(self.actor_old.parameters(), self.actor.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(self.critic1_old.parameters(), self.critic1.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(self.critic2_old.parameters(), self.critic2.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
+        self.soft_update(self.critic1_old, self.critic1, self.tau)
+        self.soft_update(self.critic2_old, self.critic2, self.tau)
+        self.soft_update(self.actor_old, self.actor, self.tau)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}
-        a_ = self(batch, model="actor_old", input="obs_next").act
-        dev = a_.device
-        noise = torch.randn(size=a_.shape, device=dev) * self._policy_noise
+        act_ = self(batch, model="actor_old", input="obs_next").act
+        noise = torch.randn(size=act_.shape, device=act_.device) * self._policy_noise
         if self._noise_clip > 0.0:
             noise = noise.clamp(-self._noise_clip, self._noise_clip)
-        a_ += noise
+        act_ += noise
         target_q = torch.min(
-            self.critic1_old(batch.obs_next, a_), self.critic2_old(batch.obs_next, a_)
+            self.critic1_old(batch.obs_next, act_),
+            self.critic2_old(batch.obs_next, act_),
         )
         return target_q
 
