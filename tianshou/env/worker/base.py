@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
@@ -23,28 +23,41 @@ class EnvWorker(ABC):
         pass
 
     @abstractmethod
-    def reset(self) -> Any:
+    def send(self, action: Optional[np.ndarray]) -> None:
+        """Send action signal to low-level worker.
+
+        When action is None, it indicates sending "reset" signal; otherwise
+        it indicates "step" signal. The paired return value from "recv"
+        function is determined by such kind of different signal.
+        """
         pass
 
-    @abstractmethod
-    def send_action(self, action: np.ndarray) -> None:
-        pass
+    def recv(
+        self
+    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
+        """Receive result from low-level worker.
 
-    def get_result(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        If the last "send" function sends a NULL action, it only returns a
+        single observation; otherwise it returns a tuple of (obs, rew, done,
+        info).
+        """
         return self.result
+
+    def reset(self) -> np.ndarray:
+        self.send(None)
+        return self.recv()  # type: ignore
 
     def step(
         self, action: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Perform one timestep of the environment's dynamic.
 
-        "send_action" and "get_result" are coupled in sync simulation, so
-        typically users only call "step" function. But they can be called
-        separately in async simulation, i.e. someone calls "send_action" first,
-        and calls "get_result" later.
+        "send" and "recv" are coupled in sync simulation, so users only call
+        "step" function. But they can be called separately in async
+        simulation, i.e. someone calls "send" first, and calls "recv" later.
         """
-        self.send_action(action)
-        return self.get_result()
+        self.send(action)
+        return self.recv()  # type: ignore
 
     @staticmethod
     def wait(

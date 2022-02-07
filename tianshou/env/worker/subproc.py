@@ -86,17 +86,17 @@ def _worker(
                 p.close()
                 break
             if cmd == "step":
-                obs, reward, done, info = env.step(data)
+                if data is None:  # reset
+                    obs = env.reset()
+                else:
+                    obs, reward, done, info = env.step(data)
                 if obs_bufs is not None:
                     _encode_obs(obs, obs_bufs)
                     obs = None
-                p.send((obs, reward, done, info))
-            elif cmd == "reset":
-                obs = env.reset()
-                if obs_bufs is not None:
-                    _encode_obs(obs, obs_bufs)
-                    obs = None
-                p.send(obs)
+                if data is None:
+                    p.send(obs)
+                else:
+                    p.send((obs, reward, done, info))
             elif cmd == "close":
                 p.send(env.close())
                 p.close()
@@ -140,6 +140,7 @@ class SubprocEnvWorker(EnvWorker):
         self.process = Process(target=_worker, args=args, daemon=True)
         self.process.start()
         self.child_remote.close()
+        self.is_reset = False
         super().__init__(env_fn)
 
     def get_env_attr(self, key: str) -> Any:
@@ -165,13 +166,6 @@ class SubprocEnvWorker(EnvWorker):
 
         return decode_obs(self.buffer)
 
-    def reset(self) -> Any:
-        self.parent_remote.send(["reset", None])
-        obs = self.parent_remote.recv()
-        if self.share_memory:
-            obs = self._decode_obs()
-        return obs
-
     @staticmethod
     def wait(  # type: ignore
         workers: List["SubprocEnvWorker"],
@@ -192,14 +186,23 @@ class SubprocEnvWorker(EnvWorker):
             remain_conns = [conn for conn in remain_conns if conn not in ready_conns]
         return [workers[conns.index(con)] for con in ready_conns]
 
-    def send_action(self, action: np.ndarray) -> None:
+    def send(self, action: Optional[np.ndarray]) -> None:
         self.parent_remote.send(["step", action])
 
-    def get_result(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        obs, rew, done, info = self.parent_remote.recv()
-        if self.share_memory:
-            obs = self._decode_obs()
-        return obs, rew, done, info
+    def recv(
+        self
+    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
+        result = self.parent_remote.recv()
+        if isinstance(result, tuple):
+            obs, rew, done, info = result
+            if self.share_memory:
+                obs = self._decode_obs()
+            return obs, rew, done, info
+        else:
+            obs = result
+            if self.share_memory:
+                obs = self._decode_obs()
+            return obs
 
     def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
         super().seed(seed)

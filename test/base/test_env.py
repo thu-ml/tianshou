@@ -96,7 +96,12 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
     for cls in test_cls:
         pass_check = 1
         v = cls(env_fns, wait_num=num - 1, timeout=timeout)
+        t = time.time()
         v.reset()
+        t = time.time() - t
+        print(f"{cls} reset {t}")
+        if t > sleep * 9:  # huge than maximum sleep time (7 sleep)
+            pass_check = 0
         expect_result = [
             [0, 1],
             [0, 1, 2],
