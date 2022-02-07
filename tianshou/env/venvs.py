@@ -214,7 +214,7 @@ class BaseVectorEnv(gym.Env):
             self.workers[i].send(None)
         obs_list = [self.workers[i].recv() for i in id]
         try:
-            obs = np.stack(obs_list)  # type: ignore
+            obs = np.stack(obs_list)
         except ValueError:  # different len(obs)
             obs = np.array(obs_list, dtype=object)
         if self.obs_rms and self.update_obs_rms:
