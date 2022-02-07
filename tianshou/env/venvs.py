@@ -210,14 +210,11 @@ class BaseVectorEnv(gym.Env):
         if self.is_async:
             self._assert_id(id)
         # send(None) == reset() in worker
-        for i, j in enumerate(id):
-            self.workers[j].send(None)
-        obs_list = []
-        for j in id:
-            obs = self.workers[j].recv()
-            obs_list.append(obs)
+        for i in id:
+            self.workers[i].send(None)
+        obs_list = [self.workers[i].recv() for i in id]
         try:
-            obs = np.stack(obs_list)
+            obs = np.stack(obs_list)  # type: ignore
         except ValueError:  # different len(obs)
             obs = np.array(obs_list, dtype=object)
         if self.obs_rms and self.update_obs_rms:
