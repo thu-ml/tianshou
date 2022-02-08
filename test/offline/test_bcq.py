@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import BCQPolicy
 from tianshou.trainer import offline_trainer
@@ -18,26 +18,26 @@ from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
 
 if __name__ == "__main__":
-    from gather_pendulum_data import gather_data
+    from gather_pendulum_data import expert_file_name, gather_data
 else:  # pytest
-    from test.offline.gather_pendulum_data import gather_data
+    from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[200, 150])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
-    parser.add_argument('--epoch', type=int, default=7)
-    parser.add_argument('--step-per-epoch', type=int, default=2000)
-    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--epoch', type=int, default=5)
+    parser.add_argument('--step-per-epoch', type=int, default=500)
+    parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
 
-    parser.add_argument("--vae-hidden-sizes", type=int, nargs='*', default=[375, 375])
+    parser.add_argument("--vae-hidden-sizes", type=int, nargs='*', default=[32, 32])
     # default to 2 * action_dim
     parser.add_argument('--latent_dim', type=int, default=None)
     parser.add_argument("--gamma", default=0.99)
@@ -56,16 +56,17 @@ def get_args():
         action='store_true',
         help='watch the play of pre-trained policy only',
     )
-    parser.add_argument(
-        "--load-buffer-name", type=str, default="./expert_SAC_Pendulum-v0.pkl"
-    )
+    parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
     args = parser.parse_known_args()[0]
     return args
 
 
 def test_bcq(args=get_args()):
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
-        buffer = pickle.load(open(args.load_buffer_name, "rb"))
+        if args.load_buffer_name.endswith(".hdf5"):
+            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+        else:
+            buffer = pickle.load(open(args.load_buffer_name, "rb"))
     else:
         buffer = gather_data()
     env = gym.make(args.task)
@@ -73,7 +74,7 @@ def test_bcq(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]  # float
     if args.task == 'Pendulum-v0':
-        env.spec.reward_threshold = -800  # too low?
+        env.spec.reward_threshold = -1100  # too low?
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]

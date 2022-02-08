@@ -8,18 +8,18 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv
+from tianshou.env import DummyVectorEnv
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLP, ActorCritic, DataParallelNet, Net
+from tianshou.utils.net.common import MLP, ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--gamma', type=float, default=0.99)
@@ -75,11 +75,11 @@ def test_ppo(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = SubprocVectorEnv(
+    train_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)]
     )
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
+    test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
     )
     # seed
@@ -89,14 +89,8 @@ def test_ppo(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    if torch.cuda.is_available():
-        actor = DataParallelNet(
-            Actor(net, args.action_shape, device=None).to(args.device)
-        )
-        critic = DataParallelNet(Critic(net, device=None).to(args.device))
-    else:
-        actor = Actor(net, args.action_shape, device=args.device).to(args.device)
-        critic = Critic(net, device=args.device).to(args.device)
+    actor = Actor(net, args.action_shape, device=args.device).to(args.device)
+    critic = Critic(net, device=args.device).to(args.device)
     actor_critic = ActorCritic(actor, critic)
     # orthogonal initialization
     for m in actor_critic.modules():

@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import CQLPolicy
 from tianshou.trainer import offline_trainer
@@ -18,16 +18,16 @@ from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 if __name__ == "__main__":
-    from gather_pendulum_data import gather_data
+    from gather_pendulum_data import expert_file_name, gather_data
 else:  # pytest
-    from test.offline.gather_pendulum_data import gather_data
+    from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--alpha', type=float, default=0.2)
@@ -35,10 +35,10 @@ def get_args():
     parser.add_argument('--alpha-lr', type=float, default=1e-3)
     parser.add_argument('--cql-alpha-lr', type=float, default=1e-3)
     parser.add_argument("--start-timesteps", type=int, default=10000)
-    parser.add_argument('--epoch', type=int, default=20)
-    parser.add_argument('--step-per-epoch', type=int, default=2000)
+    parser.add_argument('--epoch', type=int, default=5)
+    parser.add_argument('--step-per-epoch', type=int, default=500)
     parser.add_argument('--n-step', type=int, default=3)
-    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--batch-size', type=int, default=64)
 
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--temperature", type=float, default=1.0)
@@ -48,7 +48,6 @@ def get_args():
     parser.add_argument("--gamma", type=float, default=0.99)
 
     parser.add_argument("--eval-freq", type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=1 / 35)
@@ -62,16 +61,17 @@ def get_args():
         action='store_true',
         help='watch the play of pre-trained policy only',
     )
-    parser.add_argument(
-        "--load-buffer-name", type=str, default="./expert_SAC_Pendulum-v0.pkl"
-    )
+    parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
     args = parser.parse_known_args()[0]
     return args
 
 
 def test_cql(args=get_args()):
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
-        buffer = pickle.load(open(args.load_buffer_name, "rb"))
+        if args.load_buffer_name.endswith(".hdf5"):
+            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+        else:
+            buffer = pickle.load(open(args.load_buffer_name, "rb"))
     else:
         buffer = gather_data()
     env = gym.make(args.task)
@@ -106,7 +106,7 @@ def test_cql(args=get_args()):
         max_action=args.max_action,
         device=args.device,
         unbounded=True,
-        conditioned_sigma=True
+        conditioned_sigma=True,
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
