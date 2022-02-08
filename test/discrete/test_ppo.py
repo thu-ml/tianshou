@@ -19,7 +19,7 @@ from tianshou.utils.net.discrete import Actor, Critic
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--gamma', type=float, default=0.99)

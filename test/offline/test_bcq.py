@@ -27,17 +27,17 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[200, 150])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
-    parser.add_argument('--epoch', type=int, default=7)
-    parser.add_argument('--step-per-epoch', type=int, default=2000)
-    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument('--epoch', type=int, default=5)
+    parser.add_argument('--step-per-epoch', type=int, default=500)
+    parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
 
-    parser.add_argument("--vae-hidden-sizes", type=int, nargs='*', default=[375, 375])
+    parser.add_argument("--vae-hidden-sizes", type=int, nargs='*', default=[32, 32])
     # default to 2 * action_dim
     parser.add_argument('--latent_dim', type=int, default=None)
     parser.add_argument("--gamma", default=0.99)
@@ -74,7 +74,7 @@ def test_bcq(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]  # float
     if args.task == 'Pendulum-v0':
-        env.spec.reward_threshold = -800  # too low?
+        env.spec.reward_threshold = -1100  # too low?
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]
