@@ -18,9 +18,9 @@ from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
 
 if __name__ == "__main__":
-    from gather_pendulum_data import gather_data, expert_file_name
+    from gather_pendulum_data import expert_file_name, gather_data
 else:  # pytest
-    from test.offline.gather_pendulum_data import gather_data, expert_file_name
+    from test.offline.gather_pendulum_data import expert_file_name, gather_data
 
 
 def get_args():
