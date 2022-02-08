@@ -81,6 +81,7 @@ class MyTestEnv(gym.Env):
 
     def reset(self, state=0):
         self.done = False
+        self.do_sleep()
         self.index = state
         return self._get_state()
 
@@ -116,16 +117,19 @@ class MyTestEnv(gym.Env):
         else:
             return np.array([self.index], dtype=np.float32)
 
+    def do_sleep(self):
+        if self.sleep > 0:
+            sleep_time = random.random() if self.random_sleep else 1
+            sleep_time *= self.sleep
+            time.sleep(sleep_time)
+
     def step(self, action):
         self.steps += 1
         if self._md_action:
             action = action[0]
         if self.done:
             raise ValueError('step after done !!!')
-        if self.sleep > 0:
-            sleep_time = random.random() if self.random_sleep else 1
-            sleep_time *= self.sleep
-            time.sleep(sleep_time)
+        self.do_sleep()
         if self.index == self.size:
             self.done = True
             return self._get_state(), self._get_reward(), self.done, {}

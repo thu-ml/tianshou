@@ -210,7 +210,10 @@ class BaseVectorEnv(gym.Env):
         id = self._wrap_id(id)
         if self.is_async:
             self._assert_id(id)
-        obs_list = [self.workers[i].reset() for i in id]
+        # send(None) == reset() in worker
+        for i in id:
+            self.workers[i].send(None)
+        obs_list = [self.workers[i].recv() for i in id]
         try:
             obs = np.stack(obs_list)
         except ValueError:  # different len(obs)
@@ -259,10 +262,10 @@ class BaseVectorEnv(gym.Env):
         if not self.is_async:
             assert len(action) == len(id)
             for i, j in enumerate(id):
-                self.workers[j].send_action(action[i])
+                self.workers[j].send(action[i])
             result = []
             for j in id:
-                obs, rew, done, info = self.workers[j].get_result()
+                obs, rew, done, info = self.workers[j].recv()
                 info["env_id"] = j
                 result.append((obs, rew, done, info))
         else:
@@ -270,7 +273,7 @@ class BaseVectorEnv(gym.Env):
                 self._assert_id(id)
                 assert len(action) == len(id)
                 for act, env_id in zip(action, id):
-                    self.workers[env_id].send_action(act)
+                    self.workers[env_id].send(act)
                     self.waiting_conn.append(self.workers[env_id])
                     self.waiting_id.append(env_id)
                 self.ready_id = [x for x in self.ready_id if x not in id]
@@ -284,7 +287,7 @@ class BaseVectorEnv(gym.Env):
                 waiting_index = self.waiting_conn.index(conn)
                 self.waiting_conn.pop(waiting_index)
                 env_id = self.waiting_id.pop(waiting_index)
-                obs, rew, done, info = conn.get_result()
+                obs, rew, done, info = conn.recv()
                 info["env_id"] = env_id
                 result.append((obs, rew, done, info))
                 self.ready_id.append(env_id)

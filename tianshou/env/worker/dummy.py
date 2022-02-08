@@ -29,8 +29,11 @@ class DummyEnvWorker(EnvWorker):
         # Sequential EnvWorker objects are always ready
         return workers
 
-    def send_action(self, action: np.ndarray) -> None:
-        self.result = self.env.step(action)
+    def send(self, action: Optional[np.ndarray]) -> None:
+        if action is None:
+            self.result = self.env.reset()
+        else:
+            self.result = self.env.step(action)
 
     def seed(self, seed: Optional[int] = None) -> List[int]:
         super().seed(seed)
