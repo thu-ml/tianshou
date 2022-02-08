@@ -41,6 +41,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     keywords="reinforcement learning platform pytorch",
     packages=find_packages(
@@ -66,7 +67,7 @@ setup(
             "isort",
             "pytest",
             "pytest-cov",
-            "ray>=1.0.0,<1.7.0",
+            "ray>=1.0.0",
             "wandb>=0.12.0",
             "networkx",
             "mypy",
