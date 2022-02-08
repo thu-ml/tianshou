@@ -8,7 +8,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv
+from tianshou.env import DummyVectorEnv
 from tianshou.policy import DiscreteSACPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -55,10 +55,10 @@ def test_discrete_sac(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
 
-    train_envs = SubprocVectorEnv(
+    train_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)]
     )
-    test_envs = SubprocVectorEnv(
+    test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
     )
     # seed

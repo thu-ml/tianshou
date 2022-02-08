@@ -8,7 +8,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv
+from tianshou.env import DummyVectorEnv
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -75,11 +75,11 @@ def test_ppo(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = SubprocVectorEnv(
+    train_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.training_num)]
     )
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
+    test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
     )
     # seed
