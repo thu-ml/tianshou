@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import BCQPolicy
 from tianshou.trainer import offline_trainer
@@ -18,9 +18,9 @@ from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
 
 if __name__ == "__main__":
-    from gather_pendulum_data import gather_data
+    from gather_pendulum_data import gather_data, expert_file_name
 else:  # pytest
-    from test.offline.gather_pendulum_data import gather_data
+    from test.offline.gather_pendulum_data import gather_data, expert_file_name
 
 
 def get_args():
@@ -56,16 +56,17 @@ def get_args():
         action='store_true',
         help='watch the play of pre-trained policy only',
     )
-    parser.add_argument(
-        "--load-buffer-name", type=str, default="./expert_SAC_Pendulum-v0.pkl"
-    )
+    parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
     args = parser.parse_known_args()[0]
     return args
 
 
 def test_bcq(args=get_args()):
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
-        buffer = pickle.load(open(args.load_buffer_name, "rb"))
+        if args.load_buffer_name.endswith(".hdf5"):
+            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+        else:
+            buffer = pickle.load(open(args.load_buffer_name, "rb"))
     else:
         buffer = gather_data()
     env = gym.make(args.task)

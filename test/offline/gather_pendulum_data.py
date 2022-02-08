@@ -16,11 +16,15 @@ from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
+def expert_file_name():
+    return os.path.join(os.path.dirname(__file__), "expert_SAC_Pendulum-v0.pkl")
+
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer-size', type=int, default=200000)
+    parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
@@ -52,9 +56,7 @@ def get_args():
     parser.add_argument('--alpha-lr', type=float, default=3e-4)
     parser.add_argument('--rew-norm', action="store_true", default=False)
     parser.add_argument('--n-step', type=int, default=3)
-    parser.add_argument(
-        "--save-buffer-name", type=str, default="./expert_SAC_Pendulum-v0.pkl"
-    )
+    parser.add_argument("--save-buffer-name", type=str, default=expert_file_name())
     args = parser.parse_known_args()[0]
     return args
 
@@ -166,5 +168,8 @@ def gather_data():
     result = train_collector.collect(n_step=args.buffer_size)
     rews, lens = result["rews"], result["lens"]
     print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
-    pickle.dump(buffer, open(args.save_buffer_name, "wb"))
+    if args.save_buffer_name.endswith(".hdf5"):
+        buffer.save_hdf5(args.save_buffer_name)
+    else:
+        pickle.dump(buffer, open(args.save_buffer_name, "wb"))
     return buffer
