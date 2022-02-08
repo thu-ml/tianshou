@@ -15,6 +15,10 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
 
+def expert_file_name():
+    return os.path.join(os.path.dirname(__file__), "expert_QRDQN_CartPole-v0.pkl")
+
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
@@ -42,9 +46,7 @@ def get_args():
     parser.add_argument('--prioritized-replay', action="store_true", default=False)
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
-    parser.add_argument(
-        '--save-buffer-name', type=str, default="./expert_QRDQN_CartPole-v0.pkl"
-    )
+    parser.add_argument('--save-buffer-name', type=str, default=expert_file_name())
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
@@ -155,6 +157,9 @@ def gather_data():
     policy.set_eps(0.2)
     collector = Collector(policy, test_envs, buf, exploration_noise=True)
     result = collector.collect(n_step=args.buffer_size)
-    pickle.dump(buf, open(args.save_buffer_name, "wb"))
+    if args.save_buffer_name.endswith(".hdf5"):
+        buf.save_hdf5(args.save_buffer_name)
+    else:
+        pickle.dump(buf, open(args.save_buffer_name, "wb"))
     print(result["rews"].mean())
     return buf

@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DiscreteCRRPolicy
 from tianshou.trainer import offline_trainer
@@ -17,9 +17,9 @@ from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
 
 if __name__ == "__main__":
-    from gather_cartpole_data import gather_data
+    from gather_cartpole_data import expert_file_name, gather_data
 else:  # pytest
-    from test.offline.gather_cartpole_data import gather_data
+    from test.offline.gather_cartpole_data import expert_file_name, gather_data
 
 
 def get_args():
@@ -37,11 +37,7 @@ def get_args():
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
-    parser.add_argument(
-        "--load-buffer-name",
-        type=str,
-        default="./expert_QRDQN_CartPole-v0.pkl",
-    )
+    parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
     parser.add_argument(
         "--device",
         type=str,
@@ -55,7 +51,7 @@ def test_discrete_crr(args=get_args()):
     # envs
     env = gym.make(args.task)
     if args.task == 'CartPole-v0':
-        env.spec.reward_threshold = 190  # lower the goal
+        env.spec.reward_threshold = 180  # lower the goal
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     test_envs = DummyVectorEnv(
@@ -92,7 +88,10 @@ def test_discrete_crr(args=get_args()):
     ).to(args.device)
     # buffer
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
-        buffer = pickle.load(open(args.load_buffer_name, "rb"))
+        if args.load_buffer_name.endswith(".hdf5"):
+            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+        else:
+            buffer = pickle.load(open(args.load_buffer_name, "rb"))
     else:
         buffer = gather_data()
 

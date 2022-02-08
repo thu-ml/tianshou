@@ -193,12 +193,5 @@ def test_dqn_icm(args=get_args()):
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
-def test_pdqn_icm(args=get_args()):
-    args.prioritized_replay = True
-    args.gamma = .95
-    args.seed = 1
-    test_dqn_icm(args)
-
-
 if __name__ == '__main__':
     test_dqn_icm(get_args())
