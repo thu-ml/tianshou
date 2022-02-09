@@ -22,6 +22,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='PongNoFrameskip-v4')
     parser.add_argument('--seed', type=int, default=4213)
+    parser.add_argument('--scale-obs', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=100000)
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--gamma', type=float, default=0.99)
@@ -30,7 +31,7 @@ def get_args():
     parser.add_argument('--step-per-collect', type=int, default=1000)
     parser.add_argument('--repeat-per-collect', type=int, default=4)
     parser.add_argument('--batch-size', type=int, default=256)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[512])
+    parser.add_argument('--hidden-size', type=int, default=512)
     parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--rew-norm', type=int, default=False)
@@ -87,7 +88,9 @@ def get_args():
 
 
 def make_atari_env(args):
-    return wrap_deepmind(args.task, frame_stack=args.frames_stack)
+    return wrap_deepmind(
+        args.task, frame_stack=args.frames_stack, scale=args.scale_obs
+    )
 
 
 def make_atari_env_watch(args):
@@ -95,7 +98,8 @@ def make_atari_env_watch(args):
         args.task,
         frame_stack=args.frames_stack,
         episode_life=False,
-        clip_rewards=False
+        clip_rewards=False,
+        scale=args.scale_obs
     )
 
 
@@ -120,16 +124,14 @@ def test_ppo(args=get_args()):
     test_envs.seed(args.seed)
     # define model
     net = DQN(
-        *args.state_shape, args.action_shape, device=args.device, features_only=True
-    )
-    actor = Actor(
-        net,
+        *args.state_shape,
         args.action_shape,
-        hidden_sizes=args.hidden_sizes,
         device=args.device,
-        softmax_output=False
+        features_only=True,
+        output_dim=args.hidden_size
     )
-    critic = Critic(net, hidden_sizes=args.hidden_sizes, device=args.device)
+    actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
+    critic = Critic(net, device=args.device)
     optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
 
     lr_scheduler = None
