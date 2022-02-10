@@ -84,7 +84,7 @@ class C51(DQN):
         state: Optional[Any] = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
-        r"""Mapping: s -> Z(s, \*)."""
+        r"""Mapping: x -> Z(x, \*)."""
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.num_atoms).softmax(dim=-1)
         obs = obs.view(-1, self.action_num, self.num_atoms)
