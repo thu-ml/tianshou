@@ -22,6 +22,7 @@ class DQN(nn.Module):
         action_shape: Sequence[int],
         device: Union[str, int, torch.device] = "cpu",
         features_only: bool = False,
+        output_dim: Optional[int] = None,
     ) -> None:
         super().__init__()
         self.device = device
@@ -39,16 +40,22 @@ class DQN(nn.Module):
                 nn.Linear(512, np.prod(action_shape))
             )
             self.output_dim = np.prod(action_shape)
+        elif output_dim is not None:
+            self.net = nn.Sequential(
+                self.net, nn.Linear(self.output_dim, output_dim),
+                nn.ReLU(inplace=True)
+            )
+            self.output_dim = output_dim
 
     def forward(
         self,
-        x: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Any] = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
-        r"""Mapping: x -> Q(x, \*)."""
-        x = torch.as_tensor(x, device=self.device, dtype=torch.float32)
-        return self.net(x), state
+        r"""Mapping: s -> Q(s, \*)."""
+        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
+        return self.net(obs), state
 
 
 class C51(DQN):
@@ -73,15 +80,15 @@ class C51(DQN):
 
     def forward(
         self,
-        x: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Any] = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
-        x, state = super().forward(x)
-        x = x.view(-1, self.num_atoms).softmax(dim=-1)
-        x = x.view(-1, self.action_num, self.num_atoms)
-        return x, state
+        obs, state = super().forward(obs)
+        obs = obs.view(-1, self.num_atoms).softmax(dim=-1)
+        obs = obs.view(-1, self.action_num, self.num_atoms)
+        return obs, state
 
 
 class Rainbow(DQN):
@@ -127,22 +134,22 @@ class Rainbow(DQN):
 
     def forward(
         self,
-        x: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Any] = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
-        x, state = super().forward(x)
-        q = self.Q(x)
+        obs, state = super().forward(obs)
+        q = self.Q(obs)
         q = q.view(-1, self.action_num, self.num_atoms)
         if self._is_dueling:
-            v = self.V(x)
+            v = self.V(obs)
             v = v.view(-1, 1, self.num_atoms)
             logits = q - q.mean(dim=1, keepdim=True) + v
         else:
             logits = q
-        y = logits.softmax(dim=2)
-        return y, state
+        probs = logits.softmax(dim=2)
+        return probs, state
 
 
 class QRDQN(DQN):
@@ -168,11 +175,11 @@ class QRDQN(DQN):
 
     def forward(
         self,
-        x: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Any] = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
-        x, state = super().forward(x)
-        x = x.view(-1, self.action_num, self.num_quantiles)
-        return x, state
+        obs, state = super().forward(obs)
+        obs = obs.view(-1, self.action_num, self.num_quantiles)
+        return obs, state

@@ -58,14 +58,14 @@ class Actor(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
-        """Mapping: s -> logits -> action."""
-        logits, h = self.preprocess(s, state)
+        """Mapping: obs -> logits -> action."""
+        logits, hidden = self.preprocess(obs, state)
         logits = self._max * torch.tanh(self.last(logits))
-        return logits, h
+        return logits, hidden
 
 
 class Critic(nn.Module):
@@ -110,24 +110,24 @@ class Critic(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
-        a: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        obs: Union[np.ndarray, torch.Tensor],
+        act: Optional[Union[np.ndarray, torch.Tensor]] = None,
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Mapping: (s, a) -> logits -> Q(s, a)."""
-        s = torch.as_tensor(
-            s,
+        obs = torch.as_tensor(
+            obs,
             device=self.device,  # type: ignore
             dtype=torch.float32,
         ).flatten(1)
-        if a is not None:
-            a = torch.as_tensor(
-                a,
+        if act is not None:
+            act = torch.as_tensor(
+                act,
                 device=self.device,  # type: ignore
                 dtype=torch.float32,
             ).flatten(1)
-            s = torch.cat([s, a], dim=1)
-        logits, h = self.preprocess(s)
+            obs = torch.cat([obs, act], dim=1)
+        logits, hidden = self.preprocess(obs)
         logits = self.last(logits)
         return logits
 
@@ -196,12 +196,12 @@ class ActorProb(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Any]:
-        """Mapping: s -> logits -> (mu, sigma)."""
-        logits, h = self.preprocess(s, state)
+        """Mapping: obs -> logits -> (mu, sigma)."""
+        logits, hidden = self.preprocess(obs, state)
         mu = self.mu(logits)
         if not self._unbounded:
             mu = self._max * torch.tanh(mu)
@@ -252,30 +252,34 @@ class RecurrentActorProb(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
+        obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Dict[str, torch.Tensor]] = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict[str, torch.Tensor]]:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        s = torch.as_tensor(s, device=self.device, dtype=torch.float32)  # type: ignore
-        # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
+        obs = torch.as_tensor(
+            obs,
+            device=self.device,  # type: ignore
+            dtype=torch.float32,
+        )
+        # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
-        if len(s.shape) == 2:
-            s = s.unsqueeze(-2)
+        if len(obs.shape) == 2:
+            obs = obs.unsqueeze(-2)
         self.nn.flatten_parameters()
         if state is None:
-            s, (h, c) = self.nn(s)
+            obs, (hidden, cell) = self.nn(obs)
         else:
             # we store the stack data in [bsz, len, ...] format
             # but pytorch rnn needs [len, bsz, ...]
-            s, (h, c) = self.nn(
-                s, (
-                    state["h"].transpose(0, 1).contiguous(),
-                    state["c"].transpose(0, 1).contiguous()
+            obs, (hidden, cell) = self.nn(
+                obs, (
+                    state["hidden"].transpose(0, 1).contiguous(),
+                    state["cell"].transpose(0, 1).contiguous()
                 )
             )
-        logits = s[:, -1]
+        logits = obs[:, -1]
         mu = self.mu(logits)
         if not self._unbounded:
             mu = self._max * torch.tanh(mu)
@@ -287,8 +291,8 @@ class RecurrentActorProb(nn.Module):
             sigma = (self.sigma_param.view(shape) + torch.zeros_like(mu)).exp()
         # please ensure the first dim is batch size: [bsz, len, ...]
         return (mu, sigma), {
-            "h": h.transpose(0, 1).detach(),
-            "c": c.transpose(0, 1).detach()
+            "hidden": hidden.transpose(0, 1).detach(),
+            "cell": cell.transpose(0, 1).detach()
         }
 
 
@@ -321,28 +325,32 @@ class RecurrentCritic(nn.Module):
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
-        a: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        obs: Union[np.ndarray, torch.Tensor],
+        act: Optional[Union[np.ndarray, torch.Tensor]] = None,
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        s = torch.as_tensor(s, device=self.device, dtype=torch.float32)  # type: ignore
-        # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
+        obs = torch.as_tensor(
+            obs,
+            device=self.device,  # type: ignore
+            dtype=torch.float32,
+        )
+        # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
-        assert len(s.shape) == 3
+        assert len(obs.shape) == 3
         self.nn.flatten_parameters()
-        s, (h, c) = self.nn(s)
-        s = s[:, -1]
-        if a is not None:
-            a = torch.as_tensor(
-                a,
+        obs, (hidden, cell) = self.nn(obs)
+        obs = obs[:, -1]
+        if act is not None:
+            act = torch.as_tensor(
+                act,
                 device=self.device,  # type: ignore
                 dtype=torch.float32,
             )
-            s = torch.cat([s, a], dim=1)
-        s = self.fc2(s)
-        return s
+            obs = torch.cat([obs, act], dim=1)
+        obs = self.fc2(obs)
+        return obs
 
 
 class Perturbation(nn.Module):
@@ -381,9 +389,9 @@ class Perturbation(nn.Module):
     def forward(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         # preprocess_net
         logits = self.preprocess_net(torch.cat([state, action], -1))[0]
-        a = self.phi * self.max_action * torch.tanh(logits)
+        noise = self.phi * self.max_action * torch.tanh(logits)
         # clip to [-max_action, max_action]
-        return (a + action).clamp(-self.max_action, self.max_action)
+        return (noise + action).clamp(-self.max_action, self.max_action)
 
 
 class VAE(nn.Module):
@@ -434,34 +442,35 @@ class VAE(nn.Module):
         self, state: torch.Tensor, action: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # [state, action] -> z , [state, z] -> action
-        z = self.encoder(torch.cat([state, action], -1))
+        latent_z = self.encoder(torch.cat([state, action], -1))
         # shape of z: (state.shape[:-1], hidden_dim)
 
-        mean = self.mean(z)
+        mean = self.mean(latent_z)
         # Clamped for numerical stability
-        log_std = self.log_std(z).clamp(-4, 15)
+        log_std = self.log_std(latent_z).clamp(-4, 15)
         std = torch.exp(log_std)
         # shape of mean, std: (state.shape[:-1], latent_dim)
 
-        z = mean + std * torch.randn_like(std)  # (state.shape[:-1], latent_dim)
+        latent_z = mean + std * torch.randn_like(std)  # (state.shape[:-1], latent_dim)
 
-        u = self.decode(state, z)  # (state.shape[:-1], action_dim)
-        return u, mean, std
+        reconstruction = self.decode(state, latent_z)  # (state.shape[:-1], action_dim)
+        return reconstruction, mean, std
 
     def decode(
         self,
         state: torch.Tensor,
-        z: Union[torch.Tensor, None] = None
+        latent_z: Union[torch.Tensor, None] = None
     ) -> torch.Tensor:
         # decode(state) -> action
-        if z is None:
+        if latent_z is None:
             # state.shape[0] may be batch_size
             # latent vector clipped to [-0.5, 0.5]
-            z = torch.randn(state.shape[:-1] + (self.latent_dim, )) \
+            latent_z = torch.randn(state.shape[:-1] + (self.latent_dim, )) \
                 .to(self.device).clamp(-0.5, 0.5)
 
         # decode z with state!
-        return self.max_action * torch.tanh(self.decoder(torch.cat([state, z], -1)))
+        return self.max_action * \
+            torch.tanh(self.decoder(torch.cat([state, latent_z], -1)))
 
 
 class EnsembleCritic(nn.Module):
@@ -504,28 +513,28 @@ class EnsembleCritic(nn.Module):
             input_dim,  # type: ignore
             1,
             hidden_sizes,
-            device=self.device
+            device=self.device,
         )
 
     def forward(
         self,
-        s: Union[np.ndarray, torch.Tensor],
-        a: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        state: Union[np.ndarray, torch.Tensor],
+        action: Optional[Union[np.ndarray, torch.Tensor]] = None,
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Mapping: (s, a) -> logits -> Q(s, a)."""
-        s = torch.as_tensor(
-            s,
+        state = torch.as_tensor(
+            state,
             device=self.device,  # type: ignore
             dtype=torch.float32,
         ).flatten(1)
-        if a is not None:
-            a = torch.as_tensor(
-                a,
+        if action is not None:
+            action = torch.as_tensor(
+                action,
                 device=self.device,  # type: ignore
                 dtype=torch.float32,
             ).flatten(1)
-            s = torch.cat([s, a], dim=1)
-        logits, h = self.preprocess(s)
+            state = torch.cat([state, action], dim=1)
+        logits, h = self.preprocess(state)
         logits = self.last(logits)
         return logits

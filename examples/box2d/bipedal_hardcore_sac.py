@@ -56,16 +56,16 @@ class Wrapper(gym.Wrapper):
         self.rm_done = rm_done
 
     def step(self, action):
-        r = 0.0
+        rew_sum = 0.0
         for _ in range(self.action_repeat):
-            obs, reward, done, info = self.env.step(action)
+            obs, rew, done, info = self.env.step(action)
             # remove done reward penalty
             if not done or not self.rm_done:
-                r = r + reward
+                rew_sum = rew_sum + rew
             if done:
                 break
         # scale reward
-        return obs, self.reward_scale * r, done, info
+        return obs, self.reward_scale * rew_sum, done, info
 
 
 def test_sac_bipedal(args=get_args()):

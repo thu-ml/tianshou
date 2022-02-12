@@ -142,11 +142,11 @@ def compute_nstep_return_base(nstep, gamma, buffer, indices):
     returns = np.zeros_like(indices, dtype=float)
     buf_len = len(buffer)
     for i in range(len(indices)):
-        flag, r = False, 0.
+        flag, rew = False, 0.
         real_step_n = nstep
         for n in range(nstep):
             idx = (indices[i] + n) % buf_len
-            r += buffer.rew[idx] * gamma**n
+            rew += buffer.rew[idx] * gamma**n
             if buffer.done[idx]:
                 if not (
                     hasattr(buffer, 'info') and buffer.info['TimeLimit.truncated'][idx]
@@ -156,8 +156,8 @@ def compute_nstep_return_base(nstep, gamma, buffer, indices):
                 break
         if not flag:
             idx = (indices[i] + real_step_n - 1) % buf_len
-            r += to_numpy(target_q_fn(buffer, idx)) * gamma**real_step_n
-        returns[i] = r
+            rew += to_numpy(target_q_fn(buffer, idx)) * gamma**real_step_n
+        returns[i] = rew
     return returns
 
 

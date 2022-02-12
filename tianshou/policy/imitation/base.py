@@ -40,23 +40,23 @@ class ImitationPolicy(BasePolicy):
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         **kwargs: Any,
     ) -> Batch:
-        logits, h = self.model(batch.obs, state=state, info=batch.info)
+        logits, hidden = self.model(batch.obs, state=state, info=batch.info)
         if self.action_type == "discrete":
-            a = logits.max(dim=1)[1]
+            act = logits.max(dim=1)[1]
         else:
-            a = logits
-        return Batch(logits=logits, act=a, state=h)
+            act = logits
+        return Batch(logits=logits, act=act, state=hidden)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         self.optim.zero_grad()
         if self.action_type == "continuous":  # regression
-            a = self(batch).act
-            a_ = to_torch(batch.act, dtype=torch.float32, device=a.device)
-            loss = F.mse_loss(a, a_)  # type: ignore
+            act = self(batch).act
+            act_target = to_torch(batch.act, dtype=torch.float32, device=act.device)
+            loss = F.mse_loss(act, act_target)  # type: ignore
         elif self.action_type == "discrete":  # classification
-            a = F.log_softmax(self(batch).logits, dim=-1)
-            a_ = to_torch(batch.act, dtype=torch.long, device=a.device)
-            loss = F.nll_loss(a, a_)  # type: ignore
+            act = F.log_softmax(self(batch).logits, dim=-1)
+            act_target = to_torch(batch.act, dtype=torch.long, device=act.device)
+            loss = F.nll_loss(act, act_target)  # type: ignore
         loss.backward()
         self.optim.step()
         return {"loss": loss.item()}

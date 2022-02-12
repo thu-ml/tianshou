@@ -60,15 +60,15 @@ class FQFPolicy(QRDQNPolicy):
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
         if self._target:
             result = self(batch, input="obs_next")
-            a, fractions = result.act, result.fractions
+            act, fractions = result.act, result.fractions
             next_dist = self(
                 batch, model="model_old", input="obs_next", fractions=fractions
             ).logits
         else:
-            next_b = self(batch, input="obs_next")
-            a = next_b.act
-            next_dist = next_b.logits
-        next_dist = next_dist[np.arange(len(a)), a, :]
+            next_batch = self(batch, input="obs_next")
+            act = next_batch.act
+            next_dist = next_batch.logits
+        next_dist = next_dist[np.arange(len(act)), act, :]
         return next_dist  # shape: [bsz, num_quantiles]
 
     def forward(
@@ -82,14 +82,17 @@ class FQFPolicy(QRDQNPolicy):
     ) -> Batch:
         model = getattr(self, model)
         obs = batch[input]
-        obs_ = obs.obs if hasattr(obs, "obs") else obs
+        obs_next = obs.obs if hasattr(obs, "obs") else obs
         if fractions is None:
-            (logits, fractions, quantiles_tau), h = model(
-                obs_, propose_model=self.propose_model, state=state, info=batch.info
+            (logits, fractions, quantiles_tau), hidden = model(
+                obs_next,
+                propose_model=self.propose_model,
+                state=state,
+                info=batch.info
             )
         else:
-            (logits, _, quantiles_tau), h = model(
-                obs_,
+            (logits, _, quantiles_tau), hidden = model(
+                obs_next,
                 propose_model=self.propose_model,
                 fractions=fractions,
                 state=state,
@@ -106,7 +109,7 @@ class FQFPolicy(QRDQNPolicy):
         return Batch(
             logits=logits,
             act=act,
-            state=h,
+            state=hidden,
             fractions=fractions,
             quantiles_tau=quantiles_tau
         )
@@ -122,9 +125,9 @@ class FQFPolicy(QRDQNPolicy):
         curr_dist = curr_dist_orig[np.arange(len(act)), act, :].unsqueeze(2)
         target_dist = batch.returns.unsqueeze(1)
         # calculate each element's difference between curr_dist and target_dist
-        u = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
+        dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            u * (
+            dist_diff * (
                 tau_hats.unsqueeze(2) -
                 (target_dist - curr_dist).detach().le(0.).float()
             ).abs()
@@ -132,7 +135,7 @@ class FQFPolicy(QRDQNPolicy):
         quantile_loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
-        batch.weight = u.detach().abs().sum(-1).mean(1)  # prio-buffer
+        batch.weight = dist_diff.detach().abs().sum(-1).mean(1)  # prio-buffer
         # calculate fraction loss
         with torch.no_grad():
             sa_quantile_hats = curr_dist_orig[np.arange(len(act)), act, :]

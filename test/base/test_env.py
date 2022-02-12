@@ -58,22 +58,22 @@ def test_async_env(size=10000, num=8, sleep=0.1):
         # should be smaller
         action_list = [1] * num + [0] * (num * 2) + [1] * (num * 4)
         current_idx_start = 0
-        action = action_list[:num]
+        act = action_list[:num]
         env_ids = list(range(num))
         o = []
         spent_time = time.time()
         while current_idx_start < len(action_list):
-            A, B, C, D = v.step(action=action, id=env_ids)
+            A, B, C, D = v.step(action=act, id=env_ids)
             b = Batch({'obs': A, 'rew': B, 'done': C, 'info': D})
             env_ids = b.info.env_id
             o.append(b)
-            current_idx_start += len(action)
+            current_idx_start += len(act)
             # len of action may be smaller than len(A) in the end
-            action = action_list[current_idx_start:current_idx_start + len(A)]
+            act = action_list[current_idx_start:current_idx_start + len(A)]
             # truncate env_ids with the first terms
             # typically len(env_ids) == len(A) == len(action), except for the
             # last batch when actions are not enough
-            env_ids = env_ids[:len(action)]
+            env_ids = env_ids[:len(act)]
         spent_time = time.time() - spent_time
         Batch.cat(o)
         v.close()
@@ -96,7 +96,12 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
     for cls in test_cls:
         pass_check = 1
         v = cls(env_fns, wait_num=num - 1, timeout=timeout)
+        t = time.time()
         v.reset()
+        t = time.time() - t
+        print(f"{cls} reset {t}")
+        if t > sleep * 9:  # huge than maximum sleep time (7 sleep)
+            pass_check = 0
         expect_result = [
             [0, 1],
             [0, 1, 2],
