@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('--seed', type=int, default=4213)
     parser.add_argument('--scale-obs', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=100000)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=5e-5)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=100000)
