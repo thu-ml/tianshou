@@ -79,6 +79,14 @@ Tianshou supports vectorized environment for all algorithms. It provides four ty
 
 Here, we set up 10 environments in ``train_envs`` and 100 environments in ``test_envs``.
 
+You can also try the super-fast vectorized environment `EnvPool <https://github.com/sail-sg/envpool/>`_ by
+
+::
+
+    import envpool
+    train_envs = envpool.make_gym("CartPole-v0", num_envs=10)
+    test_envs = envpool.make_gym("CartPole-v0", num_envs=100)
+
 For the demonstration, here we use the second code-block.
 
 .. warning::
