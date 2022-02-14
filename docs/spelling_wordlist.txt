@@ -9,6 +9,8 @@ optim
 eps
 timelimit
 TimeLimit
+envpool
+EnvPool
 maxsize
 timestep
 timesteps
