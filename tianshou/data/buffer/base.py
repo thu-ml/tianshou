@@ -46,7 +46,7 @@ class ReplayBuffer:
             "sample_avail": sample_avail,
         }
         super().__init__()
-        self.maxsize = size
+        self.maxsize = int(size)
         assert stack_num > 0, "stack_num should be greater than 0"
         self.stack_num = stack_num
         self._indices = np.arange(size)
