@@ -52,8 +52,10 @@ spelling:
 	$(call check_install_extra, sphinxcontrib.spelling, sphinxcontrib.spelling pyenchant)
 	cd docs && make spelling SPHINXOPTS="-W"
 
-clean:
+doc-clean:
 	cd docs && make clean
+
+clean: doc-clean
 
 commit-checks: format lint mypy check-docstyle spelling
 
