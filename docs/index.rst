@@ -41,7 +41,8 @@ Here is Tianshou's other features:
 
 * Elegant framework, using only ~3000 lines of code
 * State-of-the-art `MuJoCo benchmark <https://github.com/thu-ml/tianshou/tree/master/examples/mujoco>`_
-* Support parallel environment simulation (synchronous or asynchronous) for all algorithms: :ref:`parallel_sampling`
+* Support vectorized environment (synchronous or asynchronous) for all algorithms: :ref:`parallel_sampling`
+* Support super-fast vectorized environment `EnvPool <https://github.com/sail-sg/envpool/>`_ for all algorithms: :ref:`envpool_integration`
 * Support recurrent state representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
 * Support any type of environment state/action (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
 * Support :ref:`customize_training`
