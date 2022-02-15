@@ -1,6 +1,6 @@
 """Env package."""
 
-from tianshou.env.maenv import MultiAgentEnv
+from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.env.venvs import (
     BaseVectorEnv,
     DummyVectorEnv,
@@ -15,5 +15,5 @@ __all__ = [
     "SubprocVectorEnv",
     "ShmemVectorEnv",
     "RayVectorEnv",
-    "MultiAgentEnv",
+    "PettingZooEnv",
 ]

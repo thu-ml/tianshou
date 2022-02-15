@@ -55,6 +55,7 @@ setup(
         "torch>=1.4.0",
         "numba>=0.51.0",
         "h5py>=2.10.0",  # to match tensorflow's minimal requirements
+        "pettingzoo>=1.12,<=1.13",
     ],
     extras_require={
         "dev": [
@@ -74,6 +75,9 @@ setup(
             "pydocstyle",
             "doc8",
             "scipy",
+            "pillow",
+            "pygame>=2.1.0",  # pettingzoo test cases pistonball
+            "pymunk>=6.2.1",  # pettingzoo test cases pistonball
         ],
         "atari": ["atari_py", "opencv-python"],
         "mujoco": ["mujoco_py"],
