@@ -407,7 +407,7 @@ class IntrinsicCuriosityModule(nn.Module):
 
     def __init__(
         self,
-                feature_net: nn.Module,
+        feature_net: nn.Module,
         feature_dim: int,
         action_dim: int,
         hidden_sizes: Sequence[int] = (),
@@ -470,14 +470,16 @@ class Discriminator(nn.Module):
         self.preprocess = preprocess_net
         self.device = device
         self.output_dim = 1
-        state_dim = getattr(preprocess_net, "output_dim",
-                            preprocess_net_output_dim)
+        state_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
         action_dim = int(np.prod(action_shape))
         self.action_dim = action_dim
-        self.net = MLP(state_dim, action_dim, hidden_sizes, device=self.device)
+        self.net = MLP(state_dim + action_dim, 1, hidden_sizes, device=self.device)
 
     def forward(
         self, obs: torch.Tensor, act: torch.Tensor, **kwargs: Any
     ) -> torch.Tensor:
         s, _ = self.preprocess(obs, state=kwargs.get("state", None))
-        return self.net(s).gather(-1, act.long().view(-1, 1))
+        act = to_torch(act, dtype=torch.long, device=self.device)
+        return self.net(
+            torch.cat([s, F.one_hot(act, num_classes=self.action_dim)], dim=1)
+        )

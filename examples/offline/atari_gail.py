@@ -29,8 +29,7 @@ def get_args():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument("--disc-lr", type=float, default=0.0001)
-    parser.add_argument("--disc-repeat", type=int, default=5)
-    parser.add_argument("--disc-hidden-size", type=int, default=128)
+    parser.add_argument("--disc-repeat", type=int, default=4)
     parser.add_argument('--step-per-epoch', type=int, default=100000)
     parser.add_argument('--step-per-collect', type=int, default=1000)
     parser.add_argument('--repeat-per-collect', type=int, default=4)
@@ -125,7 +124,6 @@ def test_gail(args=get_args()):
     disc = Discriminator(
         net,
         args.action_shape,
-        hidden_sizes=[args.disc_hidden_size],
         device=args.device
     ).to(args.device)
     disc_optim = torch.optim.Adam(disc.parameters(), lr=args.disc_lr)
