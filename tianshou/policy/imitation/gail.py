@@ -1,14 +1,15 @@
+from typing import Any, Dict, List, Optional, Type
+
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
-from typing import Any, Dict, List, Optional, Type
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.policy import PPOPolicy
 
 
 class GAILPolicy(PPOPolicy):
-    """Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476.
+    r"""Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476.
 
     :param torch.nn.Module actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
@@ -99,7 +100,9 @@ class GAILPolicy(PPOPolicy):
         for _ in range(self.disc_repeat):
             for b in batch.split(batch_size, merge_last=True):
                 logits_pi = self.disc(b.obs, b.act)
-                exp_b = to_torch(self.expert_buffer.sample(batch_size)[0], device=b.act.device)
+                exp_b = to_torch(
+                    self.expert_buffer.sample(batch_size)[0], device=b.act.device
+                )
                 logits_exp = self.disc(exp_b.obs, exp_b.act)
                 loss_pi = -F.logsigmoid(-logits_pi).mean()
                 loss_exp = -F.logsigmoid(logits_exp).mean()
@@ -110,7 +113,8 @@ class GAILPolicy(PPOPolicy):
                 losses.append(loss_disc.item())
         # update reward
         with torch.no_grad():
-            batch.rew = -F.logsigmoid(-self.disc(batch.obs, batch.act)).clamp_(self._eps, None)
+            batch.rew = -F.logsigmoid(-self.disc(batch.obs, batch.act)
+                                      ).clamp_(self._eps, None)
         # update policy
         res = super().learn(batch, batch_size, repeat, **kwargs)
         res["loss/disc"] = np.mean(losses)
