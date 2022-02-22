@@ -92,6 +92,19 @@ class GAILPolicy(PPOPolicy):
         self.expert_buffer = expert_buffer
         self.action_dim = actor.output_dim
 
+    def process_fn(
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> Batch:
+        """Pre-process the data from the provided replay buffer.
+
+        Used in :meth:`update`. Check out :ref:`process_fn` for more information.
+        """
+        # update reward
+        with torch.no_grad():
+            batch.rew = -F.logsigmoid(-self.disc(batch.obs, batch.act)
+                                      ).clamp_(self._eps, None)
+        return super().process_fn(batch, buffer, indices)
+
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
@@ -111,10 +124,6 @@ class GAILPolicy(PPOPolicy):
                 loss_disc.backward()
                 self.disc_optim.step()
                 losses.append(loss_disc.item())
-        # update reward
-        with torch.no_grad():
-            batch.rew = -F.logsigmoid(-self.disc(batch.obs, batch.act)
-                                      ).clamp_(self._eps, None)
         # update policy
         res = super().learn(batch, batch_size, repeat, **kwargs)
         res["loss/disc"] = np.mean(losses)

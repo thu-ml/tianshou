@@ -77,7 +77,10 @@ def get_args():
 
 def make_atari_env(args):
     return wrap_deepmind(
-        args.task, frame_stack=args.frames_stack, scale=args.scale_obs
+        args.task,
+        frame_stack=args.frames_stack,
+        scale=args.scale_obs,
+        no_rewards=True
     )
 
 
@@ -121,11 +124,7 @@ def test_gail(args=get_args()):
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
     critic = Critic(net, device=args.device)
     optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
-    disc = Discriminator(
-        net,
-        args.action_shape,
-        device=args.device
-    ).to(args.device)
+    disc = Discriminator(net, args.action_shape, device=args.device).to(args.device)
     disc_optim = torch.optim.Adam(disc.parameters(), lr=args.disc_lr)
 
     lr_scheduler = None
