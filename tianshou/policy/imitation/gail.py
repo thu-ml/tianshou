@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.data import Batch, ReplayBuffer, to_torch, to_numpy
 from tianshou.policy import PPOPolicy
 
 
@@ -101,8 +101,10 @@ class GAILPolicy(PPOPolicy):
         """
         # update reward
         with torch.no_grad():
-            batch.rew = -F.logsigmoid(-self.disc(batch.obs, batch.act)
-                                      ).clamp_(self._eps, None)
+            batch.rew = to_numpy(
+                -F.logsigmoid(-self.disc(batch.obs, batch.act)
+                              ).clamp_(self._eps, None).flatten()
+            )
         return super().process_fn(batch, buffer, indices)
 
     def learn(  # type: ignore
