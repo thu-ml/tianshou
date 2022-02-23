@@ -48,7 +48,7 @@ setup(
         exclude=["test", "test.*", "examples", "examples.*", "docs", "docs.*"]
     ),
     install_requires=[
-        "gym>=0.15.4,<0.20",
+        "gym>=0.21",
         "tqdm",
         "numpy>1.16.0",  # https://github.com/numpy/numpy/issues/12793
         "tensorboard>=2.5.0",
