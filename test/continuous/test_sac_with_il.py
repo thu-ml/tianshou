@@ -18,7 +18,7 @@ from tianshou.utils.net.continuous import Actor, ActorProb, Critic
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pendulum-v0')
+    parser.add_argument('--task', type=str, default='Pendulum-v1')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--actor-lr', type=float, default=1e-3)
@@ -55,7 +55,7 @@ def get_args():
 def test_sac_with_il(args=get_args()):
     torch.set_num_threads(1)  # we just need only one thread for NN
     env = gym.make(args.task)
-    if args.task == 'Pendulum-v0':
+    if args.task == 'Pendulum-v1':
         env.spec.reward_threshold = -250
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -172,7 +172,7 @@ def test_sac_with_il(args=get_args()):
 
     # here we define an imitation collector with a trivial policy
     policy.eval()
-    if args.task == 'Pendulum-v0':
+    if args.task == 'Pendulum-v1':
         env.spec.reward_threshold = -300  # lower the goal
     net = Actor(
         Net(
