@@ -125,8 +125,8 @@ def test_a2c_with_il(args=get_args()):
 
     policy.eval()
     # here we define an imitation collector with a trivial policy
-    if args.task == 'CartPole-v0':
-        env.spec.reward_threshold = 190  # lower the goal
+    # if args.task == 'CartPole-v0':
+    #     env.spec.reward_threshold = 190  # lower the goal
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     net = Actor(net, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
