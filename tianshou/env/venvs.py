@@ -2,6 +2,7 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
+import pettingzoo
 
 from tianshou.env.worker import (
     DummyEnvWorker,
@@ -364,7 +365,10 @@ class DummyVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
+    def __init__(
+        self, env_fns: List[Callable[[], Union[gym.Env, pettingzoo.AECEnv]]],
+        **kwargs: Any
+    ) -> None:
         super().__init__(env_fns, DummyEnvWorker, **kwargs)
 
 
