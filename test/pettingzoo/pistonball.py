@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 
 import gym
 import numpy as np
-import pettingzoo.butterfly.pistonball_v4 as pistonball_v4
+import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
@@ -42,7 +42,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--batch-size', type=int, default=100)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument('--training-num', type=int, default=10)
-    parser.add_argument('--test-num', type=int, default=100)
+    parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.0)
 
@@ -65,7 +65,7 @@ def get_args() -> argparse.Namespace:
 
 
 def get_env(args: argparse.Namespace = get_args()):
-    return PettingZooEnv(pistonball_v4.env(continuous=False, n_pistons=args.n_pistons))
+    return PettingZooEnv(pistonball_v6.env(continuous=False, n_pistons=args.n_pistons))
 
 
 def get_agents(

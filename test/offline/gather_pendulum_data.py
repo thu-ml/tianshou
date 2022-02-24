@@ -17,12 +17,12 @@ from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def expert_file_name():
-    return os.path.join(os.path.dirname(__file__), "expert_SAC_Pendulum-v0.pkl")
+    return os.path.join(os.path.dirname(__file__), "expert_SAC_Pendulum-v1.pkl")
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pendulum-v0')
+    parser.add_argument('--task', type=str, default='Pendulum-v1')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
