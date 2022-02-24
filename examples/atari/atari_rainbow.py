@@ -6,11 +6,10 @@ import pprint
 import numpy as np
 import torch
 from atari_network import Rainbow
-from atari_wrapper import wrap_deepmind
+from atari_wrapper import make_atari_env
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
-from tianshou.env import ShmemVectorEnv
 from tianshou.policy import RainbowPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -20,6 +19,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='PongNoFrameskip-v4')
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--scale-obs', type=int, default=0)
     parser.add_argument('--eps-test', type=float, default=0.005)
     parser.add_argument('--eps-train', type=float, default=1.)
     parser.add_argument('--eps-train-final', type=float, default=0.05)
@@ -64,38 +64,23 @@ def get_args():
     return parser.parse_args()
 
 
-def make_atari_env(args):
-    return wrap_deepmind(args.task, frame_stack=args.frames_stack)
-
-
-def make_atari_env_watch(args):
-    return wrap_deepmind(
-        args.task,
-        frame_stack=args.frames_stack,
-        episode_life=False,
-        clip_rewards=False
-    )
-
-
 def test_rainbow(args=get_args()):
-    env = make_atari_env(args)
+    env, train_envs, test_envs = make_atari_env(
+        args.task,
+        args.seed,
+        args.training_num,
+        args.test_num,
+        scale=args.scale_obs,
+        frame_stack=args.frames_stack,
+    )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    # make environments
-    train_envs = ShmemVectorEnv(
-        [lambda: make_atari_env(args) for _ in range(args.training_num)]
-    )
-    test_envs = ShmemVectorEnv(
-        [lambda: make_atari_env_watch(args) for _ in range(args.test_num)]
-    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
-    test_envs.seed(args.seed)
     # define model
     net = Rainbow(
         *args.state_shape,
@@ -242,7 +227,7 @@ def test_rainbow(args=get_args()):
         save_fn=save_fn,
         logger=logger,
         update_per_step=args.update_per_step,
-        test_in_train=False
+        test_in_train=False,
     )
 
     pprint.pprint(result)

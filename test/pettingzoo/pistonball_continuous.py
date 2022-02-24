@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
-import pettingzoo.butterfly.pistonball_v4 as pistonball_v4
+import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
 import torch
 import torch.nn as nn
 from torch.distributions import Independent, Normal
@@ -82,10 +82,10 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--episode-per-collect', type=int, default=16)
     parser.add_argument('--repeat-per-collect', type=int, default=2)
     parser.add_argument('--update-per-step', type=float, default=0.1)
-    parser.add_argument('--batch-size', type=int, default=1000)
+    parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--training-num', type=int, default=1000)
-    parser.add_argument('--test-num', type=int, default=100)
+    parser.add_argument('--training-num', type=int, default=10)
+    parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
 
     parser.add_argument(
@@ -122,7 +122,7 @@ def get_args() -> argparse.Namespace:
 
 
 def get_env(args: argparse.Namespace = get_args()):
-    return PettingZooEnv(pistonball_v4.env(continuous=True, n_pistons=args.n_pistons))
+    return PettingZooEnv(pistonball_v6.env(continuous=True, n_pistons=args.n_pistons))
 
 
 def get_agents(
