@@ -1,8 +1,10 @@
 import pprint
 
+import pytest
 from pistonball_continuous import get_args, train_agent, watch
 
 
+@pytest.mark.skip(reason="runtime too long and unstable result")
 def test_piston_ball_continuous(args=get_args()):
     if args.watch:
         watch(args)
