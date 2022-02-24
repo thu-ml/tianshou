@@ -5,12 +5,11 @@ import pprint
 import numpy as np
 import torch
 from atari_network import DQN
-from atari_wrapper import wrap_deepmind
+from atari_wrapper import make_atari_env
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import ShmemVectorEnv
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
@@ -87,41 +86,23 @@ def get_args():
     return parser.parse_args()
 
 
-def make_atari_env(args):
-    return wrap_deepmind(
-        args.task, frame_stack=args.frames_stack, scale=args.scale_obs
-    )
-
-
-def make_atari_env_watch(args):
-    return wrap_deepmind(
-        args.task,
-        frame_stack=args.frames_stack,
-        episode_life=False,
-        clip_rewards=False,
-        scale=args.scale_obs
-    )
-
-
 def test_ppo(args=get_args()):
-    env = make_atari_env(args)
+    env, train_envs, test_envs = make_atari_env(
+        args.task,
+        args.seed,
+        args.training_num,
+        args.test_num,
+        scale=args.scale_obs,
+        frame_stack=args.frames_stack,
+    )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    # make environments
-    train_envs = ShmemVectorEnv(
-        [lambda: make_atari_env(args) for _ in range(args.training_num)]
-    )
-    test_envs = ShmemVectorEnv(
-        [lambda: make_atari_env_watch(args) for _ in range(args.test_num)]
-    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
-    test_envs.seed(args.seed)
     # define model
     net = DQN(
         *args.state_shape,
@@ -167,7 +148,7 @@ def test_ppo(args=get_args()):
         value_clip=args.value_clip,
         dual_clip=args.dual_clip,
         advantage_normalization=args.norm_adv,
-        recompute_advantage=args.recompute_adv
+        recompute_advantage=args.recompute_adv,
     ).to(args.device)
     if args.icm_lr_scale > 0:
         feature_net = DQN(
@@ -180,7 +161,7 @@ def test_ppo(args=get_args()):
             feature_dim,
             action_dim,
             hidden_sizes=args.hidden_sizes,
-            device=args.device
+            device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
         policy = ICMPolicy(
@@ -198,7 +179,7 @@ def test_ppo(args=get_args()):
         buffer_num=len(train_envs),
         ignore_obs_next=True,
         save_only_last_obs=True,
-        stack_num=args.frames_stack
+        stack_num=args.frames_stack,
     )
     # collector
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
@@ -248,7 +229,7 @@ def test_ppo(args=get_args()):
                 buffer_num=len(test_envs),
                 ignore_obs_next=True,
                 save_only_last_obs=True,
-                stack_num=args.frames_stack
+                stack_num=args.frames_stack,
             )
             collector = Collector(policy, test_envs, buffer, exploration_noise=True)
             result = collector.collect(n_step=args.buffer_size)

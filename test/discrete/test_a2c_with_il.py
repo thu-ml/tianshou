@@ -2,13 +2,13 @@ import argparse
 import os
 import pprint
 
+import envpool
 import gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import DummyVectorEnv
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import offpolicy_trainer, onpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -52,24 +52,15 @@ def get_args():
 
 
 def test_a2c_with_il(args=get_args()):
-    torch.set_num_threads(1)  # for poor CPU
-    env = gym.make(args.task)
+    train_envs = env = envpool.make_gym(
+        args.task, num_envs=args.training_num, seed=args.seed
+    )
+    test_envs = envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-    # you can also use tianshou.env.SubprocVectorEnv
-    # train_envs = gym.make(args.task)
-    train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)]
-    )
-    # test_envs = gym.make(args.task)
-    test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
-    test_envs.seed(args.seed)
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, device=args.device).to(args.device)
@@ -134,15 +125,15 @@ def test_a2c_with_il(args=get_args()):
 
     policy.eval()
     # here we define an imitation collector with a trivial policy
-    if args.task == 'CartPole-v0':
-        env.spec.reward_threshold = 190  # lower the goal
+    # if args.task == 'CartPole-v0':
+    #     env.spec.reward_threshold = 190  # lower the goal
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     net = Actor(net, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(net, optim, action_space=env.action_space)
     il_test_collector = Collector(
         il_policy,
-        DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+        envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed),
     )
     train_collector.reset()
     result = offpolicy_trainer(
