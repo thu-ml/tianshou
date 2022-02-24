@@ -1,15 +1,18 @@
 import argparse
 import os
-import pprint
+import sys
 
-import envpool
-import gym
+try:
+    import envpool
+except ImportError:
+    envpool = None
+
 import numpy as np
+import pytest
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import DummyVectorEnv
 from tianshou.policy import ImitationPolicy, SACPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -53,8 +56,11 @@ def get_args():
     return args
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="envpool only support linux now")
 def test_sac_with_il(args=get_args()):
-    train_envs = env = envpool.make_gym(args.task, num_envs=args.training_num, seed=args.seed)
+    train_envs = env = envpool.make_gym(
+        args.task, num_envs=args.training_num, seed=args.seed
+    )
     test_envs = envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed)
     reward_threshold = None
     if args.task == 'Pendulum-v0':
