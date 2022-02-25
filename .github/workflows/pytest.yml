@@ -27,7 +27,7 @@ jobs:
     - name: Test with pytest
       # ignore test/throughput which only profiles the code
       run: |
-        pytest test --ignore-glob='*profile.py' --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v
+        pytest test --ignore-glob='*profile.py' --ignore="test/3rd_party" --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:

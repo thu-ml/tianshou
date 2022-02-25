@@ -3,8 +3,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy
+
+try:
+    from tianshou.env.pettingzoo_env import PettingZooEnv
+except ImportError:
+    PettingZooEnv = None  # type: ignore
 
 
 class MultiAgentPolicyManager(BasePolicy):

@@ -1,6 +1,5 @@
 """Env package."""
 
-from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.env.venvs import (
     BaseVectorEnv,
     DummyVectorEnv,
@@ -8,6 +7,11 @@ from tianshou.env.venvs import (
     ShmemVectorEnv,
     SubprocVectorEnv,
 )
+
+try:
+    from tianshou.env.pettingzoo_env import PettingZooEnv
+except ImportError:
+    pass
 
 __all__ = [
     "BaseVectorEnv",
