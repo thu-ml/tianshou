@@ -48,6 +48,7 @@ def get_extras_require() -> str:
             "pettingzoo>=1.12",
             "pygame>=2.1.0",  # pettingzoo test cases pistonball
             "pymunk>=6.2.1",  # pettingzoo test cases pistonball
+            "nni>=2.3",
         ],
         "atari": ["atari_py", "opencv-python"],
         "mujoco": ["mujoco_py"],
