@@ -15,14 +15,13 @@ def get_version() -> str:
 
 def get_install_requires() -> str:
     return [
-        "gym>=0.21",
+        "gym>=0.15.4",
         "tqdm",
         "numpy>1.16.0",  # https://github.com/numpy/numpy/issues/12793
         "tensorboard>=2.5.0",
         "torch>=1.4.0",
         "numba>=0.51.0",
         "h5py>=2.10.0",  # to match tensorflow's minimal requirements
-        "pettingzoo>=1.15",
     ]
 
 
@@ -46,6 +45,7 @@ def get_extras_require() -> str:
             "doc8",
             "scipy",
             "pillow",
+            "pettingzoo>=1.12",
             "pygame>=2.1.0",  # pettingzoo test cases pistonball
             "pymunk>=6.2.1",  # pettingzoo test cases pistonball
         ],
