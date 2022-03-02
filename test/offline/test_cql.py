@@ -176,8 +176,6 @@ def test_cql(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        if mean_rewards >= args.reward_threshold:
-            print(mean_rewards)
         return mean_rewards >= args.reward_threshold
 
     def watch():
@@ -203,7 +201,7 @@ def test_cql(args=get_args()):
         stop_fn=stop_fn,
         logger=logger,
     )
-    # assert stop_fn(result['best_reward'])
+    assert stop_fn(result['best_reward'])
 
     # Let's watch its performance!
     if __name__ == '__main__':
