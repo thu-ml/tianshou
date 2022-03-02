@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
 import torch
@@ -449,7 +449,7 @@ class IntrinsicCuriosityModule(nn.Module):
         return mse_loss, act_hat
 
 
-class Discriminator(nn.Module):
+class GAILDiscriminator(nn.Module):
     """Discriminator network used in GAIL policy.
 
     .. note::
@@ -463,6 +463,7 @@ class Discriminator(nn.Module):
         preprocess_net: nn.Module,
         action_shape: Union[int, Sequence[int]],
         hidden_sizes: Sequence[int] = (),
+        activation: Optional[Type[nn.Module]] = nn.ReLU,
         preprocess_net_output_dim: Optional[int] = None,
         device: Union[str, int, torch.device] = "cpu",
     ) -> None:
@@ -473,7 +474,13 @@ class Discriminator(nn.Module):
         state_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
         action_dim = int(np.prod(action_shape))
         self.action_dim = action_dim
-        self.net = MLP(state_dim + action_dim, 1, hidden_sizes, device=self.device)
+        self.net = MLP(
+            state_dim + action_dim,
+            1,
+            hidden_sizes=hidden_sizes,
+            activation=activation,
+            device=self.device
+        )
 
     def forward(
         self, obs: torch.Tensor, act: torch.Tensor, **kwargs: Any

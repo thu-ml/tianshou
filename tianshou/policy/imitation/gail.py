@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, ReplayBuffer, to_torch, to_numpy
+from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.policy import PPOPolicy
 
 
@@ -74,7 +74,7 @@ class GAILPolicy(PPOPolicy):
         expert_buffer: ReplayBuffer,
         disc: torch.nn.Module,
         disc_optim: torch.optim.Optimizer,
-        disc_repeat: int = 5,
+        disc_repeat: int = 2,
         eps_clip: float = 0.2,
         dual_clip: Optional[float] = None,
         value_clip: bool = False,
@@ -102,8 +102,7 @@ class GAILPolicy(PPOPolicy):
         # update reward
         with torch.no_grad():
             batch.rew = to_numpy(
-                -F.logsigmoid(-self.disc(batch.obs, batch.act)
-                              ).clamp_(self._eps, None).flatten()
+                -F.logsigmoid(-self.disc(batch.obs, batch.act)).flatten()
             )
         return super().process_fn(batch, buffer, indices)
 
@@ -112,21 +111,26 @@ class GAILPolicy(PPOPolicy):
     ) -> Dict[str, List[float]]:
         # update discriminator
         losses = []
-        for _ in range(self.disc_repeat):
-            for b in batch.split(batch_size, merge_last=True):
-                logits_pi = self.disc(b.obs, b.act)
-                exp_b = to_torch(
-                    self.expert_buffer.sample(batch_size)[0], device=b.act.device
-                )
-                logits_exp = self.disc(exp_b.obs, exp_b.act)
-                loss_pi = -F.logsigmoid(-logits_pi).mean()
-                loss_exp = -F.logsigmoid(logits_exp).mean()
-                loss_disc = loss_pi + loss_exp
-                self.disc_optim.zero_grad()
-                loss_disc.backward()
-                self.disc_optim.step()
-                losses.append(loss_disc.item())
+        acc_pis = []
+        acc_exps = []
+        for b in batch.split(len(batch) // self.disc_repeat, merge_last=True):
+            logits_pi = self.disc(b.obs, b.act)
+            exp_b = to_torch(
+                self.expert_buffer.sample(batch_size)[0], device=b.act.device
+            )
+            logits_exp = self.disc(exp_b.obs, exp_b.act)
+            loss_pi = -F.logsigmoid(-logits_pi).mean()
+            loss_exp = -F.logsigmoid(logits_exp).mean()
+            loss_disc = loss_pi + loss_exp
+            self.disc_optim.zero_grad()
+            loss_disc.backward()
+            self.disc_optim.step()
+            losses.append(loss_disc.item())
+            acc_pis.append((logits_pi < 0).float().mean().item())
+            acc_exps.append((logits_exp > 0).float().mean().item())
         # update policy
         res = super().learn(batch, batch_size, repeat, **kwargs)
-        res["loss/disc"] = np.mean(losses)
+        res["loss/disc"] = losses
+        res["stats/acc_pi"] = acc_pis
+        res["stats/acc_exp"] = acc_exps
         return res

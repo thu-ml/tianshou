@@ -1,9 +1,10 @@
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
 import torch
 from torch import nn
 
+from tianshou.data import to_torch
 from tianshou.utils.net.common import MLP
 
 SIGMA_MIN = -20
@@ -471,3 +472,41 @@ class VAE(nn.Module):
         # decode z with state!
         return self.max_action * \
             torch.tanh(self.decoder(torch.cat([state, latent_z], -1)))
+
+
+class GAILDiscriminator(nn.Module):
+    """Discriminator network used in GAIL policy.
+
+    .. note::
+
+        Adapted from https://github.com/ku2482/gail-airl-ppo.pytorch/blob/master
+        /gail_airl_ppo/network/disc.py .
+    """
+
+    def __init__(
+        self,
+        state_shape: Union[int, Sequence[int]],
+        action_shape: Union[int, Sequence[int]],
+        hidden_sizes: Sequence[int] = (),
+        activation: Optional[Type[nn.Module]] = nn.Tanh,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
+        super().__init__()
+        self.device = device
+        self.output_dim = 1
+        state_dim = int(np.prod(state_shape))
+        action_dim = int(np.prod(action_shape))
+        self.net = MLP(
+            state_dim + action_dim,
+            1,
+            hidden_sizes=hidden_sizes,
+            activation=activation,
+            device=self.device
+        )
+
+    def forward(
+        self, obs: torch.Tensor, act: torch.Tensor, **kwargs: Any
+    ) -> torch.Tensor:
+        obs = to_torch(obs, dtype=torch.float, device=self.device)
+        act = to_torch(act, dtype=torch.float, device=self.device)
+        return self.net(torch.cat([obs, act], dim=1))
