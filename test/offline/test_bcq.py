@@ -26,6 +26,7 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v1')
+    parser.add_argument('--reward_threshold', type=float, default=-1100) # too low?
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
@@ -73,8 +74,7 @@ def test_bcq(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]  # float
-    if args.task == 'Pendulum-v1':
-        env.spec.reward_threshold = -1100  # too low?
+    env.spec.reward_threshold = args.reward_threshold
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]

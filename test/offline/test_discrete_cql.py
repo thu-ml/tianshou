@@ -24,6 +24,7 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument('--reward_threshold', type=float, default=170) # lower the goal
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=3e-3)
@@ -52,8 +53,6 @@ def get_args():
 def test_discrete_cql(args=get_args()):
     # envs
     env = gym.make(args.task)
-    if args.task == 'CartPole-v0':
-        env.spec.reward_threshold = 170  # lower the goal
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     test_envs = DummyVectorEnv(
@@ -103,7 +102,7 @@ def test_discrete_cql(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+        return mean_rewards >= args.reward_threshold
 
     result = offline_trainer(
         policy,
