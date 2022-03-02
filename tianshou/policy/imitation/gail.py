@@ -118,7 +118,7 @@ class GAILPolicy(PPOPolicy):
             exp_b = to_torch(
                 self.expert_buffer.sample(batch_size)[0], device=b.act.device
             )
-            logits_exp = self.disc(exp_b.obs, exp_b.act)
+            logits_exp = self.disc(exp_b.obs, exp_b.act)  # type: ignore
             loss_pi = -F.logsigmoid(-logits_pi).mean()
             loss_exp = -F.logsigmoid(logits_exp).mean()
             loss_disc = loss_pi + loss_exp

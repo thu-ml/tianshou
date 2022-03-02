@@ -509,4 +509,4 @@ class GAILDiscriminator(nn.Module):
     ) -> torch.Tensor:
         obs = to_torch(obs, dtype=torch.float, device=self.device)
         act = to_torch(act, dtype=torch.float, device=self.device)
-        return self.net(torch.cat([obs, act], dim=1))
+        return self.net(torch.cat([obs, act], dim=1))  # type: ignore
