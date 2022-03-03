@@ -62,7 +62,7 @@ def gather_data():
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v1":-250, "CartPole-v0": 190, "NChain-v0": 3400}
-        args.reward_threshold = default_reward_threshold.get(args.reward_threshold) # lower the goal?
+        args.reward_threshold = default_reward_threshold.get(args.task) # lower the goal?
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv(

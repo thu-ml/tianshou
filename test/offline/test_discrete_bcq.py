@@ -63,7 +63,7 @@ def test_discrete_bcq(args=get_args()):
     )
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v1":-250, "CartPole-v0": 195, "NChain-v0": 3400}
-        args.reward_threshold = default_reward_threshold.get(args.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(args.task)
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)

@@ -57,7 +57,7 @@ def test_discrete_cql(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v1":-250, "CartPole-v0": 170, "NChain-v0": 3400}
-        args.reward_threshold = default_reward_threshold.get(args.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(args.task)
     test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
     )

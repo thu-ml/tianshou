@@ -47,7 +47,7 @@ def test_psrl(args=get_args()):
     test_envs = envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed)
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v1":-250, "CartPole-v0": 195, "NChain-v0": 3400}
-        args.reward_threshold = default_reward_threshold.get(args.reward_threshold)
+        args.reward_threshold = default_reward_threshold.get(args.task)
     print("reward threshold:", args.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
