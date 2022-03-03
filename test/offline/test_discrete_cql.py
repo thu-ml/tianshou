@@ -24,7 +24,7 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
-    parser.add_argument('--reward_threshold', type=float, default=170) # lower the goal
+    parser.add_argument('--reward_threshold', type=float, default=None) # lower the goal
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=3e-3)
@@ -55,6 +55,9 @@ def test_discrete_cql(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+    if args.reward_threshold is None:
+        default_reward_threshold = {"Pendulum-v1":-250, "CartPole-v0": 170, "NChain-v0": 3400}
+        args.reward_threshold = default_reward_threshold.get(args.reward_threshold)
     test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
     )

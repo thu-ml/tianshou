@@ -16,6 +16,7 @@ from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='NChain-v0')
+    parser.add_argument('--reward_threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=50000)
     parser.add_argument('--epoch', type=int, default=5)
@@ -44,12 +45,10 @@ def test_psrl(args=get_args()):
         args.task, num_envs=args.training_num, seed=args.seed
     )
     test_envs = envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed)
-    if args.task == "NChain-v0":
-        reward_threshold = 3400
-        # reward_threshold = 3647  # described in PSRL paper
-    else:
-        reward_threshold = None
-    print("reward threshold:", reward_threshold)
+    if args.reward_threshold is None:
+        default_reward_threshold = {"Pendulum-v1":-250, "CartPole-v0": 195, "NChain-v0": 3400}
+        args.reward_threshold = default_reward_threshold.get(args.reward_threshold)
+    print("reward threshold:", args.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     # seed
