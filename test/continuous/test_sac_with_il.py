@@ -163,7 +163,8 @@ def test_sac_with_il(args=get_args()):
 
     # here we define an imitation collector with a trivial policy
     policy.eval()
-    args.reward_threshold = -300  # lower the goal
+    if args.task.startswith("Pendulum"):
+        args.reward_threshold -= 50  # lower the goal
     net = Actor(
         Net(
             args.state_shape,
