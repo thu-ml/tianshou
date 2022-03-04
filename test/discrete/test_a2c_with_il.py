@@ -19,6 +19,7 @@ from tianshou.utils.net.discrete import Actor, Critic
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
+    parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
@@ -58,6 +59,11 @@ def test_a2c_with_il(args=get_args()):
     test_envs = envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+    if args.reward_threshold is None:
+        default_reward_threshold = {"CartPole-v0": 195}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -94,7 +100,7 @@ def test_a2c_with_il(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+        return mean_rewards >= args.reward_threshold
 
     # trainer
     result = onpolicy_trainer(

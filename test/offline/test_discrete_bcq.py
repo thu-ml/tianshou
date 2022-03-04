@@ -25,7 +25,7 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
-    parser.add_argument('--reward_threshold', type=float, default=None)
+    parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=3e-4)
@@ -58,12 +58,14 @@ def test_discrete_bcq(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+    if args.reward_threshold is None:
+        default_reward_threshold = {"CartPole-v0": 190}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
     test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
     )
-    if args.reward_threshold is None:
-        default_reward_threshold = {"Pendulum-v1":-250, "CartPole-v0": 195, "NChain-v0": 3400}
-        args.reward_threshold = default_reward_threshold.get(args.task)
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
