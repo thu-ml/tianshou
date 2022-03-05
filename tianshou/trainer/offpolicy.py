@@ -213,9 +213,8 @@ def offpolicy_trainer_generator(
     logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
     test_in_train: bool = True,
-) -> Generator[Tuple[int,
-                     Dict[str, Union[float, str]],
-                     Dict[str, Union[float, str]]], None, None]:
+) -> Generator[Tuple[int, Dict[str, Union[float, str]], Dict[str, Union[float, str]]],
+               None, None]:
     """A wrapper for off-policy trainer procedure.
     Returns a generator that yields a 3-tuple (epoch, stats, info) of train results
     on every epoch.
@@ -332,15 +331,20 @@ def offpolicy_trainer_generator(
                             )
                             t.set_postfix(**data)
                             # epoch_stat for yield clause
-                            epoch_stat = {**{k: v.get() for k, v in stat.items()},
-                                          "gradient_step": gradient_step}
-                            epoch_stat.update({
-                                "env_step": env_step,
-                                "rew": last_rew,
-                                "len": int(last_len),
-                                "n/ep": int(result["n/ep"]),
-                                "n/st": int(result["n/st"]),
-                            })
+                            epoch_stat = {
+                                **{k: v.get()
+                                   for k, v in stat.items()}, "gradient_step":
+                                gradient_step
+                            }
+                            epoch_stat.update(
+                                {
+                                    "env_step": env_step,
+                                    "rew": last_rew,
+                                    "len": int(last_len),
+                                    "n/ep": int(result["n/ep"]),
+                                    "n/st": int(result["n/st"]),
+                                }
+                            )
                             info = gather_info(
                                 start_time, train_collector, test_collector,
                                 test_result["rew"], test_result["rew_std"]
@@ -362,15 +366,19 @@ def offpolicy_trainer_generator(
                 t.update()
         logger.save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
         # epoch_stat for yield clause
-        epoch_stat = {**{k: v.get() for k, v in stat.items()},
-                      "gradient_step": gradient_step}
-        epoch_stat.update({
-            "env_step": env_step,
-            "rew": last_rew,
-            "len": int(last_len),
-            "n/ep": int(result["n/ep"]),
-            "n/st": int(result["n/st"]),
-        })
+        epoch_stat = {
+            **{k: v.get()
+               for k, v in stat.items()}, "gradient_step": gradient_step
+        }
+        epoch_stat.update(
+            {
+                "env_step": env_step,
+                "rew": last_rew,
+                "len": int(last_len),
+                "n/ep": int(result["n/ep"]),
+                "n/st": int(result["n/st"]),
+            }
+        )
         # test
         if test_collector is not None:
             test_result = test_episode(
@@ -387,19 +395,22 @@ def offpolicy_trainer_generator(
                     f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
                     f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
                 )
-            epoch_stat.update({"test_reward": rew,
-                               "test_reward_std": rew_std,
-                               "best_reward": best_reward,
-                               "best_reward_std": best_reward_std,
-                               "best_epoch": best_epoch
-                               })
+            epoch_stat.update(
+                {
+                    "test_reward": rew,
+                    "test_reward_std": rew_std,
+                    "best_reward": best_reward,
+                    "best_reward_std": best_reward_std,
+                    "best_epoch": best_epoch
+                }
+            )
 
         if test_collector is None:
             info = gather_info(start_time, train_collector, None, 0.0, 0.0)
         else:
             info = gather_info(
-                start_time, train_collector, test_collector,
-                best_reward, best_reward_std
+                start_time, train_collector, test_collector, best_reward,
+                best_reward_std
             )
         yield epoch, epoch_stat, info
 
