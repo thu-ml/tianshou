@@ -1,6 +1,6 @@
 import time
 from collections import defaultdict
-from typing import Callable, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Generator, Optional, Tuple, Union
 
 import numpy as np
 import tqdm
@@ -230,8 +230,7 @@ def onpolicy_trainer_generator(
     logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
     test_in_train: bool = True,
-) -> Generator[Tuple[int, Dict[str, Union[float, str]], Dict[str, Union[float, str]]],
-               None, None]:
+) -> Generator[Tuple[int, Dict[str, Any], Dict[str, Any]], None, None]:
     """A wrapper for on-policy trainer procedure.
     Returns a generator that yields a 3-tuple (epoch, stats, info) of train results
     on every epoch.
@@ -355,11 +354,8 @@ def onpolicy_trainer_generator(
                             )
                             t.set_postfix(**data)
                             # epoch_stat for yield clause
-                            epoch_stat = {
-                                **{k: v.get()
-                                   for k, v in stat.items()}, "gradient_step":
-                                gradient_step
-                            }
+                            epoch_stat: Dict[str, Any] = {k: v.get() for k, v in stat.items()}
+                            epoch_stat["gradient_step"] = gradient_step
                             epoch_stat.update(
                                 {
                                     "env_step": env_step,
@@ -398,10 +394,8 @@ def onpolicy_trainer_generator(
                 t.update()
         logger.save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
         # epoch_stat for yield clause
-        epoch_stat = {
-            **{k: v.get()
-               for k, v in stat.items()}, "gradient_step": gradient_step
-        }
+        epoch_stat = {k: v.get() for k, v in stat.items()}
+        epoch_stat["gradient_step"] = gradient_step
         epoch_stat.update(
             {
                 "env_step": env_step,
