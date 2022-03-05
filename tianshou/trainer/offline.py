@@ -152,7 +152,8 @@ def offline_trainer_generator(
     logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
 ) -> Generator[Tuple[int, Dict[str, Any], Dict[str, Any]], None, None]:
-    """A wrapper for offline trainer procedure.
+    """A generator wrapper for offline trainer procedure.
+
     Returns a generator that yields a 3-tuple (epoch, stats, info) of train results
     on every epoch.
 

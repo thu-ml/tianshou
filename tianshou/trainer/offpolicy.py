@@ -214,7 +214,8 @@ def offpolicy_trainer_generator(
     verbose: bool = True,
     test_in_train: bool = True,
 ) -> Generator[Tuple[int, Dict[str, Any], Dict[str, Any]], None, None]:
-    """A wrapper for off-policy trainer procedure.
+    """A generator wrapper for off-policy trainer procedure.
+
     Returns a generator that yields a 3-tuple (epoch, stats, info) of train results
     on every epoch.
 
