@@ -1,6 +1,6 @@
 import time
 from collections import defaultdict
-from typing import Callable, Dict, Optional, Union, Generator, Tuple
+from typing import Callable, Dict, Generator, Optional, Tuple, Union
 
 import numpy as np
 import tqdm
