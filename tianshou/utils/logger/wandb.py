@@ -46,7 +46,7 @@ class WandbLogger(BaseLogger):
         test_interval: int = 1,
         update_interval: int = 1000,
         save_interval: int = 1000,
-        project: str = 'tianshou',
+        project: str = None,
         name: Optional[str] = None,
         entity: Optional[str] = None,
         run_id: Optional[str] = None,
@@ -69,7 +69,7 @@ class WandbLogger(BaseLogger):
         self.wandb_run._label(repo="tianshou")  # type: ignore
 
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
-        data[step_type] = step
+        data["global_step"] = step
         wandb.log(data)
 
     def save_data(
