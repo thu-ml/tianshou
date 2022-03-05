@@ -46,7 +46,7 @@ class WandbLogger(BaseLogger):
         test_interval: int = 1,
         update_interval: int = 1000,
         save_interval: int = 1000,
-        project: str = None,
+        project: Optional[str] = None,
         name: Optional[str] = None,
         entity: Optional[str] = None,
         run_id: Optional[str] = None,
