@@ -66,7 +66,7 @@ def get_args():
     return args
 
 
-def test_cql_trainer_generator(args=get_args()):
+def test_cql(args=get_args()):
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
