@@ -354,7 +354,10 @@ def onpolicy_trainer_generator(
                             )
                             t.set_postfix(**data)
                             # epoch_stat for yield clause
-                            epoch_stat: Dict[str, Any] = {k: v.get() for k, v in stat.items()}
+                            epoch_stat: Dict[str, Any] = {
+                                k: v.get()
+                                for k, v in stat.items()
+                            }
                             epoch_stat["gradient_step"] = gradient_step
                             epoch_stat.update(
                                 {
