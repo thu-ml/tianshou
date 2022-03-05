@@ -32,7 +32,6 @@ def onpolicy_trainer(
     logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
     test_in_train: bool = True,
-    yield_epoch: bool = False,
 ) -> Dict[str, Union[float, str]]:
     """A wrapper for on-policy trainer procedure.
 
@@ -84,8 +83,6 @@ def onpolicy_trainer(
         training/testing/updating. Default to a logger that doesn't log anything.
     :param bool verbose: whether to print the information. Default to True.
     :param bool test_in_train: whether to test in the training phase. Default to True.
-    :param bool yield_epoch: if True, converts the function into a generator that yields
-        a 3-tuple (epoch, stats, info) of train results on every epoch
 
     :return: See :func:`~tianshou.trainer.gather_info`.
 
@@ -182,15 +179,6 @@ def onpolicy_trainer(
             if t.n <= t.total:
                 t.update()
         logger.save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
-        # epoch_stat for yield clause
-        epoch_stat = {**stat, "gradient_step": gradient_step}
-        epoch_stat.update({
-                    "env_step": env_step,
-                    "rew": last_rew,
-                    "len": int(last_len),
-                    "n/ep": int(result["n/ep"]),
-                    "n/st": int(result["n/st"]),
-                })
         # test
         if test_collector is not None:
             test_result = test_episode(
@@ -207,34 +195,18 @@ def onpolicy_trainer(
                     f"Epoch #{epoch}: test_reward: {rew:.6f} ± {rew_std:.6f}, best_rew"
                     f"ard: {best_reward:.6f} ± {best_reward_std:.6f} in #{best_epoch}"
                 )
-            epoch_stat.update({"test_reward": rew,
-                               "test_reward_std": rew_std,
-                               "best_reward": best_reward,
-                               "best_reward_std": best_reward_std,
-                               "best_epoch": best_epoch
-                               })
             if stop_fn and stop_fn(best_reward):
                 break
-
-        if yield_epoch:
-            if test_collector is None:
-                info = gather_info(start_time, train_collector, None, 0.0, 0.0)
-            else:
-                info = gather_info(
-                    start_time, train_collector, test_collector, best_reward, best_reward_std
-                )
-            yield epoch, epoch_stat, info
 
     if test_collector is None and save_fn:
         save_fn(policy)
 
-    if not yield_epoch:
-        if test_collector is None:
-            return gather_info(start_time, train_collector, None, 0.0, 0.0)
-        else:
-            return gather_info(
-                start_time, train_collector, test_collector, best_reward, best_reward_std
-            )
+    if test_collector is None:
+        return gather_info(start_time, train_collector, None, 0.0, 0.0)
+    else:
+        return gather_info(
+            start_time, train_collector, test_collector, best_reward, best_reward_std
+        )
 
 
 def onpolicy_trainer_generator(
@@ -382,7 +354,8 @@ def onpolicy_trainer_generator(
                             )
                             t.set_postfix(**data)
                             # epoch_stat for yield clause
-                            epoch_stat = {**{k: v.get() for k, v in stat.items()}, "gradient_step": gradient_step}
+                            epoch_stat = {**{k: v.get() for k, v in stat.items()},
+                                          "gradient_step": gradient_step}
                             epoch_stat.update({
                                 "env_step": env_step,
                                 "rew": last_rew,
@@ -419,7 +392,8 @@ def onpolicy_trainer_generator(
                 t.update()
         logger.save_data(epoch, env_step, gradient_step, save_checkpoint_fn)
         # epoch_stat for yield clause
-        epoch_stat = {**{k: v.get() for k, v in stat.items()}, "gradient_step": gradient_step}
+        epoch_stat = {**{k: v.get() for k, v in stat.items()},
+                      "gradient_step": gradient_step}
         epoch_stat.update({
             "env_step": env_step,
             "rew": last_rew,
@@ -454,7 +428,8 @@ def onpolicy_trainer_generator(
             info = gather_info(start_time, train_collector, None, 0.0, 0.0)
         else:
             info = gather_info(
-                start_time, train_collector, test_collector, best_reward, best_reward_std
+                start_time, train_collector, test_collector,
+                best_reward, best_reward_std
             )
         yield epoch, epoch_stat, info
 
