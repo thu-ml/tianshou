@@ -33,6 +33,8 @@ def offline_trainer(
     The "step" in offline trainer means a gradient step.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
+    :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
+        This buffer must be populated with experiences for offline RL.
     :param Collector test_collector: the collector used for testing. If it's None, then
         no testing will be performed.
     :param int max_epoch: the maximum number of epochs for training. The training
