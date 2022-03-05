@@ -230,7 +230,9 @@ def onpolicy_trainer_generator(
     logger: BaseLogger = LazyLogger(),
     verbose: bool = True,
     test_in_train: bool = True,
-) -> Generator[Tuple[int, Dict[str, Union[float, str]], Dict[str, Union[float, str]]], None, None]:
+) -> Generator[Tuple[int,
+                     Dict[str, Union[float, str]],
+                     Dict[str, Union[float, str]]], None, None]:
     """A wrapper for on-policy trainer procedure.
     Returns a generator that yields a 3-tuple (epoch, stats, info) of train results
     on every epoch.
