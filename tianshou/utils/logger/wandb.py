@@ -56,6 +56,8 @@ class WandbLogger(BaseLogger):
         self.last_save_step = -1
         self.save_interval = save_interval
         self.restored = False
+        if project is None:
+            project = os.getenv("WANDB_PROJECT", "tianshou")
 
         self.wandb_run = wandb.init(
             project=project,
