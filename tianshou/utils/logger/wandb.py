@@ -19,15 +19,12 @@ class WandbLogger(BaseLogger):
     This logger creates three panels with plots: train, test, and update.
     Make sure to select the correct access for each panel in weights and biases:
 
-    - ``train/env_step`` for train plots
-    - ``test/env_step`` for test plots
-    - ``update/gradient_step`` for update plots
-
     Example of usage:
     ::
 
         with wandb.init(project="My Project"):
             logger = WandBLogger()
+            logger.load(SummaryWriter("log_path"))
             result = onpolicy_trainer(policy, train_collector, test_collector,
                     logger=logger)
 
@@ -72,12 +69,17 @@ class WandbLogger(BaseLogger):
             config=config,  # type: ignore
         ) if not wandb.run else wandb.run
         self.wandb_run._label(repo="tianshou")  # type: ignore
+        self.tensorboard_logger = None
 
-    def load(self, writer: SummaryWriter):
+    def load(self, writer: SummaryWriter) -> None:
         self.writer = writer
         self.tensorboard_logger = TensorboardLogger(writer)
 
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
+        assert self.tensorboard_logger is not None, (
+            "`logger` needs to load the Tensorboard Writer before writing " +
+            "data. Try `logger.load(SummaryWriter(\"log_path\"))`"
+        )
         self.tensorboard_logger.write(step_type, step, data)
 
     def save_data(

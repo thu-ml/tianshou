@@ -1,6 +1,7 @@
 import argparse
 import os
 import pprint
+import time
 
 import numpy as np
 import torch
@@ -147,7 +148,7 @@ def test_dqn(args=get_args()):
     if args.logger == "wandb":
         logger = WandbLogger(
             save_interval=1,
-            name=log_name,
+            name=f"{args.task}__{log_name}__{args.seed}__{int(time.time())}",
             run_id=args.resume_id,
             config=args,
         )
