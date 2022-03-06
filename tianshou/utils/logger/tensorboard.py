@@ -1,11 +1,8 @@
-import os
 import warnings
 from typing import Any, Callable, Optional, Tuple
 
-import wandb
 from tensorboard.backend.event_processing import event_accumulator
 from torch.utils.tensorboard import SummaryWriter
-from wandb.sdk.wandb_run import Run
 
 from tianshou.utils.logger.base import LOG_DATA_TYPE, BaseLogger
 
@@ -20,8 +17,6 @@ class TensorboardLogger(BaseLogger):
     :param int update_interval: the log interval in log_update_data(). Default to 1000.
     :param int save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
-    :param Run wandb_run: the Weights & Biases run to help save and load models.
-        Default to `None`.
     """
 
     def __init__(
@@ -31,13 +26,11 @@ class TensorboardLogger(BaseLogger):
         test_interval: int = 1,
         update_interval: int = 1000,
         save_interval: int = 1,
-        wandb_run: Optional[Run] = None,
     ) -> None:
         super().__init__(train_interval, test_interval, update_interval)
         self.save_interval = save_interval
         self.last_save_step = -1
         self.writer = writer
-        self.wandb_run = wandb_run
 
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
         for k, v in data.items():
@@ -53,7 +46,7 @@ class TensorboardLogger(BaseLogger):
     ) -> None:
         if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
             self.last_save_step = epoch
-            checkpoint_path = save_checkpoint_fn(epoch, env_step, gradient_step)
+            save_checkpoint_fn(epoch, env_step, gradient_step)
             self.write("save/epoch", epoch, {"save/epoch": epoch})
             self.write("save/env_step", env_step, {"save/env_step": env_step})
             self.write(
@@ -61,62 +54,22 @@ class TensorboardLogger(BaseLogger):
                 {"save/gradient_step": gradient_step}
             )
 
-            if self.wandb_run:
-                checkpoint_artifact = wandb.Artifact(
-                    'run_' + self.wandb_run.id + '_checkpoint',
-                    type='model',
-                    metadata={
-                        "save/epoch": epoch,
-                        "save/env_step": env_step,
-                        "save/gradient_step": gradient_step,
-                        "checkpoint_path": str(checkpoint_path)
-                    }
-                )
-                checkpoint_artifact.add_file(str(checkpoint_path))
-                self.wandb_run.log_artifact(checkpoint_artifact)
-
     def restore_data(self) -> Tuple[int, int, int]:
-        if self.wandb_run:
-            checkpoint_artifact = self.wandb_run.use_artifact(
-                'run_' + self.wandb_run.id + '_checkpoint:latest'
-            )
-            assert checkpoint_artifact is not None, (
-                "W&B dataset artifact doesn't exist"
-            )
+        ea = event_accumulator.EventAccumulator(self.writer.log_dir)
+        ea.Reload()
 
-            checkpoint_artifact.download(
-                os.path.dirname(checkpoint_artifact.metadata['checkpoint_path'])
-            )
-
-            try:  # epoch / gradient_step
-                epoch = checkpoint_artifact.metadata["save/epoch"]
-                self.last_save_step = self.last_log_test_step = epoch
-                gradient_step = checkpoint_artifact.metadata["save/gradient_step"]
-                self.last_log_update_step = gradient_step
-            except KeyError:
-                epoch, gradient_step = 0, 0
-            try:  # offline trainer doesn't have env_step
-                env_step = checkpoint_artifact.metadata["save/env_step"]
-                self.last_log_train_step = env_step
-            except KeyError:
-                env_step = 0
-
-        else:
-            ea = event_accumulator.EventAccumulator(self.writer.log_dir)
-            ea.Reload()
-
-            try:  # epoch / gradient_step
-                epoch = ea.scalars.Items("save/epoch")[-1].step
-                self.last_save_step = self.last_log_test_step = epoch
-                gradient_step = ea.scalars.Items("save/gradient_step")[-1].step
-                self.last_log_update_step = gradient_step
-            except KeyError:
-                epoch, gradient_step = 0, 0
-            try:  # offline trainer doesn't have env_step
-                env_step = ea.scalars.Items("save/env_step")[-1].step
-                self.last_log_train_step = env_step
-            except KeyError:
-                env_step = 0
+        try:  # epoch / gradient_step
+            epoch = ea.scalars.Items("save/epoch")[-1].step
+            self.last_save_step = self.last_log_test_step = epoch
+            gradient_step = ea.scalars.Items("save/gradient_step")[-1].step
+            self.last_log_update_step = gradient_step
+        except KeyError:
+            epoch, gradient_step = 0, 0
+        try:  # offline trainer doesn't have env_step
+            env_step = ea.scalars.Items("save/env_step")[-1].step
+            self.last_log_train_step = env_step
+        except KeyError:
+            env_step = 0
 
         return epoch, env_step, gradient_step
 
