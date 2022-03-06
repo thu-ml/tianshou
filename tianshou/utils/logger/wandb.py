@@ -2,8 +2,7 @@ import argparse
 import os
 from typing import Callable, Optional, Tuple
 
-from tianshou.utils import BaseLogger
-from tianshou.utils.logger.base import LOG_DATA_TYPE
+from tianshou.utils.logger.tensorboard import TensorboardLogger
 
 try:
     import wandb
@@ -11,7 +10,7 @@ except ImportError:
     pass
 
 
-class WandbLogger(BaseLogger):
+class WandbLogger(TensorboardLogger):
     """Weights and Biases logger that sends data to https://wandb.ai/.
 
     This logger creates three panels with plots: train, test, and update.
@@ -52,7 +51,6 @@ class WandbLogger(BaseLogger):
         run_id: Optional[str] = None,
         config: Optional[argparse.Namespace] = None,
     ) -> None:
-        super().__init__(train_interval, test_interval, update_interval)
         self.last_save_step = -1
         self.save_interval = save_interval
         self.restored = False
@@ -65,14 +63,12 @@ class WandbLogger(BaseLogger):
             id=run_id,
             resume="allow",
             entity=entity,
+            sync_tensorboard=True,
             monitor_gym=True,
             config=config,  # type: ignore
         ) if not wandb.run else wandb.run
         self.wandb_run._label(repo="tianshou")  # type: ignore
-
-    def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
-        data["global_step"] = step
-        wandb.log(data)
+        super().__init__(train_interval, test_interval, update_interval)
 
     def save_data(
         self,

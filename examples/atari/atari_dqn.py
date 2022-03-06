@@ -150,7 +150,6 @@ def test_dqn(args=get_args()):
     else:
         logger = WandbLogger(
             save_interval=1,
-            # project=args.task,
             name=log_name,
             run_id=args.resume_id,
             config=args,
