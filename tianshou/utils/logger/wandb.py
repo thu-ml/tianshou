@@ -1,10 +1,10 @@
 import argparse
 import os
 from typing import Callable, Optional, Tuple
-from tianshou.utils import BaseLogger, TensorboardLogger
 
 from torch.utils.tensorboard import SummaryWriter
 
+from tianshou.utils import BaseLogger, TensorboardLogger
 from tianshou.utils.logger.base import LOG_DATA_TYPE
 
 try:
@@ -69,18 +69,20 @@ class WandbLogger(BaseLogger):
             config=config,  # type: ignore
         ) if not wandb.run else wandb.run
         self.wandb_run._label(repo="tianshou")  # type: ignore
-        self.tensorboard_logger = None
+        self.tensorboard_logger: Optional[TensorboardLogger] = None
 
     def load(self, writer: SummaryWriter) -> None:
         self.writer = writer
         self.tensorboard_logger = TensorboardLogger(writer)
 
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
-        assert self.tensorboard_logger is not None, (
-            "`logger` needs to load the Tensorboard Writer before writing " +
-            "data. Try `logger.load(SummaryWriter(\"log_path\"))`"
-        )
-        self.tensorboard_logger.write(step_type, step, data)
+        if self.tensorboard_logger is None:
+            raise Exception(
+                "`logger` needs to load the Tensorboard Writer before " +
+                "writing data. Try `logger.load(SummaryWriter(\"log_path\"))`"
+            )
+        else:
+            self.tensorboard_logger.write(step_type, step, data)
 
     def save_data(
         self,
