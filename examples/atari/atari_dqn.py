@@ -1,7 +1,7 @@
 import argparse
+import datetime
 import os
 import pprint
-import time
 
 import numpy as np
 import torch
@@ -144,14 +144,16 @@ def test_dqn(args=get_args()):
     test_collector = Collector(policy, test_envs, exploration_noise=True)
 
     # log
-    log_name = "dqn_icm" if args.icm_lr_scale > 0 else "dqn"
-    log_path = os.path.join(args.logdir, args.task, log_name)
+    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+    algo_name = "dqn_icm" if args.icm_lr_scale > 0 else "dqn"
+    log_name = os.path.join(args.task, algo_name, str(args.seed), now)
+    log_path = os.path.join(args.logdir, log_name)
 
     # logger
     if args.logger == "wandb":
         logger = WandbLogger(
             save_interval=1,
-            name=f"{args.task}__{log_name}__{args.seed}__{int(time.time())}",
+            name=log_name.replace(os.path.sep, "__"),
             run_id=args.resume_id,
             config=args,
             project=args.wandb_project,
