@@ -20,7 +20,8 @@ class TensorboardLogger(BaseLogger):
     :param int update_interval: the log interval in log_update_data(). Default to 1000.
     :param int save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
-    :param Run wandb_run: the Weights & Biases run to help save and load models. Default to `None`.
+    :param Run wandb_run: the Weights & Biases run to help save and load models.
+        Default to `None`.
     """
 
     def __init__(
@@ -79,7 +80,9 @@ class TensorboardLogger(BaseLogger):
             checkpoint_artifact = self.wandb_run.use_artifact(    # type: ignore
                 'run_' + self.wandb_run.id + '_checkpoint:latest'  # type: ignore
             )
-            assert checkpoint_artifact is not None, "W&B dataset artifact doesn't exist"
+            assert checkpoint_artifact is not None, (
+                "W&B dataset artifact doesn't exist"
+            )
 
             checkpoint_artifact.download(
                 os.path.dirname(checkpoint_artifact.metadata['checkpoint_path'])

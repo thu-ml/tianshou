@@ -1,6 +1,6 @@
 import argparse
 import os
-from typing import Callable, Optional, Tuple
+from typing import Optional
 
 from tianshou.utils import BaseLogger
 from tianshou.utils.logger.base import LOG_DATA_TYPE
@@ -69,15 +69,16 @@ class WandbLogger(BaseLogger):
         config: Optional[argparse.Namespace] = None,
     ) -> None:
         raise Exception(
-            """`WandbLogger` is deprecated, please use the following code instead
+            """`WandbLogger` is deprecated, please use the following code instead:
 
-if args.logger == "wandb":
-    from tianshou.utils.logger.wandb import wandb_init
-    run_name = None
-    wandb_init(args, run_name)
+from tianshou.utils.logger.wandb import wandb_init
+run_name = None
+wandb_run = wandb_init(args, run_name, args.resume_id)
 writer = SummaryWriter(log_path)
 writer.add_text("args", str(args))
-logger = TensorboardLogger(writer)        
-
+logger = TensorboardLogger(writer, wandb_run)
         """
         )
+
+    def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
+        pass
