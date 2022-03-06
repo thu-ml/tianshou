@@ -19,62 +19,63 @@ from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='PongNoFrameskip-v4')
-    parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--scale-obs', type=int, default=0)
-    parser.add_argument('--eps-test', type=float, default=0.005)
-    parser.add_argument('--eps-train', type=float, default=1.)
-    parser.add_argument('--eps-train-final', type=float, default=0.05)
-    parser.add_argument('--buffer-size', type=int, default=100000)
-    parser.add_argument('--lr', type=float, default=0.0001)
-    parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--n-step', type=int, default=3)
-    parser.add_argument('--target-update-freq', type=int, default=500)
-    parser.add_argument('--epoch', type=int, default=100)
-    parser.add_argument('--step-per-epoch', type=int, default=100000)
-    parser.add_argument('--step-per-collect', type=int, default=10)
-    parser.add_argument('--update-per-step', type=float, default=0.1)
-    parser.add_argument('--batch-size', type=int, default=32)
-    parser.add_argument('--training-num', type=int, default=10)
-    parser.add_argument('--test-num', type=int, default=10)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--scale-obs", type=int, default=0)
+    parser.add_argument("--eps-test", type=float, default=0.005)
+    parser.add_argument("--eps-train", type=float, default=1.)
+    parser.add_argument("--eps-train-final", type=float, default=0.05)
+    parser.add_argument("--buffer-size", type=int, default=100000)
+    parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--n-step", type=int, default=3)
+    parser.add_argument("--target-update-freq", type=int, default=500)
+    parser.add_argument("--epoch", type=int, default=100)
+    parser.add_argument("--step-per-epoch", type=int, default=100000)
+    parser.add_argument("--step-per-collect", type=int, default=10)
+    parser.add_argument("--update-per-step", type=float, default=0.1)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--training-num", type=int, default=10)
+    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.)
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
-    parser.add_argument('--frames-stack', type=int, default=4)
-    parser.add_argument('--resume-path', type=str, default=None)
-    parser.add_argument('--resume-id', type=str, default=None)
+    parser.add_argument("--frames-stack", type=int, default=4)
+    parser.add_argument("--resume-path", type=str, default=None)
+    parser.add_argument("--resume-id", type=str, default=None)
     parser.add_argument(
-        '--logger',
+        "--logger",
         type=str,
         default="tensorboard",
         choices=["tensorboard", "wandb"],
     )
+    parser.add_argument("--wandb-project", type=str, default="atari.benchmark")
     parser.add_argument(
-        '--watch',
+        "--watch",
         default=False,
-        action='store_true',
-        help='watch the play of pre-trained policy only'
+        action="store_true",
+        help="watch the play of pre-trained policy only"
     )
-    parser.add_argument('--save-buffer-name', type=str, default=None)
+    parser.add_argument("--save-buffer-name", type=str, default=None)
     parser.add_argument(
-        '--icm-lr-scale',
+        "--icm-lr-scale",
         type=float,
         default=0.,
-        help='use intrinsic curiosity module with this lr scale'
+        help="use intrinsic curiosity module with this lr scale"
     )
     parser.add_argument(
-        '--icm-reward-scale',
+        "--icm-reward-scale",
         type=float,
         default=0.01,
-        help='scaling factor for intrinsic curiosity reward'
+        help="scaling factor for intrinsic curiosity reward"
     )
     parser.add_argument(
-        '--icm-forward-loss-weight',
+        "--icm-forward-loss-weight",
         type=float,
         default=0.2,
-        help='weight for the forward model loss in ICM'
+        help="weight for the forward model loss in ICM"
     )
     return parser.parse_args()
 
@@ -141,31 +142,34 @@ def test_dqn(args=get_args()):
     # collector
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs, exploration_noise=True)
+
     # log
-    log_name = 'dqn_icm' if args.icm_lr_scale > 0 else 'dqn'
+    log_name = "dqn_icm" if args.icm_lr_scale > 0 else "dqn"
     log_path = os.path.join(args.logdir, args.task, log_name)
 
+    # logger
     if args.logger == "wandb":
         logger = WandbLogger(
             save_interval=1,
             name=f"{args.task}__{log_name}__{args.seed}__{int(time.time())}",
             run_id=args.resume_id,
             config=args,
+            project=args.wandb_project,
         )
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     if args.logger == "tensorboard":
         logger = TensorboardLogger(writer)
-    if args.logger == "wandb":
+    else:  # wandb
         logger.load(writer)
 
     def save_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         if env.spec.reward_threshold:
             return mean_rewards >= env.spec.reward_threshold
-        elif 'Pong' in args.task:
+        elif "Pong" in args.task:
             return mean_rewards >= 20
         else:
             return False
@@ -186,8 +190,8 @@ def test_dqn(args=get_args()):
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
-        ckpt_path = os.path.join(log_path, 'checkpoint.pth')
-        torch.save({'model': policy.state_dict()}, ckpt_path)
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
+        torch.save({"model": policy.state_dict()}, ckpt_path)
         return ckpt_path
 
     # watch agent's performance
@@ -217,7 +221,7 @@ def test_dqn(args=get_args()):
                 n_episode=args.test_num, render=args.render
             )
         rew = result["rews"].mean()
-        print(f'Mean reward (over {result["n/ep"]} episodes): {rew}')
+        print(f"Mean reward (over {result['n/ep']} episodes): {rew}")
 
     if args.watch:
         watch()
@@ -250,5 +254,5 @@ def test_dqn(args=get_args()):
     watch()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_dqn(get_args())

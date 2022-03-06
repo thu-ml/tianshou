@@ -22,11 +22,10 @@ class WandbLogger(BaseLogger):
     Example of usage:
     ::
 
-        with wandb.init(project="My Project"):
-            logger = WandBLogger()
-            logger.load(SummaryWriter("log_path"))
-            result = onpolicy_trainer(policy, train_collector, test_collector,
-                    logger=logger)
+        logger = WandbLogger()
+        logger.load(SummaryWriter(log_path))
+        result = onpolicy_trainer(policy, train_collector, test_collector,
+                                  logger=logger)
 
     :param int train_interval: the log interval in log_train_data(). Default to 1000.
     :param int test_interval: the log interval in log_test_data(). Default to 1.
@@ -78,8 +77,8 @@ class WandbLogger(BaseLogger):
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
         if self.tensorboard_logger is None:
             raise Exception(
-                "`logger` needs to load the Tensorboard Writer before " +
-                "writing data. Try `logger.load(SummaryWriter(\"log_path\"))`"
+                "`logger` needs to load the Tensorboard Writer before "
+                "writing data. Try `logger.load(SummaryWriter(log_path))`"
             )
         else:
             self.tensorboard_logger.write(step_type, step, data)
