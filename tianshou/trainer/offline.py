@@ -1,5 +1,5 @@
 import time
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
@@ -12,6 +12,15 @@ from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 
 
 class OffLineTrainer:
+    """
+    An iterator wrapper for offline training procedure.
+
+    Returns an iterator that yields a 3 tuple (epoch, stats, info) of train results
+    on every epoch.
+
+    The "step" in offline trainer means a gradient step.
+
+    """
 
     def __init__(
         self,
@@ -31,13 +40,7 @@ class OffLineTrainer:
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
     ):
-        """A generator wrapper for offline trainer procedure.
-
-        Returns a generator that yields a 3-tuple (epoch, stats, info) of train results
-        on every epoch.
-
-        The "step" in offline trainer means a gradient step.
-
+        """
         :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
         :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
             This buffer must be populated with experiences for offline RL.
@@ -76,8 +79,6 @@ class OffLineTrainer:
         :param BaseLogger logger: A logger that logs statistics during
             updating/testing. Default to a logger that doesn't log anything.
         :param bool verbose: whether to print the information. Default to True.
-
-        :return: See :func:`~tianshou.trainer.gather_info`.
         """
         self.is_run = False
         self.policy = policy
@@ -97,6 +98,8 @@ class OffLineTrainer:
         self.verbose = verbose
 
         self.start_epoch, self.gradient_step = 0, 0
+        self.best_reward, self.best_reward_std = 0.0, 0.0
+
         if resume_from_log:
             self.start_epoch, _, self.gradient_step = logger.restore_data()
         self.stat: Dict[str, MovAvg] = defaultdict(MovAvg)
@@ -124,13 +127,17 @@ class OffLineTrainer:
 
     def __next__(self) -> Tuple[int, Dict[str, Any], Dict[str, Any]]:
         self.epoch += 1
+
+        # iterator exhaustion check
         if self.epoch >= self.max_epoch:
             if self.test_collector is None and self.save_fn:
                 self.save_fn(self.policy)
             raise StopIteration
 
+        # set policy in train mode
         self.policy.train()
 
+        # Performs n update_per_epoch
         with tqdm.trange(
             self.update_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config
         ) as t:
@@ -148,10 +155,11 @@ class OffLineTrainer:
         self.logger.save_data(
             self.epoch, 0, self.gradient_step, self.save_checkpoint_fn
         )
+
         if not self.is_run:
-            # epoch_stat for yield clause
             epoch_stat: Dict[str, Any] = {k: v.get() for k, v in self.stat.items()}
             epoch_stat["gradient_step"] = self.gradient_step
+
         # test
         if self.test_collector is not None:
             test_result = test_episode(
@@ -182,33 +190,32 @@ class OffLineTrainer:
                         "best_epoch": self.best_epoch
                     }
                 )
-                info = gather_info(
-                    self.start_time, None, self.test_collector, self.best_reward,
-                    self.best_reward_std
-                )
-                return self.epoch, epoch_stat, info
-            else:
-                return 0, {}, {}
 
-        else:
-            if not self.is_run:
-                info = gather_info(self.start_time, None, None, 0.0, 0.0)
-                return self.epoch, epoch_stat, info
-            else:
-                return 0, {}, {}
-
-    def run(self) -> Dict[str, Union[float, str]]:
-        self.is_run = True
-        for _ in iter(self):
-            pass
-
-        if self.test_collector is None:
-            info = gather_info(self.start_time, None, None, 0.0, 0.0)
-        else:
+        # return iterator -> next(self)
+        if not self.is_run:
             info = gather_info(
                 self.start_time, None, self.test_collector, self.best_reward,
                 self.best_reward_std
             )
+            return self.epoch, epoch_stat, info
+        else:
+            return 0, {}, {}
+
+    def run(self) -> Dict[str, Union[float, str]]:
+        """
+        Consume iterator, see itertools-recipes. Use functions that consume
+        iterators at C speed (feed the entire iterator into a zero-length deque).
+        """
+        try:
+            self.is_run = True
+            i = iter(self)
+            deque(i, maxlen=0)  # feed the entire iterator into a zero-length deque
+            info = gather_info(
+                self.start_time, None, self.test_collector, self.best_reward,
+                self.best_reward_std
+            )
+        finally:
+            self.is_run = False
 
         return info
 
