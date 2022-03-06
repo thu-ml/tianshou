@@ -63,7 +63,7 @@ class TensorboardLogger(BaseLogger):
 
             if self.wandb_run:
                 checkpoint_artifact = wandb.Artifact(
-                    'run_' + self.wandb_run.id + '_checkpoint',  # type: ignore
+                    'run_' + self.wandb_run.id + '_checkpoint',
                     type='model',
                     metadata={
                         "save/epoch": epoch,
@@ -73,12 +73,12 @@ class TensorboardLogger(BaseLogger):
                     }
                 )
                 checkpoint_artifact.add_file(str(checkpoint_path))
-                self.wandb_run.log_artifact(checkpoint_artifact)  # type: ignore
+                self.wandb_run.log_artifact(checkpoint_artifact)
 
     def restore_data(self) -> Tuple[int, int, int]:
         if self.wandb_run:
-            checkpoint_artifact = self.wandb_run.use_artifact(    # type: ignore
-                'run_' + self.wandb_run.id + '_checkpoint:latest'  # type: ignore
+            checkpoint_artifact = self.wandb_run.use_artifact(
+                'run_' + self.wandb_run.id + '_checkpoint:latest'
             )
             assert checkpoint_artifact is not None, (
                 "W&B dataset artifact doesn't exist"

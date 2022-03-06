@@ -5,7 +5,6 @@ Tianshou comes with multiple experiment tracking and logging solutions to manage
 The dashboard loggers currently available are:
 
 * :class:`~tianshou.utils.TensorboardLogger`
-* :class:`~tianshou.utils.WandbLogger`
 * :class:`~tianshou.utils.LazyLogger`
 
 
@@ -25,20 +24,28 @@ Tensorboard tracks your experiment metrics in a local dashboard. Here is how you
     logger = TensorboardLogger(writer)
     result = trainer(..., logger=logger)
 
+LazyLogger
+----------
 
-WandbLogger
------------
+This is a place-holder logger that does nothing.
 
-:class:`~tianshou.utils.WandbLogger` can be used to visualize your experiments in a hosted `W&B dashboard <https://wandb.ai/home>`_. It can be installed via ``pip install wandb``. You can also save your checkpoints in the cloud and restore your runs from those checkpoints. Here is how you can enable WandbLogger:
+
+
+
+Weights and Biases Integration
+------------------------------
+
+:class:`~tianshou.utils.wandb_init` can be used to visualize your experiments in a hosted `W&B dashboard <https://wandb.ai/home>`_. It can be installed via ``pip install wandb``. You can also save your checkpoints in the cloud and restore your runs from those checkpoints. Here is how you can enable experiment tracking:
 
 ::
 
-    from tianshou.utils import WandbLogger
+    from tianshou.utils import wandb_init
 
-    logger = WandbLogger(...)
+    wandb_run = wandb_init(args, run_name=None, resume_id=None)
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger = TensorboardLogger(writer, wandb_run=wandb_run)
     result = trainer(..., logger=logger)
-
-Please refer to :class:`~tianshou.utils.WandbLogger` documentation for advanced configuration.
 
 For logging checkpoints on any device, you need to define a ``save_checkpoint_fn`` which saves the experiment checkpoint and returns the path of the saved checkpoint:
 
@@ -49,14 +56,8 @@ For logging checkpoints on any device, you need to define a ``save_checkpoint_fn
         # save model
         return ckpt_path
 
-Then, use this function with ``WandbLogger`` to automatically version your experiment checkpoints after every ``save_interval`` step.
+Then, use this function with ``TensorboardLogger(writer, wandb_run=wandb_run)`` to automatically version your experiment checkpoints after every ``save_interval`` step.
 
-For resuming runs from checkpoint artifacts on any device, pass the W&B ``run_id`` of the run that you want to continue in ``WandbLogger``. It will then download the latest version of the checkpoint and resume your runs from the checkpoint.
+For resuming runs from checkpoint artifacts on any device, pass the W&B ``run_id`` of the run that you want to continue in ``wandb_init(..., resume_id=run_id)``. It will then download the latest version of the checkpoint and resume your runs from the checkpoint.
 
-The example scripts are under `test_psrl.py <https://github.com/thu-ml/tianshou/blob/master/test/modelbased/test_psrl.py>`_ and `atari_dqn.py <https://github.com/thu-ml/tianshou/blob/master/examples/atari/atari_dqn.py>`_.
-
-
-LazyLogger
-----------
-
-This is a place-holder logger that does nothing.
+The example script is under `atari_dqn.py <https://github.com/thu-ml/tianshou/blob/master/examples/atari/atari_dqn.py>`_.

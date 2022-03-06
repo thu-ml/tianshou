@@ -1,23 +1,34 @@
 import argparse
 import os
-from typing import Optional
+from typing import Optional, Union
 
 from tianshou.utils import BaseLogger
 from tianshou.utils.logger.base import LOG_DATA_TYPE
 
 try:
     import wandb
+    from wandb.sdk.lib.disabled import RunDisabled
+    from wandb.sdk.wandb_run import Run
 except ImportError:
     pass
 
 
 def wandb_init(
-    args: argparse.Namespace, run_name: str, resume_id: int
-) -> wandb.sdk.wandb_run.Run:
+    args: argparse.Namespace,
+    run_name: Optional[str] = None,
+    resume_id: Optional[str] = None,
+) -> Union[Run, RunDisabled, None]:
+    """Initialize Weights & Biases run.
+
+    :param argparse.Namespace args: the parsed arguments.
+    :param str run_name: the name of the run.
+    :param str resume_id: the id of the run to resume.
+    :return: the Weights & Biases run.
+    """
     wandb_run = wandb.init(
         project=os.getenv("WANDB_PROJECT", "tianshou"),
         name=run_name,
-        resume_id=resume_id,
+        id=resume_id,
         sync_tensorboard=True,
         monitor_gym=True,
         config=args,  # type: ignore

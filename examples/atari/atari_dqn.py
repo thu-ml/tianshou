@@ -151,7 +151,7 @@ def test_dqn(args=get_args()):
         wandb_run = wandb_init(args, run_name, args.resume_id)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    logger = TensorboardLogger(writer, wandb_run)
+    logger = TensorboardLogger(writer, wandb_run=wandb_run)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
