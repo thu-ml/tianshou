@@ -248,7 +248,7 @@ def wrap_deepmind(
         env = WarpFrame(env)
     if scale:
         env = ScaledFloatFrame(env)
-    elif clip_rewards:
+    if clip_rewards:
         env = ClipRewardEnv(env)
     if frame_stack:
         env = FrameStack(env, frame_stack)

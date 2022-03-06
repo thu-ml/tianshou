@@ -1,10 +1,9 @@
-from typing import Any, Dict, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
 from torch import nn
 
-from tianshou.data import to_torch
 from tianshou.utils.net.common import MLP
 
 SIGMA_MIN = -20
