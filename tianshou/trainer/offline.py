@@ -12,8 +12,7 @@ from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 
 
 class OffLineTrainer:
-    """
-    An iterator wrapper for offline training procedure.
+    """An iterator wrapper for offline training procedure.
 
     Returns an iterator that yields a 3 tuple (epoch, stats, info) of train results
     on every epoch.
@@ -40,7 +39,8 @@ class OffLineTrainer:
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
     ):
-        """
+        """Create an iterator wrapper for offline training procedure.
+
         :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
         :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
             This buffer must be populated with experiences for offline RL.
@@ -202,9 +202,10 @@ class OffLineTrainer:
             return 0, {}, {}
 
     def run(self) -> Dict[str, Union[float, str]]:
-        """
-        Consume iterator, see itertools-recipes. Use functions that consume
-        iterators at C speed (feed the entire iterator into a zero-length deque).
+        """Consume iterator.
+
+        See itertools - recipes. Use functions that consume iterators at C speed
+        (feed the entire iterator into a zero-length deque).
         """
         try:
             self.is_run = True

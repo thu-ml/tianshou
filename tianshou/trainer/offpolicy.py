@@ -17,7 +17,9 @@ class OffPolicyTrainer:
        Returns an iterator that yields a 3-tuple (epoch, stats, info) of train results
        on every epoch.
 
-       The "step" in trainer means an environment step (a.k.a. transition)."""
+       The "step" in trainer means an environment step (a.k.a. transition).
+
+       """
 
     def __init__(
         self,
@@ -41,7 +43,8 @@ class OffPolicyTrainer:
         verbose: bool = True,
         test_in_train: bool = True,
     ):
-        """
+        """Create an iterator wrapper for offline training procedure.
+
         :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
         :param Collector train_collector: the collector used for training.
         :param Collector test_collector: the collector used for testing. If it's None,
@@ -311,9 +314,10 @@ class OffPolicyTrainer:
             return 0, {}, {}
 
     def run(self) -> Dict[str, Union[float, str]]:
-        """
-        Consume iterator, see itertools-recipes. Use functions that consume
-        iterators at C speed (feed the entire iterator into a zero-length deque).
+        """Consume iterator.
+
+        See itertools - recipes. Use functions that consume iterators at C speed
+        (feed the entire iterator into a zero-length deque).
         """
         try:
             self.is_run = True
