@@ -106,8 +106,8 @@ class GAILPolicy(PPOPolicy):
         return super().process_fn(batch, buffer, indices)
 
     def disc(self, batch: Batch) -> torch.Tensor:
-        obs = to_torch(batch.obs, device=self.disc_net.device)
-        act = to_torch(batch.act, device=self.disc_net.device)
+        obs = to_torch(batch.obs, device=self.disc_net.device)  # type: ignore
+        act = to_torch(batch.act, device=self.disc_net.device)  # type: ignore
         return self.disc_net(torch.cat([obs, act], dim=1))  # type: ignore
 
     def learn(  # type: ignore
@@ -120,7 +120,7 @@ class GAILPolicy(PPOPolicy):
         bsz = len(batch) // self.disc_update_num
         for b in batch.split(bsz, merge_last=True):
             logits_pi = self.disc(b)
-            exp_b = to_torch(self.expert_buffer.sample(bsz)[0], device=b.act.device)
+            exp_b = self.expert_buffer.sample(bsz)[0]
             logits_exp = self.disc(exp_b)
             loss_pi = -F.logsigmoid(-logits_pi).mean()
             loss_exp = -F.logsigmoid(logits_exp).mean()
