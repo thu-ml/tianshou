@@ -1,11 +1,9 @@
 import argparse
 import os
-import time
 from typing import Callable, Optional, Tuple
 
-from torch.utils.tensorboard import SummaryWriter
-
-from tianshou.utils.logger.tensorboard import TensorboardLogger
+from tianshou.utils import BaseLogger
+from tianshou.utils.logger.base import LOG_DATA_TYPE
 
 try:
     import wandb
@@ -13,7 +11,23 @@ except ImportError:
     pass
 
 
-class WandbLogger(TensorboardLogger):
+def wandb_init(
+    args: argparse.Namespace, run_name: str, resume_id: int
+) -> wandb.sdk.wandb_run.Run:
+    wandb_run = wandb.init(
+        project=os.getenv("WANDB_PROJECT", "tianshou"),
+        name=run_name,
+        resume_id=resume_id,
+        sync_tensorboard=True,
+        monitor_gym=True,
+        config=args,  # type: ignore
+    ) if not wandb.run else wandb.run
+    wandb_run._label(repo="tianshou")  # type: ignore
+
+    return wandb_run
+
+
+class WandbLogger(BaseLogger):
     """Weights and Biases logger that sends data to https://wandb.ai/.
 
     This logger creates three panels with plots: train, test, and update.
@@ -44,90 +58,26 @@ class WandbLogger(TensorboardLogger):
 
     def __init__(
         self,
-        writer: SummaryWriter,
         train_interval: int = 1000,
         test_interval: int = 1,
         update_interval: int = 1000,
         save_interval: int = 1000,
-        project: Optional[str] = None,
+        project: str = 'tianshou',
         name: Optional[str] = None,
         entity: Optional[str] = None,
         run_id: Optional[str] = None,
         config: Optional[argparse.Namespace] = None,
     ) -> None:
-        self.last_save_step = -1
-        self.save_interval = save_interval
-        self.restored = False
-        if project is None:
-            project = os.getenv("WANDB_PROJECT", "tianshou")
+        raise Exception(
+            """`WandbLogger` is deprecated, please use the following code instead
 
-        run_name = f"{config.task}_{name}_{int(time.time())}"
-        config.algo = name
-        self.wandb_run = wandb.init(
-            project=project,
-            name=run_name,
-            id=run_id,
-            resume="allow",
-            entity=entity,
-            sync_tensorboard=True,
-            monitor_gym=True,
-            config=config,  # type: ignore
-        ) if not wandb.run else wandb.run
-        self.wandb_run._label(repo="tianshou")  # type: ignore
-        super().__init__(writer, train_interval, test_interval, update_interval, save_interval)
+if args.logger == "wandb":
+    from tianshou.utils.logger.wandb import wandb_init
+    run_name = None
+    wandb_init(args, run_name)
+writer = SummaryWriter(log_path)
+writer.add_text("args", str(args))
+logger = TensorboardLogger(writer)        
 
-    def save_data(
-        self,
-        epoch: int,
-        env_step: int,
-        gradient_step: int,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
-    ) -> None:
-        """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
-
-        :param int epoch: the epoch in trainer.
-        :param int env_step: the env_step in trainer.
-        :param int gradient_step: the gradient_step in trainer.
-        :param function save_checkpoint_fn: a hook defined by user, see trainer
-            documentation for detail.
         """
-        if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
-            self.last_save_step = epoch
-            checkpoint_path = save_checkpoint_fn(epoch, env_step, gradient_step)
-
-            checkpoint_artifact = wandb.Artifact(
-                'run_' + self.wandb_run.id + '_checkpoint',  # type: ignore
-                type='model',
-                metadata={
-                    "save/epoch": epoch,
-                    "save/env_step": env_step,
-                    "save/gradient_step": gradient_step,
-                    "checkpoint_path": str(checkpoint_path)
-                }
-            )
-            checkpoint_artifact.add_file(str(checkpoint_path))
-            self.wandb_run.log_artifact(checkpoint_artifact)  # type: ignore
-
-    def restore_data(self) -> Tuple[int, int, int]:
-        checkpoint_artifact = self.wandb_run.use_artifact(    # type: ignore
-            'run_' + self.wandb_run.id + '_checkpoint:latest'  # type: ignore
         )
-        assert checkpoint_artifact is not None, "W&B dataset artifact doesn't exist"
-
-        checkpoint_artifact.download(
-            os.path.dirname(checkpoint_artifact.metadata['checkpoint_path'])
-        )
-
-        try:  # epoch / gradient_step
-            epoch = checkpoint_artifact.metadata["save/epoch"]
-            self.last_save_step = self.last_log_test_step = epoch
-            gradient_step = checkpoint_artifact.metadata["save/gradient_step"]
-            self.last_log_update_step = gradient_step
-        except KeyError:
-            epoch, gradient_step = 0, 0
-        try:  # offline trainer doesn't have env_step
-            env_step = checkpoint_artifact.metadata["save/env_step"]
-            self.last_log_train_step = env_step
-        except KeyError:
-            env_step = 0
-        return epoch, env_step, gradient_step

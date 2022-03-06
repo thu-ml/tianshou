@@ -1,6 +1,7 @@
 import argparse
 import os
 import pprint
+import time
 
 import numpy as np
 import torch
@@ -12,7 +13,8 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DQNPolicy
 from tianshou.policy.modelbased.icm import ICMPolicy
 from tianshou.trainer import offpolicy_trainer
-from tianshou.utils import TensorboardLogger, WandbLogger
+from tianshou.utils import TensorboardLogger
+from tianshou.utils.logger.wandb import wandb_init
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 
@@ -141,20 +143,15 @@ def test_dqn(args=get_args()):
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # log
-    log_name = 'dqn_icm' if args.icm_lr_scale > 0 else 'dqn'
-    log_path = os.path.join(args.logdir, args.task, log_name)
+    args.algo = 'dqn_icm' if args.icm_lr_scale > 0 else 'dqn'
+    log_path = os.path.join(args.logdir, args.task, args.algo)
+
+    if args.logger == "wandb":
+        run_name = f"{args.task}_{args.algo}_{int(time.time())}"
+        wandb_run = wandb_init(args, run_name, args.resume_id)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    if args.logger == "tensorboard":
-        logger = TensorboardLogger(writer)
-    else:
-        logger = WandbLogger(
-            writer=writer,
-            save_interval=1,
-            name=log_name,
-            run_id=args.resume_id,
-            config=args,
-        )
+    logger = TensorboardLogger(writer, wandb_run)
 
     def save_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
