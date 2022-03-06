@@ -74,7 +74,7 @@ def test_gail(args=get_args()):
         buffer = gather_data()
     env = gym.make(args.task)
     if args.reward_threshold is None:
-        default_reward_threshold = {"Pendulum-v0": -1000, "Pendulum-v1": -1000}
+        default_reward_threshold = {"Pendulum-v0": -1100, "Pendulum-v1": -1100}
         args.reward_threshold = default_reward_threshold.get(
             args.task, env.spec.reward_threshold
         )
@@ -222,11 +222,6 @@ def test_gail(args=get_args()):
         result = collector.collect(n_episode=1, render=args.render)
         rews, lens = result["rews"], result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
-
-
-def test_gail_resume(args=get_args()):
-    args.resume = True
-    test_gail(args)
 
 
 if __name__ == '__main__':
