@@ -129,8 +129,8 @@ class OffPolicyTrainer:
             self.train_collector.policy == policy and self.test_collector is not None
         )
 
-        if test_collector is not None:
-            self.test_c: Collector = test_collector  # for mypy
+        if self.test_collector is not None:
+            self.test_c: Collector = self.test_collector  # for mypy
             self.test_collector.reset_stat()
             test_result = test_episode(
                 self.policy, self.test_c, self.test_fn, self.start_epoch,
@@ -151,21 +151,22 @@ class OffPolicyTrainer:
     def __next__(self) -> Tuple[int, Dict[str, Any], Dict[str, Any]]:
         self.epoch += 1
 
-        # exit flag 1, when test_in_train and stop_fn succeeds on result["rew"]
-        if self.test_in_train and self.stop_fn and self.exit_flag == 1:
-            raise StopIteration
+        if self.epoch > 1:
+            # exit flag 1, when test_in_train and stop_fn succeeds on result["rew"]
+            if self.test_in_train and self.stop_fn and self.exit_flag == 1:
+                raise StopIteration
 
-        # iterator exhaustion check
-        if self.epoch >= self.max_epoch:
-            if self.test_collector is None and self.save_fn:
-                self.save_fn(self.policy)
-            raise StopIteration
+            # iterator exhaustion check
+            if self.epoch >= self.max_epoch:
+                if self.test_collector is None and self.save_fn:
+                    self.save_fn(self.policy)
+                raise StopIteration
 
-        # stop_fn criterion
-        if self.test_collector is not None and self.stop_fn and self.stop_fn(
-            self.best_reward
-        ):
-            raise StopIteration
+            # stop_fn criterion
+            if self.test_collector is not None and self.stop_fn and self.stop_fn(
+                self.best_reward
+            ):
+                raise StopIteration
 
         # set policy in train mode
         self.policy.train()
@@ -278,7 +279,7 @@ class OffPolicyTrainer:
             rew, rew_std = test_result["rew"], test_result["rew_std"]
             if self.best_epoch < 0 or self.best_reward < rew:
                 self.best_epoch = self.epoch
-                self.best_reward = rew
+                self.best_reward = float(rew)
                 self.best_reward_std = rew_std
                 if self.save_fn:
                     self.save_fn(self.policy)
