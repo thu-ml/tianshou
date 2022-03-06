@@ -18,11 +18,12 @@ class GAILPolicy(PPOPolicy):
     :param dist_fn: distribution class for computing the action.
     :type dist_fn: Type[torch.distributions.Distribution]
     :param ReplayBuffer expert_buffer: the replay buffer contains expert experience.
-    :param Discriminator disc: the discriminator network.
+    :param torch.nn.Module disc_net: the discriminator network with input dim equals
+        state dim plus action dim and output dim equals 1.
     :param torch.optim.Optimizer disc_optim: the optimizer for the discriminator
         network.
-    :param int disc_repeat: the number of discriminator grad steps per model grad
-        step. Default to 5.
+    :param int disc_update_num: the number of discriminator grad steps per model grad
+        step. Default to 4.
     :param float discount_factor: in [0, 1]. Default to 0.99.
     :param float eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
         paper. Default to 0.2.
@@ -72,9 +73,9 @@ class GAILPolicy(PPOPolicy):
         optim: torch.optim.Optimizer,
         dist_fn: Type[torch.distributions.Distribution],
         expert_buffer: ReplayBuffer,
-        disc: torch.nn.Module,
+        disc_net: torch.nn.Module,
         disc_optim: torch.optim.Optimizer,
-        disc_repeat: int = 2,
+        disc_update_num: int = 4,
         eps_clip: float = 0.2,
         dual_clip: Optional[float] = None,
         value_clip: bool = False,
@@ -86,9 +87,9 @@ class GAILPolicy(PPOPolicy):
             actor, critic, optim, dist_fn, eps_clip, dual_clip, value_clip,
             advantage_normalization, recompute_advantage, **kwargs
         )
-        self.disc = disc
+        self.disc_net = disc_net
         self.disc_optim = disc_optim
-        self.disc_repeat = disc_repeat
+        self.disc_update_num = disc_update_num
         self.expert_buffer = expert_buffer
         self.action_dim = actor.output_dim
 
@@ -101,10 +102,13 @@ class GAILPolicy(PPOPolicy):
         """
         # update reward
         with torch.no_grad():
-            batch.rew = to_numpy(
-                -F.logsigmoid(-self.disc(batch.obs, batch.act)).flatten()
-            )
+            batch.rew = to_numpy(-F.logsigmoid(-self.disc(batch)).flatten())
         return super().process_fn(batch, buffer, indices)
+
+    def disc(self, batch: Batch) -> torch.Tensor:
+        obs = to_torch(batch.obs, device=self.disc_net.device)
+        act = to_torch(batch.act, device=self.disc_net.device)
+        return self.disc_net(torch.cat([obs, act], dim=1))  # type: ignore
 
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
@@ -113,12 +117,11 @@ class GAILPolicy(PPOPolicy):
         losses = []
         acc_pis = []
         acc_exps = []
-        for b in batch.split(len(batch) // self.disc_repeat, merge_last=True):
-            logits_pi = self.disc(b.obs, b.act)
-            exp_b = to_torch(
-                self.expert_buffer.sample(batch_size)[0], device=b.act.device
-            )
-            logits_exp = self.disc(exp_b.obs, exp_b.act)  # type: ignore
+        bsz = len(batch) // self.disc_update_num
+        for b in batch.split(bsz, merge_last=True):
+            logits_pi = self.disc(b)
+            exp_b = to_torch(self.expert_buffer.sample(bsz)[0], device=b.act.device)
+            logits_exp = self.disc(exp_b)
             loss_pi = -F.logsigmoid(-logits_pi).mean()
             loss_exp = -F.logsigmoid(logits_exp).mean()
             loss_disc = loss_pi + loss_exp

@@ -14,14 +14,27 @@ from torch.distributions import Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
-from examples.atari.atari_wrapper import NoRewardEnv
 from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import GAILPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
-from tianshou.utils.net.continuous import ActorProb, Critic, GAILDiscriminator
+from tianshou.utils.net.continuous import ActorProb, Critic
+
+
+class NoRewardEnv(gym.RewardWrapper):
+    """sets the reward to 0.
+
+    :param gym.Env env: the environment to wrap.
+    """
+
+    def __init__(self, env):
+        super().__init__(env)
+
+    def reward(self, reward):
+        """Set reward to 0."""
+        return np.zeros_like(reward)
 
 
 def get_args():
@@ -40,7 +53,7 @@ def get_args():
     parser.add_argument('--step-per-epoch', type=int, default=30000)
     parser.add_argument('--step-per-collect', type=int, default=2048)
     parser.add_argument('--repeat-per-collect', type=int, default=10)
-    parser.add_argument('--disc-repeat', type=int, default=2)
+    parser.add_argument('--disc-update-num', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--training-num', type=int, default=64)
     parser.add_argument('--test-num', type=int, default=10)
@@ -136,19 +149,21 @@ def test_gail(args=get_args()):
 
     optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
     # discriminator
-    disc = GAILDiscriminator(
+    net_d = Net(
         args.state_shape,
-        args.action_shape,
+        action_shape=args.action_shape,
         hidden_sizes=args.hidden_sizes,
         activation=nn.Tanh,
-        device=args.device
-    ).to(args.device)
-    for m in disc.modules():
+        device=args.device,
+        concat=True
+    )
+    disc_net = Critic(net_d, device=args.device).to(args.device)
+    for m in disc_net.modules():
         if isinstance(m, torch.nn.Linear):
             # orthogonal initialization
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
             torch.nn.init.zeros_(m.bias)
-    disc_optim = torch.optim.Adam(disc.parameters(), lr=args.disc_lr)
+    disc_optim = torch.optim.Adam(disc_net.parameters(), lr=args.disc_lr)
 
     lr_scheduler = None
     if args.lr_decay:
@@ -189,9 +204,9 @@ def test_gail(args=get_args()):
         optim,
         dist,
         expert_buffer,
-        disc,
+        disc_net,
         disc_optim,
-        disc_repeat=args.disc_repeat,
+        disc_update_num=args.disc_update_num,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         max_grad_norm=args.max_grad_norm,

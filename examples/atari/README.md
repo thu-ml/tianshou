@@ -121,4 +121,3 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 | MsPacmanNoFrameskip-v4      | 1930       | ![](results/ppo/MsPacman_rew.png)     | `python3 atari_ppo.py --task "MsPacmanNoFrameskip-v4"`  |
 | SeaquestNoFrameskip-v4      | 904      | ![](results/ppo/Seaquest_rew.png)     | `python3 atari_ppo.py --task "SeaquestNoFrameskip-v4" --lr 2.5e-5`  |
 | SpaceInvadersNoFrameskip-v4 | 843       | ![](results/ppo/SpaceInvaders_rew.png) | `python3 atari_ppo.py --task "SpaceInvadersNoFrameskip-v4"`  |
-Note that CRR itself does not work well in Atari tasks but adding CQL loss/regularizer helps.

@@ -22,6 +22,6 @@ python irl_gail.py --task HalfCheetah-v2 --expert-data-task halfcheetah-expert-v
 
 | task                        | best reward | reward curve                          | parameters                                                   |
 | --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
-| HalfCheetah-v2     | 4971.56        | ![](results/gail/HalfCheetah-v2_rew.png)         | `python3 irl_gail.py --task "HalfCheetah-v2" --expert-data-task "halfcheetah-expert-v2"` |
-| Hopper-v2          | 1933.84        | ![](results/gail/Hopper-v2_rew.png)     | `python3 irl_gail.py --task "Hopper-v2" --expert-data-task "hopper-expert-v2"` |
-| Walker2d-v2        | 2077.99        | ![](results/gail/Walker2d-v2_rew.png)       | `python3 irl_gail.py --task "Walker2d-v2" --expert-data-task "walker2d-expert-v2"`  |
+| HalfCheetah-v2     | 5177.07        | ![](results/gail/HalfCheetah-v2_rew.png)         | `python3 irl_gail.py --task "HalfCheetah-v2" --expert-data-task "halfcheetah-expert-v2"` |
+| Hopper-v2          | 1761.44        | ![](results/gail/Hopper-v2_rew.png)     | `python3 irl_gail.py --task "Hopper-v2" --expert-data-task "hopper-expert-v2"` |
+| Walker2d-v2        | 2020.77        | ![](results/gail/Walker2d-v2_rew.png)       | `python3 irl_gail.py --task "Walker2d-v2" --expert-data-task "walker2d-expert-v2"`  |

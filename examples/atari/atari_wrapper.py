@@ -181,20 +181,6 @@ class ClipRewardEnv(gym.RewardWrapper):
         return np.sign(reward)
 
 
-class NoRewardEnv(gym.RewardWrapper):
-    """sets the reward to 0.
-
-    :param gym.Env env: the environment to wrap.
-    """
-
-    def __init__(self, env):
-        super().__init__(env)
-
-    def reward(self, reward):
-        """Set reward to 0."""
-        return np.zeros_like(reward)
-
-
 class FrameStack(gym.Wrapper):
     """Stack n_frames last frames.
 
@@ -237,8 +223,7 @@ def wrap_deepmind(
     clip_rewards=True,
     frame_stack=4,
     scale=False,
-    warp_frame=True,
-    no_rewards=False
+    warp_frame=True
 ):
     """Configure environment for DeepMind-style Atari. The observation is
     channel-first: (c, h, w) instead of (h, w, c).
@@ -249,7 +234,6 @@ def wrap_deepmind(
     :param int frame_stack: wrap the frame stacking wrapper.
     :param bool scale: wrap the scaling observation wrapper.
     :param bool warp_frame: wrap the grayscale + resize observation wrapper.
-    :param bool no_rewards: wrap the no reward wrapper.
     :return: the wrapped atari environment.
     """
     assert 'NoFrameskip' in env_id
@@ -264,8 +248,6 @@ def wrap_deepmind(
         env = WarpFrame(env)
     if scale:
         env = ScaledFloatFrame(env)
-    if no_rewards:
-        env = NoRewardEnv(env)
     elif clip_rewards:
         env = ClipRewardEnv(env)
     if frame_stack:
