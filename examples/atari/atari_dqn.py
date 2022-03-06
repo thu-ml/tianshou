@@ -143,12 +143,13 @@ def test_dqn(args=get_args()):
     # log
     log_name = 'dqn_icm' if args.icm_lr_scale > 0 else 'dqn'
     log_path = os.path.join(args.logdir, args.task, log_name)
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
     if args.logger == "tensorboard":
-        writer = SummaryWriter(log_path)
-        writer.add_text("args", str(args))
         logger = TensorboardLogger(writer)
     else:
         logger = WandbLogger(
+            writer=writer,
             save_interval=1,
             name=log_name,
             run_id=args.resume_id,

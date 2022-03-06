@@ -1,6 +1,9 @@
 import argparse
 import os
+import time
 from typing import Callable, Optional, Tuple
+
+from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils.logger.tensorboard import TensorboardLogger
 
@@ -41,6 +44,7 @@ class WandbLogger(TensorboardLogger):
 
     def __init__(
         self,
+        writer: SummaryWriter,
         train_interval: int = 1000,
         test_interval: int = 1,
         update_interval: int = 1000,
@@ -57,9 +61,11 @@ class WandbLogger(TensorboardLogger):
         if project is None:
             project = os.getenv("WANDB_PROJECT", "tianshou")
 
+        run_name = f"{config.task}_{name}_{int(time.time())}"
+        config.algo = name
         self.wandb_run = wandb.init(
             project=project,
-            name=name,
+            name=run_name,
             id=run_id,
             resume="allow",
             entity=entity,
@@ -68,7 +74,7 @@ class WandbLogger(TensorboardLogger):
             config=config,  # type: ignore
         ) if not wandb.run else wandb.run
         self.wandb_run._label(repo="tianshou")  # type: ignore
-        super().__init__(train_interval, test_interval, update_interval)
+        super().__init__(writer, train_interval, test_interval, update_interval, save_interval)
 
     def save_data(
         self,
