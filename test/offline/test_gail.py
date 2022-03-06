@@ -25,7 +25,8 @@ else:  # pytest
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pendulum-v0')
+    parser.add_argument('--task', type=str, default='Pendulum-v1')
+    parser.add_argument("--reward-threshold", type=float, default=None)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
@@ -72,8 +73,11 @@ def test_gail(args=get_args()):
     else:
         buffer = gather_data()
     env = gym.make(args.task)
-    if args.task == 'Pendulum-v0':
-        env.spec.reward_threshold = -1100
+    if args.reward_threshold is None:
+        default_reward_threshold = {"Pendulum-v0": -1000, "Pendulum-v1": -1000}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
@@ -115,7 +119,7 @@ def test_gail(args=get_args()):
             hidden_sizes=args.hidden_sizes,
             activation=torch.nn.Tanh,
             device=args.device,
-            concat=True
+            concat=True,
         ),
         device=args.device
     ).to(args.device)
@@ -151,7 +155,7 @@ def test_gail(args=get_args()):
         dual_clip=args.dual_clip,
         value_clip=args.value_clip,
         gae_lambda=args.gae_lambda,
-        action_space=env.action_space
+        action_space=env.action_space,
     )
     # collector
     train_collector = Collector(
@@ -167,7 +171,7 @@ def test_gail(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+        return mean_rewards >= args.reward_threshold
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
@@ -205,7 +209,7 @@ def test_gail(args=get_args()):
         save_fn=save_fn,
         logger=logger,
         resume_from_log=args.resume,
-        save_checkpoint_fn=save_checkpoint_fn
+        save_checkpoint_fn=save_checkpoint_fn,
     )
     assert stop_fn(result['best_reward'])
 
