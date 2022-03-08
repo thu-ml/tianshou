@@ -134,6 +134,11 @@ Imitation
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.GAILPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Model-based
 -----------
 

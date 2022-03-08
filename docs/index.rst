@@ -32,6 +32,7 @@ Welcome to Tianshou!
 * :class:`~tianshou.policy.DiscreteBCQPolicy` `Discrete Batch-Constrained deep Q-Learning <https://arxiv.org/pdf/1910.01708.pdf>`_
 * :class:`~tianshou.policy.DiscreteCQLPolicy` `Discrete Conservative Q-Learning <https://arxiv.org/pdf/2006.04779.pdf>`_
 * :class:`~tianshou.policy.DiscreteCRRPolicy` `Critic Regularized Regression <https://arxiv.org/pdf/2006.15134.pdf>`_
+* :class:`~tianshou.policy.GAILPolicy` `Generative Adversarial Imitation Learning <https://arxiv.org/pdf/1606.03476.pdf>`_
 * :class:`~tianshou.policy.PSRLPolicy` `Posterior Sampling Reinforcement Learning <https://www.ece.uvic.ca/~bctill/papers/learning/Strens_2000.pdf>`_
 * :class:`~tianshou.policy.ICMPolicy` `Intrinsic Curiosity Module <https://arxiv.org/pdf/1705.05363.pdf>`_
 * :class:`~tianshou.data.PrioritizedReplayBuffer` `Prioritized Experience Replay <https://arxiv.org/pdf/1511.05952.pdf>`_
@@ -41,7 +42,8 @@ Here is Tianshou's other features:
 
 * Elegant framework, using only ~3000 lines of code
 * State-of-the-art `MuJoCo benchmark <https://github.com/thu-ml/tianshou/tree/master/examples/mujoco>`_
-* Support parallel environment simulation (synchronous or asynchronous) for all algorithms: :ref:`parallel_sampling`
+* Support vectorized environment (synchronous or asynchronous) for all algorithms: :ref:`parallel_sampling`
+* Support super-fast vectorized environment `EnvPool <https://github.com/sail-sg/envpool/>`_ for all algorithms: :ref:`envpool_integration`
 * Support recurrent state representation in actor network and critic network (RNN-style training for POMDP): :ref:`rnn_training`
 * Support any type of environment state/action (e.g. a dict, a self-defined class, ...): :ref:`self_defined_env`
 * Support :ref:`customize_training`

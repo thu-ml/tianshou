@@ -9,8 +9,11 @@ optim
 eps
 timelimit
 TimeLimit
+envpool
+EnvPool
 maxsize
 timestep
+timesteps
 numpy
 ndarray
 stackoverflow
@@ -137,3 +140,6 @@ Strens
 Ornstein
 Uhlenbeck
 mse
+gail
+airl
+ppo

@@ -2,13 +2,12 @@ import argparse
 import os
 import pprint
 
-import gym
+import envpool
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
@@ -17,6 +16,7 @@ from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='NChain-v0')
+    parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=50000)
     parser.add_argument('--epoch', type=int, default=5)
@@ -41,26 +41,21 @@ def get_args():
 
 
 def test_psrl(args=get_args()):
-    env = gym.make(args.task)
-    if args.task == "NChain-v0":
-        env.spec.reward_threshold = 3400
-        # env.spec.reward_threshold = 3647  # described in PSRL paper
-    print("reward threshold:", env.spec.reward_threshold)
+    train_envs = env = envpool.make_gym(
+        args.task, num_envs=args.training_num, seed=args.seed
+    )
+    test_envs = envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed)
+    if args.reward_threshold is None:
+        default_reward_threshold = {"NChain-v0": 3400}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
+    print("reward threshold:", args.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-    # train_envs = gym.make(args.task)
-    train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)]
-    )
-    # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
-    test_envs.seed(args.seed)
     # model
     n_action = args.action_shape
     n_state = args.state_shape
@@ -84,19 +79,19 @@ def test_psrl(args=get_args()):
         logger = WandbLogger(
             save_interval=1, project='psrl', name='wandb_test', config=args
         )
-    elif args.logger == "tensorboard":
+    if args.logger != "none":
         log_path = os.path.join(args.logdir, args.task, 'psrl')
         writer = SummaryWriter(log_path)
         writer.add_text("args", str(args))
-        logger = TensorboardLogger(writer)
+        if args.logger == "tensorboard":
+            logger = TensorboardLogger(writer)
+        else:
+            logger.load(writer)
     else:
         logger = LazyLogger()
 
     def stop_fn(mean_rewards):
-        if env.spec.reward_threshold:
-            return mean_rewards >= env.spec.reward_threshold
-        else:
-            return False
+        return mean_rewards >= args.reward_threshold
 
     train_collector.collect(n_step=args.buffer_size, random=True)
     # trainer, test it without logger

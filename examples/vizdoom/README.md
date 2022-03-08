@@ -53,10 +53,6 @@ python3 replay.py maps/D4_battle2.cfg results/c51/d4.lmp
 
 See [maps/README.md](maps/README.md)
 
-## Algorithms
-
-The setting is exactly the same as Atari. You can definitely try more algorithms listed in Atari example.
-
 ## Reward
 
 1. living reward is bad
@@ -64,3 +60,28 @@ The setting is exactly the same as Atari. You can definitely try more algorithms
 3. negative reward for health and ammo2 is really helpful for d3/d4
 4. only with positive reward for health is really helpful for d1
 5. remove MOVE_BACKWARD may converge faster but the final performance may be lower
+
+## Algorithms
+
+The setting is exactly the same as Atari. You can definitely try more algorithms listed in Atari example.
+
+### C51 (single run)
+
+| task                        | best reward | reward curve                          | parameters                                                   |
+| --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
+| D2_navigation          | 747.52          | ![](results/c51/D2_navigation_rew.png)         | `python3 vizdoom_c51.py --task "D2_navigation"` |
+| D3_battle              | 1855.29          | ![](results/c51/D3_battle_rew.png)         | `python3 vizdoom_c51.py --task "D3_battle"` |
+
+### PPO (single run)
+
+| task                        | best reward | reward curve                          | parameters                                                   |
+| --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
+| D2_navigation          | 770.75          | ![](results/ppo/D2_navigation_rew.png)         | `python3 vizdoom_ppo.py --task "D2_navigation"` |
+| D3_battle              | 320.59          | ![](results/ppo/D3_battle_rew.png)         | `python3 vizdoom_ppo.py --task "D3_battle"` |
+
+### PPO with ICM (single run)
+
+| task                        | best reward | reward curve                          | parameters                                                   |
+| --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
+| D2_navigation          | 844.99          | ![](results/ppo_icm/D2_navigation_rew.png)         | `python3 vizdoom_ppo.py --task "D2_navigation" --icm-lr-scale 10` |
+| D3_battle              | 547.08          | ![](results/ppo_icm/D3_battle_rew.png)         | `python3 vizdoom_ppo.py --task "D3_battle" --icm-lr-scale 10` |

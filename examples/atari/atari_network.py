@@ -22,6 +22,7 @@ class DQN(nn.Module):
         action_shape: Sequence[int],
         device: Union[str, int, torch.device] = "cpu",
         features_only: bool = False,
+        output_dim: Optional[int] = None,
     ) -> None:
         super().__init__()
         self.device = device
@@ -39,6 +40,12 @@ class DQN(nn.Module):
                 nn.Linear(512, np.prod(action_shape))
             )
             self.output_dim = np.prod(action_shape)
+        elif output_dim is not None:
+            self.net = nn.Sequential(
+                self.net, nn.Linear(self.output_dim, output_dim),
+                nn.ReLU(inplace=True)
+            )
+            self.output_dim = output_dim
 
     def forward(
         self,
