@@ -60,11 +60,11 @@ class OffLineTrainer(BaseTrainer):
             reward in evaluation phase gets better, with the signature
             ``f(policy: BasePolicy) -> None``.
         :param function save_checkpoint_fn: a function to save training process,
-            with the signature ``f(epoch: int, env_step: int,
-             gradient_step: int) -> None``; you can save whatever you want. Because
-             offline-RL doesn't have env_step, the env_step is always 0 here.
+            with the signature ``f(epoch: int, env_step: int, gradient_step: int) ->
+            None``; you can save whatever you want. Because offline-RL doesn't have
+            env_step, the env_step is always 0 here.
         :param bool resume_from_log: resume gradient_step and other metadata from
-             existing tensorboard log. Default to False.
+            existing tensorboard log. Default to False.
         :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
             bool``, receives the average undiscounted returns of the testing result,
             returns a boolean which indicates whether reaching the goal.

@@ -11,7 +11,7 @@ from tianshou.trainer import gather_info, test_episode
 from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 
 
-class BaseTrainer:
+class BaseTrainer(object):
     """An iterator base class for trainers procedure.
 
     Returns an iterator that yields a 3-tuple (epoch, stats, info) of train results
@@ -19,10 +19,10 @@ class BaseTrainer:
 
     The "step" in trainer means an environment step (a.k.a. transition).
     There are three types of learning iterators:
-    (1) offpolicy learning trainer
-    (2) onpolicy learning trainer
-    (3) offpolicy learning trainer
 
+    1. offpolicy learning trainer
+    2. onpolicy learning trainer
+    3. offpolicy learning trainer
     """
 
     learning_types: Dict[Union[int, str], Union[int, str]] = {
@@ -82,11 +82,11 @@ class BaseTrainer:
         :param int step_per_collect: the number of transitions the collector would
             collect before the network update, i.e., trainer will collect
             "step_per_collect" transitions and do some policy network update repeatedly
-             in each epoch.
+            in each epoch.
         :param int episode_per_collect: the number of episodes the collector would
             collect before the network update, i.e., trainer will collect
             "episode_per_collect" episodes and do some policy network update repeatedly
-             in each epoch.
+            in each epoch.
         :param function train_fn: a hook called at the beginning of training in each
             epoch. It can be used to perform custom additional operations, with the
             signature ``f(num_epoch: int, step_idx: int) -> None``.
@@ -114,8 +114,7 @@ class BaseTrainer:
             training/testing/updating. Default to a logger that doesn't log anything.
         :param bool verbose: whether to print the information. Default to True.
         :param bool test_in_train: whether to test in the training phase.
-           Default to True.
-
+            Default to True.
         """
         self.policy = policy
         self.buffer = buffer

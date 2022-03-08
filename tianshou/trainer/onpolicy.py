@@ -59,12 +59,12 @@ class OnPolicyTrainer(BaseTrainer):
         :param int batch_size: the batch size of sample data, which is going to feed in
             the policy network.
         :param int step_per_collect: the number of transitions the collector would
-           collect before the network update, i.e., trainer will collect
-           "step_per_collect" transitions and do some policy network update repeatedly
-           in each epoch.
+            collect before the network update, i.e., trainer will collect
+            "step_per_collect" transitions and do some policy network update repeatedly
+            in each epoch.
         :param int episode_per_collect: the number of episodes the collector would
-           collect before the network update, i.e., trainer will collect
-           "episode_per_collect" episodes and do some policy network update repeatedly
+            collect before the network update, i.e., trainer will collect
+            "episode_per_collect" episodes and do some policy network update repeatedly
             in each epoch.
         :param function train_fn: a hook called at the beginning of training in each
             epoch. It can be used to perform custom additional operations, with the
@@ -74,7 +74,7 @@ class OnPolicyTrainer(BaseTrainer):
             signature ``f(num_epoch: int, step_idx: int) -> None``.
         :param function save_fn: a hook called when the undiscounted average mean
             reward in evaluation phase gets better, with the signature
-             ``f(policy: BasePolicy) -> None``.
+            ``f(policy: BasePolicy) -> None``.
         :param function save_checkpoint_fn: a function to save training process,
             with the signature ``f(epoch: int, env_step: int, gradient_step: int)
             -> None``; you can save whatever you want.
@@ -84,7 +84,7 @@ class OnPolicyTrainer(BaseTrainer):
             bool``, receives the average undiscounted returns of the testing result,
             returns a boolean which indicates whether reaching the goal.
         :param function reward_metric: a function with signature
-           ``f(rewards: np.ndarray with shape (num_episode, agent_num)) ->
+            ``f(rewards: np.ndarray with shape (num_episode, agent_num)) ->
             np.ndarray with shape (num_episode,)``, used in multi-agent RL.
             We need to return a single scalar for each episode's result to monitor
             training in the multi-agent RL setting. This function specifies what is the

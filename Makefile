@@ -55,6 +55,6 @@ doc-clean:
 
 clean: doc-clean
 
-commit-checks: format lint mypy check-docstyle spelling
+commit-checks: lint check-codestyle mypy check-docstyle spelling
 
 .PHONY: clean spelling doc mypy lint format check-codestyle check-docstyle commit-checks

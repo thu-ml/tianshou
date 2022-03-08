@@ -16,7 +16,6 @@ class OffPolicyTrainer(BaseTrainer):
     on every epoch.
 
     The "step" in trainer means an environment step (a.k.a. transition).
-
     """
 
     def __init__(
@@ -54,7 +53,7 @@ class OffPolicyTrainer(BaseTrainer):
         :param int step_per_collect: the number of transitions the collector would
             collect before the network update, i.e., trainer will collect
             "step_per_collect" transitions and do some policy network update repeatedly
-             in each epoch.
+            in each epoch.
         :param episode_per_test: the number of episodes for one policy evaluation.
         :param int batch_size: the batch size of sample data, which is going to feed in
             the policy network.
@@ -65,16 +64,16 @@ class OffPolicyTrainer(BaseTrainer):
             transitions are collected by the collector. Default to 1.
         :param function train_fn: a hook called at the beginning of training in each
             epoch. It can be used to perform custom additional operations, with the
-             signature ``f(num_epoch: int, step_idx: int) -> None``.
+            signature ``f(num_epoch: int, step_idx: int) -> None``.
         :param function test_fn: a hook called at the beginning of testing in each
             epoch. It can be used to perform custom additional operations, with the
             signature ``f(num_epoch: int, step_idx: int) -> None``.
         :param function save_fn: a hook called when the undiscounted average mean
-           reward in evaluation phase gets better, with the signature
-           ``f(policy: BasePolicy) ->  None``.
+            reward in evaluation phase gets better, with the signature
+            ``f(policy: BasePolicy) ->  None``.
         :param function save_checkpoint_fn: a function to save training process, with
             the signature ``f(epoch: int, env_step: int, gradient_step: int) -> None``;
-             you can save whatever you want.
+            you can save whatever you want.
         :param bool resume_from_log: resume env_step/gradient_step and other metadata
             from existing tensorboard log. Default to False.
         :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
@@ -91,7 +90,6 @@ class OffPolicyTrainer(BaseTrainer):
         :param bool verbose: whether to print the information. Default to True.
         :param bool test_in_train: whether to test in the training phase.
             Default to True.
-
         """
         learning_type = super().learning_types["offpolicy"]
         super().__init__(
