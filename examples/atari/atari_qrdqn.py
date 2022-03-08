@@ -7,12 +7,12 @@ import numpy as np
 import torch
 from atari_network import QRDQN
 from atari_wrapper import make_atari_env
-from torch.utils.tensorboard import SummaryWriter, WandbLogger
+from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import QRDQNPolicy
 from tianshou.trainer import offpolicy_trainer
-from tianshou.utils import TensorboardLogger
+from tianshou.utils import TensorboardLogger, WandbLogger
 
 
 def get_args():
