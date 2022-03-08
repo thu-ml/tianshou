@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPOPolicy
-from tianshou.trainer import onpolicy_trainer
+from tianshou.trainer import onpolicy_trainer, onpolicy_trainer_iter
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -170,6 +170,31 @@ def test_ppo(args=get_args()):
         save_checkpoint_fn=save_checkpoint_fn
     )
     assert stop_fn(result['best_reward'])
+
+    trainer = onpolicy_trainer_iter(
+        policy,
+        train_collector,
+        test_collector,
+        args.epoch,
+        args.step_per_epoch,
+        args.repeat_per_collect,
+        args.test_num,
+        args.batch_size,
+        episode_per_collect=args.episode_per_collect,
+        stop_fn=stop_fn,
+        save_fn=save_fn,
+        logger=logger,
+        resume_from_log=args.resume,
+        save_checkpoint_fn=save_checkpoint_fn
+    )
+
+    for epoch, epoch_stat, info in trainer:
+        print(f"Epoch: {epoch}")
+        print(epoch_stat)
+        print(info)
+
+    result_iter = info
+    assert stop_fn(result_iter['best_reward'])
 
     if __name__ == '__main__':
         pprint.pprint(result)

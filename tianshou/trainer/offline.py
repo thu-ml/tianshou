@@ -1,18 +1,16 @@
-import time
-from collections import defaultdict, deque
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from functools import wraps
+from typing import Callable, Dict, Optional, Union
 
 import numpy as np
-import tqdm
 
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
-from tianshou.trainer import gather_info, test_episode
-from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
+from tianshou.trainer.base import BaseTrainer
+from tianshou.utils import BaseLogger, LazyLogger
 
 
-class OffLineTrainer:
-    """An iterator wrapper for offline training procedure.
+class OffLineTrainer(BaseTrainer):
+    """An iterator wrapper for off-line training procedure.
 
     Returns an iterator that yields a 3 tuple (epoch, stats, info) of train results
     on every epoch.
@@ -39,7 +37,7 @@ class OffLineTrainer:
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
     ):
-        """Create an iterator wrapper for offline training procedure.
+        """Create an iterator wrapper for off-line training procedure.
 
         :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
         :param buffer: an instance of the :class:`~tianshou.data.ReplayBuffer` class.
@@ -80,148 +78,31 @@ class OffLineTrainer:
             updating/testing. Default to a logger that doesn't log anything.
         :param bool verbose: whether to print the information. Default to True.
         """
-        self.is_run = False
-        self.policy = policy
-        self.buffer = buffer
-        self.test_collector = test_collector
-        self.max_epoch = max_epoch
-        self.update_per_epoch = update_per_epoch
-        self.episode_per_test = episode_per_test
-        self.batch_size = batch_size
-        self.test_fn = test_fn
-        self.stop_fn = stop_fn
-        self.save_fn = save_fn
-        self.save_checkpoint_fn = save_checkpoint_fn
-
-        self.reward_metric = reward_metric
-        self.logger = logger
-        self.verbose = verbose
-
-        self.start_epoch, self.gradient_step = 0, 0
-        self.best_reward, self.best_reward_std = 0.0, 0.0
-
-        if resume_from_log:
-            self.start_epoch, _, self.gradient_step = logger.restore_data()
-        self.stat: Dict[str, MovAvg] = defaultdict(MovAvg)
-        self.start_time = time.time()
-
-        if test_collector is not None:
-            self.test_c: Collector = test_collector
-            test_collector.reset_stat()
-            test_result = test_episode(
-                self.policy, self.test_c, test_fn, self.start_epoch,
-                self.episode_per_test, self.logger, self.gradient_step,
-                self.reward_metric
-            )
-            self.best_epoch = self.start_epoch
-            self.best_reward, self.best_reward_std = test_result["rew"], test_result[
-                "rew_std"]
-
-        if self.save_fn:
-            self.save_fn(policy)
-
-        self.epoch = self.start_epoch
-
-    def __iter__(self):  # type: ignore
-        return self
-
-    def __next__(self) -> Tuple[int, Dict[str, Any], Dict[str, Any]]:
-        self.epoch += 1
-
-        # iterator exhaustion check
-        if self.epoch >= self.max_epoch:
-            if self.test_collector is None and self.save_fn:
-                self.save_fn(self.policy)
-            raise StopIteration
-
-        # set policy in train mode
-        self.policy.train()
-
-        # Performs n update_per_epoch
-        with tqdm.trange(
-            self.update_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config
-        ) as t:
-            for _ in t:
-                self.gradient_step += 1
-                losses = self.policy.update(self.batch_size, self.buffer)
-                data = {"gradient_step": str(self.gradient_step)}
-                for k in losses.keys():
-                    self.stat[k].add(losses[k])
-                    losses[k] = self.stat[k].get()
-                    data[k] = f"{losses[k]:.3f}"
-                self.logger.log_update_data(losses, self.gradient_step)
-                t.set_postfix(**data)
-
-        self.logger.save_data(
-            self.epoch, 0, self.gradient_step, self.save_checkpoint_fn
+        learning_type = super().learning_types["offline"]
+        super().__init__(
+            learning_type=learning_type,
+            policy=policy,
+            buffer=buffer,
+            test_collector=test_collector,
+            max_epoch=max_epoch,
+            update_per_epoch=update_per_epoch,
+            step_per_epoch=update_per_epoch,
+            episode_per_test=episode_per_test,
+            batch_size=batch_size,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
+            save_fn=save_fn,
+            save_checkpoint_fn=save_checkpoint_fn,
+            resume_from_log=resume_from_log,
+            reward_metric=reward_metric,
+            logger=logger,
+            verbose=verbose,
         )
 
-        if not self.is_run:
-            epoch_stat: Dict[str, Any] = {k: v.get() for k, v in self.stat.items()}
-            epoch_stat["gradient_step"] = self.gradient_step
 
-        # test
-        if self.test_collector is not None:
-            test_result = test_episode(
-                self.policy, self.test_c, self.test_fn, self.epoch,
-                self.episode_per_test, self.logger, self.gradient_step,
-                self.reward_metric
-            )
-            rew, rew_std = test_result["rew"], test_result["rew_std"]
-            if self.best_epoch < 0 or self.best_reward < rew:
-                self.best_epoch = self.epoch
-                self.best_reward = rew
-                self.best_reward_std = rew_std
-                if self.save_fn:
-                    self.save_fn(self.policy)
-            if self.verbose:
-                print(
-                    f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},"
-                    f" best_reward: {self.best_reward:.6f} ± "
-                    f"{self.best_reward_std:.6f} in #{self.best_epoch}"
-                )
-            if not self.is_run:
-                epoch_stat.update(
-                    {
-                        "test_reward": rew,
-                        "test_reward_std": rew_std,
-                        "best_reward": self.best_reward,
-                        "best_reward_std": self.best_reward_std,
-                        "best_epoch": self.best_epoch
-                    }
-                )
-
-        # return iterator -> next(self)
-        if not self.is_run:
-            info = gather_info(
-                self.start_time, None, self.test_collector, self.best_reward,
-                self.best_reward_std
-            )
-            return self.epoch, epoch_stat, info
-        else:
-            return 0, {}, {}
-
-    def run(self) -> Dict[str, Union[float, str]]:
-        """Consume iterator.
-
-        See itertools - recipes. Use functions that consume iterators at C speed
-        (feed the entire iterator into a zero-length deque).
-        """
-        try:
-            self.is_run = True
-            i = iter(self)
-            deque(i, maxlen=0)  # feed the entire iterator into a zero-length deque
-            info = gather_info(
-                self.start_time, None, self.test_collector, self.best_reward,
-                self.best_reward_std
-            )
-        finally:
-            self.is_run = False
-
-        return info
-
-
+@wraps(OffLineTrainer.__init__)
 def offline_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
+    """Wrapper for offline_trainer run method."""
     return OffLineTrainer(*args, **kwargs).run()
 
 
