@@ -1,8 +1,20 @@
-# Atari
+# Atari Environment
 
-The sample speed is \~3000 env step per second (\~12000 Atari frame per second in fact since we use frame_stack=4) under the normal mode (use a CNN policy and a collector, also storing data into the buffer). The main bottleneck is training the convolutional neural network.
+## EnvPool
 
-The Atari env seed cannot be fixed due to the discussion [here](https://github.com/openai/gym/issues/1478), but it is not a big issue since on Atari it will always have the similar results.
+We highly recommend using envpool to run the following experiments. To install, in a linux machine, type:
+
+```bash
+pip install envpool
+```
+
+After that, `atari_wrapper` will automatically switch to envpool's Atari env. EnvPool's implementation is much faster (about 2\~3x faster for pure execution speed, 1.5x for overall RL training pipeline) than python vectorized env implementation, and it's behavior is consistent to that approach (OpenAI wrapper), which will describe below.
+
+For more information, please refer to EnvPool's [GitHub](https://github.com/sail-sg/envpool/), [Docs](https://envpool.readthedocs.io/en/latest/api/atari.html), and [3rd-party report](https://ppo-details.cleanrl.dev/2021/11/05/ppo-implementation-details/#solving-pong-in-5-minutes-with-ppo--envpool).
+
+## ALE-py
+
+The sample speed is \~3000 env step per second (\~12000 Atari frame per second in fact since we use frame_stack=4) under the normal mode (use a CNN policy and a collector, also storing data into the buffer).
 
 The env wrapper is a crucial thing. Without wrappers, the agent cannot perform well enough on Atari games. Many existing RL codebases use [OpenAI wrapper](https://github.com/openai/baselines/blob/master/baselines/common/atari_wrappers.py), but it is not the original DeepMind version ([related issue](https://github.com/openai/baselines/issues/240)). Dopamine has a different [wrapper](https://github.com/google/dopamine/blob/master/dopamine/discrete_domains/atari_lib.py) but unfortunately it cannot work very well in our codebase.
 
@@ -95,3 +107,17 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 | MsPacmanNoFrameskip-v4      | 3101        | ![](results/rainbow/MsPacman_rew.png)     | `python3 atari_rainbow.py --task "MsPacmanNoFrameskip-v4"`  |
 | SeaquestNoFrameskip-v4      | 2126       | ![](results/rainbow/Seaquest_rew.png)     | `python3 atari_rainbow.py --task "SeaquestNoFrameskip-v4"`  |
 | SpaceInvadersNoFrameskip-v4 | 1794.5       | ![](results/rainbow/SpaceInvaders_rew.png) | `python3 atari_rainbow.py --task "SpaceInvadersNoFrameskip-v4"`  |
+
+# PPO (single run)
+
+One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
+
+| task                        | best reward | reward curve                          | parameters                                                   |
+| --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
+| PongNoFrameskip-v4          | 20.1        | ![](results/ppo/Pong_rew.png)         | `python3 atari_ppo.py --task "PongNoFrameskip-v4"` |
+| BreakoutNoFrameskip-v4      | 438.5        | ![](results/ppo/Breakout_rew.png)     | `python3 atari_ppo.py --task "BreakoutNoFrameskip-v4"` |
+| EnduroNoFrameskip-v4        | 1304.8       | ![](results/ppo/Enduro_rew.png)       | `python3 atari_ppo.py --task "EnduroNoFrameskip-v4"`  |
+| QbertNoFrameskip-v4         | 13640      | ![](results/ppo/Qbert_rew.png)        | `python3 atari_ppo.py --task "QbertNoFrameskip-v4"`  |
+| MsPacmanNoFrameskip-v4      | 1930       | ![](results/ppo/MsPacman_rew.png)     | `python3 atari_ppo.py --task "MsPacmanNoFrameskip-v4"`  |
+| SeaquestNoFrameskip-v4      | 904      | ![](results/ppo/Seaquest_rew.png)     | `python3 atari_ppo.py --task "SeaquestNoFrameskip-v4" --lr 2.5e-5`  |
+| SpaceInvadersNoFrameskip-v4 | 843       | ![](results/ppo/SpaceInvaders_rew.png) | `python3 atari_ppo.py --task "SpaceInvadersNoFrameskip-v4"`  |

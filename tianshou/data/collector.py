@@ -48,6 +48,7 @@ class Collector(object):
         collect option.
 
     .. note::
+
         In past versions of Tianshou, the replay buffer that was passed to `__init__`
         was automatically reset. This is not done in the current implementation.
     """
@@ -219,9 +220,13 @@ class Collector(object):
 
             # get the next action
             if random:
-                self.data.update(
-                    act=[self._action_space[i].sample() for i in ready_env_ids]
-                )
+                try:
+                    act_sample = [
+                        self._action_space[i].sample() for i in ready_env_ids
+                    ]
+                except TypeError:  # envpool's action space is not for per-env
+                    act_sample = [self._action_space.sample() for _ in ready_env_ids]
+                self.data.update(act=act_sample)
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than retain_grad version
@@ -440,9 +445,13 @@ class AsyncCollector(Collector):
 
             # get the next action
             if random:
-                self.data.update(
-                    act=[self._action_space[i].sample() for i in ready_env_ids]
-                )
+                try:
+                    act_sample = [
+                        self._action_space[i].sample() for i in ready_env_ids
+                    ]
+                except TypeError:  # envpool's action space is not for per-env
+                    act_sample = [self._action_space.sample() for _ in ready_env_ids]
+                self.data.update(act=act_sample)
             else:
                 if no_grad:
                     with torch.no_grad():  # faster than retain_grad version

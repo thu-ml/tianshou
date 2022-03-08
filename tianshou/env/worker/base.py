@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Callable, List, Optional, Tuple, Union
 
@@ -11,8 +12,10 @@ class EnvWorker(ABC):
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self._env_fn = env_fn
         self.is_closed = False
-        self.result: Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        self.result: Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+                           np.ndarray]
         self.action_space = self.get_env_attr("action_space")  # noqa: B009
+        self.is_reset = False
 
     @abstractmethod
     def get_env_attr(self, key: str) -> Any:
@@ -22,7 +25,6 @@ class EnvWorker(ABC):
     def set_env_attr(self, key: str, value: Any) -> None:
         pass
 
-    @abstractmethod
     def send(self, action: Optional[np.ndarray]) -> None:
         """Send action signal to low-level worker.
 
@@ -30,7 +32,17 @@ class EnvWorker(ABC):
         it indicates "step" signal. The paired return value from "recv"
         function is determined by such kind of different signal.
         """
-        pass
+        if hasattr(self, "send_action"):
+            warnings.warn(
+                "send_action will soon be deprecated. "
+                "Please use send and recv for your own EnvWorker."
+            )
+            if action is None:
+                self.is_reset = True
+                self.result = self.reset()
+            else:
+                self.is_reset = False
+                self.send_action(action)  # type: ignore
 
     def recv(
         self
@@ -41,6 +53,13 @@ class EnvWorker(ABC):
         single observation; otherwise it returns a tuple of (obs, rew, done,
         info).
         """
+        if hasattr(self, "get_result"):
+            warnings.warn(
+                "get_result will soon be deprecated. "
+                "Please use send and recv for your own EnvWorker."
+            )
+            if not self.is_reset:
+                self.result = self.get_result()  # type: ignore
         return self.result
 
     def reset(self) -> np.ndarray:

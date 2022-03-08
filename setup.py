@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 
 from setuptools import find_packages, setup
 
@@ -10,6 +11,52 @@ def get_version() -> str:
     # https://packaging.python.org/guides/single-sourcing-package-version/
     init = open(os.path.join("tianshou", "__init__.py"), "r").read().split()
     return init[init.index("__version__") + 2][1:-1]
+
+
+def get_install_requires() -> str:
+    return [
+        "gym>=0.15.4",
+        "tqdm",
+        "numpy>1.16.0",  # https://github.com/numpy/numpy/issues/12793
+        "tensorboard>=2.5.0",
+        "torch>=1.4.0",
+        "numba>=0.51.0",
+        "h5py>=2.10.0",  # to match tensorflow's minimal requirements
+    ]
+
+
+def get_extras_require() -> str:
+    req = {
+        "dev": [
+            "sphinx<4",
+            "sphinx_rtd_theme",
+            "sphinxcontrib-bibtex",
+            "flake8",
+            "flake8-bugbear",
+            "yapf",
+            "isort",
+            "pytest",
+            "pytest-cov",
+            "ray>=1.0.0",
+            "wandb>=0.12.0",
+            "networkx",
+            "mypy",
+            "pydocstyle",
+            "doc8",
+            "scipy",
+            "pillow",
+            "pettingzoo>=1.12",
+            "pygame>=2.1.0",  # pettingzoo test cases pistonball
+            "pymunk>=6.2.1",  # pettingzoo test cases pistonball
+            "nni>=2.3",
+        ],
+        "atari": ["atari_py", "opencv-python"],
+        "mujoco": ["mujoco_py"],
+        "pybullet": ["pybullet"],
+    }
+    if sys.platform == "linux":
+        req["dev"].append("envpool>=0.4.5")
+    return req
 
 
 setup(
@@ -47,36 +94,6 @@ setup(
     packages=find_packages(
         exclude=["test", "test.*", "examples", "examples.*", "docs", "docs.*"]
     ),
-    install_requires=[
-        "gym>=0.15.4,<0.20",
-        "tqdm",
-        "numpy>1.16.0",  # https://github.com/numpy/numpy/issues/12793
-        "tensorboard>=2.5.0",
-        "torch>=1.4.0",
-        "numba>=0.51.0",
-        "h5py>=2.10.0",  # to match tensorflow's minimal requirements
-    ],
-    extras_require={
-        "dev": [
-            "sphinx<4",
-            "sphinx_rtd_theme",
-            "sphinxcontrib-bibtex",
-            "flake8",
-            "flake8-bugbear",
-            "yapf",
-            "isort",
-            "pytest",
-            "pytest-cov",
-            "ray>=1.0.0",
-            "wandb>=0.12.0",
-            "networkx",
-            "mypy",
-            "pydocstyle",
-            "doc8",
-            "scipy",
-        ],
-        "atari": ["atari_py", "opencv-python"],
-        "mujoco": ["mujoco_py"],
-        "pybullet": ["pybullet"],
-    },
+    install_requires=get_install_requires(),
+    extras_require=get_extras_require(),
 )

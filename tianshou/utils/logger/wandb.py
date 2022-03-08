@@ -2,7 +2,9 @@ import argparse
 import os
 from typing import Callable, Optional, Tuple
 
-from tianshou.utils import BaseLogger
+from torch.utils.tensorboard import SummaryWriter
+
+from tianshou.utils import BaseLogger, TensorboardLogger
 from tianshou.utils.logger.base import LOG_DATA_TYPE
 
 try:
@@ -17,17 +19,13 @@ class WandbLogger(BaseLogger):
     This logger creates three panels with plots: train, test, and update.
     Make sure to select the correct access for each panel in weights and biases:
 
-    - ``train/env_step`` for train plots
-    - ``test/env_step`` for test plots
-    - ``update/gradient_step`` for update plots
-
     Example of usage:
     ::
 
-        with wandb.init(project="My Project"):
-            logger = WandBLogger()
-            result = onpolicy_trainer(policy, train_collector, test_collector,
-                    logger=logger)
+        logger = WandbLogger()
+        logger.load(SummaryWriter(log_path))
+        result = onpolicy_trainer(policy, train_collector, test_collector,
+                                  logger=logger)
 
     :param int train_interval: the log interval in log_train_data(). Default to 1000.
     :param int test_interval: the log interval in log_test_data(). Default to 1.
@@ -46,7 +44,7 @@ class WandbLogger(BaseLogger):
         test_interval: int = 1,
         update_interval: int = 1000,
         save_interval: int = 1000,
-        project: str = 'tianshou',
+        project: Optional[str] = None,
         name: Optional[str] = None,
         entity: Optional[str] = None,
         run_id: Optional[str] = None,
@@ -56,6 +54,8 @@ class WandbLogger(BaseLogger):
         self.last_save_step = -1
         self.save_interval = save_interval
         self.restored = False
+        if project is None:
+            project = os.getenv("WANDB_PROJECT", "tianshou")
 
         self.wandb_run = wandb.init(
             project=project,
@@ -63,14 +63,25 @@ class WandbLogger(BaseLogger):
             id=run_id,
             resume="allow",
             entity=entity,
+            sync_tensorboard=True,
             monitor_gym=True,
             config=config,  # type: ignore
         ) if not wandb.run else wandb.run
         self.wandb_run._label(repo="tianshou")  # type: ignore
+        self.tensorboard_logger: Optional[TensorboardLogger] = None
+
+    def load(self, writer: SummaryWriter) -> None:
+        self.writer = writer
+        self.tensorboard_logger = TensorboardLogger(writer)
 
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
-        data[step_type] = step
-        wandb.log(data)
+        if self.tensorboard_logger is None:
+            raise Exception(
+                "`logger` needs to load the Tensorboard Writer before "
+                "writing data. Try `logger.load(SummaryWriter(log_path))`"
+            )
+        else:
+            self.tensorboard_logger.write(step_type, step, data)
 
     def save_data(
         self,

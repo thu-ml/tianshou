@@ -10,7 +10,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv
+from tianshou.env import DummyVectorEnv
 from tianshou.policy import CQLPolicy
 from tianshou.trainer import offline_trainer, offline_trainer_iter
 from tianshou.utils import TensorboardLogger
@@ -25,7 +25,8 @@ else:  # pytest
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pendulum-v0')
+    parser.add_argument('--task', type=str, default='Pendulum-v1')
+    parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
@@ -78,13 +79,17 @@ def test_cql(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]  # float
-    if args.task == 'Pendulum-v0':
-        env.spec.reward_threshold = -1200  # too low?
+    if args.reward_threshold is None:
+        # too low?
+        default_reward_threshold = {"Pendulum-v0": -1200, "Pendulum-v1": -1200}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
+    test_envs = DummyVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
     )
     # seed
@@ -177,7 +182,7 @@ def test_cql(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+        return mean_rewards >= args.reward_threshold
 
     def watch():
         policy.load_state_dict(
