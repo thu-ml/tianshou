@@ -364,6 +364,7 @@ class AsyncCollector(Collector):
         exploration_noise: bool = False,
     ) -> None:
         # assert env.is_async
+        warnings.warn("Using async setting may collect extra transitions into buffer.")
         super().__init__(policy, env, buffer, preprocess_fn, exploration_noise)
 
     def reset_env(self) -> None:
@@ -424,7 +425,6 @@ class AsyncCollector(Collector):
                 "Please specify at least one (either n_step or n_episode) "
                 "in AsyncCollector.collect()."
             )
-        warnings.warn("Using async setting may collect extra transitions into buffer.")
 
         ready_env_ids = self._ready_env_ids
 
