@@ -185,20 +185,15 @@ class BaseTrainer:
                 self.logger.restore_data()
 
         self.last_rew, self.last_len = 0.0, 0
-
         if self.train_collector is not None:
             self.train_collector.reset_stat()
-            self.test_in_train = (
-                self.test_in_train and
-                self.train_collector.policy == self.policy and
-                self.test_collector is not None
-            )
-
-        else:
-            self.test_in_train = False
+            if self.train_collector.policy != self.policy:
+                self.test_in_train = False
+            elif self.test_collector is None:
+                self.test_in_train = False
 
         if self.test_collector is not None:
-            assert self.episode_per_test
+            assert self.episode_per_test is not None
             self.test_collector.reset_stat()
             test_result = test_episode(
                 self.policy, self.test_collector, self.test_fn, self.start_epoch,
