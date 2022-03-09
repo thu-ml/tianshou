@@ -30,6 +30,7 @@ dqn
 param
 async
 subprocess
+deque
 nn
 equ
 cql

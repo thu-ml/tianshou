@@ -7,7 +7,7 @@ import tqdm
 
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
-from tianshou.trainer import gather_info, test_episode
+from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 
 
@@ -20,9 +20,9 @@ class BaseTrainer(object):
     The "step" in trainer means an environment step (a.k.a. transition).
     There are three types of learning iterators:
 
-    1. offpolicy learning trainer
-    2. onpolicy learning trainer
-    3. offpolicy learning trainer
+    1. off-policy learning trainer
+    2. on-policy learning trainer
+    3. offline learning trainer
     """
 
     learning_types: Dict[Union[int, str], Union[int, str]] = {
