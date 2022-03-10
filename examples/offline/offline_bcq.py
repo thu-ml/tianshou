@@ -23,7 +23,9 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='HalfCheetah-v2')
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--expert-data-task', type=str, default='halfcheetah-expert-v2')
+    parser.add_argument(
+        '--expert-data-task', type=str, default='halfcheetah-expert-v2'
+    )
     parser.add_argument('--buffer-size', type=int, default=1000000)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[400, 300])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
