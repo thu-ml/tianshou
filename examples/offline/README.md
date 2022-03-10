@@ -12,23 +12,25 @@ We provide implementation of BCQ and CQL algorithm for continuous control.
 
 Tianshou provides an `offline_trainer` for offline reinforcement learning. You can parse d4rl datasets into a `ReplayBuffer` , and set it as the parameter `buffer` of `offline_trainer`.  `offline_bcq.py` is an example of offline RL using the d4rl dataset.
 
-To train an agent with BCQ algorithm:
-
-```bash
-python offline_bcq.py --task halfcheetah-expert-v1
-```
-
-After 1M steps:
-
-![halfcheetah-expert-v1_reward](results/bcq/halfcheetah-expert-v1_reward.png)
-
-`halfcheetah-expert-v1` is a mujoco environment. The setting of hyperparameters are similar to the off-policy algorithms in mujoco environment.
-
 ## Results
 
-| Environment           | BCQ             |
-| --------------------- | --------------- |
-| halfcheetah-expert-v1 | 10624.0 ± 181.4 |
+### IL (Imitation Learning, aka, Behavior Cloning)
+
+| Environment           | Dataset               | IL              | Parameters                                               |
+| --------------------- | --------------------- | --------------- | -------------------------------------------------------- |
+| HalfCheetah-v2        | halfcheetah-expert-v2 | 11355.31        | `python3 ./offline_il.py --task HalfCheetah-v2 --expert-data-task halfcheetah-expert-v2` |
+
+### BCQ
+
+| Environment           | Dataset               | BCQ             | Parameters                                               |
+| --------------------- | --------------------- | --------------- | -------------------------------------------------------- |
+| HalfCheetah-v2        | halfcheetah-expert-v2 | 11261.70        | `python3 ./offline_bcq.py --task HalfCheetah-v2 --expert-data-task halfcheetah-expert-v2` |
+
+### CQL
+
+| Environment           | Dataset               | BCQ             | Parameters                                               |
+| --------------------- | --------------------- | --------------- | -------------------------------------------------------- |
+| HalfCheetah-v2        | halfcheetah-expert-v2 | 2864.37         | `python3 ./offline_cql.py --task HalfCheetah-v2 --expert-data-task halfcheetah-expert-v2` |
 
 ## Discrete control
 
@@ -41,6 +43,15 @@ To running CQL algorithm on Atari, you need to do the following things:
 - Train an expert, by using the command listed in the QRDQN section of Atari examples: `python3 atari_qrdqn.py --task {your_task}`
 - Generate buffer with noise: `python3 atari_qrdqn.py --task {your_task} --watch --resume-path log/{your_task}/qrdqn/policy.pth --eps-test 0.2 --buffer-size 1000000 --save-buffer-name expert.hdf5` (note that 1M Atari buffer cannot be saved as `.pkl` format because it is too large and will cause error);
 - Train offline model: `python3 atari_{bcq,cql,crr}.py --task {your_task} --load-buffer-name expert.hdf5`.
+
+### IL
+
+We test our IL implementation on two example tasks (different from author's version, we use v4 instead of v0; one epoch means 10k gradient step):
+
+| Task                   | Online QRDQN | Behavioral | IL                               | parameters                                                   |
+| ---------------------- | ---------- | ---------- | --------------------------------- |  ------------------------------------------------------------ |
+| PongNoFrameskip-v4     | 20.5       | 6.8        | 20.0 (epoch 5)                    | `python3 atari_il.py --task "PongNoFrameskip-v4" --load-buffer-name log/PongNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 5` |
+| BreakoutNoFrameskip-v4 | 394.3      | 46.9       | 121.9 (epoch 12, could be higher)  | `python3 atari_il.py --task "BreakoutNoFrameskip-v4" --load-buffer-name log/BreakoutNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 12` |
 
 ### BCQ
 
