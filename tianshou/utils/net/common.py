@@ -311,3 +311,53 @@ class DataParallelNet(nn.Module):
         if not isinstance(obs, torch.Tensor):
             obs = torch.as_tensor(obs, dtype=torch.float32)
         return self.net(obs=obs.cuda(), *args, **kwargs)
+
+class BDQNet(nn.Module):
+    """Branching dual Q network
+    """
+    def __init__(
+        self,
+        state_shape: Union[int, Sequence[int]],
+        action_shape: Union[int, Sequence[int]] = 0,
+        action_per_branch: Union[int, Sequence[int]] = 1,
+        common_hidden_sizes: Sequence[int] = (),
+        value_hidden_sizes: Sequence[int] = (),
+        action_hidden_sizes: Sequence[int] = (),
+        norm_layer: Optional[ModuleType] = None,
+        activation: Optional[ModuleType] = nn.ReLU,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
+        super().__init__()
+        self.device = device
+        self.num_branches = action_shape
+        self.action_per_branch = action_per_branch
+        # common network
+        common_input_dim = int(np.prod(state_shape))
+        common_output_dim = 0
+        self.common = MLP(common_input_dim, common_output_dim, common_hidden_sizes, norm_layer, activation, device)
+        # value network
+        value_input_dim = common_hidden_sizes[-1]
+        value_output_dim = 1
+        self.value = MLP(value_input_dim, value_output_dim, value_hidden_sizes, norm_layer, activation, device)
+        # action branching network
+        action_input_dim = common_hidden_sizes[-1]
+        action_output_dim = action_per_branch
+        self.branches = nn.ModuleList([MLP(action_input_dim, action_output_dim, action_hidden_sizes, norm_layer, activation, device) for _ in range(self.num_branches)])
+            
+    def forward(
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        state: Any = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[torch.Tensor, Any]:
+        """Mapping: obs -> flatten (inside MLP)-> logits."""
+        common_out = self.common(obs)
+        value_out = self.value(common_out)
+        value_out = torch.unsqueeze(value_out, 1)
+        action_out = []
+        for b in self.branches:
+            action_out.append(b(common_out))
+        action_scores = torch.stack(action_out, 1)
+        action_scores = action_scores - torch.mean(action_scores, 2, keepdim=True)
+        logits = value_out + action_scores
+        return logits, state
