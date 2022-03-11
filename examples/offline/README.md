@@ -25,15 +25,15 @@ Tianshou provides an `offline_trainer` for offline reinforcement learning. You c
 
 | Environment           | Dataset               | BCQ             | Parameters                                               |
 | --------------------- | --------------------- | --------------- | -------------------------------------------------------- |
-| HalfCheetah-v2        | halfcheetah-expert-v2 | 11261.70        | `python3 ./offline_bcq.py --task HalfCheetah-v2 --expert-data-task halfcheetah-expert-v2` |
-| HalfCheetah-v2        | halfcheetah-expert-v2 | 5120.16        | `python3 ./offline_bcq.py --task HalfCheetah-v2 --expert-data-task halfcheetah-medium-v2` |
+| HalfCheetah-v2        | halfcheetah-expert-v2 | 11509.95        | `python3 ./offline_bcq.py --task HalfCheetah-v2 --expert-data-task halfcheetah-expert-v2` |
+| HalfCheetah-v2        | halfcheetah-medium-v2 | 5147.43        | `python3 ./offline_bcq.py --task HalfCheetah-v2 --expert-data-task halfcheetah-medium-v2` |
 
 ### CQL
 
 | Environment           | Dataset               | CQL             | Parameters                                               |
 | --------------------- | --------------------- | --------------- | -------------------------------------------------------- |
 | HalfCheetah-v2        | halfcheetah-expert-v2 | 2864.37         | `python3 ./offline_cql.py --task HalfCheetah-v2 --expert-data-task halfcheetah-expert-v2` |
-| HalfCheetah-v2        | halfcheetah-expert-v2 | 6505.41         | `python3 ./offline_cql.py --task HalfCheetah-v2 --expert-data-task halfcheetah-medium-v2` |
+| HalfCheetah-v2        | halfcheetah-medium-v2 | 6505.41         | `python3 ./offline_cql.py --task HalfCheetah-v2 --expert-data-task halfcheetah-medium-v2` |
 
 ## Discrete control
 

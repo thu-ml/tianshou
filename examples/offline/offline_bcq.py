@@ -27,7 +27,7 @@ def get_args():
         '--expert-data-task', type=str, default='halfcheetah-expert-v2'
     )
     parser.add_argument('--buffer-size', type=int, default=1000000)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[400, 300])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[256, 256])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument("--start-timesteps", type=int, default=10000)
@@ -40,7 +40,7 @@ def get_args():
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=1 / 35)
 
-    parser.add_argument("--vae-hidden-sizes", type=int, nargs='*', default=[750, 750])
+    parser.add_argument("--vae-hidden-sizes", type=int, nargs='*', default=[512, 512])
     # default to 2 * action_dim
     parser.add_argument('--latent-dim', type=int)
     parser.add_argument("--gamma", default=0.99)
