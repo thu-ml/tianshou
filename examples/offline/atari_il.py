@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import datetime
 import os
@@ -9,12 +11,11 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from examples.atari.atari_network import DQN
-from examples.atari.atari_wrapper import wrap_deepmind
+from examples.atari.atari_wrapper import make_atari_env
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import ShmemVectorEnv
 from tianshou.policy import ImitationPolicy
 from tianshou.trainer import offline_trainer
-from tianshou.utils import TensorboardLogger
+from tianshou.utils import TensorboardLogger, WandbLogger
 
 
 def get_args():
@@ -26,10 +27,19 @@ def get_args():
     parser.add_argument("--update-per-epoch", type=int, default=10000)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--test-num", type=int, default=10)
-    parser.add_argument('--frames-stack', type=int, default=4)
+    parser.add_argument("--frames-stack", type=int, default=4)
+    parser.add_argument("--scale-obs", type=int, default=0)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
     parser.add_argument("--resume-path", type=str, default=None)
+    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument(
+        "--logger",
+        type=str,
+        default="tensorboard",
+        choices=["tensorboard", "wandb"],
+    )
+    parser.add_argument("--wandb-project", type=str, default="offline_atari.benchmark")
     parser.add_argument(
         "--watch",
         default=False,
@@ -47,35 +57,24 @@ def get_args():
     return args
 
 
-def make_atari_env(args):
-    return wrap_deepmind(args.task, frame_stack=args.frames_stack)
-
-
-def make_atari_env_watch(args):
-    return wrap_deepmind(
-        args.task,
-        frame_stack=args.frames_stack,
-        episode_life=False,
-        clip_rewards=False
-    )
-
-
 def test_il(args=get_args()):
     # envs
-    env = make_atari_env(args)
+    env, _, test_envs = make_atari_env(
+        args.task,
+        args.seed,
+        1,
+        args.test_num,
+        scale=args.scale_obs,
+        frame_stack=args.frames_stack,
+    )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     # should be N_FRAMES x H x W
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
-    # make environments
-    test_envs = ShmemVectorEnv(
-        [lambda: make_atari_env_watch(args) for _ in range(args.test_num)]
-    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    test_envs.seed(args.seed)
     # model
     net = DQN(*args.state_shape, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
@@ -100,16 +99,29 @@ def test_il(args=get_args()):
     test_collector = Collector(policy, test_envs, exploration_noise=True)
 
     # log
-    log_path = os.path.join(
-        args.logdir, args.task, 'il',
-        f'seed_{args.seed}_{datetime.datetime.now().strftime("%m%d-%H%M%S")}'
-    )
+    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+    args.algo_name = "il"
+    log_name = os.path.join(args.task, args.algo_name, str(args.seed), now)
+    log_path = os.path.join(args.logdir, log_name)
+
+    # logger
+    if args.logger == "wandb":
+        logger = WandbLogger(
+            save_interval=1,
+            name=log_name.replace(os.path.sep, "__"),
+            run_id=args.resume_id,
+            config=args,
+            project=args.wandb_project,
+        )
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    logger = TensorboardLogger(writer, update_interval=args.log_interval)
+    if args.logger == "tensorboard":
+        logger = TensorboardLogger(writer)
+    else:  # wandb
+        logger.load(writer)
 
     def save_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         return False
