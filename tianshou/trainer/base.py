@@ -1,6 +1,6 @@
 import time
 from collections import defaultdict, deque
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Union
 
 import numpy as np
 import tqdm
@@ -23,6 +23,36 @@ class BaseTrainer(object):
     1. off-policy learning trainer
     2. on-policy learning trainer
     3. offline learning trainer
+
+    Examples:
+
+    ::
+
+        trainer = onpolicy_trainer_generator(...)
+        for epoch, epoch_stat, info in trainer:
+            print(f"Epoch: {epoch}")
+            print(epoch_stat)
+            print(info)
+            do_something_with_policy()
+            query_something_about_policy()
+            make_a_plot_with(epoch_stat)
+            display(info)
+
+
+    - epoch int: the epoch number
+    - epoch_stat dict: a large collection of metrics of the current epoch
+    - info dict: gather_info
+
+    You can even iterate on several trainers at the same time:
+
+    ::
+
+        trainer1 = onpolicy_trainer_generator(...)
+        trainer2 = onpolicy_trainer_generator(...)
+        for result1,result2,... in zip(trainer1,trainer2,...):
+            compare_results(result1,result2,...)
+
+
     """
 
     learning_types: Dict[Union[int, str], Union[int, str]] = {
@@ -116,6 +146,7 @@ class BaseTrainer(object):
         :param bool test_in_train: whether to test in the training phase.
             Default to True.
         """
+
         self.policy = policy
         self.buffer = buffer
 
@@ -124,7 +155,7 @@ class BaseTrainer(object):
 
         self.logger = logger
         self.start_time = time.time()
-        self.stat: Dict[str, MovAvg] = defaultdict(MovAvg)
+        self.stat: DefaultDict[str, MovAvg] = defaultdict(MovAvg)
         self.best_reward = 0.0
         self.best_reward_std = 0.0
         self.start_epoch = 0
@@ -158,10 +189,10 @@ class BaseTrainer(object):
         self.is_run = False
         self.last_rew, self.last_len = 0.0, 0
         self.env_step = 0
-        self.test_c = self.test_collector
         self.epoch = self.start_epoch
         self.best_epoch = self.start_epoch
         self.stop_fn_flag = 0
+        self.iter_num = 0
 
         self.update_function: Dict[Union[int, str], Callable] = {
             0: self.offpolicy_update,
@@ -173,7 +204,9 @@ class BaseTrainer(object):
         }
         assert learning_type in self.learning_types
         self.learning_type = learning_type
-        self.policy_update_fn = self.update_function[self.learning_type]
+        self.policy_update_fn: Callable[[Any, Any],
+                                        None] = self.update_function[self.learning_type
+                                                                     ]
 
     def reset(self) -> None:
         """Initialize or reset the instance to yield a new iterator from zero."""
@@ -205,6 +238,7 @@ class BaseTrainer(object):
             self.save_fn(self.policy)
         self.epoch = self.start_epoch
         self.stop_fn_flag = 0
+        self.iter_num = 0
 
     def __iter__(self):  # type: ignore
         self.reset()
@@ -212,8 +246,9 @@ class BaseTrainer(object):
 
     def __next__(self) -> Tuple[int, Dict[str, Any], Dict[str, Any]]:
         self.epoch += 1
+        self.iter_num += 1
 
-        if self.epoch > 1:
+        if self.iter_num > 1:
 
             # iterator exhaustion check
             if self.epoch >= self.max_epoch:
@@ -359,9 +394,9 @@ class BaseTrainer(object):
         }
         if result["n/ep"] > 0:
             if self.test_in_train and self.stop_fn and self.stop_fn(result["rew"]):
-                assert self.test_c is not None
+                assert self.test_collector is not None
                 test_result = test_episode(
-                    self.policy, self.test_c, self.test_fn, self.epoch,
+                    self.policy, self.test_collector, self.test_fn, self.epoch,
                     self.episode_per_test, self.logger, self.env_step
                 )
                 if self.stop_fn(test_result["rew"]):

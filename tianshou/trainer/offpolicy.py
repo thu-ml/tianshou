@@ -17,6 +17,7 @@ class OffPolicyTrainer(BaseTrainer):
 
     The "step" in trainer means an environment step (a.k.a. transition).
     """
+    __doc__ = BaseTrainer.__doc__
 
     def __init__(
         self,

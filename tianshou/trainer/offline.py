@@ -18,6 +18,7 @@ class OffLineTrainer(BaseTrainer):
     The "step" in offline trainer means a gradient step.
 
     """
+    __doc__ = BaseTrainer.__doc__
 
     def __init__(
         self,
