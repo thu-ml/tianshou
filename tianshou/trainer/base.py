@@ -168,7 +168,7 @@ class BaseTrainer(object):
         self.best_reward_std = 0.0
         self.start_epoch = 0
         self.gradient_step = 0
-
+        self.env_step = 0
         self.max_epoch = max_epoch
         self.step_per_epoch = step_per_epoch
 
@@ -196,7 +196,7 @@ class BaseTrainer(object):
 
         self.is_run = False
         self.last_rew, self.last_len = 0.0, 0
-        self.env_step = 0
+
         self.epoch = self.start_epoch
         self.best_epoch = self.start_epoch
         self.stop_fn_flag = 0
@@ -225,8 +225,10 @@ class BaseTrainer(object):
                 self.logger.restore_data()
 
         self.last_rew, self.last_len = 0.0, 0
+        self.start_time = time.time()
         if self.train_collector is not None:
             self.train_collector.reset_stat()
+
             if self.train_collector.policy != self.policy:
                 self.test_in_train = False
             elif self.test_collector is None:
@@ -244,6 +246,7 @@ class BaseTrainer(object):
                 "rew_std"]
         if self.save_fn:
             self.save_fn(self.policy)
+
         self.epoch = self.start_epoch
         self.stop_fn_flag = 0
         self.iter_num = 0
@@ -288,6 +291,8 @@ class BaseTrainer(object):
                 result: Dict[str, Any] = dict()
                 if self.train_collector is not None:
                     data, result, self.stop_fn_flag = self.train_step()
+                    if self.stop_fn_flag:
+                        break
                     t.update(result["n/st"])
                 else:
                     assert self.buffer
