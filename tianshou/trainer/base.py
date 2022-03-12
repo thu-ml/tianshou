@@ -306,9 +306,14 @@ class BaseTrainer(object):
             if t.n <= t.total:
                 t.update()
 
-        self.logger.save_data(
-            self.epoch, self.env_step, self.gradient_step, self.save_checkpoint_fn
-        )
+        if not self.stop_fn_flag:
+            self.logger.save_data(
+                self.epoch, self.env_step, self.gradient_step, self.save_checkpoint_fn
+            )
+            # test
+            if self.test_collector is not None:
+                test_stat = self.test_step()
+                epoch_stat.update(test_stat)
 
         if not self.is_run:
             epoch_stat.update({k: v.get() for k, v in self.stat.items()})
@@ -322,24 +327,6 @@ class BaseTrainer(object):
                     "n/st": int(result["n/st"]),
                 }
             )
-
-        if self.stop_fn_flag:
-            if not self.is_run:
-                info = gather_info(
-                    self.start_time, self.train_collector, self.test_collector,
-                    self.best_reward, self.best_reward_std
-                )
-                return self.epoch, epoch_stat, info
-            else:
-                return 0, {}, {}
-
-        # test
-        if self.test_collector is not None:
-            test_stat = self.test_step()
-            epoch_stat.update(test_stat)
-
-        # return iterator -> next(self)
-        if not self.is_run:
             info = gather_info(
                 self.start_time, self.train_collector, self.test_collector,
                 self.best_reward, self.best_reward_std
