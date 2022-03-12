@@ -295,7 +295,7 @@ class BaseTrainer(object):
                         break
                     t.update(result["n/st"])
                 else:
-                    assert self.buffer
+                    assert self.buffer, "No train_collector or buffer specified"
                     result["n/ep"] = len(self.buffer)
                     result["n/st"] = int(self.gradient_step)
                     t.update()
@@ -444,6 +444,7 @@ class BaseTrainer(object):
         self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
     ) -> None:
         """Performs off-line policy update."""
+        assert self.buffer
         self.gradient_step += 1
         losses = self.policy.update(self.batch_size, self.buffer)
         data.update({"gradient_step": str(self.gradient_step)})
