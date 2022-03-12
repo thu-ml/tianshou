@@ -10,10 +10,10 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from examples.atari.atari_network import QRDQN
+from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.policy import DiscreteCQLPolicy
+from tianshou.policy import ImitationPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 
@@ -22,17 +22,10 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=0.0001)
-    parser.add_argument("--gamma", type=float, default=0.99)
-    parser.add_argument("--num-quantiles", type=int, default=200)
-    parser.add_argument("--n-step", type=int, default=1)
-    parser.add_argument("--target-update-freq", type=int, default=500)
-    parser.add_argument("--min-q-weight", type=float, default=10.)
     parser.add_argument("--epoch", type=int, default=100)
     parser.add_argument("--update-per-epoch", type=int, default=10000)
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[512])
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--frames-stack", type=int, default=4)
     parser.add_argument("--scale-obs", type=int, default=0)
@@ -64,7 +57,7 @@ def get_args():
     return args
 
 
-def test_discrete_cql(args=get_args()):
+def test_il(args=get_args()):
     # envs
     env, _, test_envs = make_atari_env(
         args.task,
@@ -83,18 +76,10 @@ def test_discrete_cql(args=get_args()):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
-    net = QRDQN(*args.state_shape, args.action_shape, args.num_quantiles, args.device)
+    net = DQN(*args.state_shape, args.action_shape, device=args.device).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
-    policy = DiscreteCQLPolicy(
-        net,
-        optim,
-        args.gamma,
-        args.num_quantiles,
-        args.n_step,
-        args.target_update_freq,
-        min_q_weight=args.min_q_weight,
-    ).to(args.device)
+    policy = ImitationPolicy(net, optim, action_space=env.action_space)
     # load a previous policy
     if args.resume_path:
         policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
@@ -102,9 +87,9 @@ def test_discrete_cql(args=get_args()):
     # buffer
     assert os.path.exists(args.load_buffer_name), \
         "Please run atari_qrdqn.py first to get expert's data buffer."
-    if args.load_buffer_name.endswith(".pkl"):
+    if args.load_buffer_name.endswith('.pkl'):
         buffer = pickle.load(open(args.load_buffer_name, "rb"))
-    elif args.load_buffer_name.endswith(".hdf5"):
+    elif args.load_buffer_name.endswith('.hdf5'):
         buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
     else:
         print(f"Unknown buffer format: {args.load_buffer_name}")
@@ -115,7 +100,7 @@ def test_discrete_cql(args=get_args()):
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    args.algo_name = "cql"
+    args.algo_name = "il"
     log_name = os.path.join(args.task, args.algo_name, str(args.seed), now)
     log_path = os.path.join(args.logdir, log_name)
 
@@ -145,7 +130,6 @@ def test_discrete_cql(args=get_args()):
     def watch():
         print("Setup test envs ...")
         policy.eval()
-        policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         print("Testing agent ...")
         test_collector.reset()
@@ -176,4 +160,4 @@ def test_discrete_cql(args=get_args()):
 
 
 if __name__ == "__main__":
-    test_discrete_cql(get_args())
+    test_il(get_args())
