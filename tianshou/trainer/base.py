@@ -255,7 +255,7 @@ class BaseTrainer(object):
         self.reset()
         return self
 
-    def __next__(self) -> Tuple[int, Dict[str, Any], Dict[str, Any]]:
+    def __next__(self) -> Union[None, Tuple[int, Dict[str, Any], Dict[str, Any]]]:
         self.epoch += 1
         self.iter_num += 1
 
@@ -333,7 +333,7 @@ class BaseTrainer(object):
             )
             return self.epoch, epoch_stat, info
         else:
-            return 0, {}, {}
+            return None
 
     def test_step(self) -> Dict[str, Any]:
         """Performs a testing step."""
