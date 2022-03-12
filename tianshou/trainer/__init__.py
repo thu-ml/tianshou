@@ -2,17 +2,17 @@
 
 from tianshou.trainer.base import BaseTrainer
 from tianshou.trainer.offline import (
-    OffLineTrainer,
+    OfflineTrainer,
     offline_trainer,
     offline_trainer_iter,
 )
 from tianshou.trainer.offpolicy import (
-    OffPolicyTrainer,
+    OffpolicyTrainer,
     offpolicy_trainer,
     offpolicy_trainer_iter,
 )
 from tianshou.trainer.onpolicy import (
-    OnPolicyTrainer,
+    OnpolicyTrainer,
     onpolicy_trainer,
     onpolicy_trainer_iter,
 )
@@ -22,13 +22,13 @@ __all__ = [
     "BaseTrainer",
     "offpolicy_trainer",
     "offpolicy_trainer_iter",
-    "OffPolicyTrainer",
+    "OffpolicyTrainer",
     "onpolicy_trainer",
     "onpolicy_trainer_iter",
-    "OnPolicyTrainer",
+    "OnpolicyTrainer",
     "offline_trainer",
     "offline_trainer_iter",
-    "OffLineTrainer",
+    "OfflineTrainer",
     "test_episode",
     "gather_info",
 ]

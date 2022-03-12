@@ -17,42 +17,58 @@ class BaseTrainer(object):
     Returns an iterator that yields a 3-tuple (epoch, stats, info) of train results
     on every epoch.
 
-    The "step" in trainer means an environment step (a.k.a. transition).
-    There are three types of learning iterators:
-
-    1. off-policy learning trainer
-    2. on-policy learning trainer
-    3. offline learning trainer
-
-    Examples:
-
-    ::
-
-        trainer = onpolicy_trainer_generator(...)
-        for epoch, epoch_stat, info in trainer:
-            print(f"Epoch: {epoch}")
-            print(epoch_stat)
-            print(info)
-            do_something_with_policy()
-            query_something_about_policy()
-            make_a_plot_with(epoch_stat)
-            display(info)
-
-
-    - epoch int: the epoch number
-    - epoch_stat dict: a large collection of metrics of the current epoch
-    - info dict: gather_info
-
-    You can even iterate on several trainers at the same time:
-
-    ::
-
-        trainer1 = onpolicy_trainer_generator(...)
-        trainer2 = onpolicy_trainer_generator(...)
-        for result1,result2,... in zip(trainer1,trainer2,...):
-            compare_results(result1,result2,...)
-
-
+    :param learning_type int|str: type of learning iterator, 0,1,2 for "offpolicy",
+        "onpolicy" and "offline" respectively
+    :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
+    :param Collector train_collector: the collector used for training.
+    :param Collector test_collector: the collector used for testing. If it's None,
+        then no testing will be performed.
+    :param int max_epoch: the maximum number of epochs for training. The training
+        process might be finished before reaching ``max_epoch`` if ``stop_fn``
+        is set.
+    :param int step_per_epoch: the number of transitions collected per epoch.
+    :param int repeat_per_collect: the number of repeat time for policy learning,
+        for example, set it to 2 means the policy needs to learn each given batch
+        data twice.
+    :param int episode_per_test: the number of episodes for one policy evaluation.
+    :param int batch_size: the batch size of sample data, which is going to feed in
+        the policy network.
+    :param int step_per_collect: the number of transitions the collector would
+        collect before the network update, i.e., trainer will collect
+        "step_per_collect" transitions and do some policy network update repeatedly
+        in each epoch.
+    :param int episode_per_collect: the number of episodes the collector would
+        collect before the network update, i.e., trainer will collect
+        "episode_per_collect" episodes and do some policy network update repeatedly
+        in each epoch.
+    :param function train_fn: a hook called at the beginning of training in each
+        epoch. It can be used to perform custom additional operations, with the
+        signature ``f(num_epoch: int, step_idx: int) -> None``.
+    :param function test_fn: a hook called at the beginning of testing in each
+        epoch. It can be used to perform custom additional operations, with the
+        signature ``f(num_epoch: int, step_idx: int) -> None``.
+    :param function save_fn: a hook called when the undiscounted average mean
+        reward in evaluation phase gets better, with the signature
+        ``f(policy: BasePolicy) -> None``.
+    :param function save_checkpoint_fn: a function to save training process, with
+        the signature ``f(epoch: int, env_step: int, gradient_step: int) -> None``;
+        you can save whatever you want.
+    :param bool resume_from_log: resume env_step/gradient_step and other metadata
+        from existing tensorboard log. Default to False.
+    :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
+        bool``, receives the average undiscounted returns of the testing result,
+        returns a boolean which indicates whether reaching the goal.
+    :param function reward_metric: a function with signature
+        ``f(rewards: np.ndarray with shape (num_episode, agent_num)) -> np.ndarray
+        with shape (num_episode,)``, used in multi-agent RL. We need to return a
+        single scalar for each episode's result to monitor training in the
+        multi-agent RL setting. This function specifies what is the desired metric,
+        e.g., the reward of agent 1 or the average reward over all agents.
+    :param BaseLogger logger: A logger that logs statistics during
+        training/testing/updating. Default to a logger that doesn't log anything.
+    :param bool verbose: whether to print the information. Default to True.
+    :param bool test_in_train: whether to test in the training phase.
+        Default to True.
     """
 
     learning_types: Dict[Union[int, str], Union[int, str]] = {
@@ -63,6 +79,54 @@ class BaseTrainer(object):
         2: "offline",
         "offline": 2,
     }
+
+    @staticmethod
+    def gen_doc(learning_type: Union[int, str]) -> str:
+        if isinstance(learning_type, int):
+            learning_type = BaseTrainer.learning_types[learning_type]
+
+        step_means = f'The "step" in {learning_type} trainer means '
+        if learning_type != 2:
+            step_means += "an environment step (a.k.a. transition)."
+        else:  # offline
+            step_means += "a gradient step."
+
+        trainer_name = learning_type.capitalize() + "Trainer"  # type: ignore
+
+        return f"""An iterator class for {learning_type} trainer procedure.
+
+        Returns an iterator that yields a 3-tuple (epoch, stats, info) of
+        train results on every epoch.
+
+        {step_means}
+
+        Example usage:
+
+        ::
+
+            trainer = {trainer_name}(...)
+            for epoch, epoch_stat, info in trainer:
+                print("Epoch:", epoch)
+                print(epoch_stat)
+                print(info)
+                do_something_with_policy()
+                query_something_about_policy()
+                make_a_plot_with(epoch_stat)
+                display(info)
+
+        - epoch int: the epoch number
+        - epoch_stat dict: a large collection of metrics of the current epoch
+        - info dict: :func:`~tianshou.trainer.gather_info` result
+
+        You can even iterate on several trainers at the same time:
+
+        ::
+
+            trainer1 = {trainer_name}(...)
+            trainer2 = {trainer_name}(...)
+            for result1, result2, ... in zip(trainer1, trainer2, ...):
+                compare_results(result1, result2, ...)
+        """
 
     def __init__(
         self,
@@ -91,62 +155,6 @@ class BaseTrainer(object):
         verbose: bool = True,
         test_in_train: bool = True,
     ):
-        """Create an iterator wrapper for training procedure.
-
-        :param learning_type int|str: type of learning iterator, 0,1,2 for "offpolicy",
-            "onpolicy" and "offline" respectively
-        :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
-        :param Collector train_collector: the collector used for training.
-        :param Collector test_collector: the collector used for testing. If it's None,
-            then no testing will be performed.
-        :param int max_epoch: the maximum number of epochs for training. The training
-            process might be finished before reaching ``max_epoch`` if ``stop_fn``
-            is set.
-        :param int step_per_epoch: the number of transitions collected per epoch.
-        :param int repeat_per_collect: the number of repeat time for policy learning,
-            for example, set it to 2 means the policy needs to learn each given batch
-            data twice.
-        :param int episode_per_test: the number of episodes for one policy evaluation.
-        :param int batch_size: the batch size of sample data, which is going to feed in
-            the policy network.
-        :param int step_per_collect: the number of transitions the collector would
-            collect before the network update, i.e., trainer will collect
-            "step_per_collect" transitions and do some policy network update repeatedly
-            in each epoch.
-        :param int episode_per_collect: the number of episodes the collector would
-            collect before the network update, i.e., trainer will collect
-            "episode_per_collect" episodes and do some policy network update repeatedly
-            in each epoch.
-        :param function train_fn: a hook called at the beginning of training in each
-            epoch. It can be used to perform custom additional operations, with the
-            signature ``f(num_epoch: int, step_idx: int) -> None``.
-        :param function test_fn: a hook called at the beginning of testing in each
-            epoch. It can be used to perform custom additional operations, with the
-            signature ``f(num_epoch: int, step_idx: int) -> None``.
-        :param function save_fn: a hook called when the undiscounted average mean
-            reward in evaluation phase gets better, with the signature
-            ``f(policy: BasePolicy) -> None``.
-        :param function save_checkpoint_fn: a function to save training process, with
-            the signature ``f(epoch: int, env_step: int, gradient_step: int) -> None``;
-            you can save whatever you want.
-        :param bool resume_from_log: resume env_step/gradient_step and other metadata
-           from existing tensorboard log. Default to False.
-        :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
-            bool``, receives the average undiscounted returns of the testing result,
-            returns a boolean which indicates whether reaching the goal.
-        :param function reward_metric: a function with signature
-           ``f(rewards: np.ndarray with shape (num_episode, agent_num)) -> np.ndarray
-            with shape (num_episode,)``, used in multi-agent RL. We need to return a
-            single scalar for each episode's result to monitor training in the
-            multi-agent RL setting. This function specifies what is the desired metric,
-            e.g., the reward of agent 1 or the average reward over all agents.
-        :param BaseLogger logger: A logger that logs statistics during
-            training/testing/updating. Default to a logger that doesn't log anything.
-        :param bool verbose: whether to print the information. Default to True.
-        :param bool test_in_train: whether to test in the training phase.
-            Default to True.
-        """
-
         self.policy = policy
         self.buffer = buffer
 
