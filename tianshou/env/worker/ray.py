@@ -24,7 +24,9 @@ class RayEnvWorker(EnvWorker):
     """Ray worker used in RayVectorEnv."""
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
-        self.env = ray.remote(_SetAttrWrapper).options(num_cpus=0).remote(env_fn())
+        self.env = ray.remote(_SetAttrWrapper).options(  # type: ignore
+            num_cpus=0
+        ).remote(env_fn())
         super().__init__(env_fn)
 
     def get_env_attr(self, key: str) -> Any:
@@ -54,7 +56,7 @@ class RayEnvWorker(EnvWorker):
     def recv(
         self
     ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
-        return ray.get(self.result)
+        return ray.get(self.result)  # type: ignore
 
     def seed(self, seed: Optional[int] = None) -> List[int]:
         super().seed(seed)
