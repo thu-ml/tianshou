@@ -199,7 +199,7 @@ class BaseTrainer(object):
 
         self.epoch = self.start_epoch
         self.best_epoch = self.start_epoch
-        self.stop_fn_flag = 0
+        self.stop_fn_flag = False
         self.iter_num = 0
 
         self.update_function: Dict[Union[int, str], Callable] = {
@@ -248,7 +248,7 @@ class BaseTrainer(object):
             self.save_fn(self.policy)
 
         self.epoch = self.start_epoch
-        self.stop_fn_flag = 0
+        self.stop_fn_flag = False
         self.iter_num = 0
 
     def __iter__(self):  # type: ignore
@@ -267,8 +267,8 @@ class BaseTrainer(object):
                     self.save_fn(self.policy)
                 raise StopIteration
 
-            # exit flag 1, when test_in_train and stop_fn succeeds on result["rew"]
-            if self.test_in_train and self.stop_fn and self.stop_fn_flag == 1:
+            # exit flag 1, when stop_fn succeeds in train_step or test_step
+            if self.stop_fn_flag:
                 raise StopIteration
 
             # stop_fn criterion
@@ -285,16 +285,15 @@ class BaseTrainer(object):
         with tqdm.tqdm(
             total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config
         ) as t:
-
             while t.n < t.total and not self.stop_fn_flag:
                 data: Dict[str, Any] = dict()
                 result: Dict[str, Any] = dict()
                 if self.train_collector is not None:
                     data, result, self.stop_fn_flag = self.train_step()
+                    t.update(result["n/st"])
                     if self.stop_fn_flag:
                         t.set_postfix(**data)
                         break
-                    t.update(result["n/st"])
                 else:
                     assert self.buffer, "No train_collector or buffer specified"
                     result["n/ep"] = len(self.buffer)
@@ -304,18 +303,18 @@ class BaseTrainer(object):
                 self.policy_update_fn(data, result)
                 t.set_postfix(**data)
 
-            if t.n <= t.total:
+            if t.n <= t.total and not self.stop_fn_flag:
                 t.update()
 
-        self.logger.save_data(
-            self.epoch, self.env_step, self.gradient_step, self.save_checkpoint_fn
-        )
-
         if not self.stop_fn_flag:
+            self.logger.save_data(
+                self.epoch, self.env_step, self.gradient_step, self.save_checkpoint_fn
+            )
             # test
             if self.test_collector is not None:
-                test_stat = self.test_step()
-                epoch_stat.update(test_stat)
+                test_stat, self.stop_fn_flag = self.test_step()
+                if not self.is_run:
+                    epoch_stat.update(test_stat)
 
         if not self.is_run:
             epoch_stat.update({k: v.get() for k, v in self.stat.items()})
@@ -337,10 +336,11 @@ class BaseTrainer(object):
         else:
             return None
 
-    def test_step(self) -> Dict[str, Any]:
+    def test_step(self) -> Tuple[Dict[str, Any], bool]:
         """Performs a testing step."""
         assert self.episode_per_test is not None
         assert self.test_collector is not None
+        stop_fn_flag = False
         test_result = test_episode(
             self.policy, self.test_collector, self.test_fn, self.epoch,
             self.episode_per_test, self.logger, self.env_step, self.reward_metric
@@ -368,7 +368,10 @@ class BaseTrainer(object):
             }
         else:
             test_stat = {}
-        return test_stat
+        if self.stop_fn and self.stop_fn(self.best_reward):
+            stop_fn_flag = True
+
+        return test_stat, stop_fn_flag
 
     def train_step(self) -> Tuple[Dict[str, Any], Dict[str, Any], bool]:
         """Performs 1 training step."""
@@ -460,8 +463,7 @@ class BaseTrainer(object):
         """
         try:
             self.is_run = True
-            i = iter(self)
-            deque(i, maxlen=0)  # feed the entire iterator into a zero-length deque
+            deque(self, maxlen=0)  # feed the entire iterator into a zero-length deque
             info = gather_info(
                 self.start_time, None, self.test_collector, self.best_reward,
                 self.best_reward_std
