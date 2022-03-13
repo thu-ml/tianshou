@@ -292,6 +292,7 @@ class BaseTrainer(object):
                 if self.train_collector is not None:
                     data, result, self.stop_fn_flag = self.train_step()
                     if self.stop_fn_flag:
+                        t.set_postfix(**data)
                         break
                     t.update(result["n/st"])
                 else:
@@ -306,10 +307,11 @@ class BaseTrainer(object):
             if t.n <= t.total:
                 t.update()
 
+        self.logger.save_data(
+            self.epoch, self.env_step, self.gradient_step, self.save_checkpoint_fn
+        )
+
         if not self.stop_fn_flag:
-            self.logger.save_data(
-                self.epoch, self.env_step, self.gradient_step, self.save_checkpoint_fn
-            )
             # test
             if self.test_collector is not None:
                 test_stat = self.test_step()
