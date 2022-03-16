@@ -89,9 +89,8 @@ class OnpolicyTrainer(BaseTrainer):
         verbose: bool = True,
         test_in_train: bool = True,
     ):
-        learning_type = super().learning_types["onpolicy"]
         super().__init__(
-            learning_type=learning_type,
+            learning_type="onpolicy",
             policy=policy,
             train_collector=train_collector,
             test_collector=test_collector,

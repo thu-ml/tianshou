@@ -17,8 +17,8 @@ class BaseTrainer(object):
     Returns an iterator that yields a 3-tuple (epoch, stats, info) of train results
     on every epoch.
 
-    :param learning_type int|str: type of learning iterator, 0,1,2 for "offpolicy",
-        "onpolicy" and "offline" respectively
+    :param learning_type str: type of learning iterator, available choices are
+        "offpolicy", "onpolicy" and "offline".
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param Collector train_collector: the collector used for training.
     :param Collector test_collector: the collector used for testing. If it's None,
@@ -71,27 +71,17 @@ class BaseTrainer(object):
         Default to True.
     """
 
-    learning_types: Dict[Union[int, str], Union[int, str]] = {
-        0: "offpolicy",
-        "offpolicy": 0,
-        1: "onpolicy",
-        "onpolicy": 1,
-        2: "offline",
-        "offline": 2,
-    }
-
     @staticmethod
-    def gen_doc(learning_type: Union[int, str]) -> str:
-        if isinstance(learning_type, int):
-            learning_type = BaseTrainer.learning_types[learning_type]
+    def gen_doc(learning_type: str) -> str:
+        """Document string for subclass trainer."""
 
         step_means = f'The "step" in {learning_type} trainer means '
-        if learning_type != 2:
+        if learning_type != "offline":
             step_means += "an environment step (a.k.a. transition)."
         else:  # offline
             step_means += "a gradient step."
 
-        trainer_name = learning_type.capitalize() + "Trainer"  # type: ignore
+        trainer_name = learning_type.capitalize() + "Trainer"
 
         return f"""An iterator class for {learning_type} trainer procedure.
 
@@ -130,7 +120,7 @@ class BaseTrainer(object):
 
     def __init__(
         self,
-        learning_type: Union[int, str],
+        learning_type: str,
         policy: BasePolicy,
         max_epoch: int,
         batch_size: int,
@@ -202,18 +192,7 @@ class BaseTrainer(object):
         self.stop_fn_flag = False
         self.iter_num = 0
 
-        update_function: Dict[Union[int, str], Callable] = {
-            0: self.offpolicy_update,
-            "offpolicy": self.offpolicy_update,
-            1: self.onpolicy_update,
-            "onpolicy": self.onpolicy_update,
-            2: self.offline_update,
-            "offline": self.offline_update,
-        }
-        assert learning_type in self.learning_types
-        self.learning_type = learning_type
-        self.policy_update_fn: Callable[[Any, Any], None] = \
-            update_function[self.learning_type]
+        self.policy_update_fn = getattr(self, f"{learning_type}_update")
 
     def reset(self) -> None:
         """Initialize or reset the instance to yield a new iterator from zero."""

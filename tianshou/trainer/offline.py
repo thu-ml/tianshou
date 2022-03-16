@@ -71,9 +71,8 @@ class OfflineTrainer(BaseTrainer):
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
     ):
-        learning_type = super().learning_types["offline"]
         super().__init__(
-            learning_type=learning_type,
+            learning_type="offline",
             policy=policy,
             buffer=buffer,
             test_collector=test_collector,
