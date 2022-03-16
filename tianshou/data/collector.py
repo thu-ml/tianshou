@@ -64,14 +64,15 @@ class Collector(object):
         super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
-            env = DummyVectorEnv([lambda: env])
-        self.env = env
-        self.env_num = len(env)
+            self.env = DummyVectorEnv([lambda: env])  # type: ignore
+        else:
+            self.env = env  # type: ignore
+        self.env_num = len(self.env)
         self.exploration_noise = exploration_noise
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
-        self._action_space = env.action_space
+        self._action_space = self.env.action_space
         # avoid creating attribute outside __init__
         self.reset(False)
 
