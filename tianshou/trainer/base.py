@@ -116,7 +116,7 @@ class BaseTrainer(object):
 
         - epoch int: the epoch number
         - epoch_stat dict: a large collection of metrics of the current epoch
-        - info dict: :func:`~tianshou.trainer.gather_info` result
+        - info dict: result returned from :func:`~tianshou.trainer.gather_info`
 
         You can even iterate on several trainers at the same time:
 
@@ -202,7 +202,7 @@ class BaseTrainer(object):
         self.stop_fn_flag = False
         self.iter_num = 0
 
-        self.update_function: Dict[Union[int, str], Callable] = {
+        update_function: Dict[Union[int, str], Callable] = {
             0: self.offpolicy_update,
             "offpolicy": self.offpolicy_update,
             1: self.onpolicy_update,
@@ -212,16 +212,15 @@ class BaseTrainer(object):
         }
         assert learning_type in self.learning_types
         self.learning_type = learning_type
-        self.policy_update_fn: Callable[[Any, Any],
-                                        None] = self.update_function[self.learning_type
-                                                                     ]
+        self.policy_update_fn: Callable[[Any, Any], None] = \
+            update_function[self.learning_type]
 
     def reset(self) -> None:
         """Initialize or reset the instance to yield a new iterator from zero."""
         self.is_run = False
         self.env_step = 0
         if self.resume_from_log:
-            self.start_epoch, self.env_step, self.gradient_step =\
+            self.start_epoch, self.env_step, self.gradient_step = \
                 self.logger.restore_data()
 
         self.last_rew, self.last_len = 0.0, 0
@@ -242,8 +241,8 @@ class BaseTrainer(object):
                 self.episode_per_test, self.logger, self.env_step, self.reward_metric
             )
             self.best_epoch = self.start_epoch
-            self.best_reward, self.best_reward_std = test_result["rew"], test_result[
-                "rew_std"]
+            self.best_reward, self.best_reward_std = \
+                test_result["rew"], test_result["rew_std"]
         if self.save_fn:
             self.save_fn(self.policy)
 
@@ -256,6 +255,7 @@ class BaseTrainer(object):
         return self
 
     def __next__(self) -> Union[None, Tuple[int, Dict[str, Any], Dict[str, Any]]]:
+        """Perform one epoch (both train and eval)."""
         self.epoch += 1
         self.iter_num += 1
 
@@ -281,7 +281,7 @@ class BaseTrainer(object):
         self.policy.train()
 
         epoch_stat: Dict[str, Any] = dict()
-        # Performs n step_per_epoch
+        # perform n step_per_epoch
         with tqdm.tqdm(
             total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config
         ) as t:
@@ -337,7 +337,7 @@ class BaseTrainer(object):
             return None
 
     def test_step(self) -> Tuple[Dict[str, Any], bool]:
-        """Performs a testing step."""
+        """Perform one testing step."""
         assert self.episode_per_test is not None
         assert self.test_collector is not None
         stop_fn_flag = False
@@ -374,7 +374,7 @@ class BaseTrainer(object):
         return test_stat, stop_fn_flag
 
     def train_step(self) -> Tuple[Dict[str, Any], Dict[str, Any], bool]:
-        """Performs 1 training step."""
+        """Perform one training step."""
         assert self.episode_per_test is not None
         assert self.train_collector is not None
         stop_fn_flag = False
@@ -422,7 +422,7 @@ class BaseTrainer(object):
         self.logger.log_update_data(losses, self.gradient_step)
 
     def offpolicy_update(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
-        """Performs off-policy updates."""
+        """Perform off-policy updates."""
         assert self.train_collector is not None
         for _ in range(round(self.update_per_step * result["n/st"])):
             self.gradient_step += 1
@@ -432,13 +432,13 @@ class BaseTrainer(object):
     def onpolicy_update(
         self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Performs on-policy updates."""
+        """Perform one on-policy update."""
         assert self.train_collector is not None
         losses = self.policy.update(
             0,
             self.train_collector.buffer,
             batch_size=self.batch_size,
-            repeat=self.repeat_per_collect
+            repeat=self.repeat_per_collect,
         )
         self.train_collector.reset_buffer(keep_statistics=True)
         step = max([1] + [len(v) for v in losses.values() if isinstance(v, list)])
@@ -448,7 +448,7 @@ class BaseTrainer(object):
     def offline_update(
         self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Performs off-line policy update."""
+        """Perform one off-line policy update."""
         assert self.buffer
         self.gradient_step += 1
         losses = self.policy.update(self.batch_size, self.buffer)
@@ -465,8 +465,8 @@ class BaseTrainer(object):
             self.is_run = True
             deque(self, maxlen=0)  # feed the entire iterator into a zero-length deque
             info = gather_info(
-                self.start_time, None, self.test_collector, self.best_reward,
-                self.best_reward_std
+                self.start_time, self.train_collector, self.test_collector,
+                self.best_reward, self.best_reward_std
             )
         finally:
             self.is_run = False

@@ -11,7 +11,7 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import TD3Policy
-from tianshou.trainer import offpolicy_trainer, offpolicy_trainer_iter
+from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
@@ -135,25 +135,8 @@ def test_td3(args=get_args()):
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
 
-    # trainer
-    result = offpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.step_per_collect,
-        args.test_num,
-        args.batch_size,
-        update_per_step=args.update_per_step,
-        stop_fn=stop_fn,
-        save_fn=save_fn,
-        logger=logger
-    )
-    assert stop_fn(result['best_reward'])
-
     # Iterator trainer
-    trainer = offpolicy_trainer_iter(
+    trainer = OffpolicyTrainer(
         policy,
         train_collector,
         test_collector,
@@ -165,18 +148,17 @@ def test_td3(args=get_args()):
         update_per_step=args.update_per_step,
         stop_fn=stop_fn,
         save_fn=save_fn,
-        logger=logger
+        logger=logger,
     )
     for epoch, epoch_stat, info in trainer:
         print(f"Epoch: {epoch}")
         print(epoch_stat)
         print(info)
 
-    result_iter = info
-    assert stop_fn(result_iter['best_reward'])
+    assert stop_fn(info["best_reward"])
 
-    if __name__ == '__main__':
-        pprint.pprint(result)
+    if __name__ == "__main__":
+        pprint.pprint(info)
         # Let's watch its performance!
         env = gym.make(args.task)
         policy.eval()

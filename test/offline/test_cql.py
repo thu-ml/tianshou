@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import CQLPolicy
-from tianshou.trainer import offline_trainer, offline_trainer_iter
+from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -195,22 +195,7 @@ def test_cql(args=get_args()):
         collector.collect(n_episode=1, render=1 / 35)
 
     # trainer
-    result = offline_trainer(
-        policy,
-        buffer,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.test_num,
-        args.batch_size,
-        save_fn=save_fn,
-        stop_fn=stop_fn,
-        logger=logger,
-    )
-    assert stop_fn(result['best_reward'])
-
-    # trainer
-    trainer = offline_trainer_iter(
+    trainer = OfflineTrainer(
         policy,
         buffer,
         test_collector,
@@ -228,12 +213,11 @@ def test_cql(args=get_args()):
         print(epoch_stat)
         print(info)
 
-    result_iter = info
-    assert stop_fn(result_iter['best_reward'])
+    assert stop_fn(info["best_reward"])
 
     # Let's watch its performance!
-    if __name__ == '__main__':
-        pprint.pprint(result)
+    if __name__ == "__main__":
+        pprint.pprint(info)
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
