@@ -74,7 +74,6 @@ class BaseTrainer(object):
     @staticmethod
     def gen_doc(learning_type: str) -> str:
         """Document string for subclass trainer."""
-
         step_means = f'The "step" in {learning_type} trainer means '
         if learning_type != "offline":
             step_means += "an environment step (a.k.a. transition)."
