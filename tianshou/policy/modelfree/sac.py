@@ -122,9 +122,8 @@ class SACPolicy(DDPGPolicy):
         # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
         # in appendix C to get some understanding of this equation.
         if self.action_scaling and self.action_space is not None:
-            action_scale = to_torch_as(
-                (self.action_space.high - self.action_space.low) / 2.0, act
-            )
+            low, high = self.action_space.low, self.action_space.high  # type: ignore
+            action_scale = to_torch_as((high - low) / 2.0, act)
         else:
             action_scale = 1.0  # type: ignore
         squashed_action = torch.tanh(act)

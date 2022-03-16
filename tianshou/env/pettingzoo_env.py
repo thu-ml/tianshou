@@ -6,7 +6,7 @@ from pettingzoo.utils.env import AECEnv
 from pettingzoo.utils.wrappers import BaseWrapper
 
 
-class PettingZooEnv(AECEnv, gym.Env, ABC):
+class PettingZooEnv(AECEnv, ABC):
     """The interface for petting zoo environments.
 
     Multi-agent environments must be wrapped as
