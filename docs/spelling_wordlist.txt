@@ -24,12 +24,15 @@ fqf
 iqn
 qrdqn
 rl
+offpolicy
+onpolicy
 quantile
 quantiles
 dqn
 param
 async
 subprocess
+deque
 nn
 equ
 cql

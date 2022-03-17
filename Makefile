@@ -22,10 +22,8 @@ lint:
 	flake8 ${LINT_PATHS} --count --show-source --statistics
 
 format:
-	# sort imports
 	$(call check_install, isort)
 	isort ${LINT_PATHS}
-	# reformat using yapf
 	$(call check_install, yapf)
 	yapf -ir ${LINT_PATHS}
 
@@ -57,6 +55,6 @@ doc-clean:
 
 clean: doc-clean
 
-commit-checks: format lint mypy check-docstyle spelling
+commit-checks: lint check-codestyle mypy check-docstyle spelling
 
 .PHONY: clean spelling doc mypy lint format check-codestyle check-docstyle commit-checks
