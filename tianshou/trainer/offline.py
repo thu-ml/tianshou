@@ -106,6 +106,8 @@ def offline_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: i
     """Wrapper for offline_trainer run method.
 
     It is identical to ``OfflineTrainer(...).run()``.
+
+    :return: See :func:`~tianshou.trainer.gather_info`.
     """
     return OfflineTrainer(*args, **kwargs).run()
 

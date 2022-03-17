@@ -138,6 +138,8 @@ def onpolicy_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: 
     """Wrapper for OnpolicyTrainer run method.
 
     It is identical to ``OnpolicyTrainer(...).run()``.
+
+    :return: See :func:`~tianshou.trainer.gather_info`.
     """
     return OnpolicyTrainer(*args, **kwargs).run()
 
