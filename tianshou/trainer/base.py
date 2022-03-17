@@ -1,4 +1,5 @@
 import time
+from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Union
 
@@ -11,7 +12,7 @@ from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
 
 
-class BaseTrainer(object):
+class BaseTrainer(ABC):
     """An iterator base class for trainers procedure.
 
     Returns an iterator that yields a 3-tuple (epoch, stats, info) of train results
@@ -191,8 +192,6 @@ class BaseTrainer(object):
         self.stop_fn_flag = False
         self.iter_num = 0
 
-        self.policy_update_fn = getattr(self, f"{learning_type}_update")
-
     def reset(self) -> None:
         """Initialize or reset the instance to yield a new iterator from zero."""
         self.is_run = False
@@ -241,18 +240,12 @@ class BaseTrainer(object):
 
             # iterator exhaustion check
             if self.epoch >= self.max_epoch:
-                if self.test_collector is None and self.save_fn:
+                if self.save_fn:
                     self.save_fn(self.policy)
                 raise StopIteration
 
             # exit flag 1, when stop_fn succeeds in train_step or test_step
             if self.stop_fn_flag:
-                raise StopIteration
-
-            # stop_fn criterion
-            if self.test_collector is not None and self.stop_fn and self.stop_fn(
-                self.best_reward
-            ):
                 raise StopIteration
 
         # set policy in train mode
@@ -366,8 +359,8 @@ class BaseTrainer(object):
             result.update(rews=rew, rew=rew.mean(), rew_std=rew.std())
         self.env_step += int(result["n/st"])
         self.logger.log_train_data(result, self.env_step)
-        self.last_rew = result['rew'] if result["n/ep"] > 0 else self.last_rew
-        self.last_len = result['len'] if result["n/ep"] > 0 else self.last_len
+        self.last_rew = result["rew"] if result["n/ep"] > 0 else self.last_rew
+        self.last_len = result["len"] if result["n/ep"] > 0 else self.last_len
         data = {
             "env_step": str(self.env_step),
             "rew": f"{self.last_rew:.2f}",
@@ -399,39 +392,13 @@ class BaseTrainer(object):
             data[k] = f"{losses[k]:.3f}"
         self.logger.log_update_data(losses, self.gradient_step)
 
-    def offpolicy_update(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
-        """Perform off-policy updates."""
-        assert self.train_collector is not None
-        for _ in range(round(self.update_per_step * result["n/st"])):
-            self.gradient_step += 1
-            losses = self.policy.update(self.batch_size, self.train_collector.buffer)
-            self.log_update_data(data, losses)
+    @abstractmethod
+    def policy_update_fn(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
+        """Policy update function for different trainer implementation.
 
-    def onpolicy_update(
-        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Perform one on-policy update."""
-        assert self.train_collector is not None
-        losses = self.policy.update(
-            0,
-            self.train_collector.buffer,
-            batch_size=self.batch_size,
-            repeat=self.repeat_per_collect,
-        )
-        self.train_collector.reset_buffer(keep_statistics=True)
-        step = max([1] + [len(v) for v in losses.values() if isinstance(v, list)])
-        self.gradient_step += step
-        self.log_update_data(data, losses)
-
-    def offline_update(
-        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Perform one off-line policy update."""
-        assert self.buffer
-        self.gradient_step += 1
-        losses = self.policy.update(self.batch_size, self.buffer)
-        data.update({"gradient_step": str(self.gradient_step)})
-        self.log_update_data(data, losses)
+        :param data: information in progress bar.
+        :param result: collector's return value.
+        """
 
     def run(self) -> Dict[str, Union[float, str]]:
         """Consume iterator.

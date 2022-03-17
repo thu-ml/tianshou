@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import numpy as np
 
@@ -112,6 +112,22 @@ class OnpolicyTrainer(BaseTrainer):
             verbose=verbose,
             test_in_train=test_in_train,
         )
+
+    def policy_update_fn(
+        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Perform one on-policy update."""
+        assert self.train_collector is not None
+        losses = self.policy.update(
+            0,
+            self.train_collector.buffer,
+            batch_size=self.batch_size,
+            repeat=self.repeat_per_collect,
+        )
+        self.train_collector.reset_buffer(keep_statistics=True)
+        step = max([1] + [len(v) for v in losses.values() if isinstance(v, list)])
+        self.gradient_step += step
+        self.log_update_data(data, losses)
 
 
 def onpolicy_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore

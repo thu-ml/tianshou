@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import numpy as np
 
@@ -90,6 +90,16 @@ class OfflineTrainer(BaseTrainer):
             logger=logger,
             verbose=verbose,
         )
+
+    def policy_update_fn(
+        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Perform one off-line policy update."""
+        assert self.buffer
+        self.gradient_step += 1
+        losses = self.policy.update(self.batch_size, self.buffer)
+        data.update({"gradient_step": str(self.gradient_step)})
+        self.log_update_data(data, losses)
 
 
 def offline_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
