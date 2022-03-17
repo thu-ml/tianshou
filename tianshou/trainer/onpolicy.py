@@ -62,6 +62,10 @@ class OnpolicyTrainer(BaseTrainer):
     :param bool verbose: whether to print the information. Default to True.
     :param bool test_in_train: whether to test in the training phase. Default to
         True.
+
+    .. note::
+
+        Only either one of step_per_collect and episode_per_collect can be specified.
     """
 
     __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(__doc__.split("\n")[1:])
