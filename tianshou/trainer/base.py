@@ -240,7 +240,7 @@ class BaseTrainer(ABC):
 
             # iterator exhaustion check
             if self.epoch >= self.max_epoch:
-                if self.save_fn:
+                if self.test_collector is None and self.save_fn:
                     self.save_fn(self.policy)
                 raise StopIteration
 
