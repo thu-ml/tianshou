@@ -135,7 +135,7 @@ def train_agent(
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_fn(policy):
+    def save_best_fn(policy):
         pass
 
     def stop_fn(mean_rewards):
@@ -163,7 +163,7 @@ def train_agent(
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         update_per_step=args.update_per_step,
         logger=logger,
         test_in_train=False,

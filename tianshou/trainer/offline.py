@@ -28,9 +28,9 @@ class OfflineTrainer(BaseTrainer):
         epoch.
         It can be used to perform custom additional operations, with the signature
         ``f(num_epoch: int, step_idx: int) -> None``.
-    :param function save_fn: a hook called when the undiscounted average mean
+    :param function save_best_fn: a hook called when the undiscounted average mean
         reward in evaluation phase gets better, with the signature
-        ``f(policy: BasePolicy) -> None``.
+        ``f(policy: BasePolicy) -> None``. It was ``save_fn`` previously.
     :param function save_checkpoint_fn: a function to save training process,
         with the signature ``f(epoch: int, env_step: int, gradient_step: int) ->
         None``; you can save whatever you want. Because offline-RL doesn't have
@@ -64,12 +64,13 @@ class OfflineTrainer(BaseTrainer):
         batch_size: int,
         test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
         stop_fn: Optional[Callable[[float], bool]] = None,
-        save_fn: Optional[Callable[[BasePolicy], None]] = None,
+        save_best_fn: Optional[Callable[[BasePolicy], None]] = None,
         save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
         resume_from_log: bool = False,
         reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
+        **kwargs: Any,
     ):
         super().__init__(
             learning_type="offline",
@@ -83,12 +84,13 @@ class OfflineTrainer(BaseTrainer):
             batch_size=batch_size,
             test_fn=test_fn,
             stop_fn=stop_fn,
-            save_fn=save_fn,
+            save_best_fn=save_best_fn,
             save_checkpoint_fn=save_checkpoint_fn,
             resume_from_log=resume_from_log,
             reward_metric=reward_metric,
             logger=logger,
             verbose=verbose,
+            **kwargs,
         )
 
     def policy_update_fn(

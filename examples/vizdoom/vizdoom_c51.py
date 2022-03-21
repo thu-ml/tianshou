@@ -125,7 +125,7 @@ def test_c51(args=get_args()):
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_fn(policy):
+    def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
@@ -200,7 +200,7 @@ def test_c51(args=get_args()):
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         logger=logger,
         update_per_step=args.update_per_step,
         test_in_train=False
