@@ -109,7 +109,7 @@ def test_dqn(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_fn(policy):
+    def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
@@ -143,7 +143,7 @@ def test_dqn(args=get_args()):
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         logger=logger,
     )
     assert stop_fn(result['best_reward'])
