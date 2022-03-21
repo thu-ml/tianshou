@@ -5,8 +5,16 @@ from tianshou.utils.logger.base import BaseLogger, LazyLogger
 from tianshou.utils.logger.tensorboard import BasicLogger, TensorboardLogger
 from tianshou.utils.logger.wandb import WandbLogger
 from tianshou.utils.statistics import MovAvg, RunningMeanStd
+from tianshou.utils.warning import deprecation
 
 __all__ = [
-    "MovAvg", "RunningMeanStd", "tqdm_config", "BaseLogger", "TensorboardLogger",
-    "BasicLogger", "LazyLogger", "WandbLogger"
+    "MovAvg",
+    "RunningMeanStd",
+    "tqdm_config",
+    "BaseLogger",
+    "TensorboardLogger",
+    "BasicLogger",
+    "LazyLogger",
+    "WandbLogger",
+    "deprecation",
 ]

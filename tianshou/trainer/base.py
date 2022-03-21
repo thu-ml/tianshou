@@ -9,7 +9,7 @@ import tqdm
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
-from tianshou.utils import BaseLogger, LazyLogger, MovAvg, tqdm_config
+from tianshou.utils import BaseLogger, LazyLogger, MovAvg, deprecation, tqdm_config
 
 
 class BaseTrainer(ABC):
@@ -48,9 +48,9 @@ class BaseTrainer(ABC):
     :param function test_fn: a hook called at the beginning of testing in each
         epoch. It can be used to perform custom additional operations, with the
         signature ``f(num_epoch: int, step_idx: int) -> None``.
-    :param function save_fn: a hook called when the undiscounted average mean
+    :param function save_best_fn: a hook called when the undiscounted average mean
         reward in evaluation phase gets better, with the signature
-        ``f(policy: BasePolicy) -> None``.
+        ``f(policy: BasePolicy) -> None``. It was ``save_fn`` previously.
     :param function save_checkpoint_fn: a function to save training process, with
         the signature ``f(epoch: int, env_step: int, gradient_step: int) -> None``;
         you can save whatever you want.
@@ -137,14 +137,23 @@ class BaseTrainer(ABC):
         train_fn: Optional[Callable[[int, int], None]] = None,
         test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
         stop_fn: Optional[Callable[[float], bool]] = None,
-        save_fn: Optional[Callable[[BasePolicy], None]] = None,
+        save_best_fn: Optional[Callable[[BasePolicy], None]] = None,
         save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
         resume_from_log: bool = False,
         reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
         test_in_train: bool = True,
+        save_fn: Optional[Callable[[BasePolicy], None]] = None,
     ):
+        if save_fn:
+            deprecation(
+                "save_fn in trainer is marked as deprecated and will be "
+                "removed in the future. Please use save_best_fn instead."
+            )
+            assert save_best_fn is None
+            save_best_fn = save_fn
+
         self.policy = policy
         self.buffer = buffer
 
@@ -176,7 +185,7 @@ class BaseTrainer(ABC):
         self.train_fn = train_fn
         self.test_fn = test_fn
         self.stop_fn = stop_fn
-        self.save_fn = save_fn
+        self.save_best_fn = save_best_fn
         self.save_checkpoint_fn = save_checkpoint_fn
 
         self.reward_metric = reward_metric
@@ -220,8 +229,8 @@ class BaseTrainer(ABC):
             self.best_epoch = self.start_epoch
             self.best_reward, self.best_reward_std = \
                 test_result["rew"], test_result["rew_std"]
-        if self.save_fn:
-            self.save_fn(self.policy)
+        if self.save_best_fn:
+            self.save_best_fn(self.policy)
 
         self.epoch = self.start_epoch
         self.stop_fn_flag = False
@@ -240,8 +249,6 @@ class BaseTrainer(ABC):
 
             # iterator exhaustion check
             if self.epoch >= self.max_epoch:
-                if self.test_collector is None and self.save_fn:
-                    self.save_fn(self.policy)
                 raise StopIteration
 
             # exit flag 1, when stop_fn succeeds in train_step or test_step
@@ -321,8 +328,8 @@ class BaseTrainer(ABC):
             self.best_epoch = self.epoch
             self.best_reward = float(rew)
             self.best_reward_std = rew_std
-            if self.save_fn:
-                self.save_fn(self.policy)
+            if self.save_best_fn:
+                self.save_best_fn(self.policy)
         if self.verbose:
             print(
                 f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},"
