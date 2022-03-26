@@ -30,6 +30,7 @@ def get_extras_require() -> str:
         "dev": [
             "sphinx<4",
             "sphinx_rtd_theme",
+            "jinja2<3.1",  # temporary fix
             "sphinxcontrib-bibtex",
             "flake8",
             "flake8-bugbear",
