@@ -33,8 +33,8 @@ class WandbLogger(BaseLogger):
         Default to 1000.
     :param int save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
-    :param bool write_flush: whether to flush tensorboard result after each "add_*"
-        operation. Default to True.
+    :param bool write_flush: whether to flush tensorboard result after each
+        add_scalar operation. Default to True.
     :param str project: W&B project name. Default to "tianshou".
     :param str name: W&B run name. Default to None. If None, random name is assigned.
     :param str entity: W&B team/organization name. Default to None.

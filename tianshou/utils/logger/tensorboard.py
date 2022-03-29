@@ -17,8 +17,8 @@ class TensorboardLogger(BaseLogger):
     :param int update_interval: the log interval in log_update_data(). Default to 1000.
     :param int save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
-    :param bool write_flush: whether to flush tensorboard result after each "add_*"
-        operation. Default to True.
+    :param bool write_flush: whether to flush tensorboard result after each
+        add_scalar operation. Default to True.
     """
 
     def __init__(
@@ -28,7 +28,7 @@ class TensorboardLogger(BaseLogger):
         test_interval: int = 1,
         update_interval: int = 1000,
         save_interval: int = 1,
-        write_flush: bool = True
+        write_flush: bool = True,
     ) -> None:
         super().__init__(train_interval, test_interval, update_interval)
         self.save_interval = save_interval
