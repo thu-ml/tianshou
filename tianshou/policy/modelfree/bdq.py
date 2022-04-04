@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Dict, Optional, Union, Callable
+from typing import Any, Dict, Optional, Union
 
 import numpy as np
 import torch
@@ -9,12 +9,7 @@ from tianshou.policy import BasePolicy
 
 
 class BDQPolicy(BasePolicy):
-    """Implementation of Deep Q Network. arXiv:1312.5602.
-
-    Implementation of Double Q-Learning. arXiv:1509.06461.
-
-    Implementation of Dueling DQN. arXiv:1511.06581 (the dueling DQN is
-    implemented in the network side, not here).
+    """Implementation of the branching dueling network arXiv:1711.08946
 
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
@@ -25,7 +20,7 @@ class BDQPolicy(BasePolicy):
         you do not use the target network). Default to 0.
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.
-    :param bool is_double: use double dqn. Default to True.
+    :param bool is_double: use double network. Default to True.
 
     .. seealso::
 
@@ -38,7 +33,6 @@ class BDQPolicy(BasePolicy):
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
         discount_factor: float = 0.99,
-        estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
         is_double: bool = True,
@@ -50,8 +44,6 @@ class BDQPolicy(BasePolicy):
         self.eps = 0.0
         assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self._gamma = discount_factor
-        assert estimation_step > 0, "estimation_step should be greater than 0"
-        self._n_step = estimation_step
         self._target = target_update_freq > 0
         self._freq = target_update_freq
         self._iter = 0
@@ -75,8 +67,7 @@ class BDQPolicy(BasePolicy):
         """Synchronize the weight for the target network."""
         self.model_old.load_state_dict(self.model.state_dict())
 
-    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
-        batch = buffer[indices]  # batch.obs_next: s_{t+n}
+    def _target_q(self, batch: Batch) -> torch.Tensor:
         result = self(batch, input="obs_next")
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
@@ -84,25 +75,29 @@ class BDQPolicy(BasePolicy):
         else:
             target_q = result.logits
         if self._is_double:
-            shape = result.act.shape
-            return target_q[np.arange(shape[0]), np.arange(shape[1]), result.act]
+            act = self(batch, input="obs_next").act
+            return np.squeeze(np.take_along_axis(target_q, np.expand_dims(act, -1), -1))
         else:  # Nature DQN, over estimate
-            return target_q.max(dim=-1)[0]
+            return NotImplementedError
 
-    @staticmethod
     def _compute_return(
+        self,
         batch: Batch,
         buffer: ReplayBuffer,
         indice: np.ndarray,
-        target_q_fn: Callable[[ReplayBuffer, np.ndarray], torch.Tensor],
+        gamma: float = 0.99,
     ) -> Batch:
+        rew = batch.rew
         with torch.no_grad():
-            target_q_torch = target_q_fn(buffer, indice)  # (bsz, ?)
+            target_q_torch = self._target_q(batch)  # (bsz, ?)
         target_q = to_numpy(target_q_torch)
-        target_q = target_q * BasePolicy.value_mask(buffer, indice).reshape(-1, 1, 1)
         end_flag = buffer.done.copy()
         end_flag[buffer.unfinished_index()] = True
-        
+        end_flag = end_flag[indice]
+        _target_q = rew + gamma * np.mean(target_q, -1) * (1 - end_flag)
+        target_q = np.repeat(_target_q[..., None], target_q.shape[-1], axis=-1)
+        target_q = np.repeat(target_q[..., None], self.max_action_num, axis=-1)
+
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
             batch.weight = to_torch_as(batch.weight, target_q_torch)
@@ -111,25 +106,13 @@ class BDQPolicy(BasePolicy):
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
-        """Compute the n-step return for Q-learning targets.
+        """Compute the return for BDQ targets.
 
-        More details can be found at
-        :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
         """
         batch = self._compute_return(
-            batch, buffer, indices, self._target_q
+            batch, buffer, indices
         )
         return batch
-
-    def compute_q_value(
-        self, logits: torch.Tensor, mask: Optional[np.ndarray]
-    ) -> torch.Tensor:
-        """Compute the q value based on the network's raw output and action mask."""
-        if mask is not None:
-            # the masked q value should be smaller than logits.min()
-            min_value = logits.min() - logits.max() - 1.0
-            logits = logits + to_torch_as(1 - mask, logits) * min_value
-        return logits
 
     def forward(
         self,
@@ -140,20 +123,6 @@ class BDQPolicy(BasePolicy):
         **kwargs: Any,
     ) -> Batch:
         """Compute action over the given batch data.
-
-        If you need to mask the action, please add a "mask" into batch.obs, for
-        example, if we have an environment that has "0/1/2" three actions:
-        ::
-
-            batch == Batch(
-                obs=Batch(
-                    obs="original obs, with batch_size=1 for demonstration",
-                    mask=np.array([[False, True, False]]),
-                    # action 1 is available
-                    # action 0 and 2 are unavailable
-                ),
-                ...
-            )
 
         :param float eps: in [0, 1], for epsilon-greedy exploration method.
 
@@ -172,10 +141,11 @@ class BDQPolicy(BasePolicy):
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         logits, hidden = model(obs_next, state=state, info=batch.info)
-        q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
-            self.max_action_num = q.shape[1]
-        act = to_numpy(q.max(dim=-1)[1].squeeze())
+            self.max_action_num = logits.shape[-1]
+        act = to_numpy(logits.max(dim=-1)[1].squeeze())
+        if len(act.shape) == 1:
+            act = np.expand_dims(act, 0)
         return Batch(logits=logits, act=act, state=hidden)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
@@ -183,12 +153,16 @@ class BDQPolicy(BasePolicy):
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
+        act = torch.tensor(batch.act).to(batch.returns.get_device())
         q = self(batch).logits
-        q = q[np.arange(q.shape[0]), np.arange(q.shape[1]), batch.act]
-        returns = to_torch_as(batch.returns.flatten(), q)
-        td_error = returns - q
-        loss = (td_error.pow(2) * weight).mean()
-        batch.weight = td_error  # prio-buffer
+        act_mask = torch.zeros_like(q)
+        act_mask = act_mask.scatter_(-1, act.unsqueeze(-1), 1)
+        act_q = q * act_mask
+        returns = batch.returns
+        returns = returns * act_mask
+        td_error = (returns - act_q)
+        loss = (td_error.pow(2).sum(-1).mean(-1) * weight).mean()
+        batch.weight = td_error.sum(-1).sum(-1)  # prio-buffer
         loss.backward()
         self.optim.step()
         self._iter += 1
@@ -197,11 +171,16 @@ class BDQPolicy(BasePolicy):
     def exploration_noise(self, act: Union[np.ndarray, Batch],
                           batch: Batch) -> Union[np.ndarray, Batch]:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
+            if len(act.shape) == 1:
+                act = np.expand_dims(act, 0)
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
-            q = np.random.rand(bsz, self.max_action_num)  # [0, 1]
+            rand_act = np.random.randint(
+                0, self.max_action_num, (bsz, act.shape[-1]))  # [0, 1]
             if hasattr(batch.obs, "mask"):
-                q += batch.obs.mask
-            rand_act = q.argmax(axis=1)
+                rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]
+        return act
+
+    def map_action(self, act: Union[Batch, np.ndarray]) -> Union[Batch, np.ndarray]:
         return act
