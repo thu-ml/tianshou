@@ -122,8 +122,8 @@ class SACPolicy(DDPGPolicy):
         # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
         # in appendix C to get some understanding of this equation.
         squashed_action = torch.tanh(act)
-        log_prob = log_prob - torch.log(
-            (1 - squashed_action.pow(2)) + self.__eps).sum(-1, keepdim=True)
+        log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) +
+                                        self.__eps).sum(-1, keepdim=True)
         return Batch(
             logits=logits,
             act=squashed_action,
