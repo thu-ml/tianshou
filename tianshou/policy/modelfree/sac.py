@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.distributions import Independent, Normal
 
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import Batch, ReplayBuffer
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 
