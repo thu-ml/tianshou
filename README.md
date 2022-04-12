@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="http://tianshou.readthedocs.io"><img width="300px" height="auto" src="docs/_static/images/tianshou-logo.png"></a>
+  <a href="http://tianshou.readthedocs.io"><img width="300px" height="auto" src="https://github.com/thu-ml/tianshou/raw/master/docs/_static/images/tianshou-logo.png"></a>
 </div>
 
 ---
@@ -275,7 +275,7 @@ $ python3 test/discrete/test_pg.py --seed 0 --render 0.03
 ```
 
 <div align="center">
-  <img src="docs/_static/images/testpg.gif"></a>
+  <img src="https://github.com/thu-ml/tianshou/raw/master/docs/_static/images/testpg.gif"></a>
 </div>
 
 ## Contributing
