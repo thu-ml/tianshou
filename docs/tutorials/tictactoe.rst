@@ -23,15 +23,15 @@ The scripts are located at ``test/pettingzoo/``. We have implemented :class:`~ti
     >>> obs = env.reset()
     >>> env.render()                                 # render the empty board
     board (step 0):
-         |     |     
-      -  |  -  |  -  
+         |     |
+      -  |  -  |  -
     _____|_____|_____
-         |     |     
-      -  |  -  |  -  
+         |     |
+      -  |  -  |  -
     _____|_____|_____
-         |     |     
-      -  |  -  |  -  
-         |     |     
+         |     |
+      -  |  -  |  -
+         |     |
     >>> print(obs)                                   # let's see the shape of the observation
     {'agent_id': 'player_1', 'obs': array([[[0, 0],
             [0, 0],
@@ -94,15 +94,15 @@ One worth-noting case is that the game is over when there is only one empty posi
     >>> print((reward, done))
     ([1, -1], True)
     >>> env.render()
-         |     |     
-      X  |  O  |  -  
+         |     |
+      X  |  O  |  -
     _____|_____|_____
-         |     |     
-      X  |  O  |  -  
+         |     |
+      X  |  O  |  -
     _____|_____|_____
-         |     |     
-      X  |  -  |  -  
-         |     |     
+         |     |
+      X  |  -  |  -
+         |     |
 
 After being familiar with the environment, let's try to play with random agents first!
 
@@ -137,32 +137,33 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
     >>> # you will see a long trajectory showing the board status at each timestep
     >>> result = collector.collect(n_episode=1, render=.1)
     (only show the last 3 steps)
-      X  |  X  |  -  
+         |     |
+      X  |  X  |  -
     _____|_____|_____
-         |     |     
-      X  |  O  |  -  
+         |     |
+      X  |  O  |  -
     _____|_____|_____
-         |     |     
-      O  |  -  |  -  
-         |     |     
-         |     |     
-      X  |  X  |  -  
+         |     |
+      O  |  -  |  -
+         |     |
+         |     |
+      X  |  X  |  -
     _____|_____|_____
-         |     |     
-      X  |  O  |  -  
+         |     |
+      X  |  O  |  -
     _____|_____|_____
-         |     |     
-      O  |  -  |  O  
-         |     |     
-         |     |     
-      X  |  X  |  X  
+         |     |
+      O  |  -  |  O
+         |     |
+         |     |
+      X  |  X  |  X
     _____|_____|_____
-         |     |     
-      X  |  O  |  -  
+         |     |
+      X  |  O  |  -
     _____|_____|_____
-         |     |     
-      O  |  -  |  O  
-         |     |     
+         |     |
+      O  |  -  |  O
+         |     |
 
 Random agents perform badly. In the above game, although agent 2 wins finally, it is clear that a smart agent 1 would place an ``x`` at row 4 col 4 to win directly.
 
@@ -451,78 +452,78 @@ That's it. By executing the code, you will see a progress bar indicating the pro
 
 ::
 
-         |     |     
-      -  |  -  |  -  
+         |     |
+      -  |  -  |  -
     _____|_____|_____
-         |     |     
-      -  |  -  |  X  
+         |     |
+      -  |  -  |  X
     _____|_____|_____
-         |     |     
-      -  |  -  |  -  
-         |     |     
-         |     |     
-      -  |  -  |  -  
+         |     |
+      -  |  -  |  -
+         |     |
+         |     |
+      -  |  -  |  -
     _____|_____|_____
-         |     |     
-      -  |  O  |  X  
+         |     |
+      -  |  O  |  X
     _____|_____|_____
-         |     |     
-      -  |  -  |  -  
-         |     |     
-         |     |     
-      -  |  -  |  -  
+         |     |
+      -  |  -  |  -
+         |     |
+         |     |
+      -  |  -  |  -
     _____|_____|_____
-         |     |     
-      X  |  O  |  X  
+         |     |
+      X  |  O  |  X
     _____|_____|_____
-         |     |     
-      -  |  -  |  -  
-         |     |     
-         |     |     
-      -  |  O  |  -  
+         |     |
+      -  |  -  |  -
+         |     |
+         |     |
+      -  |  O  |  -
     _____|_____|_____
-         |     |     
-      X  |  O  |  X  
+         |     |
+      X  |  O  |  X
     _____|_____|_____
-         |     |     
-      -  |  -  |  -  
-         |     |     
-         |     |     
-      -  |  O  |  -  
+         |     |
+      -  |  -  |  -
+         |     |
+         |     |
+      -  |  O  |  -
     _____|_____|_____
-         |     |     
-      X  |  O  |  X  
+         |     |
+      X  |  O  |  X
     _____|_____|_____
-         |     |     
-      -  |  X  |  -  
-         |     |     
-         |     |     
-      O  |  O  |  -  
+         |     |
+      -  |  X  |  -
+         |     |
+         |     |
+      O  |  O  |  -
     _____|_____|_____
-         |     |     
-      X  |  O  |  X  
+         |     |
+      X  |  O  |  X
     _____|_____|_____
-         |     |     
-      -  |  X  |  -  
-         |     |     
-         |     |     
-      O  |  O  |  X  
+         |     |
+      -  |  X  |  -
+         |     |
+         |     |
+      O  |  O  |  X
     _____|_____|_____
-         |     |     
-      X  |  O  |  X  
+         |     |
+      X  |  O  |  X
     _____|_____|_____
-         |     |     
-      -  |  X  |  -  
-         |     |     
-         |     |     
-      O  |  O  |  X  
+         |     |
+      -  |  X  |  -
+         |     |
+         |     |
+      O  |  O  |  X
     _____|_____|_____
-         |     |     
-      X  |  O  |  X  
+         |     |
+      X  |  O  |  X
     _____|_____|_____
-         |     |     
-      -  |  X  |  O  
-         |     |     
+         |     |
+      -  |  X  |  O
+         |     |
     Final reward: 1.0, length: 8.0
 
 .. raw:: html
@@ -552,78 +553,78 @@ Here is our output:
 
 ::
 
-         |     |     
-      -  |  -  |  -  
+         |     |
+      -  |  -  |  -
     _____|_____|_____
-         |     |     
-      -  |  X  |  -  
+         |     |
+      -  |  X  |  -
     _____|_____|_____
-         |     |     
-      -  |  -  |  -  
-         |     |     
-         |     |     
-      -  |  O  |  -  
+         |     |
+      -  |  -  |  -
+         |     |
+         |     |
+      -  |  O  |  -
     _____|_____|_____
-         |     |     
-      -  |  X  |  -  
+         |     |
+      -  |  X  |  -
     _____|_____|_____
-         |     |     
-      -  |  -  |  -  
-         |     |     
-         |     |     
-      X  |  O  |  -  
+         |     |
+      -  |  -  |  -
+         |     |
+         |     |
+      X  |  O  |  -
     _____|_____|_____
-         |     |     
-      -  |  X  |  -  
+         |     |
+      -  |  X  |  -
     _____|_____|_____
-         |     |     
-      -  |  -  |  -  
-         |     |     
-         |     |     
-      X  |  O  |  -  
+         |     |
+      -  |  -  |  -
+         |     |
+         |     |
+      X  |  O  |  -
     _____|_____|_____
-         |     |     
-      -  |  X  |  -  
+         |     |
+      -  |  X  |  -
     _____|_____|_____
-         |     |     
-      -  |  -  |  O  
-         |     |     
-         |     |     
-      X  |  O  |  -  
+         |     |
+      -  |  -  |  O
+         |     |
+         |     |
+      X  |  O  |  -
     _____|_____|_____
-         |     |     
-      -  |  X  |  -  
+         |     |
+      -  |  X  |  -
     _____|_____|_____
-         |     |     
-      -  |  X  |  O  
-         |     |     
-         |     |     
-      X  |  O  |  O  
+         |     |
+      -  |  X  |  O
+         |     |
+         |     |
+      X  |  O  |  O
     _____|_____|_____
-         |     |     
-      -  |  X  |  -  
+         |     |
+      -  |  X  |  -
     _____|_____|_____
-         |     |     
-      -  |  X  |  O  
-         |     |     
-         |     |     
-      X  |  O  |  O  
+         |     |
+      -  |  X  |  O
+         |     |
+         |     |
+      X  |  O  |  O
     _____|_____|_____
-         |     |     
-      -  |  X  |  -  
+         |     |
+      -  |  X  |  -
     _____|_____|_____
-         |     |     
-      X  |  X  |  O  
-         |     |     
-         |     |     
-      X  |  O  |  O  
+         |     |
+      X  |  X  |  O
+         |     |
+         |     |
+      X  |  O  |  O
     _____|_____|_____
-         |     |     
-      -  |  X  |  O  
+         |     |
+      -  |  X  |  O
     _____|_____|_____
-         |     |     
-      X  |  X  |  O  
-         |     |     
+         |     |
+      X  |  X  |  O
+         |     |
     Final reward: 1.0, length: 8.0
 
 .. raw:: html
