@@ -268,7 +268,7 @@ def train_agent(
 def watch(
     args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None
 ) -> None:
-    env = get_env()
+    env = DummyVectorEnv([get_env])
     policy.eval()
     collector = Collector(policy, env)
     result = collector.collect(n_episode=1, render=args.render)
