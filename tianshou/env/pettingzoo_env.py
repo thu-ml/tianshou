@@ -32,17 +32,14 @@ class PettingZooEnv(AECEnv, ABC):
         self.agent_idx = {}
         for i, agent_id in enumerate(self.agents):
             self.agent_idx[agent_id] = i
-        # Get dictionaries of obs_spaces and act_spaces
-        self.observation_spaces = self.env.observation_spaces
-        self.action_spaces = self.env.action_spaces
 
         self.rewards = [0] * len(self.agents)
 
         # Get first observation space, assuming all agents have equal space
-        self.observation_space: Any = self.observation_space(self.agents[0])
+        self.observation_space: Any = self.env.observation_space(self.agents[0])
 
         # Get first action space, assuming all agents have equal space
-        self.action_space: Any = self.action_space(self.agents[0])
+        self.action_space: Any = self.env.action_space(self.agents[0])
 
         assert all(self.env.observation_space(agent) == self.observation_space
                    for agent in self.agents), \

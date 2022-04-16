@@ -176,7 +176,7 @@ def train_agent(
 def watch(
     args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None
 ) -> None:
-    env = get_env()
+    env = DummyVectorEnv([get_env])
     policy.eval()
     [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
     collector = Collector(policy, env, exploration_noise=True)
