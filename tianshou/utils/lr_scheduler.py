@@ -21,7 +21,7 @@ class MultipleLRSchedulers:
     def state_dict(self) -> List[Dict]:
         """Get state dictionaries for each of the learning rate schedulers.
 
-        :return: A list of state_dicts of learning rate schedulers
+        :return: A list of state dictionaries of learning rate schedulers
         """
         return [s.state_dict() for s in self.schedulers]
 
@@ -29,7 +29,7 @@ class MultipleLRSchedulers:
         """Load states from  dictionaries.
 
         :param List[Dict] state_dict: A list of learning rate scheduler
-            state_dicts, in the same order as the schedulers.
+            state dictionaries, in the same order as the schedulers.
         """
         for (s, sd) in zip(self.schedulers, state_dict):
             s.__dict__.update(sd)
