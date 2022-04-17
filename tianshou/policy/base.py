@@ -9,6 +9,7 @@ from numba import njit
 from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from tianshou.utils import MultipleLRSchedulers
 
 
 class BasePolicy(ABC, nn.Module):
@@ -64,7 +65,8 @@ class BasePolicy(ABC, nn.Module):
         action_space: Optional[gym.Space] = None,
         action_scaling: bool = False,
         action_bound_method: str = "",
-        lr_scheduler: Optional[torch.optim.lr_scheduler.LambdaLR] = None,
+        lr_scheduler: Optional[Union[torch.optim.lr_scheduler.LambdaLR,
+                                     MultipleLRSchedulers]] = None,
     ) -> None:
         super().__init__()
         self.observation_space = observation_space
