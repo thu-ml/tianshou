@@ -94,13 +94,13 @@ Tianshou is still under development, you can also check out the documents in sta
    :maxdepth: 1
    :caption: Tutorials
 
+   tutorials/get_started
    tutorials/dqn
    tutorials/concepts
    tutorials/batch
    tutorials/tictactoe
    tutorials/logger
    tutorials/benchmark
-   tutorials/get_started
    tutorials/cheatsheet
 
 
