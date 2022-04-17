@@ -46,6 +46,8 @@ class CQLPolicy(SACPolicy):
     :param float clip_grad: clip_grad for updating critic network. Default to 1.0.
     :param Union[str, torch.device] device: which device to create this model on.
         Default to "cpu".
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 

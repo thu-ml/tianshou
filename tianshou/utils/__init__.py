@@ -6,6 +6,7 @@ from tianshou.utils.logger.tensorboard import BasicLogger, TensorboardLogger
 from tianshou.utils.logger.wandb import WandbLogger
 from tianshou.utils.statistics import MovAvg, RunningMeanStd
 from tianshou.utils.warning import deprecation
+from tianshou.utils.lr_scheduler import MultipleLRSchedulers
 
 __all__ = [
     "MovAvg",
@@ -17,4 +18,5 @@ __all__ = [
     "LazyLogger",
     "WandbLogger",
     "deprecation",
+    "MultipleLRSchedulers",
 ]

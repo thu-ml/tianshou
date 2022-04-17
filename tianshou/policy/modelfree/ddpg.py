@@ -32,6 +32,8 @@ class DDPGPolicy(BasePolicy):
         Default to "clip".
     :param Optional[gym.Space] action_space: env's action space, mandatory if you want
         to use option "action_scaling" or "action_bound_method". Default to None.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 

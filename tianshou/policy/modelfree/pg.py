@@ -44,7 +44,6 @@ class PGPolicy(BasePolicy):
         reward_normalization: bool = False,
         action_scaling: bool = True,
         action_bound_method: str = "clip",
-        lr_scheduler: Optional[torch.optim.lr_scheduler.LambdaLR] = None,
         deterministic_eval: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -55,7 +54,6 @@ class PGPolicy(BasePolicy):
         )
         self.actor = model
         self.optim = optim
-        self.lr_scheduler = lr_scheduler
         self.dist_fn = dist_fn
         assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self._gamma = discount_factor
@@ -137,8 +135,5 @@ class PGPolicy(BasePolicy):
                 loss.backward()
                 self.optim.step()
                 losses.append(loss.item())
-        # update learning rate if lr_scheduler is given
-        if self.lr_scheduler is not None:
-            self.lr_scheduler.step()
 
         return {"loss": losses}
