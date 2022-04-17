@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from tianshou.exploration import GaussianNoise, OUNoise
-from tianshou.utils import MovAvg, RunningMeanStd, MultipleLRSchedulers
+from tianshou.utils import MovAvg, MultipleLRSchedulers, RunningMeanStd
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import RecurrentActorProb, RecurrentCritic
 
