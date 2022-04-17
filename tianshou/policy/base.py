@@ -9,6 +9,7 @@ from numba import njit
 from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from tianshou.utils import MultipleLRSchedulers
 
 
 class BasePolicy(ABC, nn.Module):
@@ -64,6 +65,8 @@ class BasePolicy(ABC, nn.Module):
         action_space: Optional[gym.Space] = None,
         action_scaling: bool = False,
         action_bound_method: str = "",
+        lr_scheduler: Optional[Union[torch.optim.lr_scheduler.LambdaLR,
+                                     MultipleLRSchedulers]] = None,
     ) -> None:
         super().__init__()
         self.observation_space = observation_space
@@ -79,6 +82,7 @@ class BasePolicy(ABC, nn.Module):
         # can be one of ("clip", "tanh", ""), empty string means no bounding
         assert action_bound_method in ("", "clip", "tanh")
         self.action_bound_method = action_bound_method
+        self.lr_scheduler = lr_scheduler
         self._compile()
 
     def set_agent_id(self, agent_id: int) -> None:
@@ -272,6 +276,8 @@ class BasePolicy(ABC, nn.Module):
         batch = self.process_fn(batch, buffer, indices)
         result = self.learn(batch, **kwargs)
         self.post_process_fn(batch, buffer, indices)
+        if self.lr_scheduler is not None:
+            self.lr_scheduler.step()
         self.updating = False
         return result
 
