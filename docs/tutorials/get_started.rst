@@ -23,5 +23,5 @@ L5:  `Collector <https://colab.research.google.com/drive/1CvOTPiNXdSST04I75Wuyvy
 L6:  `Trainer <https://colab.research.google.com/drive/1qMsEiZZ8mh60ycbfoX-nYy6qMCnLkmZE?usp=sharing>`_
 ^^^^^^^^^^^^^^^^
 
-L7:  `TBD <https://github.com/thu-ml/tianshou/issues/349>`_
+L7:  `Experiment <https://colab.research.google.com/drive/1CieGncgbGCt2grx8Mzwb7YTmFB0AGJ0f?usp=sharing>`_
 ^^^^^^^^^^^^^^^^
