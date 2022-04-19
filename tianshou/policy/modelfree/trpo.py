@@ -146,10 +146,6 @@ class TRPOPolicy(NPGPolicy):
                 step_sizes.append(step_size.item())
                 kls.append(kl.item())
 
-        # update learning rate if lr_scheduler is given
-        if self.lr_scheduler is not None:
-            self.lr_scheduler.step()
-
         return {
             "loss/actor": actor_losses,
             "loss/vf": vf_losses,

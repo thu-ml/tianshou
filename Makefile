@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 PROJECT_NAME=tianshou
 PROJECT_PATH=${PROJECT_NAME}/
-LINT_PATHS=${PROJECT_PATH} test/ docs/conf.py examples/ setup.py
+PYTHON_FILES = $(shell find setup.py ${PROJECT_NAME} test docs/conf.py examples -type f -name "*.py")
 
 check_install = python3 -c "import $(1)" || pip3 install $(1) --upgrade
 check_install_extra = python3 -c "import $(1)" || pip3 install $(2) --upgrade
@@ -19,20 +19,18 @@ mypy:
 lint:
 	$(call check_install, flake8)
 	$(call check_install_extra, bugbear, flake8_bugbear)
-	flake8 ${LINT_PATHS} --count --show-source --statistics
+	flake8 ${PYTHON_FILES} --count --show-source --statistics
 
 format:
-	# sort imports
 	$(call check_install, isort)
-	isort ${LINT_PATHS}
-	# reformat using yapf
+	isort ${PYTHON_FILES}
 	$(call check_install, yapf)
-	yapf -ir ${LINT_PATHS}
+	yapf -ir ${PYTHON_FILES}
 
 check-codestyle:
 	$(call check_install, isort)
 	$(call check_install, yapf)
-	isort --check ${LINT_PATHS} && yapf -r -d ${LINT_PATHS}
+	isort --check ${PYTHON_FILES} && yapf -r -d ${PYTHON_FILES}
 
 check-docstyle:
 	$(call check_install, pydocstyle)
@@ -57,6 +55,6 @@ doc-clean:
 
 clean: doc-clean
 
-commit-checks: format lint mypy check-docstyle spelling
+commit-checks: lint check-codestyle mypy check-docstyle spelling
 
 .PHONY: clean spelling doc mypy lint format check-codestyle check-docstyle commit-checks

@@ -1,9 +1,10 @@
-import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
+
+from tianshou.utils import deprecation
 
 
 class EnvWorker(ABC):
@@ -33,7 +34,7 @@ class EnvWorker(ABC):
         function is determined by such kind of different signal.
         """
         if hasattr(self, "send_action"):
-            warnings.warn(
+            deprecation(
                 "send_action will soon be deprecated. "
                 "Please use send and recv for your own EnvWorker."
             )
@@ -54,7 +55,7 @@ class EnvWorker(ABC):
         info).
         """
         if hasattr(self, "get_result"):
-            warnings.warn(
+            deprecation(
                 "get_result will soon be deprecated. "
                 "Please use send and recv for your own EnvWorker."
             )

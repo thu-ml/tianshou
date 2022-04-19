@@ -12,7 +12,7 @@ from tianshou.env.worker import (
 from tianshou.utils import RunningMeanStd
 
 
-class BaseVectorEnv(gym.Env):
+class BaseVectorEnv(object):
     """Base class for vectorized environments wrapper.
 
     Usage:
@@ -196,6 +196,7 @@ class BaseVectorEnv(gym.Env):
             assert i in self.ready_id, \
                 f"Can only interact with ready environments {self.ready_id}."
 
+    # TODO: compatible issue with reset -> (obs, info)
     def reset(
         self, id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> np.ndarray:

@@ -380,6 +380,26 @@ Once you have a collector and a policy, you can start writing the training metho
 
 Tianshou has three types of trainer: :func:`~tianshou.trainer.onpolicy_trainer` for on-policy algorithms such as Policy Gradient, :func:`~tianshou.trainer.offpolicy_trainer` for off-policy algorithms such as DQN, and :func:`~tianshou.trainer.offline_trainer` for offline algorithms such as BCQ. Please check out :doc:`/api/tianshou.trainer` for the usage.
 
+We also provide the corresponding iterator-based trainer classes :class:`~tianshou.trainer.OnpolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`, :class:`~tianshou.trainer.OfflineTrainer` to facilitate users writing more flexible training logic:
+::
+
+    trainer = OnpolicyTrainer(...)
+    for epoch, epoch_stat, info in trainer:
+        print(f"Epoch: {epoch}")
+        print(epoch_stat)
+        print(info)
+        do_something_with_policy()
+        query_something_about_policy()
+        make_a_plot_with(epoch_stat)
+        display(info)
+
+    # or even iterate on several trainers at the same time
+
+    trainer1 = OnpolicyTrainer(...)
+    trainer2 = OnpolicyTrainer(...)
+    for result1, result2, ... in zip(trainer1, trainer2, ...):
+        compare_results(result1, result2, ...)
+
 
 .. _pseudocode:
 
