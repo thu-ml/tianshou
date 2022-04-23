@@ -78,7 +78,7 @@ Runtime averaged on 8 MuJoCo benchmark tasks is listed below. All results are ob
 up to 48 CPU cores (at most one CPU core for each thread).
 
 ========= ========= ============ ============== ============ ============== ==========
-Algorithm # of Envs 1M timesteps Collecting (%) Updating (%) Evaluating (%) Others (%) 
+Algorithm # of Envs 1M timesteps Collecting (%) Updating (%) Evaluating (%) Others (%)
 ========= ========= ============ ============== ============ ============== ==========
 DDPG      1         2.9h         12.0           80.2         2.4            5.4
 TD3       1         3.3h         11.4           81.7         1.7            5.2
