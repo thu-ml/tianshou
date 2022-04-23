@@ -247,7 +247,7 @@ For pretrained agents, detailed graphs (single agent, single game) and log detai
    
 ### TRPO
 
-|      Environment       |   Tianshou (1M)   | [ACKTR paper](https://arxiv.org/pdf/1708.05144.pdf) | [PPO paper](https://arxiv.org/pdf/1707.06347.pdf) | [OpenAI Baselines](https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm) | [Spinning Up (PyTorch)](https://spinningup.openai.com/en/latest/spinningup/bench.html) |
+|      Environment       |   Tianshou (1M)   | [ACKTR paper](https://arxiv.org/pdf/1708.05144.pdf) | [PPO paper](https://arxiv.org/pdf/1707.06347.pdf) | [OpenAI Baselines](https://github.com/openai/baselines/blob/master/benchmarks_mujoco1M.htm) | [Spinning Up (Tensorflow)](https://spinningup.openai.com/en/latest/spinningup/bench.html) |
 | :--------------------: | :---------------: | :-------------------------------------------------: | :-----------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
 |          Ant           | **2866.7±707.9**  |                         ~0                          |                         N                         |                              N                               |                             ~150                             |
 |      HalfCheetah       | **4471.2±804.9**  |                        ~400                         |                        ~0                         |                            ~1350                             |                             ~850                             |
