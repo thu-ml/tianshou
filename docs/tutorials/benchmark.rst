@@ -12,7 +12,7 @@ Every experiment is conducted under 10 random seeds for 1-10M steps. Please refe
 .. raw:: html
 
     <center>
-        <select id="env-mujoco" onchange="showEnv(this)"></select>
+        <select id="env-mujoco" onchange="showMujocoEnv(this)"></select>
         <br>
         <div id="vis-mujoco"></div>
         <br>
@@ -95,3 +95,13 @@ Atari Benchmark
 ---------------
 
 Please refer to https://github.com/thu-ml/tianshou/tree/master/examples/atari
+
+.. raw:: html
+
+    <center>
+        <select id="env-atari" onchange="showAtariEnv(this)"></select>
+        <br>
+        <div id="vis-atari"></div>
+        <br>
+    </center>
+
