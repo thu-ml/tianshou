@@ -18,7 +18,7 @@ from tianshou.utils.net.discrete import Actor, Critic
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='CartPole-v0')
+    parser.add_argument('--task', type=str, default='CartPole-v1')
     parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
@@ -53,7 +53,7 @@ def test_discrete_sac(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
-        default_reward_threshold = {"CartPole-v0": 180}  # lower the goal
+        default_reward_threshold = {"CartPole-v1": 180}  # lower the goal
         args.reward_threshold = default_reward_threshold.get(
             args.task, env.spec.reward_threshold
         )

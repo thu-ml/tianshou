@@ -130,7 +130,7 @@ Currently it supports Atari, VizDoom, toy_text and classic_control environments.
     # install envpool: pip3 install envpool
 
     import envpool
-    envs = envpool.make_gym("CartPole-v0", num_envs=10)
+    envs = envpool.make_gym("CartPole-v1", num_envs=10)
     collector = Collector(policy, envs, buffer)
 
 Here are some examples: https://github.com/sail-sg/envpool/tree/master/examples/tianshou_examples
