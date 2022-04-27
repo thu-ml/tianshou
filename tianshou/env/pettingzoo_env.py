@@ -55,7 +55,9 @@ class PettingZooEnv(AECEnv, ABC):
 
         self.reset()
 
-    def reset(self) -> dict:
+    def reset(self, seed=None) -> dict:
+        if seed is not None:
+            self.env.seed(seed)
         self.env.reset()
         observation = self.env.observe(self.env.agent_selection)
         if isinstance(observation, dict) and 'action_mask' in observation:

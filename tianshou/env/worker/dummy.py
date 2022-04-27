@@ -35,9 +35,9 @@ class DummyEnvWorker(EnvWorker):
         else:
             self.result = self.env.step(action)  # type: ignore
 
-    def seed(self, seed: Optional[int] = None) -> List[int]:
+    def seed(self, seed: Optional[int] = None) -> None:
         super().seed(seed)
-        return self.env.seed(seed)
+        self.env.reset(seed=seed)
 
     def render(self, **kwargs: Any) -> Any:
         return self.env.render(**kwargs)

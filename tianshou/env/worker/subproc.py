@@ -104,7 +104,7 @@ def _worker(
             elif cmd == "render":
                 p.send(env.render(**data) if hasattr(env, "render") else None)
             elif cmd == "seed":
-                p.send(env.seed(data) if hasattr(env, "seed") else None)
+                env.reset(seed=data)
             elif cmd == "getattr":
                 p.send(getattr(env, data) if hasattr(env, data) else None)
             elif cmd == "setattr":
@@ -204,10 +204,9 @@ class SubprocEnvWorker(EnvWorker):
                 obs = self._decode_obs()
             return obs
 
-    def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
+    def seed(self, seed: Optional[int] = None) -> None:
         super().seed(seed)
         self.parent_remote.send(["seed", seed])
-        return self.parent_remote.recv()
 
     def render(self, **kwargs: Any) -> Any:
         self.parent_remote.send(["render", kwargs])

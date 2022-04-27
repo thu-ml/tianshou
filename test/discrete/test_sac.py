@@ -53,7 +53,7 @@ def test_discrete_sac(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
-        default_reward_threshold = {"CartPole-v1": 180}  # lower the goal
+        default_reward_threshold = {"CartPole-v1": 160}  # lower the goal
         args.reward_threshold = default_reward_threshold.get(
             args.task, env.spec.reward_threshold
         )

@@ -47,7 +47,7 @@ class RayEnvWorker(EnvWorker):
         return [workers[results.index(result)] for result in ready_results]
 
     def send(self, action: Optional[np.ndarray]) -> None:
-        # self.action is actually a handle
+        # self.result is actually a handle
         if action is None:
             self.result = self.env.reset.remote()
         else:
@@ -60,7 +60,7 @@ class RayEnvWorker(EnvWorker):
 
     def seed(self, seed: Optional[int] = None) -> List[int]:
         super().seed(seed)
-        return ray.get(self.env.seed.remote(seed))
+        return ray.get(self.env.reset.remote(seed=seed))
 
     def render(self, **kwargs: Any) -> Any:
         return ray.get(self.env.render.remote(**kwargs))
