@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
@@ -9,6 +9,7 @@ from numba import njit
 from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from tianshou.utils import MultipleLRSchedulers
 
 
 class BasePolicy(ABC, nn.Module):
@@ -64,6 +65,8 @@ class BasePolicy(ABC, nn.Module):
         action_space: Optional[gym.Space] = None,
         action_scaling: bool = False,
         action_bound_method: str = "",
+        lr_scheduler: Optional[Union[torch.optim.lr_scheduler.LambdaLR,
+                                     MultipleLRSchedulers]] = None,
     ) -> None:
         super().__init__()
         self.observation_space = observation_space
@@ -79,6 +82,7 @@ class BasePolicy(ABC, nn.Module):
         # can be one of ("clip", "tanh", ""), empty string means no bounding
         assert action_bound_method in ("", "clip", "tanh")
         self.action_bound_method = action_bound_method
+        self.lr_scheduler = lr_scheduler
         self._compile()
 
     def set_agent_id(self, agent_id: int) -> None:
@@ -178,6 +182,33 @@ class BasePolicy(ABC, nn.Module):
                 act = low + (high - low) * (act + 1.0) / 2.0  # type: ignore
         return act
 
+    def map_action_inverse(
+        self, act: Union[Batch, List, np.ndarray]
+    ) -> Union[Batch, List, np.ndarray]:
+        """Inverse operation to :meth:`~tianshou.policy.BasePolicy.map_action`.
+
+        This function is called in :meth:`~tianshou.data.Collector.collect` for
+        random initial steps. It scales [action_space.low, action_space.high] to
+        the value ranges of policy.forward.
+
+        :param act: a data batch, list or numpy.ndarray which is the action taken
+            by gym.spaces.Box.sample().
+
+        :return: action remapped.
+        """
+        if isinstance(self.action_space, gym.spaces.Box):
+            act = to_numpy(act)
+            if isinstance(act, np.ndarray):
+                if self.action_scaling:
+                    low, high = self.action_space.low, self.action_space.high
+                    scale = high - low
+                    eps = np.finfo(np.float32).eps.item()
+                    scale[scale < eps] += eps
+                    act = (act - low) * 2.0 / scale - 1.0
+                if self.action_bound_method == "tanh":
+                    act = (np.log(1.0 + act) - np.log(1.0 - act)) / 2.0  # type: ignore
+        return act
+
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
@@ -245,6 +276,8 @@ class BasePolicy(ABC, nn.Module):
         batch = self.process_fn(batch, buffer, indices)
         result = self.learn(batch, **kwargs)
         self.post_process_fn(batch, buffer, indices)
+        if self.lr_scheduler is not None:
+            self.lr_scheduler.step()
         self.updating = False
         return result
 

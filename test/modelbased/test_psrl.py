@@ -81,19 +81,19 @@ def test_psrl(args=get_args()):
         logger = WandbLogger(
             save_interval=1, project='psrl', name='wandb_test', config=args
         )
-    elif args.logger == "tensorboard":
+    if args.logger != "none":
         log_path = os.path.join(args.logdir, args.task, 'psrl')
         writer = SummaryWriter(log_path)
         writer.add_text("args", str(args))
-        logger = TensorboardLogger(writer)
+        if args.logger == "tensorboard":
+            logger = TensorboardLogger(writer)
+        else:
+            logger.load(writer)
     else:
         logger = LazyLogger()
 
     def stop_fn(mean_rewards):
-        if reward_threshold:
-            return mean_rewards >= reward_threshold
-        else:
-            return False
+        return mean_rewards >= args.reward_threshold
 
     train_collector.collect(n_step=args.buffer_size, random=True)
     # trainer, test it without logger

@@ -15,6 +15,8 @@ class ImitationPolicy(BasePolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> a)
     :param torch.optim.Optimizer optim: for optimizing the model.
     :param gym.Space action_space: env's action space.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 

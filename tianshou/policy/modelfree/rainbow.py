@@ -23,6 +23,8 @@ class RainbowPolicy(C51Policy):
         you do not use the target network). Default to 0.
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 
