@@ -62,7 +62,11 @@ def test_discrete_bcq(args=get_args()):
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
     )
     if args.reward_threshold is None:
-        default_reward_threshold = {"Pendulum-v1":-250, "CartPole-v0": 195, "NChain-v0": 3400}
+        default_reward_threshold = {
+            "Pendulum-v1": -250,
+            "CartPole-v0": 195,
+            "NChain-v0": 3400
+        }
         args.reward_threshold = default_reward_threshold.get(args.task)
     # seed
     np.random.seed(args.seed)

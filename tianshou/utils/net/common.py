@@ -312,6 +312,7 @@ class DataParallelNet(nn.Module):
             obs = torch.as_tensor(obs, dtype=torch.float32)
         return self.net(obs=obs.cuda(), *args, **kwargs)
 
+
 class BDQNet(nn.Module):
     """Branching dual Q network
     
@@ -339,6 +340,7 @@ class BDQNet(nn.Module):
     :param bool softmax: whether to apply a softmax layer over the last layer's
         output.
     """
+
     def __init__(
         self,
         state_shape: Union[int, Sequence[int]],
@@ -358,16 +360,29 @@ class BDQNet(nn.Module):
         # common network
         common_input_dim = int(np.prod(state_shape))
         common_output_dim = 0
-        self.common = MLP(common_input_dim, common_output_dim, common_hidden_sizes, norm_layer, activation, device)
+        self.common = MLP(
+            common_input_dim, common_output_dim, common_hidden_sizes, norm_layer,
+            activation, device
+        )
         # value network
         value_input_dim = common_hidden_sizes[-1]
         value_output_dim = 1
-        self.value = MLP(value_input_dim, value_output_dim, value_hidden_sizes, norm_layer, activation, device)
+        self.value = MLP(
+            value_input_dim, value_output_dim, value_hidden_sizes, norm_layer,
+            activation, device
+        )
         # action branching network
         action_input_dim = common_hidden_sizes[-1]
         action_output_dim = action_per_branch
-        self.branches = nn.ModuleList([MLP(action_input_dim, action_output_dim, action_hidden_sizes, norm_layer, activation, device) for _ in range(self.num_branches)])
-            
+        self.branches = nn.ModuleList(
+            [
+                MLP(
+                    action_input_dim, action_output_dim, action_hidden_sizes,
+                    norm_layer, activation, device
+                ) for _ in range(self.num_branches)
+            ]
+        )
+
     def forward(
         self,
         obs: Union[np.ndarray, torch.Tensor],

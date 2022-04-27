@@ -15,7 +15,9 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import BDQNet
 
+
 class DiscreteToContinuous(gym.ActionWrapper):
+
     def __init__(self, env, action_per_branch):
         super().__init__(env)
         self.action_per_branch = action_per_branch
@@ -24,18 +26,21 @@ class DiscreteToContinuous(gym.ActionWrapper):
         self.mesh = []
         for l, h in zip(low, high):
             self.mesh.append(np.linspace(l, h, action_per_branch))
-        
+
     def action(self, act):
         # modify act
         act = np.array([self.mesh[i][a] for i, a in enumerate(act)])
         return act
-    
+
+
 def get_args():
     parser = argparse.ArgumentParser()
     # task
     parser.add_argument('--task', type=str, default='BipedalWalker-v3')
     # network architecture
-    parser.add_argument('--common_hidden-sizes', type=int, nargs='*', default=[512, 256])
+    parser.add_argument(
+        '--common_hidden-sizes', type=int, nargs='*', default=[512, 256]
+    )
     parser.add_argument('--action_hidden-sizes', type=int, nargs='*', default=[128])
     parser.add_argument('--value_hidden-sizes', type=int, nargs='*', default=[128])
     parser.add_argument('--action_per_branch', type=int, default=32)
@@ -66,25 +71,31 @@ def get_args():
 def test_bdq(args=get_args()):
     if args.task == 'Humanoid-v3':
         args.reward_treshold = 3000
-    
+
     env = gym.make(args.task)
     env = DiscreteToContinuous(env, args.action_per_branch)
-    
+
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-    
+
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
     print("Actions per branch:", args.action_per_branch)
-    
+
     # train_envs = DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = SubprocVectorEnv(
-        [lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch) for _ in range(args.training_num)]
+        [
+            lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
+            for _ in range(args.training_num)
+        ]
     )
     # test_envs = DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
     test_envs = SubprocVectorEnv(
-        [lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch) for _ in range(args.test_num)]
+        [
+            lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
+            for _ in range(args.test_num)
+        ]
     )
     # seed
     np.random.seed(args.seed)
@@ -103,10 +114,7 @@ def test_bdq(args=get_args()):
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = BDQPolicy(
-        net,
-        optim,
-        args.gamma,
-        target_update_freq=args.target_update_freq
+        net, optim, args.gamma, target_update_freq=args.target_update_freq
     )
     # collector
     train_collector = Collector(
@@ -128,7 +136,9 @@ def test_bdq(args=get_args()):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= getattr(env, "spec.reward_threshold", args.reward_treshold)
+        return mean_rewards >= getattr(
+            env, "spec.reward_threshold", args.reward_treshold
+        )
 
     def train_fn(epoch, env_step):  # exp decay
         eps = max(args.eps_train * (1 - 5e-6)**env_step, args.eps_test)

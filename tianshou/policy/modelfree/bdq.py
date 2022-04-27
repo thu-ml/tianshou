@@ -76,7 +76,9 @@ class BDQPolicy(BasePolicy):
             target_q = result.logits
         if self._is_double:
             act = self(batch, input="obs_next").act
-            return np.squeeze(np.take_along_axis(target_q, np.expand_dims(act, -1), -1))
+            return np.squeeze(
+                np.take_along_axis(target_q, np.expand_dims(act, -1), -1)
+            )
         else:  # Nature DQN, over estimate
             return NotImplementedError
 
@@ -109,9 +111,7 @@ class BDQPolicy(BasePolicy):
         """Compute the return for BDQ targets.
 
         """
-        batch = self._compute_return(
-            batch, buffer, indices
-        )
+        batch = self._compute_return(batch, buffer, indices)
         return batch
 
     def forward(
@@ -176,7 +176,8 @@ class BDQPolicy(BasePolicy):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
             rand_act = np.random.randint(
-                0, self.max_action_num, (bsz, act.shape[-1]))  # [0, 1]
+                0, self.max_action_num, (bsz, act.shape[-1])
+            )  # [0, 1]
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]

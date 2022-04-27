@@ -60,7 +60,11 @@ def test_trpo(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
     if args.reward_threshold is None:
-        default_reward_threshold = {"Pendulum-v1":-250, "CartPole-v0": 195, "NChain-v0": 3400}
+        default_reward_threshold = {
+            "Pendulum-v1": -250,
+            "CartPole-v0": 195,
+            "NChain-v0": 3400
+        }
         args.reward_threshold = default_reward_threshold.get(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
