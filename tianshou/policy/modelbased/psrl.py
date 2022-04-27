@@ -18,6 +18,8 @@ class PSRLModel(object):
         of rewards, with shape (n_state, n_action).
     :param float discount_factor: in [0, 1].
     :param float epsilon: for precision control in value iteration.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
     """
 
     def __init__(

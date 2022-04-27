@@ -178,7 +178,7 @@ def train_agent(
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_fn(policy):
+    def save_best_fn(policy):
         if hasattr(args, 'model_save_path'):
             model_save_path = args.model_save_path
         else:
@@ -214,7 +214,7 @@ def train_agent(
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         update_per_step=args.update_per_step,
         logger=logger,
         test_in_train=False,
@@ -229,7 +229,7 @@ def watch(
     agent_learn: Optional[BasePolicy] = None,
     agent_opponent: Optional[BasePolicy] = None,
 ) -> None:
-    env = get_env()
+    env = DummyVectorEnv([get_env])
     policy, optim, agents = get_agents(
         args, agent_learn=agent_learn, agent_opponent=agent_opponent
     )
