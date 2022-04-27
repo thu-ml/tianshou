@@ -165,3 +165,5 @@ The table below compares the performance of Tianshou against published results o
 +         +----------------+----------+-----------+----------+----------+---------+----------+--------+----------+----------+
 |         |Spinning Up (TF)|~150      |~850       |~1200     |~600      |~85      |/         |/       |/         |/         |
 +---------+----------------+----------+-----------+----------+----------+---------+----------+--------+----------+----------+
+
+Please note that the comparison table for both two benchmarks could NOT be used to prove which implementation is "better". The hyperparameters of the algorithms vary across different implementations. Also, the reward metric is not strictly the same (e.g. Tianshou uses max average return in 10M steps but OpenAI Baselines only report average return at 10M steps, which is unfair). Lastly, Tianshou always uses 10 random seeds while others might use fewer. The comparison is here only to show Tianshou's reliability.
