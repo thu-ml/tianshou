@@ -22,6 +22,7 @@ def expert_file_name():
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
+    parser.add_argument('--reward_threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--eps-test', type=float, default=0.05)
     parser.add_argument('--eps-train', type=float, default=0.1)
@@ -57,10 +58,17 @@ def get_args():
 def gather_data():
     args = get_args()
     env = gym.make(args.task)
-    if args.task == 'CartPole-v0':
-        env.spec.reward_threshold = 190  # lower the goal
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+    if args.reward_threshold is None:
+        default_reward_threshold = {
+            "Pendulum-v1": -250,
+            "CartPole-v0": 190,
+            "NChain-v0": 3400
+        }
+        args.reward_threshold = default_reward_threshold.get(
+            args.task
+        )  # lower the goal?
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv(
@@ -117,7 +125,7 @@ def gather_data():
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+        return mean_rewards >= args.reward_threshold
 
     def train_fn(epoch, env_step):
         # eps annnealing, just a demo

@@ -257,17 +257,17 @@ class Recurrent(nn.Module):
             obs = obs.unsqueeze(-2)
         obs = self.fc1(obs)
         self.nn.flatten_parameters()
-        if state is None:
-            obs, (hidden, cell) = self.nn(obs)
-        else:
-            # we store the stack data in [bsz, len, ...] format
-            # but pytorch rnn needs [len, bsz, ...]
-            obs, (hidden, cell) = self.nn(
-                obs, (
-                    state["hidden"].transpose(0, 1).contiguous(),
-                    state["cell"].transpose(0, 1).contiguous()
-                )
-            )
+        # if state is None:
+        obs, (hidden, cell) = self.nn(obs)
+        # else:
+        #     # we store the stack data in [bsz, len, ...] format
+        #     # but pytorch rnn needs [len, bsz, ...]
+        #     obs, (hidden, cell) = self.nn(
+        #         obs, (
+        #             state["hidden"].transpose(0, 1).contiguous(),
+        #             state["cell"].transpose(0, 1).contiguous()
+        #         )
+        #     )
         obs = self.fc2(obs[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
         return obs, {
@@ -311,3 +311,93 @@ class DataParallelNet(nn.Module):
         if not isinstance(obs, torch.Tensor):
             obs = torch.as_tensor(obs, dtype=torch.float32)
         return self.net(obs=obs.cuda(), *args, **kwargs)
+
+
+class BDQNet(nn.Module):
+    """Branching dual Q network.
+    
+    Network for the BDQPolicy, it uses a common network module, a value module and action "branches" one for each dimension.
+    It allows for a linear scaling of Q-value the output w.r.t. the number of dimensions in the action space. 
+    For more info please refer to: arXiv:1711.08946.
+    
+    :param state_shape: int or a sequence of int of the shape of state.
+    :param action_shape: int or a sequence of int of the shape of action.
+    :param action_peer_branch: int or a sequence of int of the number of actions in each dimension.
+    :param common_hidden_sizes: shape of the common MLP network passed in as a list.
+    :param value_hidden_sizes: shape of the value MLP network passed in as a list.
+    :param action_hidden_sizes: shape of the action MLP network passed in as a list.
+    :param norm_layer: use which normalization before activation, e.g.,
+        ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
+        You can also pass a list of normalization modules with the same length
+        of hidden_sizes, to use different normalization module in different
+        layers. Default to no normalization.
+    :param activation: which activation to use after each layer, can be both
+        the same activation for all layers if passed in nn.Module, or different
+        activation for different Modules if passed in a list. Default to
+        nn.ReLU.
+    :param device: specify the device when the network actually runs. Default
+        to "cpu".
+    :param bool softmax: whether to apply a softmax layer over the last layer's
+        output.
+    """
+
+    def __init__(
+        self,
+        state_shape: Union[int, Sequence[int]],
+        action_shape: Union[int, Sequence[int]] = 0,
+        action_per_branch: int = 2,
+        common_hidden_sizes: list[int] = [],
+        value_hidden_sizes: list[int] = [],
+        action_hidden_sizes: list[int] = [],
+        norm_layer: Optional[ModuleType] = None,
+        activation: Optional[ModuleType] = nn.ReLU,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
+        super().__init__()
+        self.device = device
+        self.num_branches = action_shape if type(action_shape
+                                                 ) is int else action_shape[0]
+        self.action_per_branch = action_per_branch
+        # common network
+        common_input_dim = int(np.prod(state_shape))
+        common_output_dim = 0
+        self.common = MLP(
+            common_input_dim, common_output_dim, common_hidden_sizes, norm_layer,
+            activation, device
+        )
+        # value network
+        value_input_dim = common_hidden_sizes[-1]
+        value_output_dim = 1
+        self.value = MLP(
+            value_input_dim, value_output_dim, value_hidden_sizes, norm_layer,
+            activation, device
+        )
+        # action branching network
+        action_input_dim = common_hidden_sizes[-1]
+        action_output_dim = action_per_branch
+        self.branches = nn.ModuleList(
+            [
+                MLP(
+                    action_input_dim, action_output_dim, action_hidden_sizes,
+                    norm_layer, activation, device
+                ) for _ in range(self.num_branches)
+            ]
+        )
+
+    def forward(
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        state: Any = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[torch.Tensor, Any]:
+        """Mapping: obs -> model -> logits."""
+        common_out = self.common(obs)
+        value_out = self.value(common_out)
+        value_out = torch.unsqueeze(value_out, 1)
+        action_out = []
+        for b in self.branches:
+            action_out.append(b(common_out))
+        action_scores = torch.stack(action_out, 1)
+        action_scores = action_scores - torch.mean(action_scores, 2, keepdim=True)
+        logits = value_out + action_scores
+        return logits, state

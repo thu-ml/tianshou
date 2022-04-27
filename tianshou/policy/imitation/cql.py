@@ -206,12 +206,21 @@ class CQLPolicy(SACPolicy):
         random_actions = torch.FloatTensor(
             batch_size * self.num_repeat_actions, act.shape[-1]
         ).uniform_(-self.min_action, self.max_action).to(self.device)
-        tmp_obs = obs.unsqueeze(1) \
-            .repeat(1, self.num_repeat_actions, 1) \
-            .view(batch_size * self.num_repeat_actions, obs.shape[-1])
-        tmp_obs_next = obs_next.unsqueeze(1) \
-            .repeat(1, self.num_repeat_actions, 1) \
-            .view(batch_size * self.num_repeat_actions, obs.shape[-1])
+
+        if len(obs.shape) > 2:
+            tmp_obs = obs.unsqueeze(1) \
+                .repeat(1, self.num_repeat_actions, 1, 1) \
+                .view(batch_size * self.num_repeat_actions, obs.shape[-2], obs.shape[-1])
+            tmp_obs_next = obs_next.unsqueeze(1) \
+                .repeat(1, self.num_repeat_actions, 1, 1) \
+                .view(batch_size * self.num_repeat_actions, obs.shape[-2], obs.shape[-1])
+        else:
+            tmp_obs = obs.unsqueeze(1) \
+                .repeat(1, self.num_repeat_actions, 1) \
+                .view(batch_size * self.num_repeat_actions, obs.shape[-1])
+            tmp_obs_next = obs_next.unsqueeze(1) \
+                .repeat(1, self.num_repeat_actions, 1) \
+                .view(batch_size * self.num_repeat_actions, obs.shape[-1])
         # tmp_obs & tmp_obs_next: (batch_size * num_repeat, state_dim)
 
         current_pi_value1, current_pi_value2 = self.calc_pi_values(tmp_obs, tmp_obs)
