@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import gym.spaces
 from pettingzoo.utils.env import AECEnv
@@ -55,7 +55,7 @@ class PettingZooEnv(AECEnv, ABC):
 
         self.reset()
 
-    def reset(self, seed=None) -> dict:
+    def reset(self, seed: Optional[int] = None) -> dict:
         if seed is not None:
             self.env.seed(seed)
         self.env.reset()
