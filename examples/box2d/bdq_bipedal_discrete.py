@@ -8,8 +8,8 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
-from tianshou.env import DiscreteToContinuous, DummyVectorEnv, SubprocVectorEnv
+from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.env import DiscreteToContinuous, SubprocVectorEnv
 from tianshou.policy import BDQPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -19,7 +19,7 @@ from tianshou.utils.net.common import BDQNet
 def get_args():
     parser = argparse.ArgumentParser()
     # task
-    parser.add_argument('--task', type=str, default='BipedalWalkerHardcore-v3')
+    parser.add_argument('--task', type=str, default='BipedalWalker-v3')
     # network architecture
     parser.add_argument(
         '--common_hidden-sizes', type=int, nargs='*', default=[512, 256]
