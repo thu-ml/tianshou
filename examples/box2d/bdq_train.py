@@ -1,4 +1,5 @@
 import argparse
+import datetime
 import os
 import pprint
 
@@ -37,22 +38,22 @@ def get_args():
     parser.add_argument('--common_hidden-sizes', type=int, nargs='*', default=[512, 256])
     parser.add_argument('--action_hidden-sizes', type=int, nargs='*', default=[128])
     parser.add_argument('--value_hidden-sizes', type=int, nargs='*', default=[128])
-    parser.add_argument('--action_per_brach', type=int, default=32)
+    parser.add_argument('--action_per_branch', type=int, default=32)
     # training hyperparameters
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--eps-test', type=float, default=0.)
     parser.add_argument('--eps-train', type=float, default=0.73)
     parser.add_argument('--buffer-size', type=int, default=100000)
-    parser.add_argument('--lr', type=float, default=2e-5)
+    parser.add_argument('--lr', type=float, default=5e-5)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--target-update-freq', type=int, default=1000)
     parser.add_argument('--epoch', type=int, default=100)
     parser.add_argument('--step-per-epoch', type=int, default=80000)
     parser.add_argument('--step-per-collect', type=int, default=16)
     parser.add_argument('--update-per-step', type=float, default=0.0625)
-    parser.add_argument('--batch-size', type=int, default=512)
-    parser.add_argument('--training-num', type=int, default=16)
-    parser.add_argument('--test-num', type=int, default=100)
+    parser.add_argument('--batch-size', type=int, default=128)
+    parser.add_argument('--training-num', type=int, default=100)
+    parser.add_argument('--test-num', type=int, default=10)
     # other
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
@@ -62,7 +63,7 @@ def get_args():
     return parser.parse_args()
 
 
-def test_dqn(args=get_args()):
+def test_bdq(args=get_args()):
     if args.task == 'Humanoid-v3':
         args.reward_treshold = 3000
     
@@ -78,12 +79,12 @@ def test_dqn(args=get_args()):
     
     # train_envs = DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = DummyVectorEnv(
+    train_envs = SubprocVectorEnv(
         [lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch) for _ in range(args.training_num)]
     )
     # test_envs = DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
     test_envs = SubprocVectorEnv(
-        [lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch) for _ in range(args.training_num)]
+        [lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch) for _ in range(args.test_num)]
     )
     # seed
     np.random.seed(args.seed)
@@ -114,11 +115,12 @@ def test_dqn(args=get_args()):
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
         exploration_noise=True
     )
-    test_collector = Collector(policy, test_envs, exploration_noise=True)
+    test_collector = Collector(policy, test_envs, exploration_noise=False)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'bdq_lr2e-5')
+    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_path = os.path.join(args.logdir, 'bdq', args.task, current_time)
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
@@ -167,4 +169,4 @@ def test_dqn(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_dqn(get_args())
+    test_bdq(get_args())
