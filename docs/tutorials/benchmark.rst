@@ -108,7 +108,7 @@ Every experiment is conducted under 10 random seeds for 10M steps. Please refer 
     </center>
 
 
-The table below compares the performance of Tianshou against published results on Atari games. We use max average return in 10M timesteps as the reward metric. - means results are not provided. The best-performing baseline on each task is highlighted in boldface. Referenced baselines include `Google Dopamine <https://github.com/google/dopamine/tree/master/baselines/atari>`_ and `OpenAI Baselines <https://github.com/openai/baselines>`_.
+The table below compares the performance of Tianshou against published results on Atari games. We use max average return in 10M timesteps as the reward metric (to be consistent with Mujoco). - means results are not provided. The best-performing baseline on each task is highlighted in boldface. Referenced baselines include `Google Dopamine <https://github.com/google/dopamine/tree/master/baselines/atari>`_ and `OpenAI Baselines <https://github.com/openai/baselines>`_.
 
 # TODO table here @jiayi
 
