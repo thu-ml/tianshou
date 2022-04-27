@@ -6,20 +6,18 @@ import pprint
 import gym
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
-from tianshou.env import DiscreteToContinuous, DummyVectorEnv, SubprocVectorEnv
+from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.env import DiscreteToContinuous, SubprocVectorEnv
 from tianshou.policy import BDQPolicy
 from tianshou.trainer import offpolicy_trainer
-from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import BDQNet
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     # task
-    parser.add_argument('--task', type=str, default='BipedalWalkerHardcore-v3')
+    parser.add_argument('--task', type=str, default='BipedalWalker-v3')
     # network architecture
     parser.add_argument(
         '--common_hidden-sizes', type=int, nargs='*', default=[512, 256]
@@ -28,26 +26,31 @@ def get_args():
     parser.add_argument('--value_hidden-sizes', type=int, nargs='*', default=[128])
     parser.add_argument('--action_per_branch', type=int, default=32)
     # training hyperparameters
-    parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--eps-test', type=float, default=0.)
-    parser.add_argument('--eps-train', type=float, default=0.73)
-    parser.add_argument('--buffer-size', type=int, default=100000)
-    parser.add_argument('--lr', type=float, default=5e-5)
-    parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--target-update-freq', type=int, default=1000)
-    parser.add_argument('--epoch', type=int, default=100)
-    parser.add_argument('--step-per-epoch', type=int, default=80000)
-    parser.add_argument('--step-per-collect', type=int, default=16)
-    parser.add_argument('--update-per-step', type=float, default=0.0625)
-    parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--training-num', type=int, default=100)
-    parser.add_argument('--test-num', type=int, default=10)
-    # other
+    parser.add_argument('--seed', type=int, default=1626)
+    parser.add_argument('--eps-test', type=float, default=0.05)
+    parser.add_argument('--eps-train', type=float, default=0.1)
+    parser.add_argument('--buffer-size', type=int, default=20000)
+    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--gamma', type=float, default=0.9)
+    parser.add_argument('--n-step', type=int, default=3)
+    parser.add_argument('--target-update-freq', type=int, default=320)
+    parser.add_argument('--epoch', type=int, default=20)
+    parser.add_argument('--step-per-epoch', type=int, default=10000)
+    parser.add_argument('--step-per-collect', type=int, default=10)
+    parser.add_argument('--update-per-step', type=float, default=0.1)
+    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--training-num', type=int, default=10)
+    parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument('--prioritized-replay', action="store_true", default=False)
+    parser.add_argument('--alpha', type=float, default=0.6)
+    parser.add_argument('--beta', type=float, default=0.4)
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
+    args = parser.parse_known_args()[0]
+    return args
     return parser.parse_args()
 
 
@@ -65,21 +68,19 @@ def test_bdq(args=get_args()):
     print("Actions shape:", args.action_shape)
     print("Actions per branch:", args.action_per_branch)
 
-    # train_envs = DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
-    # you can also use tianshou.env.SubprocVectorEnv
     train_envs = SubprocVectorEnv(
         [
             lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
             for _ in range(args.training_num)
         ]
     )
-    # test_envs = DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
     test_envs = SubprocVectorEnv(
         [
             lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
             for _ in range(args.test_num)
         ]
     )
+
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -103,25 +104,12 @@ def test_bdq(args=get_args()):
     train_collector = Collector(
         policy,
         train_envs,
-        VectorReplayBuffer(args.buffer_size, len(train_envs)),
+        VectorReplayBuffer(args.buffer_size, args.training_num),
         exploration_noise=True
     )
     test_collector = Collector(policy, test_envs, exploration_noise=False)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
-    # log
-    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    log_path = os.path.join(args.logdir, 'bdq', args.task, current_time)
-    writer = SummaryWriter(log_path)
-    logger = TensorboardLogger(writer)
-
-    def save_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
-
-    def stop_fn(mean_rewards):
-        return mean_rewards >= getattr(
-            env, "spec.reward_threshold", args.reward_treshold
-        )
 
     def train_fn(epoch, env_step):  # exp decay
         eps = max(args.eps_train * (1 - 5e-6)**env_step, args.eps_test)
@@ -141,11 +129,8 @@ def test_bdq(args=get_args()):
         args.test_num,
         args.batch_size,
         update_per_step=args.update_per_step,
-        # stop_fn=stop_fn,
         train_fn=train_fn,
         test_fn=test_fn,
-        save_fn=save_fn,
-        logger=logger
     )
 
     # assert stop_fn(result['best_reward'])

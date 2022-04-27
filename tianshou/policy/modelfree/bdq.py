@@ -9,7 +9,7 @@ from tianshou.policy import BasePolicy
 
 
 class BDQPolicy(BasePolicy):
-    """Implementation of the branching dueling network arXiv:1711.08946
+    """Implementation of the Branching dual Q network arXiv:1711.08946.
 
     :param torch.nn.Module model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
@@ -76,11 +76,10 @@ class BDQPolicy(BasePolicy):
             target_q = result.logits
         if self._is_double:
             act = self(batch, input="obs_next").act
-            return np.squeeze(
-                np.take_along_axis(target_q, np.expand_dims(act, -1), -1)
-            )
-        else:  # Nature DQN, over estimate
-            return NotImplementedError
+        else:
+            act = target_q.max(dim=-1).indices.cpu()
+
+        return np.squeeze(np.take_along_axis(target_q, np.expand_dims(act, -1), -1))
 
     def _compute_return(
         self,
@@ -108,9 +107,7 @@ class BDQPolicy(BasePolicy):
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
-        """Compute the return for BDQ targets.
-
-        """
+        """Compute the return for BDQ targets."""
         batch = self._compute_return(batch, buffer, indices)
         return batch
 

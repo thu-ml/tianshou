@@ -1,5 +1,6 @@
 """Env package."""
 
+from tianshou.env.gym_wrappers import DiscreteToContinuous
 from tianshou.env.venvs import (
     BaseVectorEnv,
     DummyVectorEnv,
@@ -14,10 +15,6 @@ except ImportError:
     pass
 
 __all__ = [
-    "BaseVectorEnv",
-    "DummyVectorEnv",
-    "SubprocVectorEnv",
-    "ShmemVectorEnv",
-    "RayVectorEnv",
-    "PettingZooEnv",
+    "BaseVectorEnv", "DummyVectorEnv", "SubprocVectorEnv", "ShmemVectorEnv",
+    "RayVectorEnv", "PettingZooEnv", "DiscreteToContinuous"
 ]

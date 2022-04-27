@@ -33,6 +33,7 @@ __all__ = [
     "BasePolicy",
     "RandomPolicy",
     "DQNPolicy",
+    "BDQPolicy",
     "C51Policy",
     "RainbowPolicy",
     "QRDQNPolicy",
