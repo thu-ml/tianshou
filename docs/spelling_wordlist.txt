@@ -154,3 +154,6 @@ IPendulum
 Reacher
 Runtime
 Nvidia
+Enduro
+Qbert
+Seaquest
