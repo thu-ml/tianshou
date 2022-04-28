@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
-from tianshou.data import Collector, VectorReplayBuffer, ReplayBuffer
+from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import DiscreteBCQPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
