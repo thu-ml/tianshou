@@ -78,6 +78,8 @@ class PettingZooEnv(AECEnv, ABC):
     def step(self, action: Any) -> Tuple[Dict, List[int], bool, Dict]:
         self.env.step(action)
         observation, rew, done, info = self.env.last()
+        if hasattr(self.env, "state"):
+            info["state"] = self.env.state()
         if isinstance(observation, dict) and 'action_mask' in observation:
             obs = {
                 'agent_id': self.env.agent_selection,
