@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
-# Adapted from https://github.com/deepmind/deepmind-research/blob/master/rl_unplugged/atari.py
+# Adapted from 
+# https://github.com/deepmind/deepmind-research/blob/master/rl_unplugged/atari.py
 #
 """Convert Atari RL Unplugged datasets to Tianshou replay buffers.
 
