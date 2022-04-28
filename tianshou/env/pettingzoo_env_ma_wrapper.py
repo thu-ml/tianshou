@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import gym
 import numpy as np
+
 from tianshou.env import BaseVectorEnv, PettingZooEnv
 
 
@@ -22,8 +23,6 @@ class MAEnvWrapper(PettingZooEnv):
 
     def __len__(self) -> int:
         return self.num_agents
-
-
 
 
 def ma_venv_init(
@@ -82,15 +81,20 @@ def ma_venv_step(
             id[_i] = _id % self.env_num
     obs_stack, rew_stack, done_stack, info_stack = self.p_cls.step(self, action, id)
     for obs, info in zip(obs_stack, info_stack):
-        # self.env_num is the number of environments, while the env_num in collector is `the number of agents` * `the number of environments`
-        info["env_id"] = self.agent_idx[obs["agent_id"]] * self.env_num + info["env_id"]
+        # self.env_num is the number of environments,
+        # while the env_num in collector is
+        # `the number of agents` * `the number of environments`
+        info["env_id"] = (
+            self.agent_idx[obs["agent_id"]] * self.env_num +
+            info["env_id"])
     return obs_stack, rew_stack, done_stack, info_stack
 
 
 def get_MA_VectorEnv_cls(p_cls: Type[BaseVectorEnv]) -> Type[BaseVectorEnv]:
     """
     Get the class of Multi-Agent VectorEnv.
-    MAVectorEnv has the layout [(agent0, env0), (agent0, env1), ..., (agent1, env0), (agent1, env1), ...]
+    MAVectorEnv has the layout [(agent0, env0), (agent0, env1), ...,
+    (agent1, env0), (agent1, env1), ...]
     """
 
     def init_func(

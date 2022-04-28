@@ -76,11 +76,12 @@ class PettingZooEnv(AECEnv, ABC):
         observation = self.env.observe(self.env.agent_selection)
         if isinstance(observation, dict) and "action_mask" in observation:
             return {
-                "agent_id": self.env.agent_selection,
-                "obs": observation["observation"],
-                "mask": [
-                    True if obm == 1 else False for obm in observation["action_mask"]
-                ],
+                "agent_id":
+                self.env.agent_selection,
+                "obs":
+                observation["observation"],
+                "mask":
+                [True if obm == 1 else False for obm in observation["action_mask"]],
             }
         else:
             if isinstance(self.action_space, gym.spaces.Discrete):
@@ -99,11 +100,12 @@ class PettingZooEnv(AECEnv, ABC):
             info["state"] = self.env.state()
         if isinstance(observation, dict) and "action_mask" in observation:
             obs = {
-                "agent_id": self.env.agent_selection,
-                "obs": observation["observation"],
-                "mask": [
-                    True if obm == 1 else False for obm in observation["action_mask"]
-                ],
+                "agent_id":
+                self.env.agent_selection,
+                "obs":
+                observation["observation"],
+                "mask":
+                [True if obm == 1 else False for obm in observation["action_mask"]],
             }
         else:
             if isinstance(self.action_space, gym.spaces.Discrete):
