@@ -257,17 +257,17 @@ class Recurrent(nn.Module):
             obs = obs.unsqueeze(-2)
         obs = self.fc1(obs)
         self.nn.flatten_parameters()
-        # if state is None:
-        obs, (hidden, cell) = self.nn(obs)
-        # else:
-        #     # we store the stack data in [bsz, len, ...] format
-        #     # but pytorch rnn needs [len, bsz, ...]
-        #     obs, (hidden, cell) = self.nn(
-        #         obs, (
-        #             state["hidden"].transpose(0, 1).contiguous(),
-        #             state["cell"].transpose(0, 1).contiguous()
-        #         )
-        #     )
+        if state is None:
+            obs, (hidden, cell) = self.nn(obs)
+        else:
+            # we store the stack data in [bsz, len, ...] format
+            # but pytorch rnn needs [len, bsz, ...]
+            obs, (hidden, cell) = self.nn(
+                obs, (
+                    state["hidden"].transpose(0, 1).contiguous(),
+                    state["cell"].transpose(0, 1).contiguous()
+                )
+            )
         obs = self.fc2(obs[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
         return obs, {

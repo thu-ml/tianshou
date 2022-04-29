@@ -25,7 +25,7 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
-    parser.add_argument('--reward_threshold', type=float, default=None)
+    parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=3e-4)

@@ -15,6 +15,11 @@ except ImportError:
     pass
 
 __all__ = [
-    "BaseVectorEnv", "DummyVectorEnv", "SubprocVectorEnv", "ShmemVectorEnv",
-    "RayVectorEnv", "PettingZooEnv", "DiscreteToContinuous"
+    "BaseVectorEnv",
+    "DummyVectorEnv",
+    "SubprocVectorEnv",
+    "ShmemVectorEnv",
+    "RayVectorEnv",
+    "PettingZooEnv",
+    "DiscreteToContinuous",
 ]

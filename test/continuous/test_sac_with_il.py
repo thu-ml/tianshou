@@ -23,7 +23,7 @@ from tianshou.utils.net.continuous import Actor, ActorProb, Critic
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
-    parser.add_argument('--reward_threshold', type=float, default=None)
+    parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--actor-lr', type=float, default=1e-3)
@@ -67,12 +67,10 @@ def test_sac_with_il(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
     if args.reward_threshold is None:
-        default_reward_threshold = {
-            "Pendulum-v1": -250,
-            "CartPole-v0": 195,
-            "NChain-v0": 3400
-        }
-        args.reward_threshold = default_reward_threshold.get(args.task)
+        default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
     # you can also use tianshou.env.SubprocVectorEnv
     # seed
     np.random.seed(args.seed)
@@ -140,7 +138,7 @@ def test_sac_with_il(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_fn(policy):
+    def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
@@ -158,14 +156,15 @@ def test_sac_with_il(args=get_args()):
         args.batch_size,
         update_per_step=args.update_per_step,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         logger=logger
     )
     assert stop_fn(result['best_reward'])
 
     # here we define an imitation collector with a trivial policy
     policy.eval()
-    args.reward_threshold = -300  # lower the goal
+    if args.task.startswith("Pendulum"):
+        args.reward_threshold -= 50  # lower the goal
     net = Actor(
         Net(
             args.state_shape,
@@ -199,7 +198,7 @@ def test_sac_with_il(args=get_args()):
         args.test_num,
         args.batch_size,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         logger=logger
     )
     assert stop_fn(result['best_reward'])
