@@ -1,6 +1,6 @@
 """Env package."""
 
-from tianshou.env.gym_wrappers import DiscreteToContinuous
+from tianshou.env.gym_wrappers import ContinuousToDiscrete
 from tianshou.env.venvs import (
     BaseVectorEnv,
     DummyVectorEnv,
@@ -21,5 +21,5 @@ __all__ = [
     "ShmemVectorEnv",
     "RayVectorEnv",
     "PettingZooEnv",
-    "DiscreteToContinuous",
+    "ContinuousToDiscrete",
 ]

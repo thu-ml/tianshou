@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import DiscreteToContinuous, SubprocVectorEnv
+from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
 from tianshou.policy import BDQPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils.net.common import BDQNet
@@ -53,7 +53,7 @@ def get_args():
 
 def test_bdq(args=get_args()):
     env = gym.make(args.task)
-    env = DiscreteToContinuous(env, args.action_per_branch)
+    env = ContinuousToDiscrete(env, args.action_per_branch)
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -64,13 +64,13 @@ def test_bdq(args=get_args()):
 
     train_envs = SubprocVectorEnv(
         [
-            lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
+            lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.training_num)
         ]
     )
     test_envs = SubprocVectorEnv(
         [
-            lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
+            lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.test_num)
         ]
     )

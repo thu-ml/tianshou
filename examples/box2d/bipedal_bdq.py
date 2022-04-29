@@ -9,7 +9,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import DiscreteToContinuous, SubprocVectorEnv
+from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
 from tianshou.policy import BDQPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -53,7 +53,7 @@ def get_args():
 
 def test_bdq(args=get_args()):
     env = gym.make(args.task)
-    env = DiscreteToContinuous(env, args.action_per_branch)
+    env = ContinuousToDiscrete(env, args.action_per_branch)
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -62,18 +62,18 @@ def test_bdq(args=get_args()):
     print("Actions shape:", args.action_shape)
     print("Actions per branch:", args.action_per_branch)
 
-    # train_envs = DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
+    # train_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = SubprocVectorEnv(
         [
-            lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
+            lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.training_num)
         ]
     )
-    # test_envs = DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
+    # test_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
     test_envs = SubprocVectorEnv(
         [
-            lambda: DiscreteToContinuous(gym.make(args.task), args.action_per_branch)
+            lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.test_num)
         ]
     )

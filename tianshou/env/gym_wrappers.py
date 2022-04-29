@@ -2,7 +2,7 @@ import gym
 import numpy as np
 
 
-class DiscreteToContinuous(gym.ActionWrapper):
+class ContinuousToDiscrete(gym.ActionWrapper):
     """Gym environment wrapper to take discrete action in a continous environment.
 
     Args:
