@@ -48,7 +48,6 @@ def get_args():
 
 
 def test_ddpg(args=get_args()):
-    torch.set_num_threads(1)  # we just need only one thread for NN
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
