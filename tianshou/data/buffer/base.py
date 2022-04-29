@@ -86,10 +86,10 @@ class ReplayBuffer:
                 ), "key '{}' is reserved and cannot be assigned".format(key)
         super().__setattr__(key, value)
 
-    def save_hdf5(self, path: str) -> None:
+    def save_hdf5(self, path: str, compression: Optional[str] = None) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
-            to_hdf5(self.__dict__, f)
+            to_hdf5(self.__dict__, f, compression=compression)
 
     @classmethod
     def load_hdf5(cls, path: str, device: Optional[str] = None) -> "ReplayBuffer":
