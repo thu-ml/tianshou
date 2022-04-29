@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import DiscreteBCQPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
@@ -58,6 +58,9 @@ def get_args():
     parser.add_argument("--log-interval", type=int, default=100)
     parser.add_argument(
         "--load-buffer-name", type=str, default="./expert_DQN_PongNoFrameskip-v4.hdf5"
+    )
+    parser.add_argument(
+        "--buffer-from-rl-unplugged", action="store_true", default=False
     )
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
@@ -120,7 +123,10 @@ def test_discrete_bcq(args=get_args()):
     if args.load_buffer_name.endswith(".pkl"):
         buffer = pickle.load(open(args.load_buffer_name, "rb"))
     elif args.load_buffer_name.endswith(".hdf5"):
-        buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+        if args.buffer_from_rl_unplugged:
+            buffer = ReplayBuffer.load_hdf5(args.load_buffer_name)
+        else:
+            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
     else:
         print(f"Unknown buffer format: {args.load_buffer_name}")
         exit(0)

@@ -37,7 +37,7 @@ Tianshou provides an `offline_trainer` for offline reinforcement learning. You c
 
 ## Discrete control
 
-For discrete control, we currently use ad hoc Atari data generated from a trained QRDQN agent. In the future, we can switch to better benchmarks such as the Atari portion of [RL Unplugged](https://github.com/deepmind/deepmind-research/tree/master/rl_unplugged).
+For discrete control, we currently use ad hoc Atari data generated from a trained QRDQN agent.
 
 ### Gather Data
 
@@ -100,3 +100,24 @@ We test our CRR implementation on two example tasks (different from author's ver
 | BreakoutNoFrameskip-v4 | 394.3        | 46.9       | 23.3 (epoch 12) | 76.9 (epoch 12) | `python3 atari_crr.py --task BreakoutNoFrameskip-v4 --load-buffer-name log/BreakoutNoFrameskip-v4/qrdqn/expert.hdf5 --epoch 12 --min-q-weight 50` |
 
 Note that CRR itself does not work well in Atari tasks but adding CQL loss/regularizer helps.
+
+### RL Unplugged Data
+
+We provide a script to convert the Atari datasets of [RL Unplugged](https://github.com/deepmind/deepmind-research/tree/master/rl_unplugged) to Tianshou ReplayBuffer.
+
+For example, the following command will download the first shard of the first run of Breakout game to `~/.rl_unplugged/datasets/Breakout/run_1-00001-of-00100` then convert it to a `tianshou.data.ReplayBuffer` and save it to `~/.rl_unplugged/buffers/Breakout/run_1-00001-of-00100.hdf5` (use `--dataset-dir` and `--buffer-dir` to change the default directories):
+
+```bash
+python3 convert_rl_unplugged_atari.py --task Breakout --run-id 1 --shard-id 1
+```
+
+Then you can use it to train an agent by:
+
+```bash
+python3 atari_bcq.py --task BreakoutNoFrameskip-v4 --load-buffer-name ~/.rl_unplugged/buffers/Breakout/run_1-00001-of-00100.hdf5 --buffer-from-rl-unplugged --epoch 12
+```
+
+Note:
+ - Each shard contains about 500k transitions.
+ - This conversion script depends on Tensorflow.
+ - It takes about 1 hour to process one shard on my machine. YMMV.
