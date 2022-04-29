@@ -31,6 +31,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--eps-test", type=float, default=0.)
     parser.add_argument("--eps-train", type=float, default=0.73)
+    parser.add_argument("--eps-decay", type=float, default=5e-6)
     parser.add_argument("--buffer-size", type=int, default=100000)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -119,7 +120,7 @@ def test_bdq(args=get_args()):
         return mean_rewards >= getattr(env.spec.reward_threshold)
 
     def train_fn(epoch, env_step):  # exp decay
-        eps = max(args.eps_train * (1 - 5e-6)**env_step, args.eps_test)
+        eps = max(args.eps_train * (1 - args.eps_decay)**env_step, args.eps_test)
         policy.set_eps(eps)
 
     def test_fn(epoch, env_step):
