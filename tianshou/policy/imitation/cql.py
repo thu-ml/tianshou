@@ -212,10 +212,12 @@ class CQLPolicy(SACPolicy):
         if len(obs.shape) > 2:
             tmp_obs = obs.unsqueeze(1) \
                 .repeat(1, self.num_repeat_actions, 1, 1) \
-                .view(batch_size * self.num_repeat_actions, obs.shape[-2], obs.shape[-1])
+                .view(batch_size * self.num_repeat_actions,
+                      obs.shape[-2], obs.shape[-1])
             tmp_obs_next = obs_next.unsqueeze(1) \
                 .repeat(1, self.num_repeat_actions, 1, 1) \
-                .view(batch_size * self.num_repeat_actions, obs.shape[-2], obs.shape[-1])
+                .view(batch_size * self.num_repeat_actions,
+                      obs.shape[-2], obs.shape[-1])
         else:
             tmp_obs = obs.unsqueeze(1) \
                 .repeat(1, self.num_repeat_actions, 1) \

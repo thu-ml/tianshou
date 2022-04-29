@@ -7,7 +7,8 @@ class DiscreteToContinuous(gym.ActionWrapper):
 
     Args:
         env (gym.Environment): gym envirionment with continous action space.
-        action_per_branch (int): number of discrete actions in each dimension of the action space.
+        action_per_branch (int): number of discrete actions in each dimension 
+        of the action space.
     
     """
 
@@ -22,8 +23,8 @@ class DiscreteToContinuous(gym.ActionWrapper):
         )
         setattr(self.action_space, "n", num_branches)
         self.mesh = []
-        for l, h in zip(low, high):
-            self.mesh.append(np.linspace(l, h, action_per_branch))
+        for lo, hi in zip(low, high):
+            self.mesh.append(np.linspace(lo, hi, action_per_branch))
 
     def action(self, act: np.ndarray) -> np.ndarray:
         # modify act

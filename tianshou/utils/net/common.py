@@ -316,13 +316,14 @@ class DataParallelNet(nn.Module):
 class BDQNet(nn.Module):
     """Branching dual Q network.
     
-    Network for the BDQPolicy, it uses a common network module, a value module and action "branches" one for each dimension.
-    It allows for a linear scaling of Q-value the output w.r.t. the number of dimensions in the action space. 
-    For more info please refer to: arXiv:1711.08946.
-    
+    Network for the BDQPolicy, it uses a common network module, a value module 
+    and action "branches" one for each dimension.It allows for a linear scaling
+    of Q-value the output w.r.t. the number of dimensions in the action space. 
+    For more info please refer to: arXiv:1711.08946.    
     :param state_shape: int or a sequence of int of the shape of state.
     :param action_shape: int or a sequence of int of the shape of action.
-    :param action_peer_branch: int or a sequence of int of the number of actions in each dimension.
+    :param action_peer_branch: int or a sequence of int of the number of actions in 
+    each dimension.
     :param common_hidden_sizes: shape of the common MLP network passed in as a list.
     :param value_hidden_sizes: shape of the value MLP network passed in as a list.
     :param action_hidden_sizes: shape of the action MLP network passed in as a list.
@@ -346,9 +347,9 @@ class BDQNet(nn.Module):
         state_shape: Union[int, Sequence[int]],
         action_shape: Union[int, Sequence[int]] = 0,
         action_per_branch: int = 2,
-        common_hidden_sizes: list[int] = [],
-        value_hidden_sizes: list[int] = [],
-        action_hidden_sizes: list[int] = [],
+        common_hidden_sizes: List[int] = [],
+        value_hidden_sizes: List[int] = [],
+        action_hidden_sizes: List[int] = [],
         norm_layer: Optional[ModuleType] = None,
         activation: Optional[ModuleType] = nn.ReLU,
         device: Union[str, int, torch.device] = "cpu",

@@ -114,7 +114,7 @@ class BDQPolicy(BasePolicy):
     def forward(
         self,
         batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        state: Optional[Union[Dict, Batch, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
