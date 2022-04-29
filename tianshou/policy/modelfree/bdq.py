@@ -5,10 +5,10 @@ import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
-from tianshou.policy import BasePolicy
+from tianshou.policy import DQNPolicy
 
 
-class BDQPolicy(BasePolicy):
+class BranchingDQNPolicy(DQNPolicy):
     """Implementation of the Branching dual Q network arXiv:1711.08946.
 
     :param torch.nn.Module model: a model following the rules in
@@ -33,39 +33,15 @@ class BDQPolicy(BasePolicy):
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
         discount_factor: float = 0.99,
+        estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
         is_double: bool = True,
         **kwargs: Any,
     ) -> None:
-        super().__init__(**kwargs)
-        self.model = model
-        self.optim = optim
-        self.eps = 0.0
-        assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
-        self._gamma = discount_factor
-        self._target = target_update_freq > 0
-        self._freq = target_update_freq
-        self._iter = 0
-        if self._target:
-            self.model_old = deepcopy(self.model)
-            self.model_old.eval()
-        self._rew_norm = reward_normalization
-        self._is_double = is_double
-
-    def set_eps(self, eps: float) -> None:
-        """Set the eps for epsilon-greedy exploration."""
-        self.eps = eps
-
-    def train(self, mode: bool = True) -> "BDQPolicy":
-        """Set the module in training mode, except for the target network."""
-        self.training = mode
-        self.model.train(mode)
-        return self
-
-    def sync_weight(self) -> None:
-        """Synchronize the weight for the target network."""
-        self.model_old.load_state_dict(self.model.state_dict())
+        super().__init__(model, optim, discount_factor, estimation_step,
+        target_update_freq, reward_normalization, is_double)
+        assert estimation_step == 1, "N-step bigger than one is not supported by BDQ"
 
     def _target_q(self, batch: Batch) -> torch.Tensor:
         result = self(batch, input="obs_next")
@@ -75,11 +51,11 @@ class BDQPolicy(BasePolicy):
         else:
             target_q = result.logits
         if self._is_double:
-            act = self(batch, input="obs_next").act
+            act = np.expand_dims(self(batch, input="obs_next").act, -1)
+            act = torch.from_numpy(act).to(target_q.get_device())
         else:
-            act = target_q.max(dim=-1).indices.cpu()
-
-        return np.squeeze(np.take_along_axis(target_q, np.expand_dims(act, -1), -1))
+            act = target_q.max(-1).indices.unsqueeze(-1)
+        return torch.gather(target_q, -1, act)
 
     def _compute_return(
         self,
@@ -91,7 +67,7 @@ class BDQPolicy(BasePolicy):
         rew = batch.rew
         with torch.no_grad():
             target_q_torch = self._target_q(batch)  # (bsz, ?)
-        target_q = to_numpy(target_q_torch)
+        target_q = to_numpy(target_q_torch).squeeze()
         end_flag = buffer.done.copy()
         end_flag[buffer.unfinished_index()] = True
         end_flag = end_flag[indice]
@@ -107,7 +83,7 @@ class BDQPolicy(BasePolicy):
     def process_fn(
         self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
-        """Compute the return for BDQ targets."""
+        """Compute the 1-step return for BDQ targets."""
         batch = self._compute_return(batch, buffer, indices)
         return batch
 
@@ -178,7 +154,4 @@ class BDQPolicy(BasePolicy):
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]
-        return act
-
-    def map_action(self, act: Union[Batch, np.ndarray]) -> Union[Batch, np.ndarray]:
         return act

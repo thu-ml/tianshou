@@ -7,9 +7,9 @@ import torch
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
-from tianshou.policy import BDQPolicy
+from tianshou.policy import BranchingDQNPolicy
 from tianshou.trainer import offpolicy_trainer
-from tianshou.utils.net.common import BDQNet
+from tianshou.utils.net.common import BranchingNet
 
 
 def get_args():
@@ -81,7 +81,7 @@ def test_bdq(args=get_args()):
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
     # model
-    net = BDQNet(
+    net = BranchingNet(
         args.state_shape,
         args.action_shape,
         args.action_per_branch,
@@ -91,10 +91,10 @@ def test_bdq(args=get_args()):
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = BDQPolicy(
+    policy = BranchingDQNPolicy(
         net, optim, args.gamma, target_update_freq=args.target_update_freq
     )
-    # collector
+  # collector
     train_collector = Collector(
         policy,
         train_envs,

@@ -313,10 +313,10 @@ class DataParallelNet(nn.Module):
         return self.net(obs=obs.cuda(), *args, **kwargs)
 
 
-class BDQNet(nn.Module):
+class BranchingNet(nn.Module):
     """Branching dual Q network.
     
-    Network for the BDQPolicy, it uses a common network module, a value module 
+    Network for the BranchingDQNPolicy, it uses a common network module, a value module 
     and action "branches" one for each dimension.It allows for a linear scaling
     of Q-value the output w.r.t. the number of dimensions in the action space. 
     For more info please refer to: arXiv:1711.08946.    
