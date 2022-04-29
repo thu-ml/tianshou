@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
 import torch
@@ -79,6 +79,9 @@ class Critic(nn.Module):
         only a single linear layer).
     :param int preprocess_net_output_dim: the output dimension of
         preprocess_net.
+    :param linear_layer: use this module as linear layer. Default to nn.Linear.
+    :param bool flatten_input: whether to flatten input data for the last layer.
+        Default to True.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -95,6 +98,8 @@ class Critic(nn.Module):
         hidden_sizes: Sequence[int] = (),
         device: Union[str, int, torch.device] = "cpu",
         preprocess_net_output_dim: Optional[int] = None,
+        linear_layer: Type[nn.Module] = nn.Linear,
+        flatten_input: bool = True,
     ) -> None:
         super().__init__()
         self.device = device
@@ -105,7 +110,9 @@ class Critic(nn.Module):
             input_dim,  # type: ignore
             1,
             hidden_sizes,
-            device=self.device
+            device=self.device,
+            linear_layer=linear_layer,
+            flatten_input=flatten_input,
         )
 
     def forward(
