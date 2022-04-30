@@ -1,4 +1,14 @@
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    no_type_check,
+)
 
 import numpy as np
 import torch
@@ -46,6 +56,7 @@ class MLP(nn.Module):
         nn.ReLU.
     :param device: which device to create this model on. Default to None.
     :param linear_layer: use this module as linear layer. Default to nn.Linear.
+    :param bool flatten_input: whether to flatten input data. Default to True.
     """
 
     def __init__(
@@ -57,6 +68,7 @@ class MLP(nn.Module):
         activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
         device: Optional[Union[str, int, torch.device]] = None,
         linear_layer: Type[nn.Linear] = nn.Linear,
+        flatten_input: bool = True,
     ) -> None:
         super().__init__()
         self.device = device
@@ -86,15 +98,15 @@ class MLP(nn.Module):
             model += [linear_layer(hidden_sizes[-1], output_dim)]
         self.output_dim = output_dim or hidden_sizes[-1]
         self.model = nn.Sequential(*model)
+        self.flatten_input = flatten_input
 
+    @no_type_check
     def forward(self, obs: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
         if self.device is not None:
-            obs = torch.as_tensor(
-                obs,
-                device=self.device,  # type: ignore
-                dtype=torch.float32,
-            )
-        return self.model(obs.flatten(1))  # type: ignore
+            obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
+        if self.flatten_input:
+            obs = obs.flatten(1)
+        return self.model(obs)
 
 
 class Net(nn.Module):
@@ -129,6 +141,7 @@ class Net(nn.Module):
         pass a tuple of two dict (first for Q and second for V) stating
         self-defined arguments as stated in
         class:`~tianshou.utils.net.common.MLP`. Default to None.
+    :param linear_layer: use this module as linear layer. Default to nn.Linear.
 
     .. seealso::
 
@@ -152,6 +165,7 @@ class Net(nn.Module):
         concat: bool = False,
         num_atoms: int = 1,
         dueling_param: Optional[Tuple[Dict[str, Any], Dict[str, Any]]] = None,
+        linear_layer: Type[nn.Linear] = nn.Linear,
     ) -> None:
         super().__init__()
         self.device = device
@@ -164,7 +178,8 @@ class Net(nn.Module):
         self.use_dueling = dueling_param is not None
         output_dim = action_dim if not self.use_dueling and not concat else 0
         self.model = MLP(
-            input_dim, output_dim, hidden_sizes, norm_layer, activation, device
+            input_dim, output_dim, hidden_sizes, norm_layer, activation, device,
+            linear_layer
         )
         self.output_dim = self.model.output_dim
         if self.use_dueling:  # dueling DQN
@@ -311,3 +326,40 @@ class DataParallelNet(nn.Module):
         if not isinstance(obs, torch.Tensor):
             obs = torch.as_tensor(obs, dtype=torch.float32)
         return self.net(obs=obs.cuda(), *args, **kwargs)
+
+
+class EnsembleLinear(nn.Module):
+    """Linear Layer of Ensemble network.
+
+    :param int ensemble_size: Number of subnets in the ensemble.
+    :param int inp_feature: dimension of the input vector.
+    :param int out_feature: dimension of the output vector.
+    :param bool bias: whether to include an additive bias, default to be True.
+    """
+
+    def __init__(
+        self,
+        ensemble_size: int,
+        in_feature: int,
+        out_feature: int,
+        bias: bool = True,
+    ) -> None:
+        super().__init__()
+
+        # To be consistent with PyTorch default initializer
+        k = np.sqrt(1. / in_feature)
+        weight_data = torch.rand((ensemble_size, in_feature, out_feature)) * 2 * k - k
+        self.weight = nn.Parameter(weight_data, requires_grad=True)
+
+        self.bias: Union[nn.Parameter, None]
+        if bias:
+            bias_data = torch.rand((ensemble_size, 1, out_feature)) * 2 * k - k
+            self.bias = nn.Parameter(bias_data, requires_grad=True)
+        else:
+            self.bias = None
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = torch.matmul(x, self.weight)
+        if self.bias is not None:
+            x = x + self.bias
+        return x
