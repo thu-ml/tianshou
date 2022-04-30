@@ -26,10 +26,8 @@ class MAEnvWrapper(PettingZooEnv):
 
 
 def ma_venv_init(
-    self: BaseVectorEnv,
-    p_cls: Type[BaseVectorEnv],
-    env_fns: List[Callable[[], gym.Env]],
-    **kwargs: Any
+    self: BaseVectorEnv, p_cls: Type[BaseVectorEnv],
+    env_fns: List[Callable[[], gym.Env]], **kwargs: Any
 ) -> None:
     """add agents relevant attrs
 
@@ -39,14 +37,14 @@ def ma_venv_init(
     """
     p_cls.__init__(self, env_fns, **kwargs)
 
-    self.p_cls = p_cls
+    setattr(self, "p_lcs", p_cls)
 
     agents = self.get_env_attr("agents", [0])[0]
     agent_idx = self.get_env_attr("agent_idx", [0])[0]
 
-    self.agents = agents
-    self.agent_idx = agent_idx
-    self.agent_num = len(agent_idx)
+    setattr(self, "agents", agents)
+    setattr(self, "agent_idx", agent_idx)
+    setattr(self, "agent_num", len(agent_idx))
 
 
 def ma_venv_len(self: BaseVectorEnv) -> int:
@@ -74,7 +72,7 @@ def ma_venv_step(
     and (agent_id, env_id) is set back to ma_env_id in returned info
     """
     if id is not None:
-        if np.isscalar(id):
+        if isinstance(id, int):
             id = [id]
         id = np.array(id)
         for _i, _id in enumerate(id):
@@ -85,8 +83,8 @@ def ma_venv_step(
         # while the env_num in collector is
         # `the number of agents` * `the number of environments`
         info["env_id"] = (
-            self.agent_idx[obs["agent_id"]] * self.env_num +
-            info["env_id"])
+            self.agent_idx[obs["agent_id"]] * self.env_num + info["env_id"]
+        )
     return obs_stack, rew_stack, done_stack, info_stack
 
 
@@ -106,12 +104,12 @@ def get_MA_VectorEnv_cls(p_cls: Type[BaseVectorEnv]) -> Type[BaseVectorEnv]:
 
     attr_dict = {"__init__": init_func, "__len__": ma_venv_len, "step": ma_venv_step}
 
-    return type(name, (p_cls,), attr_dict)
+    return type(name, (p_cls, ), attr_dict)
 
 
 def get_MA_VectorEnv(
     p_cls: Type[BaseVectorEnv], env_fns: List[Callable[[], gym.Env]], **kwargs: Any
-) -> Type[BaseVectorEnv]:
+) -> BaseVectorEnv:
     """
     Get an instance of Multi-Agent VectorEnv.
     """

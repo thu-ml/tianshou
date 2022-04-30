@@ -47,6 +47,11 @@ class PettingZooEnv(AECEnv, ABC):
         self.rewards = [0] * len(self.agents)
 
         # Get first observation space, assuming all agents have equal space
+        self.state_space: Any = self.env.state_space if hasattr(
+            self.env, "state_space"
+        ) else None
+
+        # Get first observation space, assuming all agents have equal space
         self.observation_space: Any = self.env.observation_space(self.agents[0])
 
         # Get first action space, assuming all agents have equal space
@@ -75,7 +80,7 @@ class PettingZooEnv(AECEnv, ABC):
         self.env.reset()
         observation = self.env.observe(self.env.agent_selection)
         if isinstance(observation, dict) and "action_mask" in observation:
-            return {
+            ret = {
                 "agent_id":
                 self.env.agent_selection,
                 "obs":
@@ -85,19 +90,20 @@ class PettingZooEnv(AECEnv, ABC):
             }
         else:
             if isinstance(self.action_space, gym.spaces.Discrete):
-                return {
+                ret = {
                     "agent_id": self.env.agent_selection,
                     "obs": observation,
                     "mask": [True] * self.env.action_space(self.env.agent_selection).n,
                 }
             else:
-                return {"agent_id": self.env.agent_selection, "obs": observation}
+                ret = {"agent_id": self.env.agent_selection, "obs": observation}
+        if hasattr(self.env, "state"):
+            ret["state"] = self.env.state()
+        return ret
 
     def step(self, action: Any) -> Tuple[Dict, List[int], bool, Dict]:
         self.env.step(action)
         observation, rew, done, info = self.env.last()
-        if hasattr(self.env, "state"):
-            info["state"] = self.env.state()
         if isinstance(observation, dict) and "action_mask" in observation:
             obs = {
                 "agent_id":
@@ -116,6 +122,9 @@ class PettingZooEnv(AECEnv, ABC):
                 }
             else:
                 obs = {"agent_id": self.env.agent_selection, "obs": observation}
+
+        if hasattr(self.env, "state"):
+            obs["state"] = self.env.state()
 
         for agent_id, reward in self.env.rewards.items():
             self.rewards[self.agent_idx[agent_id]] = reward
