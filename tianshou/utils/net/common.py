@@ -1,4 +1,14 @@
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    no_type_check,
+)
 
 import numpy as np
 import torch
@@ -90,16 +100,13 @@ class MLP(nn.Module):
         self.model = nn.Sequential(*model)
         self.flatten_input = flatten_input
 
+    @no_type_check
     def forward(self, obs: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
         if self.device is not None:
-            obs = torch.as_tensor(
-                obs,
-                device=self.device,  # type: ignore
-                dtype=torch.float32,
-            )
+            obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         if self.flatten_input:
             obs = obs.flatten(1)
-        return self.model(obs)  # type: ignore
+        return self.model(obs)
 
 
 class Net(nn.Module):
@@ -158,7 +165,7 @@ class Net(nn.Module):
         concat: bool = False,
         num_atoms: int = 1,
         dueling_param: Optional[Tuple[Dict[str, Any], Dict[str, Any]]] = None,
-        linear_layer: ModuleType = nn.Linear,
+        linear_layer: Type[nn.Linear] = nn.Linear,
     ) -> None:
         super().__init__()
         self.device = device

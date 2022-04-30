@@ -98,7 +98,7 @@ class Critic(nn.Module):
         hidden_sizes: Sequence[int] = (),
         device: Union[str, int, torch.device] = "cpu",
         preprocess_net_output_dim: Optional[int] = None,
-        linear_layer: Type[nn.Module] = nn.Linear,
+        linear_layer: Type[nn.Linear] = nn.Linear,
         flatten_input: bool = True,
     ) -> None:
         super().__init__()

@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.distributions import Independent, Normal
 
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import Batch, ReplayBuffer
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 
@@ -68,7 +68,7 @@ class REDQPolicy(DDPGPolicy):
         actor_delay: int = 20,
         exploration_noise: Optional[BaseNoise] = None,
         deterministic_eval: bool = True,
-        target_mode: str = 'min',
+        target_mode: str = "min",
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -80,7 +80,7 @@ class REDQPolicy(DDPGPolicy):
         self.critics_old.eval()
         self.critics_optim = critics_optim
         assert 0 < subset_size <= ensemble_size, \
-            'Invalid choice of ensemble size or subset size.'
+            "Invalid choice of ensemble size or subset size."
         self.ensemble_size = ensemble_size
         self.subset_size = subset_size
 
@@ -94,10 +94,10 @@ class REDQPolicy(DDPGPolicy):
         else:
             self._alpha = alpha
 
-        if target_mode in ('min', 'mean'):
+        if target_mode in ("min", "mean"):
             self.target_mode = target_mode
         else:
-            raise ValueError('Unsupported mode of Q target computing.')
+            raise ValueError("Unsupported mode of Q target computing.")
 
         self.critic_gradient_step = 0
         self.actor_delay = actor_delay
@@ -133,31 +133,24 @@ class REDQPolicy(DDPGPolicy):
         # apply correction for Tanh squashing when computing logprob from Gaussian
         # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
         # in appendix C to get some understanding of this equation.
-        if self.action_scaling and self.action_space is not None:
-            action_scale = to_torch_as(
-                (self.action_space.high - self.action_space.low) / 2.0, act
-            )
-        else:
-            action_scale = 1.0  # type: ignore
         squashed_action = torch.tanh(act)
-        log_prob = log_prob - torch.log(
-            action_scale * (1 - squashed_action.pow(2)) + self.__eps
-        ).sum(-1, keepdim=True)
+        log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) +
+                                        self.__eps).sum(-1, keepdim=True)
         return Batch(
             logits=logits, act=squashed_action, state=h, dist=dist, log_prob=log_prob
         )
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}
-        obs_next_result = self(batch, input='obs_next')
+        obs_next_result = self(batch, input="obs_next")
         a_ = obs_next_result.act
         sample_ensemble_idx = np.random.choice(
             self.ensemble_size, self.subset_size, replace=False
         )
         qs = self.critics_old(batch.obs_next, a_)[sample_ensemble_idx, ...]
-        if self.target_mode == 'min':
+        if self.target_mode == "min":
             target_q, _ = torch.min(qs, dim=0)
-        elif self.target_mode == 'mean':
+        elif self.target_mode == "mean":
             target_q = torch.mean(qs, dim=0)
         target_q -= self._alpha * obs_next_result.log_prob
 
