@@ -99,6 +99,22 @@ class ReplayBuffer:
             buf.__setstate__(from_hdf5(f, device=device))  # type: ignore
         return buf
 
+    @classmethod
+    def from_data(
+        cls, obs: h5py.Dataset, act: h5py.Dataset, rew: h5py.Dataset,
+        done: h5py.Dataset, obs_next: h5py.Dataset
+    ) -> "ReplayBuffer":
+        size = len(obs)
+        assert all(len(dset) == size for dset in [obs, act, rew, done, obs_next]), \
+            "Lengths of all hdf5 datasets need to be equal."
+        buf = cls(size)
+        if size == 0:
+            return buf
+        batch = Batch(obs=obs, act=act, rew=rew, done=done, obs_next=obs_next)
+        buf.set_batch(batch)
+        buf._size = size
+        return buf
+
     def reset(self, keep_statistics: bool = False) -> None:
         """Clear all the data in replay buffer and episode statistics."""
         self.last_index = np.array([0])

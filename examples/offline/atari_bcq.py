@@ -6,6 +6,7 @@ import os
 import pickle
 import pprint
 
+import h5py
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -118,18 +119,26 @@ def test_discrete_bcq(args=get_args()):
         policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
-    assert os.path.exists(args.load_buffer_name), \
-        "Please run atari_dqn.py first to get expert's data buffer."
-    if args.load_buffer_name.endswith(".pkl"):
-        buffer = pickle.load(open(args.load_buffer_name, "rb"))
-    elif args.load_buffer_name.endswith(".hdf5"):
-        if args.buffer_from_rl_unplugged:
-            buffer = ReplayBuffer.load_hdf5(args.load_buffer_name)
-        else:
-            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+    if args.buffer_from_rl_unplugged:
+        with h5py.File(args.load_buffer_name, "r") as dataset:
+            buffer = ReplayBuffer.from_data(
+                obs=dataset["observations"],
+                act=dataset["actions"],
+                rew=dataset["rewards"],
+                done=dataset["terminals"],
+                obs_next=dataset["next_observations"]
+            )
     else:
-        print(f"Unknown buffer format: {args.load_buffer_name}")
-        exit(0)
+        assert os.path.exists(args.load_buffer_name), \
+            "Please run atari_dqn.py first to get expert's data buffer."
+        if args.load_buffer_name.endswith(".pkl"):
+            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+        elif args.load_buffer_name.endswith(".hdf5"):
+            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+        else:
+            print(f"Unknown buffer format: {args.load_buffer_name}")
+            exit(0)
+    print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
     test_collector = Collector(policy, test_envs, exploration_noise=True)
