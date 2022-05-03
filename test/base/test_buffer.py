@@ -1019,6 +1019,31 @@ def test_multibuf_hdf5():
         os.remove(path)
 
 
+def test_from_data():
+    obs_data = np.ndarray((10, 3, 3), dtype="uint8")
+    for i in range(10):
+        obs_data[i] = i * np.ones((3, 3), dtype="uint8")
+    obs_next_data = np.zeros_like(obs_data)
+    obs_next_data[:-1] = obs_data[1:]
+    f, path = tempfile.mkstemp(suffix='.hdf5')
+    os.close(f)
+    with h5py.File(path, "w") as f:
+        obs = f.create_dataset("obs", data=obs_data)
+        act = f.create_dataset("act", data=np.arange(10, dtype="int32"))
+        rew = f.create_dataset("rew", data=np.arange(10, dtype="float32"))
+        done = f.create_dataset("done", data=np.zeros(10, dtype="bool"))
+        obs_next = f.create_dataset("obs_next", data=obs_next_data)
+        buf = ReplayBuffer.from_data(obs, act, rew, done, obs_next)
+    assert len(buf) == 10
+    batch = buf[3]
+    assert np.array_equal(batch.obs, 3 * np.ones((3, 3), dtype="uint8"))
+    assert batch.act == 3
+    assert batch.rew == 3.0
+    assert batch.done == False
+    assert np.array_equal(batch.obs_next, 4 * np.ones((3, 3), dtype="uint8"))
+    os.remove(path)
+
+
 if __name__ == '__main__':
     test_replaybuffer()
     test_ignore_obs_next()
@@ -1032,3 +1057,4 @@ if __name__ == '__main__':
     test_cachedbuffer()
     test_multibuf_stack()
     test_multibuf_hdf5()
+    test_from_data()
