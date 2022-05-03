@@ -6,14 +6,14 @@ import os
 import pickle
 import pprint
 
-import h5py
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
-from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
+from examples.offline.utils import load_buffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DiscreteBCQPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
@@ -120,14 +120,7 @@ def test_discrete_bcq(args=get_args()):
         print("Loaded agent from: ", args.resume_path)
     # buffer
     if args.buffer_from_rl_unplugged:
-        with h5py.File(args.load_buffer_name, "r") as dataset:
-            buffer = ReplayBuffer.from_data(
-                obs=dataset["observations"],
-                act=dataset["actions"],
-                rew=dataset["rewards"],
-                done=dataset["terminals"],
-                obs_next=dataset["next_observations"]
-            )
+        buffer = load_buffer(args.load_buffer_name)
     else:
         assert os.path.exists(args.load_buffer_name), \
             "Please run atari_dqn.py first to get expert's data buffer."
