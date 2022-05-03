@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Batch, Collector, ReplayBuffer
+from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import ImitationPolicy
 from tianshou.trainer import offline_trainer
