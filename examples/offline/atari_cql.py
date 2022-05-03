@@ -6,13 +6,14 @@ import os
 import pickle
 import pprint
 
+import h5py
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from examples.atari.atari_network import QRDQN
 from examples.atari.atari_wrapper import make_atari_env
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import DiscreteCQLPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
@@ -58,6 +59,9 @@ def get_args():
         "--load-buffer-name", type=str, default="./expert_DQN_PongNoFrameskip-v4.hdf5"
     )
     parser.add_argument(
+        "--buffer-from-rl-unplugged", action="store_true", default=False
+    )
+    parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
     args = parser.parse_known_args()[0]
@@ -100,15 +104,26 @@ def test_discrete_cql(args=get_args()):
         policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
-    assert os.path.exists(args.load_buffer_name), \
-        "Please run atari_qrdqn.py first to get expert's data buffer."
-    if args.load_buffer_name.endswith(".pkl"):
-        buffer = pickle.load(open(args.load_buffer_name, "rb"))
-    elif args.load_buffer_name.endswith(".hdf5"):
-        buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+    if args.buffer_from_rl_unplugged:
+        with h5py.File(args.load_buffer_name, "r") as dataset:
+            buffer = ReplayBuffer.from_data(
+                obs=dataset["observations"],
+                act=dataset["actions"],
+                rew=dataset["rewards"],
+                done=dataset["terminals"],
+                obs_next=dataset["next_observations"]
+            )
     else:
-        print(f"Unknown buffer format: {args.load_buffer_name}")
-        exit(0)
+        assert os.path.exists(args.load_buffer_name), \
+            "Please run atari_dqn.py first to get expert's data buffer."
+        if args.load_buffer_name.endswith(".pkl"):
+            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+        elif args.load_buffer_name.endswith(".hdf5"):
+            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+        else:
+            print(f"Unknown buffer format: {args.load_buffer_name}")
+            exit(0)
+    print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
     test_collector = Collector(policy, test_envs, exploration_noise=True)
