@@ -12,7 +12,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
-from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
+from examples.offline.utils import load_buffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DiscreteBCQPolicy
 from tianshou.trainer import offline_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
@@ -118,18 +119,19 @@ def test_discrete_bcq(args=get_args()):
         policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
-    assert os.path.exists(args.load_buffer_name), \
-        "Please run atari_dqn.py first to get expert's data buffer."
-    if args.load_buffer_name.endswith(".pkl"):
-        buffer = pickle.load(open(args.load_buffer_name, "rb"))
-    elif args.load_buffer_name.endswith(".hdf5"):
-        if args.buffer_from_rl_unplugged:
-            buffer = ReplayBuffer.load_hdf5(args.load_buffer_name)
-        else:
-            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+    if args.buffer_from_rl_unplugged:
+        buffer = load_buffer(args.load_buffer_name)
     else:
-        print(f"Unknown buffer format: {args.load_buffer_name}")
-        exit(0)
+        assert os.path.exists(args.load_buffer_name), \
+            "Please run atari_dqn.py first to get expert's data buffer."
+        if args.load_buffer_name.endswith(".pkl"):
+            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+        elif args.load_buffer_name.endswith(".hdf5"):
+            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+        else:
+            print(f"Unknown buffer format: {args.load_buffer_name}")
+            exit(0)
+    print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
     test_collector = Collector(policy, test_envs, exploration_noise=True)
