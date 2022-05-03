@@ -1039,7 +1039,7 @@ def test_from_data():
     assert np.array_equal(batch.obs, 3 * np.ones((3, 3), dtype="uint8"))
     assert batch.act == 3
     assert batch.rew == 3.0
-    assert batch.done is False
+    assert not batch.done
     assert np.array_equal(batch.obs_next, 4 * np.ones((3, 3), dtype="uint8"))
     os.remove(path)
 
