@@ -2,15 +2,28 @@ import sys
 import time
 
 import numpy as np
+import pytest
 from gym.spaces.discrete import Discrete
 
 from tianshou.data import Batch
-from tianshou.env import DummyVectorEnv, RayVectorEnv, ShmemVectorEnv, SubprocVectorEnv
+from tianshou.env import (
+    DummyVectorEnv,
+    RayVectorEnv,
+    ShmemVectorEnv,
+    SubprocVectorEnv,
+    VectorEnvNormObs,
+)
+from tianshou.utils import RunningMeanStd
 
 if __name__ == '__main__':
     from env import MyTestEnv, NXEnv
 else:  # pytest
     from test.base.env import MyTestEnv, NXEnv
+
+try:
+    import envpool
+except ImportError:
+    envpool = None
 
 
 def has_ray():
@@ -195,7 +208,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         v.close()
 
 
-def test_env_obs():
+def test_env_obs_dtype():
     for obs_type in ["array", "object"]:
         envs = SubprocVectorEnv(
             [lambda i=x: NXEnv(i, obs_type) for x in [5, 10, 15, 20]]
@@ -206,8 +219,72 @@ def test_env_obs():
         assert obs.dtype == object
 
 
+def run_align_norm_obs(raw_env, train_env, test_env, action_list):
+    eps = np.finfo(np.float32).eps.item()
+    raw_obs, train_obs = [raw_env.reset()], [train_env.reset()]
+    for action in action_list:
+        obs, rew, done, info = raw_env.step(action)
+        raw_obs.append(obs)
+        if np.any(done):
+            raw_obs.append(raw_env.reset(np.where(done)[0]))
+        obs, rew, done, info = train_env.step(action)
+        train_obs.append(obs)
+        if np.any(done):
+            train_obs.append(train_env.reset(np.where(done)[0]))
+    ref_rms = RunningMeanStd()
+    for ro, to in zip(raw_obs, train_obs):
+        ref_rms.update(ro)
+        no = (ro - ref_rms.mean) / np.sqrt(ref_rms.var + eps)
+        assert np.allclose(no, to)
+    assert np.allclose(ref_rms.mean, train_env.get_obs_rms().mean)
+    assert np.allclose(ref_rms.var, train_env.get_obs_rms().var)
+    assert np.allclose(ref_rms.mean, test_env.get_obs_rms().mean)
+    assert np.allclose(ref_rms.var, test_env.get_obs_rms().var)
+    test_obs = [test_env.reset()]
+    for action in action_list:
+        obs, rew, done, info = test_env.step(action)
+        test_obs.append(obs)
+        if np.any(done):
+            test_obs.append(test_env.reset(np.where(done)[0]))
+    for ro, to in zip(raw_obs, test_obs):
+        no = (ro - ref_rms.mean) / np.sqrt(ref_rms.var + eps)
+        assert np.allclose(no, to)
+
+
+def test_venv_norm_obs():
+    sizes = np.array([5, 10, 15, 20])
+    action = np.array([1, 1, 1, 1])
+    total_step = 30
+    action_list = [action] * total_step
+    env_fns = [lambda i=x: MyTestEnv(size=i, array_state=True) for x in sizes]
+    raw = DummyVectorEnv(env_fns)
+    train_env = VectorEnvNormObs(DummyVectorEnv(env_fns))
+    print(train_env.observation_space)
+    test_env = VectorEnvNormObs(
+        DummyVectorEnv(env_fns), update_obs_rms=False, obs_rms=train_env.get_obs_rms()
+    )
+    run_align_norm_obs(raw, train_env, test_env, action_list)
+
+
+@pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
+def test_venv_wrapper_envpool():
+    raw = envpool.make_gym("Ant-v3", num_envs=4)
+    train = VectorEnvNormObs(envpool.make_gym("Ant-v3", num_envs=4))
+    test = VectorEnvNormObs(
+        envpool.make_gym("Ant-v3", num_envs=4),
+        update_obs_rms=False,
+        obs_rms=train.get_obs_rms()
+    )
+    actions = [
+        np.array([raw.action_space.sample() for _ in range(4)]) for i in range(30)
+    ]
+    run_align_norm_obs(raw, train, test, actions)
+
+
 if __name__ == '__main__':
-    test_env_obs()
+    test_venv_norm_obs()
+    test_venv_wrapper_envpool()
+    test_env_obs_dtype()
     test_vecenv()
     test_async_env()
     test_async_check_id()

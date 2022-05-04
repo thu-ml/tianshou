@@ -9,11 +9,14 @@ from tianshou.env.worker import (
     RayEnvWorker,
     SubprocEnvWorker,
 )
-from tianshou.utils import RunningMeanStd
+
+GYM_RESERVED_KEYS = [
+    "metadata", "reward_range", "spec", "action_space", "observation_space"
+]
 
 
 class BaseVectorEnv(object):
-    """Base class for vectorized environments wrapper.
+    """Base class for vectorized environments.
 
     Usage:
     ::
@@ -61,13 +64,6 @@ class BaseVectorEnv(object):
     :param float timeout: use in asynchronous simulation same as above, in each
         vectorized step it only deal with those environments spending time
         within ``timeout`` seconds.
-    :param bool norm_obs: Whether to track mean/std of data and normalize observation
-        on return. For now, observation normalization only support observation of
-        type np.ndarray.
-    :param obs_rms: class to track mean&std of observation. If not given, it will
-        initialize a new one. Usually in envs that is used to evaluate algorithm,
-        obs_rms should be passed in. Default to None.
-    :param bool update_obs_rms: Whether to update obs_rms. Default to True.
     """
 
     def __init__(
@@ -76,9 +72,6 @@ class BaseVectorEnv(object):
         worker_fn: Callable[[Callable[[], gym.Env]], EnvWorker],
         wait_num: Optional[int] = None,
         timeout: Optional[float] = None,
-        norm_obs: bool = False,
-        obs_rms: Optional[RunningMeanStd] = None,
-        update_obs_rms: bool = True,
     ) -> None:
         self._env_fns = env_fns
         # A VectorEnv contains a pool of EnvWorkers, which corresponds to
@@ -106,12 +99,6 @@ class BaseVectorEnv(object):
         self.ready_id = list(range(self.env_num))
         self.is_closed = False
 
-        # initialize observation running mean/std
-        self.norm_obs = norm_obs
-        self.update_obs_rms = update_obs_rms
-        self.obs_rms = RunningMeanStd() if obs_rms is None and norm_obs else obs_rms
-        self.__eps = np.finfo(np.float32).eps.item()
-
     def _assert_is_not_closed(self) -> None:
         assert not self.is_closed, \
             f"Methods of {self.__class__.__name__} cannot be called after close."
@@ -127,9 +114,7 @@ class BaseVectorEnv(object):
         ``action_space``. However, we would like the attribute lookup to go straight
         into the worker (in fact, this vector env's action_space is always None).
         """
-        if key in [
-            'metadata', 'reward_range', 'spec', 'action_space', 'observation_space'
-        ]:  # reserved keys in gym.Env
+        if key in GYM_RESERVED_KEYS:  # reserved keys in gym.Env
             return self.get_env_attr(key)
         else:
             return super().__getattribute__(key)
@@ -137,7 +122,7 @@ class BaseVectorEnv(object):
     def get_env_attr(
         self,
         key: str,
-        id: Optional[Union[int, List[int], np.ndarray]] = None
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
     ) -> List[Any]:
         """Get an attribute from the underlying environments.
 
@@ -162,7 +147,7 @@ class BaseVectorEnv(object):
         self,
         key: str,
         value: Any,
-        id: Optional[Union[int, List[int], np.ndarray]] = None
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
     ) -> None:
         """Set an attribute in the underlying environments.
 
@@ -218,9 +203,7 @@ class BaseVectorEnv(object):
             obs = np.stack(obs_list)
         except ValueError:  # different len(obs)
             obs = np.array(obs_list, dtype=object)
-        if self.obs_rms and self.update_obs_rms:
-            self.obs_rms.update(obs)
-        return self.normalize_obs(obs)
+        return obs
 
     def step(
         self,
@@ -299,9 +282,7 @@ class BaseVectorEnv(object):
         rew_stack, done_stack, info_stack = map(
             np.stack, [rew_list, done_list, info_list]
         )
-        if self.obs_rms and self.update_obs_rms:
-            self.obs_rms.update(obs_stack)
-        return self.normalize_obs(obs_stack), rew_stack, done_stack, info_stack
+        return obs_stack, rew_stack, done_stack, info_stack
 
     def seed(
         self,
@@ -346,15 +327,6 @@ class BaseVectorEnv(object):
         for w in self.workers:
             w.close()
         self.is_closed = True
-
-    def normalize_obs(self, obs: np.ndarray) -> np.ndarray:
-        """Normalize observations by statistics in obs_rms."""
-        if self.obs_rms and self.norm_obs:
-            clip_max = 10.0  # this magic number is from openai baselines
-            # see baselines/common/vec_env/vec_normalize.py#L10
-            obs = (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.__eps)
-            obs = np.clip(obs, -clip_max, clip_max)
-        return obs
 
 
 class DummyVectorEnv(BaseVectorEnv):
