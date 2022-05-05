@@ -16,43 +16,51 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import PGPolicy
 from tianshou.trainer import onpolicy_trainer
-from tianshou.utils import TensorboardLogger
+from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Ant-v3')
-    parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer-size', type=int, default=4096)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--epoch', type=int, default=100)
-    parser.add_argument('--step-per-epoch', type=int, default=30000)
-    parser.add_argument('--step-per-collect', type=int, default=2048)
-    parser.add_argument('--repeat-per-collect', type=int, default=1)
+    parser.add_argument("--task", type=str, default="Ant-v3")
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--buffer-size", type=int, default=4096)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--epoch", type=int, default=100)
+    parser.add_argument("--step-per-epoch", type=int, default=30000)
+    parser.add_argument("--step-per-collect", type=int, default=2048)
+    parser.add_argument("--repeat-per-collect", type=int, default=1)
     # batch-size >> step-per-collect means calculating all data in one singe forward.
-    parser.add_argument('--batch-size', type=int, default=99999)
-    parser.add_argument('--training-num', type=int, default=64)
-    parser.add_argument('--test-num', type=int, default=10)
+    parser.add_argument("--batch-size", type=int, default=99999)
+    parser.add_argument("--training-num", type=int, default=64)
+    parser.add_argument("--test-num", type=int, default=10)
     # reinforce special
-    parser.add_argument('--rew-norm', type=int, default=True)
+    parser.add_argument("--rew-norm", type=int, default=True)
     # "clip" option also works well.
-    parser.add_argument('--action-bound-method', type=str, default="tanh")
-    parser.add_argument('--lr-decay', type=int, default=True)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument("--action-bound-method", type=str, default="tanh")
+    parser.add_argument("--lr-decay", type=int, default=True)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.)
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
-    parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument("--resume-path", type=str, default=None)
+    parser.add_argument("--resume-id", type=str, default=None)
     parser.add_argument(
-        '--watch',
+        "--logger",
+        type=str,
+        default="tensorboard",
+        choices=["tensorboard", "wandb"],
+    )
+    parser.add_argument("--wandb-project", type=str, default="mujoco.benchmark")
+    parser.add_argument(
+        "--watch",
         default=False,
-        action='store_true',
-        help='watch the play of pre-trained policy only',
+        action="store_true",
+        help="watch the play of pre-trained policy only",
     )
     return parser.parse_args()
 
@@ -140,13 +148,28 @@ def test_reinforce(args=get_args()):
         buffer = ReplayBuffer(args.buffer_size)
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
+
     # log
-    t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
-    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_reinforce'
-    log_path = os.path.join(args.logdir, args.task, 'reinforce', log_file)
+    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+    args.algo_name = "reinforce"
+    log_name = os.path.join(args.task, args.algo_name, str(args.seed), now)
+    log_path = os.path.join(args.logdir, log_name)
+
+    # logger
+    if args.logger == "wandb":
+        logger = WandbLogger(
+            save_interval=1,
+            name=log_name.replace(os.path.sep, "__"),
+            run_id=args.resume_id,
+            config=args,
+            project=args.wandb_project,
+        )
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    logger = TensorboardLogger(writer, update_interval=10, train_interval=100)
+    if args.logger == "tensorboard":
+        logger = TensorboardLogger(writer)
+    else:  # wandb
+        logger.load(writer)
 
     def save_best_fn(policy):
         state = {"model": policy.state_dict(), "obs_rms": train_envs.get_obs_rms()}
@@ -178,5 +201,5 @@ def test_reinforce(args=get_args()):
     print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_reinforce()

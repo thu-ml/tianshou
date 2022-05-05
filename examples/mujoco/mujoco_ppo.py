@@ -16,51 +16,59 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import PPOPolicy
 from tianshou.trainer import onpolicy_trainer
-from tianshou.utils import TensorboardLogger
+from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Ant-v3')
-    parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer-size', type=int, default=4096)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--lr', type=float, default=3e-4)
-    parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--epoch', type=int, default=100)
-    parser.add_argument('--step-per-epoch', type=int, default=30000)
-    parser.add_argument('--step-per-collect', type=int, default=2048)
-    parser.add_argument('--repeat-per-collect', type=int, default=10)
-    parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--training-num', type=int, default=64)
-    parser.add_argument('--test-num', type=int, default=10)
+    parser.add_argument("--task", type=str, default="Ant-v3")
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--buffer-size", type=int, default=4096)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--epoch", type=int, default=100)
+    parser.add_argument("--step-per-epoch", type=int, default=30000)
+    parser.add_argument("--step-per-collect", type=int, default=2048)
+    parser.add_argument("--repeat-per-collect", type=int, default=10)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--training-num", type=int, default=64)
+    parser.add_argument("--test-num", type=int, default=10)
     # ppo special
-    parser.add_argument('--rew-norm', type=int, default=True)
+    parser.add_argument("--rew-norm", type=int, default=True)
     # In theory, `vf-coef` will not make any difference if using Adam optimizer.
-    parser.add_argument('--vf-coef', type=float, default=0.25)
-    parser.add_argument('--ent-coef', type=float, default=0.0)
-    parser.add_argument('--gae-lambda', type=float, default=0.95)
-    parser.add_argument('--bound-action-method', type=str, default="clip")
-    parser.add_argument('--lr-decay', type=int, default=True)
-    parser.add_argument('--max-grad-norm', type=float, default=0.5)
-    parser.add_argument('--eps-clip', type=float, default=0.2)
-    parser.add_argument('--dual-clip', type=float, default=None)
-    parser.add_argument('--value-clip', type=int, default=0)
-    parser.add_argument('--norm-adv', type=int, default=0)
-    parser.add_argument('--recompute-adv', type=int, default=1)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument("--vf-coef", type=float, default=0.25)
+    parser.add_argument("--ent-coef", type=float, default=0.0)
+    parser.add_argument("--gae-lambda", type=float, default=0.95)
+    parser.add_argument("--bound-action-method", type=str, default="clip")
+    parser.add_argument("--lr-decay", type=int, default=True)
+    parser.add_argument("--max-grad-norm", type=float, default=0.5)
+    parser.add_argument("--eps-clip", type=float, default=0.2)
+    parser.add_argument("--dual-clip", type=float, default=None)
+    parser.add_argument("--value-clip", type=int, default=0)
+    parser.add_argument("--norm-adv", type=int, default=0)
+    parser.add_argument("--recompute-adv", type=int, default=1)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.)
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
-    parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument("--resume-path", type=str, default=None)
+    parser.add_argument("--resume-id", type=str, default=None)
     parser.add_argument(
-        '--watch',
+        "--logger",
+        type=str,
+        default="tensorboard",
+        choices=["tensorboard", "wandb"],
+    )
+    parser.add_argument("--wandb-project", type=str, default="mujoco.benchmark")
+    parser.add_argument(
+        "--watch",
         default=False,
-        action='store_true',
-        help='watch the play of pre-trained policy only',
+        action="store_true",
+        help="watch the play of pre-trained policy only",
     )
     return parser.parse_args()
 
@@ -168,13 +176,28 @@ def test_ppo(args=get_args()):
         buffer = ReplayBuffer(args.buffer_size)
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
+
     # log
-    t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
-    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_ppo'
-    log_path = os.path.join(args.logdir, args.task, 'ppo', log_file)
+    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+    args.algo_name = "ppo"
+    log_name = os.path.join(args.task, args.algo_name, str(args.seed), now)
+    log_path = os.path.join(args.logdir, log_name)
+
+    # logger
+    if args.logger == "wandb":
+        logger = WandbLogger(
+            save_interval=1,
+            name=log_name.replace(os.path.sep, "__"),
+            run_id=args.resume_id,
+            config=args,
+            project=args.wandb_project,
+        )
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    logger = TensorboardLogger(writer, update_interval=100, train_interval=100)
+    if args.logger == "tensorboard":
+        logger = TensorboardLogger(writer)
+    else:  # wandb
+        logger.load(writer)
 
     def save_best_fn(policy):
         state = {"model": policy.state_dict(), "obs_rms": train_envs.get_obs_rms()}
@@ -206,5 +229,5 @@ def test_ppo(args=get_args()):
     print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_ppo()

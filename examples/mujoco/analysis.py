@@ -10,7 +10,7 @@ from tools import csv2numpy, find_all_files, group_files
 
 
 def numerical_analysis(root_dir, xlim, norm=False):
-    file_pattern = re.compile(r".*/test_rew_\d+seeds.csv$")
+    file_pattern = re.compile(r".*/test_reward_\d+seeds.csv$")
     norm_group_pattern = re.compile(r"(/|^)\w+?\-v(\d|$)")
     output_group_pattern = re.compile(r".*?(?=(/|^)\w+?\-v\d)")
     csv_files = find_all_files(root_dir, file_pattern)
@@ -23,13 +23,13 @@ def numerical_analysis(root_dir, xlim, norm=False):
         if norm:
             result = np.stack(
                 [
-                    result['env_step'], result['rew'] - result['rew'][0],
-                    result['rew:shaded']
+                    result['env_step'], result['reward'] - result['reward'][0],
+                    result['reward:shaded']
                 ]
             )
         else:
             result = np.stack(
-                [result['env_step'], result['rew'], result['rew:shaded']]
+                [result['env_step'], result['reward'], result['reward:shaded']]
             )
 
         if result[0, -1] < xlim:
