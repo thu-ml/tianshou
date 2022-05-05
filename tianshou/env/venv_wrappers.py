@@ -11,6 +11,7 @@ class VectorEnvWrapper(BaseVectorEnv):
 
     def __init__(self, venv: BaseVectorEnv) -> None:
         self.venv = venv
+        self.is_async = venv.is_async
 
     def __len__(self) -> int:
         return len(self.venv)
@@ -65,9 +66,6 @@ class VectorEnvWrapper(BaseVectorEnv):
 class VectorEnvNormObs(VectorEnvWrapper):
     """An observation normalization wrapper for vectorized environments.
 
-    :param obs_rms: class to track mean&std of observation. If not given, it will
-        initialize a new one. Usually in envs that is used to evaluate algorithm,
-        obs_rms should be passed in. Default to None.
     :param bool update_obs_rms: whether to update obs_rms. Default to True.
     :param float clip_obs: the maximum absolute value for observation. Default to
         10.0.
@@ -77,7 +75,6 @@ class VectorEnvNormObs(VectorEnvWrapper):
     def __init__(
         self,
         venv: BaseVectorEnv,
-        obs_rms: Optional[RunningMeanStd] = None,
         update_obs_rms: bool = True,
         clip_obs: float = 10.0,
         epsilon: float = np.finfo(np.float32).eps.item(),
@@ -85,7 +82,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         super().__init__(venv)
         # initialize observation running mean/std
         self.update_obs_rms = update_obs_rms
-        self.obs_rms = RunningMeanStd() if obs_rms is None else obs_rms
+        self.obs_rms = RunningMeanStd()
         self.clip_max = clip_obs
         self.eps = epsilon
 
@@ -113,6 +110,10 @@ class VectorEnvNormObs(VectorEnvWrapper):
             obs = (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.eps)
             obs = np.clip(obs, -self.clip_max, self.clip_max)
         return obs
+
+    def set_obs_rms(self, obs_rms: RunningMeanStd) -> None:
+        """Set with given observation running mean/std."""
+        self.obs_rms = obs_rms
 
     def get_obs_rms(self) -> RunningMeanStd:
         """Return observation running mean/std."""

@@ -5,13 +5,12 @@ import datetime
 import os
 import pprint
 
-import gym
 import numpy as np
 import torch
+from mujoco_env import make_mujoco_env
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv
 from tianshou.policy import REDQPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
@@ -56,35 +55,24 @@ def get_args():
         '--watch',
         default=False,
         action='store_true',
-        help='watch the play of pre-trained policy only'
+        help='watch the play of pre-trained policy only',
     )
     return parser.parse_args()
 
 
 def test_redq(args=get_args()):
-    env = gym.make(args.task)
+    env, train_envs, test_envs = make_mujoco_env(
+        args.task, args.seed, args.training_num, args.test_num, obs_norm=False
+    )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
     print("Action range:", np.min(env.action_space.low), np.max(env.action_space.high))
-    # train_envs = gym.make(args.task)
-    if args.training_num > 1:
-        train_envs = SubprocVectorEnv(
-            [lambda: gym.make(args.task) for _ in range(args.training_num)]
-        )
-    else:
-        train_envs = gym.make(args.task)
-    # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
-    test_envs.seed(args.seed)
     # model
     net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(
@@ -93,7 +81,7 @@ def test_redq(args=get_args()):
         max_action=args.max_action,
         device=args.device,
         unbounded=True,
-        conditioned_sigma=True
+        conditioned_sigma=True,
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
@@ -160,7 +148,7 @@ def test_redq(args=get_args()):
     logger = TensorboardLogger(writer)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     if not args.watch:
         # trainer
@@ -176,7 +164,7 @@ def test_redq(args=get_args()):
             save_best_fn=save_best_fn,
             logger=logger,
             update_per_step=args.update_per_step,
-            test_in_train=False
+            test_in_train=False,
         )
         pprint.pprint(result)
 

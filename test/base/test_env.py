@@ -260,9 +260,8 @@ def test_venv_norm_obs():
     raw = DummyVectorEnv(env_fns)
     train_env = VectorEnvNormObs(DummyVectorEnv(env_fns))
     print(train_env.observation_space)
-    test_env = VectorEnvNormObs(
-        DummyVectorEnv(env_fns), update_obs_rms=False, obs_rms=train_env.get_obs_rms()
-    )
+    test_env = VectorEnvNormObs(DummyVectorEnv(env_fns), update_obs_rms=False)
+    test_env.set_obs_rms(train_env.get_obs_rms())
     run_align_norm_obs(raw, train_env, test_env, action_list)
 
 
@@ -271,10 +270,9 @@ def test_venv_wrapper_envpool():
     raw = envpool.make_gym("Ant-v3", num_envs=4)
     train = VectorEnvNormObs(envpool.make_gym("Ant-v3", num_envs=4))
     test = VectorEnvNormObs(
-        envpool.make_gym("Ant-v3", num_envs=4),
-        update_obs_rms=False,
-        obs_rms=train.get_obs_rms()
+        envpool.make_gym("Ant-v3", num_envs=4), update_obs_rms=False
     )
+    test.set_obs_rms(train.get_obs_rms())
     actions = [
         np.array([raw.action_space.sample() for _ in range(4)]) for i in range(30)
     ]
