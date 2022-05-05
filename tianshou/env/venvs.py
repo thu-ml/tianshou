@@ -168,7 +168,7 @@ class BaseVectorEnv(object):
 
     def _wrap_id(
         self,
-        id: Optional[Union[int, List[int], np.ndarray]] = None
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
     ) -> Union[List[int], np.ndarray]:
         if id is None:
             return list(range(self.env_num))
@@ -208,7 +208,7 @@ class BaseVectorEnv(object):
     def step(
         self,
         action: np.ndarray,
-        id: Optional[Union[int, List[int], np.ndarray]] = None
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Run one timestep of some environments' dynamics.
 
@@ -286,7 +286,7 @@ class BaseVectorEnv(object):
 
     def seed(
         self,
-        seed: Optional[Union[int, List[int]]] = None
+        seed: Optional[Union[int, List[int]]] = None,
     ) -> List[Optional[List[int]]]:
         """Set the seed for all environments.
 

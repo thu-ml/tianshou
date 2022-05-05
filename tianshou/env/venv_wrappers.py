@@ -46,13 +46,13 @@ class VectorEnvWrapper(BaseVectorEnv):
     def step(
         self,
         action: np.ndarray,
-        id: Optional[Union[int, List[int], np.ndarray]] = None
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         return self.venv.step(action, id)
 
     def seed(
         self,
-        seed: Optional[Union[int, List[int]]] = None
+        seed: Optional[Union[int, List[int]]] = None,
     ) -> List[Optional[List[int]]]:
         return self.venv.seed(seed)
 
@@ -98,7 +98,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
     def step(
         self,
         action: np.ndarray,
-        id: Optional[Union[int, List[int], np.ndarray]] = None
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         obs, rew, done, info = self.venv.step(action, id)
         if self.obs_rms and self.update_obs_rms:
