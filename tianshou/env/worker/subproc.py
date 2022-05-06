@@ -193,7 +193,7 @@ class SubprocEnvWorker(EnvWorker):
         self
     ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
         result = self.parent_remote.recv()
-        if isinstance(result, tuple):
+        if isinstance(result, tuple) and len(result)==4:
             obs, rew, done, info = result
             if self.share_memory:
                 obs = self._decode_obs()
