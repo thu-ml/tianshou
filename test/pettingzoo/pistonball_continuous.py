@@ -4,12 +4,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
-import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
 import torch
 import torch.nn as nn
 from torch.distributions import Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
 
+import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv

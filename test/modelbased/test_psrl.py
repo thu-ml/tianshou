@@ -2,11 +2,11 @@ import argparse
 import os
 import pprint
 
-import envpool
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+import envpool
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import onpolicy_trainer

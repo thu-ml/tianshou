@@ -2,11 +2,6 @@ import argparse
 import os
 import sys
 
-try:
-    import envpool
-except ImportError:
-    envpool = None
-
 import numpy as np
 import pytest
 import torch
@@ -18,6 +13,11 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, ActorProb, Critic
+
+try:
+    import envpool
+except ImportError:
+    envpool = None
 
 
 def get_args():

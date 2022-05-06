@@ -5,7 +5,6 @@ import datetime
 import os
 import pprint
 
-import d4rl
 import gym
 import numpy as np
 import torch
@@ -14,6 +13,7 @@ from torch.distributions import Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
+import d4rl
 from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import GAILPolicy

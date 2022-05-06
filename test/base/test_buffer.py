@@ -9,13 +9,8 @@ import pytest
 import torch
 
 from tianshou.data import (
-    Batch,
-    CachedReplayBuffer,
-    PrioritizedReplayBuffer,
-    PrioritizedVectorReplayBuffer,
-    ReplayBuffer,
-    SegmentTree,
-    VectorReplayBuffer,
+    Batch, CachedReplayBuffer, PrioritizedReplayBuffer, PrioritizedVectorReplayBuffer,
+    ReplayBuffer, SegmentTree, VectorReplayBuffer
 )
 from tianshou.data.utils.converter import to_hdf5
 

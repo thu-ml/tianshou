@@ -4,10 +4,10 @@ import pprint
 
 import numpy as np
 import torch
-from env import Env
-from network import C51
 from torch.utils.tensorboard import SummaryWriter
 
+from env import Env
+from network import C51
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ShmemVectorEnv
 from tianshou.policy import C51Policy

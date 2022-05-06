@@ -2,6 +2,7 @@ from abc import ABC
 from typing import Any, Dict, List, Tuple
 
 import gym.spaces
+
 from pettingzoo.utils.env import AECEnv
 from pettingzoo.utils.wrappers import BaseWrapper
 

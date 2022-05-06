@@ -4,11 +4,11 @@ import pprint
 
 import numpy as np
 import torch
-from env import Env
-from network import DQN
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
+from env import Env
+from network import DQN
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ShmemVectorEnv
 from tianshou.policy import ICMPolicy, PPOPolicy
