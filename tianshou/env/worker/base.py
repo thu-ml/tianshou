@@ -16,6 +16,7 @@ class EnvWorker(ABC):
         self.result: Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
                            np.ndarray]
         self.action_space = self.get_env_attr("action_space")  # noqa: B009
+        self.observation_space = self.get_env_attr("observation_space")  # noqa: B009
         self.is_reset = False
 
     @abstractmethod

@@ -100,6 +100,8 @@ class Critic(nn.Module):
         preprocess_net_output_dim: Optional[int] = None,
         linear_layer: Type[nn.Linear] = nn.Linear,
         flatten_input: bool = True,
+        flatten_obs: bool = True,
+        convert_to_torch: bool = True,
     ) -> None:
         super().__init__()
         self.device = device
@@ -114,6 +116,8 @@ class Critic(nn.Module):
             linear_layer=linear_layer,
             flatten_input=flatten_input,
         )
+        self.flatten_obs = flatten_obs
+        self.convert_to_torch = convert_to_torch
 
     def forward(
         self,
@@ -122,18 +126,24 @@ class Critic(nn.Module):
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Mapping: (s, a) -> logits -> Q(s, a)."""
-        obs = torch.as_tensor(
-            obs,
-            device=self.device,  # type: ignore
-            dtype=torch.float32,
-        ).flatten(1)
-        if act is not None:
-            act = torch.as_tensor(
-                act,
+        if self.convert_to_torch:
+            obs = torch.as_tensor(
+                obs,
                 device=self.device,  # type: ignore
                 dtype=torch.float32,
-            ).flatten(1)
-            obs = torch.cat([obs, act], dim=1)
+            )
+            if self.flatten_obs: obs = obs.flatten(1)
+        if act is not None:
+            if self.convert_to_torch:
+                act = torch.as_tensor(
+                    act,
+                    device=self.device,  # type: ignore
+                    dtype=torch.float32,
+                )
+                if self.flatten_obs: act = act.flatten(1)
+                obs = torch.cat([obs, act], dim=1)
+            else:
+                obs = (obs, act)
         logits, hidden = self.preprocess(obs)
         logits = self.last(logits)
         return logits
