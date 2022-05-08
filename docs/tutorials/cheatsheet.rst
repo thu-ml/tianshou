@@ -123,7 +123,11 @@ EnvPool Integration
 
 `EnvPool <https://github.com/sail-sg/envpool/>`_ is a C++-based vectorized environment implementation and is way faster than the above solutions. The APIs are almost the same as above four classes, so that means you can directly switch the vectorized environment to envpool and get immediate speed-up.
 
-Currently it supports Atari, VizDoom, toy_text and classic_control environments. For more information, please refer to `EnvPool's documentation <https://envpool.readthedocs.io/en/latest/>`_.
+Currently it supports
+`Atari <https://github.com/thu-ml/tianshou/tree/master/examples/atari#envpool>`_,
+`Mujoco <https://github.com/thu-ml/tianshou/tree/master/examples/mujoco#envpool>`_,
+`VizDoom <https://github.com/thu-ml/tianshou/tree/master/examples/vizdoom#envpool>`_,
+toy_text and classic_control environments. For more information, please refer to `EnvPool's documentation <https://envpool.readthedocs.io/en/latest/>`_.
 
 ::
 
@@ -133,7 +137,7 @@ Currently it supports Atari, VizDoom, toy_text and classic_control environments.
     envs = envpool.make_gym("CartPole-v0", num_envs=10)
     collector = Collector(policy, envs, buffer)
 
-Here are some examples: https://github.com/sail-sg/envpool/tree/master/examples/tianshou_examples
+Here are some other `examples <https://github.com/sail-sg/envpool/tree/master/examples/tianshou_examples>`_.
 
 .. _preprocess_fn:
 
@@ -177,7 +181,7 @@ For example, you can write your hook as:
                     self.episode_log[i].append(kwargs['rew'][i])
                     kwargs['rew'][i] -= self.baseline
                 for i in range(n):
-                    if kwargs['done']:
+                    if kwargs['done'][i]:
                         self.main_log.append(np.mean(self.episode_log[i]))
                         self.episode_log[i] = []
                         self.baseline = np.mean(self.main_log)
@@ -190,6 +194,40 @@ And finally,
     collector = Collector(policy, env, buffer, preprocess_fn=test_processor.preprocess_fn)
 
 Some examples are in `test/base/test_collector.py <https://github.com/thu-ml/tianshou/blob/master/test/base/test_collector.py>`_.
+
+Another solution is to create a vector environment wrapper through :class:`~tianshou.env.VectorEnvWrapper`, e.g.
+::
+
+    import numpy as np
+    from collections import deque
+    from tianshou.env import VectorEnvWrapper
+
+    class MyWrapper(VectorEnvWrapper):
+        def __init__(self, venv, size=100):
+            self.episode_log = None
+            self.main_log = deque(maxlen=size)
+            self.main_log.append(0)
+            self.baseline = 0
+
+        def step(self, action, env_id):
+            obs, rew, done, info = self.venv.step(action, env_id)
+            n = len(rew)
+            if self.episode_log is None:
+                self.episode_log = [[] for i in range(n)]
+            for i in range(n):
+                self.episode_log[i].append(rew[i])
+                rew[i] -= self.baseline
+            for i in range(n):
+                if done[i]:
+                    self.main_log.append(np.mean(self.episode_log[i]))
+                    self.episode_log[i] = []
+                    self.baseline = np.mean(self.main_log)
+            return obs, rew, done, info
+
+    env = MyWrapper(env, size=100)
+    collector = Collector(policy, env, buffer)
+
+We provide an observation normalization vector env wrapper: :class:`~tianshou.env.VectorEnvNormObs`.
 
 
 .. _rnn_training:
