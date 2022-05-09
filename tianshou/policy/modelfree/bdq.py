@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Any, Dict, Optional, Union
 
 import numpy as np
@@ -6,6 +5,7 @@ import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 from tianshou.policy import DQNPolicy
+from tianshou.utils.net.common import BranchingNet
 
 
 class BranchingDQNPolicy(DQNPolicy):
@@ -30,7 +30,7 @@ class BranchingDQNPolicy(DQNPolicy):
 
     def __init__(
         self,
-        model: torch.nn.Module,
+        model: BranchingNet,
         optim: torch.optim.Optimizer,
         discount_factor: float = 0.99,
         estimation_step: int = 1,
@@ -42,6 +42,8 @@ class BranchingDQNPolicy(DQNPolicy):
         super().__init__(model, optim, discount_factor, estimation_step,
         target_update_freq, reward_normalization, is_double)
         assert estimation_step == 1, "N-step bigger than one is not supported by BDQ"
+        self.max_action_num = self.model.action_per_branch
+        self.num_branches = self.model.num_branches
 
     def _target_q(self, batch: Batch) -> torch.Tensor:
         result = self(batch, input="obs_next")
@@ -55,7 +57,7 @@ class BranchingDQNPolicy(DQNPolicy):
             act = torch.from_numpy(act).to(target_q.get_device())
         else:
             act = target_q.max(-1).indices.unsqueeze(-1)
-        return torch.gather(target_q, -1, act)
+        return torch.gather(target_q, -1, act).squeeze()
 
     def _compute_return(
         self,
@@ -67,12 +69,13 @@ class BranchingDQNPolicy(DQNPolicy):
         rew = batch.rew
         with torch.no_grad():
             target_q_torch = self._target_q(batch)  # (bsz, ?)
-        target_q = to_numpy(target_q_torch).squeeze()
+        target_q = to_numpy(target_q_torch)
         end_flag = buffer.done.copy()
         end_flag[buffer.unfinished_index()] = True
         end_flag = end_flag[indice]
-        _target_q = rew + gamma * np.mean(target_q, -1) * (1 - end_flag)
-        target_q = np.repeat(_target_q[..., None], target_q.shape[-1], axis=-1)
+        mean_target_q = np.mean(target_q, -1) if len(target_q.shape) > 1 else target_q
+        _target_q = rew + gamma * mean_target_q * (1 - end_flag)
+        target_q = np.repeat(_target_q[..., None], self.num_branches, axis=-1)
         target_q = np.repeat(target_q[..., None], self.max_action_num, axis=-1)
 
         batch.returns = to_torch_as(target_q, target_q_torch)
@@ -114,11 +117,7 @@ class BranchingDQNPolicy(DQNPolicy):
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         logits, hidden = model(obs_next, state=state, info=batch.info)
-        if not hasattr(self, "max_action_num"):
-            self.max_action_num = logits.shape[-1]
-        act = to_numpy(logits.max(dim=-1)[1].squeeze())
-        if len(act.shape) == 1:
-            act = np.expand_dims(act, 0)
+        act = to_numpy(logits.max(dim=-1)[1])
         return Batch(logits=logits, act=act, state=hidden)
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
@@ -135,7 +134,7 @@ class BranchingDQNPolicy(DQNPolicy):
         returns = returns * act_mask
         td_error = (returns - act_q)
         loss = (td_error.pow(2).sum(-1).mean(-1) * weight).mean()
-        batch.weight = td_error.sum(-1).sum(-1)  # prio-buffer
+        # batch.weight = td_error.sum(-1).sum(-1)  # prio-buffer
         loss.backward()
         self.optim.step()
         self._iter += 1
@@ -144,8 +143,6 @@ class BranchingDQNPolicy(DQNPolicy):
     def exploration_noise(self, act: Union[np.ndarray, Batch],
                           batch: Batch) -> Union[np.ndarray, Batch]:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
-            if len(act.shape) == 1:
-                act = np.expand_dims(act, 0)
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
             rand_act = np.random.randint(
@@ -154,4 +151,8 @@ class BranchingDQNPolicy(DQNPolicy):
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]
+        return act
+
+    def map_action(self, act: Union[Batch, np.ndarray]) -> Union[Batch, np.ndarray]:
+        # Important, used by collector
         return act

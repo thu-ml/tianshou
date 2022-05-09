@@ -25,6 +25,7 @@ class ContinuousToDiscrete(gym.ActionWrapper):
         self.mesh = []
         for lo, hi in zip(low, high):
             self.mesh.append(np.linspace(lo, hi, action_per_branch))
+        self.mesh = np.array(self.mesh)
 
     def action(self, act: np.ndarray) -> np.ndarray:
         # modify act
