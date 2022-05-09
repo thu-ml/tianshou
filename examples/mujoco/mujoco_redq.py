@@ -11,10 +11,10 @@ from mujoco_env import make_mujoco_env
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
-from tianshou.policy import SACPolicy
+from tianshou.policy import REDQPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import EnsembleLinear, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
@@ -24,6 +24,8 @@ def get_args():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--buffer-size", type=int, default=1000000)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[256, 256])
+    parser.add_argument("--ensemble-size", type=int, default=10)
+    parser.add_argument("--subset-size", type=int, default=2)
     parser.add_argument("--actor-lr", type=float, default=1e-3)
     parser.add_argument("--critic-lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -35,9 +37,12 @@ def get_args():
     parser.add_argument("--epoch", type=int, default=200)
     parser.add_argument("--step-per-epoch", type=int, default=5000)
     parser.add_argument("--step-per-collect", type=int, default=1)
-    parser.add_argument("--update-per-step", type=int, default=1)
+    parser.add_argument("--update-per-step", type=int, default=20)
     parser.add_argument("--n-step", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument(
+        "--target-mode", type=str, choices=("min", "mean"), default="min"
+    )
     parser.add_argument("--training-num", type=int, default=1)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
@@ -63,7 +68,7 @@ def get_args():
     return parser.parse_args()
 
 
-def test_sac(args=get_args()):
+def test_redq(args=get_args()):
     env, train_envs, test_envs = make_mujoco_env(
         args.task, args.seed, args.training_num, args.test_num, obs_norm=False
     )
@@ -87,24 +92,25 @@ def test_sac(args=get_args()):
         conditioned_sigma=True,
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net_c1 = Net(
+
+    def linear(x, y):
+        return EnsembleLinear(args.ensemble_size, x, y)
+
+    net_c = Net(
         args.state_shape,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,
+        linear_layer=linear,
     )
-    net_c2 = Net(
-        args.state_shape,
-        args.action_shape,
-        hidden_sizes=args.hidden_sizes,
-        concat=True,
+    critics = Critic(
+        net_c,
         device=args.device,
-    )
-    critic1 = Critic(net_c1, device=args.device).to(args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = Critic(net_c2, device=args.device).to(args.device)
-    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+        linear_layer=linear,
+        flatten_input=False,
+    ).to(args.device)
+    critics_optim = torch.optim.Adam(critics.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:
         target_entropy = -np.prod(env.action_space.shape)
@@ -112,17 +118,19 @@ def test_sac(args=get_args()):
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy = SACPolicy(
+    policy = REDQPolicy(
         actor,
         actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
+        critics,
+        critics_optim,
+        args.ensemble_size,
+        args.subset_size,
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
         estimation_step=args.n_step,
+        actor_delay=args.update_per_step,
+        target_mode=args.target_mode,
         action_space=env.action_space,
     )
 
@@ -142,7 +150,7 @@ def test_sac(args=get_args()):
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    args.algo_name = "sac"
+    args.algo_name = "redq"
     log_name = os.path.join(args.task, args.algo_name, str(args.seed), now)
     log_path = os.path.join(args.logdir, log_name)
 
@@ -192,4 +200,4 @@ def test_sac(args=get_args()):
 
 
 if __name__ == "__main__":
-    test_sac()
+    test_redq()

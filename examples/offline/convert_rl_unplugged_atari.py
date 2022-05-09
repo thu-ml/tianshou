@@ -3,7 +3,7 @@
 # Adapted from
 # https://github.com/deepmind/deepmind-research/blob/master/rl_unplugged/atari.py
 #
-"""Convert Atari RL Unplugged datasets to Tianshou replay buffers.
+"""Convert Atari RL Unplugged datasets to HDF5 format.
 
 Examples in the dataset represent SARSA transitions stored during a
 DQN training run as described in https://arxiv.org/pdf/1907.04543.
@@ -30,11 +30,13 @@ Every transition in the dataset is a tuple containing the following features:
 import os
 from argparse import ArgumentParser
 
+import h5py
+import numpy as np
 import requests
 import tensorflow as tf
 from tqdm import tqdm
 
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import Batch
 
 tf.config.set_visible_devices([], 'GPU')
 
@@ -108,7 +110,7 @@ def _decode_frames(pngs: tf.Tensor) -> tf.Tensor:
       pngs: String Tensor of size (4,) containing PNG encoded images.
 
     Returns:
-      4 84x84 grayscale images packed in a (84, 84, 4) uint8 Tensor.
+      4 84x84 grayscale images packed in a (4, 84, 84) uint8 Tensor.
     """
     # Statically unroll png decoding
     frames = [tf.image.decode_png(pngs[i], channels=1) for i in range(4)]
@@ -195,17 +197,30 @@ def download(url: str, fname: str, chunk_size=1024):
 
 def process_shard(url: str, fname: str, ofname: str) -> None:
     download(url, fname)
+    maxsize = 500000
+    obs = np.ndarray((maxsize, 4, 84, 84), dtype="uint8")
+    act = np.ndarray((maxsize, ), dtype="int64")
+    rew = np.ndarray((maxsize, ), dtype="float32")
+    done = np.ndarray((maxsize, ), dtype="bool")
+    obs_next = np.ndarray((maxsize, 4, 84, 84), dtype="uint8")
+    i = 0
     file_ds = tf.data.TFRecordDataset(fname, compression_type="GZIP")
-    buffer = ReplayBuffer(500000)
-    cnt = 0
     for example in file_ds:
         batch = _tf_example_to_tianshou_batch(example)
-        buffer.add(batch)
-        cnt += 1
-        if cnt % 1000 == 0:
-            print(f"...{cnt}", end="", flush=True)
-    print("\nReplayBuffer size:", len(buffer))
-    buffer.save_hdf5(ofname, compression="gzip")
+        obs[i], act[i], rew[i], done[i], obs_next[i] = (
+            batch.obs, batch.act, batch.rew, batch.done, batch.obs_next
+        )
+        i += 1
+        if i % 1000 == 0:
+            print(f"...{i}", end="", flush=True)
+    print("\nDataset size:", i)
+    # Following D4RL dataset naming conventions
+    with h5py.File(ofname, "w") as f:
+        f.create_dataset("observations", data=obs, compression="gzip")
+        f.create_dataset("actions", data=act, compression="gzip")
+        f.create_dataset("rewards", data=rew, compression="gzip")
+        f.create_dataset("terminals", data=done, compression="gzip")
+        f.create_dataset("next_observations", data=obs_next, compression="gzip")
 
 
 def process_dataset(
@@ -227,19 +242,19 @@ def main(args):
     if args.task not in ALL_GAMES:
         raise KeyError(f"`{args.task}` is not in the list of games.")
     fn = _filename(args.run_id, args.shard_id, total_num_shards=args.total_num_shards)
-    buffer_path = os.path.join(args.buffer_dir, args.task, f"{fn}.hdf5")
-    if os.path.exists(buffer_path):
-        raise IOError(f"Found existing buffer at {buffer_path}. Will not overwrite.")
+    dataset_path = os.path.join(args.dataset_dir, args.task, f"{fn}.hdf5")
+    if os.path.exists(dataset_path):
+        raise IOError(f"Found existing dataset at {dataset_path}. Will not overwrite.")
+    args.cache_dir = os.environ.get("RLU_CACHE_DIR", args.cache_dir)
     args.dataset_dir = os.environ.get("RLU_DATASET_DIR", args.dataset_dir)
-    args.buffer_dir = os.environ.get("RLU_BUFFER_DIR", args.buffer_dir)
-    dataset_path = os.path.join(args.dataset_dir, args.task)
-    os.makedirs(dataset_path, exist_ok=True)
-    dst_path = os.path.join(args.buffer_dir, args.task)
+    cache_path = os.path.join(args.cache_dir, args.task)
+    os.makedirs(cache_path, exist_ok=True)
+    dst_path = os.path.join(args.dataset_dir, args.task)
     os.makedirs(dst_path, exist_ok=True)
     process_dataset(
         args.task,
+        args.cache_dir,
         args.dataset_dir,
-        args.buffer_dir,
         run_id=args.run_id,
         shard_id=args.shard_id,
         total_num_shards=args.total_num_shards
@@ -267,12 +282,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset-dir",
         default=os.path.expanduser("~/.rl_unplugged/datasets"),
-        help="Directory for downloaded original datasets.",
+        help="Directory for converted hdf5 files.",
     )
     parser.add_argument(
-        "--buffer-dir",
-        default=os.path.expanduser("~/.rl_unplugged/buffers"),
-        help="Directory for converted replay buffers.",
+        "--cache-dir",
+        default=os.path.expanduser("~/.rl_unplugged/cache"),
+        help="Directory for downloaded original datasets.",
     )
     args = parser.parse_args()
     main(args)
