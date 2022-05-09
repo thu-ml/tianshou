@@ -33,7 +33,7 @@ def get_args():
     parser.add_argument("--eps-train", type=float, default=0.73)
     parser.add_argument("--eps-decay", type=float, default=5e-6)
     parser.add_argument("--buffer-size", type=int, default=100000)
-    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--lr", type=float, default=1e-5)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--target-update-freq", type=int, default=1000)
     parser.add_argument("--epoch", type=int, default=1000)
@@ -41,7 +41,7 @@ def get_args():
     parser.add_argument("--step-per-collect", type=int, default=16)
     parser.add_argument("--update-per-step", type=float, default=0.0625)
     parser.add_argument("--batch-size", type=int, default=512)
-    parser.add_argument("--training-num", type=int, default=100)
+    parser.add_argument("--training-num", type=int, default=20)
     parser.add_argument("--test-num", type=int, default=10)
     # other
     parser.add_argument("--logdir", type=str, default="log")

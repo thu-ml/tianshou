@@ -15,35 +15,37 @@ from tianshou.utils.net.common import BranchingNet
 def get_args():
     parser = argparse.ArgumentParser()
     # task
-    parser.add_argument("--task", type=str, default="BipedalWalker-v3")
+    parser.add_argument("--task", type=str, default="Pendulum-v0")
+    parser.add_argument('--reward-threshold', type=float, default=None)
     # network architecture
     parser.add_argument(
         "--common-hidden-sizes", type=int, nargs="*", default=[512, 256]
     )
     parser.add_argument("--action-hidden-sizes", type=int, nargs="*", default=[128])
     parser.add_argument("--value-hidden-sizes", type=int, nargs="*", default=[128])
-    parser.add_argument("--action-per-branch", type=int, default=32)
+    parser.add_argument("--action-per-branch", type=int, default=40)
     # training hyperparameters
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--eps-test", type=float, default=0.05)
-    parser.add_argument("--eps-train", type=float, default=0.1)
+    parser.add_argument("--eps-train", type=float, default=0.76)
+    parser.add_argument("--eps-decay", type=float, default=1e-5)
     parser.add_argument("--buffer-size", type=int, default=20000)
-    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--gamma", type=float, default=0.9)
     parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--target-update-freq", type=int, default=320)
-    parser.add_argument("--epoch", type=int, default=20)
-    parser.add_argument("--step-per-epoch", type=int, default=10000)
+    parser.add_argument("--target-update-freq", type=int, default=1000)
+    parser.add_argument("--epoch", type=int, default=200)
+    parser.add_argument("--step-per-epoch", type=int, default=80000)
     parser.add_argument("--step-per-collect", type=int, default=10)
     parser.add_argument("--update-per-step", type=float, default=0.1)
-    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--training-num", type=int, default=10)
-    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
-    parser.add_argument("--prioritized-replay", action="store_true", default=False)
-    parser.add_argument("--alpha", type=float, default=0.6)
-    parser.add_argument("--beta", type=float, default=0.4)
+    # parser.add_argument("--prioritized-replay", action="store_true", default=False)
+    # parser.add_argument("--alpha", type=float, default=0.6)
+    # parser.add_argument("--beta", type=float, default=0.4)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
@@ -57,6 +59,12 @@ def test_bdq(args=get_args()):
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+
+    if args.reward_threshold is None:
+        default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
 
     print("Observations shape:", args.state_shape)
     print("Actions shape:", args.action_shape)
@@ -94,7 +102,7 @@ def test_bdq(args=get_args()):
     policy = BranchingDQNPolicy(
         net, optim, args.gamma, target_update_freq=args.target_update_freq
     )
-  # collector
+    # collector
     train_collector = Collector(
         policy,
         train_envs,
@@ -106,11 +114,14 @@ def test_bdq(args=get_args()):
     train_collector.collect(n_step=args.batch_size * args.training_num)
 
     def train_fn(epoch, env_step):  # exp decay
-        eps = max(args.eps_train * (1 - 5e-6)**env_step, args.eps_test)
+        eps = max(args.eps_train * (1 - args.eps_decay)**env_step, args.eps_test)
         policy.set_eps(eps)
 
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
+
+    def stop_fn(mean_rewards):
+        return mean_rewards >= args.reward_threshold
 
     # trainer
     result = offpolicy_trainer(
@@ -125,6 +136,7 @@ def test_bdq(args=get_args()):
         update_per_step=args.update_per_step,
         train_fn=train_fn,
         test_fn=test_fn,
+        stop_fn=stop_fn,
     )
 
     # assert stop_fn(result["best_reward"])

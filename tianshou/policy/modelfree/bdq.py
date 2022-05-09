@@ -39,8 +39,10 @@ class BranchingDQNPolicy(DQNPolicy):
         is_double: bool = True,
         **kwargs: Any,
     ) -> None:
-        super().__init__(model, optim, discount_factor, estimation_step,
-        target_update_freq, reward_normalization, is_double)
+        super().__init__(
+            model, optim, discount_factor, estimation_step, target_update_freq,
+            reward_normalization, is_double
+        )
         assert estimation_step == 1, "N-step bigger than one is not supported by BDQ"
         self.max_action_num = self.model.action_per_branch
         self.num_branches = self.model.num_branches
