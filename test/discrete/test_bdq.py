@@ -32,9 +32,8 @@ def get_args():
     parser.add_argument("--buffer-size", type=int, default=20000)
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument("--gamma", type=float, default=0.9)
-    parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--target-update-freq", type=int, default=1000)
-    parser.add_argument("--epoch", type=int, default=200)
+    parser.add_argument("--epoch", type=int, default=10)
     parser.add_argument("--step-per-epoch", type=int, default=80000)
     parser.add_argument("--step-per-collect", type=int, default=10)
     parser.add_argument("--update-per-step", type=float, default=0.1)
@@ -42,10 +41,6 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
-    # parser.add_argument("--prioritized-replay", action="store_true", default=False)
-    # parser.add_argument("--alpha", type=float, default=0.6)
-    # parser.add_argument("--beta", type=float, default=0.4)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )

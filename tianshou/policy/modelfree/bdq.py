@@ -47,7 +47,8 @@ class BranchingDQNPolicy(DQNPolicy):
         self.max_action_num = self.model.action_per_branch
         self.num_branches = self.model.num_branches
 
-    def _target_q(self, batch: Batch) -> torch.Tensor:
+    def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
+        batch = buffer[indices]  # batch.obs_next: s_{t+n}
         result = self(batch, input="obs_next")
         if self._target:
             # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
@@ -70,7 +71,7 @@ class BranchingDQNPolicy(DQNPolicy):
     ) -> Batch:
         rew = batch.rew
         with torch.no_grad():
-            target_q_torch = self._target_q(batch)  # (bsz, ?)
+            target_q_torch = self._target_q(buffer, indice)  # (bsz, ?)
         target_q = to_numpy(target_q_torch)
         end_flag = buffer.done.copy()
         end_flag[buffer.unfinished_index()] = True
