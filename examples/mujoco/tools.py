@@ -26,7 +26,7 @@ def group_files(file_list, pattern):
     res = defaultdict(list)
     for f in file_list:
         match = re.search(pattern, f)
-        key = match.group() if match else ''
+        key = match.group() if match else ""
         res[key].append(f)
     return res
 
@@ -41,7 +41,7 @@ def csv2numpy(csv_file):
 
 
 def convert_tfevents_to_csv(root_dir, refresh=False):
-    """Recursively convert test/rew from all tfevent file under root_dir to csv.
+    """Recursively convert test/reward from all tfevent file under root_dir to csv.
 
     This function assumes that there is at most one tfevents file in each directory
     and will add suffix to that directory.
@@ -54,10 +54,12 @@ def convert_tfevents_to_csv(root_dir, refresh=False):
     with tqdm.tqdm(tfevent_files) as t:
         for tfevent_file in t:
             t.set_postfix(file=tfevent_file)
-            output_file = os.path.join(os.path.split(tfevent_file)[0], "test_rew.csv")
+            output_file = os.path.join(
+                os.path.split(tfevent_file)[0], "test_reward.csv"
+            )
             if os.path.exists(output_file) and not refresh:
                 content = list(csv.reader(open(output_file, "r")))
-                if content[0] == ["env_step", "rew", "time"]:
+                if content[0] == ["env_step", "reward", "time"]:
                     for i in range(1, len(content)):
                         content[i] = list(map(eval, content[i]))
                     result[output_file] = content
@@ -65,13 +67,13 @@ def convert_tfevents_to_csv(root_dir, refresh=False):
             ea = event_accumulator.EventAccumulator(tfevent_file)
             ea.Reload()
             initial_time = ea._first_event_timestamp
-            content = [["env_step", "rew", "time"]]
-            for test_rew in ea.scalars.Items("test/rew"):
+            content = [["env_step", "reward", "time"]]
+            for test_reward in ea.scalars.Items("test/reward"):
                 content.append(
                     [
-                        round(test_rew.step, 4),
-                        round(test_rew.value, 4),
-                        round(test_rew.wall_time - initial_time, 4),
+                        round(test_reward.step, 4),
+                        round(test_reward.value, 4),
+                        round(test_reward.wall_time - initial_time, 4),
                     ]
                 )
             csv.writer(open(output_file, 'w')).writerows(content)
@@ -89,8 +91,8 @@ def merge_csv(csv_files, root_dir, remove_zero=False):
     sorted_keys = sorted(csv_files.keys())
     sorted_values = [csv_files[k][1:] for k in sorted_keys]
     content = [
-        ["env_step", "rew", "rew:shaded"] +
-        list(map(lambda f: "rew:" + os.path.relpath(f, root_dir), sorted_keys))
+        ["env_step", "reward", "reward:shaded"] +
+        list(map(lambda f: "reward:" + os.path.relpath(f, root_dir), sorted_keys))
     ]
     for rows in zip(*sorted_values):
         array = np.array(rows)
@@ -98,7 +100,7 @@ def merge_csv(csv_files, root_dir, remove_zero=False):
         line = [rows[0][0], round(array[:, 1].mean(), 4), round(array[:, 1].std(), 4)]
         line += array[:, 1].tolist()
         content.append(line)
-    output_path = os.path.join(root_dir, f"test_rew_{len(csv_files)}seeds.csv")
+    output_path = os.path.join(root_dir, f"test_reward_{len(csv_files)}seeds.csv")
     print(f"Output merged csv file to {output_path} with {len(content[1:])} lines.")
     csv.writer(open(output_path, "w")).writerows(content)
 

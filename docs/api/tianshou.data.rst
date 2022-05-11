@@ -88,3 +88,30 @@ AsyncCollector
    :members:
    :undoc-members:
    :show-inheritance:
+
+
+Utils
+-----
+
+to_numpy
+~~~~~~~~
+
+.. autofunction:: tianshou.data.to_numpy
+
+to_torch
+~~~~~~~~
+
+.. autofunction:: tianshou.data.to_torch
+
+to_torch_as
+~~~~~~~~~~~
+
+.. autofunction:: tianshou.data.to_torch_as
+
+SegmentTree
+~~~~~~~~~~~
+
+.. autoclass:: tianshou.data.SegmentTree
+   :members:
+   :undoc-members:
+   :show-inheritance:

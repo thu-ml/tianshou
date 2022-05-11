@@ -105,7 +105,10 @@ class PettingZooEnv(AECEnv, ABC):
         self.env.close()
 
     def seed(self, seed: Any = None) -> None:
-        self.env.seed(seed)
+        try:
+            self.env.seed(seed)
+        except NotImplementedError:
+            self.env.reset(seed=seed)
 
     def render(self, mode: str = "human") -> Any:
         return self.env.render(mode)

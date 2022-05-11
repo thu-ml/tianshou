@@ -12,6 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
+from examples.offline.utils import load_buffer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DiscreteBCQPolicy
 from tianshou.trainer import offline_trainer
@@ -58,6 +59,9 @@ def get_args():
     parser.add_argument("--log-interval", type=int, default=100)
     parser.add_argument(
         "--load-buffer-name", type=str, default="./expert_DQN_PongNoFrameskip-v4.hdf5"
+    )
+    parser.add_argument(
+        "--buffer-from-rl-unplugged", action="store_true", default=False
     )
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
@@ -115,15 +119,19 @@ def test_discrete_bcq(args=get_args()):
         policy.load_state_dict(torch.load(args.resume_path, map_location=args.device))
         print("Loaded agent from: ", args.resume_path)
     # buffer
-    assert os.path.exists(args.load_buffer_name), \
-        "Please run atari_dqn.py first to get expert's data buffer."
-    if args.load_buffer_name.endswith(".pkl"):
-        buffer = pickle.load(open(args.load_buffer_name, "rb"))
-    elif args.load_buffer_name.endswith(".hdf5"):
-        buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+    if args.buffer_from_rl_unplugged:
+        buffer = load_buffer(args.load_buffer_name)
     else:
-        print(f"Unknown buffer format: {args.load_buffer_name}")
-        exit(0)
+        assert os.path.exists(args.load_buffer_name), \
+            "Please run atari_dqn.py first to get expert's data buffer."
+        if args.load_buffer_name.endswith(".pkl"):
+            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+        elif args.load_buffer_name.endswith(".hdf5"):
+            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+        else:
+            print(f"Unknown buffer format: {args.load_buffer_name}")
+            exit(0)
+    print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
     test_collector = Collector(policy, test_envs, exploration_noise=True)

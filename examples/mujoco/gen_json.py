@@ -22,8 +22,8 @@ def merge(rootdir):
             result.append(
                 {
                     'env_step': int(row['env_step']),
-                    'rew': float(row['rew']),
-                    'rew_std': float(row['rew:shaded']),
+                    'rew': float(row['reward']),
+                    'rew_std': float(row['reward:shaded']),
                     'Agent': algo,
                 }
             )
