@@ -18,7 +18,7 @@ from tianshou.utils.net.discrete import Actor, Critic
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='CartPole-v1')
+    parser.add_argument('--task', type=str, default='CartPole-v0')
     parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=20000)
@@ -60,7 +60,7 @@ def test_a2c_with_il(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
-        default_reward_threshold = {"CartPole-v1": 195}
+        default_reward_threshold = {"CartPole-v0": 195}
         args.reward_threshold = default_reward_threshold.get(
             args.task, env.spec.reward_threshold
         )
@@ -131,7 +131,7 @@ def test_a2c_with_il(args=get_args()):
 
     policy.eval()
     # here we define an imitation collector with a trivial policy
-    # if args.task == 'CartPole-v1':
+    # if args.task == 'CartPole-v0':
     #     env.spec.reward_threshold = 190  # lower the goal
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     net = Actor(net, args.action_shape, device=args.device).to(args.device)

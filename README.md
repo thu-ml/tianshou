@@ -183,7 +183,7 @@ import tianshou as ts
 Define some hyper-parameters:
 
 ```python
-task = 'CartPole-v1'
+task = 'CartPole-v0'
 lr, epoch, batch_size = 1e-3, 10, 64
 train_num, test_num = 10, 100
 gamma, n_step, target_freq = 0.9, 3, 320
@@ -260,7 +260,7 @@ $ tensorboard --logdir log/dqn
 
 You can check out the [documentation](https://tianshou.readthedocs.io) for advanced usage.
 
-It's worth a try: here is a test on a laptop (i7-8750H + GTX1060). It only uses **3** seconds for training an agent based on vanilla policy gradient on the CartPole-v1 task: (seed may be different across different platform and device)
+It's worth a try: here is a test on a laptop (i7-8750H + GTX1060). It only uses **3** seconds for training an agent based on vanilla policy gradient on the CartPole-v0 task: (seed may be different across different platform and device)
 
 ```bash
 $ python3 test/discrete/test_pg.py --seed 0 --render 0.03

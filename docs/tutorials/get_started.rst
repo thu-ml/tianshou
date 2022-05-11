@@ -1,7 +1,7 @@
 Get Started with Jupyter Notebook
 =================================
 
-In this tutorial, we will use Google Colaboratory to show you the most basic usages of common building blocks in Tianshou. You will be guided step by step to see how different modules in Tianshou collaborate with each other to conduct a classic DRL experiment (PPO algorithm for CartPole-v1 environment).
+In this tutorial, we will use Google Colaboratory to show you the most basic usages of common building blocks in Tianshou. You will be guided step by step to see how different modules in Tianshou collaborate with each other to conduct a classic DRL experiment (PPO algorithm for CartPole-v0 environment).
 
 - L0:  `Overview <https://colab.research.google.com/drive/1yavOkfSTbyBD24-dyQzdETFN9YA7ioor?usp=sharing>`_
 - L1:  `Batch <https://colab.research.google.com/drive/1uklagjDxYjJERS9gJvgbPnV1BtMuXvOR?usp=sharing>`_
