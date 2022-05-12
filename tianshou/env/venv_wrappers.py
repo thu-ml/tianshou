@@ -37,11 +37,10 @@ class VectorEnvWrapper(BaseVectorEnv):
     ) -> None:
         return self.venv.set_env_attr(key, value, id)
 
-    # TODO: compatible issue with reset -> (obs, info)
     def reset(
-        self, id: Optional[Union[int, List[int], np.ndarray]] = None
-    ) -> np.ndarray:
-        return self.venv.reset(id)
+        self, id: Optional[Union[int, List[int], np.ndarray]] = None, **kwargs,
+    ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
+        return self.venv.reset(id, **kwargs)
 
     def step(
         self,
@@ -86,14 +85,21 @@ class VectorEnvNormObs(VectorEnvWrapper):
         self.clip_max = clip_obs
         self.eps = epsilon
 
-    # TODO: compatible issue with reset -> (obs, info)
     def reset(
-        self, id: Optional[Union[int, List[int], np.ndarray]] = None
+        self, id: Optional[Union[int, List[int], np.ndarray]] = None,
+        **kwargs,
     ) -> np.ndarray:
-        obs = self.venv.reset(id)
+        if "return_info" in kwargs and kwargs["return_info"]:
+            obs, info = self.venv.reset(id, **kwargs)
+        else:
+            obs = self.venv.reset(id)
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs)
-        return self._norm_obs(obs)
+        obs = self._norm_obs(obs)
+        if "return_info" in kwargs and kwargs["return_info"]:
+            return obs, info
+        else:
+            return obs
 
     def step(
         self,

@@ -35,8 +35,8 @@ class RayEnvWorker(EnvWorker):
     def set_env_attr(self, key: str, value: Any) -> None:
         ray.get(self.env.set_env_attr.remote(key, value))
 
-    def reset(self) -> Any:
-        return ray.get(self.env.reset.remote())
+    def reset(self, **kwargs) -> Any:
+        return ray.get(self.env.reset.remote(**kwargs))
 
     @staticmethod
     def wait(  # type: ignore
@@ -58,9 +58,12 @@ class RayEnvWorker(EnvWorker):
     ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
         return ray.get(self.result)  # type: ignore
 
-    def seed(self, seed: Optional[int] = None) -> List[int]:
+    def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
         super().seed(seed)
-        return ray.get(self.env.reset.remote(seed=seed))
+        try:
+            return ray.get(self.env.seed.remote(seed))
+        except NotImplementedError:
+            self.env.reset.remote(seed=seed)
 
     def render(self, **kwargs: Any) -> Any:
         return ray.get(self.env.render.remote(**kwargs))

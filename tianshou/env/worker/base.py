@@ -63,9 +63,9 @@ class EnvWorker(ABC):
                 self.result = self.get_result()  # type: ignore
         return self.result
 
-    def reset(self) -> np.ndarray:
-        self.send(None)
-        return self.recv()  # type: ignore
+    @abstractmethod
+    def reset(self, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+        pass
 
     def step(
         self, action: np.ndarray

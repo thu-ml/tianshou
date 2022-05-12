@@ -86,17 +86,23 @@ def _worker(
                 p.close()
                 break
             if cmd == "step":
-                if data is None:  # reset
-                    obs = env.reset()
-                else:
-                    obs, reward, done, info = env.step(data)
+                obs, reward, done, info = env.step(data)
                 if obs_bufs is not None:
                     _encode_obs(obs, obs_bufs)
                     obs = None
-                if data is None:
-                    p.send(obs)
+                p.send((obs, reward, done, info))
+            elif cmd == "reset":
+                if "return_info" in data and data["return_info"]:
+                    obs, info = env.reset(**data)
                 else:
-                    p.send((obs, reward, done, info))
+                    obs = env.reset(**data)
+                if obs_bufs is not None:
+                    _encode_obs(obs, obs_bufs)
+                    obs = None
+                if "return_info" in data and data["return_info"]:
+                    p.send((obs, info))
+                else:
+                    p.send(obs)
             elif cmd == "close":
                 p.send(env.close())
                 p.close()
@@ -104,7 +110,11 @@ def _worker(
             elif cmd == "render":
                 p.send(env.render(**data) if hasattr(env, "render") else None)
             elif cmd == "seed":
-                env.reset(seed=data)
+                if hasattr(env, "seed"):
+                    p.send(env.seed(data))
+                else:
+                    env.reset(seed=data)
+                    p.send(None)
             elif cmd == "getattr":
                 p.send(getattr(env, data) if hasattr(env, data) else None)
             elif cmd == "setattr":
@@ -140,7 +150,6 @@ class SubprocEnvWorker(EnvWorker):
         self.process = Process(target=_worker, args=args, daemon=True)
         self.process.start()
         self.child_remote.close()
-        self.is_reset = False
         super().__init__(env_fn)
 
     def get_env_attr(self, key: str) -> Any:
@@ -204,9 +213,24 @@ class SubprocEnvWorker(EnvWorker):
                 obs = self._decode_obs()
             return obs
 
-    def seed(self, seed: Optional[int] = None) -> None:
+    def reset(self, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+        self.parent_remote.send(["reset", kwargs])
+        result = self.parent_remote.recv()
+        if isinstance(result, tuple):
+            obs, info = result
+            if self.share_memory:
+                obs = self._decode_obs()
+            return obs, info
+        else:
+            obs = result
+            if self.share_memory:
+                obs = self._decode_obs()
+            return obs
+
+    def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
         super().seed(seed)
         self.parent_remote.send(["seed", seed])
+        return self.parent_remote.recv()
 
     def render(self, **kwargs: Any) -> Any:
         self.parent_remote.send(["render", kwargs])

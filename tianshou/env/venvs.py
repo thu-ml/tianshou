@@ -181,10 +181,11 @@ class BaseVectorEnv(object):
             assert i in self.ready_id, \
                 f"Can only interact with ready environments {self.ready_id}."
 
-    # TODO: compatible issue with reset -> (obs, info)
     def reset(
-        self, id: Optional[Union[int, List[int], np.ndarray]] = None
-    ) -> np.ndarray:
+        self,
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        **kwargs,
+    ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
         """Reset the state of some envs and return initial observations.
 
         If id is None, reset the state of all the environments and return
@@ -195,15 +196,22 @@ class BaseVectorEnv(object):
         id = self._wrap_id(id)
         if self.is_async:
             self._assert_id(id)
-        # send(None) == reset() in worker
-        for i in id:
-            self.workers[i].send(None)
-        obs_list = [self.workers[i].recv() for i in id]
+
+        ret = [self.workers[i].reset(**kwargs) for i in id]
+        if "return_info" in kwargs and kwargs["return_info"]:
+            obs_list = [r[0] for r in ret]
+        else:
+            obs_list = ret
         try:
             obs = np.stack(obs_list)
         except ValueError:  # different len(obs)
             obs = np.array(obs_list, dtype=object)
-        return obs
+
+        if "return_info" in kwargs and kwargs["return_info"]:
+            infos = [r[1] for r in ret]
+            return obs, infos
+        else:
+            return obs
 
     def step(
         self,

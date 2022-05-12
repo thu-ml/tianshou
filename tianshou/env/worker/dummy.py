@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
@@ -19,8 +19,8 @@ class DummyEnvWorker(EnvWorker):
     def set_env_attr(self, key: str, value: Any) -> None:
         setattr(self.env, key, value)
 
-    def reset(self) -> Any:
-        return self.env.reset()
+    def reset(self, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+        return self.env.reset(**kwargs)
 
     @staticmethod
     def wait(  # type: ignore
@@ -35,9 +35,12 @@ class DummyEnvWorker(EnvWorker):
         else:
             self.result = self.env.step(action)  # type: ignore
 
-    def seed(self, seed: Optional[int] = None) -> None:
+    def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
         super().seed(seed)
-        self.env.reset(seed=seed)
+        try:
+            return self.env.seed(seed)
+        except NotImplementedError:
+            self.env.reset(seed=seed)
 
     def render(self, **kwargs: Any) -> Any:
         return self.env.render(**kwargs)
