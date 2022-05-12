@@ -13,6 +13,9 @@ from typing import (
 import numpy as np
 import torch
 from torch import nn
+from transformers import DecisionTransformerModel
+
+from tianshou.data import to_torch
 
 ModuleType = Type[nn.Module]
 
@@ -453,3 +456,131 @@ class BranchingNet(nn.Module):
         action_scores = action_scores - torch.mean(action_scores, 2, keepdim=True)
         logits = value_out + action_scores
         return logits, state
+
+
+class DecisionTransformer(nn.Module):
+    """Decision Transformer for continous action.
+
+    For advanced usage (how to customize the network), please refer to
+    :ref:`build_the_network`.
+    """
+
+    def __init__(
+        self,
+        model: DecisionTransformerModel,
+        state_shape: Sequence[int],
+        action_shape: Sequence[int],
+        preprocess_net: Optional[nn.Module] = None,
+        max_length: int = 20,
+        target_return: float = 1.0,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
+        super().__init__()
+        self.device = device
+        self.model = model
+        self.preprocess = preprocess_net
+        if self.preprocess:
+            self.state_dim = self.preprocess.output_dim
+        else:
+            self.state_dim = int(np.prod(state_shape))
+        self.act_dim = int(np.prod(action_shape))
+        self.max_length = max_length
+        self.target_return = target_return
+        self.device = device
+
+    def forward(
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        state: Optional[Dict[str, torch.Tensor]] = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict[str, torch.Tensor]]:
+        if self.preprocess:
+            cur_state, _ = self.preprocess(obs)
+        else:
+            cur_state = to_torch(obs, dtype=torch.float, device=self.device)
+        # state is a Dict with four keys. Shapes of tensors:
+        #   state["states"]: (batch_size, length, state_dim)
+        #   state["actions"]: (batch_size, length, act_dim)
+        #   state["returns_to_go"]: (batch_size, length, 1)
+        #   state["timesteps"]: (batch_size, length)
+        batch_size = cur_state.shape[0]
+        if state is None:
+            states = cur_state.unsqueeze(1)
+            actions = torch.zeros((batch_size, 1, self.act_dim), device=self.device)
+            returns_to_go = self.target_return * torch.ones(
+                (batch_size, 1, 1), device=self.device
+            )
+            timesteps = torch.ones(
+                (batch_size, 1), device=self.device, dtype=torch.long
+            )
+            attention_mask = torch.ones(
+                (batch_size, 1), device=self.device, dtype=torch.long
+            )
+        else:
+            states = torch.cat([state["states"],
+                                cur_state.unsqueeze(1)], dim=1)[:, -self.max_length:]
+            actions = state["actions"][:, -self.max_length:]
+            returns_to_go = state["returns_to_go"][:, -self.max_length:]
+            timesteps = state["timesteps"][:, -self.max_length:]
+            attention_mask = torch.ones(
+                (batch_size, states.shape[1]), dtype=torch.long, device=self.device
+            )
+
+        # pad all tokens to sequence length
+        padding = self.max_length - states.shape[1]
+        if padding > 0:
+            attention_mask = torch.cat(
+                [
+                    torch.zeros(
+                        (batch_size, padding), device=self.device, dtype=torch.long
+                    ), attention_mask
+                ],
+                dim=1
+            )
+            states = torch.cat(
+                [
+                    torch.zeros(
+                        (batch_size, padding, self.state_dim), device=self.device
+                    ), states
+                ],
+                dim=1
+            ).float()
+            actions = torch.cat(
+                [
+                    torch.zeros(
+                        (batch_size, padding, self.act_dim), device=self.device
+                    ), actions
+                ],
+                dim=1
+            ).float()
+            returns_to_go = torch.cat(
+                [
+                    torch.zeros((batch_size, padding, 1), device=self.device),
+                    returns_to_go
+                ],
+                dim=1
+            ).float()
+            timesteps = torch.cat(
+                [
+                    torch.zeros(
+                        (batch_size, padding), device=self.device, dtype=torch.long
+                    ), timesteps
+                ],
+                dim=1
+            )
+
+        _, action_preds, _ = self.model(
+            states=states,
+            actions=actions,
+            returns_to_go=returns_to_go,
+            timesteps=timesteps,
+            attention_mask=attention_mask,
+            return_dict=False,
+        )
+
+        return action_preds[:, -1], {
+            "states": states,
+            "actions": actions,
+            "returns_to_go": returns_to_go,
+            "timesteps": timesteps
+        }
