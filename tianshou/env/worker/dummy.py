@@ -35,14 +35,15 @@ class DummyEnvWorker(EnvWorker):
         if action is None:
             self.result = self.env.reset(**kwargs)
         else:
-            self.result = self.env.step(action)
+            self.result = self.env.step(action)  # type: ignore
 
     def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
         super().seed(seed)
         try:
             return self.env.seed(seed)
         except NotImplementedError:
-            return self.env.reset(seed=seed)
+            self.env.reset(seed=seed)
+            return [seed]  # type: ignore
 
     def render(self, **kwargs: Any) -> Any:
         return self.env.render(**kwargs)

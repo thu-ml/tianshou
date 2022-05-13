@@ -53,7 +53,7 @@ def _setup_buf(space: gym.Space) -> Union[dict, tuple, ShArray]:
         assert isinstance(space.spaces, tuple)
         return tuple([_setup_buf(t) for t in space.spaces])
     else:
-        return ShArray(space.dtype, space.shape)
+        return ShArray(space.dtype, space.shape)  # type: ignore
 
 
 def _worker(
