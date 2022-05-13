@@ -40,7 +40,7 @@ class EnvWorker(ABC):
             )
             if action is None:
                 self.is_reset = True
-                self.result = self.reset()
+                self.result = self.reset() # type: ignore
             else:
                 self.is_reset = False
                 self.send_action(action)  # type: ignore
@@ -64,7 +64,7 @@ class EnvWorker(ABC):
         return self.result
 
     @abstractmethod
-    def reset(self, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+    def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
         pass
 
     def step(

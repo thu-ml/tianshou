@@ -35,7 +35,7 @@ class RayEnvWorker(EnvWorker):
     def set_env_attr(self, key: str, value: Any) -> None:
         ray.get(self.env.set_env_attr.remote(key, value))
 
-    def reset(self, **kwargs) -> Any:
+    def reset(self, **kwargs: Any) -> Any:
         return ray.get(self.env.reset.remote(**kwargs))
 
     @staticmethod
@@ -46,10 +46,10 @@ class RayEnvWorker(EnvWorker):
         ready_results, _ = ray.wait(results, num_returns=wait_num, timeout=timeout)
         return [workers[results.index(result)] for result in ready_results]
 
-    def send(self, action: Optional[np.ndarray]) -> None:
+    def send(self, action: Optional[np.ndarray], **kwargs: Any) -> None:
         # self.result is actually a handle
         if action is None:
-            self.result = self.env.reset.remote()
+            self.result = self.env.reset.remote(**kwargs)
         else:
             self.result = self.env.step.remote(action)
 
@@ -64,6 +64,7 @@ class RayEnvWorker(EnvWorker):
             return ray.get(self.env.seed.remote(seed))
         except NotImplementedError:
             self.env.reset.remote(seed=seed)
+            return None
 
     def render(self, **kwargs: Any) -> Any:
         return ray.get(self.env.render.remote(**kwargs))

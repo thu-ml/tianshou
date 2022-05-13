@@ -53,7 +53,7 @@ def _setup_buf(space: gym.Space) -> Union[dict, tuple, ShArray]:
         assert isinstance(space.spaces, tuple)
         return tuple([_setup_buf(t) for t in space.spaces])
     else:
-        return ShArray(space.dtype, space.shape)  # type: ignore
+        return ShArray(space.dtype, space.shape)
 
 
 def _worker(
@@ -195,14 +195,22 @@ class SubprocEnvWorker(EnvWorker):
             remain_conns = [conn for conn in remain_conns if conn not in ready_conns]
         return [workers[conns.index(con)] for con in ready_conns]
 
-    def send(self, action: Optional[np.ndarray]) -> None:
-        self.parent_remote.send(["step", action])
+    def send(self, action: Optional[np.ndarray], **kwargs: Any) -> None:
+        if action is None:
+            self.parent_remote.send(["reset", kwargs])
+        else:
+            self.parent_remote.send(["step", action])
 
     def recv(
         self
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[np.ndarray, dict], np.ndarray]:
         result = self.parent_remote.recv()
         if isinstance(result, tuple):
+            if len(result) == 2:
+                obs, info = result
+                if self.share_memory:
+                    obs = self._decode_obs()
+                return obs, info
             obs, rew, done, info = result
             if self.share_memory:
                 obs = self._decode_obs()
@@ -213,8 +221,9 @@ class SubprocEnvWorker(EnvWorker):
                 obs = self._decode_obs()
             return obs
 
-    def reset(self, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+    def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
         self.parent_remote.send(["reset", kwargs])
+
         result = self.parent_remote.recv()
         if isinstance(result, tuple):
             obs, info = result

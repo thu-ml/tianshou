@@ -81,7 +81,10 @@ class PettingZooEnv(AECEnv, ABC):
                     'mask': [True] * self.env.action_space(self.env.agent_selection).n
                 }
             else:
-                observation_dict = {'agent_id': self.env.agent_selection, 'obs': observation}
+                observation_dict = {
+                    'agent_id': self.env.agent_selection,
+                    'obs': observation,
+                }
 
         if return_info:
             return observation_dict, info

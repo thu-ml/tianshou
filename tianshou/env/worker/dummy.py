@@ -19,7 +19,7 @@ class DummyEnvWorker(EnvWorker):
     def set_env_attr(self, key: str, value: Any) -> None:
         setattr(self.env, key, value)
 
-    def reset(self, **kwargs) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+    def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
         return self.env.reset(**kwargs)
 
     @staticmethod
@@ -29,18 +29,18 @@ class DummyEnvWorker(EnvWorker):
         # Sequential EnvWorker objects are always ready
         return workers
 
-    def send(self, action: Optional[np.ndarray]) -> None:
+    def send(self, action: Optional[np.ndarray], **kwargs: Any) -> None:
         if action is None:
-            self.result = self.env.reset()  # type: ignore
+            self.result = self.env.reset(**kwargs)
         else:
-            self.result = self.env.step(action)  # type: ignore
+            self.result = self.env.step(action)
 
     def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
         super().seed(seed)
         try:
             return self.env.seed(seed)
         except NotImplementedError:
-            self.env.reset(seed=seed)
+            return self.env.reset(seed=seed)
 
     def render(self, **kwargs: Any) -> Any:
         return self.env.render(**kwargs)

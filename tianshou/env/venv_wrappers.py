@@ -38,7 +38,9 @@ class VectorEnvWrapper(BaseVectorEnv):
         return self.venv.set_env_attr(key, value, id)
 
     def reset(
-        self, id: Optional[Union[int, List[int], np.ndarray]] = None, **kwargs,
+        self,
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        **kwargs: Any,
     ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
         return self.venv.reset(id, **kwargs)
 
@@ -86,9 +88,10 @@ class VectorEnvNormObs(VectorEnvWrapper):
         self.eps = epsilon
 
     def reset(
-        self, id: Optional[Union[int, List[int], np.ndarray]] = None,
-        **kwargs,
-    ) -> np.ndarray:
+        self,
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        **kwargs: Any,
+    ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
         if "return_info" in kwargs and kwargs["return_info"]:
             obs, info = self.venv.reset(id, **kwargs)
         else:

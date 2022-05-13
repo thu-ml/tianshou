@@ -184,7 +184,7 @@ class BaseVectorEnv(object):
     def reset(
         self,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
         """Reset the state of some envs and return initial observations.
 
@@ -197,18 +197,22 @@ class BaseVectorEnv(object):
         if self.is_async:
             self._assert_id(id)
 
-        ret = [self.workers[i].reset(**kwargs) for i in id]
+        # send(None) == reset() in worker
+        for i in id:
+            self.workers[i].send(None, **kwargs)
+        ret_list = [self.workers[i].recv() for i in id]
+
         if "return_info" in kwargs and kwargs["return_info"]:
-            obs_list = [r[0] for r in ret]
+            obs_list = [r[0] for r in ret_list]
         else:
-            obs_list = ret
+            obs_list = ret_list
         try:
             obs = np.stack(obs_list)
         except ValueError:  # different len(obs)
             obs = np.array(obs_list, dtype=object)
 
         if "return_info" in kwargs and kwargs["return_info"]:
-            infos = [r[1] for r in ret]
+            infos = [r[1] for r in ret_list]
             return obs, infos
         else:
             return obs
