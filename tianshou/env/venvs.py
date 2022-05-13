@@ -213,7 +213,7 @@ class BaseVectorEnv(object):
 
         if "return_info" in kwargs and kwargs["return_info"]:
             infos = [r[1] for r in ret_list]
-            return obs, infos
+            return obs, infos  # type: ignore
         else:
             return obs
 
@@ -260,7 +260,7 @@ class BaseVectorEnv(object):
                 self.workers[j].send(action[i])
             result = []
             for j in id:
-                obs, rew, done, info = self.workers[j].recv()
+                obs, rew, done, info = self.workers[j].recv()  # type: ignore
                 info["env_id"] = j
                 result.append((obs, rew, done, info))
         else:
@@ -282,7 +282,7 @@ class BaseVectorEnv(object):
                 waiting_index = self.waiting_conn.index(conn)
                 self.waiting_conn.pop(waiting_index)
                 env_id = self.waiting_id.pop(waiting_index)
-                obs, rew, done, info = conn.recv()
+                obs, rew, done, info = conn.recv()  # type: ignore
                 info["env_id"] = env_id
                 result.append((obs, rew, done, info))
                 self.ready_id.append(env_id)

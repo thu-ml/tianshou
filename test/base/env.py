@@ -86,7 +86,7 @@ class MyTestEnv(gym.Env):
         self.do_sleep()
         self.index = state
         if return_info:
-            return self._get_state(),  {'key': 1, 'env': self}
+            return self._get_state(), {'key': 1, 'env': self}
         else:
             return self._get_state()
 

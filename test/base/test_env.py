@@ -220,10 +220,7 @@ def test_env_obs_dtype():
 
 
 def test_env_reset_optional_kwargs(size=10000, num=8):
-    env_fns = [
-        lambda i=i: MyTestEnv(size=i)
-        for i in range(size, size + num)
-    ]
+    env_fns = [lambda i=i: MyTestEnv(size=i) for i in range(size, size + num)]
     test_cls = [DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
         test_cls += [RayVectorEnv]

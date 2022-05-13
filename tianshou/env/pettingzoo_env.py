@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 import gym.spaces
 from pettingzoo.utils.env import AECEnv
@@ -55,19 +55,11 @@ class PettingZooEnv(AECEnv, ABC):
 
         self.reset()
 
-    def reset(
-        self,
-        seed: Optional[int] = None,
-        return_info: bool = False,
-        *args: Any,
-        **kwargs: Any,
-    ) -> Union[dict, Tuple[dict, dict]]:
-        self.env.reset(seed=seed, *args, **kwargs)
+    def reset(self, *args: Any, **kwargs: Any) -> dict:
+        self.env.reset(*args, **kwargs)
         observation = self.env.observe(self.env.agent_selection)
-        observation, _, _, info = self.env.last(self)
-
         if isinstance(observation, dict) and 'action_mask' in observation:
-            observation_dict = {
+            return {
                 'agent_id': self.env.agent_selection,
                 'obs': observation['observation'],
                 'mask':
@@ -75,21 +67,13 @@ class PettingZooEnv(AECEnv, ABC):
             }
         else:
             if isinstance(self.action_space, gym.spaces.Discrete):
-                observation_dict = {
+                return {
                     'agent_id': self.env.agent_selection,
                     'obs': observation,
                     'mask': [True] * self.env.action_space(self.env.agent_selection).n
                 }
             else:
-                observation_dict = {
-                    'agent_id': self.env.agent_selection,
-                    'obs': observation,
-                }
-
-        if return_info:
-            return observation_dict, info
-        else:
-            return observation_dict
+                return {'agent_id': self.env.agent_selection, 'obs': observation}
 
     def step(self, action: Any) -> Tuple[Dict, List[int], bool, Dict]:
         self.env.step(action)

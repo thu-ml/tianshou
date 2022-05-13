@@ -197,13 +197,16 @@ class SubprocEnvWorker(EnvWorker):
 
     def send(self, action: Optional[np.ndarray], **kwargs: Any) -> None:
         if action is None:
+            if "seed" in kwargs:
+                super().seed(kwargs["seed"])
             self.parent_remote.send(["reset", kwargs])
         else:
             self.parent_remote.send(["step", action])
 
     def recv(
         self
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[np.ndarray, dict], np.ndarray]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
+        np.ndarray, dict], np.ndarray]:  # noqa:E125
         result = self.parent_remote.recv()
         if isinstance(result, tuple):
             if len(result) == 2:
@@ -222,6 +225,8 @@ class SubprocEnvWorker(EnvWorker):
             return obs
 
     def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+        if "seed" in kwargs:
+            super().seed(kwargs["seed"])
         self.parent_remote.send(["reset", kwargs])
 
         result = self.parent_remote.recv()

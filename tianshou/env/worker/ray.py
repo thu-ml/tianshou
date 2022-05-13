@@ -36,6 +36,8 @@ class RayEnvWorker(EnvWorker):
         ray.get(self.env.set_env_attr.remote(key, value))
 
     def reset(self, **kwargs: Any) -> Any:
+        if "seed" in kwargs:
+            super().seed(kwargs["seed"])
         return ray.get(self.env.reset.remote(**kwargs))
 
     @staticmethod

@@ -20,6 +20,8 @@ class DummyEnvWorker(EnvWorker):
         setattr(self.env, key, value)
 
     def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+        if "seed" in kwargs:
+            super().seed(kwargs["seed"])
         return self.env.reset(**kwargs)
 
     @staticmethod
