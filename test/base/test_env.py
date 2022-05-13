@@ -60,6 +60,7 @@ def test_async_env(size=10000, num=8, sleep=0.1):
         test_cls += [RayVectorEnv]
     for cls in test_cls:
         v = cls(env_fns, wait_num=num // 2, timeout=1e-3)
+        v.seed(None)
         v.reset()
         # for a random variable u ~ U[0, 1], let v = max{u1, u2, ..., un}
         # P(v <= x) = x^n (0 <= x <= 1), pdf of v is nx^{n-1}
@@ -216,6 +217,21 @@ def test_env_obs_dtype():
         assert obs.dtype == object
         obs = envs.step([1, 1, 1, 1])[0]
         assert obs.dtype == object
+
+
+def test_env_reset_optional_kwargs(size=10000, num=8):
+    env_fns = [
+        lambda i=i: MyTestEnv(size=i)
+        for i in range(size, size + num)
+    ]
+    test_cls = [DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv]
+    if has_ray():
+        test_cls += [RayVectorEnv]
+    for cls in test_cls:
+        v = cls(env_fns, wait_num=num // 2, timeout=1e-3)
+        _, info = v.reset(seed=1, return_info=True)
+        assert len(info) == len(env_fns)
+        assert isinstance(info[0], dict)
 
 
 def run_align_norm_obs(raw_env, train_env, test_env, action_list):

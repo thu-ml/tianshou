@@ -73,19 +73,22 @@ class MyTestEnv(gym.Env):
             self.action_space = Discrete(2)
         self.done = False
         self.index = 0
-        self.reset(seed=0)
+        self.seed()
 
     def seed(self, seed=0):
         self.rng = np.random.RandomState(seed)
         return [seed]
 
-    def reset(self, state=0, seed=None):
+    def reset(self, state=0, seed=None, return_info=False):
         if seed is not None:
             self.rng = np.random.RandomState(seed)
         self.done = False
         self.do_sleep()
         self.index = state
-        return self._get_state()
+        if return_info:
+            return self._get_state(),  {'key': 1, 'env': self}
+        else:
+            return self._get_state()
 
     def _get_reward(self):
         """Generate a non-scalar reward if ma_rew is True."""
