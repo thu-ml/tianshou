@@ -15,7 +15,7 @@ from tianshou.utils.net.common import BranchingNet
 def get_args():
     parser = argparse.ArgumentParser()
     # task
-    parser.add_argument("--task", type=str, default="Pendulum-v0")
+    parser.add_argument("--task", type=str, default="Pendulum-v1")
     parser.add_argument('--reward-threshold', type=float, default=None)
     # network architecture
     parser.add_argument(
