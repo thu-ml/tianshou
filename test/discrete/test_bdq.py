@@ -15,7 +15,7 @@ from tianshou.utils.net.common import BranchingNet
 def get_args():
     parser = argparse.ArgumentParser()
     # task
-    parser.add_argument("--task", type=str, default="Pendulum-v1")
+    parser.add_argument("--task", type=str, default="Pendulum-v0")
     parser.add_argument('--reward-threshold', type=float, default=None)
     # network architecture
     parser.add_argument(
@@ -26,13 +26,13 @@ def get_args():
     parser.add_argument("--action-per-branch", type=int, default=40)
     # training hyperparameters
     parser.add_argument("--seed", type=int, default=1626)
-    parser.add_argument("--eps-test", type=float, default=0.05)
+    parser.add_argument("--eps-test", type=float, default=0.01)
     parser.add_argument("--eps-train", type=float, default=0.76)
-    parser.add_argument("--eps-decay", type=float, default=1e-5)
+    parser.add_argument("--eps-decay", type=float, default=1e-4)
     parser.add_argument("--buffer-size", type=int, default=20000)
-    parser.add_argument("--lr", type=float, default=5e-4)
+    parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.9)
-    parser.add_argument("--target-update-freq", type=int, default=1000)
+    parser.add_argument("--target-update-freq", type=int, default=200)
     parser.add_argument("--epoch", type=int, default=10)
     parser.add_argument("--step-per-epoch", type=int, default=80000)
     parser.add_argument("--step-per-collect", type=int, default=10)
