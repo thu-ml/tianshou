@@ -33,7 +33,7 @@ def get_args():
     parser.add_argument("--eps-train", type=float, default=0.73)
     parser.add_argument("--eps-decay", type=float, default=5e-6)
     parser.add_argument("--buffer-size", type=int, default=100000)
-    parser.add_argument("--lr", type=float, default=1e-5)
+    parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--target-update-freq", type=int, default=1000)
     parser.add_argument("--epoch", type=int, default=1000)
