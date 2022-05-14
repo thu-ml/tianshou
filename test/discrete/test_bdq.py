@@ -54,6 +54,8 @@ def test_bdq(args=get_args()):
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+    args.num_branches = args.action_shape if isinstance(
+        args.action_shape, int) else args.action_shape[0]
 
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
@@ -62,7 +64,7 @@ def test_bdq(args=get_args()):
         )
 
     print("Observations shape:", args.state_shape)
-    print("Actions shape:", args.action_shape)
+    print("Num branches:", args.num_branches)
     print("Actions per branch:", args.action_per_branch)
 
     train_envs = SubprocVectorEnv(
@@ -86,7 +88,7 @@ def test_bdq(args=get_args()):
     # model
     net = BranchingNet(
         args.state_shape,
-        args.action_shape,
+        args.num_branches,
         args.action_per_branch,
         args.common_hidden_sizes,
         args.value_hidden_sizes,

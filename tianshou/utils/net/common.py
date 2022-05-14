@@ -315,14 +315,14 @@ class DataParallelNet(nn.Module):
 
 class BranchingNet(nn.Module):
     """Branching dual Q network.
-    
-    Network for the BranchingDQNPolicy, it uses a common network module, a value module 
+
+    Network for the BranchingDQNPolicy, it uses a common network module, a value module
     and action "branches" one for each dimension.It allows for a linear scaling
-    of Q-value the output w.r.t. the number of dimensions in the action space. 
-    For more info please refer to: arXiv:1711.08946.    
+    of Q-value the output w.r.t. the number of dimensions in the action space.
+    For more info please refer to: arXiv:1711.08946.
     :param state_shape: int or a sequence of int of the shape of state.
     :param action_shape: int or a sequence of int of the shape of action.
-    :param action_peer_branch: int or a sequence of int of the number of actions in 
+    :param action_peer_branch: int or a sequence of int of the number of actions in
     each dimension.
     :param common_hidden_sizes: shape of the common MLP network passed in as a list.
     :param value_hidden_sizes: shape of the value MLP network passed in as a list.
@@ -345,7 +345,7 @@ class BranchingNet(nn.Module):
     def __init__(
         self,
         state_shape: Union[int, Sequence[int]],
-        action_shape: Union[int, Sequence[int]] = 0,
+        num_branches: int = 0,
         action_per_branch: int = 2,
         common_hidden_sizes: List[int] = [],
         value_hidden_sizes: List[int] = [],
@@ -356,8 +356,7 @@ class BranchingNet(nn.Module):
     ) -> None:
         super().__init__()
         self.device = device
-        self.num_branches = action_shape if type(action_shape
-                                                 ) is int else action_shape[0]
+        self.num_branches = num_branches
         self.action_per_branch = action_per_branch
         # common network
         common_input_dim = int(np.prod(state_shape))

@@ -7,9 +7,9 @@ class ContinuousToDiscrete(gym.ActionWrapper):
 
     Args:
         env (gym.Environment): gym envirionment with continous action space.
-        action_per_branch (int): number of discrete actions in each dimension 
+        action_per_branch (int): number of discrete actions in each dimension
         of the action space.
-    
+
     """
 
     def __init__(self, env: gym.Env, action_per_branch: int) -> None:
@@ -21,7 +21,7 @@ class ContinuousToDiscrete(gym.ActionWrapper):
         self.action_space = gym.spaces.MultiDiscrete(
             [action_per_branch] * num_branches
         )
-        setattr(self.action_space, "n", num_branches)
+        self.action_space.n = num_branches
         mesh = []
         for lo, hi in zip(low, high):
             mesh.append(np.linspace(lo, hi, action_per_branch))
