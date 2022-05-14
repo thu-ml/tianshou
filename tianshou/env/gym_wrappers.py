@@ -5,11 +5,9 @@ import numpy as np
 class ContinuousToDiscrete(gym.ActionWrapper):
     """Gym environment wrapper to take discrete action in a continous environment.
 
-    Args:
-        env (gym.Environment): gym envirionment with continous action space.
-        action_per_branch (int): number of discrete actions in each dimension
-        of the action space.
-
+    param gym.Environment env: gym envirionment with continous action space.
+    param int action_per_branch: number of discrete actions in each dimension
+    of the action space.
     """
 
     def __init__(self, env: gym.Env, action_per_branch: int) -> None:
