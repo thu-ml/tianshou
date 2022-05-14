@@ -44,8 +44,8 @@ class BranchingDQNPolicy(DQNPolicy):
             reward_normalization, is_double
         )
         assert estimation_step == 1, "N-step bigger than one is not supported by BDQ"
-        self.max_action_num = self.model.action_per_branch
-        self.num_branches = self.model.num_branches
+        self.max_action_num = model.action_per_branch
+        self.num_branches = model.num_branches
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}

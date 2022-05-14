@@ -58,8 +58,8 @@ def test_bdq(args=get_args()):
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-    args.num_branches = args.action_shape if isinstance(
-        args.action_shape, int) else args.action_shape[0]
+    args.num_branches = args.action_shape if isinstance(args.action_shape,
+                                                        int) else args.action_shape[0]
 
     print("Observations shape:", args.state_shape)
     print("Num branches:", args.num_branches)
