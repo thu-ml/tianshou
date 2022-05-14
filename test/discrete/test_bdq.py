@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
+from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.policy import BranchingDQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils.net.common import BranchingNet
@@ -53,9 +53,7 @@ def test_bdq(args=get_args()):
     env = ContinuousToDiscrete(env, args.action_per_branch)
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
-    args.action_shape = env.action_space.shape or env.action_space.n
-    args.num_branches = args.action_shape if isinstance(args.action_shape,
-                                                        int) else args.action_shape[0]
+    args.num_branches = env.action_space.shape[0]
 
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
@@ -67,13 +65,13 @@ def test_bdq(args=get_args()):
     print("Num branches:", args.num_branches)
     print("Actions per branch:", args.action_per_branch)
 
-    train_envs = SubprocVectorEnv(
+    train_envs = DummyVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.training_num)
         ]
     )
-    test_envs = SubprocVectorEnv(
+    test_envs = DummyVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.test_num)
