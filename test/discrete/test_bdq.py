@@ -19,10 +19,10 @@ def get_args():
     parser.add_argument('--reward-threshold', type=float, default=None)
     # network architecture
     parser.add_argument(
-        "--common-hidden-sizes", type=int, nargs="*", default=[512, 256]
+        "--common-hidden-sizes", type=int, nargs="*", default=[64, 64]
     )
-    parser.add_argument("--action-hidden-sizes", type=int, nargs="*", default=[128])
-    parser.add_argument("--value-hidden-sizes", type=int, nargs="*", default=[128])
+    parser.add_argument("--action-hidden-sizes", type=int, nargs="*", default=[64])
+    parser.add_argument("--value-hidden-sizes", type=int, nargs="*", default=[64])
     parser.add_argument("--action-per-branch", type=int, default=40)
     # training hyperparameters
     parser.add_argument("--seed", type=int, default=1626)
@@ -41,6 +41,7 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument('--render', type=float, default=0.)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
