@@ -2,9 +2,9 @@ import argparse
 import os
 import pprint
 
-import envpool
 import gym
 import numpy as np
+import pytest
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
@@ -14,6 +14,11 @@ from tianshou.trainer import offpolicy_trainer, onpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
+
+try:
+    import envpool
+except ImportError:
+    envpool = None
 
 
 def get_args():
@@ -52,7 +57,9 @@ def get_args():
     return args
 
 
+@pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_a2c_with_il(args=get_args()):
+    # if you want to use python vector env, please refer to other test scripts
     train_envs = env = envpool.make_gym(
         args.task, num_envs=args.training_num, seed=args.seed
     )
