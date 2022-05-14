@@ -3,18 +3,18 @@ import numpy as np
 
 
 class ContinuousToDiscrete(gym.ActionWrapper):
-    """Gym environment wrapper to take discrete action in a continous environment.
+    """Gym environment wrapper to take discrete action in a continuous environment.
 
-    :param gym.Environment env: gym envirionment with continous action space.
+    :param gym.Env env: gym environment with continuous action space.
     :param int action_per_branch: number of discrete actions in each dimension
         of the action space.
     """
 
     def __init__(self, env: gym.Env, action_per_branch: int) -> None:
         super().__init__(env)
-        act_space: gym.spaces.Box = env.action_space  # type: ignore
-        low, high = act_space.low, act_space.high
-        num_branches = act_space.shape[0]
+        assert(isinstance(env.action_space, gym.spaces.Box))
+        low, high = env.action_space.low, env.action_space.high
+        num_branches = env.action_space.shape[0]
         self.action_space = gym.spaces.MultiDiscrete(
             [action_per_branch] * num_branches
         )
