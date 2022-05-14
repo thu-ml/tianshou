@@ -2,12 +2,24 @@
 
 [ViZDoom](https://github.com/mwydmuch/ViZDoom) is a popular RL env for a famous first-person shooting game Doom. Here we provide some results and intuitions for this scenario.
 
+## EnvPool
+
+We highly recommend using envpool to run the following experiments. To install, in a linux machine, type:
+
+```bash
+pip install envpool
+```
+
+After that, `make_vizdoom_env` will automatically switch to envpool's ViZDoom env. EnvPool's implementation is much faster (about 2\~3x faster for pure execution speed, 1.5x for overall RL training pipeline) than python vectorized env implementation.
+
+For more information, please refer to EnvPool's [GitHub](https://github.com/sail-sg/envpool/) and [Docs](https://envpool.readthedocs.io/en/latest/api/vizdoom.html).
+
 ## Train
 
 To train an agent:
 
 ```bash
-python3 vizdoom_c51.py --task {D1_basic|D3_battle|D4_battle2}
+python3 vizdoom_c51.py --task {D1_basic|D2_navigation|D3_battle|D4_battle2}
 ```
 
 D1 (health gathering) should finish training (no death) in less than 500k env step (5 epochs);

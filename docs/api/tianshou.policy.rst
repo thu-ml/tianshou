@@ -101,6 +101,11 @@ Off-policy
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.REDQPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: tianshou.policy.DiscreteSACPolicy
    :members:
    :undoc-members:

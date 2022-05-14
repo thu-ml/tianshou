@@ -5,13 +5,13 @@ import datetime
 import os
 import pprint
 
-import d4rl
 import gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Batch, Collector, ReplayBuffer
+from examples.offline.utils import load_buffer_d4rl
+from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import BCQPolicy
 from tianshou.trainer import offline_trainer
@@ -211,23 +211,7 @@ def test_bcq():
         collector.collect(n_episode=1, render=1 / 35)
 
     if not args.watch:
-        dataset = d4rl.qlearning_dataset(gym.make(args.expert_data_task))
-        dataset_size = dataset["rewards"].size
-
-        print("dataset_size", dataset_size)
-        replay_buffer = ReplayBuffer(dataset_size)
-
-        for i in range(dataset_size):
-            replay_buffer.add(
-                Batch(
-                    obs=dataset["observations"][i],
-                    act=dataset["actions"][i],
-                    rew=dataset["rewards"][i],
-                    done=dataset["terminals"][i],
-                    obs_next=dataset["next_observations"][i],
-                )
-            )
-        print("dataset loaded")
+        replay_buffer = load_buffer_d4rl(args.expert_data_task)
         # trainer
         result = offline_trainer(
             policy,

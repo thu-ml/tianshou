@@ -21,7 +21,19 @@ Supported algorithms are listed below:
 - [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/6426a39796db052bafb7cabe85c764db20a722b0)
 - [Trust Region Policy Optimization (TRPO)](https://arxiv.org/pdf/1502.05477.pdf), [commit id](https://github.com/thu-ml/tianshou/tree/5057b5c89e6168220272c9c28a15b758a72efc32)
 
-#### Usage
+## EnvPool
+
+We highly recommend using envpool to run the following experiments. To install, in a linux machine, type:
+
+```bash
+pip install envpool
+```
+
+After that, `make_mujoco_env` will automatically switch to envpool's Mujoco env. EnvPool's implementation is much faster (about 2\~3x faster for pure execution speed, 1.5x for overall RL training pipeline in average) than python vectorized env implementation, and it's behavior is consistent to gym's Mujoco env.
+
+For more information, please refer to EnvPool's [GitHub](https://github.com/sail-sg/envpool/) and [Docs](https://envpool.readthedocs.io/en/latest/api/mujoco.html).
+
+## Usage
 
 Run
 
@@ -46,7 +58,7 @@ This will start 10 experiments with different seeds.
 Now that all the experiments are finished, we can convert all tfevent files into csv files and then try plotting the results.
 
 ```bash
-# geenrate csv
+# generate csv
 $ ./tools.py --root-dir ./results/Ant-v3/sac
 # generate figures
 $ ./plotter.py --root-dir ./results/Ant-v3 --shaded-std --legend-pattern "\\w+"
@@ -54,15 +66,16 @@ $ ./plotter.py --root-dir ./results/Ant-v3 --shaded-std --legend-pattern "\\w+"
 $ ./analysis.py --root-dir ./results --norm
 ```
 
-#### Example benchmark
+## Example benchmark
 
 <img src="./benchmark/Ant-v3/offpolicy.png" width="500" height="450">
 
-Other graphs can be found under `/examples/mujuco/benchmark/`
+Other graphs can be found under `examples/mujuco/benchmark/`
 
 For pretrained agents, detailed graphs (single agent, single game) and log details, please refer to [https://cloud.tsinghua.edu.cn/d/f45fcfc5016043bc8fbc/](https://cloud.tsinghua.edu.cn/d/f45fcfc5016043bc8fbc/).
 
 ## Offpolicy algorithms
+
 #### Notes
 
 1. In offpolicy algorithms (DDPG, TD3, SAC), the shared hyperparameters are almost the same, and unless otherwise stated, hyperparameters are consistent with those used for benchmark in SpinningUp's implementations (e.g. we use batchsize 256 in DDPG/TD3/SAC while SpinningUp use 100. Minor difference also lies with `start-timesteps`, data loop method `step_per_collect`, method to deal with/bootstrap truncated steps because of timelimit and unfinished/collecting episodes (contribute to performance improvement), etc.).
