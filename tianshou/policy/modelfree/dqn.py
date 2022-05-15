@@ -138,8 +138,6 @@ class DQNPolicy(BasePolicy):
                 ...
             )
 
-        :param float eps: in [0, 1], for epsilon-greedy exploration method.
-
         :return: A :class:`~tianshou.data.Batch` which has 3 keys:
 
             * ``act`` the action.
@@ -177,8 +175,11 @@ class DQNPolicy(BasePolicy):
         self._iter += 1
         return {"loss": loss.item()}
 
-    def exploration_noise(self, act: Union[np.ndarray, Batch],
-                          batch: Batch) -> Union[np.ndarray, Batch]:
+    def exploration_noise(
+        self,
+        act: Union[np.ndarray, Batch],
+        batch: Batch,
+    ) -> Union[np.ndarray, Batch]:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps

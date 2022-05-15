@@ -4,6 +4,7 @@
 from tianshou.policy.base import BasePolicy
 from tianshou.policy.random import RandomPolicy
 from tianshou.policy.modelfree.dqn import DQNPolicy
+from tianshou.policy.modelfree.bdq import BranchingDQNPolicy
 from tianshou.policy.modelfree.c51 import C51Policy
 from tianshou.policy.modelfree.rainbow import RainbowPolicy
 from tianshou.policy.modelfree.qrdqn import QRDQNPolicy
@@ -34,6 +35,7 @@ __all__ = [
     "BasePolicy",
     "RandomPolicy",
     "DQNPolicy",
+    "BranchingDQNPolicy",
     "C51Policy",
     "RainbowPolicy",
     "QRDQNPolicy",
