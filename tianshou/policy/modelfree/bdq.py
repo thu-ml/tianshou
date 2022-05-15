@@ -57,9 +57,7 @@ class BranchingDQNPolicy(DQNPolicy):
             target_q = result.logits
         if self._is_double:
             act = np.expand_dims(self(batch, input="obs_next").act, -1)
-            act = torch.from_numpy(act)
-            if not target_q.get_device() < 0:  # TODO better?
-                act = act.to(target_q.get_device())
+            act = to_torch_as(act, target_q)
         else:
             act = target_q.max(-1).indices.unsqueeze(-1)
         return torch.gather(target_q, -1, act).squeeze()
