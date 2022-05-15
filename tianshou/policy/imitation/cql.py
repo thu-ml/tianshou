@@ -160,9 +160,7 @@ class CQLPolicy(SACPolicy):
         return batch
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        batch: Batch = to_torch(  # type: ignore
-            batch, dtype=torch.float, device=self.device,
-        )
+        batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]
 

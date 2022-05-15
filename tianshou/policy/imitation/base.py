@@ -54,11 +54,11 @@ class ImitationPolicy(BasePolicy):
         if self.action_type == "continuous":  # regression
             act = self(batch).act
             act_target = to_torch(batch.act, dtype=torch.float32, device=act.device)
-            loss = F.mse_loss(act, act_target)  # type: ignore
+            loss = F.mse_loss(act, act_target)
         elif self.action_type == "discrete":  # classification
             act = F.log_softmax(self(batch).logits, dim=-1)
             act_target = to_torch(batch.act, dtype=torch.long, device=act.device)
-            loss = F.nll_loss(act, act_target)  # type: ignore
+            loss = F.nll_loss(act, act_target)
         loss.backward()
         self.optim.step()
         return {"loss": loss.item()}
