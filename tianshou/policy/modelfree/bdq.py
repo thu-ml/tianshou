@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional, Union
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch, to_torch_as
 from tianshou.policy import DQNPolicy
 from tianshou.utils.net.common import BranchingNet
 
@@ -57,9 +57,7 @@ class BranchingDQNPolicy(DQNPolicy):
             target_q = result.logits
         if self._is_double:
             act = np.expand_dims(self(batch, input="obs_next").act, -1)
-            act = torch.from_numpy(act)
-            if not target_q.get_device() < 0:  # TODO better?
-                act = act.to(target_q.get_device())
+            act = to_torch(act, dtype=torch.long, device=target_q.device)
         else:
             act = target_q.max(-1).indices.unsqueeze(-1)
         return torch.gather(target_q, -1, act).squeeze()
@@ -92,8 +90,7 @@ class BranchingDQNPolicy(DQNPolicy):
         self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
         """Compute the 1-step return for BDQ targets."""
-        batch = self._compute_return(batch, buffer, indices)
-        return batch
+        return self._compute_return(batch, buffer, indices)
 
     def forward(
         self,
@@ -103,21 +100,6 @@ class BranchingDQNPolicy(DQNPolicy):
         input: str = "obs",
         **kwargs: Any,
     ) -> Batch:
-        """Compute action over the given batch data.
-
-        :param float eps: in [0, 1], for epsilon-greedy exploration method.
-
-        :return: A :class:`~tianshou.data.Batch` which has 3 keys:
-
-            * ``act`` the action.
-            * ``logits`` the network's raw output.
-            * ``state`` the hidden state.
-
-        .. seealso::
-
-            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
-            more detailed explanation.
-        """
         model = getattr(self, model)
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs
@@ -130,9 +112,7 @@ class BranchingDQNPolicy(DQNPolicy):
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
-        act = torch.tensor(batch.act)
-        if not batch.returns.get_device() < 0:
-            act = act.to(batch.returns.get_device())
+        act = to_torch(batch.act, dtype=torch.long, device=batch.returns.device)
         q = self(batch).logits
         act_mask = torch.zeros_like(q)
         act_mask = act_mask.scatter_(-1, act.unsqueeze(-1), 1)
@@ -141,7 +121,7 @@ class BranchingDQNPolicy(DQNPolicy):
         returns = returns * act_mask
         td_error = returns - act_q
         loss = (td_error.pow(2).sum(-1).mean(-1) * weight).mean()
-        # batch.weight = td_error.sum(-1).sum(-1)  # prio-buffer
+        batch.weight = td_error.sum(-1).sum(-1)  # prio-buffer
         loss.backward()
         self.optim.step()
         self._iter += 1
@@ -156,8 +136,8 @@ class BranchingDQNPolicy(DQNPolicy):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
             rand_act = np.random.randint(
-                0, self.max_action_num, (bsz, act.shape[-1])
-            )  # [0, 1]
+                low=0, high=self.max_action_num, size=(bsz, act.shape[-1])
+            )
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]

@@ -138,8 +138,6 @@ class DQNPolicy(BasePolicy):
                 ...
             )
 
-        :param float eps: in [0, 1], for epsilon-greedy exploration method.
-
         :return: A :class:`~tianshou.data.Batch` which has 3 keys:
 
             * ``act`` the action.
