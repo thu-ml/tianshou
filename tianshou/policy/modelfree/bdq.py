@@ -139,7 +139,7 @@ class BranchingDQNPolicy(DQNPolicy):
         act_q = q * act_mask
         returns = batch.returns
         returns = returns * act_mask
-        td_error = (returns - act_q)
+        td_error = returns - act_q
         loss = (td_error.pow(2).sum(-1).mean(-1) * weight).mean()
         # batch.weight = td_error.sum(-1).sum(-1)  # prio-buffer
         loss.backward()
@@ -147,8 +147,11 @@ class BranchingDQNPolicy(DQNPolicy):
         self._iter += 1
         return {"loss": loss.item()}
 
-    def exploration_noise(self, act: Union[np.ndarray, Batch],
-                          batch: Batch) -> Union[np.ndarray, Batch]:
+    def exploration_noise(
+        self,
+        act: Union[np.ndarray, Batch],
+        batch: Batch,
+    ) -> Union[np.ndarray, Batch]:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
@@ -158,8 +161,4 @@ class BranchingDQNPolicy(DQNPolicy):
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]
-        return act
-
-    def map_action(self, act: Union[Batch, np.ndarray]) -> Union[Batch, np.ndarray]:
-        # Important, used by collector
         return act
