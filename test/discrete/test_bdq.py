@@ -18,9 +18,7 @@ def get_args():
     parser.add_argument("--task", type=str, default="Pendulum-v1")
     parser.add_argument('--reward-threshold', type=float, default=None)
     # network architecture
-    parser.add_argument(
-        "--common-hidden-sizes", type=int, nargs="*", default=[64, 64]
-    )
+    parser.add_argument("--common-hidden-sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--action-hidden-sizes", type=int, nargs="*", default=[64])
     parser.add_argument("--value-hidden-sizes", type=int, nargs="*", default=[64])
     parser.add_argument("--action-per-branch", type=int, default=40)
