@@ -9,7 +9,14 @@ import tqdm
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
-from tianshou.utils import BaseLogger, LazyLogger, MovAvg, deprecation, tqdm_config
+from tianshou.utils import (
+    BaseLogger,
+    DummyTqdm,
+    LazyLogger,
+    MovAvg,
+    deprecation,
+    tqdm_config,
+)
 
 
 class BaseTrainer(ABC):
@@ -68,6 +75,8 @@ class BaseTrainer(ABC):
     :param BaseLogger logger: A logger that logs statistics during
         training/testing/updating. Default to a logger that doesn't log anything.
     :param bool verbose: whether to print the information. Default to True.
+    :param bool show_progress: whether to display a progress bar when training.
+        Default to True.
     :param bool test_in_train: whether to test in the training phase.
         Default to True.
     """
@@ -143,6 +152,7 @@ class BaseTrainer(ABC):
         reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
+        show_progress: bool = True,
         test_in_train: bool = True,
         save_fn: Optional[Callable[[BasePolicy], None]] = None,
     ):
@@ -190,6 +200,7 @@ class BaseTrainer(ABC):
 
         self.reward_metric = reward_metric
         self.verbose = verbose
+        self.show_progress = show_progress
         self.test_in_train = test_in_train
         self.resume_from_log = resume_from_log
 
@@ -259,8 +270,14 @@ class BaseTrainer(ABC):
         self.policy.train()
 
         epoch_stat: Dict[str, Any] = dict()
+
+        if self.show_progress:
+            progress = tqdm.tqdm
+        else:
+            progress = DummyTqdm
+
         # perform n step_per_epoch
-        with tqdm.tqdm(
+        with progress(
             total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config
         ) as t:
             while t.n < t.total and not self.stop_fn_flag:
