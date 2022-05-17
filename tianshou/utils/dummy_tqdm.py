@@ -1,5 +1,6 @@
 from typing import Any
 
+
 class dummy_tqdm:
     """A dummy tqdm class that keeps the total and n stats, but shows
     no progress bar.
@@ -23,4 +24,3 @@ class dummy_tqdm:
 
     def __exit__(self, *args: Any, **kwargs: Any) -> None:
         pass
-    

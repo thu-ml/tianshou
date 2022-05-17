@@ -5,11 +5,11 @@ import pprint
 
 import numpy as np
 import torch
-from atari_network import DQN
-from atari_wrapper import make_atari_env
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
+from atari_network import DQN
+from atari_wrapper import make_atari_env
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.trainer import onpolicy_trainer

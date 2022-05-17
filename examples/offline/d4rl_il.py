@@ -8,9 +8,9 @@ import pprint
 import gym
 import numpy as np
 import torch
+from examples.offline.utils import load_buffer_d4rl
 from torch.utils.tensorboard import SummaryWriter
 
-from examples.offline.utils import load_buffer_d4rl
 from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import ImitationPolicy

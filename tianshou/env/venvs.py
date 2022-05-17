@@ -4,10 +4,7 @@ import gym
 import numpy as np
 
 from tianshou.env.worker import (
-    DummyEnvWorker,
-    EnvWorker,
-    RayEnvWorker,
-    SubprocEnvWorker,
+    DummyEnvWorker, EnvWorker, RayEnvWorker, SubprocEnvWorker
 )
 
 GYM_RESERVED_KEYS = [

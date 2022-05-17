@@ -7,12 +7,8 @@ import numpy as np
 import torch
 
 from tianshou.data import (
-    Batch,
-    CachedReplayBuffer,
-    ReplayBuffer,
-    ReplayBufferManager,
-    VectorReplayBuffer,
-    to_numpy,
+    Batch, CachedReplayBuffer, ReplayBuffer, ReplayBufferManager, VectorReplayBuffer,
+    to_numpy
 )
 from tianshou.data.batch import _alloc_by_keys_diff
 from tianshou.env import BaseVectorEnv, DummyVectorEnv

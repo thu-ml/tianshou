@@ -5,19 +5,17 @@ import threading
 import time
 from typing import List, Union
 
+import torch
+import torch.nn.functional as F
+
 import nni.retiarii.execution.api
 import nni.retiarii.nn.pytorch as nn
 import nni.retiarii.strategy as strategy
-import torch
-import torch.nn.functional as F
 from nni.retiarii import Model
 from nni.retiarii.converter import convert_to_graph
 from nni.retiarii.execution import wait_models
 from nni.retiarii.execution.interface import (
-    AbstractExecutionEngine,
-    AbstractGraphListener,
-    MetricData,
-    WorkerInfo,
+    AbstractExecutionEngine, AbstractGraphListener, MetricData, WorkerInfo
 )
 from nni.retiarii.graph import DebugEvaluator, ModelStatus
 from nni.retiarii.nn.pytorch.mutator import process_inline_mutation

@@ -7,12 +7,12 @@ import pprint
 
 import numpy as np
 import torch
-from mujoco_env import make_mujoco_env
 from torch import nn
 from torch.distributions import Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
+from mujoco_env import make_mujoco_env
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import A2CPolicy
 from tianshou.trainer import onpolicy_trainer

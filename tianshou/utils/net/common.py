@@ -1,13 +1,5 @@
 from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    Union,
-    no_type_check,
+    Any, Dict, List, Optional, Sequence, Tuple, Type, Union, no_type_check
 )
 
 import numpy as np

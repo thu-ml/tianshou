@@ -4,13 +4,8 @@ import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import (
-    AsyncCollector,
-    Batch,
-    CachedReplayBuffer,
-    Collector,
-    PrioritizedReplayBuffer,
-    ReplayBuffer,
-    VectorReplayBuffer,
+    AsyncCollector, Batch, CachedReplayBuffer, Collector, PrioritizedReplayBuffer,
+    ReplayBuffer, VectorReplayBuffer
 )
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
