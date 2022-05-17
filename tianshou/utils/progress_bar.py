@@ -7,11 +7,15 @@ tqdm_config = {
 
 
 class DummyTqdm:
-    """A dummy tqdm class that keeps the total and n stats, but shows \
-    no progress bar.
+    """A dummy tqdm class that keeps stats but without progress bar.
 
-    It supports __enter__ and __exit__, update and a dummy set_postfix:
-    the interface that trainers use.
+    It supports ``__enter__`` and ``__exit__``, update and a dummy
+    ``set_postfix``, which is the interface that trainers use.
+
+    .. note::
+
+        Using ``disable=True`` in tqdm config results in infinite loop, thus
+        this class is created. See the discussion at #641 for details.
     """
 
     def __init__(self, total: int, **kwargs: Any):
