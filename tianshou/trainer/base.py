@@ -9,7 +9,9 @@ import tqdm
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
-from tianshou.utils import BaseLogger, LazyLogger, MovAvg, deprecation, tqdm_config, dummy_tqdm
+from tianshou.utils import (
+    BaseLogger, LazyLogger, MovAvg, deprecation, tqdm_config, dummy_tqdm
+)
 
 
 class BaseTrainer(ABC):
