@@ -58,6 +58,7 @@ def get_args():
         help='watch the play of pre-trained policy only',
     )
     parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
+    parser.add_argument("--show-progress", action="store_true")
     args = parser.parse_known_args()[0]
     return args
 
@@ -209,6 +210,7 @@ def test_bcq(args=get_args()):
         save_best_fn=save_best_fn,
         stop_fn=stop_fn,
         logger=logger,
+        show_progress=args.show_progress,
     )
     assert stop_fn(result['best_reward'])
 

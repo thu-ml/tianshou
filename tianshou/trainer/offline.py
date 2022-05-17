@@ -49,6 +49,8 @@ class OfflineTrainer(BaseTrainer):
     :param BaseLogger logger: A logger that logs statistics during
         updating/testing. Default to a logger that doesn't log anything.
     :param bool verbose: whether to print the information. Default to True.
+    :param bool show_progress: whether to display a progress bar when training.
+        Default to True.
     """
 
     __doc__ = BaseTrainer.gen_doc("offline") + "\n".join(__doc__.split("\n")[1:])
@@ -70,6 +72,7 @@ class OfflineTrainer(BaseTrainer):
         reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
+        show_progress: bool = True,
         **kwargs: Any,
     ):
         super().__init__(
@@ -90,6 +93,7 @@ class OfflineTrainer(BaseTrainer):
             reward_metric=reward_metric,
             logger=logger,
             verbose=verbose,
+            show_progress=show_progress,
             **kwargs,
         )
 

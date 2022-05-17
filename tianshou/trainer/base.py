@@ -11,10 +11,10 @@ from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
     BaseLogger,
+    DummyTqdm,
     LazyLogger,
     MovAvg,
     deprecation,
-    dummy_tqdm,
     tqdm_config,
 )
 
@@ -274,7 +274,7 @@ class BaseTrainer(ABC):
         if self.show_progress:
             progress = tqdm.tqdm
         else:
-            progress = dummy_tqdm
+            progress = DummyTqdm
 
         # perform n step_per_epoch
         with progress(
