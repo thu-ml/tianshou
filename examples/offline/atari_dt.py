@@ -30,6 +30,7 @@ def get_args():
     parser.add_argument("--num-head", type=int, default=1)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--max-length", type=int, default=20)
+    parser.add_argument("--max-ep-len", type=int, default=10000)
     parser.add_argument("--target-return", type=float, default=50.0)
     parser.add_argument("--epoch", type=int, default=100)
     parser.add_argument("--update-per-epoch", type=int, default=10000)
@@ -98,6 +99,7 @@ def test_dt(args=get_args()):
         n_head=args.num_head,
         n_embd=args.embed_size,
         max_length=args.max_length,
+        max_ep_len=args.max_ep_len,
     )
     net = DecisionTransformerModel(config=config)
     actor = DecisionTransformer(
