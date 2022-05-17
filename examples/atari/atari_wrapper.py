@@ -8,12 +8,12 @@ import cv2
 import gym
 import numpy as np
 
+from tianshou.env import ShmemVectorEnv
+
 try:
     import envpool
 except ImportError:
     envpool = None
-
-from tianshou.env import ShmemVectorEnv
 
 
 class NoopResetEnv(gym.Wrapper):

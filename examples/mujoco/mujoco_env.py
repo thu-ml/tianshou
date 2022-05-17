@@ -1,13 +1,13 @@
 import warnings
 
+import gym
+
+from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
+
 try:
     import envpool
 except ImportError:
     envpool = None
-
-import gym
-
-from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
 
 
 def make_mujoco_env(task, seed, training_num, test_num, obs_norm):
