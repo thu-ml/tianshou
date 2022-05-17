@@ -13,6 +13,7 @@ __all__ = [
     "MovAvg",
     "RunningMeanStd",
     "tqdm_config",
+    "dummy_tqdm",
     "BaseLogger",
     "TensorboardLogger",
     "BasicLogger",
