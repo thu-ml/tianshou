@@ -3,8 +3,8 @@ import os
 import cv2
 import gym
 import numpy as np
-
 import vizdoom as vzd
+
 from tianshou.env import ShmemVectorEnv
 
 try:

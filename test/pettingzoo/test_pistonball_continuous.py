@@ -1,7 +1,6 @@
 import pprint
 
 import pytest
-
 from pistonball_continuous import get_args, train_agent, watch
 
 

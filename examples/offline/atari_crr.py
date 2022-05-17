@@ -8,11 +8,11 @@ import pprint
 
 import numpy as np
 import torch
+from torch.utils.tensorboard import SummaryWriter
+
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DiscreteCRRPolicy
 from tianshou.trainer import offline_trainer

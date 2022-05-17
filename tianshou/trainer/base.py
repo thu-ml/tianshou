@@ -10,7 +10,12 @@ from tianshou.data import Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
-    BaseLogger, LazyLogger, MovAvg, deprecation, dummy_tqdm, tqdm_config
+    BaseLogger,
+    LazyLogger,
+    MovAvg,
+    deprecation,
+    dummy_tqdm,
+    tqdm_config,
 )
 
 

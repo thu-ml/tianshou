@@ -6,7 +6,6 @@ from collections import defaultdict
 
 import numpy as np
 from tabulate import tabulate
-
 from tools import csv2numpy, find_all_files, group_files
 
 

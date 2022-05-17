@@ -7,7 +7,11 @@ from gym.spaces.discrete import Discrete
 
 from tianshou.data import Batch
 from tianshou.env import (
-    DummyVectorEnv, RayVectorEnv, ShmemVectorEnv, SubprocVectorEnv, VectorEnvNormObs
+    DummyVectorEnv,
+    RayVectorEnv,
+    ShmemVectorEnv,
+    SubprocVectorEnv,
+    VectorEnvNormObs,
 )
 from tianshou.utils import RunningMeanStd
 

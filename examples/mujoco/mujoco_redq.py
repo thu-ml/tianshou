@@ -7,9 +7,9 @@ import pprint
 
 import numpy as np
 import torch
+from mujoco_env import make_mujoco_env
 from torch.utils.tensorboard import SummaryWriter
 
-from mujoco_env import make_mujoco_env
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import REDQPolicy
 from tianshou.trainer import offpolicy_trainer

@@ -3,8 +3,10 @@ from typing import Any
 import numpy as np
 
 from tianshou.data import (
-    PrioritizedReplayBuffer, PrioritizedReplayBufferManager, ReplayBuffer,
-    ReplayBufferManager
+    PrioritizedReplayBuffer,
+    PrioritizedReplayBufferManager,
+    ReplayBuffer,
+    ReplayBufferManager,
 )
 
 

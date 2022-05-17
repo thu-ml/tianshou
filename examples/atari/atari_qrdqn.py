@@ -5,10 +5,10 @@ import pprint
 
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
-
 from atari_network import QRDQN
 from atari_wrapper import make_atari_env
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import QRDQNPolicy
 from tianshou.trainer import offpolicy_trainer

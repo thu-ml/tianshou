@@ -5,10 +5,10 @@ import pprint
 
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
-
 from env import make_vizdoom_env
 from network import C51
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import C51Policy
 from tianshou.trainer import offpolicy_trainer

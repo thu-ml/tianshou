@@ -1,7 +1,7 @@
+import d4rl
 import gym
 import h5py
 
-import d4rl
 from tianshou.data import ReplayBuffer
 
 
