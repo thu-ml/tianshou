@@ -473,7 +473,7 @@ class DecisionTransformer(nn.Module):
         preprocess_net: Optional[nn.Module] = None,
         max_length: int = 20,
         target_return: float = 1.0,
-        device: Union[str, int, torch.device] = "cpu",
+        device: Optional[Union[str, torch.device]] = "cpu",
     ) -> None:
         super().__init__()
         self.device = device
