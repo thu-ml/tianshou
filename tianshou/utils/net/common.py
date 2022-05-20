@@ -540,8 +540,10 @@ class DecisionTransformer(nn.Module):
             states = torch.cat(
                 [
                     torch.zeros(
-                        (batch_size, padding, self.state_dim), device=self.device  # type: ignore
-                    ), states
+                        (batch_size, padding, self.state_dim),  # type: ignore
+                        device=self.device
+                    ),
+                    states
                 ],
                 dim=1
             ).float()
