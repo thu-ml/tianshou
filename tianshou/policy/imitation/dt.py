@@ -37,7 +37,7 @@ class DTPolicy(BasePolicy):
         self.device = device
         assert self.action_type in ["continuous", "discrete"], \
             "Please specify action_space."
-        self.max_ep_len = model.model.config.max_ep_len
+        self.max_ep_len = model.model.config.max_ep_len  # type: ignore
 
     def forward(
         self,

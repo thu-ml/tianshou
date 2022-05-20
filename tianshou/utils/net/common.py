@@ -540,7 +540,7 @@ class DecisionTransformer(nn.Module):
             states = torch.cat(
                 [
                     torch.zeros(
-                        (batch_size, padding, self.state_dim), device=self.device
+                        (batch_size, padding, self.state_dim), device=self.device  # type: ignore
                     ), states
                 ],
                 dim=1
@@ -569,7 +569,7 @@ class DecisionTransformer(nn.Module):
                 dim=1
             )
 
-        _, action_preds, _ = self.model(
+        _, action_preds, _ = self.model(  # type: ignore
             states=states,
             actions=actions,
             returns_to_go=returns_to_go,
