@@ -480,9 +480,9 @@ class DecisionTransformer(nn.Module):
         self.model = model
         self.preprocess = preprocess_net
         if self.preprocess:
-            self.state_dim = self.preprocess.output_dim  # type: ignore
+            self.state_dim = self.preprocess.output_dim
         else:
-            self.state_dim = int(np.prod(state_shape))
+            self.state_dim = int(np.prod(state_shape))  # type: ignore
         self.act_dim = int(np.prod(action_shape))
         self.max_length = max_length
         self.target_return = target_return
