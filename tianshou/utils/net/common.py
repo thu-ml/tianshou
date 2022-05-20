@@ -480,7 +480,7 @@ class DecisionTransformer(nn.Module):
         self.model = model
         self.preprocess = preprocess_net
         if self.preprocess:
-            self.state_dim = self.preprocess.output_dim
+            self.state_dim = self.preprocess.output_dim  # type: ignore
         else:
             self.state_dim = int(np.prod(state_shape))
         self.act_dim = int(np.prod(action_shape))
