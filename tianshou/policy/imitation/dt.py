@@ -37,6 +37,7 @@ class DTPolicy(BasePolicy):
         self.device = device
         assert self.action_type in ["continuous", "discrete"], \
             "Please specify action_space."
+        self.max_ep_len = model.model.config.max_ep_len
 
     def forward(
         self,
@@ -66,7 +67,7 @@ class DTPolicy(BasePolicy):
             returns_to_go[:, -1:, :] -= to_torch_as(batch.rew,
                                                     returns_to_go).view(-1, 1, 1)
         timesteps = hidden["timesteps"]
-        timesteps = torch.cat([timesteps, timesteps[:, -1:] + 1], dim=1)
+        timesteps = torch.cat([timesteps, (timesteps[:, -1:] + 1) % self.max_ep_len], dim=1)
         new_state = {
             "states": hidden["states"],
             "actions": actions,
