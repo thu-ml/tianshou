@@ -459,7 +459,7 @@ class BranchingNet(nn.Module):
 
 
 class DecisionTransformer(nn.Module):
-    """Decision Transformer for continous action.
+    """Decision Transformer for continuous and discrete action spaces.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
