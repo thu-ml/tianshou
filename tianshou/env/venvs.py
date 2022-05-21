@@ -211,7 +211,7 @@ class BaseVectorEnv(object):
             obs_list = ret_list
 
         if isinstance(obs_list[0], tuple):
-            raise Exception(
+            raise TypeError(
                 "Tuple observation space is not supported. ",
                 "Please change it to array or dict space",
             )

@@ -102,7 +102,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
             obs = retval
 
         if isinstance(obs, tuple):
-            raise Exception(
+            raise TypeError(
                 "Tuple observation space is not supported. ",
                 "Please change it to array or dict space",
             )
