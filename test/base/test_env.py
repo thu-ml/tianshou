@@ -291,6 +291,19 @@ def test_venv_wrapper_envpool():
     run_align_norm_obs(raw, train, test, actions)
 
 
+@pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
+def test_venv_wrapper_envpool_gym_reset_return_info():
+    num_envs = 4
+    env = VectorEnvNormObs(
+        envpool.make_gym("Ant-v3", num_envs=num_envs, gym_reset_return_info=True)
+    )
+    obs, info = env.reset()
+    assert obs.shape[0] == num_envs
+    for _, v in info.items():
+        if not isinstance(v, dict):
+            assert v.shape[0] == num_envs
+
+
 if __name__ == '__main__':
     test_venv_norm_obs()
     test_venv_wrapper_envpool()
@@ -298,3 +311,4 @@ if __name__ == '__main__':
     test_vecenv()
     test_async_env()
     test_async_check_id()
+    test_env_reset_optional_kwargs()

@@ -202,16 +202,25 @@ class BaseVectorEnv(object):
             self.workers[i].send(None, **kwargs)
         ret_list = [self.workers[i].recv() for i in id]
 
-        if "return_info" in kwargs and kwargs["return_info"]:
+        has_infos = isinstance(ret_list[0], (tuple, list)) and len(
+            ret_list[0]
+        ) == 2 and isinstance(ret_list[0][1], dict)
+        if has_infos:
             obs_list = [r[0] for r in ret_list]
         else:
             obs_list = ret_list
+
+        if isinstance(obs_list[0], tuple):
+            raise Exception(
+                "Tuple observation space is not supported. ",
+                "Please change it to array or dict space",
+            )
         try:
             obs = np.stack(obs_list)
         except ValueError:  # different len(obs)
             obs = np.array(obs_list, dtype=object)
 
-        if "return_info" in kwargs and kwargs["return_info"]:
+        if has_infos:
             infos = [r[1] for r in ret_list]
             return obs, infos  # type: ignore
         else:

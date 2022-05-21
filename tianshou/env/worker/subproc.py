@@ -92,14 +92,20 @@ def _worker(
                     obs = None
                 p.send((obs, reward, done, info))
             elif cmd == "reset":
-                if "return_info" in data and data["return_info"]:
-                    obs, info = env.reset(**data)
+                retval = env.reset(**data)
+                print(f"type(retval): {type(retval)}")
+                print(retval)
+                has_info = isinstance(
+                    retval, (tuple, list)
+                ) and len(retval) == 2 and isinstance(retval[1], dict)
+                if has_info:
+                    obs, info = retval
                 else:
-                    obs = env.reset(**data)
+                    obs = retval
                 if obs_bufs is not None:
                     _encode_obs(obs, obs_bufs)
                     obs = None
-                if "return_info" in data and data["return_info"]:
+                if has_info:
                     p.send((obs, info))
                 else:
                     p.send(obs)
