@@ -1,5 +1,6 @@
 """Env package."""
 
+from tianshou.env.gym_wrappers import ContinuousToDiscrete
 from tianshou.env.venv_wrappers import VectorEnvNormObs, VectorEnvWrapper
 from tianshou.env.venvs import (
     BaseVectorEnv,
@@ -23,4 +24,5 @@ __all__ = [
     "VectorEnvWrapper",
     "VectorEnvNormObs",
     "PettingZooEnv",
+    "ContinuousToDiscrete",
 ]

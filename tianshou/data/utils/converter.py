@@ -1,7 +1,7 @@
 import pickle
 from copy import deepcopy
 from numbers import Number
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, no_type_check
 
 import h5py
 import numpy as np
@@ -10,6 +10,7 @@ import torch
 from tianshou.data.batch import Batch, _parse_value
 
 
+@no_type_check
 def to_numpy(x: Any) -> Union[Batch, np.ndarray]:
     """Return an object without torch.Tensor."""
     if isinstance(x, torch.Tensor):  # most often case
@@ -30,6 +31,7 @@ def to_numpy(x: Any) -> Union[Batch, np.ndarray]:
         return np.asanyarray(x)
 
 
+@no_type_check
 def to_torch(
     x: Any,
     dtype: Optional[torch.dtype] = None,
@@ -39,14 +41,14 @@ def to_torch(
     if isinstance(x, np.ndarray) and issubclass(
         x.dtype.type, (np.bool_, np.number)
     ):  # most often case
-        x = torch.from_numpy(x).to(device)  # type: ignore
+        x = torch.from_numpy(x).to(device)
         if dtype is not None:
             x = x.type(dtype)
         return x
     elif isinstance(x, torch.Tensor):  # second often case
         if dtype is not None:
             x = x.type(dtype)
-        return x.to(device)  # type: ignore
+        return x.to(device)
     elif isinstance(x, (np.number, np.bool_, Number)):
         return to_torch(np.asanyarray(x), dtype, device)
     elif isinstance(x, (dict, Batch)):
@@ -59,6 +61,7 @@ def to_torch(
         raise TypeError(f"object {x} cannot be converted to torch.")
 
 
+@no_type_check
 def to_torch_as(x: Any, y: torch.Tensor) -> Union[Batch, torch.Tensor]:
     """Return an object without np.ndarray.
 

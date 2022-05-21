@@ -80,7 +80,7 @@ def test_pg(args=get_args()):
         dist,
         args.gamma,
         reward_normalization=args.rew_norm,
-        action_space=env.action_space
+        action_space=env.action_space,
     )
     for m in net.modules():
         if isinstance(m, torch.nn.Linear):
@@ -116,7 +116,7 @@ def test_pg(args=get_args()):
         episode_per_collect=args.episode_per_collect,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
-        logger=logger
+        logger=logger,
     )
     assert stop_fn(result['best_reward'])
 

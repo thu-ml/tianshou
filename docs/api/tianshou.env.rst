@@ -49,6 +49,14 @@ RayVectorEnv
 Wrapper
 -------
 
+ContinuousToDiscrete
+~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.ContinuousToDiscrete
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 VectorEnvWrapper
 ~~~~~~~~~~~~~~~~
 

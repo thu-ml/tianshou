@@ -57,6 +57,8 @@ class OffpolicyTrainer(BaseTrainer):
     :param BaseLogger logger: A logger that logs statistics during
         training/testing/updating. Default to a logger that doesn't log anything.
     :param bool verbose: whether to print the information. Default to True.
+    :param bool show_progress: whether to display a progress bar when training.
+        Default to True.
     :param bool test_in_train: whether to test in the training phase.
         Default to True.
     """
@@ -83,6 +85,7 @@ class OffpolicyTrainer(BaseTrainer):
         reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
+        show_progress: bool = True,
         test_in_train: bool = True,
         **kwargs: Any,
     ):
@@ -106,6 +109,7 @@ class OffpolicyTrainer(BaseTrainer):
             reward_metric=reward_metric,
             logger=logger,
             verbose=verbose,
+            show_progress=show_progress,
             test_in_train=test_in_train,
             **kwargs,
         )

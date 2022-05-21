@@ -339,7 +339,7 @@ class BasePolicy(ABC, nn.Module):
             assert np.isclose(gae_lambda, 1.0)
             v_s_ = np.zeros_like(rew)
         else:
-            v_s_ = to_numpy(v_s_.flatten())  # type: ignore
+            v_s_ = to_numpy(v_s_.flatten())
             v_s_ = v_s_ * BasePolicy.value_mask(buffer, indices)
         v_s = np.roll(v_s_, 1) if v_s is None else to_numpy(v_s.flatten())
 
