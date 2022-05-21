@@ -93,8 +93,6 @@ def _worker(
                 p.send((obs, reward, done, info))
             elif cmd == "reset":
                 retval = env.reset(**data)
-                print(f"type(retval): {type(retval)}")
-                print(retval)
                 has_info = isinstance(
                     retval, (tuple, list)
                 ) and len(retval) == 2 and isinstance(retval[1], dict)
