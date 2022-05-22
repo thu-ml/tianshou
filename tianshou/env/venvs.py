@@ -202,10 +202,11 @@ class BaseVectorEnv(object):
             self.workers[i].send(None, **kwargs)
         ret_list = [self.workers[i].recv() for i in id]
 
-        has_infos = isinstance(ret_list[0], (tuple, list)) and len(
-            ret_list[0]
-        ) == 2 and isinstance(ret_list[0][1], dict)
-        if has_infos:
+        if not hasattr(self, "reset_returns_info"):
+            self.reset_returns_info = isinstance(ret_list[0], (tuple, list)) and len(
+                ret_list[0]
+            ) == 2 and isinstance(ret_list[0][1], dict)
+        if self.reset_returns_info:
             obs_list = [r[0] for r in ret_list]
         else:
             obs_list = ret_list
@@ -220,7 +221,7 @@ class BaseVectorEnv(object):
         except ValueError:  # different len(obs)
             obs = np.array(obs_list, dtype=object)
 
-        if has_infos:
+        if self.reset_returns_info:
             infos = [r[1] for r in ret_list]
             return obs, infos  # type: ignore
         else:

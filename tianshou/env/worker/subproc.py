@@ -78,6 +78,7 @@ def _worker(
 
     parent.close()
     env = env_fn_wrapper.data()
+    reset_returns_info = None
     try:
         while True:
             try:
@@ -93,17 +94,18 @@ def _worker(
                 p.send((obs, reward, done, info))
             elif cmd == "reset":
                 retval = env.reset(**data)
-                has_info = isinstance(
-                    retval, (tuple, list)
-                ) and len(retval) == 2 and isinstance(retval[1], dict)
-                if has_info:
+                if reset_returns_info is None:
+                    reset_returns_info = isinstance(
+                        retval, (tuple, list)
+                    ) and len(retval) == 2 and isinstance(retval[1], dict)
+                if reset_returns_info:
                     obs, info = retval
                 else:
                     obs = retval
                 if obs_bufs is not None:
                     _encode_obs(obs, obs_bufs)
                     obs = None
-                if has_info:
+                if reset_returns_info:
                     p.send((obs, info))
                 else:
                     p.send(obs)
