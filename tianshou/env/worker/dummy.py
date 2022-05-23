@@ -31,9 +31,9 @@ class DummyEnvWorker(EnvWorker):
 
     def send(self, action: Optional[np.ndarray]) -> None:
         if action is None:
-            self.result = self.env.reset()
+            self.result = self.env.reset()  # type: ignore
         else:
-            self.result = self.env.step(action)
+            self.result = self.env.step(action)  # type: ignore
 
     def seed(self, seed: Optional[int] = None) -> List[int]:
         super().seed(seed)

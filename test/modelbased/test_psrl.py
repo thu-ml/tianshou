@@ -2,8 +2,8 @@ import argparse
 import os
 import pprint
 
-import envpool
 import numpy as np
+import pytest
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
@@ -11,6 +11,11 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
+
+try:
+    import envpool
+except ImportError:
+    envpool = None
 
 
 def get_args():
@@ -40,7 +45,9 @@ def get_args():
     return parser.parse_known_args()[0]
 
 
+@pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_psrl(args=get_args()):
+    # if you want to use python vector env, please refer to other test scripts
     train_envs = env = envpool.make_gym(
         args.task, num_envs=args.training_num, seed=args.seed
     )

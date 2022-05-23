@@ -1,4 +1,14 @@
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    no_type_check,
+)
 
 import numpy as np
 import torch
@@ -46,6 +56,7 @@ class MLP(nn.Module):
         nn.ReLU.
     :param device: which device to create this model on. Default to None.
     :param linear_layer: use this module as linear layer. Default to nn.Linear.
+    :param bool flatten_input: whether to flatten input data. Default to True.
     """
 
     def __init__(
@@ -57,6 +68,7 @@ class MLP(nn.Module):
         activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
         device: Optional[Union[str, int, torch.device]] = None,
         linear_layer: Type[nn.Linear] = nn.Linear,
+        flatten_input: bool = True,
     ) -> None:
         super().__init__()
         self.device = device
@@ -86,15 +98,15 @@ class MLP(nn.Module):
             model += [linear_layer(hidden_sizes[-1], output_dim)]
         self.output_dim = output_dim or hidden_sizes[-1]
         self.model = nn.Sequential(*model)
+        self.flatten_input = flatten_input
 
+    @no_type_check
     def forward(self, obs: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
         if self.device is not None:
-            obs = torch.as_tensor(
-                obs,
-                device=self.device,  # type: ignore
-                dtype=torch.float32,
-            )
-        return self.model(obs.flatten(1))  # type: ignore
+            obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
+        if self.flatten_input:
+            obs = obs.flatten(1)
+        return self.model(obs)
 
 
 class Net(nn.Module):
@@ -129,6 +141,7 @@ class Net(nn.Module):
         pass a tuple of two dict (first for Q and second for V) stating
         self-defined arguments as stated in
         class:`~tianshou.utils.net.common.MLP`. Default to None.
+    :param linear_layer: use this module as linear layer. Default to nn.Linear.
 
     .. seealso::
 
@@ -152,6 +165,7 @@ class Net(nn.Module):
         concat: bool = False,
         num_atoms: int = 1,
         dueling_param: Optional[Tuple[Dict[str, Any], Dict[str, Any]]] = None,
+        linear_layer: Type[nn.Linear] = nn.Linear,
     ) -> None:
         super().__init__()
         self.device = device
@@ -164,7 +178,8 @@ class Net(nn.Module):
         self.use_dueling = dueling_param is not None
         output_dim = action_dim if not self.use_dueling and not concat else 0
         self.model = MLP(
-            input_dim, output_dim, hidden_sizes, norm_layer, activation, device
+            input_dim, output_dim, hidden_sizes, norm_layer, activation, device,
+            linear_layer
         )
         self.output_dim = self.model.output_dim
         if self.use_dueling:  # dueling DQN
@@ -311,3 +326,130 @@ class DataParallelNet(nn.Module):
         if not isinstance(obs, torch.Tensor):
             obs = torch.as_tensor(obs, dtype=torch.float32)
         return self.net(obs=obs.cuda(), *args, **kwargs)
+
+
+class EnsembleLinear(nn.Module):
+    """Linear Layer of Ensemble network.
+
+    :param int ensemble_size: Number of subnets in the ensemble.
+    :param int inp_feature: dimension of the input vector.
+    :param int out_feature: dimension of the output vector.
+    :param bool bias: whether to include an additive bias, default to be True.
+    """
+
+    def __init__(
+        self,
+        ensemble_size: int,
+        in_feature: int,
+        out_feature: int,
+        bias: bool = True,
+    ) -> None:
+        super().__init__()
+
+        # To be consistent with PyTorch default initializer
+        k = np.sqrt(1. / in_feature)
+        weight_data = torch.rand((ensemble_size, in_feature, out_feature)) * 2 * k - k
+        self.weight = nn.Parameter(weight_data, requires_grad=True)
+
+        self.bias: Union[nn.Parameter, None]
+        if bias:
+            bias_data = torch.rand((ensemble_size, 1, out_feature)) * 2 * k - k
+            self.bias = nn.Parameter(bias_data, requires_grad=True)
+        else:
+            self.bias = None
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = torch.matmul(x, self.weight)
+        if self.bias is not None:
+            x = x + self.bias
+        return x
+
+
+class BranchingNet(nn.Module):
+    """Branching dual Q network.
+
+    Network for the BranchingDQNPolicy, it uses a common network module, a value module
+    and action "branches" one for each dimension.It allows for a linear scaling
+    of Q-value the output w.r.t. the number of dimensions in the action space.
+    For more info please refer to: arXiv:1711.08946.
+    :param state_shape: int or a sequence of int of the shape of state.
+    :param action_shape: int or a sequence of int of the shape of action.
+    :param action_peer_branch: int or a sequence of int of the number of actions in
+    each dimension.
+    :param common_hidden_sizes: shape of the common MLP network passed in as a list.
+    :param value_hidden_sizes: shape of the value MLP network passed in as a list.
+    :param action_hidden_sizes: shape of the action MLP network passed in as a list.
+    :param norm_layer: use which normalization before activation, e.g.,
+    ``nn.LayerNorm`` and ``nn.BatchNorm1d``. Default to no normalization.
+    You can also pass a list of normalization modules with the same length
+    of hidden_sizes, to use different normalization module in different
+    layers. Default to no normalization.
+    :param activation: which activation to use after each layer, can be both
+    the same activation for all layers if passed in nn.Module, or different
+    activation for different Modules if passed in a list. Default to
+    nn.ReLU.
+    :param device: specify the device when the network actually runs. Default
+    to "cpu".
+    :param bool softmax: whether to apply a softmax layer over the last layer's
+    output.
+    """
+
+    def __init__(
+        self,
+        state_shape: Union[int, Sequence[int]],
+        num_branches: int = 0,
+        action_per_branch: int = 2,
+        common_hidden_sizes: List[int] = [],
+        value_hidden_sizes: List[int] = [],
+        action_hidden_sizes: List[int] = [],
+        norm_layer: Optional[ModuleType] = None,
+        activation: Optional[ModuleType] = nn.ReLU,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
+        super().__init__()
+        self.device = device
+        self.num_branches = num_branches
+        self.action_per_branch = action_per_branch
+        # common network
+        common_input_dim = int(np.prod(state_shape))
+        common_output_dim = 0
+        self.common = MLP(
+            common_input_dim, common_output_dim, common_hidden_sizes, norm_layer,
+            activation, device
+        )
+        # value network
+        value_input_dim = common_hidden_sizes[-1]
+        value_output_dim = 1
+        self.value = MLP(
+            value_input_dim, value_output_dim, value_hidden_sizes, norm_layer,
+            activation, device
+        )
+        # action branching network
+        action_input_dim = common_hidden_sizes[-1]
+        action_output_dim = action_per_branch
+        self.branches = nn.ModuleList(
+            [
+                MLP(
+                    action_input_dim, action_output_dim, action_hidden_sizes,
+                    norm_layer, activation, device
+                ) for _ in range(self.num_branches)
+            ]
+        )
+
+    def forward(
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        state: Any = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[torch.Tensor, Any]:
+        """Mapping: obs -> model -> logits."""
+        common_out = self.common(obs)
+        value_out = self.value(common_out)
+        value_out = torch.unsqueeze(value_out, 1)
+        action_out = []
+        for b in self.branches:
+            action_out.append(b(common_out))
+        action_scores = torch.stack(action_out, 1)
+        action_scores = action_scores - torch.mean(action_scores, 2, keepdim=True)
+        logits = value_out + action_scores
+        return logits, state

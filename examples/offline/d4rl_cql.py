@@ -1,41 +1,45 @@
 #!/usr/bin/env python3
+
 import argparse
 import datetime
 import os
 import pprint
 
-import d4rl
 import gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
+from examples.offline.utils import load_buffer_d4rl
+from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import CQLPolicy
 from tianshou.trainer import offline_trainer
-from tianshou.utils import BasicLogger
+from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='halfcheetah-medium-v1')
-    parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer-size', type=int, default=1000000)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[256, 256])
-    parser.add_argument('--actor-lr', type=float, default=1e-4)
-    parser.add_argument('--critic-lr', type=float, default=3e-4)
-    parser.add_argument('--alpha', type=float, default=0.2)
-    parser.add_argument('--auto-alpha', default=True, action='store_true')
-    parser.add_argument('--alpha-lr', type=float, default=1e-4)
-    parser.add_argument('--cql-alpha-lr', type=float, default=3e-4)
+    parser.add_argument("--task", type=str, default="HalfCheetah-v2")
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--expert-data-task", type=str, default="halfcheetah-expert-v2"
+    )
+    parser.add_argument("--buffer-size", type=int, default=1000000)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[256, 256])
+    parser.add_argument("--actor-lr", type=float, default=1e-4)
+    parser.add_argument("--critic-lr", type=float, default=3e-4)
+    parser.add_argument("--alpha", type=float, default=0.2)
+    parser.add_argument("--auto-alpha", default=True, action="store_true")
+    parser.add_argument("--alpha-lr", type=float, default=1e-4)
+    parser.add_argument("--cql-alpha-lr", type=float, default=3e-4)
     parser.add_argument("--start-timesteps", type=int, default=10000)
-    parser.add_argument('--epoch', type=int, default=200)
-    parser.add_argument('--step-per-epoch', type=int, default=5000)
-    parser.add_argument('--n-step', type=int, default=3)
-    parser.add_argument('--batch-size', type=int, default=256)
+    parser.add_argument("--epoch", type=int, default=200)
+    parser.add_argument("--step-per-epoch", type=int, default=5000)
+    parser.add_argument("--n-step", type=int, default=3)
+    parser.add_argument("--batch-size", type=int, default=256)
 
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--temperature", type=float, default=1.0)
@@ -45,19 +49,26 @@ def get_args():
     parser.add_argument("--gamma", type=float, default=0.99)
 
     parser.add_argument("--eval-freq", type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=10)
-    parser.add_argument('--test-num', type=int, default=10)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=1 / 35)
+    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=1 / 35)
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
-    parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument("--resume-path", type=str, default=None)
+    parser.add_argument("--resume-id", type=str, default=None)
     parser.add_argument(
-        '--watch',
+        "--logger",
+        type=str,
+        default="tensorboard",
+        choices=["tensorboard", "wandb"],
+    )
+    parser.add_argument("--wandb-project", type=str, default="offline_d4rl.benchmark")
+    parser.add_argument(
+        "--watch",
         default=False,
-        action='store_true',
-        help='watch the play of pre-trained policy only',
+        action="store_true",
+        help="watch the play of pre-trained policy only",
     )
     return parser.parse_args()
 
@@ -77,10 +88,6 @@ def test_cql():
     args.action_dim = args.action_shape[0]
     print("Max_action", args.max_action)
 
-    # train_envs = gym.make(args.task)
-    train_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)]
-    )
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
         [lambda: gym.make(args.task) for _ in range(args.test_num)]
@@ -88,7 +95,6 @@ def test_cql():
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    train_envs.seed(args.seed)
     test_envs.seed(args.seed)
 
     # model
@@ -161,53 +167,46 @@ def test_cql():
         print("Loaded agent from: ", args.resume_path)
 
     # collector
-    if args.training_num > 1:
-        buffer = VectorReplayBuffer(args.buffer_size, len(train_envs))
-    else:
-        buffer = ReplayBuffer(args.buffer_size)
-    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
-    train_collector.collect(n_step=args.start_timesteps, random=True)
+
     # log
-    t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
-    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_cql'
-    log_path = os.path.join(args.logdir, args.task, 'cql', log_file)
+    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+    args.algo_name = "cql"
+    log_name = os.path.join(args.task, args.algo_name, str(args.seed), now)
+    log_path = os.path.join(args.logdir, log_name)
+
+    # logger
+    if args.logger == "wandb":
+        logger = WandbLogger(
+            save_interval=1,
+            name=log_name.replace(os.path.sep, "__"),
+            run_id=args.resume_id,
+            config=args,
+            project=args.wandb_project,
+        )
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
-    logger = BasicLogger(writer)
+    if args.logger == "tensorboard":
+        logger = TensorboardLogger(writer)
+    else:  # wandb
+        logger.load(writer)
 
-    def save_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+    def save_best_fn(policy):
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def watch():
         if args.resume_path is None:
-            args.resume_path = os.path.join(log_path, 'policy.pth')
+            args.resume_path = os.path.join(log_path, "policy.pth")
 
         policy.load_state_dict(
-            torch.load(args.resume_path, map_location=torch.device('cpu'))
+            torch.load(args.resume_path, map_location=torch.device("cpu"))
         )
         policy.eval()
         collector = Collector(policy, env)
         collector.collect(n_episode=1, render=1 / 35)
 
     if not args.watch:
-        dataset = d4rl.qlearning_dataset(env)
-        dataset_size = dataset['rewards'].size
-
-        print("dataset_size", dataset_size)
-        replay_buffer = ReplayBuffer(dataset_size)
-
-        for i in range(dataset_size):
-            replay_buffer.add(
-                Batch(
-                    obs=dataset['observations'][i],
-                    act=dataset['actions'][i],
-                    rew=dataset['rewards'][i],
-                    done=dataset['terminals'][i],
-                    obs_next=dataset['next_observations'][i],
-                )
-            )
-        print("dataset loaded")
+        replay_buffer = load_buffer_d4rl(args.expert_data_task)
         # trainer
         result = offline_trainer(
             policy,
@@ -217,7 +216,7 @@ def test_cql():
             args.step_per_epoch,
             args.test_num,
             args.batch_size,
-            save_fn=save_fn,
+            save_best_fn=save_best_fn,
             logger=logger,
         )
         pprint.pprint(result)
@@ -229,8 +228,8 @@ def test_cql():
     test_envs.seed(args.seed)
     test_collector.reset()
     result = test_collector.collect(n_episode=args.test_num, render=args.render)
-    print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
+    print(f"Final reward: {result['rews'].mean()}, length: {result['lens'].mean()}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_cql()

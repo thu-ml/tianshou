@@ -6,7 +6,7 @@ from pettingzoo.utils.env import AECEnv
 from pettingzoo.utils.wrappers import BaseWrapper
 
 
-class PettingZooEnv(AECEnv, gym.Env, ABC):
+class PettingZooEnv(AECEnv, ABC):
     """The interface for petting zoo environments.
 
     Multi-agent environments must be wrapped as
@@ -32,17 +32,14 @@ class PettingZooEnv(AECEnv, gym.Env, ABC):
         self.agent_idx = {}
         for i, agent_id in enumerate(self.agents):
             self.agent_idx[agent_id] = i
-        # Get dictionaries of obs_spaces and act_spaces
-        self.observation_spaces = self.env.observation_spaces
-        self.action_spaces = self.env.action_spaces
 
         self.rewards = [0] * len(self.agents)
 
         # Get first observation space, assuming all agents have equal space
-        self.observation_space: Any = self.observation_space(self.agents[0])
+        self.observation_space: Any = self.env.observation_space(self.agents[0])
 
         # Get first action space, assuming all agents have equal space
-        self.action_space: Any = self.action_space(self.agents[0])
+        self.action_space: Any = self.env.action_space(self.agents[0])
 
         assert all(self.env.observation_space(agent) == self.observation_space
                    for agent in self.agents), \
@@ -58,8 +55,8 @@ class PettingZooEnv(AECEnv, gym.Env, ABC):
 
         self.reset()
 
-    def reset(self) -> dict:
-        self.env.reset()
+    def reset(self, *args: Any, **kwargs: Any) -> dict:
+        self.env.reset(*args, **kwargs)
         observation = self.env.observe(self.env.agent_selection)
         if isinstance(observation, dict) and 'action_mask' in observation:
             return {
@@ -106,7 +103,10 @@ class PettingZooEnv(AECEnv, gym.Env, ABC):
         self.env.close()
 
     def seed(self, seed: Any = None) -> None:
-        self.env.seed(seed)
+        try:
+            self.env.seed(seed)
+        except NotImplementedError:
+            self.env.reset(seed=seed)
 
     def render(self, mode: str = "human") -> Any:
         return self.env.render(mode)

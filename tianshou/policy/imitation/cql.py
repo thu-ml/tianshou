@@ -46,6 +46,8 @@ class CQLPolicy(SACPolicy):
     :param float clip_grad: clip_grad for updating critic network. Default to 1.0.
     :param Union[str, torch.device] device: which device to create this model on.
         Default to "cpu".
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 
@@ -158,9 +160,7 @@ class CQLPolicy(SACPolicy):
         return batch
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
-        batch: Batch = to_torch(  # type: ignore
-            batch, dtype=torch.float, device=self.device,
-        )
+        batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]
 
@@ -206,12 +206,12 @@ class CQLPolicy(SACPolicy):
         random_actions = torch.FloatTensor(
             batch_size * self.num_repeat_actions, act.shape[-1]
         ).uniform_(-self.min_action, self.max_action).to(self.device)
-        tmp_obs = obs.unsqueeze(1) \
-            .repeat(1, self.num_repeat_actions, 1) \
-            .view(batch_size * self.num_repeat_actions, obs.shape[-1])
-        tmp_obs_next = obs_next.unsqueeze(1) \
-            .repeat(1, self.num_repeat_actions, 1) \
-            .view(batch_size * self.num_repeat_actions, obs.shape[-1])
+
+        obs_len = len(obs.shape)
+        repeat_size = [1, self.num_repeat_actions] + [1] * (obs_len - 1)
+        view_size = [batch_size * self.num_repeat_actions] + list(obs.shape[1:])
+        tmp_obs = obs.unsqueeze(1).repeat(*repeat_size).view(*view_size)
+        tmp_obs_next = obs_next.unsqueeze(1).repeat(*repeat_size).view(*view_size)
         # tmp_obs & tmp_obs_next: (batch_size * num_repeat, state_dim)
 
         current_pi_value1, current_pi_value2 = self.calc_pi_values(tmp_obs, tmp_obs)
