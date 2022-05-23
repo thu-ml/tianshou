@@ -86,10 +86,10 @@ class ReplayBuffer:
                 ), "key '{}' is reserved and cannot be assigned".format(key)
         super().__setattr__(key, value)
 
-    def save_hdf5(self, path: str) -> None:
+    def save_hdf5(self, path: str, compression: Optional[str] = None) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
-            to_hdf5(self.__dict__, f)
+            to_hdf5(self.__dict__, f, compression=compression)
 
     @classmethod
     def load_hdf5(cls, path: str, device: Optional[str] = None) -> "ReplayBuffer":
@@ -97,6 +97,22 @@ class ReplayBuffer:
         with h5py.File(path, "r") as f:
             buf = cls.__new__(cls)
             buf.__setstate__(from_hdf5(f, device=device))  # type: ignore
+        return buf
+
+    @classmethod
+    def from_data(
+        cls, obs: h5py.Dataset, act: h5py.Dataset, rew: h5py.Dataset,
+        done: h5py.Dataset, obs_next: h5py.Dataset
+    ) -> "ReplayBuffer":
+        size = len(obs)
+        assert all(len(dset) == size for dset in [obs, act, rew, done, obs_next]), \
+            "Lengths of all hdf5 datasets need to be equal."
+        buf = cls(size)
+        if size == 0:
+            return buf
+        batch = Batch(obs=obs, act=act, rew=rew, done=done, obs_next=obs_next)
+        buf.set_batch(batch)
+        buf._size = size
         return buf
 
     def reset(self, keep_statistics: bool = False) -> None:

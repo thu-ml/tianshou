@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.distributions import Independent, Normal
 
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import Batch, ReplayBuffer
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 
@@ -42,6 +42,8 @@ class SACPolicy(DDPGPolicy):
         Default to "clip".
     :param Optional[gym.Space] action_space: env's action space, mandatory if you want
         to use option "action_scaling" or "action_bound_method". Default to None.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 
@@ -121,16 +123,9 @@ class SACPolicy(DDPGPolicy):
         # apply correction for Tanh squashing when computing logprob from Gaussian
         # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
         # in appendix C to get some understanding of this equation.
-        if self.action_scaling and self.action_space is not None:
-            action_scale = to_torch_as(
-                (self.action_space.high - self.action_space.low) / 2.0, act
-            )
-        else:
-            action_scale = 1.0  # type: ignore
         squashed_action = torch.tanh(act)
-        log_prob = log_prob - torch.log(
-            action_scale * (1 - squashed_action.pow(2)) + self.__eps
-        ).sum(-1, keepdim=True)
+        log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) +
+                                        self.__eps).sum(-1, keepdim=True)
         return Batch(
             logits=logits,
             act=squashed_action,
@@ -174,6 +169,7 @@ class SACPolicy(DDPGPolicy):
 
         if self._is_auto_alpha:
             log_prob = obs_result.log_prob.detach() + self._target_entropy
+            # please take a look at issue #258 if you'd like to change this line
             alpha_loss = -(self._log_alpha * log_prob).mean()
             self._alpha_optim.zero_grad()
             alpha_loss.backward()

@@ -25,6 +25,11 @@ DQN Family
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.BranchingDQNPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: tianshou.policy.C51Policy
    :members:
    :undoc-members:
@@ -92,6 +97,11 @@ Off-policy
    :show-inheritance:
 
 .. autoclass:: tianshou.policy.SACPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: tianshou.policy.REDQPolicy
    :members:
    :undoc-members:
    :show-inheritance:

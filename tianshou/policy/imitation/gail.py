@@ -59,6 +59,8 @@ class GAILPolicy(PPOPolicy):
         optimizer in each policy.update(). Default to None (no lr_scheduler).
     :param bool deterministic_eval: whether to use deterministic action instead of
         stochastic action sampled by the policy. Default to False.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 
@@ -106,9 +108,9 @@ class GAILPolicy(PPOPolicy):
         return super().process_fn(batch, buffer, indices)
 
     def disc(self, batch: Batch) -> torch.Tensor:
-        obs = to_torch(batch.obs, device=self.disc_net.device)  # type: ignore
-        act = to_torch(batch.act, device=self.disc_net.device)  # type: ignore
-        return self.disc_net(torch.cat([obs, act], dim=1))  # type: ignore
+        obs = to_torch(batch.obs, device=self.disc_net.device)
+        act = to_torch(batch.act, device=self.disc_net.device)
+        return self.disc_net(torch.cat([obs, act], dim=1))
 
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any

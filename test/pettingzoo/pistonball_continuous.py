@@ -230,7 +230,7 @@ def train_agent(
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_fn(policy):
+    def save_best_fn(policy):
         pass
 
     def stop_fn(mean_rewards):
@@ -257,7 +257,7 @@ def train_agent(
         args.batch_size,
         episode_per_collect=args.episode_per_collect,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         logger=logger,
         resume_from_log=args.resume
     )
@@ -268,7 +268,7 @@ def train_agent(
 def watch(
     args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None
 ) -> None:
-    env = get_env()
+    env = DummyVectorEnv([get_env])
     policy.eval()
     collector = Collector(policy, env)
     result = collector.collect(n_episode=1, render=args.render)
