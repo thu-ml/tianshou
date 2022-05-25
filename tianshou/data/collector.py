@@ -34,13 +34,16 @@ class Collector(object):
         with corresponding policy's exploration noise. If so, "policy.
         exploration_noise(act, batch)" will be called automatically to add the
         exploration noise into action. Default to False.
+    :param bool gym_reset_return_info: if set to True, return the info dict when
+        resetting the environment.
 
     The "preprocess_fn" is a function called before the data has been added to the
-    buffer with batch format. It will receive only "obs" and "env_id" when the
-    collector resets the environment, and will receive six keys "obs_next", "rew",
-    "done", "info", "policy" and "env_id" in a normal env step. It returns either a
-    dict or a :class:`~tianshou.data.Batch` with the modified keys and values. Examples
-    are in "test/base/test_collector.py".
+    buffer with batch format. It will receive only "obs", "info" (if
+    ``gym_reset_return_info = True``), and "env_id" when the collector resets the
+    environment, and will receive six keys "obs_next", "rew", "done", "info", "policy"
+    and "env_id" in a normal env step. It returns either a dict or a
+    :class:`~tianshou.data.Batch` with the modified keys and values. Examples are in
+    "test/base/test_collector.py".
 
     .. note::
 
@@ -60,6 +63,7 @@ class Collector(object):
         buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
         exploration_noise: bool = False,
+        gym_reset_return_info: bool = False,
     ) -> None:
         super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
@@ -72,6 +76,7 @@ class Collector(object):
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
+        self.gym_reset_return_info = gym_reset_return_info
         self._action_space = self.env.action_space
         # avoid creating attribute outside __init__
         self.reset(False)
@@ -126,10 +131,20 @@ class Collector(object):
 
     def reset_env(self) -> None:
         """Reset all of the environments."""
-        obs = self.env.reset()
-        if self.preprocess_fn:
-            obs = self.preprocess_fn(obs=obs,
-                                     env_id=np.arange(self.env_num)).get("obs", obs)
+        if self.gym_reset_return_info:
+            obs, info = self.env.reset(return_info=True)
+            if self.preprocess_fn:
+                processed_data = self.preprocess_fn(
+                    obs=obs, info=info, env_id=np.arange(self.env_num)
+                )
+                obs = processed_data.get("obs", obs)
+                info = processed_data.get("info", info)
+                self.data.info = info
+        else:
+            obs = self.env.reset()
+            if self.preprocess_fn:
+                obs = self.preprocess_fn(obs=obs, env_id=np.arange(self.env_num
+                                                                   )).get("obs", obs)
         self.data.obs = obs
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
@@ -142,6 +157,26 @@ class Collector(object):
                 state[id] = None if state.dtype == object else 0
             elif isinstance(state, Batch):
                 state.empty_(id)
+
+    def _reset_env_with_ids(
+        self, local_ids: Union[List[int], np.ndarray], global_ids: Union[List[int],
+                                                                         np.ndarray]
+    ) -> None:
+        if self.gym_reset_return_info:
+            obs_reset, info = self.env.reset(global_ids, return_info=True)
+            if self.preprocess_fn:
+                processed_data = self.preprocess_fn(
+                    obs=obs_reset, info=info, env_id=global_ids
+                )
+                obs_reset = processed_data.get("obs", obs_reset)
+                info = processed_data.get("info", info)
+            self.data.info[local_ids] = info
+        else:
+            obs_reset = self.env.reset(global_ids)
+            if self.preprocess_fn:
+                obs_reset = self.preprocess_fn(obs=obs_reset, env_id=global_ids
+                                               ).get("obs", obs_reset)
+        self.data.obs_next[local_ids] = obs_reset
 
     def collect(
         self,
@@ -288,12 +323,7 @@ class Collector(object):
                 episode_start_indices.append(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                obs_reset = self.env.reset(env_ind_global)
-                if self.preprocess_fn:
-                    obs_reset = self.preprocess_fn(
-                        obs=obs_reset, env_id=env_ind_global
-                    ).get("obs", obs_reset)
-                self.data.obs_next[env_ind_local] = obs_reset
+                self._reset_env_with_ids(env_ind_local, env_ind_global)
                 for i in env_ind_local:
                     self._reset_state(i)
 
@@ -364,10 +394,14 @@ class AsyncCollector(Collector):
         buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
         exploration_noise: bool = False,
+        gym_reset_return_info: bool = False,
     ) -> None:
         # assert env.is_async
         warnings.warn("Using async setting may collect extra transitions into buffer.")
-        super().__init__(policy, env, buffer, preprocess_fn, exploration_noise)
+        super().__init__(
+            policy, env, buffer, preprocess_fn, exploration_noise,
+            gym_reset_return_info
+        )
 
     def reset_env(self) -> None:
         super().reset_env()
@@ -528,12 +562,7 @@ class AsyncCollector(Collector):
                 episode_start_indices.append(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                obs_reset = self.env.reset(env_ind_global)
-                if self.preprocess_fn:
-                    obs_reset = self.preprocess_fn(
-                        obs=obs_reset, env_id=env_ind_global
-                    ).get("obs", obs_reset)
-                self.data.obs_next[env_ind_local] = obs_reset
+                self._reset_env_with_ids(env_ind_local, env_ind_global)
                 for i in env_ind_local:
                     self._reset_state(i)
 

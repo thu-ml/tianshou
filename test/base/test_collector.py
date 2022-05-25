@@ -77,7 +77,8 @@ class Logger:
             return Batch()
 
 
-def test_collector():
+@pytest.mark.parametrize("gym_reset_return_info", [False, True])
+def test_collector(gym_reset_return_info):
     writer = SummaryWriter('log/collector')
     logger = Logger(writer)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
@@ -86,7 +87,13 @@ def test_collector():
     dum = DummyVectorEnv(env_fns)
     policy = MyPolicy()
     env = env_fns[0]()
-    c0 = Collector(policy, env, ReplayBuffer(size=100), logger.preprocess_fn)
+    c0 = Collector(
+        policy,
+        env,
+        ReplayBuffer(size=100),
+        logger.preprocess_fn,
+        gym_reset_return_info=gym_reset_return_info,
+    )
     c0.collect(n_step=3)
     assert len(c0.buffer) == 3
     assert np.allclose(c0.buffer.obs[:4, 0], [0, 1, 0, 0])
@@ -151,7 +158,8 @@ def test_collector():
         assert c3.buffer.obs.dtype == object
 
 
-def test_collector_with_async():
+@pytest.mark.parametrize("gym_reset_return_info", [False, True])
+def test_collector_with_async(gym_reset_return_info):
     env_lens = [2, 3, 4, 5]
     writer = SummaryWriter('log/async_collector')
     logger = Logger(writer)
@@ -163,8 +171,11 @@ def test_collector_with_async():
     policy = MyPolicy()
     bufsize = 60
     c1 = AsyncCollector(
-        policy, venv, VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
-        logger.preprocess_fn
+        policy,
+        venv,
+        VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4),
+        logger.preprocess_fn,
+        gym_reset_return_info=gym_reset_return_info,
     )
     ptr = [0, 0, 0, 0]
     for n_episode in tqdm.trange(1, 30, desc="test async n_episode"):
@@ -619,8 +630,10 @@ def test_collector_with_atari_setting():
 
 
 if __name__ == '__main__':
-    test_collector()
+    test_collector(gym_reset_return_info=True)
+    test_collector(gym_reset_return_info=False)
     test_collector_with_dict_state()
     test_collector_with_ma()
     test_collector_with_atari_setting()
-    test_collector_with_async()
+    test_collector_with_async(gym_reset_return_info=True)
+    test_collector_with_async(gym_reset_return_info=False)
