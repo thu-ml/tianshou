@@ -19,7 +19,7 @@ def make_mujoco_env(task, seed, training_num, test_num, obs_norm):
     """
     if envpool is not None:
         train_envs = env = envpool.make_gym(task, num_envs=training_num, seed=seed)
-        test_envs = envpool.make_gym(task, num_envs=training_num, seed=seed)
+        test_envs = envpool.make_gym(task, num_envs=test_num, seed=seed)
     else:
         warnings.warn(
             "Recommend using envpool (pip install envpool) "
