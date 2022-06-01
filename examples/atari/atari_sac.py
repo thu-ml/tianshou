@@ -147,7 +147,7 @@ def test_discrete_sac(args=get_args()):
             hidden_sizes=[args.hidden_size],
             device=args.device,
         )
-        icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
+        icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.actor_lr)
         policy = ICMPolicy(
             policy, icm_net, icm_optim, args.icm_lr_scale, args.icm_reward_scale,
             args.icm_forward_loss_weight
