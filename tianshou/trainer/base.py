@@ -259,7 +259,7 @@ class BaseTrainer(ABC):
         if self.iter_num > 1:
 
             # iterator exhaustion check
-            if self.epoch >= self.max_epoch:
+            if self.epoch > self.max_epoch:
                 raise StopIteration
 
             # exit flag 1, when stop_fn succeeds in train_step or test_step
