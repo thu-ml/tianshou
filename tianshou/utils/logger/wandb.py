@@ -97,7 +97,7 @@ class WandbLogger(BaseLogger):
         epoch: int,
         env_step: int,
         gradient_step: int,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
+        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 
@@ -118,7 +118,7 @@ class WandbLogger(BaseLogger):
                     "save/epoch": epoch,
                     "save/env_step": env_step,
                     "save/gradient_step": gradient_step,
-                    "checkpoint_path": str(checkpoint_path)
+                    "checkpoint_path": str(checkpoint_path),
                 }
             )
             checkpoint_artifact.add_file(str(checkpoint_path))
@@ -126,7 +126,7 @@ class WandbLogger(BaseLogger):
 
     def restore_data(self) -> Tuple[int, int, int]:
         checkpoint_artifact = self.wandb_run.use_artifact(    # type: ignore
-            'run_' + self.wandb_run.id + '_checkpoint:latest'  # type: ignore
+            f"run_{self.wandb_run.id}_checkpoint:latest"  # type: ignore
         )
         assert checkpoint_artifact is not None, "W&B dataset artifact doesn't exist"
 
