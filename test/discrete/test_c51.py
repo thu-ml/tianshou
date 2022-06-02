@@ -85,7 +85,7 @@ def test_c51(args=get_args()):
         hidden_sizes=args.hidden_sizes,
         device=args.device,
         softmax=True,
-        num_atoms=args.num_atoms
+        num_atoms=args.num_atoms,
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = C51Policy(
@@ -96,7 +96,7 @@ def test_c51(args=get_args()):
         args.v_min,
         args.v_max,
         args.n_step,
-        target_update_freq=args.target_update_freq
+        target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer
     if args.prioritized_replay:
@@ -104,7 +104,7 @@ def test_c51(args=get_args()):
             args.buffer_size,
             buffer_num=len(train_envs),
             alpha=args.alpha,
-            beta=args.beta
+            beta=args.beta,
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
@@ -114,12 +114,12 @@ def test_c51(args=get_args()):
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'c51')
+    log_path = os.path.join(args.logdir, args.task, "c51")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
@@ -140,29 +140,31 @@ def test_c51(args=get_args()):
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
+        # Example: saving by epoch num
+        # ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save(
             {
-                'model': policy.state_dict(),
-                'optim': optim.state_dict(),
-            }, os.path.join(log_path, 'checkpoint.pth')
+                "model": policy.state_dict(),
+                "optim": optim.state_dict(),
+            }, ckpt_path
         )
-        pickle.dump(
-            train_collector.buffer,
-            open(os.path.join(log_path, 'train_buffer.pkl'), "wb")
-        )
+        buffer_path = os.path.join(log_path, "train_buffer.pkl")
+        pickle.dump(train_collector.buffer, open(buffer_path, "wb"))
+        return ckpt_path
 
     if args.resume:
         # load from existing checkpoint
         print(f"Loading agent under {log_path}")
-        ckpt_path = os.path.join(log_path, 'checkpoint.pth')
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
-            policy.load_state_dict(checkpoint['model'])
-            policy.optim.load_state_dict(checkpoint['optim'])
+            policy.load_state_dict(checkpoint["model"])
+            policy.optim.load_state_dict(checkpoint["optim"])
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")
-        buffer_path = os.path.join(log_path, 'train_buffer.pkl')
+        buffer_path = os.path.join(log_path, "train_buffer.pkl")
         if os.path.exists(buffer_path):
             train_collector.buffer = pickle.load(open(buffer_path, "rb"))
             print("Successfully restore buffer.")
@@ -186,11 +188,11 @@ def test_c51(args=get_args()):
         save_best_fn=save_best_fn,
         logger=logger,
         resume_from_log=args.resume,
-        save_checkpoint_fn=save_checkpoint_fn
+        save_checkpoint_fn=save_checkpoint_fn,
     )
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
@@ -214,5 +216,5 @@ def test_pc51(args=get_args()):
     test_c51(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_c51(get_args())
