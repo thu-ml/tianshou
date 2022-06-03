@@ -163,33 +163,37 @@ def test_gail(args=get_args()):
     )
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'gail')
+    log_path = os.path.join(args.logdir, args.task, "gail")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
+        # Example: saving by epoch num
+        # ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save(
             {
-                'model': policy.state_dict(),
-                'optim': optim.state_dict(),
-            }, os.path.join(log_path, 'checkpoint.pth')
+                "model": policy.state_dict(),
+                "optim": optim.state_dict(),
+            }, ckpt_path
         )
+        return ckpt_path
 
     if args.resume:
         # load from existing checkpoint
         print(f"Loading agent under {log_path}")
-        ckpt_path = os.path.join(log_path, 'checkpoint.pth')
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
-            policy.load_state_dict(checkpoint['model'])
-            optim.load_state_dict(checkpoint['optim'])
+            policy.load_state_dict(checkpoint["model"])
+            optim.load_state_dict(checkpoint["optim"])
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")
@@ -211,9 +215,9 @@ def test_gail(args=get_args()):
         resume_from_log=args.resume,
         save_checkpoint_fn=save_checkpoint_fn,
     )
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
@@ -224,5 +228,5 @@ def test_gail(args=get_args()):
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_gail()

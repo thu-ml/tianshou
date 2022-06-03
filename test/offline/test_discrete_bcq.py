@@ -25,7 +25,7 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="CartPole-v0")
-    parser.add_argument('--reward-threshold', type=float, default=None)
+    parser.add_argument("--reward-threshold", type=float, default=None)
     parser.add_argument("--seed", type=int, default=1626)
     parser.add_argument("--eps-test", type=float, default=0.001)
     parser.add_argument("--lr", type=float, default=3e-4)
@@ -37,7 +37,7 @@ def get_args():
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--update-per-epoch", type=int, default=2000)
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
@@ -104,33 +104,37 @@ def test_discrete_bcq(args=get_args()):
     # collector
     test_collector = Collector(policy, test_envs, exploration_noise=True)
 
-    log_path = os.path.join(args.logdir, args.task, 'discrete_bcq')
+    log_path = os.path.join(args.logdir, args.task, "discrete_bcq")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
+        # Example: saving by epoch num
+        # ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save(
             {
-                'model': policy.state_dict(),
-                'optim': optim.state_dict(),
-            }, os.path.join(log_path, 'checkpoint.pth')
+                "model": policy.state_dict(),
+                "optim": optim.state_dict(),
+            }, ckpt_path
         )
+        return ckpt_path
 
     if args.resume:
         # load from existing checkpoint
         print(f"Loading agent under {log_path}")
-        ckpt_path = os.path.join(log_path, 'checkpoint.pth')
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
-            policy.load_state_dict(checkpoint['model'])
-            optim.load_state_dict(checkpoint['optim'])
+            policy.load_state_dict(checkpoint["model"])
+            optim.load_state_dict(checkpoint["optim"])
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")
@@ -147,11 +151,11 @@ def test_discrete_bcq(args=get_args()):
         save_best_fn=save_best_fn,
         logger=logger,
         resume_from_log=args.resume,
-        save_checkpoint_fn=save_checkpoint_fn
+        save_checkpoint_fn=save_checkpoint_fn,
     )
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
