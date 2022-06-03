@@ -35,6 +35,13 @@ Tianshou provides an `offline_trainer` for offline reinforcement learning. You c
 | HalfCheetah-v2        | halfcheetah-expert-v2 | 2864.37         | `python3 d4rl_cql.py --task HalfCheetah-v2 --expert-data-task halfcheetah-expert-v2` |
 | HalfCheetah-v2        | halfcheetah-medium-v2 | 6505.41         | `python3 d4rl_cql.py --task HalfCheetah-v2 --expert-data-task halfcheetah-medium-v2` |
 
+### TD3-BC
+
+| Environment           | Dataset               | CQL             | Parameters                                               |
+| --------------------- | --------------------- | --------------- | -------------------------------------------------------- |
+| HalfCheetah-v2        | halfcheetah-expert-v2 | 11788.25         | `python3 d4rl_td3_bc.py --task HalfCheetah-v2 --expert-data-task halfcheetah-expert-v2` |
+| HalfCheetah-v2        | halfcheetah-medium-v2 | 5741.13         | `python3 d4rl_td3_bc.py --task HalfCheetah-v2 --expert-data-task halfcheetah-medium-v2` |
+
 ## Discrete control
 
 For discrete control, we currently use ad hoc Atari data generated from a trained QRDQN agent.
