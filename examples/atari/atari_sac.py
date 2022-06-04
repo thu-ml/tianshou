@@ -7,14 +7,12 @@ import numpy as np
 import torch
 from atari_network import DQN
 from atari_wrapper import make_atari_env
-from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
-from tianshou.policy import ICMPolicy, PPOPolicy
-from tianshou.trainer import onpolicy_trainer
+from tianshou.policy import DiscreteSACPolicy, ICMPolicy
+from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
-from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 
 
@@ -24,27 +22,23 @@ def get_args():
     parser.add_argument("--seed", type=int, default=4213)
     parser.add_argument("--scale-obs", type=int, default=0)
     parser.add_argument("--buffer-size", type=int, default=100000)
-    parser.add_argument("--lr", type=float, default=5e-5)
+    parser.add_argument("--actor-lr", type=float, default=1e-5)
+    parser.add_argument("--critic-lr", type=float, default=1e-5)
     parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--n-step", type=int, default=3)
+    parser.add_argument("--tau", type=float, default=0.005)
+    parser.add_argument("--alpha", type=float, default=0.05)
+    parser.add_argument("--auto-alpha", action="store_true", default=False)
+    parser.add_argument("--alpha-lr", type=float, default=3e-4)
     parser.add_argument("--epoch", type=int, default=100)
     parser.add_argument("--step-per-epoch", type=int, default=100000)
-    parser.add_argument("--step-per-collect", type=int, default=1000)
-    parser.add_argument("--repeat-per-collect", type=int, default=4)
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--step-per-collect", type=int, default=10)
+    parser.add_argument("--update-per-step", type=float, default=0.1)
+    parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--hidden-size", type=int, default=512)
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--rew-norm", type=int, default=False)
-    parser.add_argument("--vf-coef", type=float, default=0.5)
-    parser.add_argument("--ent-coef", type=float, default=0.01)
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
-    parser.add_argument("--lr-decay", type=int, default=True)
-    parser.add_argument("--max-grad-norm", type=float, default=0.5)
-    parser.add_argument("--eps-clip", type=float, default=0.2)
-    parser.add_argument("--dual-clip", type=float, default=None)
-    parser.add_argument("--value-clip", type=int, default=0)
-    parser.add_argument("--norm-adv", type=int, default=1)
-    parser.add_argument("--recompute-adv", type=int, default=0)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.)
     parser.add_argument(
@@ -88,7 +82,7 @@ def get_args():
     return parser.parse_args()
 
 
-def test_ppo(args=get_args()):
+def test_discrete_sac(args=get_args()):
     env, train_envs, test_envs = make_atari_env(
         args.task,
         args.seed,
@@ -114,43 +108,31 @@ def test_ppo(args=get_args()):
         output_dim=args.hidden_size
     )
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
-    critic = Critic(net, device=args.device)
-    optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
-
-    lr_scheduler = None
-    if args.lr_decay:
-        # decay learning rate to 0 linearly
-        max_update_num = np.ceil(
-            args.step_per_epoch / args.step_per_collect
-        ) * args.epoch
-
-        lr_scheduler = LambdaLR(
-            optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num
-        )
+    actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
+    critic1 = Critic(net, last_size=args.action_shape, device=args.device)
+    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    critic2 = Critic(net, last_size=args.action_shape, device=args.device)
+    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     # define policy
-    def dist(p):
-        return torch.distributions.Categorical(logits=p)
+    if args.auto_alpha:
+        target_entropy = 0.98 * np.log(np.prod(args.action_shape))
+        log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
+        alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
+        args.alpha = (target_entropy, log_alpha, alpha_optim)
 
-    policy = PPOPolicy(
+    policy = DiscreteSACPolicy(
         actor,
-        critic,
-        optim,
-        dist,
-        discount_factor=args.gamma,
-        gae_lambda=args.gae_lambda,
-        max_grad_norm=args.max_grad_norm,
-        vf_coef=args.vf_coef,
-        ent_coef=args.ent_coef,
+        actor_optim,
+        critic1,
+        critic1_optim,
+        critic2,
+        critic2_optim,
+        args.tau,
+        args.gamma,
+        args.alpha,
+        estimation_step=args.n_step,
         reward_normalization=args.rew_norm,
-        action_scaling=False,
-        lr_scheduler=lr_scheduler,
-        action_space=env.action_space,
-        eps_clip=args.eps_clip,
-        value_clip=args.value_clip,
-        dual_clip=args.dual_clip,
-        advantage_normalization=args.norm_adv,
-        recompute_advantage=args.recompute_adv,
     ).to(args.device)
     if args.icm_lr_scale > 0:
         feature_net = DQN(
@@ -165,7 +147,7 @@ def test_ppo(args=get_args()):
             hidden_sizes=[args.hidden_size],
             device=args.device,
         )
-        icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
+        icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.actor_lr)
         policy = ICMPolicy(
             policy, icm_net, icm_optim, args.icm_lr_scale, args.icm_reward_scale,
             args.icm_forward_loss_weight
@@ -189,7 +171,7 @@ def test_ppo(args=get_args()):
 
     # log
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    args.algo_name = "ppo_icm" if args.icm_lr_scale > 0 else "ppo"
+    args.algo_name = "discrete_sac_icm" if args.icm_lr_scale > 0 else "discrete_sac"
     log_name = os.path.join(args.task, args.algo_name, str(args.seed), now)
     log_path = os.path.join(args.logdir, log_name)
 
@@ -222,7 +204,7 @@ def test_ppo(args=get_args()):
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
-        ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
         torch.save({"model": policy.state_dict()}, ckpt_path)
         return ckpt_path
 
@@ -261,19 +243,19 @@ def test_ppo(args=get_args()):
     # test train_collector and start filling replay buffer
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # trainer
-    result = onpolicy_trainer(
+    result = offpolicy_trainer(
         policy,
         train_collector,
         test_collector,
         args.epoch,
         args.step_per_epoch,
-        args.repeat_per_collect,
+        args.step_per_collect,
         args.test_num,
         args.batch_size,
-        step_per_collect=args.step_per_collect,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger,
+        update_per_step=args.update_per_step,
         test_in_train=False,
         resume_from_log=args.resume_id is not None,
         save_checkpoint_fn=save_checkpoint_fn,
@@ -284,4 +266,4 @@ def test_ppo(args=get_args()):
 
 
 if __name__ == "__main__":
-    test_ppo(get_args())
+    test_discrete_sac(get_args())
