@@ -33,7 +33,9 @@ def load_buffer(buffer_path: str) -> ReplayBuffer:
     return buffer
 
 
-def normalize_obs(replay_buffer: ReplayBuffer) -> Tuple[ReplayBuffer, RunningMeanStd]:
+def normalize_all_obs_in_replay_buffer(
+    replay_buffer: ReplayBuffer
+) -> Tuple[ReplayBuffer, RunningMeanStd]:
     # compute obs mean and var
     obs_rms = RunningMeanStd()
     obs_rms.update(replay_buffer.obs)

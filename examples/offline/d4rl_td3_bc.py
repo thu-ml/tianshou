@@ -197,7 +197,7 @@ def test_td3_bc():
     if not args.watch:
         replay_buffer = load_buffer_d4rl(args.expert_data_task)
         if args.norm_obs:
-            replay_buffer, obs_rms = normalize_obs(replay_buffer)
+            replay_buffer, obs_rms = normalize_all_obs_in_replay_buffer(replay_buffer)
             test_envs.set_obs_rms(obs_rms)
         # trainer
         result = offline_trainer(
