@@ -80,7 +80,10 @@ class DiscreteSACPolicy(SACPolicy):
         obs = batch[input]
         logits, hidden = self.actor(obs, state=state, info=batch.info)
         dist = Categorical(logits=logits)
-        act = dist.sample()
+        if self._deterministic_eval and not self.training:
+            act = logits.argmax(axis=-1)
+        else:
+            act = dist.sample()
         return Batch(logits=logits, act=act, state=hidden, dist=dist)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
