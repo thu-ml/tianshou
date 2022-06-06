@@ -107,11 +107,15 @@ def test_collector(gym_reset_kwargs):
     assert len(c0.buffer) == 3
     assert np.allclose(c0.buffer.obs[:4, 0], [0, 1, 0, 0])
     assert np.allclose(c0.buffer[:].obs_next[..., 0], [1, 2, 1])
-    assert np.allclose(c0.buffer.info["key"][:3], 1)
+    keys = np.zeros(100)
+    keys[:3] = 1
+    assert np.allclose(c0.buffer.info["key"], keys)
     for e in c0.buffer.info["env"][:3]:
         assert isinstance(e, MyTestEnv)
-    assert np.allclose(c0.buffer.info["env_id"][:3], 0)
-    assert np.allclose(c0.buffer.info["rew"][:3], [0, 1, 0])
+    assert np.allclose(c0.buffer.info["env_id"], 0)
+    rews = np.zeros(100)
+    rews[:3] = [0, 1, 0]
+    assert np.allclose(c0.buffer.info["rew"], rews)
     c0.collect(n_episode=3, gym_reset_kwargs=gym_reset_kwargs)
     assert len(c0.buffer) == 8
     assert np.allclose(c0.buffer.obs[:10, 0], [0, 1, 0, 1, 0, 1, 0, 1, 0, 0])
