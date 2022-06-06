@@ -301,6 +301,10 @@ class BaseTrainer(ABC):
             if t.n <= t.total and not self.stop_fn_flag:
                 t.update()
 
+        # for offline RL
+        if self.train_collector is None:
+            self.env_step = self.gradient_step * self.batch_size
+
         if not self.stop_fn_flag:
             self.logger.save_data(
                 self.epoch, self.env_step, self.gradient_step, self.save_checkpoint_fn
