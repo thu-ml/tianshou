@@ -127,12 +127,12 @@ class Collector(object):
     def reset_env(self, gym_reset_kwargs: Optional[Dict[str, Any]] = None) -> None:
         """Reset all of the environments."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        retval = self.env.reset(**gym_reset_kwargs)
-        returns_info = isinstance(retval, (tuple, list)) and len(retval) == 2 and (
-            isinstance(retval[1], dict) or isinstance(retval[1][0], dict)  # type: ignore
+        rval = self.env.reset(**gym_reset_kwargs)
+        returns_info = isinstance(rval, (tuple, list)) and len(rval) == 2 and (
+            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)  # type: ignore
         )
         if returns_info:
-            obs, info = retval
+            obs, info = rval
             if self.preprocess_fn:
                 processed_data = self.preprocess_fn(
                     obs=obs, info=info, env_id=np.arange(self.env_num)
@@ -141,7 +141,7 @@ class Collector(object):
                 info = processed_data.get("info", info)
                 self.data.info = info
         else:
-            obs = retval
+            obs = rval
             if self.preprocess_fn:
                 obs = self.preprocess_fn(obs=obs, env_id=np.arange(self.env_num
                                                                    )).get("obs", obs)
@@ -165,12 +165,12 @@ class Collector(object):
         gym_reset_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        retval = self.env.reset(global_ids, **gym_reset_kwargs)
-        returns_info = isinstance(retval, (tuple, list)) and len(retval) == 2 and (
-            isinstance(retval[1], dict) or isinstance(retval[1][0], dict)  # type: ignore
+        rval = self.env.reset(global_ids, **gym_reset_kwargs)
+        returns_info = isinstance(rval, (tuple, list)) and len(rval) == 2 and (
+            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)  # type: ignore
         )
         if returns_info:
-            obs_reset, info = retval
+            obs_reset, info = rval
             if self.preprocess_fn:
                 processed_data = self.preprocess_fn(
                     obs=obs_reset, info=info, env_id=global_ids
@@ -179,7 +179,7 @@ class Collector(object):
                 info = processed_data.get("info", info)
             self.data.info[local_ids] = info
         else:
-            obs_reset = retval
+            obs_reset = rval
             if self.preprocess_fn:
                 obs_reset = self.preprocess_fn(obs=obs_reset, env_id=global_ids
                                                ).get("obs", obs_reset)
@@ -579,7 +579,9 @@ class AsyncCollector(Collector):
                 episode_start_indices.append(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
+                self._reset_env_with_ids(
+                    env_ind_local, env_ind_global, gym_reset_kwargs
+                )
                 for i in env_ind_local:
                     self._reset_state(i)
 
