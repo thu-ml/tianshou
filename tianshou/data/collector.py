@@ -22,6 +22,7 @@ from tianshou.policy import BasePolicy
 class Collector(object):
     """Collector enables the policy to interact with different types of envs with \
     exact number of steps or episodes.
+
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param env: a ``gym.Env`` environment or an instance of the
         :class:`~tianshou.env.BaseVectorEnv` class.
@@ -33,16 +34,21 @@ class Collector(object):
         with corresponding policy's exploration noise. If so, "policy.
         exploration_noise(act, batch)" will be called automatically to add the
         exploration noise into action. Default to False.
+
     The "preprocess_fn" is a function called before the data has been added to the
     buffer with batch format. It will receive only "obs" and "env_id" when the
     collector resets the environment, and will receive six keys "obs_next", "rew",
     "done", "info", "policy" and "env_id" in a normal env step. It returns either a
     dict or a :class:`~tianshou.data.Batch` with the modified keys and values. Examples
     are in "test/base/test_collector.py".
+
     .. note::
+
         Please make sure the given environment has a time limitation if using n_episode
         collect option.
+
     .. note::
+
         In past versions of Tianshou, the replay buffer that was passed to `__init__`
         was automatically reset. This is not done in the current implementation.
     """
