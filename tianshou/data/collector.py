@@ -103,6 +103,8 @@ class Collector(object):
 
         :param bool reset_buffer: if true, reset the replay buffer that is attached
             to the collector.
+        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
+            reset function. Defaults to None (extra keyword arguments)
         """
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
@@ -127,7 +129,7 @@ class Collector(object):
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         retval = self.env.reset(**gym_reset_kwargs)
         returns_info = isinstance(retval, (tuple, list)) and len(retval) == 2 and (
-            isinstance(retval[1], dict) or isinstance(retval[1][0], dict)
+            isinstance(retval[1], dict) or isinstance(retval[1][0], dict)  # type: ignore
         )
         if returns_info:
             obs, info = retval
@@ -165,7 +167,7 @@ class Collector(object):
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         retval = self.env.reset(global_ids, **gym_reset_kwargs)
         returns_info = isinstance(retval, (tuple, list)) and len(retval) == 2 and (
-            isinstance(retval[1], dict) or isinstance(retval[1][0], dict)
+            isinstance(retval[1], dict) or isinstance(retval[1][0], dict)  # type: ignore
         )
         if returns_info:
             obs_reset, info = retval
@@ -206,6 +208,8 @@ class Collector(object):
             Default to None (no rendering).
         :param bool no_grad: whether to retain gradient in policy.forward(). Default to
             True (no gradient retaining).
+        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
+            reset function. Defaults to None (extra keyword arguments)
 
         .. note::
 
@@ -424,6 +428,7 @@ class AsyncCollector(Collector):
         random: bool = False,
         render: Optional[float] = None,
         no_grad: bool = True,
+        gym_reset_kwargs: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Collect a specified number of step or episode with async env setting.
 
@@ -439,6 +444,8 @@ class AsyncCollector(Collector):
             Default to None (no rendering).
         :param bool no_grad: whether to retain gradient in policy.forward(). Default to
             True (no gradient retaining).
+        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
+            reset function. Defaults to None (extra keyword arguments)
 
         .. note::
 
@@ -572,7 +579,7 @@ class AsyncCollector(Collector):
                 episode_start_indices.append(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_env_with_ids(env_ind_local, env_ind_global)
+                self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
                 for i in env_ind_local:
                     self._reset_state(i)
 
