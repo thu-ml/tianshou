@@ -58,9 +58,9 @@ class BaseTrainer(ABC):
     :param function save_best_fn: a hook called when the undiscounted average mean
         reward in evaluation phase gets better, with the signature
         ``f(policy: BasePolicy) -> None``. It was ``save_fn`` previously.
-    :param function save_checkpoint_fn: a function to save training process, with
-        the signature ``f(epoch: int, env_step: int, gradient_step: int) -> None``;
-        you can save whatever you want.
+    :param function save_checkpoint_fn: a function to save training process and
+        return the saved checkpoint path, with the signature ``f(epoch: int,
+        env_step: int, gradient_step: int) -> str``; you can save whatever you want.
     :param bool resume_from_log: resume env_step/gradient_step and other metadata
         from existing tensorboard log. Default to False.
     :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
@@ -147,7 +147,7 @@ class BaseTrainer(ABC):
         test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
         stop_fn: Optional[Callable[[float], bool]] = None,
         save_best_fn: Optional[Callable[[BasePolicy], None]] = None,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
+        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
         resume_from_log: bool = False,
         reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         logger: BaseLogger = LazyLogger(),
@@ -259,7 +259,7 @@ class BaseTrainer(ABC):
         if self.iter_num > 1:
 
             # iterator exhaustion check
-            if self.epoch >= self.max_epoch:
+            if self.epoch > self.max_epoch:
                 raise StopIteration
 
             # exit flag 1, when stop_fn succeeds in train_step or test_step
@@ -300,6 +300,10 @@ class BaseTrainer(ABC):
 
             if t.n <= t.total and not self.stop_fn_flag:
                 t.update()
+
+        # for offline RL
+        if self.train_collector is None:
+            self.env_step = self.gradient_step * self.batch_size
 
         if not self.stop_fn_flag:
             self.logger.save_data(

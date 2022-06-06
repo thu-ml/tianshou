@@ -162,7 +162,7 @@ def test_ppo(args=get_args()):
             feature_net.net,
             feature_dim,
             action_dim,
-            hidden_sizes=args.hidden_sizes,
+            hidden_sizes=[args.hidden_size],
             device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
@@ -222,7 +222,7 @@ def test_ppo(args=get_args()):
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
-        ckpt_path = os.path.join(log_path, "checkpoint.pth")
+        ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save({"model": policy.state_dict()}, ckpt_path)
         return ckpt_path
 
