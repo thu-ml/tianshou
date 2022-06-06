@@ -22,7 +22,6 @@ from tianshou.policy import BasePolicy
 class Collector(object):
     """Collector enables the policy to interact with different types of envs with \
     exact number of steps or episodes.
-
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param env: a ``gym.Env`` environment or an instance of the
         :class:`~tianshou.env.BaseVectorEnv` class.
@@ -34,24 +33,16 @@ class Collector(object):
         with corresponding policy's exploration noise. If so, "policy.
         exploration_noise(act, batch)" will be called automatically to add the
         exploration noise into action. Default to False.
-    :param bool gym_reset_return_info: if set to True, return the info dict when
-        resetting the environment.
-
     The "preprocess_fn" is a function called before the data has been added to the
-    buffer with batch format. It will receive only "obs", "info" (if
-    ``gym_reset_return_info = True``), and "env_id" when the collector resets the
-    environment, and will receive six keys "obs_next", "rew", "done", "info", "policy"
-    and "env_id" in a normal env step. It returns either a dict or a
-    :class:`~tianshou.data.Batch` with the modified keys and values. Examples are in
-    "test/base/test_collector.py".
-
+    buffer with batch format. It will receive only "obs" and "env_id" when the
+    collector resets the environment, and will receive six keys "obs_next", "rew",
+    "done", "info", "policy" and "env_id" in a normal env step. It returns either a
+    dict or a :class:`~tianshou.data.Batch` with the modified keys and values. Examples
+    are in "test/base/test_collector.py".
     .. note::
-
         Please make sure the given environment has a time limitation if using n_episode
         collect option.
-
     .. note::
-
         In past versions of Tianshou, the replay buffer that was passed to `__init__`
         was automatically reset. This is not done in the current implementation.
     """
@@ -63,7 +54,6 @@ class Collector(object):
         buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
         exploration_noise: bool = False,
-        gym_reset_return_info: bool = False,
     ) -> None:
         super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
@@ -76,7 +66,6 @@ class Collector(object):
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
-        self.gym_reset_return_info = gym_reset_return_info
         self._action_space = self.env.action_space
         # avoid creating attribute outside __init__
         self.reset(False)
@@ -105,7 +94,11 @@ class Collector(object):
                 )
         self.buffer = buffer
 
-    def reset(self, reset_buffer: bool = True) -> None:
+    def reset(
+        self,
+        reset_buffer: bool = True,
+        gym_reset_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """Reset the environment, statistics, current data and possibly replay memory.
 
         :param bool reset_buffer: if true, reset the replay buffer that is attached
@@ -116,7 +109,7 @@ class Collector(object):
         self.data = Batch(
             obs={}, act={}, rew={}, done={}, obs_next={}, info={}, policy={}
         )
-        self.reset_env()
+        self.reset_env(gym_reset_kwargs)
         if reset_buffer:
             self.reset_buffer()
         self.reset_stat()
@@ -129,10 +122,15 @@ class Collector(object):
         """Reset the data buffer."""
         self.buffer.reset(keep_statistics=keep_statistics)
 
-    def reset_env(self) -> None:
+    def reset_env(self, gym_reset_kwargs: Optional[Dict[str, Any]] = None) -> None:
         """Reset all of the environments."""
-        if self.gym_reset_return_info:
-            obs, info = self.env.reset(return_info=True)
+        gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
+        retval = self.env.reset(**gym_reset_kwargs)
+        returns_info = isinstance(retval, (tuple, list)) and len(retval) == 2 and (
+            isinstance(retval[1], dict) or isinstance(retval[1][0], dict)
+        )
+        if returns_info:
+            obs, info = retval
             if self.preprocess_fn:
                 processed_data = self.preprocess_fn(
                     obs=obs, info=info, env_id=np.arange(self.env_num)
@@ -141,7 +139,7 @@ class Collector(object):
                 info = processed_data.get("info", info)
                 self.data.info = info
         else:
-            obs = self.env.reset()
+            obs = retval
             if self.preprocess_fn:
                 obs = self.preprocess_fn(obs=obs, env_id=np.arange(self.env_num
                                                                    )).get("obs", obs)
@@ -159,11 +157,18 @@ class Collector(object):
                 state.empty_(id)
 
     def _reset_env_with_ids(
-        self, local_ids: Union[List[int], np.ndarray], global_ids: Union[List[int],
-                                                                         np.ndarray]
+        self,
+        local_ids: Union[List[int], np.ndarray],
+        global_ids: Union[List[int], np.ndarray],
+        gym_reset_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
-        if self.gym_reset_return_info:
-            obs_reset, info = self.env.reset(global_ids, return_info=True)
+        gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
+        retval = self.env.reset(global_ids, **gym_reset_kwargs)
+        returns_info = isinstance(retval, (tuple, list)) and len(retval) == 2 and (
+            isinstance(retval[1], dict) or isinstance(retval[1][0], dict)
+        )
+        if returns_info:
+            obs_reset, info = retval
             if self.preprocess_fn:
                 processed_data = self.preprocess_fn(
                     obs=obs_reset, info=info, env_id=global_ids
@@ -172,7 +177,7 @@ class Collector(object):
                 info = processed_data.get("info", info)
             self.data.info[local_ids] = info
         else:
-            obs_reset = self.env.reset(global_ids)
+            obs_reset = retval
             if self.preprocess_fn:
                 obs_reset = self.preprocess_fn(obs=obs_reset, env_id=global_ids
                                                ).get("obs", obs_reset)
@@ -185,6 +190,7 @@ class Collector(object):
         random: bool = False,
         render: Optional[float] = None,
         no_grad: bool = True,
+        gym_reset_kwargs: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Collect a specified number of step or episode.
 
@@ -323,7 +329,9 @@ class Collector(object):
                 episode_start_indices.append(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_env_with_ids(env_ind_local, env_ind_global)
+                self._reset_env_with_ids(
+                    env_ind_local, env_ind_global, gym_reset_kwargs
+                )
                 for i in env_ind_local:
                     self._reset_state(i)
 
@@ -394,17 +402,19 @@ class AsyncCollector(Collector):
         buffer: Optional[ReplayBuffer] = None,
         preprocess_fn: Optional[Callable[..., Batch]] = None,
         exploration_noise: bool = False,
-        gym_reset_return_info: bool = False,
     ) -> None:
         # assert env.is_async
         warnings.warn("Using async setting may collect extra transitions into buffer.")
         super().__init__(
-            policy, env, buffer, preprocess_fn, exploration_noise,
-            gym_reset_return_info
+            policy,
+            env,
+            buffer,
+            preprocess_fn,
+            exploration_noise,
         )
 
-    def reset_env(self) -> None:
-        super().reset_env()
+    def reset_env(self, gym_reset_kwargs: Optional[Dict[str, Any]] = None) -> None:
+        super().reset_env(gym_reset_kwargs)
         self._ready_env_ids = np.arange(self.env_num)
 
     def collect(

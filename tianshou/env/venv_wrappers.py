@@ -93,11 +93,10 @@ class VectorEnvNormObs(VectorEnvWrapper):
         **kwargs: Any,
     ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
         retval = self.venv.reset(id, **kwargs)
-        if not hasattr(self, "reset_returns_info"):
-            self.reset_returns_info = isinstance(
-                retval, (tuple, list)
-            ) and len(retval) == 2 and isinstance(retval[1], dict)
-        if self.reset_returns_info:
+        reset_returns_info = isinstance(
+            retval, (tuple, list)
+        ) and len(retval) == 2 and isinstance(retval[1], dict)
+        if reset_returns_info:
             obs, info = retval
         else:
             obs = retval
@@ -111,7 +110,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs)
         obs = self._norm_obs(obs)
-        if self.reset_returns_info:
+        if reset_returns_info:
             return obs, info
         else:
             return obs
