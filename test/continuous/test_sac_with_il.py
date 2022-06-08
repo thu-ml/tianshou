@@ -1,5 +1,11 @@
 import argparse
 import os
+import sys
+
+try:
+    import envpool
+except ImportError:
+    envpool = None
 
 import numpy as np
 import pytest
@@ -12,11 +18,6 @@ from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, ActorProb, Critic
-
-try:
-    import envpool
-except ImportError:
-    envpool = None
 
 
 def get_args():
@@ -56,15 +57,10 @@ def get_args():
     return args
 
 
-@pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
-@pytest.mark.parametrize("gym_reset_return_info", [False, True])
-def test_sac_with_il(gym_reset_return_info, args=get_args()):
-    # if you want to use python vector env, please refer to other test scripts
+@pytest.mark.skipif(sys.platform != "linux", reason="envpool only support linux now")
+def test_sac_with_il(args=get_args()):
     train_envs = env = envpool.make_gym(
-        args.task,
-        num_envs=args.training_num,
-        seed=args.seed,
-        gym_reset_return_info=gym_reset_return_info
+        args.task, num_envs=args.training_num, seed=args.seed
     )
     test_envs = envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed)
     args.state_shape = env.observation_space.shape or env.observation_space.n
