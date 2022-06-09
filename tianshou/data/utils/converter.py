@@ -1,7 +1,7 @@
 import pickle
 from copy import deepcopy
 from numbers import Number
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, no_type_check
 
 import h5py
 import numpy as np
@@ -10,6 +10,7 @@ import torch
 from tianshou.data.batch import Batch, _parse_value
 
 
+@no_type_check
 def to_numpy(x: Any) -> Union[Batch, np.ndarray]:
     """Return an object without torch.Tensor."""
     if isinstance(x, torch.Tensor):  # most often case
@@ -30,6 +31,7 @@ def to_numpy(x: Any) -> Union[Batch, np.ndarray]:
         return np.asanyarray(x)
 
 
+@no_type_check
 def to_torch(
     x: Any,
     dtype: Optional[torch.dtype] = None,
@@ -39,14 +41,14 @@ def to_torch(
     if isinstance(x, np.ndarray) and issubclass(
         x.dtype.type, (np.bool_, np.number)
     ):  # most often case
-        x = torch.from_numpy(x).to(device)  # type: ignore
+        x = torch.from_numpy(x).to(device)
         if dtype is not None:
             x = x.type(dtype)
         return x
     elif isinstance(x, torch.Tensor):  # second often case
         if dtype is not None:
             x = x.type(dtype)
-        return x.to(device)  # type: ignore
+        return x.to(device)
     elif isinstance(x, (np.number, np.bool_, Number)):
         return to_torch(np.asanyarray(x), dtype, device)
     elif isinstance(x, (dict, Batch)):
@@ -59,6 +61,7 @@ def to_torch(
         raise TypeError(f"object {x} cannot be converted to torch.")
 
 
+@no_type_check
 def to_torch_as(x: Any, y: torch.Tensor) -> Union[Batch, torch.Tensor]:
     """Return an object without np.ndarray.
 
@@ -78,13 +81,17 @@ Hdf5ConvertibleValues = Union[  # type: ignore
 Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]  # type: ignore
 
 
-def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
+def to_hdf5(
+    x: Hdf5ConvertibleType, y: h5py.Group, compression: Optional[str] = None
+) -> None:
     """Copy object into HDF5 group."""
 
-    def to_hdf5_via_pickle(x: object, y: h5py.Group, key: str) -> None:
+    def to_hdf5_via_pickle(
+        x: object, y: h5py.Group, key: str, compression: Optional[str] = None
+    ) -> None:
         """Pickle, convert to numpy array and write to HDF5 dataset."""
         data = np.frombuffer(pickle.dumps(x), dtype=np.byte)
-        y.create_dataset(key, data=data)
+        y.create_dataset(key, data=data, compression=compression)
 
     for k, v in x.items():
         if isinstance(v, (Batch, dict)):
@@ -95,22 +102,22 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
                 subgrp.attrs["__data_type__"] = "Batch"
             else:
                 subgrp_data = v
-            to_hdf5(subgrp_data, subgrp)
+            to_hdf5(subgrp_data, subgrp, compression=compression)
         elif isinstance(v, torch.Tensor):
             # PyTorch tensors are written to datasets
-            y.create_dataset(k, data=to_numpy(v))
+            y.create_dataset(k, data=to_numpy(v), compression=compression)
             y[k].attrs["__data_type__"] = "Tensor"
         elif isinstance(v, np.ndarray):
             try:
                 # NumPy arrays are written to datasets
-                y.create_dataset(k, data=v)
+                y.create_dataset(k, data=v, compression=compression)
                 y[k].attrs["__data_type__"] = "ndarray"
             except TypeError:
                 # If data type is not supported by HDF5 fall back to pickle.
                 # This happens if dtype=object (e.g. due to entries being None)
                 # and possibly in other cases like structured arrays.
                 try:
-                    to_hdf5_via_pickle(v, y, k)
+                    to_hdf5_via_pickle(v, y, k, compression=compression)
                 except Exception as exception:
                     raise RuntimeError(
                         f"Attempted to pickle {v.__class__.__name__} due to "
@@ -122,7 +129,7 @@ def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group) -> None:
             y.attrs[k] = v
         else:  # resort to pickle for any other type of object
             try:
-                to_hdf5_via_pickle(v, y, k)
+                to_hdf5_via_pickle(v, y, k, compression=compression)
             except Exception as exception:
                 raise NotImplementedError(
                     f"No conversion to HDF5 for object of type '{type(v)}' "

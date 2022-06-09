@@ -46,6 +46,34 @@ RayVectorEnv
    :show-inheritance:
 
 
+Wrapper
+-------
+
+ContinuousToDiscrete
+~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.ContinuousToDiscrete
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+VectorEnvWrapper
+~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.VectorEnvWrapper
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+VectorEnvNormObs
+~~~~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.VectorEnvNormObs
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 Worker
 ------
 
@@ -77,6 +105,18 @@ RayEnvWorker
 ~~~~~~~~~~~~
 
 .. autoclass:: tianshou.env.worker.RayEnvWorker
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Utils
+-----
+
+PettingZooEnv
+~~~~~~~~~~~~~
+
+.. autoclass:: tianshou.env.PettingZooEnv
    :members:
    :undoc-members:
    :show-inheritance:

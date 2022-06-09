@@ -64,14 +64,15 @@ class Collector(object):
         super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
-            env = DummyVectorEnv([lambda: env])
-        self.env = env
-        self.env_num = len(env)
+            self.env = DummyVectorEnv([lambda: env])  # type: ignore
+        else:
+            self.env = env  # type: ignore
+        self.env_num = len(self.env)
         self.exploration_noise = exploration_noise
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
-        self._action_space = env.action_space
+        self._action_space = self.env.action_space
         # avoid creating attribute outside __init__
         self.reset(False)
 
@@ -226,6 +227,7 @@ class Collector(object):
                     ]
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
+                act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
                 self.data.update(act=act_sample)
             else:
                 if no_grad:
@@ -364,6 +366,7 @@ class AsyncCollector(Collector):
         exploration_noise: bool = False,
     ) -> None:
         # assert env.is_async
+        warnings.warn("Using async setting may collect extra transitions into buffer.")
         super().__init__(policy, env, buffer, preprocess_fn, exploration_noise)
 
     def reset_env(self) -> None:
@@ -424,7 +427,6 @@ class AsyncCollector(Collector):
                 "Please specify at least one (either n_step or n_episode) "
                 "in AsyncCollector.collect()."
             )
-        warnings.warn("Using async setting may collect extra transitions into buffer.")
 
         ready_env_ids = self._ready_env_ids
 
@@ -451,6 +453,7 @@ class AsyncCollector(Collector):
                     ]
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
+                act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
                 self.data.update(act=act_sample)
             else:
                 if no_grad:

@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import PPOPolicy
-from tianshou.trainer import onpolicy_trainer
+from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -20,6 +20,7 @@ from tianshou.utils.net.continuous import ActorProb, Critic
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v1')
+    parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
@@ -56,11 +57,14 @@ def get_args():
 
 def test_ppo(args=get_args()):
     env = gym.make(args.task)
-    if args.task == 'Pendulum-v1':
-        env.spec.reward_threshold = -250
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
+    if args.reward_threshold is None:
+        default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
     train_envs = DummyVectorEnv(
@@ -113,7 +117,7 @@ def test_ppo(args=get_args()):
         dual_clip=args.dual_clip,
         value_clip=args.value_clip,
         gae_lambda=args.gae_lambda,
-        action_space=env.action_space
+        action_space=env.action_space,
     )
     # collector
     train_collector = Collector(
@@ -121,39 +125,43 @@ def test_ppo(args=get_args()):
     )
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'ppo')
+    log_path = os.path.join(args.logdir, args.task, "ppo")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
 
-    def save_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+    def save_best_fn(policy):
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+        return mean_rewards >= args.reward_threshold
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
+        # Example: saving by epoch num
+        # ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save(
             {
-                'model': policy.state_dict(),
-                'optim': optim.state_dict(),
-            }, os.path.join(log_path, 'checkpoint.pth')
+                "model": policy.state_dict(),
+                "optim": optim.state_dict(),
+            }, ckpt_path
         )
+        return ckpt_path
 
     if args.resume:
         # load from existing checkpoint
         print(f"Loading agent under {log_path}")
-        ckpt_path = os.path.join(log_path, 'checkpoint.pth')
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
-            policy.load_state_dict(checkpoint['model'])
-            optim.load_state_dict(checkpoint['optim'])
+            policy.load_state_dict(checkpoint["model"])
+            optim.load_state_dict(checkpoint["optim"])
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")
 
     # trainer
-    result = onpolicy_trainer(
+    trainer = OnpolicyTrainer(
         policy,
         train_collector,
         test_collector,
@@ -164,15 +172,21 @@ def test_ppo(args=get_args()):
         args.batch_size,
         episode_per_collect=args.episode_per_collect,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         logger=logger,
         resume_from_log=args.resume,
-        save_checkpoint_fn=save_checkpoint_fn
+        save_checkpoint_fn=save_checkpoint_fn,
     )
-    assert stop_fn(result['best_reward'])
 
-    if __name__ == '__main__':
-        pprint.pprint(result)
+    for epoch, epoch_stat, info in trainer:
+        print(f"Epoch: {epoch}")
+        print(epoch_stat)
+        print(info)
+
+    assert stop_fn(info["best_reward"])
+
+    if __name__ == "__main__":
+        pprint.pprint(info)
         # Let's watch its performance!
         env = gym.make(args.task)
         policy.eval()
@@ -187,5 +201,5 @@ def test_ppo_resume(args=get_args()):
     test_ppo(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_ppo()

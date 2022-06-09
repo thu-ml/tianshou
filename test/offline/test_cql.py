@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import CQLPolicy
-from tianshou.trainer import offline_trainer
+from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -26,7 +26,7 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v1')
-    parser.add_argument('--reward_threshold', type=float, default=-1200)
+    parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
@@ -79,7 +79,12 @@ def test_cql(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]  # float
-    env.spec.reward_threshold = args.reward_threshold
+    if args.reward_threshold is None:
+        # too low?
+        default_reward_threshold = {"Pendulum-v0": -1200, "Pendulum-v1": -1200}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]
@@ -173,11 +178,11 @@ def test_cql(args=get_args()):
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_fn(policy):
+    def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+        return mean_rewards >= args.reward_threshold
 
     def watch():
         policy.load_state_dict(
@@ -190,7 +195,7 @@ def test_cql(args=get_args()):
         collector.collect(n_episode=1, render=1 / 35)
 
     # trainer
-    result = offline_trainer(
+    trainer = OfflineTrainer(
         policy,
         buffer,
         test_collector,
@@ -198,15 +203,21 @@ def test_cql(args=get_args()):
         args.step_per_epoch,
         args.test_num,
         args.batch_size,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         stop_fn=stop_fn,
         logger=logger,
     )
-    assert stop_fn(result['best_reward'])
+
+    for epoch, epoch_stat, info in trainer:
+        print(f"Epoch: {epoch}")
+        print(epoch_stat)
+        print(info)
+
+    assert stop_fn(info["best_reward"])
 
     # Let's watch its performance!
-    if __name__ == '__main__':
-        pprint.pprint(result)
+    if __name__ == "__main__":
+        pprint.pprint(info)
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)

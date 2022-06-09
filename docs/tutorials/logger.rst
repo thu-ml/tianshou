@@ -34,8 +34,12 @@ WandbLogger
 ::
 
     from tianshou.utils import WandbLogger
+    from torch.utils.tensorboard import SummaryWriter
 
     logger = WandbLogger(...)
+    writer = SummaryWriter(log_path)
+    writer.add_text("args", str(args))
+    logger.load(writer)
     result = trainer(..., logger=logger)
 
 Please refer to :class:`~tianshou.utils.WandbLogger` documentation for advanced configuration.

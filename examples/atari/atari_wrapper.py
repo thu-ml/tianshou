@@ -8,12 +8,12 @@ import cv2
 import gym
 import numpy as np
 
+from tianshou.env import ShmemVectorEnv
+
 try:
     import envpool
 except ImportError:
     envpool = None
-
-from tianshou.env import ShmemVectorEnv
 
 
 class NoopResetEnv(gym.Wrapper):
@@ -279,7 +279,7 @@ def make_atari_env(task, seed, training_num, test_num, **kwargs):
         )
         test_envs = envpool.make_gym(
             task.replace("NoFrameskip-v4", "-v5"),
-            num_envs=training_num,
+            num_envs=test_num,
             seed=seed,
             episodic_life=False,
             reward_clip=False,

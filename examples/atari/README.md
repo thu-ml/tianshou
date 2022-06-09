@@ -10,7 +10,7 @@ pip install envpool
 
 After that, `atari_wrapper` will automatically switch to envpool's Atari env. EnvPool's implementation is much faster (about 2\~3x faster for pure execution speed, 1.5x for overall RL training pipeline) than python vectorized env implementation, and it's behavior is consistent to that approach (OpenAI wrapper), which will describe below.
 
-For more information, please refer to EnvPool's [GitHub](https://github.com/sail-sg/envpool/), [Docs](https://envpool.readthedocs.io/en/latest/api/atari.html), and [3rd-party report](https://ppo-details.cleanrl.dev/2021/11/05/ppo-implementation-details/#solving-pong-in-5-minutes-with-ppo--envpool).
+For more information, please refer to EnvPool's [GitHub](https://github.com/sail-sg/envpool/), [Docs](https://envpool.readthedocs.io/en/latest/api/atari.html), and [3rd-party report](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/#solving-pong-in-5-minutes-with-ppo--envpool).
 
 ## ALE-py
 
@@ -121,3 +121,17 @@ One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
 | MsPacmanNoFrameskip-v4      | 1930       | ![](results/ppo/MsPacman_rew.png)     | `python3 atari_ppo.py --task "MsPacmanNoFrameskip-v4"`  |
 | SeaquestNoFrameskip-v4      | 904      | ![](results/ppo/Seaquest_rew.png)     | `python3 atari_ppo.py --task "SeaquestNoFrameskip-v4" --lr 2.5e-5`  |
 | SpaceInvadersNoFrameskip-v4 | 843       | ![](results/ppo/SpaceInvaders_rew.png) | `python3 atari_ppo.py --task "SpaceInvadersNoFrameskip-v4"`  |
+
+# SAC (single run)
+
+One epoch here is equal to 100,000 env step, 100 epochs stand for 10M.
+
+| task                        | best reward | reward curve                          | parameters                                                   |
+| --------------------------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
+| PongNoFrameskip-v4          | 20.1        | ![](results/discrete_sac/Pong_rew.png)         | `python3 atari_sac.py --task "PongNoFrameskip-v4"` |
+| BreakoutNoFrameskip-v4      | 211.2        | ![](results/discrete_sac/Breakout_rew.png)     | `python3 atari_sac.py --task "BreakoutNoFrameskip-v4" --n-step 1 --actor-lr 1e-4 --critic-lr 1e-4` |
+| EnduroNoFrameskip-v4        | 1290.7       | ![](results/discrete_sac/Enduro_rew.png)       | `python3 atari_sac.py --task "EnduroNoFrameskip-v4"`  |
+| QbertNoFrameskip-v4         | 13157.5      | ![](results/discrete_sac/Qbert_rew.png)        | `python3 atari_sac.py --task "QbertNoFrameskip-v4"`  |
+| MsPacmanNoFrameskip-v4      | 3836       | ![](results/discrete_sac/MsPacman_rew.png)     | `python3 atari_sac.py --task "MsPacmanNoFrameskip-v4"`  |
+| SeaquestNoFrameskip-v4      | 1772      | ![](results/discrete_sac/Seaquest_rew.png)     | `python3 atari_sac.py --task "SeaquestNoFrameskip-v4"`  |
+| SpaceInvadersNoFrameskip-v4 | 649       | ![](results/discrete_sac/SpaceInvaders_rew.png) | `python3 atari_sac.py --task "SpaceInvadersNoFrameskip-v4"`  |

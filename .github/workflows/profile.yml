@@ -20,4 +20,4 @@ jobs:
         python -m pip install ".[dev]" --upgrade
     - name: Test with pytest
       run: |
-        pytest test/throughput --durations=0 -v
+        pytest test/throughput --durations=0 -v --color=yes

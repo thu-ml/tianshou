@@ -26,6 +26,7 @@ else:  # pytest
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v1')
+    parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
@@ -57,6 +58,7 @@ def get_args():
         help='watch the play of pre-trained policy only',
     )
     parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
+    parser.add_argument("--show-progress", action="store_true")
     args = parser.parse_known_args()[0]
     return args
 
@@ -73,8 +75,12 @@ def test_bcq(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]  # float
-    if args.task == 'Pendulum-v1':
-        env.spec.reward_threshold = -1100  # too low?
+    if args.reward_threshold is None:
+        # too low?
+        default_reward_threshold = {"Pendulum-v0": -1100, "Pendulum-v1": -1100}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]
@@ -176,11 +182,11 @@ def test_bcq(args=get_args()):
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
-    def save_fn(policy):
+    def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+        return mean_rewards >= args.reward_threshold
 
     def watch():
         policy.load_state_dict(
@@ -201,9 +207,10 @@ def test_bcq(args=get_args()):
         args.step_per_epoch,
         args.test_num,
         args.batch_size,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         stop_fn=stop_fn,
         logger=logger,
+        show_progress=args.show_progress,
     )
     assert stop_fn(result['best_reward'])
 
