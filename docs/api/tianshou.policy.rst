@@ -25,6 +25,11 @@ DQN Family
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.BranchingDQNPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: tianshou.policy.C51Policy
    :members:
    :undoc-members:
@@ -96,6 +101,11 @@ Off-policy
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.REDQPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: tianshou.policy.DiscreteSACPolicy
    :members:
    :undoc-members:
@@ -119,6 +129,11 @@ Imitation
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: tianshou.policy.TD3BCPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. autoclass:: tianshou.policy.DiscreteBCQPolicy
    :members:
    :undoc-members:
@@ -130,6 +145,11 @@ Imitation
    :show-inheritance:
 
 .. autoclass:: tianshou.policy.DiscreteCRRPolicy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: tianshou.policy.GAILPolicy
    :members:
    :undoc-members:
    :show-inheritance:

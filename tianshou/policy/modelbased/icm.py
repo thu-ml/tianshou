@@ -17,6 +17,8 @@ class ICMPolicy(BasePolicy):
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param float lr_scale: the scaling factor for ICM learning.
     :param float forward_loss_weight: the weight for forward model loss.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 
@@ -103,7 +105,7 @@ class ICMPolicy(BasePolicy):
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
         act = to_torch(batch.act, dtype=torch.long, device=act_hat.device)
-        inverse_loss = F.cross_entropy(act_hat, act).mean()  # type: ignore
+        inverse_loss = F.cross_entropy(act_hat, act).mean()
         forward_loss = batch.policy.mse_loss.mean()
         loss = (
             (1 - self.forward_loss_weight) * inverse_loss +

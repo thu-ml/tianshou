@@ -160,7 +160,7 @@ class ImplicitQuantileNetwork(Critic):
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
-    :param int action_dim: the dimension of action space.
+    :param int action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
@@ -254,7 +254,7 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
-    :param int action_dim: the dimension of action space.
+    :param int action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).

@@ -22,6 +22,7 @@ def get_install_requires() -> str:
         "torch>=1.4.0",
         "numba>=0.51.0",
         "h5py>=2.10.0",  # to match tensorflow's minimal requirements
+        "protobuf~=3.19.0",  # breaking change, sphinx fail
     ]
 
 
@@ -30,6 +31,7 @@ def get_extras_require() -> str:
         "dev": [
             "sphinx<4",
             "sphinx_rtd_theme",
+            "jinja2<3.1",  # temporary fix
             "sphinxcontrib-bibtex",
             "flake8",
             "flake8-bugbear",
@@ -45,7 +47,7 @@ def get_extras_require() -> str:
             "doc8",
             "scipy",
             "pillow",
-            "pettingzoo>=1.12",
+            "pettingzoo>=1.17",
             "pygame>=2.1.0",  # pettingzoo test cases pistonball
             "pymunk>=6.2.1",  # pettingzoo test cases pistonball
             "nni>=2.3",
@@ -55,7 +57,7 @@ def get_extras_require() -> str:
         "pybullet": ["pybullet"],
     }
     if sys.platform == "linux":
-        req["dev"].append("envpool>=0.4.5")
+        req["dev"].append("envpool>=0.5.3")
     return req
 
 

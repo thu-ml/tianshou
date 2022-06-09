@@ -1,11 +1,5 @@
 import argparse
 import os
-import sys
-
-try:
-    import envpool
-except ImportError:
-    envpool = None
 
 import numpy as np
 import pytest
@@ -19,11 +13,17 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, ActorProb, Critic
 
+try:
+    import envpool
+except ImportError:
+    envpool = None
+
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='Pendulum-v0')
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--reward-threshold', type=float, default=None)
+    parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
@@ -56,18 +56,21 @@ def get_args():
     return args
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="envpool only support linux now")
+@pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_sac_with_il(args=get_args()):
+    # if you want to use python vector env, please refer to other test scripts
     train_envs = env = envpool.make_gym(
         args.task, num_envs=args.training_num, seed=args.seed
     )
     test_envs = envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed)
-    reward_threshold = None
-    if args.task == 'Pendulum-v0':
-        reward_threshold = -250
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
+    if args.reward_threshold is None:
+        default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
     # you can also use tianshou.env.SubprocVectorEnv
     # seed
     np.random.seed(args.seed)
@@ -135,11 +138,11 @@ def test_sac_with_il(args=get_args()):
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
-    def save_fn(policy):
+    def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= reward_threshold
+        return mean_rewards >= args.reward_threshold
 
     # trainer
     result = offpolicy_trainer(
@@ -153,15 +156,15 @@ def test_sac_with_il(args=get_args()):
         args.batch_size,
         update_per_step=args.update_per_step,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         logger=logger
     )
     assert stop_fn(result['best_reward'])
 
     # here we define an imitation collector with a trivial policy
     policy.eval()
-    if args.task == 'Pendulum-v0':
-        reward_threshold = -300  # lower the goal
+    if args.task.startswith("Pendulum"):
+        args.reward_threshold -= 50  # lower the goal
     net = Actor(
         Net(
             args.state_shape,
@@ -195,7 +198,7 @@ def test_sac_with_il(args=get_args()):
         args.test_num,
         args.batch_size,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         logger=logger
     )
     assert stop_fn(result['best_reward'])

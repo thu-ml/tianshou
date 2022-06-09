@@ -2,7 +2,9 @@ import argparse
 import os
 from typing import Callable, Optional, Tuple
 
-from tianshou.utils import BaseLogger
+from torch.utils.tensorboard import SummaryWriter
+
+from tianshou.utils import BaseLogger, TensorboardLogger
 from tianshou.utils.logger.base import LOG_DATA_TYPE
 
 try:
@@ -17,22 +19,22 @@ class WandbLogger(BaseLogger):
     This logger creates three panels with plots: train, test, and update.
     Make sure to select the correct access for each panel in weights and biases:
 
-    - ``train/env_step`` for train plots
-    - ``test/env_step`` for test plots
-    - ``update/gradient_step`` for update plots
-
     Example of usage:
     ::
 
-        with wandb.init(project="My Project"):
-            logger = WandBLogger()
-            result = onpolicy_trainer(policy, train_collector, test_collector,
-                    logger=logger)
+        logger = WandbLogger()
+        logger.load(SummaryWriter(log_path))
+        result = onpolicy_trainer(policy, train_collector, test_collector,
+                                  logger=logger)
 
     :param int train_interval: the log interval in log_train_data(). Default to 1000.
     :param int test_interval: the log interval in log_test_data(). Default to 1.
     :param int update_interval: the log interval in log_update_data().
         Default to 1000.
+    :param int save_interval: the save interval in save_data(). Default to 1 (save at
+        the end of each epoch).
+    :param bool write_flush: whether to flush tensorboard result after each
+        add_scalar operation. Default to True.
     :param str project: W&B project name. Default to "tianshou".
     :param str name: W&B run name. Default to None. If None, random name is assigned.
     :param str entity: W&B team/organization name. Default to None.
@@ -46,7 +48,8 @@ class WandbLogger(BaseLogger):
         test_interval: int = 1,
         update_interval: int = 1000,
         save_interval: int = 1000,
-        project: str = 'tianshou',
+        write_flush: bool = True,
+        project: Optional[str] = None,
         name: Optional[str] = None,
         entity: Optional[str] = None,
         run_id: Optional[str] = None,
@@ -55,7 +58,10 @@ class WandbLogger(BaseLogger):
         super().__init__(train_interval, test_interval, update_interval)
         self.last_save_step = -1
         self.save_interval = save_interval
+        self.write_flush = write_flush
         self.restored = False
+        if project is None:
+            project = os.getenv("WANDB_PROJECT", "tianshou")
 
         self.wandb_run = wandb.init(
             project=project,
@@ -63,21 +69,35 @@ class WandbLogger(BaseLogger):
             id=run_id,
             resume="allow",
             entity=entity,
+            sync_tensorboard=True,
             monitor_gym=True,
             config=config,  # type: ignore
         ) if not wandb.run else wandb.run
         self.wandb_run._label(repo="tianshou")  # type: ignore
+        self.tensorboard_logger: Optional[TensorboardLogger] = None
+
+    def load(self, writer: SummaryWriter) -> None:
+        self.writer = writer
+        self.tensorboard_logger = TensorboardLogger(
+            writer, self.train_interval, self.test_interval, self.update_interval,
+            self.save_interval, self.write_flush
+        )
 
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
-        data[step_type] = step
-        wandb.log(data)
+        if self.tensorboard_logger is None:
+            raise Exception(
+                "`logger` needs to load the Tensorboard Writer before "
+                "writing data. Try `logger.load(SummaryWriter(log_path))`"
+            )
+        else:
+            self.tensorboard_logger.write(step_type, step, data)
 
     def save_data(
         self,
         epoch: int,
         env_step: int,
         gradient_step: int,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
+        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 
@@ -98,7 +118,7 @@ class WandbLogger(BaseLogger):
                     "save/epoch": epoch,
                     "save/env_step": env_step,
                     "save/gradient_step": gradient_step,
-                    "checkpoint_path": str(checkpoint_path)
+                    "checkpoint_path": str(checkpoint_path),
                 }
             )
             checkpoint_artifact.add_file(str(checkpoint_path))
@@ -106,7 +126,7 @@ class WandbLogger(BaseLogger):
 
     def restore_data(self) -> Tuple[int, int, int]:
         checkpoint_artifact = self.wandb_run.use_artifact(    # type: ignore
-            'run_' + self.wandb_run.id + '_checkpoint:latest'  # type: ignore
+            f"run_{self.wandb_run.id}_checkpoint:latest"  # type: ignore
         )
         assert checkpoint_artifact is not None, "W&B dataset artifact doesn't exist"
 

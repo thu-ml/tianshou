@@ -20,6 +20,7 @@ from tianshou.utils.net.discrete import NoisyLinear
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='CartPole-v0')
+    parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=1626)
     parser.add_argument('--eps-test', type=float, default=0.05)
     parser.add_argument('--eps-train', type=float, default=0.1)
@@ -61,6 +62,11 @@ def test_rainbow(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
+    if args.reward_threshold is None:
+        default_reward_threshold = {"CartPole-v0": 195}
+        args.reward_threshold = default_reward_threshold.get(
+            args.task, env.spec.reward_threshold
+        )
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
     train_envs = DummyVectorEnv(
@@ -92,7 +98,7 @@ def test_rainbow(args=get_args()):
             "linear_layer": noisy_linear
         }, {
             "linear_layer": noisy_linear
-        })
+        }),
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = RainbowPolicy(
@@ -103,7 +109,7 @@ def test_rainbow(args=get_args()):
         args.v_min,
         args.v_max,
         args.n_step,
-        target_update_freq=args.target_update_freq
+        target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer
     if args.prioritized_replay:
@@ -112,7 +118,7 @@ def test_rainbow(args=get_args()):
             buffer_num=len(train_envs),
             alpha=args.alpha,
             beta=args.beta,
-            weight_norm=True
+            weight_norm=True,
         )
     else:
         buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(train_envs))
@@ -122,15 +128,15 @@ def test_rainbow(args=get_args()):
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'rainbow')
+    log_path = os.path.join(args.logdir, args.task, "rainbow")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
 
-    def save_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+    def save_best_fn(policy):
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
-        return mean_rewards >= env.spec.reward_threshold
+        return mean_rewards >= args.reward_threshold
 
     def train_fn(epoch, env_step):
         # eps annealing, just a demo
@@ -158,21 +164,23 @@ def test_rainbow(args=get_args()):
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
+        # Example: saving by epoch num
+        # ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
         torch.save(
             {
-                'model': policy.state_dict(),
-                'optim': optim.state_dict(),
-            }, os.path.join(log_path, 'checkpoint.pth')
+                "model": policy.state_dict(),
+                "optim": optim.state_dict(),
+            }, ckpt_path
         )
-        pickle.dump(
-            train_collector.buffer,
-            open(os.path.join(log_path, 'train_buffer.pkl'), "wb")
-        )
+        buffer_path = os.path.join(log_path, "train_buffer.pkl")
+        pickle.dump(train_collector.buffer, open(buffer_path, "wb"))
+        return ckpt_path
 
     if args.resume:
         # load from existing checkpoint
         print(f"Loading agent under {log_path}")
-        ckpt_path = os.path.join(log_path, 'checkpoint.pth')
+        ckpt_path = os.path.join(log_path, "checkpoint.pth")
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
             policy.load_state_dict(checkpoint['model'])
@@ -180,7 +188,7 @@ def test_rainbow(args=get_args()):
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")
-        buffer_path = os.path.join(log_path, 'train_buffer.pkl')
+        buffer_path = os.path.join(log_path, "train_buffer.pkl")
         if os.path.exists(buffer_path):
             train_collector.buffer = pickle.load(open(buffer_path, "rb"))
             print("Successfully restore buffer.")
@@ -201,14 +209,14 @@ def test_rainbow(args=get_args()):
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
-        save_fn=save_fn,
+        save_best_fn=save_best_fn,
         logger=logger,
         resume_from_log=args.resume,
-        save_checkpoint_fn=save_checkpoint_fn
+        save_checkpoint_fn=save_checkpoint_fn,
     )
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
@@ -232,5 +240,5 @@ def test_prainbow(args=get_args()):
     test_rainbow(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_rainbow(get_args())

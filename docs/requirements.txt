@@ -6,3 +6,4 @@ sphinxcontrib-bibtex
 tensorboard
 torch
 tqdm
+protobuf~=3.19.0

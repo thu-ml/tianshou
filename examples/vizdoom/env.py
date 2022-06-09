@@ -5,6 +5,13 @@ import gym
 import numpy as np
 import vizdoom as vzd
 
+from tianshou.env import ShmemVectorEnv
+
+try:
+    import envpool
+except ImportError:
+    envpool = None
+
 
 def normal_button_comb():
     actions = []
@@ -110,6 +117,58 @@ class Env(gym.Env):
 
     def close(self):
         self.game.close()
+
+
+def make_vizdoom_env(task, frame_skip, res, save_lmp, seed, training_num, test_num):
+    test_num = min(os.cpu_count() - 1, test_num)
+    if envpool is not None:
+        task_id = "".join([i.capitalize() for i in task.split("_")]) + "-v1"
+        lmp_save_dir = "lmps/" if save_lmp else ""
+        reward_config = {
+            "KILLCOUNT": [20.0, -20.0],
+            "HEALTH": [1.0, 0.0],
+            "AMMO2": [1.0, -1.0],
+        }
+        if "battle" in task:
+            reward_config["HEALTH"] = [1.0, -1.0]
+        env = train_envs = envpool.make_gym(
+            task_id,
+            frame_skip=frame_skip,
+            stack_num=res[0],
+            seed=seed,
+            num_envs=training_num,
+            reward_config=reward_config,
+            use_combined_action=True,
+            max_episode_steps=2625,
+            use_inter_area_resize=False,
+        )
+        test_envs = envpool.make_gym(
+            task_id,
+            frame_skip=frame_skip,
+            stack_num=res[0],
+            lmp_save_dir=lmp_save_dir,
+            seed=seed,
+            num_envs=test_num,
+            reward_config=reward_config,
+            use_combined_action=True,
+            max_episode_steps=2625,
+            use_inter_area_resize=False,
+        )
+    else:
+        cfg_path = f"maps/{task}.cfg"
+        env = Env(cfg_path, frame_skip, res)
+        train_envs = ShmemVectorEnv(
+            [lambda: Env(cfg_path, frame_skip, res) for _ in range(training_num)]
+        )
+        test_envs = ShmemVectorEnv(
+            [
+                lambda: Env(cfg_path, frame_skip, res, save_lmp)
+                for _ in range(test_num)
+            ]
+        )
+        train_envs.seed(seed)
+        test_envs.seed(seed)
+    return env, train_envs, test_envs
 
 
 if __name__ == '__main__':

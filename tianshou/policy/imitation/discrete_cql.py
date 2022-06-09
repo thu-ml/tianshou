@@ -23,6 +23,8 @@ class DiscreteCQLPolicy(QRDQNPolicy):
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.
     :param float min_q_weight: the weight for the cql loss.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
         Please refer to :class:`~tianshou.policy.QRDQNPolicy` for more detailed

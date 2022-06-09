@@ -36,6 +36,8 @@ class BCQPolicy(BasePolicy):
     :param int num_sampled_action: the number of sampled actions in calculating
         target Q. The algorithm samples several actions using VAE, and perturbs
         each action to get the target Q. Default to 10.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 
@@ -102,9 +104,7 @@ class BCQPolicy(BasePolicy):
         """Compute action over the given batch data."""
         # There is "obs" in the Batch
         # obs_group: several groups. Each group has a state.
-        obs_group: torch.Tensor = to_torch(  # type: ignore
-            batch.obs, device=self.device
-        )
+        obs_group: torch.Tensor = to_torch(batch.obs, device=self.device)
         act_group = []
         for obs in obs_group:
             # now obs is (state_dim)
@@ -130,9 +130,7 @@ class BCQPolicy(BasePolicy):
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
-        batch: Batch = to_torch(  # type: ignore
-            batch, dtype=torch.float, device=self.device
-        )
+        batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
         obs, act = batch.obs, batch.act
         batch_size = obs.shape[0]
 

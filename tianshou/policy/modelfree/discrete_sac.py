@@ -28,6 +28,8 @@ class DiscreteSACPolicy(SACPolicy):
         alpha is automatically tuned.
     :param bool reward_normalization: normalize the reward to Normal(0, 1).
         Default to False.
+    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
+        optimizer in each policy.update(). Default to None (no lr_scheduler).
 
     .. seealso::
 
@@ -78,7 +80,10 @@ class DiscreteSACPolicy(SACPolicy):
         obs = batch[input]
         logits, hidden = self.actor(obs, state=state, info=batch.info)
         dist = Categorical(logits=logits)
-        act = dist.sample()
+        if self._deterministic_eval and not self.training:
+            act = logits.argmax(axis=-1)
+        else:
+            act = dist.sample()
         return Batch(logits=logits, act=act, state=hidden, dist=dist)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
