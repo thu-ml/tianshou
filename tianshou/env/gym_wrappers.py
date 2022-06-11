@@ -40,7 +40,7 @@ class MultiDiscreteToDiscrete(gym.ActionWrapper):
         assert nvec.ndim == 1
         self.bases = np.ones_like(nvec)
         for i in range(1, len(self.bases)):
-            self.bases[i] = self.bases[i-1]*nvec[-i]
+            self.bases[i] = self.bases[i - 1] * nvec[-i]
         self.action_space = gym.spaces.Discrete(np.prod(nvec))
 
     def action(self, act: int) -> np.ndarray:
