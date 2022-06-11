@@ -31,23 +31,21 @@ class ContinuousToDiscrete(gym.ActionWrapper):
 class MultiDiscreteToDiscrete(gym.ActionWrapper):
     """Gym environment wrapper to discrete action in multidiscrete environment.
 
-    :param gym.Env env: gym environment with continuous action space.
+    :param gym.Env env: gym environment with multidiscrete action space.
     """
 
     def __init__(self, env: gym.Env) -> None:
         super().__init__(env)
-        assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
-        self.num_dim = env.action_space.shape[0]
-        assert len(
-            set(env.action_space.nvec)
-        ) == 1  # TODO support for different num of actions per dim
-        self.action_per_dim = env.action_space.nvec[0]
-        self.action_space = gym.spaces.Discrete(self.action_per_dim**self.num_dim)
+        nvec = env.action_space.nvec
+        assert nvec.ndim == 1
+        self.bases = np.ones_like(nvec)
+        for i in range(1, len(self.bases)):
+            self.bases[i] = self.bases[i-1]*nvec[-i]
+        self.action_space = gym.spaces.Discrete(np.prod(nvec))
 
-    def action(self, act: np.ndarray) -> np.ndarray:
-        # modify act
+    def action(self, act: int) -> np.ndarray:
         converted_act = []
-        for i in range(self.num_dim):
-            converted_act.append(act // self.action_per_dim**(self.num_dim - i))
-            act = act % self.action_per_dim**(self.num_dim - i)
-        return np.array(converted_act)
+        for b in np.flip(self.bases):
+            converted_act.append(act // b)
+            act = act % b
+        return np.array(converted_act).transpose()
