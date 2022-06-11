@@ -36,6 +36,7 @@ class MultiDiscreteToDiscrete(gym.ActionWrapper):
 
     def __init__(self, env: gym.Env) -> None:
         super().__init__(env)
+        assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
         nvec = env.action_space.nvec
         assert nvec.ndim == 1
         self.bases = np.ones_like(nvec)
