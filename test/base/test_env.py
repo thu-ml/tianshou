@@ -1,13 +1,16 @@
 import sys
 import time
 
+import gym
 import numpy as np
 import pytest
 from gym.spaces.discrete import Discrete
 
 from tianshou.data import Batch
 from tianshou.env import (
+    ContinuousToDiscrete,
     DummyVectorEnv,
+    MultiDiscreteToDiscrete,
     RayVectorEnv,
     ShmemVectorEnv,
     SubprocVectorEnv,
@@ -263,6 +266,34 @@ def test_venv_norm_obs():
     test_env = VectorEnvNormObs(DummyVectorEnv(env_fns), update_obs_rms=False)
     test_env.set_obs_rms(train_env.get_obs_rms())
     run_align_norm_obs(raw, train_env, test_env, action_list)
+
+
+def test_gym_wrappers():
+    bsz = 10
+    action_per_branch = [4, 6, 10, 7]
+    env = gym.make("BipedalWalker-v3")
+    original_act = env.action_space.high
+    # convert continous to multidiscrete action space
+    # with different action number per dimension
+    env_m = ContinuousToDiscrete(env, action_per_branch)
+    # check conversion is working properly for one action
+    assert ((env_m.action(env_m.action_space.nvec - 1)) == original_act).all()
+    # check conversion is working properly for a batch of actions
+    assert (
+        env_m.action(np.array([env_m.action_space.nvec - 1] * bsz)
+                     ) == np.array([original_act] * bsz)
+    ).all()
+    # convert multidiscrete with different action number per
+    # dimension to discrete action space
+    env_d = MultiDiscreteToDiscrete(env_m)
+    # check conversion is working properly for one action
+    assert (env_d.action(env_d.action_space.n - 1) == env_m.action_space.nvec -
+            1).all()
+    # check conversion is working properly for a batch of actions
+    assert (
+        env_d.action(np.array([env_d.action_space.n - 1] * bsz)
+                     ) == np.array([env_m.action_space.nvec - 1] * bsz)
+    ).all()
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
