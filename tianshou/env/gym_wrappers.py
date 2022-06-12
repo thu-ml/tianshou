@@ -27,14 +27,12 @@ class ContinuousToDiscrete(gym.ActionWrapper):
 
     def action(self, act: np.ndarray) -> np.ndarray:
         # modify act
+        assert len(act.shape) <= 2, f"Unknown action format with shape {act.shape}."
         if len(act.shape) == 1:
             return np.array([self.mesh[i][a] for i, a in enumerate(act)])
-        elif len(act.shape) == 2:
-            return np.array(
-                [[self.mesh[i][a] for i, a in enumerate(a_)] for a_ in act]
-            )
-        else:
-            raise Exception
+        return np.array(
+            [[self.mesh[i][a] for i, a in enumerate(a_)] for a_ in act]
+        )
 
 
 class MultiDiscreteToDiscrete(gym.ActionWrapper):

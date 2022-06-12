@@ -270,7 +270,7 @@ def test_venv_norm_obs():
 
 def test_gym_wrappers():
 
-    class DummyEnv():
+    class DummyEnv(gym.Env):
 
         def __init__(self):
             self.action_space = gym.spaces.Box(
@@ -285,23 +285,24 @@ def test_gym_wrappers():
     # with different action number per dimension
     env_m = ContinuousToDiscrete(env, action_per_branch)
     # check conversion is working properly for one action
-    assert ((env_m.action(env_m.action_space.nvec - 1)) == original_act).all()
+    np.testing.assert_allclose(env_m.action(env_m.action_space.nvec - 1), original_act)
     # check conversion is working properly for a batch of actions
-    assert (
-        env_m.action(np.array([env_m.action_space.nvec - 1] * bsz)
-                     ) == np.array([original_act] * bsz)
-    ).all()
+    np.testing.assert_allclose(
+        env_m.action(np.array([env_m.action_space.nvec - 1] * bsz)),
+        np.array([original_act] * bsz)
+    )
     # convert multidiscrete with different action number per
     # dimension to discrete action space
     env_d = MultiDiscreteToDiscrete(env_m)
     # check conversion is working properly for one action
-    assert (env_d.action(env_d.action_space.n - 1) == env_m.action_space.nvec -
-            1).all()
+    np.testing.assert_allclose(
+        env_d.action(env_d.action_space.n - 1), env_m.action_space.nvec - 1
+    )
     # check conversion is working properly for a batch of actions
-    assert (
-        env_d.action(np.array([env_d.action_space.n - 1] * bsz)
-                     ) == np.array([env_m.action_space.nvec - 1] * bsz)
-    ).all()
+    np.testing.assert_allclose(
+        env_d.action(np.array([env_d.action_space.n - 1] * bsz)),
+        np.array([env_m.action_space.nvec - 1] * bsz)
+    )
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
@@ -318,7 +319,7 @@ def test_venv_wrapper_envpool():
     run_align_norm_obs(raw, train, test, actions)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_venv_norm_obs()
     test_venv_wrapper_envpool()
     test_env_obs_dtype()
