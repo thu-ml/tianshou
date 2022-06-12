@@ -1,3 +1,5 @@
+from typing import List, Union
+
 import gym
 import numpy as np
 
@@ -6,30 +8,37 @@ class ContinuousToDiscrete(gym.ActionWrapper):
     """Gym environment wrapper to take discrete action in a continuous environment.
 
     :param gym.Env env: gym environment with continuous action space.
-    :param int action_per_branch: number of discrete actions in each dimension
+    :param int action_per_dim: number of discrete actions in each dimension
         of the action space.
     """
 
-    def __init__(self, env: gym.Env, action_per_branch: int) -> None:
+    def __init__(self, env: gym.Env, action_per_dim: Union[int, List[int]]) -> None:
         super().__init__(env)
         assert isinstance(env.action_space, gym.spaces.Box)
         low, high = env.action_space.low, env.action_space.high
-        num_branches = env.action_space.shape[0]
-        self.action_space = gym.spaces.MultiDiscrete(
-            [action_per_branch] * num_branches
-        )
+        if isinstance(action_per_dim, int):
+            action_per_dim = [action_per_dim] * env.action_space.shape[0]
+        assert len(action_per_dim) == env.action_space.shape[0]
+        self.action_space = gym.spaces.MultiDiscrete(action_per_dim)
         mesh = []
-        for lo, hi in zip(low, high):
-            mesh.append(np.linspace(lo, hi, action_per_branch))
+        for lo, hi, a in zip(low, high, action_per_dim):
+            mesh.append(np.linspace(lo, hi, a), dtype=object)
         self.mesh = np.array(mesh)
 
     def action(self, act: np.ndarray) -> np.ndarray:
         # modify act
-        return np.array([self.mesh[i][a] for i, a in enumerate(act)])
+        if len(act.shape) == 1:
+            return np.array([self.mesh[i][a] for i, a in enumerate(act)])
+        elif len(act.shape) == 2:
+            return np.array(
+                [[self.mesh[i][a] for i, a in enumerate(a_)] for a_ in act]
+            )
+        else:
+            raise Exception
 
 
 class MultiDiscreteToDiscrete(gym.ActionWrapper):
-    """Gym environment wrapper to discrete action in multidiscrete environment.
+    """Gym environment wrapper to take discrete action in multidiscrete environment.
 
     :param gym.Env env: gym environment with multidiscrete action space.
     """
@@ -44,7 +53,7 @@ class MultiDiscreteToDiscrete(gym.ActionWrapper):
             self.bases[i] = self.bases[i - 1] * nvec[-i]
         self.action_space = gym.spaces.Discrete(np.prod(nvec))
 
-    def action(self, act: int) -> np.ndarray:
+    def action(self, act: np.ndarray) -> np.ndarray:
         converted_act = []
         for b in np.flip(self.bases):
             converted_act.append(act // b)
