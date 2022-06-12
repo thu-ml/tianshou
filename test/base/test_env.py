@@ -269,9 +269,17 @@ def test_venv_norm_obs():
 
 
 def test_gym_wrappers():
+
+    class DummyEnv():
+
+        def __init__(self):
+            self.action_space = gym.spaces.Box(
+                low=-1.0, high=2.0, shape=(4, ), dtype=np.float32
+            )
+
     bsz = 10
     action_per_branch = [4, 6, 10, 7]
-    env = gym.make("BipedalWalker-v3")
+    env = DummyEnv()
     original_act = env.action_space.high
     # convert continous to multidiscrete action space
     # with different action number per dimension
@@ -317,3 +325,4 @@ if __name__ == '__main__':
     test_vecenv()
     test_async_env()
     test_async_check_id()
+    test_gym_wrappers()
