@@ -20,10 +20,10 @@ class ContinuousToDiscrete(gym.ActionWrapper):
             action_per_dim = [action_per_dim] * env.action_space.shape[0]
         assert len(action_per_dim) == env.action_space.shape[0]
         self.action_space = gym.spaces.MultiDiscrete(action_per_dim)
-        mesh = []
-        for lo, hi, a in zip(low, high, action_per_dim):
-            mesh.append(np.linspace(lo, hi, a), dtype=object)
-        self.mesh = np.array(mesh)
+        self.mesh = np.array(
+            [np.linspace(lo, hi, a) for lo, hi, a in zip(low, high, action_per_dim)],
+            dtype=object
+        )
 
     def action(self, act: np.ndarray) -> np.ndarray:
         # modify act
