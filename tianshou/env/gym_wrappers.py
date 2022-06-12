@@ -30,9 +30,7 @@ class ContinuousToDiscrete(gym.ActionWrapper):
         assert len(act.shape) <= 2, f"Unknown action format with shape {act.shape}."
         if len(act.shape) == 1:
             return np.array([self.mesh[i][a] for i, a in enumerate(act)])
-        return np.array(
-            [[self.mesh[i][a] for i, a in enumerate(a_)] for a_ in act]
-        )
+        return np.array([[self.mesh[i][a] for i, a in enumerate(a_)] for a_ in act])
 
 
 class MultiDiscreteToDiscrete(gym.ActionWrapper):
