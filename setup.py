@@ -47,6 +47,7 @@ def get_extras_require() -> str:
             "doc8",
             "scipy",
             "pillow",
+            "supersuit",  # for padding pettingzoo
             "pettingzoo>=1.17",
             "pygame>=2.1.0",  # pettingzoo test cases pistonball
             "pymunk>=6.2.1",  # pettingzoo test cases pistonball

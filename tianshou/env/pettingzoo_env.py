@@ -2,6 +2,7 @@ from abc import ABC
 from typing import Any, Dict, List, Tuple
 
 import gym.spaces
+import supersuit as ss
 from pettingzoo.utils.env import AECEnv
 from pettingzoo.utils.wrappers import BaseWrapper
 
@@ -24,8 +25,18 @@ class PettingZooEnv(AECEnv, ABC):
     Further usage can be found at :ref:`marl_example`.
     """
 
-    def __init__(self, env: BaseWrapper):
+    def __init__(
+        self,
+        env: BaseWrapper,
+        pad_observation_space: bool = False,
+        pad_action_space: bool = False,
+    ):
         super().__init__()
+        if pad_observation_space:
+            env = ss.pad_observations_v0(env)
+        if pad_action_space:
+            env = ss.pad_action_space_v0(env)
+
         self.env = env
         # agent idx list
         self.agents = self.env.possible_agents
@@ -36,64 +47,84 @@ class PettingZooEnv(AECEnv, ABC):
         self.rewards = [0] * len(self.agents)
 
         # Get first observation space, assuming all agents have equal space
+        self.state_space: Any = self.env.state_space if hasattr(
+            self.env, "state_space"
+        ) else None
+
+        # Get first observation space, assuming all agents have equal space
         self.observation_space: Any = self.env.observation_space(self.agents[0])
 
         # Get first action space, assuming all agents have equal space
         self.action_space: Any = self.env.action_space(self.agents[0])
 
-        assert all(self.env.observation_space(agent) == self.observation_space
-                   for agent in self.agents), \
-            "Observation spaces for all agents must be identical. Perhaps " \
-            "SuperSuit's pad_observations wrapper can help (useage: " \
+        assert all(
+            self.env.observation_space(agent) == self.observation_space
+            for agent in self.agents
+        ), (
+            "Observation spaces for all agents must be identical. Perhaps "
+            "SuperSuit's pad_observations wrapper can help (useage: "
             "`supersuit.aec_wrappers.pad_observations(env)`"
+        )
 
-        assert all(self.env.action_space(agent) == self.action_space
-                   for agent in self.agents), \
-            "Action spaces for all agents must be identical. Perhaps " \
-            "SuperSuit's pad_action_space wrapper can help (useage: " \
+        assert all(
+            self.env.action_space(agent) == self.action_space for agent in self.agents
+        ), (
+            "Action spaces for all agents must be identical. Perhaps "
+            "SuperSuit's pad_action_space wrapper can help (useage: "
             "`supersuit.aec_wrappers.pad_action_space(env)`"
+        )
 
         self.reset()
 
     def reset(self, *args: Any, **kwargs: Any) -> dict:
         self.env.reset(*args, **kwargs)
         observation = self.env.observe(self.env.agent_selection)
-        if isinstance(observation, dict) and 'action_mask' in observation:
-            return {
-                'agent_id': self.env.agent_selection,
-                'obs': observation['observation'],
-                'mask':
-                [True if obm == 1 else False for obm in observation['action_mask']]
+        if isinstance(observation, dict) and "action_mask" in observation:
+            ret = {
+                "agent_id":
+                self.env.agent_selection,
+                "obs":
+                observation["observation"],
+                "mask":
+                [True if obm == 1 else False for obm in observation["action_mask"]],
             }
         else:
             if isinstance(self.action_space, gym.spaces.Discrete):
-                return {
-                    'agent_id': self.env.agent_selection,
-                    'obs': observation,
-                    'mask': [True] * self.env.action_space(self.env.agent_selection).n
+                ret = {
+                    "agent_id": self.env.agent_selection,
+                    "obs": observation,
+                    "mask": [True] * self.env.action_space(self.env.agent_selection).n,
                 }
             else:
-                return {'agent_id': self.env.agent_selection, 'obs': observation}
+                ret = {"agent_id": self.env.agent_selection, "obs": observation}
+        if hasattr(self.env, "state"):
+            ret["state"] = self.env.state()
+        return ret
 
     def step(self, action: Any) -> Tuple[Dict, List[int], bool, Dict]:
         self.env.step(action)
         observation, rew, done, info = self.env.last()
-        if isinstance(observation, dict) and 'action_mask' in observation:
+        if isinstance(observation, dict) and "action_mask" in observation:
             obs = {
-                'agent_id': self.env.agent_selection,
-                'obs': observation['observation'],
-                'mask':
-                [True if obm == 1 else False for obm in observation['action_mask']]
+                "agent_id":
+                self.env.agent_selection,
+                "obs":
+                observation["observation"],
+                "mask":
+                [True if obm == 1 else False for obm in observation["action_mask"]],
             }
         else:
             if isinstance(self.action_space, gym.spaces.Discrete):
                 obs = {
-                    'agent_id': self.env.agent_selection,
-                    'obs': observation,
-                    'mask': [True] * self.env.action_space(self.env.agent_selection).n
+                    "agent_id": self.env.agent_selection,
+                    "obs": observation,
+                    "mask": [True] * self.env.action_space(self.env.agent_selection).n,
                 }
             else:
-                obs = {'agent_id': self.env.agent_selection, 'obs': observation}
+                obs = {"agent_id": self.env.agent_selection, "obs": observation}
+
+        if hasattr(self.env, "state"):
+            obs["state"] = self.env.state()
 
         for agent_id, reward in self.env.rewards.items():
             self.rewards[self.agent_idx[agent_id]] = reward
