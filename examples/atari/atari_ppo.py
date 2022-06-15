@@ -16,11 +16,11 @@ from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
-
+from tianshou.utils.net.common import Recurrent
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
+    parser.add_argument("--task", type=str, default="BreakoutNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=4213)
     parser.add_argument("--scale-obs", type=int, default=0)
     parser.add_argument("--buffer-size", type=int, default=100000)
@@ -106,13 +106,15 @@ def test_ppo(args=get_args()):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    net = DQN(
-        *args.state_shape,
-        args.action_shape,
-        device=args.device,
-        features_only=True,
-        output_dim=args.hidden_size
-    )
+    # net = DQN(
+    #     *args.state_shape,
+    #     args.action_shape,
+    #     device=args.device,
+    #     features_only=True,
+    #     output_dim=args.hidden_size
+    # )
+    net = Recurrent(2, args.state_shape, args.action_shape,
+                    args.device).to(args.device)
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
     critic = Critic(net, device=args.device)
     optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
@@ -153,9 +155,11 @@ def test_ppo(args=get_args()):
         recompute_advantage=args.recompute_adv,
     ).to(args.device)
     if args.icm_lr_scale > 0:
-        feature_net = DQN(
-            *args.state_shape, args.action_shape, args.device, features_only=True
-        )
+        # feature_net = DQN(
+        #     *args.state_shape, args.action_shape, args.device, features_only=True
+        # )
+        feature_net = Recurrent(2, args.state_shape, args.action_shape,
+                    args.device).to(args.device)
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(

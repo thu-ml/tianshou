@@ -71,28 +71,28 @@ class ReplayBufferManager(ReplayBuffer):
             ]
         )
 
-    def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
+    def prev(self, index: Union[int, np.ndarray], done=True) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
             return _prev_index(
                 np.asarray(index), self._extend_offset, self.done, self.last_index,
-                self._lengths
+                self._lengths, done,
             )
         else:
             return _prev_index(
                 np.array([index]), self._extend_offset, self.done, self.last_index,
-                self._lengths
+                self._lengths, done,
             )[0]
 
-    def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
+    def next(self, index: Union[int, np.ndarray], done=True) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
             return _next_index(
                 np.asarray(index), self._extend_offset, self.done, self.last_index,
-                self._lengths
+                self._lengths, done,
             )
         else:
             return _next_index(
                 np.array([index]), self._extend_offset, self.done, self.last_index,
-                self._lengths
+                self._lengths, done
             )[0]
 
     def update(self, buffer: ReplayBuffer) -> np.ndarray:
@@ -208,13 +208,14 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
         PrioritizedReplayBuffer.__init__(self, self.maxsize, **kwargs)
 
 
-@njit
+# @njit
 def _prev_index(
     index: np.ndarray,
     offset: np.ndarray,
     done: np.ndarray,
     last_index: np.ndarray,
     lengths: np.ndarray,
+    done_mark=True,
 ) -> np.ndarray:
     index = index % offset[-1]
     prev_index = np.zeros_like(index)
@@ -224,18 +225,22 @@ def _prev_index(
         if np.sum(mask) > 0:
             subind = index[mask]
             subind = (subind - start - 1) % cur_len
-            end_flag = done[subind + start] | (subind + start == last)
+            if done_mark is True:
+                end_flag = done[subind + start] | (subind + start == last)
+            else:
+                end_flag = 0
             prev_index[mask] = (subind + end_flag) % cur_len + start
     return prev_index
 
 
-@njit
+# @njit
 def _next_index(
     index: np.ndarray,
     offset: np.ndarray,
     done: np.ndarray,
     last_index: np.ndarray,
     lengths: np.ndarray,
+    done_mark=True,
 ) -> np.ndarray:
     index = index % offset[-1]
     next_index = np.zeros_like(index)
@@ -244,6 +249,9 @@ def _next_index(
         cur_len = max(1, cur_len)
         if np.sum(mask) > 0:
             subind = index[mask]
-            end_flag = done[subind] | (subind == last)
+            if done_mark is True:
+                end_flag = done[subind] | (subind == last)
+            else:
+                end_flag = 0
             next_index[mask] = (subind - start + 1 - end_flag) % cur_len + start
     return next_index

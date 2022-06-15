@@ -134,21 +134,27 @@ class ReplayBuffer:
         last = (self._index - 1) % self._size if self._size else 0
         return np.array([last] if not self.done[last] and self._size else [], int)
 
-    def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
+    def prev(self, index: Union[int, np.ndarray], done: bool = True) -> np.ndarray:
         """Return the index of previous transition.
 
         The index won't be modified if it is the beginning of an episode.
         """
         index = (index - 1) % self._size
-        end_flag = self.done[index] | (index == self.last_index[0])
+        if done is True:
+            end_flag = self.done[index] | (index == self.last_index[0])
+        else:
+            end_flag = 0
         return (index + end_flag) % self._size
 
-    def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
+    def next(self, index: Union[int, np.ndarray], done=True) -> np.ndarray:
         """Return the index of next transition.
 
         The index won't be modified if it is the end of an episode.
         """
-        end_flag = self.done[index] | (index == self.last_index[0])
+        if done is True:
+            end_flag = self.done[index] | (index == self.last_index[0])
+        else:
+            end_flag = 0
         return (index + (1 - end_flag)) % self._size
 
     def update(self, buffer: "ReplayBuffer") -> np.ndarray:
@@ -276,8 +282,8 @@ class ReplayBuffer:
                  np.arange(self._index)]
             )
             for _ in range(self.stack_num - 2):
-                prev_indices = self.prev(prev_indices)
-            all_indices = all_indices[prev_indices != self.prev(prev_indices)]
+                prev_indices = self.prev(prev_indices, False)
+            all_indices = all_indices[prev_indices != self.prev(prev_indices, False)]
             if batch_size > 0:
                 return np.random.choice(all_indices, batch_size)
             else:
@@ -326,7 +332,7 @@ class ReplayBuffer:
                 indices = index  # type: ignore
             for _ in range(stack_num):
                 stack = [val[indices]] + stack
-                indices = self.prev(indices)
+                indices = self.prev(indices, False)
             if isinstance(val, Batch):
                 return Batch.stack(stack, axis=indices.ndim)
             else:

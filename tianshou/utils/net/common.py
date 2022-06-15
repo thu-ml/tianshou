@@ -245,6 +245,7 @@ class Recurrent(nn.Module):
             num_layers=layer_num,
             batch_first=True,
         )
+        self.output_dim = int(np.prod(action_shape))
         self.fc1 = nn.Linear(int(np.prod(state_shape)), hidden_layer_size)
         self.fc2 = nn.Linear(hidden_layer_size, int(np.prod(action_shape)))
 
@@ -270,6 +271,7 @@ class Recurrent(nn.Module):
         # in evaluation phase.
         if len(obs.shape) == 2:
             obs = obs.unsqueeze(-2)
+        obs = obs.reshape(obs.shape[0], 1, -1)
         obs = self.fc1(obs)
         self.nn.flatten_parameters()
         if state is None:
