@@ -1,5 +1,6 @@
 import argparse
 import os
+import warnings
 from typing import List, Optional, Tuple
 
 import gym
@@ -177,6 +178,12 @@ def watch(
     args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None
 ) -> None:
     env = DummyVectorEnv([get_env])
+    if not policy:
+        warnings.warn(
+            "watching random agents, as loading pre-trained policies is "
+            "currently not supported"
+        )
+        policy, _, _ = get_agents(args)
     policy.eval()
     [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
     collector = Collector(policy, env, exploration_noise=True)

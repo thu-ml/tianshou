@@ -40,9 +40,9 @@ class OffpolicyTrainer(BaseTrainer):
     :param function save_best_fn: a hook called when the undiscounted average mean
         reward in evaluation phase gets better, with the signature
         ``f(policy: BasePolicy) ->  None``. It was ``save_fn`` previously.
-    :param function save_checkpoint_fn: a function to save training process, with
-        the signature ``f(epoch: int, env_step: int, gradient_step: int) -> None``;
-        you can save whatever you want.
+    :param function save_checkpoint_fn: a function to save training process and
+        return the saved checkpoint path, with the signature ``f(epoch: int,
+        env_step: int, gradient_step: int) -> str``; you can save whatever you want.
     :param bool resume_from_log: resume env_step/gradient_step and other metadata
         from existing tensorboard log. Default to False.
     :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
@@ -57,6 +57,8 @@ class OffpolicyTrainer(BaseTrainer):
     :param BaseLogger logger: A logger that logs statistics during
         training/testing/updating. Default to a logger that doesn't log anything.
     :param bool verbose: whether to print the information. Default to True.
+    :param bool show_progress: whether to display a progress bar when training.
+        Default to True.
     :param bool test_in_train: whether to test in the training phase.
         Default to True.
     """
@@ -78,11 +80,12 @@ class OffpolicyTrainer(BaseTrainer):
         test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
         stop_fn: Optional[Callable[[float], bool]] = None,
         save_best_fn: Optional[Callable[[BasePolicy], None]] = None,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
+        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
         resume_from_log: bool = False,
         reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
+        show_progress: bool = True,
         test_in_train: bool = True,
         **kwargs: Any,
     ):
@@ -106,6 +109,7 @@ class OffpolicyTrainer(BaseTrainer):
             reward_metric=reward_metric,
             logger=logger,
             verbose=verbose,
+            show_progress=show_progress,
             test_in_train=test_in_train,
             **kwargs,
         )

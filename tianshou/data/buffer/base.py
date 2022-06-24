@@ -347,7 +347,7 @@ class ReplayBuffer:
             indices = self.sample_indices(0) if index == slice(None) \
                 else self._indices[:len(self)][index]
         else:
-            indices = index
+            indices = index  # type: ignore
         # raise KeyError first instead of AttributeError,
         # to support np.array([ReplayBuffer()])
         obs = self.get(indices, "obs")

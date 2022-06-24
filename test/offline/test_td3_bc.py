@@ -11,11 +11,12 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import BCQPolicy
-from tianshou.trainer import offline_trainer
+from tianshou.exploration import GaussianNoise
+from tianshou.policy import TD3BCPolicy
+from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
-from tianshou.utils.net.common import MLP, Net
-from tianshou.utils.net.continuous import VAE, Critic, Perturbation
+from tianshou.utils.net.common import Net
+from tianshou.utils.net.continuous import Actor, Critic
 
 if __name__ == "__main__":
     from gather_pendulum_data import expert_file_name, gather_data
@@ -28,25 +29,25 @@ def get_args():
     parser.add_argument('--task', type=str, default='Pendulum-v1')
     parser.add_argument('--reward-threshold', type=float, default=None)
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64])
+    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
     parser.add_argument('--actor-lr', type=float, default=1e-3)
     parser.add_argument('--critic-lr', type=float, default=1e-3)
     parser.add_argument('--epoch', type=int, default=5)
     parser.add_argument('--step-per-epoch', type=int, default=500)
-    parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--n-step', type=int, default=3)
+    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--alpha', type=float, default=2.5)
+    parser.add_argument("--exploration-noise", type=float, default=0.1)
+    parser.add_argument("--policy-noise", type=float, default=0.2)
+    parser.add_argument("--noise-clip", type=float, default=0.5)
+    parser.add_argument("--update-actor-freq", type=int, default=2)
+    parser.add_argument("--tau", type=float, default=0.005)
+    parser.add_argument("--gamma", type=float, default=0.99)
+
+    parser.add_argument("--eval-freq", type=int, default=1)
     parser.add_argument('--test-num', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=1 / 35)
-
-    parser.add_argument("--vae-hidden-sizes", type=int, nargs='*', default=[32, 32])
-    # default to 2 * action_dim
-    parser.add_argument('--latent_dim', type=int, default=None)
-    parser.add_argument("--gamma", default=0.99)
-    parser.add_argument("--tau", default=0.005)
-    # Weighting for Clipped Double Q-learning in BCQ
-    parser.add_argument("--lmbda", default=0.75)
-    # Max perturbation hyper-parameter for BCQ
-    parser.add_argument("--phi", default=0.05)
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
@@ -58,12 +59,11 @@ def get_args():
         help='watch the play of pre-trained policy only',
     )
     parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
-    parser.add_argument("--show-progress", action="store_true")
     args = parser.parse_known_args()[0]
     return args
 
 
-def test_bcq(args=get_args()):
+def test_td3_bc(args=get_args()):
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
@@ -77,7 +77,7 @@ def test_bcq(args=get_args()):
     args.max_action = env.action_space.high[0]  # float
     if args.reward_threshold is None:
         # too low?
-        default_reward_threshold = {"Pendulum-v0": -1100, "Pendulum-v1": -1100}
+        default_reward_threshold = {"Pendulum-v0": -1200, "Pendulum-v1": -1200}
         args.reward_threshold = default_reward_threshold.get(
             args.task, env.spec.reward_threshold
         )
@@ -94,18 +94,21 @@ def test_bcq(args=get_args()):
     test_envs.seed(args.seed)
 
     # model
-    # perturbation network
-    net_a = MLP(
-        input_dim=args.state_dim + args.action_dim,
-        output_dim=args.action_dim,
+    # actor network
+    net_a = Net(
+        args.state_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
     )
-    actor = Perturbation(
-        net_a, max_action=args.max_action, device=args.device, phi=args.phi
+    actor = Actor(
+        net_a,
+        action_shape=args.action_shape,
+        max_action=args.max_action,
+        device=args.device,
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
+    # critic network
     net_c1 = Net(
         args.state_shape,
         args.action_shape,
@@ -125,44 +128,22 @@ def test_bcq(args=get_args()):
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
-    # vae
-    # output_dim = 0, so the last Module in the encoder is ReLU
-    vae_encoder = MLP(
-        input_dim=args.state_dim + args.action_dim,
-        hidden_sizes=args.vae_hidden_sizes,
-        device=args.device,
-    )
-    if not args.latent_dim:
-        args.latent_dim = args.action_dim * 2
-    vae_decoder = MLP(
-        input_dim=args.state_dim + args.latent_dim,
-        output_dim=args.action_dim,
-        hidden_sizes=args.vae_hidden_sizes,
-        device=args.device,
-    )
-    vae = VAE(
-        vae_encoder,
-        vae_decoder,
-        hidden_dim=args.vae_hidden_sizes[-1],
-        latent_dim=args.latent_dim,
-        max_action=args.max_action,
-        device=args.device,
-    ).to(args.device)
-    vae_optim = torch.optim.Adam(vae.parameters())
-
-    policy = BCQPolicy(
+    policy = TD3BCPolicy(
         actor,
         actor_optim,
         critic1,
         critic1_optim,
         critic2,
         critic2_optim,
-        vae,
-        vae_optim,
-        device=args.device,
-        gamma=args.gamma,
         tau=args.tau,
-        lmbda=args.lmbda,
+        gamma=args.gamma,
+        exploration_noise=GaussianNoise(sigma=args.exploration_noise),
+        policy_noise=args.policy_noise,
+        update_actor_freq=args.update_actor_freq,
+        noise_clip=args.noise_clip,
+        alpha=args.alpha,
+        estimation_step=args.n_step,
+        action_space=env.action_space,
     )
 
     # load a previous policy
@@ -176,8 +157,8 @@ def test_bcq(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
-    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_bcq'
-    log_path = os.path.join(args.logdir, args.task, 'bcq', log_file)
+    log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_td3_bc'
+    log_path = os.path.join(args.logdir, args.task, 'td3_bc', log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
@@ -199,7 +180,7 @@ def test_bcq(args=get_args()):
         collector.collect(n_episode=1, render=1 / 35)
 
     # trainer
-    result = offline_trainer(
+    trainer = OfflineTrainer(
         policy,
         buffer,
         test_collector,
@@ -210,13 +191,18 @@ def test_bcq(args=get_args()):
         save_best_fn=save_best_fn,
         stop_fn=stop_fn,
         logger=logger,
-        show_progress=args.show_progress,
     )
-    assert stop_fn(result['best_reward'])
+
+    for epoch, epoch_stat, info in trainer:
+        print(f"Epoch: {epoch}")
+        print(epoch_stat)
+        print(info)
+
+    assert stop_fn(info["best_reward"])
 
     # Let's watch its performance!
-    if __name__ == '__main__':
-        pprint.pprint(result)
+    if __name__ == "__main__":
+        pprint.pprint(info)
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
@@ -226,4 +212,4 @@ def test_bcq(args=get_args()):
 
 
 if __name__ == '__main__':
-    test_bcq()
+    test_td3_bc()

@@ -94,7 +94,7 @@ class BaseLogger(ABC):
         epoch: int,
         env_step: int,
         gradient_step: int,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
+        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 

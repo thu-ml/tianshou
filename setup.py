@@ -23,6 +23,7 @@ def get_install_requires() -> str:
         "numba>=0.51.0",
         "h5py>=2.10.0",  # to match tensorflow's minimal requirements
         "transformers>=4.18.0",
+        "protobuf~=3.19.0",  # breaking change, sphinx fail
     ]
 
 

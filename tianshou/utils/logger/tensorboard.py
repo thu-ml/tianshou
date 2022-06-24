@@ -47,7 +47,7 @@ class TensorboardLogger(BaseLogger):
         epoch: int,
         env_step: int,
         gradient_step: int,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], None]] = None,
+        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
     ) -> None:
         if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
             self.last_save_step = epoch
