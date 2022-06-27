@@ -14,7 +14,7 @@ class EnvWorker(ABC):
         self._env_fn = env_fn
         self.is_closed = False
         self.result: Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
-                           np.ndarray]
+                           Tuple[np.ndarray, dict], np.ndarray]
         self.action_space = self.get_env_attr("action_space")  # noqa: B009
         self.is_reset = False
 
@@ -47,7 +47,8 @@ class EnvWorker(ABC):
 
     def recv(
         self
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
+        np.ndarray, dict], np.ndarray]:  # noqa:E125
         """Receive result from low-level worker.
 
         If the last "send" function sends a NULL action, it only returns a
@@ -63,9 +64,9 @@ class EnvWorker(ABC):
                 self.result = self.get_result()  # type: ignore
         return self.result
 
-    def reset(self) -> np.ndarray:
-        self.send(None)
-        return self.recv()  # type: ignore
+    @abstractmethod
+    def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+        pass
 
     def step(
         self, action: np.ndarray

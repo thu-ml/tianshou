@@ -86,17 +86,27 @@ def _worker(
                 p.close()
                 break
             if cmd == "step":
-                if data is None:  # reset
-                    obs = env.reset()
-                else:
-                    obs, reward, done, info = env.step(data)
+                obs, reward, done, info = env.step(data)
                 if obs_bufs is not None:
                     _encode_obs(obs, obs_bufs)
                     obs = None
-                if data is None:
-                    p.send(obs)
+                p.send((obs, reward, done, info))
+            elif cmd == "reset":
+                retval = env.reset(**data)
+                reset_returns_info = isinstance(
+                    retval, (tuple, list)
+                ) and len(retval) == 2 and isinstance(retval[1], dict)
+                if reset_returns_info:
+                    obs, info = retval
                 else:
-                    p.send((obs, reward, done, info))
+                    obs = retval
+                if obs_bufs is not None:
+                    _encode_obs(obs, obs_bufs)
+                    obs = None
+                if reset_returns_info:
+                    p.send((obs, info))
+                else:
+                    p.send(obs)
             elif cmd == "close":
                 p.send(env.close())
                 p.close()
@@ -104,7 +114,11 @@ def _worker(
             elif cmd == "render":
                 p.send(env.render(**data) if hasattr(env, "render") else None)
             elif cmd == "seed":
-                p.send(env.seed(data) if hasattr(env, "seed") else None)
+                if hasattr(env, "seed"):
+                    p.send(env.seed(data))
+                else:
+                    env.reset(seed=data)
+                    p.send(None)
             elif cmd == "getattr":
                 p.send(getattr(env, data) if hasattr(env, data) else None)
             elif cmd == "setattr":
@@ -140,7 +154,6 @@ class SubprocEnvWorker(EnvWorker):
         self.process = Process(target=_worker, args=args, daemon=True)
         self.process.start()
         self.child_remote.close()
-        self.is_reset = False
         super().__init__(env_fn)
 
     def get_env_attr(self, key: str) -> Any:
@@ -186,18 +199,46 @@ class SubprocEnvWorker(EnvWorker):
             remain_conns = [conn for conn in remain_conns if conn not in ready_conns]
         return [workers[conns.index(con)] for con in ready_conns]
 
-    def send(self, action: Optional[np.ndarray]) -> None:
-        self.parent_remote.send(["step", action])
+    def send(self, action: Optional[np.ndarray], **kwargs: Any) -> None:
+        if action is None:
+            if "seed" in kwargs:
+                super().seed(kwargs["seed"])
+            self.parent_remote.send(["reset", kwargs])
+        else:
+            self.parent_remote.send(["step", action])
 
     def recv(
         self
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
+        np.ndarray, dict], np.ndarray]:  # noqa:E125
         result = self.parent_remote.recv()
         if isinstance(result, tuple):
+            if len(result) == 2:
+                obs, info = result
+                if self.share_memory:
+                    obs = self._decode_obs()
+                return obs, info
             obs, rew, done, info = result
             if self.share_memory:
                 obs = self._decode_obs()
             return obs, rew, done, info
+        else:
+            obs = result
+            if self.share_memory:
+                obs = self._decode_obs()
+            return obs
+
+    def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+        if "seed" in kwargs:
+            super().seed(kwargs["seed"])
+        self.parent_remote.send(["reset", kwargs])
+
+        result = self.parent_remote.recv()
+        if isinstance(result, tuple):
+            obs, info = result
+            if self.share_memory:
+                obs = self._decode_obs()
+            return obs, info
         else:
             obs = result
             if self.share_memory:

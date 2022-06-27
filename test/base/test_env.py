@@ -222,6 +222,18 @@ def test_env_obs_dtype():
         assert obs.dtype == object
 
 
+def test_env_reset_optional_kwargs(size=10000, num=8):
+    env_fns = [lambda i=i: MyTestEnv(size=i) for i in range(size, size + num)]
+    test_cls = [DummyVectorEnv, SubprocVectorEnv, ShmemVectorEnv]
+    if has_ray():
+        test_cls += [RayVectorEnv]
+    for cls in test_cls:
+        v = cls(env_fns, wait_num=num // 2, timeout=1e-3)
+        _, info = v.reset(seed=1, return_info=True)
+        assert len(info) == len(env_fns)
+        assert isinstance(info[0], dict)
+
+
 def run_align_norm_obs(raw_env, train_env, test_env, action_list):
     eps = np.finfo(np.float32).eps.item()
     raw_obs, train_obs = [raw_env.reset()], [train_env.reset()]
@@ -319,11 +331,25 @@ def test_venv_wrapper_envpool():
     run_align_norm_obs(raw, train, test, actions)
 
 
-if __name__ == "__main__":
+@pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
+def test_venv_wrapper_envpool_gym_reset_return_info():
+    num_envs = 4
+    env = VectorEnvNormObs(
+        envpool.make_gym("Ant-v3", num_envs=num_envs, gym_reset_return_info=True)
+    )
+    obs, info = env.reset()
+    assert obs.shape[0] == num_envs
+    for _, v in info.items():
+        if not isinstance(v, dict):
+            assert v.shape[0] == num_envs
+
+
+if __name__ == '__main__':
     test_venv_norm_obs()
     test_venv_wrapper_envpool()
     test_env_obs_dtype()
     test_vecenv()
     test_async_env()
     test_async_check_id()
+    test_env_reset_optional_kwargs()
     test_gym_wrappers()

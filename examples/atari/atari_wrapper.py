@@ -32,7 +32,10 @@ class NoopResetEnv(gym.Wrapper):
 
     def reset(self):
         self.env.reset()
-        noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)
+        if hasattr(self.unwrapped.np_random, "integers"):
+            noops = self.unwrapped.np_random.integers(1, self.noop_max + 1)
+        else:
+            noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)
         for _ in range(noops):
             obs, _, done, _ = self.env.step(self.noop_action)
             if done:

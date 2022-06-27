@@ -37,11 +37,12 @@ class VectorEnvWrapper(BaseVectorEnv):
     ) -> None:
         return self.venv.set_env_attr(key, value, id)
 
-    # TODO: compatible issue with reset -> (obs, info)
     def reset(
-        self, id: Optional[Union[int, List[int], np.ndarray]] = None
-    ) -> np.ndarray:
-        return self.venv.reset(id)
+        self,
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        **kwargs: Any,
+    ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
+        return self.venv.reset(id, **kwargs)
 
     def step(
         self,
@@ -86,14 +87,33 @@ class VectorEnvNormObs(VectorEnvWrapper):
         self.clip_max = clip_obs
         self.eps = epsilon
 
-    # TODO: compatible issue with reset -> (obs, info)
     def reset(
-        self, id: Optional[Union[int, List[int], np.ndarray]] = None
-    ) -> np.ndarray:
-        obs = self.venv.reset(id)
+        self,
+        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        **kwargs: Any,
+    ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
+        retval = self.venv.reset(id, **kwargs)
+        reset_returns_info = isinstance(
+            retval, (tuple, list)
+        ) and len(retval) == 2 and isinstance(retval[1], dict)
+        if reset_returns_info:
+            obs, info = retval
+        else:
+            obs = retval
+
+        if isinstance(obs, tuple):
+            raise TypeError(
+                "Tuple observation space is not supported. ",
+                "Please change it to array or dict space",
+            )
+
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs)
-        return self._norm_obs(obs)
+        obs = self._norm_obs(obs)
+        if reset_returns_info:
+            return obs, info
+        else:
+            return obs
 
     def step(
         self,
