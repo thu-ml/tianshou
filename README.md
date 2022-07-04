@@ -281,7 +281,7 @@ Tianshou is still under development. More algorithms and features are going to b
 If you find Tianshou useful, please cite it in your publications.
 
 ```latex
-@article{weng2021tianshou,
+@article{tianshou,
   title={Tianshou: A Highly Modularized Deep Reinforcement Learning Library},
   author={Weng, Jiayi and Chen, Huayu and Yan, Dong and You, Kaichao and Duburcq, Alexis and Zhang, Minghao and Su, Hang and Zhu, Jun},
   journal={arXiv preprint arXiv:2107.14171},
