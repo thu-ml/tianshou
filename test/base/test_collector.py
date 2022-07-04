@@ -205,7 +205,7 @@ def test_collector(gym_reset_kwargs):
     # test NXEnv
     for obs_type in ["array", "object"]:
         envs = SubprocVectorEnv(
-            [lambda i=x: NXEnv(i, obs_type) for x in [5, 10, 15, 20]]
+            [lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]]
         )
         c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
         c3.collect(n_step=6, gym_reset_kwargs=gym_reset_kwargs)
