@@ -214,7 +214,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
 def test_env_obs_dtype():
     for obs_type in ["array", "object"]:
         envs = SubprocVectorEnv(
-            [lambda i=x: NXEnv(i, obs_type) for x in [5, 10, 15, 20]]
+            [lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]]
         )
         obs = envs.reset()
         assert obs.dtype == object

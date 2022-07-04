@@ -10,6 +10,10 @@ jobs:
       matrix:
         python-version: [3.7, 3.8, 3.9]
     steps:
+    - name: Cancel previous run
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2

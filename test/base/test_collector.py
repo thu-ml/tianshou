@@ -205,7 +205,7 @@ def test_collector(gym_reset_kwargs):
     # test NXEnv
     for obs_type in ["array", "object"]:
         envs = SubprocVectorEnv(
-            [lambda i=x: NXEnv(i, obs_type) for x in [5, 10, 15, 20]]
+            [lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]]
         )
         c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
         c3.collect(n_step=6, gym_reset_kwargs=gym_reset_kwargs)
@@ -684,7 +684,7 @@ def test_collector_with_atari_setting():
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_collector_envpool_gym_reset_return_info():
-    envs = envpool.make_gym("Pendulum-v0", num_envs=4, gym_reset_return_info=True)
+    envs = envpool.make_gym("Pendulum-v1", num_envs=4, gym_reset_return_info=True)
     policy = MyPolicy(action_shape=(len(envs), 1))
 
     c0 = Collector(
