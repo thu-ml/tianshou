@@ -49,9 +49,9 @@ def _setup_buf(space: gym.Space) -> Union[dict, tuple, ShArray]:
     if isinstance(space, gym.spaces.Dict):
         assert isinstance(space.spaces, OrderedDict)
         return {k: _setup_buf(v) for k, v in space.spaces.items()}
-    elif isinstance(space, gym.spaces.Tuple):
-        assert isinstance(space.spaces, tuple)
-        return tuple([_setup_buf(t) for t in space.spaces])
+    elif isinstance(space, gym.spaces.Tuple):  # type: ignore
+        assert isinstance(space.spaces, tuple)  # type: ignore
+        return tuple([_setup_buf(t) for t in space.spaces])  # type: ignore
     else:
         return ShArray(space.dtype, space.shape)  # type: ignore
 
