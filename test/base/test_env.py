@@ -211,6 +211,14 @@ def test_vecenv(size=10, num=8, sleep=0.001):
         v.close()
 
 
+def test_attr_unwrapped():
+    train_envs = DummyVectorEnv([lambda: gym.make("CartPole-v1")])
+    train_envs.set_env_attr("test_attribute", 1337)
+    assert train_envs.get_env_attr("test_attribute") == [1337]
+    assert hasattr(train_envs.workers[0].env, "test_attribute")
+    assert hasattr(train_envs.workers[0].env.unwrapped, "test_attribute")
+
+
 def test_env_obs_dtype():
     for obs_type in ["array", "object"]:
         envs = SubprocVectorEnv(
@@ -349,6 +357,7 @@ if __name__ == '__main__':
     test_venv_wrapper_envpool()
     test_env_obs_dtype()
     test_vecenv()
+    test_attr_unwrapped()
     test_async_env()
     test_async_check_id()
     test_env_reset_optional_kwargs()

@@ -145,7 +145,7 @@ class Collector(object):
                 )
                 obs = processed_data.get("obs", obs)
                 info = processed_data.get("info", info)
-                self.data.info = info
+            self.data.info = info
         else:
             obs = rval
             if self.preprocess_fn:
