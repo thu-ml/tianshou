@@ -122,7 +122,7 @@ def _worker(
             elif cmd == "getattr":
                 p.send(getattr(env, data) if hasattr(env, data) else None)
             elif cmd == "setattr":
-                setattr(env, data["key"], data["value"])
+                setattr(env.unwrapped, data["key"], data["value"])
             else:
                 p.close()
                 raise NotImplementedError

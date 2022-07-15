@@ -120,7 +120,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
 
     def _norm_obs(self, obs: np.ndarray) -> np.ndarray:
         if self.obs_rms:
-            return self.obs_rms.norm(obs)
+            return self.obs_rms.norm(obs)  # type: ignore
         return obs
 
     def set_obs_rms(self, obs_rms: RunningMeanStd) -> None:
