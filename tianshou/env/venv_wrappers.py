@@ -68,24 +68,17 @@ class VectorEnvNormObs(VectorEnvWrapper):
     """An observation normalization wrapper for vectorized environments.
 
     :param bool update_obs_rms: whether to update obs_rms. Default to True.
-    :param float clip_obs: the maximum absolute value for observation. Default to
-        10.0.
-    :param float epsilon: To avoid division by zero.
     """
 
     def __init__(
         self,
         venv: BaseVectorEnv,
         update_obs_rms: bool = True,
-        clip_obs: float = 10.0,
-        epsilon: float = np.finfo(np.float32).eps.item(),
     ) -> None:
         super().__init__(venv)
         # initialize observation running mean/std
         self.update_obs_rms = update_obs_rms
         self.obs_rms = RunningMeanStd()
-        self.clip_max = clip_obs
-        self.eps = epsilon
 
     def reset(
         self,
@@ -127,8 +120,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
 
     def _norm_obs(self, obs: np.ndarray) -> np.ndarray:
         if self.obs_rms:
-            obs = (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.eps)
-            obs = np.clip(obs, -self.clip_max, self.clip_max)
+            return self.obs_rms.norm(obs)
         return obs
 
     def set_obs_rms(self, obs_rms: RunningMeanStd) -> None:
