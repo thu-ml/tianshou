@@ -103,7 +103,7 @@ By default, parallel environment simulation is synchronous: a step is done after
 
 In case the time cost of environments varies a lot (e.g. 90% step cost 1s, but 10% cost 10s) where slow environments lag fast environments behind, async simulation can be used (related to `Issue 103 <https://github.com/thu-ml/tianshou/issues/103>`_). The idea is to start those finished environments without waiting for slow environments.
 
-Asynchronous simulation is a built-in functionality of :class:`~tianshou.env.BaseVectorEnv`. Just provide ``wait_num`` or ``timeout`` (or both) and async simulation works.
+Asynchronous simulation is a built-in functionality of :class:`~tianshou.env.BaseVectorEnv`. Just provide ``wait_num`` or ``timeout`` (or both) and async simulation works. Note that the async simulation collector would cause some exceptions when used as test_collector in :doc:`/api/tianshou.trainer` (related to `Issue 700 <https://github.com/thu-ml/tianshou/issues/700>`_).
 
 ::
 
