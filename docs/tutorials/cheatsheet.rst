@@ -103,7 +103,9 @@ By default, parallel environment simulation is synchronous: a step is done after
 
 In case the time cost of environments varies a lot (e.g. 90% step cost 1s, but 10% cost 10s) where slow environments lag fast environments behind, async simulation can be used (related to `Issue 103 <https://github.com/thu-ml/tianshou/issues/103>`_). The idea is to start those finished environments without waiting for slow environments.
 
-Asynchronous simulation is a built-in functionality of :class:`~tianshou.env.BaseVectorEnv`. Just provide ``wait_num`` or ``timeout`` (or both) and async simulation works. Note that the async simulation collector would cause some exceptions when used as test_collector in :doc:`/api/tianshou.trainer` (related to `Issue 700 <https://github.com/thu-ml/tianshou/issues/700>`_).
+Asynchronous simulation is a built-in functionality of
+:class:`~tianshou.env.BaseVectorEnv`. Just provide ``wait_num`` or ``timeout``
+(or both) and async simulation works.
 
 ::
 
@@ -120,6 +122,13 @@ If we have 4 envs and set ``wait_num = 3``, each of the step only returns 3 resu
 You can treat the ``timeout`` parameter as a dynamic ``wait_num``. In each vectorized step it only returns the environments finished within the given time. If there is no such environment, it will wait until any of them finished.
 
 The figure in the right gives an intuitive comparison among synchronous/asynchronous simulation.
+
+.. note::
+
+    The async simulation collector would cause some exceptions when used as
+    ``test_collector`` in :doc:`/api/tianshou.trainer` (related to
+    `Issue 700 <https://github.com/thu-ml/tianshou/issues/700>`_). Please use
+    sync version for ``test_collector`` instead.
 
 .. warning::
 

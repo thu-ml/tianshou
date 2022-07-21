@@ -6,7 +6,7 @@ from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Union
 import numpy as np
 import tqdm
 
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import AsyncCollector, Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
 from tianshou.utils import (
@@ -232,6 +232,7 @@ class BaseTrainer(ABC):
 
         if self.test_collector is not None:
             assert self.episode_per_test is not None
+            assert not isinstance(self.test_collector, AsyncCollector)  # Issue 700
             self.test_collector.reset_stat()
             test_result = test_episode(
                 self.policy, self.test_collector, self.test_fn, self.start_epoch,
