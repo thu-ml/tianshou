@@ -159,3 +159,6 @@ Qbert
 Seaquest
 subnets
 subprocesses
+isort
+yapf
+pydocstyle
