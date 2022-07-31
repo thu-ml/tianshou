@@ -18,7 +18,7 @@ from tianshou.env import (
 )
 from tianshou.utils import RunningMeanStd
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from env import MyTestEnv, NXEnv
 else:  # pytest
     from test.base.env import MyTestEnv, NXEnv
@@ -80,7 +80,7 @@ def test_async_env(size=10000, num=8, sleep=0.1):
         spent_time = time.time()
         while current_idx_start < len(action_list):
             A, B, C, D = v.step(action=act, id=env_ids)
-            b = Batch({'obs': A, 'rew': B, 'done': C, 'info': D})
+            b = Batch({"obs": A, "rew": B, "done": C, "info": D})
             env_ids = b.info.env_id
             o.append(b)
             current_idx_start += len(act)
@@ -175,7 +175,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
             for info in infos:
                 assert recurse_comp(infos[0], info)
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         t = [0] * len(venv)
         for i, e in enumerate(venv):
             t[i] = time.time()
@@ -186,7 +186,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
                     e.reset(np.where(done)[0])
             t[i] = time.time() - t[i]
         for i, v in enumerate(venv):
-            print(f'{type(v)}: {t[i]:.6f}s')
+            print(f"{type(v)}: {t[i]:.6f}s")
 
     def assert_get(v, expected):
         assert v.get_env_attr("size") == expected
@@ -240,6 +240,19 @@ def test_env_reset_optional_kwargs(size=10000, num=8):
         _, info = v.reset(seed=1, return_info=True)
         assert len(info) == len(env_fns)
         assert isinstance(info[0], dict)
+
+
+def test_venv_wrapper_gym(num_envs: int = 4):
+    # Issue 697
+    envs = DummyVectorEnv([lambda: gym.make("CartPole-v1") for _ in range(num_envs)])
+    envs = VectorEnvNormObs(envs)
+    obs_ref = envs.reset(return_info=False)
+    obs, info = envs.reset(return_info=True)
+    assert isinstance(obs_ref, np.ndarray)
+    assert isinstance(obs, np.ndarray)
+    assert isinstance(info, list)
+    assert isinstance(info[0], dict)
+    assert obs_ref.shape[0] == obs.shape[0] == len(info) == num_envs
 
 
 def run_align_norm_obs(raw_env, train_env, test_env, action_list):
@@ -309,7 +322,7 @@ def test_gym_wrappers():
     # check conversion is working properly for a batch of actions
     np.testing.assert_allclose(
         env_m.action(np.array([env_m.action_space.nvec - 1] * bsz)),
-        np.array([original_act] * bsz)
+        np.array([original_act] * bsz),
     )
     # convert multidiscrete with different action number per
     # dimension to discrete action space
@@ -321,7 +334,7 @@ def test_gym_wrappers():
     # check conversion is working properly for a batch of actions
     np.testing.assert_allclose(
         env_d.action(np.array([env_d.action_space.n - 1] * bsz)),
-        np.array([env_m.action_space.nvec - 1] * bsz)
+        np.array([env_m.action_space.nvec - 1] * bsz),
     )
 
 
@@ -352,9 +365,11 @@ def test_venv_wrapper_envpool_gym_reset_return_info():
             assert v.shape[0] == num_envs
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_venv_norm_obs()
+    test_venv_wrapper_gym()
     test_venv_wrapper_envpool()
+    test_venv_wrapper_envpool_gym_reset_return_info()
     test_env_obs_dtype()
     test_vecenv()
     test_attr_unwrapped()

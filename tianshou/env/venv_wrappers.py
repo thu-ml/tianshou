@@ -41,7 +41,7 @@ class VectorEnvWrapper(BaseVectorEnv):
         self,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
+    ) -> Union[np.ndarray, Tuple[np.ndarray, Union[dict, List[dict]]]]:
         return self.venv.reset(id, **kwargs)
 
     def step(
@@ -84,15 +84,15 @@ class VectorEnvNormObs(VectorEnvWrapper):
         self,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
-        retval = self.venv.reset(id, **kwargs)
-        reset_returns_info = isinstance(
-            retval, (tuple, list)
-        ) and len(retval) == 2 and isinstance(retval[1], dict)
-        if reset_returns_info:
-            obs, info = retval
+    ) -> Union[np.ndarray, Tuple[np.ndarray, Union[dict, List[dict]]]]:
+        rval = self.venv.reset(id, **kwargs)
+        returns_info = isinstance(rval, (tuple, list)) and (len(rval) == 2) and (
+            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)
+        )
+        if returns_info:
+            obs, info = rval
         else:
-            obs = retval
+            obs = rval
 
         if isinstance(obs, tuple):
             raise TypeError(
@@ -103,7 +103,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs)
         obs = self._norm_obs(obs)
-        if reset_returns_info:
+        if returns_info:
             return obs, info
         else:
             return obs
