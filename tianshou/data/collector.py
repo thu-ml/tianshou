@@ -135,7 +135,7 @@ class Collector(object):
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         rval = self.env.reset(**gym_reset_kwargs)
         returns_info = isinstance(rval, (tuple, list)) and len(rval) == 2 and (
-            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)  # type: ignore
+            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)
         )
         if returns_info:
             obs, info = rval
@@ -173,7 +173,7 @@ class Collector(object):
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         rval = self.env.reset(global_ids, **gym_reset_kwargs)
         returns_info = isinstance(rval, (tuple, list)) and len(rval) == 2 and (
-            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)  # type: ignore
+            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)
         )
         if returns_info:
             obs_reset, info = rval
