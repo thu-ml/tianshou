@@ -140,6 +140,8 @@ Jiayi
 Weng
 Duburcq
 Huayu
+Yi
+Su
 Strens
 Ornstein
 Uhlenbeck
@@ -159,3 +161,6 @@ Qbert
 Seaquest
 subnets
 subprocesses
+isort
+yapf
+pydocstyle

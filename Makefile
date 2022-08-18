@@ -37,17 +37,20 @@ check-docstyle:
 	$(call check_install, doc8)
 	$(call check_install, sphinx)
 	$(call check_install, sphinx_rtd_theme)
+	$(call check_install, sphinxcontrib.bibtex, sphinxcontrib_bibtex)
 	pydocstyle ${PROJECT_PATH} && doc8 docs && cd docs && make html SPHINXOPTS="-W"
 
 doc:
 	$(call check_install, sphinx)
 	$(call check_install, sphinx_rtd_theme)
+	$(call check_install, sphinxcontrib.bibtex, sphinxcontrib_bibtex)
 	cd docs && make html && cd _build/html && python3 -m http.server
 
 spelling:
 	$(call check_install, sphinx)
 	$(call check_install, sphinx_rtd_theme)
 	$(call check_install_extra, sphinxcontrib.spelling, sphinxcontrib.spelling pyenchant)
+	$(call check_install, sphinxcontrib.bibtex, sphinxcontrib_bibtex)
 	cd docs && make spelling SPHINXOPTS="-W"
 
 doc-clean:

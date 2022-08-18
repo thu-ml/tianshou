@@ -7,3 +7,4 @@ We always welcome contributions to help make Tianshou better. Below are an incom
 * Alexis Duburcq (`duburcqa <https://github.com/duburcqa>`_)
 * Kaichao You (`youkaichao <https://github.com/youkaichao>`_)
 * Huayu Chen (`ChenDRAG <https://github.com/ChenDRAG>`_)
+* Yi Su (`nuance1979 <https://github.com/nuance1979>`_)

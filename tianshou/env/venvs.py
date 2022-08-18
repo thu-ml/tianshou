@@ -185,7 +185,7 @@ class BaseVectorEnv(object):
         self,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, List[dict]]]:
+    ) -> Union[np.ndarray, Tuple[np.ndarray, Union[dict, List[dict]]]]:
         """Reset the state of some envs and return initial observations.
 
         If id is None, reset the state of all the environments and return

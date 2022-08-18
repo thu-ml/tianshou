@@ -14,7 +14,7 @@ except ImportError:
 class _SetAttrWrapper(gym.Wrapper):
 
     def set_env_attr(self, key: str, value: Any) -> None:
-        setattr(self.env, key, value)
+        setattr(self.env.unwrapped, key, value)
 
     def get_env_attr(self, key: str) -> Any:
         return getattr(self.env, key)

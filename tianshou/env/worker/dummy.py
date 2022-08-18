@@ -17,7 +17,7 @@ class DummyEnvWorker(EnvWorker):
         return getattr(self.env, key)
 
     def set_env_attr(self, key: str, value: Any) -> None:
-        setattr(self.env, key, value)
+        setattr(self.env.unwrapped, key, value)
 
     def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
         if "seed" in kwargs:

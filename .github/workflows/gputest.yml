@@ -7,6 +7,10 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     steps:
+    - name: Cancel previous run
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
     - uses: actions/checkout@v2
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
