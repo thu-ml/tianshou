@@ -64,7 +64,7 @@ class RayEnvWorker(EnvWorker):
         super().seed(seed)
         try:
             return ray.get(self.env.seed.remote(seed))
-        except NotImplementedError:
+        except (AttributeError, NotImplementedError):
             self.env.reset.remote(seed=seed)
             return None
 

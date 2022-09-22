@@ -115,7 +115,15 @@ class Collector(object):
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
         self.data = Batch(
-            obs={}, act={}, rew={}, done={}, obs_next={}, info={}, policy={}
+            obs={},
+            act={},
+            rew={},
+            terminated={},
+            truncated={},
+            done={},
+            obs_next={},
+            info={},
+            policy={}
         )
         self.reset_env(gym_reset_kwargs)
         if reset_buffer:
@@ -302,9 +310,32 @@ class Collector(object):
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             result = self.env.step(action_remap, ready_env_ids)  # type: ignore
-            obs_next, rew, done, info = result
+            if len(result) == 5:
+                obs_next, rew, terminated, truncated, info = result
+                done = np.logical_or(terminated, truncated)
+            elif len(result) == 4:
+                obs_next, rew, done, info = result
+                if isinstance(info, dict):
+                    truncated = info["TimeLimit.truncated"]
+                else:
+                    truncated = np.array(
+                        [
+                            info_item.get("TimeLimit.truncated", False)
+                            for info_item in info
+                        ]
+                    )
+                terminated = np.logical_and(done, ~truncated)
+            else:
+                raise ValueError()
 
-            self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
+            self.data.update(
+                obs_next=obs_next,
+                rew=rew,
+                terminated=terminated,
+                truncated=truncated,
+                done=done,
+                info=info
+            )
             if self.preprocess_fn:
                 self.data.update(
                     self.preprocess_fn(
@@ -368,7 +399,15 @@ class Collector(object):
 
         if n_episode:
             self.data = Batch(
-                obs={}, act={}, rew={}, done={}, obs_next={}, info={}, policy={}
+                obs={},
+                act={},
+                rew={},
+                terminated={},
+                truncated={},
+                done={},
+                obs_next={},
+                info={},
+                policy={}
             )
             self.reset_env()
 
@@ -542,7 +581,26 @@ class AsyncCollector(Collector):
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             result = self.env.step(action_remap, ready_env_ids)  # type: ignore
-            obs_next, rew, done, info = result
+
+            if len(result) == 5:
+                obs_next, rew, terminated, truncated, info = result
+                done = np.logical_or(terminated, truncated)
+            elif len(result) == 4:
+                obs_next, rew, done, info = result
+                if isinstance(info, dict):
+                    truncated = info["TimeLimit.truncated"]
+                else:
+                    truncated = np.array(
+                        list(
+                            map(
+                                lambda info_item: info_item.
+                                get("TimeLimit.truncated", False), info
+                            )
+                        )
+                    )
+                terminated = np.logical_and(done, ~truncated)
+            else:
+                raise ValueError()
 
             # change self.data here because ready_env_ids has changed
             try:
@@ -551,7 +609,14 @@ class AsyncCollector(Collector):
                 ready_env_ids = np.array([i["env_id"] for i in info])
             self.data = whole_data[ready_env_ids]
 
-            self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
+            self.data.update(
+                obs_next=obs_next,
+                rew=rew,
+                terminated=terminated,
+                truncated=truncated,
+                done=done,
+                info=info
+            )
             if self.preprocess_fn:
                 self.data.update(
                     self.preprocess_fn(

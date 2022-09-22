@@ -86,11 +86,11 @@ def _worker(
                 p.close()
                 break
             if cmd == "step":
-                obs, reward, done, info = env.step(data)
+                env_return = env.step(data)
                 if obs_bufs is not None:
-                    _encode_obs(obs, obs_bufs)
-                    obs = None
-                p.send((obs, reward, done, info))
+                    _encode_obs(env_return[0], obs_bufs)
+                    env_return = (None, *env_return[1:])
+                p.send(env_return)
             elif cmd == "reset":
                 retval = env.reset(**data)
                 reset_returns_info = isinstance(
@@ -218,10 +218,10 @@ class SubprocEnvWorker(EnvWorker):
                 if self.share_memory:
                     obs = self._decode_obs()
                 return obs, info
-            obs, rew, done, info = result
+            obs = result[0]
             if self.share_memory:
                 obs = self._decode_obs()
-            return obs, rew, done, info
+            return obs, *result[1:]
         else:
             obs = result
             if self.share_memory:

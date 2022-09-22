@@ -41,7 +41,7 @@ class DummyEnvWorker(EnvWorker):
         super().seed(seed)
         try:
             return self.env.seed(seed)
-        except NotImplementedError:
+        except (AttributeError, NotImplementedError):
             self.env.reset(seed=seed)
             return [seed]  # type: ignore
 

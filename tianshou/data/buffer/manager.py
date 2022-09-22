@@ -118,7 +118,8 @@ class ReplayBufferManager(ReplayBuffer):
         for key in set(self._reserved_keys).intersection(batch.keys()):
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
-        assert set(["obs", "act", "rew", "done"]).issubset(batch.keys())
+        assert set(["obs", "act", "rew", "terminated", "truncated",
+                    "done"]).issubset(batch.keys())
         if self._save_only_last_obs:
             batch.obs = batch.obs[:, -1]
         if not self._save_obs_next:

@@ -230,7 +230,8 @@ class BaseVectorEnv(object):
         self,
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
+        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
         """Run one timestep of some environments' dynamics.
 
         If id is None, run one timestep of all the environments’ dynamics;
@@ -269,9 +270,9 @@ class BaseVectorEnv(object):
                 self.workers[j].send(action[i])
             result = []
             for j in id:
-                obs, rew, done, info = self.workers[j].recv()  # type: ignore
-                info["env_id"] = j
-                result.append((obs, rew, done, info))
+                env_return = self.workers[j].recv()  # type: ignore
+                env_return[-1]["env_id"] = j
+                result.append(env_return)
         else:
             if action is not None:
                 self._assert_id(id)
@@ -291,19 +292,19 @@ class BaseVectorEnv(object):
                 waiting_index = self.waiting_conn.index(conn)
                 self.waiting_conn.pop(waiting_index)
                 env_id = self.waiting_id.pop(waiting_index)
-                obs, rew, done, info = conn.recv()  # type: ignore
-                info["env_id"] = env_id
-                result.append((obs, rew, done, info))
+                # env_return can be (obs, reward, done, info) or (obs, reward, terminated, truncated, info)
+                env_return = conn.recv()  # type: ignore
+                env_return[-1]["env_id"] = env_id  # Add `env_id` to info
+                result.append(env_return)
                 self.ready_id.append(env_id)
-        obs_list, rew_list, done_list, info_list = zip(*result)
+        return_lists = tuple(zip(*result))
+        obs_list = return_lists[0]
         try:
             obs_stack = np.stack(obs_list)
         except ValueError:  # different len(obs)
             obs_stack = np.array(obs_list, dtype=object)
-        rew_stack, done_stack, info_stack = map(
-            np.stack, [rew_list, done_list, info_list]
-        )
-        return obs_stack, rew_stack, done_stack, info_stack
+        other_stacks = map(np.stack, return_lists[1:])
+        return (obs_stack, *other_stacks)
 
     def seed(
         self,
