@@ -590,14 +590,7 @@ class AsyncCollector(Collector):
                 if isinstance(info, dict):
                     truncated = info["TimeLimit.truncated"]
                 else:
-                    truncated = np.array(
-                        list(
-                            map(
-                                lambda info_item: info_item.
-                                get("TimeLimit.truncated", False), info
-                            )
-                        )
-                    )
+                    truncated = np.array([info_item.get("TimeLimit.truncated", False) for info_item in info])
                 terminated = np.logical_and(done, ~truncated)
             else:
                 raise ValueError()
