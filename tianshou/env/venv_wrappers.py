@@ -116,7 +116,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         step_results = self.venv.step(action, id)
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(step_results[0])
-        return self._norm_obs(step_results[0]), *step_results[1:]
+        return (self._norm_obs(step_results[0]), *step_results[1:])
 
     def _norm_obs(self, obs: np.ndarray) -> np.ndarray:
         if self.obs_rms:
