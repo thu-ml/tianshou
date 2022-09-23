@@ -13,22 +13,24 @@ def test_replaybuffer(task="Pendulum-v1"):
     for _ in tqdm.trange(total_count, desc="ReplayBuffer"):
         env = gym.make(task)
         buf = ReplayBuffer(10000)
-        obs = env.reset()
+        obs, info = env.reset()
         for _ in range(100000):
             act = env.action_space.sample()
-            obs_next, rew, done, info = env.step(act)
+            obs_next, rew, terminated, truncated, info = env.step(act)
             batch = Batch(
                 obs=np.array([obs]),
                 act=np.array([act]),
                 rew=np.array([rew]),
-                done=np.array([done]),
+                terminated=np.array([terminated]),
+                truncated=np.array([truncated]),
+                done=np.array([terminated or truncated]),
                 obs_next=np.array([obs_next]),
                 info=np.array([info]),
             )
             buf.add(batch, buffer_ids=[0])
             obs = obs_next
             if done:
-                obs = env.reset()
+                obs, info = env.reset()
 
 
 def test_vectorbuffer(task="Pendulum-v1"):

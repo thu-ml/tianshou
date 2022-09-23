@@ -75,13 +75,8 @@ class MyTestEnv(gym.Env):
         self.index = 0
         self.seed()
 
-    def seed(self, seed=0):
-        self.rng = np.random.RandomState(seed)
-        return [seed]
-
     def reset(self, state=0, seed=None):
-        if seed is not None:
-            self.rng = np.random.RandomState(seed)
+        super().reset(seed=seed)
         self.terminated = False
         self.do_sleep()
         self.index = state
