@@ -17,13 +17,14 @@ def test_replaybuffer(task="Pendulum-v1"):
         for _ in range(100000):
             act = env.action_space.sample()
             obs_next, rew, terminated, truncated, info = env.step(act)
+            done = terminated or truncated
             batch = Batch(
                 obs=np.array([obs]),
                 act=np.array([act]),
                 rew=np.array([rew]),
                 terminated=np.array([terminated]),
                 truncated=np.array([truncated]),
-                done=np.array([terminated or truncated]),
+                done=np.array([done]),
                 obs_next=np.array([obs_next]),
                 info=np.array([info]),
             )
@@ -41,11 +42,14 @@ def test_vectorbuffer(task="Pendulum-v1"):
         obs = env.reset()
         for _ in range(100000):
             act = env.action_space.sample()
-            obs_next, rew, done, info = env.step(act)
+            obs_next, rew, terminated, truncated, info = env.step(act)
+            done = terminated or truncated
             batch = Batch(
                 obs=np.array([obs]),
                 act=np.array([act]),
                 rew=np.array([rew]),
+                terminated=np.array([terminated]),
+                truncated=np.array([truncated]),
                 done=np.array([done]),
                 obs_next=np.array([obs_next]),
                 info=np.array([info]),
