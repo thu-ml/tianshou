@@ -73,7 +73,6 @@ class MyTestEnv(gym.Env):
             self.action_space = Discrete(2)
         self.terminated = False
         self.index = 0
-        self.seed()
 
     def reset(self, state=0, seed=None):
         super().reset(seed=seed)
