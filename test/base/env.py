@@ -93,14 +93,14 @@ class MyTestEnv(gym.Env):
         if self.dict_state:
             return {
                 'index': np.array([self.index], dtype=np.float32),
-                'rand': self.rng.rand(1)
+                'rand': self.np_random.random(1)
             }
         elif self.recurse_state:
             return {
                 'index': np.array([self.index], dtype=np.float32),
                 'dict': {
-                    "tuple": (np.array([1], dtype=int), self.rng.rand(2)),
-                    "rand": self.rng.rand(1, 2)
+                    "tuple": (np.array([1], dtype=int), self.np_random.random(2)),
+                    "rand": self.np_random.random((1, 2))
                 }
             }
         elif self.array_state:
