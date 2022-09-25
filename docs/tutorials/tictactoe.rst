@@ -428,6 +428,7 @@ With the above preparation, we are close to the first learned agent. The followi
         agent_opponent: Optional[BasePolicy] = None,
     ) -> None:
         env = get_env()
+        env = DummyVectorEnv([lambda: env])
         policy, optim, agents = get_agents(
             args, agent_learn=agent_learn, agent_opponent=agent_opponent
         )
