@@ -40,7 +40,7 @@ class DummyEnvWorker(EnvWorker):
     def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
         super().seed(seed)
         try:
-            return self.env.seed(seed)
+            return self.env.seed(seed)  # type: ignore
         except (AttributeError, NotImplementedError):
             self.env.reset(seed=seed)
             return [seed]  # type: ignore

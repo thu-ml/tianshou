@@ -118,6 +118,7 @@ class ReplayBufferManager(ReplayBuffer):
         for key in set(self._reserved_keys).intersection(batch.keys()):
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
+        batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
         assert set(["obs", "act", "rew", "terminated", "truncated",
                     "done"]).issubset(batch.keys())
         if self._save_only_last_obs:
@@ -146,6 +147,8 @@ class ReplayBufferManager(ReplayBuffer):
         except ValueError:
             batch.rew = batch.rew.astype(float)
             batch.done = batch.done.astype(bool)
+            batch.terminated = batch.terminated.astype(bool)
+            batch.truncated = batch.truncated.astype(bool)
             if self._meta.is_empty():
                 self._meta = _create_value(  # type: ignore
                     batch, self.maxsize, stack=False)

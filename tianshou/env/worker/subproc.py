@@ -115,7 +115,7 @@ def _worker(
                 p.send(env.render(**data) if hasattr(env, "render") else None)
             elif cmd == "seed":
                 if hasattr(env, "seed"):
-                    p.send(env.seed(data))
+                    p.send(env.seed(data))  # type: ignore
                 else:
                     env.reset(seed=data)
                     p.send(None)
@@ -210,7 +210,8 @@ class SubprocEnvWorker(EnvWorker):
     def recv(
         self
     ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
-        np.ndarray, dict], np.ndarray]:  # noqa:E125
+        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
+            np.ndarray, dict], np.ndarray]:  # noqa:E125
         result = self.parent_remote.recv()
         if isinstance(result, tuple):
             if len(result) == 2:
@@ -221,7 +222,7 @@ class SubprocEnvWorker(EnvWorker):
             obs = result[0]
             if self.share_memory:
                 obs = self._decode_obs()
-            return (obs, *result[1:])
+            return (obs, *result[1:])  # type: ignore
         else:
             obs = result
             if self.share_memory:

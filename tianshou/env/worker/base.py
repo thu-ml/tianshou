@@ -48,12 +48,14 @@ class EnvWorker(ABC):
     def recv(
         self
     ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
-        np.ndarray, dict], np.ndarray]:  # noqa:E125
+        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
+            np.ndarray, dict], np.ndarray]:  # noqa:E125
         """Receive result from low-level worker.
 
         If the last "send" function sends a NULL action, it only returns a
         single observation; otherwise it returns a tuple of (obs, rew, done,
-        info).
+        info) or (obs, rew, terminated, truncated, info), based on whether
+        the environment is using the old step API or the new one.
         """
         if hasattr(self, "get_result"):
             deprecation(
@@ -70,7 +72,8 @@ class EnvWorker(ABC):
 
     def step(
         self, action: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+               Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
         """Perform one timestep of the environment's dynamic.
 
         "send" and "recv" are coupled in sync simulation, so users only call

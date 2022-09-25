@@ -57,7 +57,9 @@ class RayEnvWorker(EnvWorker):
 
     def recv(
         self
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
+        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
+            np.ndarray, dict], np.ndarray]:
         return ray.get(self.result)  # type: ignore
 
     def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:

@@ -259,7 +259,8 @@ def test_venv_wrapper_gym(num_envs: int = 4):
 def run_align_norm_obs(raw_env, train_env, test_env, action_list):
 
     def reset_result_to_obs(reset_result):
-        """Extract observation from reset result (result is possibly a tuple containing info)"""
+        """Extract observation from reset result
+        (result is possibly a tuple containing info)"""
         if isinstance(reset_result, tuple) and len(reset_result) == 2:
             obs, _ = reset_result
         else:

@@ -230,8 +230,8 @@ class BaseVectorEnv(object):
         self,
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
-        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+               Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
         """Run one timestep of some environments' dynamics.
 
         If id is None, run one timestep of all the environments’ dynamics;
@@ -244,7 +244,7 @@ class BaseVectorEnv(object):
 
         :param numpy.ndarray action: a batch of action provided by the agent.
 
-        :return: A tuple including four items:
+        :return: A tuple consisting of either:
 
             * ``obs`` a numpy.ndarray, the agent's observation of current environments
             * ``rew`` a numpy.ndarray, the amount of rewards returned after \
@@ -253,6 +253,20 @@ class BaseVectorEnv(object):
                 which case further step() calls will return undefined results
             * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
                 information (helpful for debugging, and sometimes learning)
+
+            or:
+
+            * ``obs`` a numpy.ndarray, the agent's observation of current environments
+            * ``rew`` a numpy.ndarray, the amount of rewards returned after \
+                previous actions
+            * ``terminated`` a numpy.ndarray, whether these episodes have been \
+                terminated
+            * ``truncated`` a numpy.ndarray, whether these episodes have been truncated
+            * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
+                information (helpful for debugging, and sometimes learning)
+
+            The case distinction is made based on whether the underlying environment
+            uses the old step API (first case) or the new step API (second case).
 
         For the async simulation:
 
@@ -292,7 +306,8 @@ class BaseVectorEnv(object):
                 waiting_index = self.waiting_conn.index(conn)
                 self.waiting_conn.pop(waiting_index)
                 env_id = self.waiting_id.pop(waiting_index)
-                # env_return can be (obs, reward, done, info) or (obs, reward, terminated, truncated, info)
+                # env_return can be (obs, reward, done, info) or
+                # (obs, reward, terminated, truncated, info)
                 env_return = conn.recv()  # type: ignore
                 env_return[-1]["env_id"] = env_id  # Add `env_id` to info
                 result.append(env_return)
@@ -304,7 +319,7 @@ class BaseVectorEnv(object):
         except ValueError:  # different len(obs)
             obs_stack = np.array(obs_list, dtype=object)
         other_stacks = map(np.stack, return_lists[1:])
-        return (obs_stack, *other_stacks)
+        return (obs_stack, *other_stacks)  # type: ignore
 
     def seed(
         self,

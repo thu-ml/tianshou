@@ -67,7 +67,7 @@ class CachedReplayBuffer(ReplayBufferManager):
         ptr, ep_rew, ep_len, ep_idx = super().add(batch, buffer_ids=buf_arr)
         # find the terminated episode, move data from cached buf to main buf
         updated_ptr, updated_ep_idx = [], []
-        done = batch.done.astype(bool)
+        done = np.logical_or(batch.terminated, batch.truncated)
         for buffer_idx in buf_arr[done]:
             index = self.main_buffer.update(self.buffers[buffer_idx])
             if len(index) == 0:  # unsuccessful move, replace with -1

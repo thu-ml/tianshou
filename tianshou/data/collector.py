@@ -37,10 +37,12 @@ class Collector(object):
 
     The "preprocess_fn" is a function called before the data has been added to the
     buffer with batch format. It will receive only "obs" and "env_id" when the
-    collector resets the environment, and will receive six keys "obs_next", "rew",
-    "done", "info", "policy" and "env_id" in a normal env step. It returns either a
-    dict or a :class:`~tianshou.data.Batch` with the modified keys and values. Examples
-    are in "test/base/test_collector.py".
+    collector resets the environment, and will receive the keys "obs_next", "rew",
+    "terminated", "truncated, "info", "policy" and "env_id" in a normal env step.
+    Alternatively, it may also accept the keys "obs_next", "rew", "done", "info",
+    "policy" and "env_id".
+    It returns either a dict or a :class:`~tianshou.data.Batch` with the modified
+    keys and values. Examples are in "test/base/test_collector.py".
 
     .. note::
 
@@ -612,19 +614,30 @@ class AsyncCollector(Collector):
                 rew=rew,
                 terminated=terminated,
                 truncated=truncated,
-                done=done,
                 info=info
             )
             if self.preprocess_fn:
-                self.data.update(
-                    self.preprocess_fn(
-                        obs_next=self.data.obs_next,
-                        rew=self.data.rew,
-                        done=self.data.done,
-                        info=self.data.info,
-                        env_id=ready_env_ids,
+                try:
+                    self.data.update(
+                        self.preprocess_fn(
+                            obs_next=self.data.obs_next,
+                            rew=self.data.rew,
+                            terminated=self.data.terminated,
+                            truncated=self.data.truncated,
+                            info=self.data.info,
+                            env_id=ready_env_ids,
+                        )
                     )
-                )
+                except TypeError:
+                    self.data.update(
+                        self.preprocess_fn(
+                            obs_next=self.data.obs_next,
+                            rew=self.data.rew,
+                            done=self.data.done,
+                            info=self.data.info,
+                            env_id=ready_env_ids,
+                        )
+                    )
 
             if render:
                 self.env.render()

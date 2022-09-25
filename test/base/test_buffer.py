@@ -34,7 +34,6 @@ def test_replaybuffer(size=10, bufsize=20):
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, act in enumerate(action_list):
         obs_next, rew, terminated, truncated, info = env.step(act)
-        done = terminated or truncated
         buf.add(
             Batch(
                 obs=obs,
@@ -42,7 +41,6 @@ def test_replaybuffer(size=10, bufsize=20):
                 rew=rew,
                 terminated=terminated,
                 truncated=truncated,
-                done=done,
                 obs_next=obs_next,
                 info=info
             )
@@ -67,7 +65,6 @@ def test_replaybuffer(size=10, bufsize=20):
             rew=1,
             terminated=1,
             truncated=0,
-            done=1,
             obs_next='str',
             info={
                 'a': 3,
@@ -99,7 +96,6 @@ def test_replaybuffer(size=10, bufsize=20):
         rew=2,
         terminated=0,
         truncated=0,
-        done=0,
         obs_next="str2",
         info={
             "a": 4,
@@ -155,7 +151,6 @@ def test_ignore_obs_next(size=10):
                 rew=i,
                 terminated=i % 3 == 0,
                 truncated=False,
-                done=i % 3 == 0,
                 info={'if': i}
             )
         )
@@ -210,7 +205,6 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
                 rew=rew,
                 terminated=terminated,
                 truncated=truncated,
-                done=done,
                 info=info
             )
         )
@@ -221,7 +215,6 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
                 rew=rew,
                 terminated=terminated,
                 truncated=truncated,
-                done=done,
                 info=info
             )
         )
@@ -232,7 +225,6 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
                 rew=rew,
                 terminated=terminated,
                 truncated=truncated,
-                done=done,
                 obs_next=[obs, obs],
                 info=info
             )
@@ -267,14 +259,12 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, act in enumerate(action_list):
         obs_next, rew, terminated, truncated, info = env.step(act)
-        done = terminated or truncated
         batch = Batch(
             obs=obs,
             act=act,
             rew=rew,
             terminated=terminated,
             truncated=truncated,
-            done=done,
             obs_next=obs_next,
             info=info,
             policy=np.random.randn() - 0.5
@@ -321,7 +311,6 @@ def test_update():
                 rew=i * i,
                 terminated=i % 2 == 0,
                 truncated=False,
-                done=i % 2 == 0,
                 info={'incident': 'found'}
             )
         )
@@ -448,7 +437,6 @@ def test_pickle():
                 rew=rew,
                 terminated=0,
                 truncated=0,
-                done=0
             )
         )
     for i in range(5):
@@ -459,7 +447,6 @@ def test_pickle():
                 rew=rew,
                 terminated=0,
                 truncated=0,
-                done=0,
                 info=np.random.rand()
             )
         )
@@ -549,7 +536,6 @@ def test_replaybuffermanager():
         rew=[1, 2, 3],
         terminated=[0, 0, 1],
         truncated=[0, 0, 0],
-        done=[0, 0, 1]
     )
     ptr, ep_rew, ep_len, ep_idx = buf.add(batch, buffer_ids=[0, 1, 2])
     assert np.all(ep_len == [0, 0, 1]) and np.all(ep_rew == [0, 0, 3])
@@ -568,7 +554,7 @@ def test_replaybuffermanager():
     assert np.allclose(indices_next, indices), indices_next
     assert np.allclose(buf.unfinished_index(), [0, 5])
     buf.add(
-        Batch(obs=[4], act=[4], rew=[4], terminated=[1], truncated=[0], done=[1]),
+        Batch(obs=[4], act=[4], rew=[4], terminated=[1], truncated=[0]),
         buffer_ids=[3]
     )
     assert np.allclose(buf.unfinished_index(), [0, 5])
@@ -581,38 +567,20 @@ def test_replaybuffermanager():
     assert np.allclose(indices_next, indices), indices_next
     data = np.array([0, 0, 0, 0])
     buf.add(
-        Batch(
-            obs=data, act=data, rew=data, terminated=data, truncated=data, done=data
-        ),
+        Batch(obs=data, act=data, rew=data, terminated=data, truncated=data),
         buffer_ids=[0, 1, 2, 3]
     )
     buf.add(
-        Batch(
-            obs=data,
-            act=data,
-            rew=data,
-            terminated=1 - data,
-            truncated=data,
-            done=1 - data
-        ),
+        Batch(obs=data, act=data, rew=data, terminated=1 - data, truncated=data),
         buffer_ids=[0, 1, 2, 3]
     )
     assert len(buf) == 12
     buf.add(
-        Batch(
-            obs=data, act=data, rew=data, terminated=data, truncated=data, done=data
-        ),
+        Batch(obs=data, act=data, rew=data, terminated=data, truncated=data),
         buffer_ids=[0, 1, 2, 3]
     )
     buf.add(
-        Batch(
-            obs=data,
-            act=data,
-            rew=data,
-            terminated=[0, 1, 0, 1],
-            truncated=data,
-            done=[0, 1, 0, 1]
-        ),
+        Batch(obs=data, act=data, rew=data, terminated=[0, 1, 0, 1], truncated=data),
         buffer_ids=[0, 1, 2, 3]
     )
     assert len(buf) == 20
@@ -696,7 +664,7 @@ def test_replaybuffermanager():
     )
     assert np.allclose(buf.unfinished_index(), [4, 14])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[1], act=[1], rew=[1], terminated=[1], truncated=[0], done=[1]),
+        Batch(obs=[1], act=[1], rew=[1], terminated=[1], truncated=[0]),
         buffer_ids=[2]
     )
     assert np.all(ep_len == [3]) and np.all(ep_rew == [1])
@@ -768,7 +736,7 @@ def test_cachedbuffer():
     assert buf.sample_indices(0).tolist() == []
     # check the normal function/usage/storage in CachedReplayBuffer
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[1], act=[1], rew=[1], terminated=[0], truncated=[0], done=[0]),
+        Batch(obs=[1], act=[1], rew=[1], terminated=[0], truncated=[0]),
         buffer_ids=[1]
     )
     obs = np.zeros(buf.maxsize)
@@ -781,7 +749,7 @@ def test_cachedbuffer():
     assert np.all(ep_len == [0]) and np.all(ep_rew == [0.0])
     assert np.all(ptr == [15]) and np.all(ep_idx == [15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[2], act=[2], rew=[2], terminated=[1], truncated=[0], done=[1]),
+        Batch(obs=[2], act=[2], rew=[2], terminated=[1], truncated=[0]),
         buffer_ids=[3]
     )
     obs[[0, 25]] = 2
@@ -795,14 +763,7 @@ def test_cachedbuffer():
     assert np.allclose(buf.unfinished_index(), [15])
     assert np.allclose(buf.sample_indices(0), [0, 15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(
-            obs=[3, 4],
-            act=[3, 4],
-            rew=[3, 4],
-            terminated=[0, 1],
-            truncated=[0, 0],
-            done=[0, 1]
-        ),
+        Batch(obs=[3, 4], act=[3, 4], rew=[3, 4], terminated=[0, 1], truncated=[0, 0]),
         buffer_ids=[3, 1]  # TODO
     )
     assert np.all(ep_len == [0, 2]) and np.all(ep_rew == [0, 5.0])
@@ -828,8 +789,7 @@ def test_cachedbuffer():
             act=data,
             rew=rew,
             terminated=[0, 0, 1, 1],
-            truncated=[0, 0, 0, 0],
-            done=[0, 0, 1, 1]
+            truncated=[0, 0, 0, 0]
         )
     )
     buf.add(
@@ -838,8 +798,7 @@ def test_cachedbuffer():
             act=data,
             rew=rew,
             terminated=[0, 0, 0, 0],
-            truncated=[0, 0, 0, 0],
-            done=[0, 0, 0, 0]
+            truncated=[0, 0, 0, 0]
         )
     )
     buf.add(
@@ -848,8 +807,7 @@ def test_cachedbuffer():
             act=data,
             rew=rew,
             terminated=[1, 1, 1, 1],
-            truncated=[0, 0, 0, 0],
-            done=[1, 1, 1, 1]
+            truncated=[0, 0, 0, 0]
         )
     )
     buf.add(
@@ -858,8 +816,7 @@ def test_cachedbuffer():
             act=data,
             rew=rew,
             terminated=[0, 0, 0, 0],
-            truncated=[0, 0, 0, 0],
-            done=[0, 0, 0, 0]
+            truncated=[0, 0, 0, 0]
         )
     )
     ptr, ep_rew, ep_len, ep_idx = buf.add(
@@ -868,8 +825,7 @@ def test_cachedbuffer():
             act=data,
             rew=rew,
             terminated=[0, 1, 0, 1],
-            truncated=[0, 0, 0, 0],
-            done=[0, 1, 0, 1]
+            truncated=[0, 0, 0, 0]
         )
     )
     assert np.all(ptr == [1, -1, 11, -1]) and np.all(ep_idx == [0, -1, 10, -1])
@@ -930,7 +886,6 @@ def test_multibuf_stack():
         obs_list = np.array([obs + size * i for i in range(cached_num)])
         act_list = [1] * cached_num
         rew_list = [rew] * cached_num
-        done_list = [done] * cached_num
         terminated_list = [terminated] * cached_num
         truncated_list = [truncated] * cached_num
         obs_next_list = -obs_list
@@ -941,7 +896,6 @@ def test_multibuf_stack():
             rew=rew_list,
             terminated=terminated_list,
             truncated=truncated_list,
-            done=done_list,
             obs_next=obs_next_list,
             info=info_list
         )
@@ -1081,7 +1035,6 @@ def test_multibuf_stack():
             rew=[0, 0],
             terminated=[0, 1],
             truncated=[0, 0],
-            done=[0, 1],
             obs_next=[obs[3], obs[1]]
         ),
         buffer_ids=[1, 2]
