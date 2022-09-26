@@ -1,10 +1,8 @@
 import pprint
 
-import pytest
 from tic_tac_toe import get_args, train_agent, watch
 
 
-@pytest.mark.skip(reason="TODO(Markus28): fix later")
 def test_tic_tac_toe(args=get_args()):
     if args.watch:
         watch(args)
