@@ -3,6 +3,7 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 import gym
 import numpy as np
 
+from tianshou.env.utils import gym_new_venv_step_type, gym_old_venv_step_type
 from tianshou.env.worker import EnvWorker
 
 try:
@@ -55,11 +56,7 @@ class RayEnvWorker(EnvWorker):
         else:
             self.result = self.env.step.remote(action)
 
-    def recv(
-        self
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
-        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
-            np.ndarray, dict], np.ndarray]:
+    def recv(self) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
         return ray.get(self.result)  # type: ignore
 
     def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
