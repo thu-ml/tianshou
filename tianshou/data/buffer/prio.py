@@ -94,7 +94,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             indices = self.sample_indices(0) if index == slice(None) \
                 else self._indices[:len(self)][index]
         else:
-            indices = index  # type: ignore
+            indices = index
         batch = super().__getitem__(indices)
         weight = self.get_weight(indices)
         # ref: https://github.com/Kaixhin/Rainbow/blob/master/memory.py L154

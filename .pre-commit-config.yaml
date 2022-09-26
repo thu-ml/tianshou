@@ -1,0 +1,35 @@
+---
+repos:
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: mypy
+        language: python
+        pass_filenames: false
+        args: [--config-file=setup.cfg, tianshou]
+
+  - repo: https://github.com/pre-commit/mirrors-yapf
+    rev: 79fc0d8
+    hooks:
+      - id: yapf
+        args: [-r]
+
+  -   repo: https://github.com/pycqa/isort
+      rev: 5.10.1
+      hooks:
+        - id: isort
+          name: isort
+
+  -   repo: https://gitlab.com/PyCQA/flake8
+      rev: 4.0.1
+      hooks:
+        - id: flake8
+          args: [--config=setup.cfg, --count, --show-source, --statistics]
+          additional_dependencies: ["flake8_bugbear"]
+
+  -   repo: https://github.com/pycqa/pydocstyle
+      rev: 6.1.1
+      hooks:
+          - id: pydocstyle
+            exclude: ^(test/)|(docs/)|(examples/)|(setup.py)
