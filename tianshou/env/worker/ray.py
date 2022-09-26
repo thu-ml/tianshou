@@ -13,6 +13,18 @@ except ImportError:
 
 
 class _SetAttrWrapper(gym.Wrapper):
+    def __init__(self, env: gym.Env) -> None:
+        """For Gym 0.25, wrappers will automatically
+        change to the old step API. We need to check
+        which API ``env`` follows and adjust the
+        wrapper accordingly."""
+        env.reset()
+        step_result = env.step(env.action_space.sample())
+        new_step_api = len(step_result) == 5
+        try:
+            super().__init__(env, new_step_api=new_step_api)
+        except TypeError:   # The kwarg `new_step_api` was removed in Gym 0.26
+            super().__init__(env)
 
     def set_env_attr(self, key: str, value: Any) -> None:
         setattr(self.env.unwrapped, key, value)
