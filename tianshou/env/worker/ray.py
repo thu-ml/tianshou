@@ -23,7 +23,7 @@ class _SetAttrWrapper(gym.Wrapper):
         step_result = env.step(env.action_space.sample())
         new_step_api = len(step_result) == 5
         try:
-            super().__init__(env, new_step_api=new_step_api)        # type: ignore
+            super().__init__(env, new_step_api=new_step_api)  # type: ignore
         except TypeError:  # The kwarg `new_step_api` was removed in Gym 0.26
             super().__init__(env)
 
