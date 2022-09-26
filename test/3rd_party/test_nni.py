@@ -10,17 +10,17 @@ import nni.nas.nn.pytorch as nn
 import nni.nas.strategy as strategy
 import torch
 import torch.nn.functional as F
+from nni.nas.execution import wait_models
 from nni.nas.execution.common import (
-    Model,
     AbstractExecutionEngine,
     AbstractGraphListener,
-    MetricData,
-    WorkerInfo,
     DebugEvaluator,
-    ModelStatus
+    MetricData,
+    Model,
+    ModelStatus,
+    WorkerInfo,
 )
 from nni.nas.execution.pytorch.converter import convert_to_graph
-from nni.nas.execution import wait_models
 from nni.nas.nn.pytorch.mutator import process_inline_mutation
 
 
