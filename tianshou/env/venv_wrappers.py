@@ -2,6 +2,7 @@ from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
 
+from tianshou.env.utils import gym_new_venv_step_type, gym_old_venv_step_type
 from tianshou.env.venvs import GYM_RESERVED_KEYS, BaseVectorEnv
 from tianshou.utils import RunningMeanStd
 
@@ -48,8 +49,7 @@ class VectorEnvWrapper(BaseVectorEnv):
         self,
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
-               Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
         return self.venv.step(action, id)
 
     def seed(
@@ -113,8 +113,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         self,
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
-               Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
         step_results = self.venv.step(action, id)
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(step_results[0])

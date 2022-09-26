@@ -4,6 +4,7 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 import gym
 import numpy as np
 
+from tianshou.env.utils import gym_new_venv_step_type, gym_old_venv_step_type
 from tianshou.utils import deprecation
 
 
@@ -13,7 +14,7 @@ class EnvWorker(ABC):
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self._env_fn = env_fn
         self.is_closed = False
-        self.result: Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+        self.result: Union[gym_old_venv_step_type, gym_new_venv_step_type,
                            Tuple[np.ndarray, dict], np.ndarray]
         self.action_space = self.get_env_attr("action_space")  # noqa: B009
         self.is_reset = False
@@ -47,9 +48,8 @@ class EnvWorker(ABC):
 
     def recv(
         self
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
-        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
-            np.ndarray, dict], np.ndarray]:  # noqa:E125
+    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type, Tuple[np.ndarray, dict],
+               np.ndarray]:  # noqa:E125
         """Receive result from low-level worker.
 
         If the last "send" function sends a NULL action, it only returns a
@@ -72,8 +72,7 @@ class EnvWorker(ABC):
 
     def step(
         self, action: np.ndarray
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
-               Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
         """Perform one timestep of the environment's dynamic.
 
         "send" and "recv" are coupled in sync simulation, so users only call
