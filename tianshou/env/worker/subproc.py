@@ -53,9 +53,9 @@ def _setup_buf(space: gym.Space) -> Union[dict, tuple, ShArray]:
     if isinstance(space, gym.spaces.Dict):
         assert isinstance(space.spaces, OrderedDict)
         return {k: _setup_buf(v) for k, v in space.spaces.items()}
-    elif isinstance(space, gym.spaces.Tuple):  # type: ignore
-        assert isinstance(space.spaces, tuple)  # type: ignore
-        return tuple([_setup_buf(t) for t in space.spaces])  # type: ignore
+    elif isinstance(space, gym.spaces.Tuple):
+        assert isinstance(space.spaces, tuple)
+        return tuple([_setup_buf(t) for t in space.spaces])
     else:
         return ShArray(space.dtype, space.shape)  # type: ignore
 
@@ -119,7 +119,7 @@ def _worker(
                 p.send(env.render(**data) if hasattr(env, "render") else None)
             elif cmd == "seed":
                 if hasattr(env, "seed"):
-                    p.send(env.seed(data))  # type: ignore
+                    p.send(env.seed(data))
                 else:
                     env.reset(seed=data)
                     p.send(None)

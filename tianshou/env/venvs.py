@@ -284,7 +284,7 @@ class BaseVectorEnv(object):
                 self.workers[j].send(action[i])
             result = []
             for j in id:
-                env_return = self.workers[j].recv()  # type: ignore
+                env_return = self.workers[j].recv()
                 env_return[-1]["env_id"] = j
                 result.append(env_return)
         else:
@@ -308,7 +308,7 @@ class BaseVectorEnv(object):
                 env_id = self.waiting_id.pop(waiting_index)
                 # env_return can be (obs, reward, done, info) or
                 # (obs, reward, terminated, truncated, info)
-                env_return = conn.recv()  # type: ignore
+                env_return = conn.recv()
                 env_return[-1]["env_id"] = env_id  # Add `env_id` to info
                 result.append(env_return)
                 self.ready_id.append(env_id)
