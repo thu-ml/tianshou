@@ -186,7 +186,7 @@ class ImplicitQuantileNetwork(Critic):
         preprocess_net_output_dim: Optional[int] = None,
         device: Union[str, int, torch.device] = "cpu"
     ) -> None:
-        last_size = np.prod(action_shape)
+        last_size = int(np.prod(action_shape))
         super().__init__(
             preprocess_net, hidden_sizes, last_size, preprocess_net_output_dim, device
         )

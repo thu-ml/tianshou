@@ -37,10 +37,12 @@ class Collector(object):
 
     The "preprocess_fn" is a function called before the data has been added to the
     buffer with batch format. It will receive only "obs" and "env_id" when the
-    collector resets the environment, and will receive six keys "obs_next", "rew",
-    "done", "info", "policy" and "env_id" in a normal env step. It returns either a
-    dict or a :class:`~tianshou.data.Batch` with the modified keys and values. Examples
-    are in "test/base/test_collector.py".
+    collector resets the environment, and will receive the keys "obs_next", "rew",
+    "terminated", "truncated, "info", "policy" and "env_id" in a normal env step.
+    Alternatively, it may also accept the keys "obs_next", "rew", "done", "info",
+    "policy" and "env_id".
+    It returns either a dict or a :class:`~tianshou.data.Batch` with the modified
+    keys and values. Examples are in "test/base/test_collector.py".
 
     .. note::
 
@@ -115,7 +117,15 @@ class Collector(object):
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
         self.data = Batch(
-            obs={}, act={}, rew={}, done={}, obs_next={}, info={}, policy={}
+            obs={},
+            act={},
+            rew={},
+            terminated={},
+            truncated={},
+            done={},
+            obs_next={},
+            info={},
+            policy={}
         )
         self.reset_env(gym_reset_kwargs)
         if reset_buffer:
@@ -302,9 +312,32 @@ class Collector(object):
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             result = self.env.step(action_remap, ready_env_ids)  # type: ignore
-            obs_next, rew, done, info = result
+            if len(result) == 5:
+                obs_next, rew, terminated, truncated, info = result
+                done = np.logical_or(terminated, truncated)
+            elif len(result) == 4:
+                obs_next, rew, done, info = result
+                if isinstance(info, dict):
+                    truncated = info["TimeLimit.truncated"]
+                else:
+                    truncated = np.array(
+                        [
+                            info_item.get("TimeLimit.truncated", False)
+                            for info_item in info
+                        ]
+                    )
+                terminated = np.logical_and(done, ~truncated)
+            else:
+                raise ValueError()
 
-            self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
+            self.data.update(
+                obs_next=obs_next,
+                rew=rew,
+                terminated=terminated,
+                truncated=truncated,
+                done=done,
+                info=info
+            )
             if self.preprocess_fn:
                 self.data.update(
                     self.preprocess_fn(
@@ -368,7 +401,15 @@ class Collector(object):
 
         if n_episode:
             self.data = Batch(
-                obs={}, act={}, rew={}, done={}, obs_next={}, info={}, policy={}
+                obs={},
+                act={},
+                rew={},
+                terminated={},
+                truncated={},
+                done={},
+                obs_next={},
+                info={},
+                policy={}
             )
             self.reset_env()
 
@@ -542,7 +583,24 @@ class AsyncCollector(Collector):
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             result = self.env.step(action_remap, ready_env_ids)  # type: ignore
-            obs_next, rew, done, info = result
+
+            if len(result) == 5:
+                obs_next, rew, terminated, truncated, info = result
+                done = np.logical_or(terminated, truncated)
+            elif len(result) == 4:
+                obs_next, rew, done, info = result
+                if isinstance(info, dict):
+                    truncated = info["TimeLimit.truncated"]
+                else:
+                    truncated = np.array(
+                        [
+                            info_item.get("TimeLimit.truncated", False)
+                            for info_item in info
+                        ]
+                    )
+                terminated = np.logical_and(done, ~truncated)
+            else:
+                raise ValueError()
 
             # change self.data here because ready_env_ids has changed
             try:
@@ -551,17 +609,35 @@ class AsyncCollector(Collector):
                 ready_env_ids = np.array([i["env_id"] for i in info])
             self.data = whole_data[ready_env_ids]
 
-            self.data.update(obs_next=obs_next, rew=rew, done=done, info=info)
+            self.data.update(
+                obs_next=obs_next,
+                rew=rew,
+                terminated=terminated,
+                truncated=truncated,
+                info=info
+            )
             if self.preprocess_fn:
-                self.data.update(
-                    self.preprocess_fn(
-                        obs_next=self.data.obs_next,
-                        rew=self.data.rew,
-                        done=self.data.done,
-                        info=self.data.info,
-                        env_id=ready_env_ids,
+                try:
+                    self.data.update(
+                        self.preprocess_fn(
+                            obs_next=self.data.obs_next,
+                            rew=self.data.rew,
+                            terminated=self.data.terminated,
+                            truncated=self.data.truncated,
+                            info=self.data.info,
+                            env_id=ready_env_ids,
+                        )
                     )
-                )
+                except TypeError:
+                    self.data.update(
+                        self.preprocess_fn(
+                            obs_next=self.data.obs_next,
+                            rew=self.data.rew,
+                            done=self.data.done,
+                            info=self.data.info,
+                            env_id=ready_env_ids,
+                        )
+                    )
 
             if render:
                 self.env.render()
