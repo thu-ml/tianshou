@@ -23,7 +23,8 @@ def test_episodic_returns(size=2560):
     fn = BasePolicy.compute_episodic_return
     buf = ReplayBuffer(20)
     batch = Batch(
-        done=np.array([1, 0, 0, 1, 0, 1, 0, 1.]),
+        terminated=np.array([1, 0, 0, 1, 0, 0, 0, 1.]),
+        truncated=np.array([0, 0, 0, 0, 0, 1, 0, 0]),
         rew=np.array([0, 1, 2, 3, 4, 5, 6, 7.]),
         info=Batch(
             {
@@ -40,7 +41,8 @@ def test_episodic_returns(size=2560):
     assert np.allclose(returns, ans)
     buf.reset()
     batch = Batch(
-        done=np.array([0, 1, 0, 1, 0, 1, 0.]),
+        terminated=np.array([0, 1, 0, 1, 0, 1, 0.]),
+        truncated=np.array([0, 0, 0, 0, 0, 0, 0.]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
     )
     for b in batch:
@@ -51,7 +53,8 @@ def test_episodic_returns(size=2560):
     assert np.allclose(returns, ans)
     buf.reset()
     batch = Batch(
-        done=np.array([0, 1, 0, 1, 0, 0, 1.]),
+        terminated=np.array([0, 1, 0, 1, 0, 0, 1.]),
+        truncated=np.array([0, 0, 0, 0, 0, 0, 0]),
         rew=np.array([7, 6, 1, 2, 3, 4, 5.]),
     )
     for b in batch:
@@ -62,7 +65,8 @@ def test_episodic_returns(size=2560):
     assert np.allclose(returns, ans)
     buf.reset()
     batch = Batch(
-        done=np.array([0, 0, 0, 1., 0, 0, 0, 1, 0, 0, 0, 1]),
+        terminated=np.array([0, 0, 0, 1., 0, 0, 0, 1, 0, 0, 0, 1]),
+        truncated=np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
         rew=np.array([101, 102, 103., 200, 104, 105, 106, 201, 107, 108, 109, 202]),
     )
     for b in batch:
@@ -79,7 +83,8 @@ def test_episodic_returns(size=2560):
     assert np.allclose(returns, ground_truth)
     buf.reset()
     batch = Batch(
-        done=np.array([0, 0, 0, 1., 0, 0, 0, 1, 0, 0, 0, 1]),
+        terminated=np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]),
+        truncated=np.array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0]),
         rew=np.array([101, 102, 103., 200, 104, 105, 106, 201, 107, 108, 109, 202]),
         info=Batch(
             {
@@ -109,7 +114,8 @@ def test_episodic_returns(size=2560):
     if __name__ == '__main__':
         buf = ReplayBuffer(size)
         batch = Batch(
-            done=np.random.randint(100, size=size) == 0,
+            terminated=np.random.randint(100, size=size) == 0,
+            truncated=np.zeros(size),
             rew=np.random.random(size),
         )
         for b in batch:
@@ -164,7 +170,15 @@ def compute_nstep_return_base(nstep, gamma, buffer, indices):
 def test_nstep_returns(size=10000):
     buf = ReplayBuffer(10)
     for i in range(12):
-        buf.add(Batch(obs=0, act=0, rew=i + 1, done=i % 4 == 3))
+        buf.add(
+            Batch(
+                obs=0,
+                act=0,
+                rew=i + 1,
+                terminated=i % 4 == 3,
+                truncated=False,
+            )
+        )
     batch, indices = buf.sample(0)
     assert np.allclose(indices, [2, 3, 4, 5, 6, 7, 8, 9, 0, 1])
     # rew:  [11, 12, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -224,7 +238,8 @@ def test_nstep_returns_with_timelimit(size=10000):
                 obs=0,
                 act=0,
                 rew=i + 1,
-                done=i % 4 == 3,
+                terminated=i % 4 == 3 and i != 3,
+                truncated=i == 3,
                 info={"TimeLimit.truncated": i == 3}
             )
         )
@@ -288,8 +303,9 @@ def test_nstep_returns_with_timelimit(size=10000):
                     obs=0,
                     act=0,
                     rew=i + 1,
-                    done=np.random.randint(3) == 0,
-                    info={"TimeLimit.truncated": i % 33 == 0}
+                    terminated=np.random.randint(3) == 0,
+                    truncated=i % 33 == 0,
+                    info={}
                 )
             )
         batch, indices = buf.sample(256)

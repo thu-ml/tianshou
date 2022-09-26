@@ -53,7 +53,7 @@ class MovAvg(object):
         """Get the average."""
         if len(self.cache) == 0:
             return 0.0
-        return float(np.mean(self.cache))
+        return float(np.mean(self.cache))  # type: ignore
 
     def mean(self) -> float:
         """Get the average. Same as :meth:`get`."""
@@ -63,7 +63,7 @@ class MovAvg(object):
         """Get the standard deviation."""
         if len(self.cache) == 0:
             return 0.0
-        return float(np.std(self.cache))
+        return float(np.std(self.cache))  # type: ignore
 
 
 class RunningMeanStd(object):
