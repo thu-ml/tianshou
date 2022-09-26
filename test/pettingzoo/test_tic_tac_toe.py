@@ -1,5 +1,6 @@
 import pprint
 
+import pytest
 from tic_tac_toe import get_args, train_agent, watch
 
 

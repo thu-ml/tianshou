@@ -1,5 +1,6 @@
 import pprint
 
+import pytest
 from pistonball import get_args, train_agent, watch
 
 
