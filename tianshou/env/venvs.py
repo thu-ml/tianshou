@@ -3,6 +3,7 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 import gym
 import numpy as np
 
+from tianshou.env.utils import gym_new_venv_step_type, gym_old_venv_step_type
 from tianshou.env.worker import (
     DummyEnvWorker,
     EnvWorker,
@@ -230,7 +231,7 @@ class BaseVectorEnv(object):
         self,
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
         """Run one timestep of some environments' dynamics.
 
         If id is None, run one timestep of all the environments’ dynamics;
@@ -243,7 +244,7 @@ class BaseVectorEnv(object):
 
         :param numpy.ndarray action: a batch of action provided by the agent.
 
-        :return: A tuple including four items:
+        :return: A tuple consisting of either:
 
             * ``obs`` a numpy.ndarray, the agent's observation of current environments
             * ``rew`` a numpy.ndarray, the amount of rewards returned after \
@@ -252,6 +253,20 @@ class BaseVectorEnv(object):
                 which case further step() calls will return undefined results
             * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
                 information (helpful for debugging, and sometimes learning)
+
+            or:
+
+            * ``obs`` a numpy.ndarray, the agent's observation of current environments
+            * ``rew`` a numpy.ndarray, the amount of rewards returned after \
+                previous actions
+            * ``terminated`` a numpy.ndarray, whether these episodes have been \
+                terminated
+            * ``truncated`` a numpy.ndarray, whether these episodes have been truncated
+            * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
+                information (helpful for debugging, and sometimes learning)
+
+            The case distinction is made based on whether the underlying environment
+            uses the old step API (first case) or the new step API (second case).
 
         For the async simulation:
 
@@ -269,9 +284,9 @@ class BaseVectorEnv(object):
                 self.workers[j].send(action[i])
             result = []
             for j in id:
-                obs, rew, done, info = self.workers[j].recv()  # type: ignore
-                info["env_id"] = j
-                result.append((obs, rew, done, info))
+                env_return = self.workers[j].recv()
+                env_return[-1]["env_id"] = j
+                result.append(env_return)
         else:
             if action is not None:
                 self._assert_id(id)
@@ -291,19 +306,20 @@ class BaseVectorEnv(object):
                 waiting_index = self.waiting_conn.index(conn)
                 self.waiting_conn.pop(waiting_index)
                 env_id = self.waiting_id.pop(waiting_index)
-                obs, rew, done, info = conn.recv()  # type: ignore
-                info["env_id"] = env_id
-                result.append((obs, rew, done, info))
+                # env_return can be (obs, reward, done, info) or
+                # (obs, reward, terminated, truncated, info)
+                env_return = conn.recv()
+                env_return[-1]["env_id"] = env_id  # Add `env_id` to info
+                result.append(env_return)
                 self.ready_id.append(env_id)
-        obs_list, rew_list, done_list, info_list = zip(*result)
+        return_lists = tuple(zip(*result))
+        obs_list = return_lists[0]
         try:
             obs_stack = np.stack(obs_list)
         except ValueError:  # different len(obs)
             obs_stack = np.array(obs_list, dtype=object)
-        rew_stack, done_stack, info_stack = map(
-            np.stack, [rew_list, done_list, info_list]
-        )
-        return obs_stack, rew_stack, done_stack, info_stack
+        other_stacks = map(np.stack, return_lists[1:])
+        return (obs_stack, *other_stacks)  # type: ignore
 
     def seed(
         self,

@@ -8,7 +8,11 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 import gym
 import numpy as np
 
-from tianshou.env.utils import CloudpickleWrapper
+from tianshou.env.utils import (
+    CloudpickleWrapper,
+    gym_new_venv_step_type,
+    gym_old_venv_step_type,
+)
 from tianshou.env.worker import EnvWorker
 
 _NP_TO_CT = {
@@ -49,9 +53,9 @@ def _setup_buf(space: gym.Space) -> Union[dict, tuple, ShArray]:
     if isinstance(space, gym.spaces.Dict):
         assert isinstance(space.spaces, OrderedDict)
         return {k: _setup_buf(v) for k, v in space.spaces.items()}
-    elif isinstance(space, gym.spaces.Tuple):  # type: ignore
-        assert isinstance(space.spaces, tuple)  # type: ignore
-        return tuple([_setup_buf(t) for t in space.spaces])  # type: ignore
+    elif isinstance(space, gym.spaces.Tuple):
+        assert isinstance(space.spaces, tuple)
+        return tuple([_setup_buf(t) for t in space.spaces])
     else:
         return ShArray(space.dtype, space.shape)  # type: ignore
 
@@ -86,11 +90,11 @@ def _worker(
                 p.close()
                 break
             if cmd == "step":
-                obs, reward, done, info = env.step(data)
+                env_return = env.step(data)
                 if obs_bufs is not None:
-                    _encode_obs(obs, obs_bufs)
-                    obs = None
-                p.send((obs, reward, done, info))
+                    _encode_obs(env_return[0], obs_bufs)
+                    env_return = (None, *env_return[1:])
+                p.send(env_return)
             elif cmd == "reset":
                 retval = env.reset(**data)
                 reset_returns_info = isinstance(
@@ -209,8 +213,8 @@ class SubprocEnvWorker(EnvWorker):
 
     def recv(
         self
-    ) -> Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Tuple[
-        np.ndarray, dict], np.ndarray]:  # noqa:E125
+    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type, Tuple[np.ndarray, dict],
+               np.ndarray]:  # noqa:E125
         result = self.parent_remote.recv()
         if isinstance(result, tuple):
             if len(result) == 2:
@@ -218,10 +222,10 @@ class SubprocEnvWorker(EnvWorker):
                 if self.share_memory:
                     obs = self._decode_obs()
                 return obs, info
-            obs, rew, done, info = result
+            obs = result[0]
             if self.share_memory:
                 obs = self._decode_obs()
-            return obs, rew, done, info
+            return (obs, *result[1:])  # type: ignore
         else:
             obs = result
             if self.share_memory:

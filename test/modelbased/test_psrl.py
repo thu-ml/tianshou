@@ -39,7 +39,7 @@ def get_args():
     parser.add_argument(
         '--logger',
         type=str,
-        default="wandb",
+        default="none",  # TODO: Change to "wandb" once wandb supports Gym >=0.26.0
         choices=["wandb", "tensorboard", "none"],
     )
     return parser.parse_known_args()[0]
