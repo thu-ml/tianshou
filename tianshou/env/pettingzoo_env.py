@@ -1,9 +1,19 @@
+import warnings
 from abc import ABC
 from typing import Any, Dict, List, Tuple, Union
 
 import gym.spaces
+import pettingzoo
+from packaging import version
 from pettingzoo.utils.env import AECEnv
 from pettingzoo.utils.wrappers import BaseWrapper
+
+if version.parse(pettingzoo.__version__) < version.parse("1.21.0"):
+    warnings.warn(
+        f"You are using PettingZoo {pettingzoo.__version__}. "
+        f"Future tianshou versions may not support PettingZoo<1.21.0. "
+        f"Consider upgrading your PettingZoo version.", DeprecationWarning
+    )
 
 
 class PettingZooEnv(AECEnv, ABC):
@@ -58,6 +68,15 @@ class PettingZooEnv(AECEnv, ABC):
     def reset(self, *args: Any, **kwargs: Any) -> Union[dict, Tuple[dict, dict]]:
         self.env.reset(*args, **kwargs)
         last_return = self.env.last(self)
+
+        if len(last_return) == 4:
+            warnings.warn(
+                "The PettingZoo environment is using the old step API. "
+                "This API may not be supported in future versions of tianshou. "
+                "We recommend that you update the environment code or apply a "
+                "compatibility wrapper.", DeprecationWarning
+            )
+
         observation, info = last_return[0], last_return[-1]
         if isinstance(observation, dict) and 'action_mask' in observation:
             observation_dict = {
