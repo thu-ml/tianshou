@@ -7,6 +7,8 @@ import networkx as nx
 import numpy as np
 from gym.spaces import Box, Dict, Discrete, MultiDiscrete, Tuple
 
+from tianshou.data import Batch
+
 
 class MyTestEnv(gym.Env):
     """This is a "going right" task. The task is to go right ``size`` steps.
@@ -166,3 +168,72 @@ class NXEnv(gym.Env):
         for i in range(self.size):
             self.graph.nodes[i]["data"] = next_graph_state[i]
         return self._encode_obs(), 1.0, 0, 0, {}
+
+
+class MyGoalEnv(MyTestEnv):
+
+    def __init__(self, *args, **kwargs):
+        assert kwargs.get("dict_state", 0) + kwargs.get("recurse_state", 0) == 0, \
+            "dict_state / recurse_state not supported"
+        super().__init__(*args, **kwargs)
+        obs, _ = super().reset(state=0)
+        obs, _, _, _, _ = super().step(1)
+        self._goal = obs * self.size
+        super_obsv = self.observation_space
+        self.observation_space = Box(
+            shape=(super_obsv.shape[0] * 3, *super_obsv.shape[1:]),
+            low=0,
+            high=self.size
+        )
+
+    def reset(self, *args, **kwargs):
+        obs, info = super().reset(*args, **kwargs)
+        new_obs = np.concatenate([obs, obs, self._goal], axis=0)
+        return new_obs, info
+
+    def step(self, *args, **kwargs):
+        obs_next, rew, terminated, truncated, info = super().step(*args, **kwargs)
+        new_obs_next = np.concatenate([obs_next, obs_next, self._goal], axis=0)
+        return new_obs_next, rew, terminated, truncated, info
+
+    def deconstruct_obs_fn(self, obs: np.ndarray) -> Batch:
+        """Deconstruct observation into observation, acheived_goal, goal
+        obs: shape(bsz, *observation_shape)
+        return: Batch(
+            o=shape(bsz, *o.shape),
+            ag=shape(bsz, *ag.shape),
+            g=shape(bsz, *g.shape)
+        )
+        """
+        state_sz = 1
+        if self.array_state:
+            state_sz = 4
+        return Batch(
+            o=obs[:, :state_sz],
+            ag=obs[:, state_sz:2 * state_sz],
+            g=obs[:, 2 * state_sz:],
+        )
+
+    def flatten_obs_fn(self, obs: Batch) -> np.ndarray:
+        """Reconstruct observation
+        obs: Batch(
+            o=shape(bsz, *o.shape),
+            ag=shape(bsz, *ag.shape),
+            g=shape(bsz, *g.shape)
+        )
+        return: shape(bsz, *observation_shape)
+        """
+        return np.concatenate((obs.o, obs.ag, obs.g), axis=1)
+
+    def compute_reward_fn(self, obs: Batch) -> np.ndarray:
+        """Compute rewards from deconstructed obs
+        obs: Batch(
+            o=shape(bsz, *o.shape),
+            ag=shape(bsz, *ag.shape),
+            g=shape(bsz, *g.shape)
+        )
+        return: shape(bsz,)
+        """
+        ag_sum = obs.ag.reshape(obs.ag.shape[0], -1).sum(axis=1)
+        g_sum = obs.g.reshape(obs.g.shape[0], -1).sum(axis=1)
+        return (ag_sum == g_sum)
