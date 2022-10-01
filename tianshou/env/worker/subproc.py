@@ -41,12 +41,13 @@ class ShArray:
     def save(self, ndarray: np.ndarray) -> None:
         assert isinstance(ndarray, np.ndarray)
         dst = self.arr.get_obj()
-        dst_np = np.frombuffer(dst, dtype=self.dtype).reshape(self.shape)
+        dst_np = np.frombuffer(dst,
+                               dtype=self.dtype).reshape(self.shape)  # type: ignore
         np.copyto(dst_np, ndarray)
 
     def get(self) -> np.ndarray:
         obj = self.arr.get_obj()
-        return np.frombuffer(obj, dtype=self.dtype).reshape(self.shape)
+        return np.frombuffer(obj, dtype=self.dtype).reshape(self.shape)  # type: ignore
 
 
 def _setup_buf(space: gym.Space) -> Union[dict, tuple, ShArray]:
