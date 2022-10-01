@@ -67,6 +67,9 @@ class PettingZooEnv(AECEnv, ABC):
 
     def reset(self, *args: Any, **kwargs: Any) -> Union[dict, Tuple[dict, dict]]:
         self.env.reset(*args, **kwargs)
+
+        # Here, we do not label the return values explicitly to keep compatibility with
+        # old step API. TODO: Change once PettingZoo>=1.21.0 is required
         last_return = self.env.last(self)
 
         if len(last_return) == 4:
@@ -108,6 +111,9 @@ class PettingZooEnv(AECEnv, ABC):
     ) -> Union[Tuple[Dict, List[int], bool, Dict], Tuple[Dict, List[int], bool, bool,
                                                          Dict]]:
         self.env.step(action)
+
+        # Here, we do not label the return values explicitly to keep compatibility with
+        # old step API. TODO: Change once PettingZoo>=1.21.0 is required
         last_return = self.env.last()
         observation = last_return[0]
         if isinstance(observation, dict) and 'action_mask' in observation:
