@@ -315,6 +315,7 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     )
     buf2 = HERVectorReplayBuffer(
         bufsize,
+        buffer_num=3,
         deconstruct_obs_fn=env.deconstruct_obs_fn,
         flatten_obs_fn=env.flatten_obs_fn,
         compute_reward_fn=env.compute_reward_fn,
@@ -1276,6 +1277,7 @@ if __name__ == '__main__':
     test_stack()
     test_segtree()
     test_priortized_replaybuffer()
+    test_herreplaybuffer()
     test_update()
     test_pickle()
     test_hdf5()
