@@ -21,6 +21,15 @@ in the main directory. This installation is removable by
 PEP8 Code Style Check and Code Formatter
 ----------------------------------------
 
+Please set up pre-commit by running
+
+.. code-block:: bash
+
+    $ pre-commit install
+
+in the main directory. This should make sure that your contribution is properly
+formatted before every commit.
+
 We follow PEP8 python code style with flake8. To check, in the main directory, run:
 
 .. code-block:: bash
