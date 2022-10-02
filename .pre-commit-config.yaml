@@ -1,16 +1,16 @@
 ---
 repos:
-  - repo: local
-    hooks:
-      - id: mypy
-        name: mypy
-        entry: mypy
-        language: python
-        pass_filenames: false
-        args: [--config-file=setup.cfg, tianshou]
+  # - repo: local
+  #   hooks:
+  #     - id: mypy
+  #       name: mypy
+  #       entry: mypy
+  #       language: python
+  #       pass_filenames: false
+  #       args: [--config-file=setup.cfg, tianshou]
 
   - repo: https://github.com/pre-commit/mirrors-yapf
-    rev: 79fc0d8
+    rev: v0.32.0
     hooks:
       - id: yapf
         args: [-r]

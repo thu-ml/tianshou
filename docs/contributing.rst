@@ -20,6 +20,7 @@ in the main directory. This installation is removable by
 
 PEP8 Code Style Check and Code Formatter
 ----------------------------------------
+
 Please set up pre-commit by running
 
 .. code-block:: bash
