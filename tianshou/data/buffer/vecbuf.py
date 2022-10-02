@@ -70,12 +70,16 @@ class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
 
 class HERVectorReplayBuffer(HERReplayBufferManager):
     """HERVectorReplayBuffer contains n HERReplayBuffer with same size.
+
     It is used for storing transition from different environments yet keeping the order
     of time.
+
     :param int total_size: the total size of HERVectorReplayBuffer.
     :param int buffer_num: the number of HERReplayBuffer it uses, which are
         under the same configuration.
+
     Other input arguments are the same as :class:`~tianshou.data.HERReplayBuffer`.
+
     .. seealso::
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """

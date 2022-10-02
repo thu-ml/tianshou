@@ -58,6 +58,12 @@ class MultiDiscreteToDiscrete(gym.ActionWrapper):
 
 
 class TruncatedAsTerminated(gym.Wrapper):
+    """A wrapper that set `terminated = terminated or truncated` for `step()`.
+
+    It's intended to use with `gym.wrappers.TimeLimit`.
+
+    :param gym.Env env: gym environment.
+    """
 
     def __init__(self, env: gym.Env):
         super().__init__(env)

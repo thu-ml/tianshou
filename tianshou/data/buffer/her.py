@@ -6,6 +6,24 @@ from tianshou.data import Batch, ReplayBuffer
 
 
 class HERReplayBuffer(ReplayBuffer):
+    """Implementation of Hindsight Experience Replay. arXiv:1707.01495.
+
+    Currently support only 'future' strategy of HER.
+
+    :param int size: the size of the replay buffer.
+    :param compute_reward_fn: a function that takes 3 arguments: \
+        `acheived_goal`, `desired_goal`, `info` and returns the reward(s).
+        Note that the goal arguments can have extra batch_size dimension and in that \
+        case, the rewards of size batch_size should be returned
+    :param int horizon: the maximum number of steps in an episode.
+    :param int future_k: the 'k' parameter introduced in the paper. In short, there \
+        will be at most k episodes that are re-written for every 1 unaltered episode \
+        during the sampling.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
+    """
 
     def __init__(
         self,
@@ -23,9 +41,9 @@ class HERReplayBuffer(ReplayBuffer):
         self._altered_indices = np.array([])
 
     def _restore_cache(self) -> None:
-        """
-        Write cached original meta back to self._meta
-        Do this everytime before 'writing', 'sampling' or 'saving' the buffer.
+        """Write cached original meta back to `self._meta`.
+
+        It's called everytime before 'writing', 'sampling' or 'saving' the buffer.
         """
         if not hasattr(self, '_altered_indices'):
             return
@@ -64,8 +82,11 @@ class HERReplayBuffer(ReplayBuffer):
 
     def sample_indices(self, batch_size: int) -> np.ndarray:
         """Get a random sample of index with size = batch_size.
-        Return all available indices in the buffer if batch_size is 0; return an empty
-        numpy array if batch_size < 0 or no available index can be sampled.
+
+        Return all available indices in the buffer if batch_size is 0; return an \
+        empty numpy array if batch_size < 0 or no available index can be sampled. \
+        Additionally, some episodes of the sampled transitions will be re-written \
+        according to HER.
         """
         self._restore_cache()
         indices = np.sort(super().sample_indices(batch_size=batch_size))
@@ -73,12 +94,13 @@ class HERReplayBuffer(ReplayBuffer):
         return indices
 
     def rewrite_transitions(self, indices: np.ndarray) -> None:
-        """ Re-write the goal of some sampled transitions' episodes according to HER's
-        'future' strategy. The new goals will be written directly to the internal
-        batch data temporarily and will be restored right before the next sampling or
-        when using some of the buffer's method (such as `add` or `save_hdf5`). This is
-        to make sure that n-step returns calculation etc. performs correctly without
-        alteration.
+        """Re-write the goal of some sampled transitions' episodes according to HER.
+
+        Currently applies only HER's 'future' strategy. The new goals will be written \
+        directly to the internal batch data temporarily and will be restored right \
+        before the next sampling or when using some of the buffer's method (e.g. \
+        `add`, `save_hdf5`, etc.). This is to make sure that n-step returns \
+        calculation etc., performs correctly without additional alteration.
         """
         if indices.size == 0:
             return

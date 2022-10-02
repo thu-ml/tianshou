@@ -217,10 +217,14 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
 class HERReplayBufferManager(ReplayBufferManager):
     """HERReplayBufferManager contains a list of HERReplayBuffer with \
     exactly the same configuration.
+
     These replay buffers have contiguous memory layout, and the storage space each
     buffer has is a shallow copy of the topmost memory.
+
     :param buffer_list: a list of HERReplayBuffer needed to be handled.
+
     .. seealso::
+
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
