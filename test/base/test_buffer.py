@@ -306,18 +306,11 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     env_size = size
     env = MyGoalEnv(env_size, array_state=True)
     buf = HERReplayBuffer(
-        bufsize,
-        deconstruct_obs_fn=env.deconstruct_obs_fn,
-        flatten_obs_fn=env.flatten_obs_fn,
-        compute_reward_fn=env.compute_reward_fn,
-        horizon=30,
-        future_k=8
+        bufsize, compute_reward_fn=env.compute_reward_fn, horizon=30, future_k=8
     )
     buf2 = HERVectorReplayBuffer(
         bufsize,
         buffer_num=3,
-        deconstruct_obs_fn=env.deconstruct_obs_fn,
-        flatten_obs_fn=env.flatten_obs_fn,
         compute_reward_fn=env.compute_reward_fn,
         horizon=30,
         future_k=8
@@ -351,12 +344,12 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     # Check that goals are the same for the episode (only 1 ep in buffer)
     tmp_indices = indices.copy()
     for _ in range(2 * env_size):
-        obs = env.deconstruct_obs_fn(buf[tmp_indices].obs)
-        obs_next = env.deconstruct_obs_fn(buf[tmp_indices].obs_next)
+        obs = buf[tmp_indices].obs
+        obs_next = buf[tmp_indices].obs_next
         rew = buf[tmp_indices].rew
-        g = obs.g.reshape(sample_sz, -1)[:, 0]
-        ag_next = obs_next.ag.reshape(sample_sz, -1)[:, 0]
-        g_next = obs_next.g.reshape(sample_sz, -1)[:, 0]
+        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
+        ag_next = obs_next.achieved_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
         assert np.all(g == g[0])
         assert np.all(g_next == g_next[0])
         assert np.all(rew == (ag_next == g).astype(np.float32))
@@ -366,10 +359,10 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     buf._restore_cache()
     tmp_indices = indices.copy()
     for _ in range(2 * env_size):
-        obs = env.deconstruct_obs_fn(buf[tmp_indices].obs)
-        obs_next = env.deconstruct_obs_fn(buf[tmp_indices].obs_next)
-        g = obs.g.reshape(sample_sz, -1)[:, 0]
-        g_next = obs_next.g.reshape(sample_sz, -1)[:, 0]
+        obs = buf[tmp_indices].obs
+        obs_next = buf[tmp_indices].obs_next
+        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
         assert np.all(g == env_size)
         assert np.all(g_next == g_next[0])
         assert np.all(g == g[0])
@@ -381,12 +374,12 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     # Check that goals are the same for the episode (only 1 ep in buffer)
     tmp_indices = indices.copy()
     for _ in range(2 * env_size):
-        obs = env.deconstruct_obs_fn(buf2[tmp_indices].obs)
-        obs_next = env.deconstruct_obs_fn(buf2[tmp_indices].obs_next)
+        obs = buf2[tmp_indices].obs
+        obs_next = buf2[tmp_indices].obs_next
         rew = buf2[tmp_indices].rew
-        g = obs.g.reshape(sample_sz, -1)[:, 0]
-        ag_next = obs_next.ag.reshape(sample_sz, -1)[:, 0]
-        g_next = obs_next.g.reshape(sample_sz, -1)[:, 0]
+        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
+        ag_next = obs_next.achieved_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
         assert np.all(g == g_next)
         assert np.all(rew == (ag_next == g).astype(np.float32))
         tmp_indices = buf2.next(tmp_indices)
@@ -395,10 +388,10 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     buf2._restore_cache()
     tmp_indices = indices.copy()
     for _ in range(2 * env_size):
-        obs = env.deconstruct_obs_fn(buf2[tmp_indices].obs)
-        g = obs.g.reshape(sample_sz, -1)[:, 0]
-        g_next = env.deconstruct_obs_fn(buf2[tmp_indices].obs_next
-                                        ).g.reshape(sample_sz, -1)[:, 0]
+        obs = buf2[tmp_indices].obs
+        obs_next = buf2[tmp_indices].obs_next
+        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
         assert np.all(g == env_size)
         assert np.all(g_next == g_next[0])
         assert np.all(g == g[0])
@@ -1277,7 +1270,6 @@ if __name__ == '__main__':
     test_stack()
     test_segtree()
     test_priortized_replaybuffer()
-    test_herreplaybuffer()
     test_update()
     test_pickle()
     test_hdf5()
@@ -1286,3 +1278,4 @@ if __name__ == '__main__':
     test_multibuf_stack()
     test_multibuf_hdf5()
     test_from_data()
+    test_herreplaybuffer()

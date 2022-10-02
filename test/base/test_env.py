@@ -10,13 +10,13 @@ from tianshou.data import Batch
 from tianshou.env import (
     ContinuousToDiscrete,
     DummyVectorEnv,
-    GoalEnvWrapper,
     MultiDiscreteToDiscrete,
     RayVectorEnv,
     ShmemVectorEnv,
     SubprocVectorEnv,
     VectorEnvNormObs,
 )
+from tianshou.env.gym_wrappers import TruncatedAsTerminated
 from tianshou.utils import RunningMeanStd
 
 if __name__ == "__main__":
@@ -349,6 +349,9 @@ def test_gym_wrappers():
                 low=-1.0, high=2.0, shape=(4, ), dtype=np.float32
             )
 
+        def step(self, act):
+            return np.array([0]), -1, False, True, {}
+
     bsz = 10
     action_per_branch = [4, 6, 10, 7]
     env = DummyEnv()
@@ -375,57 +378,10 @@ def test_gym_wrappers():
         env_d.action(np.array([env_d.action_space.n - 1] * bsz)),
         np.array([env_m.action_space.nvec - 1] * bsz),
     )
-
-
-def test_goal_env_wrapper():
-
-    class FetchLikeEnv(gym.Env):
-
-        def __init__(self):
-            self.observation_space = gym.spaces.Dict(
-                {
-                    'observation': gym.spaces.Box(-1, 1, (7, 2)),
-                    'achieved_goal': gym.spaces.Box(-1, 1, (2, 3)),
-                    'desired_goal': gym.spaces.Box(-1, 1, (2, 3)),
-                }
-            )
-            self.action_space = gym.spaces.Discrete(2)
-
-        def compute_reward(self, ag, g, info):
-            return (ag == g).all(axis=(-2, -1)).astype(np.int64)
-
-        def reset(self):
-            return self.observation_space.sample(), {}
-
-    env = FetchLikeEnv()
-    env = GoalEnvWrapper(env, compute_reward=env.compute_reward)
-
-    # Test single observation
-    obs, _ = env.reset()
-    assert isinstance(obs, np.ndarray)
-    assert obs.shape == (7 * 2 + 2 * 3 + 2 * 3, )
-    de_obs = env.deconstruct_obs_fn(obs)
-    assert de_obs.o.shape == (7, 2)
-    assert de_obs.ag.shape == (2, 3)
-    assert de_obs.g.shape == (2, 3)
-    fl_obs = env.flatten_obs_fn(de_obs)
-    assert np.array_equal(obs, fl_obs)
-    rew = env.compute_reward_fn(de_obs)
-    assert rew.shape == ()
-
-    # Test batch observation
-    obs2, _ = env.reset()
-    assert isinstance(obs, np.ndarray)
-    assert obs2.shape == (7 * 2 + 2 * 3 + 2 * 3, )
-    batch_obs = np.array([obs, obs2])
-    de_obs = env.deconstruct_obs_fn(batch_obs)
-    assert de_obs.o.shape == (2, 7, 2)
-    assert de_obs.ag.shape == (2, 2, 3)
-    assert de_obs.g.shape == (2, 2, 3)
-    fl_obs = env.flatten_obs_fn(de_obs)
-    assert np.array_equal(batch_obs, fl_obs)
-    rew = env.compute_reward_fn(de_obs)
-    assert rew.shape == (2, )
+    # check truncate is True when terminated
+    env_t = TruncatedAsTerminated(env)
+    _, _, truncated, _, _ = env_t.step(0)
+    assert truncated
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
@@ -467,4 +423,3 @@ if __name__ == "__main__":
     test_async_check_id()
     test_env_reset_optional_kwargs()
     test_gym_wrappers()
-    test_goal_env_wrapper()

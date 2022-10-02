@@ -1,9 +1,9 @@
-from typing import List, Union, Callable
+from typing import List, Union
 
 import gym
 import numpy as np
 
-from tianshou.data import Batch
+from tianshou.env.utils import gym_new_venv_step_type
 
 
 class ContinuousToDiscrete(gym.ActionWrapper):
@@ -59,111 +59,12 @@ class MultiDiscreteToDiscrete(gym.ActionWrapper):
         return np.array(converted_act).transpose()
 
 
-class GoalEnv(gym.Env):
-    observation_space: gym.spaces.Space[gym.spaces.Dict]
+class TruncatedAsTerminated(gym.Wrapper):
 
-
-class GoalEnvWrapper(gym.ObservationWrapper):
-
-    def __init__(
-        self,
-        env: GoalEnv,
-        compute_reward: Callable[[np.ndarray, np.ndarray, dict], np.ndarray],
-        obs_space_keys: List[str] = ['observation', 'achieved_goal', 'desired_goal']
-        # obs_space_keys must be in o, ag, g order.
-    ) -> None:
+    def __init__(self, env: gym.Env):
         super().__init__(env)
-        self.env = env
-        self.compute_reward = compute_reward
-        self.obs_space_keys = obs_space_keys
-        self.original_space: gym.spaces.Space[gym.spaces.Dict] \
-            = self.env.observation_space
 
-        self.observation_space = self.calculate_obs_space()
-
-    def calculate_obs_space(self) -> gym.Space:
-        for k in self.obs_space_keys:
-            assert isinstance(self.original_space[k], gym.spaces.Box)
-        new_low = np.concatenate(
-            [self.original_space[k].low.flatten() for k in self.obs_space_keys],
-            axis=0
-        )
-
-        new_high = np.concatenate(
-            [self.original_space[k].high.flatten() for k in self.obs_space_keys],
-            axis=0
-        )
-        new_shape = np.concatenate(
-            [self.original_space[k].sample().flatten() for k in self.obs_space_keys],
-            axis=0
-        ).shape
-        samples = [
-            self.original_space[k].sample().flatten() for k in self.obs_space_keys
-        ]
-        self.partitions = np.cumsum([0] + [len(s) for s in samples], dtype=int)
-        return gym.spaces.Box(new_low, new_high, new_shape)
-
-    def deconstruct_obs_fn(self, obs: np.ndarray) -> Batch:
-        """Deconstruct observation into observation, acheived_goal, goal. The first
-        dimension (bsz) is optional.
-        obs: shape(bsz, *observation_shape)
-        return: Batch(
-            o=shape(bsz, *o.shape),
-            ag=shape(bsz, *ag.shape),
-            g=shape(bsz, *g.shape)
-        ) or Batch without the first dim (bsz) according to the input.
-        """
-        new_shapes = [
-            [*self.original_space[self.obs_space_keys[0]].shape],
-            [*self.original_space[self.obs_space_keys[1]].shape],
-            [*self.original_space[self.obs_space_keys[2]].shape],
-        ]
-        if len(obs.shape) == 2:
-            new_shapes = [[-1] + s for s in new_shapes]
-        batch = Batch(
-            o=obs[..., self.partitions[0]:self.partitions[1]].reshape(*new_shapes[0]),
-            ag=obs[..., self.partitions[1]:self.partitions[2]].reshape(*new_shapes[1]),
-            g=obs[..., self.partitions[2]:self.partitions[3]].reshape(*new_shapes[2]),
-        )
-        return batch
-
-    def flatten_obs_fn(self, obs: Batch) -> np.ndarray:
-        """Reconstruct observation. The first dim (bsz) is optional
-        obs: Batch(
-            o=shape(bsz, *o.shape),
-            ag=shape(bsz, *ag.shape),
-            g=shape(bsz, *g.shape)
-        )
-        return: shape(bsz, *observation_shape)
-        """
-        new_shape = [-1]
-        if len(obs.o.shape) > len(self.original_space[self.obs_space_keys[0]].shape):
-            bsz = obs.shape[0]
-            new_shape = [bsz, -1]
-        return np.concatenate(
-            [
-                obs.o.reshape(*new_shape),
-                obs.ag.reshape(*new_shape),
-                obs.g.reshape(*new_shape)
-            ],
-            axis=-1
-        )
-
-    def compute_reward_fn(self, obs: Batch) -> np.ndarray:
-        """Compute rewards from deconstructed obs. The first dim (bsz) is optional
-        obs: Batch(
-            o=shape(bsz, *o.shape),
-            ag=shape(bsz, *ag.shape),
-            g=shape(bsz, *g.shape)
-        )
-        return: shape(bsz,)
-        """
-        ag = obs.ag
-        g = obs.g
-        return self.compute_reward(ag, g, {})
-
-    def observation(self, observation: dict) -> np.ndarray:
-        o = observation[self.obs_space_keys[0]].flatten()
-        ag = observation[self.obs_space_keys[1]].flatten()
-        g = observation[self.obs_space_keys[2]].flatten()
-        return np.concatenate([o, ag, g])
+    def step(self, act: np.ndarray) -> gym_new_venv_step_type:
+        observation, reward, terminated, truncated, info = super().step(act)
+        terminated = (terminated or truncated)
+        return observation, reward, terminated, truncated, info

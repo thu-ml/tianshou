@@ -2,8 +2,8 @@
 
 from tianshou.env.gym_wrappers import (
     ContinuousToDiscrete,
-    GoalEnvWrapper,
     MultiDiscreteToDiscrete,
+    TruncatedAsTerminated,
 )
 from tianshou.env.venv_wrappers import VectorEnvNormObs, VectorEnvWrapper
 from tianshou.env.venvs import (
@@ -30,5 +30,5 @@ __all__ = [
     "PettingZooEnv",
     "ContinuousToDiscrete",
     "MultiDiscreteToDiscrete",
-    "GoalEnvWrapper",
+    "TruncatedAsTerminated",
 ]
