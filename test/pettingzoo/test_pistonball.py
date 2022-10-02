@@ -1,10 +1,8 @@
 import pprint
 
-import pytest
 from pistonball import get_args, train_agent, watch
 
 
-@pytest.mark.skip(reason="TODO(Markus28): fix later")
 def test_piston_ball(args=get_args()):
     if args.watch:
         watch(args)
