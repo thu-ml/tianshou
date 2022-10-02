@@ -1,9 +1,7 @@
-from typing import List, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import gym
 import numpy as np
-
-from tianshou.env.utils import gym_new_venv_step_type
 
 
 class ContinuousToDiscrete(gym.ActionWrapper):
@@ -64,7 +62,7 @@ class TruncatedAsTerminated(gym.Wrapper):
     def __init__(self, env: gym.Env):
         super().__init__(env)
 
-    def step(self, act: np.ndarray) -> gym_new_venv_step_type:
+    def step(self, act: np.ndarray) -> Tuple[Any, float, bool, bool, Dict[Any, Any]]:
         observation, reward, terminated, truncated, info = super().step(act)
         terminated = (terminated or truncated)
         return observation, reward, terminated, truncated, info
