@@ -348,9 +348,10 @@ def test_gym_wrappers():
             self.action_space = gym.spaces.Box(
                 low=-1.0, high=2.0, shape=(4, ), dtype=np.float32
             )
+            self.observation_space = gym.spaces.Discrete(2)
 
         def step(self, act):
-            return np.array([0]), -1, False, True, {}
+            return self.observation_space.sample(), -1, False, True, {}
 
     bsz = 10
     action_per_branch = [4, 6, 10, 7]
@@ -380,7 +381,7 @@ def test_gym_wrappers():
     )
     # check truncate is True when terminated
     env_t = TruncatedAsTerminated(env)
-    _, _, truncated, _, _ = env_t.step(0)
+    _, _, truncated, _, _ = env_t.step(env_t.action_space.sample())
     assert truncated
 
 
