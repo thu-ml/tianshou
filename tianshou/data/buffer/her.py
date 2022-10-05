@@ -8,7 +8,9 @@ from tianshou.data import Batch, ReplayBuffer
 class HERReplayBuffer(ReplayBuffer):
     """Implementation of Hindsight Experience Replay. arXiv:1707.01495.
 
-    Currently support only 'future' strategy of HER.
+    `HERReplayBuffer` is to be used with goal-based environment where the \
+    observation is a dictionary with keys `observation`, `achieved_goal` and \
+    `desired_goal`. Currently support only HER's future strategy, online sampling.
 
     :param int size: the size of the replay buffer.
     :param compute_reward_fn: a function that takes 2 `np.array` arguments, \
