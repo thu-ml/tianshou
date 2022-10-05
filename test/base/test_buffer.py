@@ -305,13 +305,17 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
 def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     env_size = size
     env = MyGoalEnv(env_size, array_state=True)
+
+    def compute_reward_fn(ag, g):
+        return env.compute_reward_fn(ag, g, {})
+
     buf = HERReplayBuffer(
-        bufsize, compute_reward_fn=env.compute_reward_fn, horizon=30, future_k=8
+        bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8
     )
     buf2 = HERVectorReplayBuffer(
         bufsize,
         buffer_num=3,
-        compute_reward_fn=env.compute_reward_fn,
+        compute_reward_fn=compute_reward_fn,
         horizon=30,
         future_k=8
     )

@@ -188,12 +188,21 @@ def test_ddpg(args=get_args()):
         print("Loaded agent from: ", args.resume_path)
 
     # collector
+    def compute_reward_fn(ag: np.ndarray, g: np.ndarray):
+        return env.compute_reward(ag, g, {})
+
     if args.training_num > 1:
-        buffer = HERVectorReplayBuffer(args.buffer_size, len(train_envs))
+        buffer = HERVectorReplayBuffer(
+            args.buffer_size,
+            len(train_envs),
+            compute_reward_fn=compute_reward_fn,
+            horizon=args.horizon,
+            future_k=args.future_k,
+        )
     else:
         buffer = HERReplayBuffer(
             args.buffer_size,
-            compute_reward_fn=env.compute_reward,
+            compute_reward_fn=compute_reward_fn,
             horizon=args.horizon,
             future_k=args.future_k,
         )

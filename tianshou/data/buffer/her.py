@@ -11,10 +11,10 @@ class HERReplayBuffer(ReplayBuffer):
     Currently support only 'future' strategy of HER.
 
     :param int size: the size of the replay buffer.
-    :param compute_reward_fn: a function that takes 3 arguments: \
-        `acheived_goal`, `desired_goal`, `info` and returns the reward(s).
-        Note that the goal arguments can have extra batch_size dimension and in that \
-        case, the rewards of size batch_size should be returned
+    :param compute_reward_fn: a function that takes 2 `np.array` arguments, \
+        `acheived_goal` and `desired_goal`, and returns rewards as `np.array`.
+        The two arguments are of shape (batch_size, *original_shape) and the returned \
+        rewards must be of shape (batch_size,).
     :param int horizon: the maximum number of steps in an episode.
     :param int future_k: the 'k' parameter introduced in the paper. In short, there \
         will be at most k episodes that are re-written for every 1 unaltered episode \
@@ -28,7 +28,7 @@ class HERReplayBuffer(ReplayBuffer):
     def __init__(
         self,
         size: int,
-        compute_reward_fn: Callable[[np.ndarray, np.ndarray, dict], np.ndarray],
+        compute_reward_fn: Callable[[np.ndarray, np.ndarray], np.ndarray],
         horizon: int,
         future_k: float = 8.0,
         **kwargs: Any,
@@ -52,7 +52,6 @@ class HERReplayBuffer(ReplayBuffer):
             return
         self._meta[self._altered_indices] = self._original_meta
         # Clean
-        del self._original_meta, self._altered_indices
         self._original_meta = Batch()
         self._altered_indices = np.array([])
 
@@ -89,7 +88,7 @@ class HERReplayBuffer(ReplayBuffer):
         according to HER.
         """
         self._restore_cache()
-        indices = np.sort(super().sample_indices(batch_size=batch_size))
+        indices = super().sample_indices(batch_size=batch_size)
         self.rewrite_transitions(indices)
         return indices
 
@@ -104,6 +103,8 @@ class HERReplayBuffer(ReplayBuffer):
         """
         if indices.size == 0:
             return
+        indices = np.sort(indices)
+
         # Construct episode trajectories
         indices = [indices]
         for _ in range(self.horizon - 1):
@@ -176,5 +177,5 @@ class HERReplayBuffer(ReplayBuffer):
         lead_shape = obs.observation.shape[:lead_dims]
         g = obs.desired_goal.reshape(-1, *obs.desired_goal.shape[lead_dims:])
         ag = obs.achieved_goal.reshape(-1, *obs.achieved_goal.shape[lead_dims:])
-        rewards = self.compute_reward_fn(g, ag, {})
+        rewards = self.compute_reward_fn(ag, g)
         return rewards.reshape(*lead_shape, *rewards.shape[1:])

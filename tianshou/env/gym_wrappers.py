@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 import gym
 import numpy as np
+from packaging import version
 
 
 class ContinuousToDiscrete(gym.ActionWrapper):
@@ -67,6 +68,11 @@ class TruncatedAsTerminated(gym.Wrapper):
 
     def __init__(self, env: gym.Env):
         super().__init__(env)
+        if not version.parse(gym.__version__) >= version.parse('0.26.0'):
+            raise EnvironmentError(
+                f"TruncatedAsTerminated is not applicable with gym version \
+                {gym.__version__}"
+            )
 
     def step(self, act: np.ndarray) -> Tuple[Any, float, bool, bool, Dict[Any, Any]]:
         observation, reward, terminated, truncated, info = super().step(act)
