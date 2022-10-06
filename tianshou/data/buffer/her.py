@@ -8,18 +8,18 @@ from tianshou.data import Batch, ReplayBuffer
 class HERReplayBuffer(ReplayBuffer):
     """Implementation of Hindsight Experience Replay. arXiv:1707.01495.
 
-    `HERReplayBuffer` is to be used with goal-based environment where the \
-    observation is a dictionary with keys `observation`, `achieved_goal` and \
-    `desired_goal`. Currently support only HER's future strategy, online sampling.
+    HERReplayBuffer is to be used with goal-based environment where the
+    observation is a dictionary with keys ``observation``, ``achieved_goal`` and
+    ``desired_goal``. Currently support only HER's future strategy, online sampling.
 
     :param int size: the size of the replay buffer.
-    :param compute_reward_fn: a function that takes 2 `np.array` arguments, \
-        `acheived_goal` and `desired_goal`, and returns rewards as `np.array`.
-        The two arguments are of shape (batch_size, *original_shape) and the returned \
+    :param compute_reward_fn: a function that takes 2 ``np.array`` arguments,
+        ``acheived_goal`` and ``desired_goal``, and returns rewards as ``np.array``.
+        The two arguments are of shape (batch_size, *original_shape) and the returned
         rewards must be of shape (batch_size,).
     :param int horizon: the maximum number of steps in an episode.
-    :param int future_k: the 'k' parameter introduced in the paper. In short, there \
-        will be at most k episodes that are re-written for every 1 unaltered episode \
+    :param int future_k: the 'k' parameter introduced in the paper. In short, there
+        will be at most k episodes that are re-written for every 1 unaltered episode
         during the sampling.
 
     .. seealso::

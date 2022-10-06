@@ -59,9 +59,9 @@ class MultiDiscreteToDiscrete(gym.ActionWrapper):
 
 
 class TruncatedAsTerminated(gym.Wrapper):
-    """A wrapper that set `terminated = terminated or truncated` for `step()`.
+    """A wrapper that set ``terminated = terminated or truncated`` for ``step()``.
 
-    It's intended to use with `gym.wrappers.TimeLimit`.
+    It's intended to use with ``gym.wrappers.TimeLimit``.
 
     :param gym.Env env: gym environment.
     """
