@@ -91,7 +91,7 @@ class HERReplayBuffer(ReplayBuffer):
         """
         self._restore_cache()
         indices = super().sample_indices(batch_size=batch_size)
-        self.rewrite_transitions(indices)
+        self.rewrite_transitions(indices.copy())
         return indices
 
     def rewrite_transitions(self, indices: np.ndarray) -> None:
@@ -105,7 +105,12 @@ class HERReplayBuffer(ReplayBuffer):
         """
         if indices.size == 0:
             return
+
+        # Sort indices keeping chronological order
+        mask = indices >= self._index
+        indices[~mask] += self.maxsize
         indices = np.sort(indices)
+        indices[indices >= self.maxsize] -= self.maxsize
 
         # Construct episode trajectories
         indices = [indices]
@@ -126,10 +131,8 @@ class HERReplayBuffer(ReplayBuffer):
         unique_ep_open_indices = np.unique(terminal, return_index=True)[1]
         unique_ep_indices = indices[:, unique_ep_open_indices]
         #   close indices are used to find max future_t among presented episodes
-        unique_ep_close_indices = np.hstack(
-            [(unique_ep_open_indices - 1)[1:],
-             len(terminal) - 1]
-        )
+        unique_ep_close_indices = unique_ep_open_indices - 1
+        unique_ep_close_indices[unique_ep_close_indices < 0] += len(indices[0])
         #   episode indices that will be altered
         her_ep_indices = np.random.choice(
             len(unique_ep_open_indices),
@@ -167,7 +170,6 @@ class HERReplayBuffer(ReplayBuffer):
         assert ep_obs.desired_goal.shape[:2] == unique_ep_indices.shape
         assert ep_obs.achieved_goal.shape[:2] == unique_ep_indices.shape
         assert ep_rew.shape == unique_ep_indices.shape
-        assert np.all(future_t >= indices[0])
 
         # Re-write meta
         self._meta.obs[unique_ep_indices] = ep_obs

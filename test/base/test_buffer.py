@@ -401,6 +401,42 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
         assert np.all(g == g[0])
         tmp_indices = buf2.next(tmp_indices)
 
+    # Test handling cycled indices
+    env_size = size
+    bufsize = 15
+    env = MyGoalEnv(env_size, array_state=False)
+
+    def compute_reward_fn(ag, g):
+        return env.compute_reward_fn(ag, g, {})
+
+    buf = HERReplayBuffer(
+        bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8
+    )
+    buf._index = 5  # shifted start index
+    buf.future_p = 1
+    action_list = [1] * 10
+    for ep_len in [5, 10]:
+        obs, _ = env.reset()
+        for i in range(ep_len):
+            act = 1
+            obs_next, rew, terminated, truncated, info = env.step(act)
+            batch = Batch(
+                obs=obs,
+                act=[act],
+                rew=rew,
+                terminated=(i == ep_len - 1),
+                truncated=(i == ep_len - 1),
+                obs_next=obs_next,
+                info=info
+            )
+            buf.add(batch)
+            obs = obs_next
+    batch, indices = buf.sample(0)
+    assert np.all(buf[:5].obs.desired_goal == buf[0].obs.desired_goal)
+    assert np.all(buf[5:10].obs.desired_goal == buf[5].obs.desired_goal)
+    assert np.all(buf[10:].obs.desired_goal == buf[0].obs.desired_goal)  # (same ep)
+    assert np.all(buf[0].obs.desired_goal != buf[5].obs.desired_goal)  # (diff ep)
+
 
 def test_update():
     buf1 = ReplayBuffer(4, stack_num=2)
@@ -1269,17 +1305,17 @@ def test_from_data():
 
 
 if __name__ == '__main__':
-    test_replaybuffer()
-    test_ignore_obs_next()
-    test_stack()
-    test_segtree()
-    test_priortized_replaybuffer()
-    test_update()
-    test_pickle()
-    test_hdf5()
-    test_replaybuffermanager()
-    test_cachedbuffer()
-    test_multibuf_stack()
-    test_multibuf_hdf5()
-    test_from_data()
+    # test_replaybuffer()
+    # test_ignore_obs_next()
+    # test_stack()
+    # test_segtree()
+    # test_priortized_replaybuffer()
+    # test_update()
+    # test_pickle()
+    # test_hdf5()
+    # test_replaybuffermanager()
+    # test_cachedbuffer()
+    # test_multibuf_stack()
+    # test_multibuf_hdf5()
+    # test_from_data()
     test_herreplaybuffer()
