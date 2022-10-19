@@ -173,7 +173,7 @@ def test_qrdqn(args=get_args()):
             result = collector.collect(n_step=args.buffer_size)
             print(f"Save buffer into {args.save_buffer_name}")
             # Unfortunately, pickle will cause oom with 1M buffer size
-            buffer.save_hdf5(args.save_buffer_name)
+            buffer.save_hdf5(args.save_buffer_name, compression="gzip")
         else:
             print("Testing agent ...")
             test_collector.reset()

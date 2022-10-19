@@ -53,6 +53,13 @@ Following the original paper, we use observation normalization by default. You c
 | walker2d-medium-v2 | 4051.76 | 3985.59 |
 | walker2d-expert-v2 | 5068.15 | 5027.75 |
 
+### DT
+
+| Environment           | Dataset               | DT              | Parameters                                               |
+| --------------------- | --------------------- | --------------- | -------------------------------------------------------- |
+| HalfCheetah-v2        | halfcheetah-expert-v2 | 5110.92         | `python3 d4rl_dt.py --task HalfCheetah-v2 --expert-data-task halfcheetah-expert-v2` |
+| HalfCheetah-v2        | halfcheetah-medium-v2 | 4306.89         | `python3 d4rl_dt.py --task HalfCheetah-v2 --expert-data-task halfcheetah-medium-v2` |
+
 ## Discrete control
 
 For discrete control, we currently use ad hoc Atari data generated from a trained QRDQN agent.
