@@ -107,8 +107,7 @@ class HERReplayBuffer(ReplayBuffer):
             return
 
         # Sort indices keeping chronological order
-        mask = indices >= self._index
-        indices[~mask] += self.maxsize
+        indices[indices < self._index] += self.maxsize
         indices = np.sort(indices)
         indices[indices >= self.maxsize] -= self.maxsize
 
