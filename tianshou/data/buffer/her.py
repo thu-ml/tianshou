@@ -127,11 +127,13 @@ class HERReplayBuffer(ReplayBuffer):
         # Compute indices
         #   open indices are used to find longest, unique trajectories among
         #   presented episodes
-        unique_ep_open_indices = np.unique(terminal, return_index=True)[1]
+        unique_ep_open_indices = np.sort(np.unique(terminal, return_index=True)[1])
         unique_ep_indices = indices[:, unique_ep_open_indices]
         #   close indices are used to find max future_t among presented episodes
-        unique_ep_close_indices = unique_ep_open_indices - 1
-        unique_ep_close_indices[unique_ep_close_indices < 0] += len(indices[0])
+        unique_ep_close_indices = np.hstack(
+            [(unique_ep_open_indices - 1)[1:],
+             len(terminal) - 1]
+        )
         #   episode indices that will be altered
         her_ep_indices = np.random.choice(
             len(unique_ep_open_indices),
