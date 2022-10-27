@@ -9,10 +9,13 @@ from typing import (
     Union,
     no_type_check,
 )
+from types import MethodType
 
 import numpy as np
 import torch
 from torch import nn
+
+from tianshou.data.batch import Batch
 
 ModuleType = Type[nn.Module]
 
@@ -453,3 +456,51 @@ class BranchingNet(nn.Module):
         action_scores = action_scores - torch.mean(action_scores, 2, keepdim=True)
         logits = value_out + action_scores
         return logits, state
+
+
+def get_dict_state_decorator(
+    state_shape: Dict[str, Union[int, Sequence[int]]],
+    keys: Sequence[str]
+) -> Net:
+    """A helper function to make Net or equivalent classes applicable to dict state.
+
+    :param state_shape: A dictionary indicating each state's shape
+    :param keys: A list of state's keys. The flatten observation will be according to
+    this list order.
+    :returns: a 2-items tuple decorator_fn and new_state_shape
+    """
+    original_shape = state_shape
+    flat_state_shapes = []
+    for k in keys:
+        flat_state_shapes.append(int(np.prod(state_shape[k])))
+    new_state_shape = sum(flat_state_shapes)
+
+    def preprocess_obs(
+        obs: Union[Batch, dict, torch.Tensor, np.ndarray]
+    ) -> torch.Tensor:
+        if isinstance(obs, dict) or (isinstance(obs, Batch) and keys[0] in obs):
+            if original_shape[keys[0]] == obs[keys[0]].shape:
+                # No batch dim
+                new_obs = torch.Tensor([obs[k] for k in keys]).flatten()
+                # new_obs = torch.Tensor([obs[k] for k in keys]).reshape(1, -1)
+            else:
+                bsz = obs[keys[0]].shape[0]
+                new_obs = torch.cat(
+                    [torch.Tensor(obs[k].reshape(bsz, -1)) for k in keys], axis=1
+                )
+        else:
+            new_obs = obs
+        return new_obs
+
+    def decorator_fn(net_class) -> Net:
+        class new_net_class(net_class):
+            def forward(
+                self,
+                obs: Union[np.ndarray, torch.Tensor],
+                *args,
+                **kwargs,
+            ) -> Any:
+                return super().forward(preprocess_obs(obs), *args, **kwargs)
+        return new_net_class
+
+    return decorator_fn, new_state_shape
