@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Optional, Tuple
 
 import gym
+import gymnasium
 import numpy as np
 import torch
 from pettingzoo.classic import tictactoe_v3
@@ -104,7 +105,7 @@ def get_agents(
 ) -> Tuple[BasePolicy, torch.optim.Optimizer, list]:
     env = get_env()
     observation_space = env.observation_space['observation'] if isinstance(
-        env.observation_space, gym.spaces.Dict
+        env.observation_space, (gym.spaces.Dict, gymnasium.spaces.Dict)
     ) else env.observation_space
     args.state_shape = observation_space.shape or observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
