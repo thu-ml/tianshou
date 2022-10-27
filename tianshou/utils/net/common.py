@@ -1,5 +1,6 @@
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Optional,
@@ -9,7 +10,6 @@ from typing import (
     Union,
     no_type_check,
 )
-from types import MethodType
 
 import numpy as np
 import torch
@@ -459,15 +459,21 @@ class BranchingNet(nn.Module):
 
 
 def get_dict_state_decorator(
-    state_shape: Dict[str, Union[int, Sequence[int]]],
-    keys: Sequence[str]
-) -> Net:
-    """A helper function to make Net or equivalent classes applicable to dict state.
+    state_shape: Dict[str, Union[int, Sequence[int]]], keys: Sequence[str]
+) -> Tuple[Callable, int]:
+    """A helper function to make Net or equivalent classes (e.g. Actor, Critic) \
+    applicable to dict state.
+
+    The first return item, ``decorator_fn``, will alter the implementation of forward
+    function of the given class by preprocessing the observation. The preprocessing is
+    basically flatten the observation and concatenate them based on the ``keys`` order.
+    The batch dimension is preserved if presented. The result observation shape will
+    be equal to ``new_state_shape``, the second return item.
 
     :param state_shape: A dictionary indicating each state's shape
-    :param keys: A list of state's keys. The flatten observation will be according to
+    :param keys: A list of state's keys. The flatten observation will be according to \
     this list order.
-    :returns: a 2-items tuple decorator_fn and new_state_shape
+    :returns: a 2-items tuple ``decorator_fn`` and ``new_state_shape``
     """
     original_shape = state_shape
     flat_state_shapes = []
@@ -486,14 +492,17 @@ def get_dict_state_decorator(
             else:
                 bsz = obs[keys[0]].shape[0]
                 new_obs = torch.cat(
-                    [torch.Tensor(obs[k].reshape(bsz, -1)) for k in keys], axis=1
+                    [torch.Tensor(obs[k].reshape(bsz, -1)) for k in keys], dim=1
                 )
         else:
-            new_obs = obs
+            new_obs = torch.Tensor(obs)
         return new_obs
 
-    def decorator_fn(net_class) -> Net:
+    @no_type_check
+    def decorator_fn(net_class):
+
         class new_net_class(net_class):
+
             def forward(
                 self,
                 obs: Union[np.ndarray, torch.Tensor],
@@ -501,6 +510,7 @@ def get_dict_state_decorator(
                 **kwargs,
             ) -> Any:
                 return super().forward(preprocess_obs(obs), *args, **kwargs)
+
         return new_net_class
 
     return decorator_fn, new_state_shape

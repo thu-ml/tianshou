@@ -15,7 +15,7 @@ class HERReplayBuffer(ReplayBuffer):
     :param int size: the size of the replay buffer.
     :param compute_reward_fn: a function that takes 2 ``np.array`` arguments,
         ``acheived_goal`` and ``desired_goal``, and returns rewards as ``np.array``.
-        The two arguments are of shape (batch_size, *original_shape) and the returned
+        The two arguments are of shape (batch_size, ...original_shape) and the returned
         rewards must be of shape (batch_size,).
     :param int horizon: the maximum number of steps in an episode.
     :param int future_k: the 'k' parameter introduced in the paper. In short, there

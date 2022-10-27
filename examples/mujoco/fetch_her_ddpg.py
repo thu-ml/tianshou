@@ -7,16 +7,16 @@ import pprint
 
 import gym
 import numpy as np
-import wandb
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+import wandb
 from tianshou.data import (
     Collector,
     HERReplayBuffer,
     HERVectorReplayBuffer,
     ReplayBuffer,
-    VectorReplayBuffer
+    VectorReplayBuffer,
 )
 from tianshou.env import ShmemVectorEnv, TruncatedAsTerminated
 from tianshou.exploration import GaussianNoise
@@ -46,10 +46,7 @@ def get_args():
     parser.add_argument("--n-step", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument(
-        "--replay-buffer",
-        type=str,
-        default="her",
-        choices=["normal", "her"]
+        "--replay-buffer", type=str, default="her", choices=["normal", "her"]
     )
     parser.add_argument("--her-horizon", type=int, default=50)
     parser.add_argument("--her-future-k", type=int, default=8)
@@ -137,9 +134,7 @@ def test_ddpg(args=get_args()):
         keys=['observation', 'achieved_goal', 'desired_goal']
     )
     net_a = dict_state_dec(Net)(
-        flat_state_shape,
-        hidden_sizes=args.hidden_sizes,
-        device=args.device
+        flat_state_shape, hidden_sizes=args.hidden_sizes, device=args.device
     )
     actor = dict_state_dec(Actor)(
         net_a, args.action_shape, max_action=args.max_action, device=args.device
