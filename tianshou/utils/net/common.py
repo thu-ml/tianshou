@@ -265,7 +265,7 @@ class Recurrent(nn.Module):
         """
         obs = torch.as_tensor(
             obs,
-            device=self.device,  # type: ignore
+            device=self.device,
             dtype=torch.float32,
         )
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
