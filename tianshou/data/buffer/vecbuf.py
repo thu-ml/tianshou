@@ -3,6 +3,8 @@ from typing import Any
 import numpy as np
 
 from tianshou.data import (
+    HERReplayBuffer,
+    HERReplayBufferManager,
     PrioritizedReplayBuffer,
     PrioritizedReplayBufferManager,
     ReplayBuffer,
@@ -64,3 +66,26 @@ class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
     def set_beta(self, beta: float) -> None:
         for buffer in self.buffers:
             buffer.set_beta(beta)
+
+
+class HERVectorReplayBuffer(HERReplayBufferManager):
+    """HERVectorReplayBuffer contains n HERReplayBuffer with same size.
+
+    It is used for storing transition from different environments yet keeping the order
+    of time.
+
+    :param int total_size: the total size of HERVectorReplayBuffer.
+    :param int buffer_num: the number of HERReplayBuffer it uses, which are
+        under the same configuration.
+
+    Other input arguments are the same as :class:`~tianshou.data.HERReplayBuffer`.
+
+    .. seealso::
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
+    """
+
+    def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
+        assert buffer_num > 0
+        size = int(np.ceil(total_size / buffer_num))
+        buffer_list = [HERReplayBuffer(size, **kwargs) for _ in range(buffer_num)]
+        super().__init__(buffer_list)

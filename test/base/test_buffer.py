@@ -11,6 +11,8 @@ import torch
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
+    HERReplayBuffer,
+    HERVectorReplayBuffer,
     PrioritizedReplayBuffer,
     PrioritizedVectorReplayBuffer,
     ReplayBuffer,
@@ -20,9 +22,9 @@ from tianshou.data import (
 from tianshou.data.utils.converter import to_hdf5
 
 if __name__ == '__main__':
-    from env import MyTestEnv
+    from env import MyGoalEnv, MyTestEnv
 else:  # pytest
-    from test.base.env import MyTestEnv
+    from test.base.env import MyGoalEnv, MyTestEnv
 
 
 def test_replaybuffer(size=10, bufsize=20):
@@ -298,6 +300,142 @@ def test_priortized_replaybuffer(size=32, bufsize=15):
     assert np.all(weight[mask] == weight[mask][0])
     assert np.all(weight[~mask] == weight[~mask][0])
     assert weight[~mask][0] < weight[mask][0] and weight[mask][0] <= 1
+
+
+def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
+    env_size = size
+    env = MyGoalEnv(env_size, array_state=True)
+
+    def compute_reward_fn(ag, g):
+        return env.compute_reward_fn(ag, g, {})
+
+    buf = HERReplayBuffer(
+        bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8
+    )
+    buf2 = HERVectorReplayBuffer(
+        bufsize,
+        buffer_num=3,
+        compute_reward_fn=compute_reward_fn,
+        horizon=30,
+        future_k=8
+    )
+    # Apply her on every episodes sampled (Hacky but necessary for deterministic test)
+    buf.future_p = 1
+    for buf2_buf in buf2.buffers:
+        buf2_buf.future_p = 1
+
+    obs, _ = env.reset()
+    action_list = [1] * 5 + [0] * 10 + [1] * 10
+    for i, act in enumerate(action_list):
+        obs_next, rew, terminated, truncated, info = env.step(act)
+        batch = Batch(
+            obs=obs,
+            act=[act],
+            rew=rew,
+            terminated=terminated,
+            truncated=truncated,
+            obs_next=obs_next,
+            info=info
+        )
+        buf.add(batch)
+        buf2.add(Batch.stack([batch, batch, batch]), buffer_ids=[0, 1, 2])
+        obs = obs_next
+        assert len(buf) == min(bufsize, i + 1)
+        assert len(buf2) == min(bufsize, 3 * (i + 1))
+
+    batch, indices = buf.sample(sample_sz)
+
+    # Check that goals are the same for the episode (only 1 ep in buffer)
+    tmp_indices = indices.copy()
+    for _ in range(2 * env_size):
+        obs = buf[tmp_indices].obs
+        obs_next = buf[tmp_indices].obs_next
+        rew = buf[tmp_indices].rew
+        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
+        ag_next = obs_next.achieved_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
+        assert np.all(g == g[0])
+        assert np.all(g_next == g_next[0])
+        assert np.all(rew == (ag_next == g).astype(np.float32))
+        tmp_indices = buf.next(tmp_indices)
+
+    # Check that goals are correctly restored
+    buf._restore_cache()
+    tmp_indices = indices.copy()
+    for _ in range(2 * env_size):
+        obs = buf[tmp_indices].obs
+        obs_next = buf[tmp_indices].obs_next
+        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
+        assert np.all(g == env_size)
+        assert np.all(g_next == g_next[0])
+        assert np.all(g == g[0])
+        tmp_indices = buf.next(tmp_indices)
+
+    # Test vector buffer
+    batch, indices = buf2.sample(sample_sz)
+
+    # Check that goals are the same for the episode (only 1 ep in buffer)
+    tmp_indices = indices.copy()
+    for _ in range(2 * env_size):
+        obs = buf2[tmp_indices].obs
+        obs_next = buf2[tmp_indices].obs_next
+        rew = buf2[tmp_indices].rew
+        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
+        ag_next = obs_next.achieved_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
+        assert np.all(g == g_next)
+        assert np.all(rew == (ag_next == g).astype(np.float32))
+        tmp_indices = buf2.next(tmp_indices)
+
+    # Check that goals are correctly restored
+    buf2._restore_cache()
+    tmp_indices = indices.copy()
+    for _ in range(2 * env_size):
+        obs = buf2[tmp_indices].obs
+        obs_next = buf2[tmp_indices].obs_next
+        g = obs.desired_goal.reshape(sample_sz, -1)[:, 0]
+        g_next = obs_next.desired_goal.reshape(sample_sz, -1)[:, 0]
+        assert np.all(g == env_size)
+        assert np.all(g_next == g_next[0])
+        assert np.all(g == g[0])
+        tmp_indices = buf2.next(tmp_indices)
+
+    # Test handling cycled indices
+    env_size = size
+    bufsize = 15
+    env = MyGoalEnv(env_size, array_state=False)
+
+    def compute_reward_fn(ag, g):
+        return env.compute_reward_fn(ag, g, {})
+
+    buf = HERReplayBuffer(
+        bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8
+    )
+    buf._index = 5  # shifted start index
+    buf.future_p = 1
+    action_list = [1] * 10
+    for ep_len in [5, 10]:
+        obs, _ = env.reset()
+        for i in range(ep_len):
+            act = 1
+            obs_next, rew, terminated, truncated, info = env.step(act)
+            batch = Batch(
+                obs=obs,
+                act=[act],
+                rew=rew,
+                terminated=(i == ep_len - 1),
+                truncated=(i == ep_len - 1),
+                obs_next=obs_next,
+                info=info
+            )
+            buf.add(batch)
+            obs = obs_next
+    batch, indices = buf.sample(0)
+    assert np.all(buf[:5].obs.desired_goal == buf[0].obs.desired_goal)
+    assert np.all(buf[5:10].obs.desired_goal == buf[5].obs.desired_goal)
+    assert np.all(buf[10:].obs.desired_goal == buf[0].obs.desired_goal)  # (same ep)
+    assert np.all(buf[0].obs.desired_goal != buf[5].obs.desired_goal)  # (diff ep)
 
 
 def test_update():
@@ -1180,3 +1318,4 @@ if __name__ == '__main__':
     test_multibuf_stack()
     test_multibuf_hdf5()
     test_from_data()
+    test_herreplaybuffer()

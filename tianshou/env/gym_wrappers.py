@@ -1,7 +1,8 @@
-from typing import List, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import gym
 import numpy as np
+from packaging import version
 
 
 class ContinuousToDiscrete(gym.ActionWrapper):
@@ -55,3 +56,25 @@ class MultiDiscreteToDiscrete(gym.ActionWrapper):
             converted_act.append(act // b)
             act = act % b
         return np.array(converted_act).transpose()
+
+
+class TruncatedAsTerminated(gym.Wrapper):
+    """A wrapper that set ``terminated = terminated or truncated`` for ``step()``.
+
+    It's intended to use with ``gym.wrappers.TimeLimit``.
+
+    :param gym.Env env: gym environment.
+    """
+
+    def __init__(self, env: gym.Env):
+        super().__init__(env)
+        if not version.parse(gym.__version__) >= version.parse('0.26.0'):
+            raise EnvironmentError(
+                f"TruncatedAsTerminated is not applicable with gym version \
+                {gym.__version__}"
+            )
+
+    def step(self, act: np.ndarray) -> Tuple[Any, float, bool, bool, Dict[Any, Any]]:
+        observation, reward, terminated, truncated, info = super().step(act)
+        terminated = (terminated or truncated)
+        return observation, reward, terminated, truncated, info

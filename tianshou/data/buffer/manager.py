@@ -3,7 +3,7 @@ from typing import List, Optional, Sequence, Tuple, Union
 import numpy as np
 from numba import njit
 
-from tianshou.data import Batch, PrioritizedReplayBuffer, ReplayBuffer
+from tianshou.data import Batch, HERReplayBuffer, PrioritizedReplayBuffer, ReplayBuffer
 from tianshou.data.batch import _alloc_by_keys_diff, _create_value
 
 
@@ -21,7 +21,9 @@ class ReplayBufferManager(ReplayBuffer):
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
-    def __init__(self, buffer_list: List[ReplayBuffer]) -> None:
+    def __init__(
+        self, buffer_list: Union[List[ReplayBuffer], List[HERReplayBuffer]]
+    ) -> None:
         self.buffer_num = len(buffer_list)
         self.buffers = np.array(buffer_list, dtype=object)
         offset, size = [], 0
@@ -210,6 +212,48 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
         for buf in buffer_list:
             del buf.weight
         PrioritizedReplayBuffer.__init__(self, self.maxsize, **kwargs)
+
+
+class HERReplayBufferManager(ReplayBufferManager):
+    """HERReplayBufferManager contains a list of HERReplayBuffer with \
+    exactly the same configuration.
+
+    These replay buffers have contiguous memory layout, and the storage space each
+    buffer has is a shallow copy of the topmost memory.
+
+    :param buffer_list: a list of HERReplayBuffer needed to be handled.
+
+    .. seealso::
+
+        Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
+    """
+
+    def __init__(self, buffer_list: List[HERReplayBuffer]) -> None:
+        super().__init__(buffer_list)
+
+    def _restore_cache(self) -> None:
+        for buf in self.buffers:
+            buf._restore_cache()
+
+    def save_hdf5(self, path: str, compression: Optional[str] = None) -> None:
+        self._restore_cache()
+        return super().save_hdf5(path, compression)
+
+    def set_batch(self, batch: Batch) -> None:
+        self._restore_cache()
+        return super().set_batch(batch)
+
+    def update(self, buffer: Union["HERReplayBuffer", "ReplayBuffer"]) -> np.ndarray:
+        self._restore_cache()
+        return super().update(buffer)
+
+    def add(
+        self,
+        batch: Batch,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        self._restore_cache()
+        return super().add(batch, buffer_ids)
 
 
 @njit

@@ -16,6 +16,7 @@ from tianshou.env import (
     SubprocVectorEnv,
     VectorEnvNormObs,
 )
+from tianshou.env.gym_wrappers import TruncatedAsTerminated
 from tianshou.utils import RunningMeanStd
 
 if __name__ == "__main__":
@@ -347,6 +348,10 @@ def test_gym_wrappers():
             self.action_space = gym.spaces.Box(
                 low=-1.0, high=2.0, shape=(4, ), dtype=np.float32
             )
+            self.observation_space = gym.spaces.Discrete(2)
+
+        def step(self, act):
+            return self.observation_space.sample(), -1, False, True, {}
 
     bsz = 10
     action_per_branch = [4, 6, 10, 7]
@@ -374,6 +379,14 @@ def test_gym_wrappers():
         env_d.action(np.array([env_d.action_space.n - 1] * bsz)),
         np.array([env_m.action_space.nvec - 1] * bsz),
     )
+    # check truncate is True when terminated
+    try:
+        env_t = TruncatedAsTerminated(env)
+    except EnvironmentError:
+        env_t = None
+    if env_t is not None:
+        _, _, truncated, _, _ = env_t.step(env_t.action_space.sample())
+        assert truncated
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")

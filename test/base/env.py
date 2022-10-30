@@ -166,3 +166,48 @@ class NXEnv(gym.Env):
         for i in range(self.size):
             self.graph.nodes[i]["data"] = next_graph_state[i]
         return self._encode_obs(), 1.0, 0, 0, {}
+
+
+class MyGoalEnv(MyTestEnv):
+
+    def __init__(self, *args, **kwargs):
+        assert kwargs.get("dict_state", 0) + kwargs.get("recurse_state", 0) == 0, \
+            "dict_state / recurse_state not supported"
+        super().__init__(*args, **kwargs)
+        obs, _ = super().reset(state=0)
+        obs, _, _, _, _ = super().step(1)
+        self._goal = obs * self.size
+        super_obsv = self.observation_space
+        self.observation_space = gym.spaces.Dict(
+            {
+                'observation': super_obsv,
+                'achieved_goal': super_obsv,
+                'desired_goal': super_obsv,
+            }
+        )
+
+    def reset(self, *args, **kwargs):
+        obs, info = super().reset(*args, **kwargs)
+        new_obs = {
+            'observation': obs,
+            'achieved_goal': obs,
+            'desired_goal': self._goal
+        }
+        return new_obs, info
+
+    def step(self, *args, **kwargs):
+        obs_next, rew, terminated, truncated, info = super().step(*args, **kwargs)
+        new_obs_next = {
+            'observation': obs_next,
+            'achieved_goal': obs_next,
+            'desired_goal': self._goal
+        }
+        return new_obs_next, rew, terminated, truncated, info
+
+    def compute_reward_fn(
+        self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: dict
+    ) -> np.ndarray:
+        axis = -1
+        if self.array_state:
+            axis = (-3, -2, -1)
+        return (achieved_goal == desired_goal).all(axis=axis)

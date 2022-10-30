@@ -124,13 +124,13 @@ class Critic(nn.Module):
         """Mapping: (s, a) -> logits -> Q(s, a)."""
         obs = torch.as_tensor(
             obs,
-            device=self.device,  # type: ignore
+            device=self.device,
             dtype=torch.float32,
         ).flatten(1)
         if act is not None:
             act = torch.as_tensor(
                 act,
-                device=self.device,  # type: ignore
+                device=self.device,
                 dtype=torch.float32,
             ).flatten(1)
             obs = torch.cat([obs, act], dim=1)
@@ -266,7 +266,7 @@ class RecurrentActorProb(nn.Module):
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         obs = torch.as_tensor(
             obs,
-            device=self.device,  # type: ignore
+            device=self.device,
             dtype=torch.float32,
         )
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
@@ -339,7 +339,7 @@ class RecurrentCritic(nn.Module):
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         obs = torch.as_tensor(
             obs,
-            device=self.device,  # type: ignore
+            device=self.device,
             dtype=torch.float32,
         )
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
@@ -352,7 +352,7 @@ class RecurrentCritic(nn.Module):
         if act is not None:
             act = torch.as_tensor(
                 act,
-                device=self.device,  # type: ignore
+                device=self.device,
                 dtype=torch.float32,
             )
             obs = torch.cat([obs, act], dim=1)
