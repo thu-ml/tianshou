@@ -54,7 +54,7 @@ Here are Tianshou's other features:
 - Support multi-agent RL [Usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#multi-agent-reinforcement-learning)
 - Support both [TensorBoard](https://www.tensorflow.org/tensorboard) and [W&B](https://wandb.ai/) log tools
 - Support multi-GPU training [Usage](https://tianshou.readthedocs.io/en/master/tutorials/cheatsheet.html#multi-gpu)
-- Comprehensive documentation, PEP8 code-style checking, type checking and [unit tests](https://github.com/thu-ml/tianshou/actions)
+- Comprehensive documentation, PEP8 code-style checking, type checking and thorough [tests](https://github.com/thu-ml/tianshou/actions)
 
 In Chinese, Tianshou means divinely ordained and is derived to the gift of being born with. Tianshou is a reinforcement learning platform, and the RL algorithm does not learn from humans. So taking "Tianshou" means that there is no teacher to study with, but rather to learn by themselves through constant interaction with the environment.
 
@@ -151,7 +151,7 @@ The example scripts are under [test/](https://github.com/thu-ml/tianshou/blob/ma
 
 ### Reproducible and High Quality Result
 
-Tianshou has its unit tests. Different from other platforms, **the unit tests include the full agent training procedure for all of the implemented algorithms**. It would be failed once if it could not train an agent to perform well enough on limited epochs on toy scenarios. The unit tests secure the reproducibility of our platform. Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page for more detail.
+Tianshou has its tests. Different from other platforms, **the tests include the full agent training procedure for all of the implemented algorithms**. It would be failed once if it could not train an agent to perform well enough on limited epochs on toy scenarios. The tests secure the reproducibility of our platform. Check out the [GitHub Actions](https://github.com/thu-ml/tianshou/actions) page for more detail.
 
 The Atari/Mujoco benchmark results are under [examples/atari/](examples/atari/) and [examples/mujoco/](examples/mujoco/) folders. **Our Mujoco result can beat most of existing benchmark.**
 
