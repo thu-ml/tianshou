@@ -132,7 +132,7 @@ python3 convert_rl_unplugged_atari.py --task Breakout --run-id 1 --shard-id 1
 Then you can use it to train an agent by:
 
 ```bash
-python3 atari_bcq.py --task BreakoutNoFrameskip-v4 --load-buffer-name ~/.rl_unplugged/buffers/Breakout/run_1-00001-of-00100.hdf5 --buffer-from-rl-unplugged --epoch 12
+python3 atari_bcq.py --task BreakoutNoFrameskip-v4 --load-buffer-name ~/.rl_unplugged/datasets/Breakout/run_1-00001-of-00100.hdf5 --buffer-from-rl-unplugged --epoch 12
 ```
 
 Note:
