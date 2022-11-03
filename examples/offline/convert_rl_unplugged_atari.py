@@ -195,9 +195,8 @@ def download(url: str, fname: str, chunk_size=1024):
             bar.update(size)
 
 
-def process_shard(url: str, fname: str, ofname: str) -> None:
+def process_shard(url: str, fname: str, ofname: str, maxsize: int = 500000) -> None:
     download(url, fname)
-    maxsize = 500000
     obs = np.ndarray((maxsize, 4, 84, 84), dtype="uint8")
     act = np.ndarray((maxsize, ), dtype="int64")
     rew = np.ndarray((maxsize, ), dtype="float32")
@@ -206,6 +205,8 @@ def process_shard(url: str, fname: str, ofname: str) -> None:
     i = 0
     file_ds = tf.data.TFRecordDataset(fname, compression_type="GZIP")
     for example in file_ds:
+        if i >= maxsize:
+            break
         batch = _tf_example_to_tianshou_batch(example)
         obs[i], act[i], rew[i], done[i], obs_next[i] = (
             batch.obs, batch.act, batch.rew, batch.done, batch.obs_next
