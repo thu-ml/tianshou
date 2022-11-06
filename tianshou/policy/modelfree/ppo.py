@@ -79,9 +79,6 @@ class PPOPolicy(A2CPolicy):
             "Dual-clip PPO parameter should greater than 1.0."
         self._dual_clip = dual_clip
         self._value_clip = value_clip
-        if not self._rew_norm:
-            assert not self._value_clip, \
-                "value clip is available only when `reward_normalization` is True"
         self._norm_adv = advantage_normalization
         self._recompute_adv = recompute_advantage
         self._actor_critic: ActorCritic
@@ -113,7 +110,8 @@ class PPOPolicy(A2CPolicy):
                 dist = self(minibatch).dist
                 if self._norm_adv:
                     mean, std = minibatch.adv.mean(), minibatch.adv.std()
-                    minibatch.adv = (minibatch.adv - mean) / std  # per-batch norm
+                    minibatch.adv = (minibatch.adv -
+                                     mean) / (std + 1e-8)  # per-batch norm
                 ratio = (dist.log_prob(minibatch.act) -
                          minibatch.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
