@@ -1,10 +1,16 @@
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
 from torch import nn
 
 from tianshou.utils.net.discrete import NoisyLinear
+
+
+def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    torch.nn.init.orthogonal_(layer.weight, std)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
 
 
 class DQN(nn.Module):
@@ -23,26 +29,30 @@ class DQN(nn.Module):
         device: Union[str, int, torch.device] = "cpu",
         features_only: bool = False,
         output_dim: Optional[int] = None,
+        layer_init: Callable[[nn.Module], nn.Module] = lambda x: x,
     ) -> None:
         super().__init__()
         self.device = device
         self.net = nn.Sequential(
-            nn.Conv2d(c, 32, kernel_size=8, stride=4), nn.ReLU(inplace=True),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2), nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1), nn.ReLU(inplace=True),
-            nn.Flatten()
+            layer_init(nn.Conv2d(c, 32, kernel_size=8, stride=4)),
+            nn.ReLU(inplace=True),
+            layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2)),
+            nn.ReLU(inplace=True),
+            layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1)),
+            nn.ReLU(inplace=True), nn.Flatten()
         )
         with torch.no_grad():
             self.output_dim = np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:])
         if not features_only:
             self.net = nn.Sequential(
-                self.net, nn.Linear(self.output_dim, 512), nn.ReLU(inplace=True),
-                nn.Linear(512, np.prod(action_shape))
+                self.net, layer_init(nn.Linear(self.output_dim, 512)),
+                nn.ReLU(inplace=True),
+                layer_init(nn.Linear(512, np.prod(action_shape)))
             )
             self.output_dim = np.prod(action_shape)
         elif output_dim is not None:
             self.net = nn.Sequential(
-                self.net, nn.Linear(self.output_dim, output_dim),
+                self.net, layer_init(nn.Linear(self.output_dim, output_dim)),
                 nn.ReLU(inplace=True)
             )
             self.output_dim = output_dim
@@ -57,6 +67,7 @@ class DQN(nn.Module):
         obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         return self.net(obs), state
 
+
 class DQNScaled(DQN):
 
     def forward(
@@ -66,6 +77,7 @@ class DQNScaled(DQN):
         info: Dict[str, Any] = {}
     ) -> Tuple[torch.Tensor, Any]:
         return super().forward(obs / 255.0, state, info)
+
 
 class C51(DQN):
     """Reference: A distributional perspective on reinforcement learning.

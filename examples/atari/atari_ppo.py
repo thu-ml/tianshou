@@ -5,7 +5,7 @@ import pprint
 
 import numpy as np
 import torch
-from atari_network import DQN, DQNScaled
+from atari_network import DQN, DQNScaled, layer_init
 from atari_wrapper import make_atari_env
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
@@ -112,7 +112,8 @@ def test_ppo(args=get_args()):
         args.action_shape,
         device=args.device,
         features_only=True,
-        output_dim=args.hidden_size
+        output_dim=args.hidden_size,
+        layer_init=layer_init,
     )
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
     critic = Critic(net, device=args.device)
