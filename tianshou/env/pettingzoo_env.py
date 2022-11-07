@@ -34,7 +34,7 @@ class PettingZooEnv(AECEnv, ABC):
     Further usage can be found at :ref:`marl_example`.
     """
 
-    def __init__(self, env: BaseWrapper, render_mode:str = "human"):
+    def __init__(self, env: BaseWrapper, render_mode = None):
         super().__init__()
         self.env = env
         self.render_mode = render_mode
