@@ -2,8 +2,8 @@ import warnings
 from abc import ABC
 from typing import Any, Dict, List, Tuple, Union
 
-import gym.spaces
 import pettingzoo
+from gymnasium import spaces
 from packaging import version
 from pettingzoo.utils.env import AECEnv
 from pettingzoo.utils.wrappers import BaseWrapper
@@ -27,16 +27,17 @@ class PettingZooEnv(AECEnv, ABC):
         # obs is a dict containing obs, agent_id, and mask
         obs = env.reset()
         action = policy(obs)
-        obs, rew, done, info = env.step(action)
+        obs, rew, trunc, term, info = env.step(action)
         env.close()
 
     The available action's mask is set to True, otherwise it is set to False.
     Further usage can be found at :ref:`marl_example`.
     """
 
-    def __init__(self, env: BaseWrapper):
+    def __init__(self, env: BaseWrapper, render_mode:str = "human"):
         super().__init__()
         self.env = env
+        self.render_mode = render_mode
         # agent idx list
         self.agents = self.env.possible_agents
         self.agent_idx = {}
@@ -89,7 +90,7 @@ class PettingZooEnv(AECEnv, ABC):
                 [True if obm == 1 else False for obm in observation['action_mask']]
             }
         else:
-            if isinstance(self.action_space, gym.spaces.Discrete):
+            if isinstance(self.action_space, spaces.Discrete):
                 observation_dict = {
                     'agent_id': self.env.agent_selection,
                     'obs': observation,
@@ -124,7 +125,7 @@ class PettingZooEnv(AECEnv, ABC):
                 [True if obm == 1 else False for obm in observation['action_mask']]
             }
         else:
-            if isinstance(self.action_space, gym.spaces.Discrete):
+            if isinstance(self.action_space, spaces.Discrete):
                 obs = {
                     'agent_id': self.env.agent_selection,
                     'obs': observation,
@@ -146,5 +147,5 @@ class PettingZooEnv(AECEnv, ABC):
         except (NotImplementedError, AttributeError):
             self.env.reset(seed=seed)
 
-    def render(self, mode: str = "human") -> Any:
-        return self.env.render(mode)
+    def render(self) -> Any:
+        return self.env.render()
