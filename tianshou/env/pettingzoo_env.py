@@ -34,10 +34,9 @@ class PettingZooEnv(AECEnv, ABC):
     Further usage can be found at :ref:`marl_example`.
     """
 
-    def __init__(self, env: BaseWrapper, render_mode = None):
+    def __init__(self, env: BaseWrapper):
         super().__init__()
         self.env = env
-        self.render_mode = render_mode
         # agent idx list
         self.agents = self.env.possible_agents
         self.agent_idx = {}
