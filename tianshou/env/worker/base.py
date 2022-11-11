@@ -44,7 +44,7 @@ class EnvWorker(ABC):
                 self.result = self.reset()
             else:
                 self.is_reset = False
-                self.send_action(action)  # type: ignore
+                self.send_action(action)
 
     def recv(
         self
@@ -63,7 +63,7 @@ class EnvWorker(ABC):
                 "Please use send and recv for your own EnvWorker."
             )
             if not self.is_reset:
-                self.result = self.get_result()  # type: ignore
+                self.result = self.get_result()
         return self.result
 
     @abstractmethod

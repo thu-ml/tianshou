@@ -139,4 +139,4 @@ class LazyLogger(BaseLogger):
         pass
 
     def restore_data(self) -> Tuple[int, int, int]:
-        pass
+        return 0, 0, 0
