@@ -1,6 +1,7 @@
 import argparse
 import os
 from copy import deepcopy
+from functools import partial
 from typing import Optional, Tuple
 
 import gym
@@ -24,8 +25,8 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
 
-def get_env():
-    return PettingZooEnv(tictactoe_v3.env())
+def get_env(render_mode: Optional[str] = None):
+    return PettingZooEnv(tictactoe_v3.env(render_mode=render_mode))
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -230,7 +231,7 @@ def watch(
     agent_learn: Optional[BasePolicy] = None,
     agent_opponent: Optional[BasePolicy] = None,
 ) -> None:
-    env = DummyVectorEnv([get_env])
+    env = DummyVectorEnv([partial(get_env, render_mode="human")])
     policy, optim, agents = get_agents(
         args, agent_learn=agent_learn, agent_opponent=agent_opponent
     )

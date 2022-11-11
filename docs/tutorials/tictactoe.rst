@@ -1,6 +1,12 @@
 Multi-Agent RL
 ==============
 
+Tianshou use `PettingZoo` environment for multi-agent RL training. Here are some helpful tutorial links:
+
+* https://pettingzoo.farama.org/tutorials/tianshou/beginner/
+* https://pettingzoo.farama.org/tutorials/tianshou/intermediate/
+* https://pettingzoo.farama.org/tutorials/tianshou/advanced/
+
 In this section, we describe how to use Tianshou to implement multi-agent reinforcement learning. Specifically, we will design an algorithm to learn how to play `Tic Tac Toe <https://en.wikipedia.org/wiki/Tic-tac-toe>`_ (see the image below) against a random opponent.
 
 .. image:: ../_static/images/tic-tac-toe.png
@@ -10,7 +16,7 @@ In this section, we describe how to use Tianshou to implement multi-agent reinfo
 Tic-Tac-Toe Environment
 -----------------------
 
-The scripts are located at ``test/pettingzoo/``. We have implemented :class:`~tianshou.env.PettingZooEnv` which can wrap any [PettingZoo](https://www.pettingzoo.ml/) environment. PettingZoo offers a 3x3 Tic-Tac-Toe environment, let's first explore it.
+The scripts are located at ``test/pettingzoo/``. We have implemented :class:`~tianshou.env.PettingZooEnv` which can wrap any `PettingZoo <https://www.pettingzoo.ml/>`_ environment. PettingZoo offers a 3x3 Tic-Tac-Toe environment, let's first explore it.
 ::
 
     >>> from tianshou.env import PettingZooEnv       # wrapper for PettingZoo environments
@@ -19,7 +25,7 @@ The scripts are located at ``test/pettingzoo/``. We have implemented :class:`~ti
     >>> # Players place 'x' and 'o' in turn on the board
     >>> # The player who first gets 3 consecutive 'x's or 'o's wins
     >>>
-    >>> env = PettingZooEnv(tictactoe_v3.env())
+    >>> env = PettingZooEnv(tictactoe_v3.env(render_mode="human"))
     >>> obs = env.reset()
     >>> env.render()                                 # render the empty board
     board (step 0):
@@ -333,8 +339,8 @@ With the above preparation, we are close to the first learned agent. The followi
 
 ::
 
-    def get_env():
-        return PettingZooEnv(tictactoe_v3.env())
+    def get_env(render_mode=None):
+        return PettingZooEnv(tictactoe_v3.env(render_mode=render_mode))
 
 
     def train_agent(
@@ -427,7 +433,7 @@ With the above preparation, we are close to the first learned agent. The followi
         agent_learn: Optional[BasePolicy] = None,
         agent_opponent: Optional[BasePolicy] = None,
     ) -> None:
-        env = get_env()
+        env = get_env(render_mode="human")
         env = DummyVectorEnv([lambda: env])
         policy, optim, agents = get_agents(
             args, agent_learn=agent_learn, agent_opponent=agent_opponent
