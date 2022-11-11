@@ -8,9 +8,9 @@ import pprint
 import gym
 import numpy as np
 import torch
+import wandb
 from torch.utils.tensorboard import SummaryWriter
 
-import wandb
 from tianshou.data import (
     Collector,
     HERReplayBuffer,
