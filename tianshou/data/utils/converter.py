@@ -73,12 +73,10 @@ def to_torch_as(x: Any, y: torch.Tensor) -> Union[Batch, torch.Tensor]:
 
 # Note: object is used as a proxy for objects that can be pickled
 # Note: mypy does not support cyclic definition currently
-Hdf5ConvertibleValues = Union[  # type: ignore
-    int, float, Batch, np.ndarray, torch.Tensor, object,
-    'Hdf5ConvertibleType',  # type: ignore
-]
+Hdf5ConvertibleValues = Union[int, float, Batch, np.ndarray, torch.Tensor, object,
+                              "Hdf5ConvertibleType"]
 
-Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]  # type: ignore
+Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]
 
 
 def to_hdf5(
