@@ -111,7 +111,7 @@ class PPOPolicy(A2CPolicy):
                 if self._norm_adv:
                     mean, std = minibatch.adv.mean(), minibatch.adv.std()
                     minibatch.adv = (minibatch.adv -
-                                     mean) / (std + 1e-8)  # per-batch norm
+                                     mean) / (std + self._eps)  # per-batch norm
                 ratio = (dist.log_prob(minibatch.act) -
                          minibatch.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)

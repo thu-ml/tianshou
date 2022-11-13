@@ -5,7 +5,7 @@ import pprint
 
 import numpy as np
 import torch
-from atari_network import DQN, DQNScaled, layer_init
+from atari_network import DQN, scale_obs, layer_init
 from atari_wrapper import make_atari_env
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
@@ -106,7 +106,7 @@ def test_ppo(args=get_args()):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    net_cls = DQNScaled if args.scale_obs else DQN
+    net_cls = scale_obs(DQN) if args.scale_obs else DQN
     net = net_cls(
         *args.state_shape,
         args.action_shape,
