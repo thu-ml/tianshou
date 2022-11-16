@@ -85,17 +85,6 @@ class DQN(nn.Module):
         return self.net(obs), state
 
 
-class DQNScaled(DQN):
-
-    def forward(
-        self,
-        obs: Union[np.ndarray, torch.Tensor],
-        state: Optional[Any] = None,
-        info: Dict[str, Any] = {}
-    ) -> Tuple[torch.Tensor, Any]:
-        return super().forward(obs / 255.0, state, info)
-
-
 class C51(DQN):
     """Reference: A distributional perspective on reinforcement learning.
 
