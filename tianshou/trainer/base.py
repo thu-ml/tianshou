@@ -356,7 +356,8 @@ class BaseTrainer(ABC):
             print(
                 f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},"
                 f" best_reward: {self.best_reward:.6f} ± "
-                f"{self.best_reward_std:.6f} in #{self.best_epoch}"
+                f"{self.best_reward_std:.6f} in #{self.best_epoch}",
+                flush=True
             )
         if not self.is_run:
             test_stat = {

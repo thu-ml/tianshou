@@ -91,11 +91,8 @@ class PPOPolicy(A2CPolicy):
             self._buffer, self._indices = buffer, indices
         batch = self._compute_returns(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
-        old_log_prob = []
         with torch.no_grad():
-            for minibatch in batch.split(self._batch, shuffle=False, merge_last=True):
-                old_log_prob.append(self(minibatch).dist.log_prob(minibatch.act))
-        batch.logp_old = torch.cat(old_log_prob, dim=0)
+            batch.logp_old = self(batch).dist.log_prob(batch.act)
         return batch
 
     def learn(  # type: ignore
