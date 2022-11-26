@@ -21,7 +21,7 @@ from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seed", type=int, default=4213)
     parser.add_argument("--scale-obs", type=int, default=1)
     parser.add_argument("--buffer-size", type=int, default=100000)
     parser.add_argument("--lr", type=float, default=2.5e-4)
