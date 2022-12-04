@@ -5,7 +5,7 @@ import pprint
 
 import numpy as np
 import torch
-from atari_network import DQN
+from atari_network import DQN, layer_init, scale_obs
 from atari_wrapper import make_atari_env
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
@@ -22,9 +22,9 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="PongNoFrameskip-v4")
     parser.add_argument("--seed", type=int, default=4213)
-    parser.add_argument("--scale-obs", type=int, default=0)
+    parser.add_argument("--scale-obs", type=int, default=1)
     parser.add_argument("--buffer-size", type=int, default=100000)
-    parser.add_argument("--lr", type=float, default=5e-5)
+    parser.add_argument("--lr", type=float, default=2.5e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--epoch", type=int, default=100)
     parser.add_argument("--step-per-epoch", type=int, default=100000)
@@ -35,14 +35,14 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--rew-norm", type=int, default=False)
-    parser.add_argument("--vf-coef", type=float, default=0.5)
+    parser.add_argument("--vf-coef", type=float, default=0.25)
     parser.add_argument("--ent-coef", type=float, default=0.01)
     parser.add_argument("--gae-lambda", type=float, default=0.95)
     parser.add_argument("--lr-decay", type=int, default=True)
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
-    parser.add_argument("--eps-clip", type=float, default=0.2)
+    parser.add_argument("--eps-clip", type=float, default=0.1)
     parser.add_argument("--dual-clip", type=float, default=None)
-    parser.add_argument("--value-clip", type=int, default=0)
+    parser.add_argument("--value-clip", type=int, default=1)
     parser.add_argument("--norm-adv", type=int, default=1)
     parser.add_argument("--recompute-adv", type=int, default=0)
     parser.add_argument("--logdir", type=str, default="log")
@@ -94,7 +94,7 @@ def test_ppo(args=get_args()):
         args.seed,
         args.training_num,
         args.test_num,
-        scale=args.scale_obs,
+        scale=0,
         frame_stack=args.frames_stack,
     )
     args.state_shape = env.observation_space.shape or env.observation_space.n
@@ -106,16 +106,20 @@ def test_ppo(args=get_args()):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    net = DQN(
+    net_cls = scale_obs(DQN) if args.scale_obs else DQN
+    net = net_cls(
         *args.state_shape,
         args.action_shape,
         device=args.device,
         features_only=True,
-        output_dim=args.hidden_size
+        output_dim=args.hidden_size,
+        layer_init=layer_init,
     )
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
     critic = Critic(net, device=args.device)
-    optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
+    optim = torch.optim.Adam(
+        ActorCritic(actor, critic).parameters(), lr=args.lr, eps=1e-5
+    )
 
     lr_scheduler = None
     if args.lr_decay:
