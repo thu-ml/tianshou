@@ -24,9 +24,9 @@ def miniblock(
     input_size: int,
     output_size: int = 0,
     norm_layer: Optional[ModuleType] = None,
-    norm_args: Optional[Union[Tuple, Dict]] = None,
+    norm_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any]]] = None,
     activation: Optional[ModuleType] = None,
-    act_args: Optional[Union[Tuple, Dict]] = None,
+    act_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any]]] = None,
     linear_layer: Type[nn.Linear] = nn.Linear,
 ) -> List[nn.Module]:
     """Construct a miniblock with given input/output-size, norm layer and \
@@ -34,17 +34,17 @@ def miniblock(
     layers: List[nn.Module] = [linear_layer(input_size, output_size)]
     if norm_layer is not None:
         if isinstance(norm_args, tuple):
-            layers += [norm_layer(output_size, *norm_args)]
+            layers += [norm_layer(output_size, *norm_args)]  # type: ignore
         elif isinstance(norm_args, dict):
-            layers += [norm_layer(output_size, **norm_args)]
+            layers += [norm_layer(output_size, **norm_args)]  # type: ignore
         else:
-            layers += [norm_layer(output_size)] # type: ignore
+            layers += [norm_layer(output_size)]  # type: ignore
     if activation is not None:
         if isinstance(act_args, tuple):
-            layers += [activation(*norm_args)]
+            layers += [activation(*act_args)]
         elif isinstance(act_args, dict):
-            layers += [activation(**norm_args)]
-        else:   
+            layers += [activation(**act_args)]
+        else:
             layers += [activation()]
     return layers
 
@@ -80,9 +80,13 @@ class MLP(nn.Module):
         output_dim: int = 0,
         hidden_sizes: Sequence[int] = (),
         norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
-        norm_args: Optional[Union[Tuple, Dict, Sequence[Tuple], Sequence[Dict]]] = None,
+        norm_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any],
+                                  Sequence[Tuple[Any, ...]],
+                                  Sequence[Dict[Any, Any]]]] = None,
         activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
-        act_args: Optional[Union[Tuple, Dict, Sequence[Tuple], Sequence[Dict]]] = None,
+        act_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any,
+                                                                                 ...]],
+                                 Sequence[Dict[Any, Any]]]] = None,
         device: Optional[Union[str, int, torch.device]] = None,
         linear_layer: Type[nn.Linear] = nn.Linear,
         flatten_input: bool = True,
@@ -122,9 +126,12 @@ class MLP(nn.Module):
         hidden_sizes = [input_dim] + list(hidden_sizes)
         model = []
         for in_dim, out_dim, norm, norm_args, activ, act_args in zip(
-            hidden_sizes[:-1], hidden_sizes[1:], norm_layer_list, norm_args_list, activation_list, act_args_list
+            hidden_sizes[:-1], hidden_sizes[1:], norm_layer_list, norm_args_list,
+            activation_list, act_args_list
         ):
-            model += miniblock(in_dim, out_dim, norm, norm_args, activ, act_args, linear_layer)
+            model += miniblock(
+                in_dim, out_dim, norm, norm_args, activ, act_args, linear_layer
+            )
         if output_dim > 0:
             model += [linear_layer(hidden_sizes[-1], output_dim)]
         self.output_dim = output_dim or hidden_sizes[-1]
@@ -190,9 +197,13 @@ class Net(nn.Module):
         action_shape: Union[int, Sequence[int]] = 0,
         hidden_sizes: Sequence[int] = (),
         norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
-        norm_args: Optional[Union[Tuple, Dict, Sequence[Tuple], Sequence[Dict]]] = None,
+        norm_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any],
+                                  Sequence[Tuple[Any, ...]],
+                                  Sequence[Dict[Any, Any]]]] = None,
         activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
-        act_args: Optional[Union[Tuple, Dict, Sequence[Tuple], Sequence[Dict]]] = None,
+        act_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any,
+                                                                                 ...]],
+                                 Sequence[Dict[Any, Any]]]] = None,
         device: Union[str, int, torch.device] = "cpu",
         softmax: bool = False,
         concat: bool = False,
@@ -211,8 +222,8 @@ class Net(nn.Module):
         self.use_dueling = dueling_param is not None
         output_dim = action_dim if not self.use_dueling and not concat else 0
         self.model = MLP(
-            input_dim, output_dim, hidden_sizes, norm_layer, norm_args, activation, act_args, device,
-            linear_layer
+            input_dim, output_dim, hidden_sizes, norm_layer, norm_args, activation,
+            act_args, device, linear_layer
         )
         self.output_dim = self.model.output_dim
         if self.use_dueling:  # dueling DQN
@@ -436,7 +447,13 @@ class BranchingNet(nn.Module):
         value_hidden_sizes: List[int] = [],
         action_hidden_sizes: List[int] = [],
         norm_layer: Optional[ModuleType] = None,
+        norm_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any],
+                                  Sequence[Tuple[Any, ...]],
+                                  Sequence[Dict[Any, Any]]]] = None,
         activation: Optional[ModuleType] = nn.ReLU,
+        act_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any,
+                                                                                 ...]],
+                                 Sequence[Dict[Any, Any]]]] = None,
         device: Union[str, int, torch.device] = "cpu",
     ) -> None:
         super().__init__()
@@ -448,14 +465,14 @@ class BranchingNet(nn.Module):
         common_output_dim = 0
         self.common = MLP(
             common_input_dim, common_output_dim, common_hidden_sizes, norm_layer,
-            activation, device
+            norm_args, activation, act_args, device
         )
         # value network
         value_input_dim = common_hidden_sizes[-1]
         value_output_dim = 1
         self.value = MLP(
             value_input_dim, value_output_dim, value_hidden_sizes, norm_layer,
-            activation, device
+            norm_args, activation, act_args, device
         )
         # action branching network
         action_input_dim = common_hidden_sizes[-1]
@@ -464,7 +481,7 @@ class BranchingNet(nn.Module):
             [
                 MLP(
                     action_input_dim, action_output_dim, action_hidden_sizes,
-                    norm_layer, activation, device
+                    norm_layer, norm_args, activation, act_args, device
                 ) for _ in range(self.num_branches)
             ]
         )
