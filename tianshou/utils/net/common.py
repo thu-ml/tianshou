@@ -18,7 +18,8 @@ from torch import nn
 from tianshou.data.batch import Batch
 
 ModuleType = Type[nn.Module]
-ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]], Sequence[Dict[Any, Any]]]
+ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]],
+                 Sequence[Dict[Any, Any]]]
 
 
 def miniblock(
