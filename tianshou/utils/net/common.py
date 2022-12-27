@@ -18,7 +18,7 @@ from torch import nn
 from tianshou.data.batch import Batch
 
 ModuleType = Type[nn.Module]
-
+ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]], Sequence[Dict[Any, Any]]]
 
 def miniblock(
     input_size: int,
@@ -80,13 +80,9 @@ class MLP(nn.Module):
         output_dim: int = 0,
         hidden_sizes: Sequence[int] = (),
         norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
-        norm_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any],
-                                  Sequence[Tuple[Any, ...]],
-                                  Sequence[Dict[Any, Any]]]] = None,
+        norm_args: Optional[ArgsType] = None,
         activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
-        act_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any,
-                                                                                 ...]],
-                                 Sequence[Dict[Any, Any]]]] = None,
+        act_args: Optional[ArgsType] = None,
         device: Optional[Union[str, int, torch.device]] = None,
         linear_layer: Type[nn.Linear] = nn.Linear,
         flatten_input: bool = True,
@@ -197,13 +193,9 @@ class Net(nn.Module):
         action_shape: Union[int, Sequence[int]] = 0,
         hidden_sizes: Sequence[int] = (),
         norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
-        norm_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any],
-                                  Sequence[Tuple[Any, ...]],
-                                  Sequence[Dict[Any, Any]]]] = None,
+        norm_args: Optional[ArgsType] = None,
         activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
-        act_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any,
-                                                                                 ...]],
-                                 Sequence[Dict[Any, Any]]]] = None,
+        act_args: Optional[ArgsType] = None,
         device: Union[str, int, torch.device] = "cpu",
         softmax: bool = False,
         concat: bool = False,
@@ -447,13 +439,9 @@ class BranchingNet(nn.Module):
         value_hidden_sizes: List[int] = [],
         action_hidden_sizes: List[int] = [],
         norm_layer: Optional[ModuleType] = None,
-        norm_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any],
-                                  Sequence[Tuple[Any, ...]],
-                                  Sequence[Dict[Any, Any]]]] = None,
+        norm_args: Optional[ArgsType] = None,
         activation: Optional[ModuleType] = nn.ReLU,
-        act_args: Optional[Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any,
-                                                                                 ...]],
-                                 Sequence[Dict[Any, Any]]]] = None,
+        act_args: Optional[ArgsType] = None,
         device: Union[str, int, torch.device] = "cpu",
     ) -> None:
         super().__init__()
