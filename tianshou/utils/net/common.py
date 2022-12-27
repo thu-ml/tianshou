@@ -20,6 +20,7 @@ from tianshou.data.batch import Batch
 ModuleType = Type[nn.Module]
 ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]], Sequence[Dict[Any, Any]]]
 
+
 def miniblock(
     input_size: int,
     output_size: int = 0,
