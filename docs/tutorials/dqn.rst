@@ -35,7 +35,7 @@ Here is the overall system:
 Make an Environment
 -------------------
 
-First of all, you have to make an environment for your agent to interact with. You can use ``gym.make(environment_name)`` to make an environment for your agent. For environment interfaces, we follow the convention of `OpenAI Gym <https://github.com/openai/gym>`_. In your Python code, simply import Tianshou and make the environment:
+First of all, you have to make an environment for your agent to interact with. You can use ``gym.make(environment_name)`` to make an environment for your agent. For environment interfaces, we follow the convention of `Gymnasium <https://github.com/Farama-Foundation/Gymnasium>`_. In your Python code, simply import Tianshou and make the environment:
 ::
 
     import gymnasium as gym

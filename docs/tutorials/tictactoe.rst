@@ -62,7 +62,7 @@ The observation variable ``obs`` returned from the environment is a ``dict``, wi
 
 .. note::
 
-    There is no special formulation of ``mask`` either in discrete action space or in continuous action space. You can also use some action spaces like ``gym.spaces.Discrete`` or ``gym.spaces.Box`` to represent the available action space. Currently, we use a boolean array.
+    There is no special formulation of ``mask`` either in discrete action space or in continuous action space. You can also use some action spaces like ``gymnasium.spaces.Discrete`` or ``gymnasium.spaces.Box`` to represent the available action space. Currently, we use a boolean array.
 
 Let's play two steps to have an intuitive understanding of the environment.
 
@@ -70,7 +70,7 @@ Let's play two steps to have an intuitive understanding of the environment.
 
     >>> import numpy as np
     >>> action = 0                                  # action is either an integer, or an np.ndarray with one element
-    >>> obs, reward, done, info = env.step(action)  # the env.step follows the api of OpenAI Gym
+    >>> obs, reward, done, info = env.step(action)  # the env.step follows the api of Gymnasium
     >>> print(obs)                                  # notice the change in the observation
     {'agent_id': 'player_2', 'obs': array([[[0, 1],
             [0, 0],
