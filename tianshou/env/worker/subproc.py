@@ -5,7 +5,7 @@ from multiprocessing import Array, Pipe, connection
 from multiprocessing.context import Process
 from typing import Any, Callable, List, Optional, Tuple, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 
 from tianshou.env.utils import (

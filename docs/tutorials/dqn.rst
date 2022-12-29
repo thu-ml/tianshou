@@ -38,7 +38,7 @@ Make an Environment
 First of all, you have to make an environment for your agent to interact with. You can use ``gym.make(environment_name)`` to make an environment for your agent. For environment interfaces, we follow the convention of `OpenAI Gym <https://github.com/openai/gym>`_. In your Python code, simply import Tianshou and make the environment:
 ::
 
-    import gym
+    import gymnasium as gym
     import tianshou as ts
 
     env = gym.make('CartPole-v0')

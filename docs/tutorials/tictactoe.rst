@@ -185,7 +185,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
     from copy import deepcopy
     from typing import Optional, Tuple
 
-    import gym
+    import gymnasium as gym
     import numpy as np
     import torch
     from pettingzoo.classic import tictactoe_v3

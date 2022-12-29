@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Tuple, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 from packaging import version
 

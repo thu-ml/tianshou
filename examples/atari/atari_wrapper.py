@@ -5,7 +5,7 @@ import warnings
 from collections import deque
 
 import cv2
-import gym
+import gymnasium as gym
 import numpy as np
 
 from tianshou.env import ShmemVectorEnv

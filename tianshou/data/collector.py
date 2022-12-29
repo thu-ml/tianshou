@@ -2,7 +2,7 @@ import time
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 

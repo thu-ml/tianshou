@@ -1,6 +1,6 @@
 import warnings
 
-import gym
+import gymnasium as gym
 
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
 

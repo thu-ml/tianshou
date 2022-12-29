@@ -1,10 +1,10 @@
 import sys
 import time
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
-from gym.spaces.discrete import Discrete
+from gymnasium.spaces.discrete import Discrete
 
 from tianshou.data import Batch
 from tianshou.env import (

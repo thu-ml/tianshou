@@ -175,7 +175,8 @@ This is an example of Deep Q Network. You can also run the full script at [test/
 First, import some relevant packages:
 
 ```python
-import gym, torch, numpy as np, torch.nn as nn
+import gymnasium as gym
+import torch, numpy as np, torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 import tianshou as ts
 ```

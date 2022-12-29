@@ -3,7 +3,7 @@
 import copy
 from collections import Counter
 
-import gym
+import gymnasium as gym
 import numpy as np
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
 

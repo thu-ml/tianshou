@@ -1,6 +1,6 @@
 from typing import Any, Callable, List, Optional, Tuple, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 
 from tianshou.env.worker import EnvWorker

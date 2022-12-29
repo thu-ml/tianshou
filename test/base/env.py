@@ -2,10 +2,10 @@ import random
 import time
 from copy import deepcopy
 
-import gym
+import gymnasium as gym
 import networkx as nx
 import numpy as np
-from gym.spaces import Box, Dict, Discrete, MultiDiscrete, Tuple
+from gymnasium.spaces import Box, Dict, Discrete, MultiDiscrete, Tuple
 
 
 class MyTestEnv(gym.Env):
