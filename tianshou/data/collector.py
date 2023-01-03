@@ -311,24 +311,10 @@ class Collector(object):
             # get bounded and remapped actions first (not saved into buffer)
             action_remap = self.policy.map_action(self.data.act)
             # step in env
-            result = self.env.step(action_remap, ready_env_ids)  # type: ignore
-            if len(result) == 5:
-                obs_next, rew, terminated, truncated, info = result
-                done = np.logical_or(terminated, truncated)
-            elif len(result) == 4:
-                obs_next, rew, done, info = result
-                if isinstance(info, dict):
-                    truncated = info["TimeLimit.truncated"]
-                else:
-                    truncated = np.array(
-                        [
-                            info_item.get("TimeLimit.truncated", False)
-                            for info_item in info
-                        ]
-                    )
-                terminated = np.logical_and(done, ~truncated)
-            else:
-                raise ValueError()
+            obs_next, rew, terminated, truncated, info = self.env.step(
+                action_remap, ready_env_ids
+            )  # type: ignore
+            done = np.logical_or(terminated, truncated)
 
             self.data.update(
                 obs_next=obs_next,
@@ -582,25 +568,10 @@ class AsyncCollector(Collector):
             # get bounded and remapped actions first (not saved into buffer)
             action_remap = self.policy.map_action(self.data.act)
             # step in env
-            result = self.env.step(action_remap, ready_env_ids)  # type: ignore
-
-            if len(result) == 5:
-                obs_next, rew, terminated, truncated, info = result
-                done = np.logical_or(terminated, truncated)
-            elif len(result) == 4:
-                obs_next, rew, done, info = result
-                if isinstance(info, dict):
-                    truncated = info["TimeLimit.truncated"]
-                else:
-                    truncated = np.array(
-                        [
-                            info_item.get("TimeLimit.truncated", False)
-                            for info_item in info
-                        ]
-                    )
-                terminated = np.logical_and(done, ~truncated)
-            else:
-                raise ValueError()
+            obs_next, rew, terminated, truncated, info = self.env.step(
+                action_remap, ready_env_ids
+            )  # type: ignore
+            done = np.logical_or(terminated, truncated)
 
             # change self.data here because ready_env_ids has changed
             try:
