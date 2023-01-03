@@ -74,11 +74,13 @@ class MyTestEnv(gym.Env):
         self.terminated = False
         self.index = 0
 
-    def reset(self, state=0, seed=None):
+    def reset(self, seed=None, options=None):
+        if options is None:
+            options = {"state": 0}
         super().reset(seed=seed)
         self.terminated = False
         self.do_sleep()
-        self.index = state
+        self.index = options["state"]
         return self._get_state(), {'key': 1, 'env': self}
 
     def _get_reward(self):
