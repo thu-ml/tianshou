@@ -59,7 +59,7 @@ def get_extras_require() -> str:
         "pybullet": ["pybullet"],
     }
     if sys.platform == "linux":
-        req["dev"].append("envpool>=0.5.3")
+        req["dev"].append("envpool>=0.7.0")
     return req
 
 
