@@ -391,10 +391,10 @@ def test_gym_wrappers():
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_venv_wrapper_envpool():
-    raw = envpool.make_gym("Ant-v3", num_envs=4)
-    train = VectorEnvNormObs(envpool.make_gym("Ant-v3", num_envs=4))
+    raw = envpool.make_gymnasium("Ant-v3", num_envs=4)
+    train = VectorEnvNormObs(envpool.make_gymnasium("Ant-v3", num_envs=4))
     test = VectorEnvNormObs(
-        envpool.make_gym("Ant-v3", num_envs=4), update_obs_rms=False
+        envpool.make_gymnasium("Ant-v3", num_envs=4), update_obs_rms=False
     )
     test.set_obs_rms(train.get_obs_rms())
     actions = [
@@ -407,7 +407,9 @@ def test_venv_wrapper_envpool():
 def test_venv_wrapper_envpool_gym_reset_return_info():
     num_envs = 4
     env = VectorEnvNormObs(
-        envpool.make_gym("Ant-v3", num_envs=num_envs, gym_reset_return_info=True)
+        envpool.make_gymnasium(
+            "Ant-v3", num_envs=num_envs, gym_reset_return_info=True
+        )
     )
     obs, info = env.reset()
     assert obs.shape[0] == num_envs

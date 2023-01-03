@@ -84,8 +84,8 @@ You can also try the super-fast vectorized environment `EnvPool <https://github.
 ::
 
     import envpool
-    train_envs = envpool.make_gym("CartPole-v0", num_envs=10)
-    test_envs = envpool.make_gym("CartPole-v0", num_envs=100)
+    train_envs = envpool.make_gymnasium("CartPole-v0", num_envs=10)
+    test_envs = envpool.make_gymnasium("CartPole-v0", num_envs=100)
 
 For the demonstration, here we use the second code-block.
 
