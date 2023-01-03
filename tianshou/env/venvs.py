@@ -203,13 +203,11 @@ class BaseVectorEnv(object):
             self.workers[i].send(None, **kwargs)
         ret_list = [self.workers[i].recv() for i in id]
 
-        reset_returns_info = isinstance(ret_list[0], (tuple, list)) and len(
+        assert isinstance(ret_list[0], (tuple, list)) and len(
             ret_list[0]
         ) == 2 and isinstance(ret_list[0][1], dict)
-        if reset_returns_info:
-            obs_list = [r[0] for r in ret_list]
-        else:
-            obs_list = ret_list
+
+        obs_list = [r[0] for r in ret_list]
 
         if isinstance(obs_list[0], tuple):
             raise TypeError(
@@ -221,11 +219,8 @@ class BaseVectorEnv(object):
         except ValueError:  # different len(obs)
             obs = np.array(obs_list, dtype=object)
 
-        if reset_returns_info:
-            infos = [r[1] for r in ret_list]
-            return obs, infos  # type: ignore
-        else:
-            return obs
+        infos = [r[1] for r in ret_list]
+        return obs, infos  # type: ignore
 
     def step(
         self,

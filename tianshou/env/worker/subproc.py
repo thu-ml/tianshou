@@ -93,21 +93,11 @@ def _worker(
                     env_return = (None, *env_return[1:])
                 p.send(env_return)
             elif cmd == "reset":
-                retval = env.reset(**data)
-                reset_returns_info = isinstance(
-                    retval, (tuple, list)
-                ) and len(retval) == 2 and isinstance(retval[1], dict)
-                if reset_returns_info:
-                    obs, info = retval
-                else:
-                    obs = retval
+                obs, info = env.reset(**data)
                 if obs_bufs is not None:
                     _encode_obs(obs, obs_bufs)
                     obs = None
-                if reset_returns_info:
-                    p.send((obs, info))
-                else:
-                    p.send(obs)
+                p.send((obs, info))
             elif cmd == "close":
                 p.send(env.close())
                 p.close()

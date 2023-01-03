@@ -171,24 +171,15 @@ class Collector(object):
         gym_reset_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        rval = self.env.reset(global_ids, **gym_reset_kwargs)
-        returns_info = isinstance(rval, (tuple, list)) and len(rval) == 2 and (
-            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)
-        )
-        if returns_info:
-            obs_reset, info = rval
-            if self.preprocess_fn:
-                processed_data = self.preprocess_fn(
-                    obs=obs_reset, info=info, env_id=global_ids
-                )
-                obs_reset = processed_data.get("obs", obs_reset)
-                info = processed_data.get("info", info)
-            self.data.info[local_ids] = info
-        else:
-            obs_reset = rval
-            if self.preprocess_fn:
-                obs_reset = self.preprocess_fn(obs=obs_reset, env_id=global_ids
-                                               ).get("obs", obs_reset)
+        obs_reset, info = self.env.reset(global_ids, **gym_reset_kwargs)
+        if self.preprocess_fn:
+            processed_data = self.preprocess_fn(
+                obs=obs_reset, info=info, env_id=global_ids
+            )
+            obs_reset = processed_data.get("obs", obs_reset)
+            info = processed_data.get("info", info)
+        self.data.info[local_ids] = info
+
         self.data.obs_next[local_ids] = obs_reset
 
     def collect(
