@@ -8,11 +8,7 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 import gymnasium as gym
 import numpy as np
 
-from tianshou.env.utils import (
-    CloudpickleWrapper,
-    gym_new_venv_step_type,
-    gym_old_venv_step_type,
-)
+from tianshou.env.utils import CloudpickleWrapper, gym_new_venv_step_type
 from tianshou.env.worker import EnvWorker
 
 _NP_TO_CT = {
@@ -214,7 +210,7 @@ class SubprocEnvWorker(EnvWorker):
 
     def recv(
         self
-    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type, Tuple[np.ndarray, dict],
+    ) -> Union[gym_new_venv_step_type, Tuple[np.ndarray, dict],
                np.ndarray]:  # noqa:E125
         result = self.parent_remote.recv()
         if isinstance(result, tuple):

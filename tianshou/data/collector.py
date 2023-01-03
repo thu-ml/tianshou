@@ -143,24 +143,14 @@ class Collector(object):
     def reset_env(self, gym_reset_kwargs: Optional[Dict[str, Any]] = None) -> None:
         """Reset all of the environments."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        rval = self.env.reset(**gym_reset_kwargs)
-        returns_info = isinstance(rval, (tuple, list)) and len(rval) == 2 and (
-            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)
-        )
-        if returns_info:
-            obs, info = rval
-            if self.preprocess_fn:
-                processed_data = self.preprocess_fn(
-                    obs=obs, info=info, env_id=np.arange(self.env_num)
-                )
-                obs = processed_data.get("obs", obs)
-                info = processed_data.get("info", info)
-            self.data.info = info
-        else:
-            obs = rval
-            if self.preprocess_fn:
-                obs = self.preprocess_fn(obs=obs, env_id=np.arange(self.env_num
-                                                                   )).get("obs", obs)
+        obs, info = self.env.reset(**gym_reset_kwargs)
+        if self.preprocess_fn:
+            processed_data = self.preprocess_fn(
+                obs=obs, info=info, env_id=np.arange(self.env_num)
+            )
+            obs = processed_data.get("obs", obs)
+            info = processed_data.get("info", info)
+        self.data.info = info
         self.data.obs = obs
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:

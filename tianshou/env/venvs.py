@@ -3,7 +3,7 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 import gymnasium as gym
 import numpy as np
 
-from tianshou.env.utils import gym_new_venv_step_type, gym_old_venv_step_type
+from tianshou.env.utils import gym_new_venv_step_type
 from tianshou.env.worker import (
     DummyEnvWorker,
     EnvWorker,
@@ -231,7 +231,7 @@ class BaseVectorEnv(object):
         self,
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
+    ) -> gym_new_venv_step_type:
         """Run one timestep of some environments' dynamics.
 
         If id is None, run one timestep of all the environments’ dynamics;
