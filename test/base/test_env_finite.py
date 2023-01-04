@@ -171,8 +171,9 @@ class MetricTracker:
         self.counter = Counter()
         self.finished = set()
 
-    def log(self, obs, rew, done, info):
+    def log(self, obs, rew, terminated, truncated, info):
         assert rew == 1.
+        done = terminated or truncated
         index = info['sample']
         if done:
             assert index not in self.finished
