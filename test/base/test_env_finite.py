@@ -113,7 +113,7 @@ class FiniteVectorEnv(BaseVectorEnv):
             self.reset()
             raise StopIteration
 
-        return np.stack(obs)
+        return np.stack(obs), {}
 
     def step(self, action, id=None):
         id = self._wrap_id(id)
