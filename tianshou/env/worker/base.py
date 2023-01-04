@@ -65,7 +65,7 @@ class EnvWorker(ABC):
         return self.result
 
     @abstractmethod
-    def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+    def reset(self, **kwargs: Any) -> Tuple[np.ndarray, dict]:
         pass
 
     def step(self, action: np.ndarray) -> gym_new_venv_step_type:

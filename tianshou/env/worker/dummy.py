@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple
 
 import gymnasium as gym
 import numpy as np
@@ -19,7 +19,7 @@ class DummyEnvWorker(EnvWorker):
     def set_env_attr(self, key: str, value: Any) -> None:
         setattr(self.env.unwrapped, key, value)
 
-    def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+    def reset(self, **kwargs: Any) -> Tuple[np.ndarray, dict]:
         if "seed" in kwargs:
             super().seed(kwargs["seed"])
         return self.env.reset(**kwargs)

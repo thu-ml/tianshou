@@ -200,8 +200,7 @@ class SubprocEnvWorker(EnvWorker):
 
     def recv(
         self
-    ) -> Union[gym_new_venv_step_type, Tuple[np.ndarray, dict],
-               np.ndarray]:  # noqa:E125
+    ) -> Union[gym_new_venv_step_type, Tuple[np.ndarray, dict]]:  # noqa:E125
         result = self.parent_remote.recv()
         if isinstance(result, tuple):
             if len(result) == 2:
@@ -219,7 +218,7 @@ class SubprocEnvWorker(EnvWorker):
                 obs = self._decode_obs()
             return obs
 
-    def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+    def reset(self, **kwargs: Any) -> Tuple[np.ndarray, dict]:
         if "seed" in kwargs:
             super().seed(kwargs["seed"])
         self.parent_remote.send(["reset", kwargs])

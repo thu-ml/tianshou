@@ -85,7 +85,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         self,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, Union[dict, List[dict]]]]:
+    ) -> Tuple[np.ndarray, Union[dict, List[dict]]]:
         obs, info = self.venv.reset(id, **kwargs)
 
         if isinstance(obs, tuple):
@@ -107,7 +107,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         step_results = self.venv.step(action, id)
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(step_results[0])
-        return (self._norm_obs(step_results[0]), *step_results[1:])  # type:ignore
+        return (self._norm_obs(step_results[0]), *step_results[1:])
 
     def _norm_obs(self, obs: np.ndarray) -> np.ndarray:
         if self.obs_rms:
