@@ -307,14 +307,14 @@ class BaseVectorEnv(object):
                 env_return[-1]["env_id"] = env_id  # Add `env_id` to info
                 result.append(env_return)
                 self.ready_id.append(env_id)
-        return_lists = tuple(zip(*result))
-        obs_list = return_lists[0]
+        obs_list, rew_list, term_list, trunc_list, info_list = tuple(zip(*result))
         try:
             obs_stack = np.stack(obs_list)
         except ValueError:  # different len(obs)
             obs_stack = np.array(obs_list, dtype=object)
-        other_stacks = map(np.stack, return_lists[1:])
-        return (obs_stack, *other_stacks)  # type: ignore
+        return obs_stack, np.stack(rew_list), np.stack(term_list), np.stack(
+            trunc_list
+        ), np.stack(info_list)
 
     def seed(
         self,

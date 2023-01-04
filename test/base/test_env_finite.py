@@ -94,10 +94,12 @@ class FiniteVectorEnv(BaseVectorEnv):
         # ask super to reset alive envs and remap to current index
         request_id = list(filter(lambda i: i in self._alive_env_ids, id))
         obs = [None] * len(id)
+        infos = [None] * len(id)
         id2idx = {i: k for k, i in enumerate(id)}
         if request_id:
-            for i, o in zip(request_id, super().reset(request_id)):
-                obs[id2idx[i]] = o
+            for k, (o, info) in zip(request_id, super().reset(request_id)):
+                obs[id2idx[k]] = o
+                infos[id2idx[k]] = info
         for i, o in zip(id, obs):
             if o is None and i in self._alive_env_ids:
                 self._alive_env_ids.remove(i)
@@ -105,15 +107,20 @@ class FiniteVectorEnv(BaseVectorEnv):
         # fill empty observation with default(fake) observation
         for o in obs:
             self._set_default_obs(o)
+        for info in infos:
+            self._set_default_info(info)
+
         for i in range(len(obs)):
             if obs[i] is None:
                 obs[i] = self._get_default_obs()
+            if infos[i] is None:
+                infos[i] = self._get_default_info()
 
         if not self._alive_env_ids:
             self.reset()
             raise StopIteration
 
-        return np.stack(obs), {}
+        return np.stack(obs), infos
 
     def step(self, action, id=None):
         id = self._wrap_id(id)
