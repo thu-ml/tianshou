@@ -48,7 +48,7 @@ def get_extras_require() -> str:
             "doc8",
             "scipy",
             "pillow",
-            "pettingzoo>=1.17",
+            "pettingzoo>=1.22",
             "pygame>=2.1.0",  # pettingzoo test cases pistonball
             "pymunk>=6.2.1",  # pettingzoo test cases pistonball
             "nni>=2.3,<3.0",  # expect breaking changes at next major version

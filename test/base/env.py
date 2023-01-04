@@ -176,7 +176,7 @@ class MyGoalEnv(MyTestEnv):
         assert kwargs.get("dict_state", 0) + kwargs.get("recurse_state", 0) == 0, \
             "dict_state / recurse_state not supported"
         super().__init__(*args, **kwargs)
-        obs, _ = super().reset(state=0)
+        obs, _ = super().reset(options={"state": 0})
         obs, _, _, _, _ = super().step(1)
         self._goal = obs * self.size
         super_obsv = self.observation_space

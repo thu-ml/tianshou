@@ -45,15 +45,15 @@ class FiniteEnv(gym.Env):
         try:
             self.current_sample, self.step_count = next(self.iterator)
             self.current_step = 0
-            return self.current_sample
+            return self.current_sample, {}
         except StopIteration:
             self.iterator = None
-            return None
+            return None, {}
 
     def step(self, action):
         self.current_step += 1
         assert self.current_step <= self.step_count
-        return 0, 1.0, self.current_step >= self.step_count, \
+        return 0, 1.0, self.current_step >= self.step_count, False, \
             {'sample': self.current_sample, 'action': action, 'metric': 2.0}
 
 
@@ -119,7 +119,7 @@ class FiniteVectorEnv(BaseVectorEnv):
         id = self._wrap_id(id)
         id2idx = {i: k for k, i in enumerate(id)}
         request_id = list(filter(lambda i: i in self._alive_env_ids, id))
-        result = [[None, 0., False, None] for _ in range(len(id))]
+        result = [[None, 0., False, False, None] for _ in range(len(id))]
 
         # ask super to step alive envs and remap to current index
         if request_id:
@@ -133,13 +133,13 @@ class FiniteVectorEnv(BaseVectorEnv):
                 self.tracker.log(*r)
 
         # fill empty observation/info with default(fake)
-        for _, __, ___, i in result:
+        for _, __, ___, ____, i in result:
             self._set_default_info(i)
         for i in range(len(result)):
             if result[i][0] is None:
                 result[i][0] = self._get_default_obs()
-            if result[i][3] is None:
-                result[i][3] = self._get_default_info()
+            if result[i][-1] is None:
+                result[i][-1] = self._get_default_info()
 
         return list(map(np.stack, zip(*result)))
 
