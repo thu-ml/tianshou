@@ -97,7 +97,7 @@ class FiniteVectorEnv(BaseVectorEnv):
         infos = [None] * len(id)
         id2idx = {i: k for k, i in enumerate(id)}
         if request_id:
-            for k, (o, info) in zip(request_id, super().reset(request_id)):
+            for k, o, info in zip(request_id, *super().reset(request_id)):
                 obs[id2idx[k]] = o
                 infos[id2idx[k]] = info
         for i, o in zip(id, obs):
