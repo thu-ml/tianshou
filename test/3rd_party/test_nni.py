@@ -8,6 +8,7 @@ from typing import List, Union
 import nni.nas.execution.api
 import nni.nas.nn.pytorch as nn
 import nni.nas.strategy as strategy
+import pytest
 import torch
 import torch.nn.functional as F
 from nni.nas.execution import wait_models
@@ -107,6 +108,9 @@ def _get_model_and_mutators(**kwargs):
     return base_model_ir, mutators
 
 
+@pytest.mark.skip(
+    reason="NNI currently uses OpenAI Gym"
+)  # TODO: Remove once NNI transitions to Gymnasium
 def test_rl():
     rl = strategy.PolicyBasedRL(max_collect=2, trial_per_collect=10)
     engine = MockExecutionEngine(failure_prob=0.2)

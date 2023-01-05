@@ -107,8 +107,6 @@ class FiniteVectorEnv(BaseVectorEnv):
         # fill empty observation with default(fake) observation
         for o in obs:
             self._set_default_obs(o)
-        # for info in infos:
-        #     self._set_default_info(info)
 
         for i in range(len(obs)):
             if obs[i] is None:
