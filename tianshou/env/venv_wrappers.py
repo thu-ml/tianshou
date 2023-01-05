@@ -88,7 +88,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
     ) -> Tuple[np.ndarray, Union[dict, List[dict]]]:
         obs, info = self.venv.reset(id, **kwargs)
 
-        if isinstance(obs, tuple):
+        if isinstance(obs, tuple):  # type: ignore
             raise TypeError(
                 "Tuple observation space is not supported. ",
                 "Please change it to array or dict space",

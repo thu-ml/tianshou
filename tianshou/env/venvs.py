@@ -209,7 +209,7 @@ class BaseVectorEnv(object):
 
         obs_list = [r[0] for r in ret_list]
 
-        if isinstance(obs_list[0], tuple):
+        if isinstance(obs_list[0], tuple):  # type: ignore
             raise TypeError(
                 "Tuple observation space is not supported. ",
                 "Please change it to array or dict space",
