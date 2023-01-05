@@ -293,8 +293,9 @@ class Collector(object):
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             obs_next, rew, terminated, truncated, info = self.env.step(
-                action_remap, ready_env_ids
-            )  # type: ignore
+                action_remap,  # type: ignore
+                ready_env_ids
+            )
             done = np.logical_or(terminated, truncated)
 
             self.data.update(
@@ -550,8 +551,9 @@ class AsyncCollector(Collector):
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             obs_next, rew, terminated, truncated, info = self.env.step(
-                action_remap, ready_env_ids
-            )  # type: ignore
+                action_remap,  # type: ignore
+                ready_env_ids
+            )
             done = np.logical_or(terminated, truncated)
 
             # change self.data here because ready_env_ids has changed
