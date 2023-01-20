@@ -53,6 +53,7 @@ def get_extras_require() -> str:
             "pymunk>=6.2.1",  # pettingzoo test cases pistonball
             "nni>=2.3,<3.0",  # expect breaking changes at next major version
             "pytorch_lightning",
+            "gym>=0.22.0",
         ],
         "atari": ["atari_py", "opencv-python"],
         "mujoco": ["mujoco_py"],
