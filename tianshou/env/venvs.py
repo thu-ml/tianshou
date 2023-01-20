@@ -9,16 +9,17 @@ from tianshou.env.utils import gym_new_venv_step_type
 from tianshou.env.worker import (
     DummyEnvWorker,
     EnvWorker,
+    PettingZooEnv,
     RayEnvWorker,
     SubprocEnvWorker,
 )
 
 try:
     import gym as old_gym
-    ENV_TYPE = Union[gym.Env, old_gym.Env]
+    ENV_TYPE = Union[gym.Env, old_gym.Env, PettingZooEnv]
 except ImportError:
     old_gym = None
-    ENV_TYPE = gym.Env
+    ENV_TYPE = Union[gym.Env, PettingZooEnv]
 
 GYM_RESERVED_KEYS = [
     "metadata", "reward_range", "spec", "action_space", "observation_space"
@@ -35,12 +36,13 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
     if necessary.
     """
 
-    def patched() -> Callable[[], gym.Env]:
+    def patched() -> gym.Env:
         assert callable(
             fn
         ), "Env generators that are provided to vector environemnts must be callable."
+
         env = fn()
-        if isinstance(env, gym.Env):
+        if isinstance(env, (gym.Env, PettingZooEnv)):
             return env
 
         if old_gym is None or not isinstance(env, old_gym.Env):
@@ -49,6 +51,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
                 f"environment. In this case, we expect OpenAI Gym to be "
                 f"installed and the environment to be an OpenAI Gym environment."
             )
+
         try:
             import shimmy
         except ImportError as e:
