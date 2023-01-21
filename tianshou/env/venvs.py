@@ -6,7 +6,7 @@ import numpy as np
 import packaging
 
 from tianshou.env.pettingzoo_env import PettingZooEnv
-from tianshou.env.utils import gym_new_venv_step_type
+from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
 from tianshou.env.worker import (
     DummyEnvWorker,
     EnvWorker,
@@ -16,10 +16,9 @@ from tianshou.env.worker import (
 
 try:
     import gym as old_gym
-    ENV_TYPE = Union[gym.Env, old_gym.Env, PettingZooEnv]
+    has_old_gym = True
 except ImportError:
-    old_gym = None
-    ENV_TYPE = Union[gym.Env, PettingZooEnv]
+    has_old_gym = False
 
 GYM_RESERVED_KEYS = [
     "metadata", "reward_range", "spec", "action_space", "observation_space"
@@ -45,7 +44,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
         if isinstance(env, (gym.Env, PettingZooEnv)):
             return env
 
-        if old_gym is None or not isinstance(env, old_gym.Env):
+        if not has_old_gym or not isinstance(env, old_gym.Env):
             raise ValueError(
                 f"Environment generator returned a {type(env)}, not a Gymnasium "
                 f"environment. In this case, we expect OpenAI Gym to be "
@@ -439,7 +438,7 @@ class SubprocVectorEnv(BaseVectorEnv):
 
     def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
 
-        def worker_fn(fn: Callable[[], ENV_TYPE]) -> SubprocEnvWorker:
+        def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=False)
 
         super().__init__(env_fns, worker_fn, **kwargs)
@@ -457,7 +456,7 @@ class ShmemVectorEnv(BaseVectorEnv):
 
     def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
 
-        def worker_fn(fn: Callable[[], ENV_TYPE]) -> SubprocEnvWorker:
+        def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
 
         super().__init__(env_fns, worker_fn, **kwargs)

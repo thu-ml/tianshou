@@ -1,7 +1,15 @@
-from typing import Any, Tuple
+from typing import TYPE_CHECKING, Any, Tuple, Union
 
 import cloudpickle
+import gymnasium
 import numpy as np
+
+from tianshou.env.pettingzoo_env import PettingZooEnv
+
+if TYPE_CHECKING:
+    import gym
+
+ENV_TYPE = Union[gymnasium.Env, "gym.Env", PettingZooEnv]
 
 gym_new_venv_step_type = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
                                np.ndarray]
