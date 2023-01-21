@@ -5,11 +5,11 @@ import gymnasium as gym
 import numpy as np
 import packaging
 
+from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.env.utils import gym_new_venv_step_type
 from tianshou.env.worker import (
     DummyEnvWorker,
     EnvWorker,
-    PettingZooEnv,
     RayEnvWorker,
     SubprocEnvWorker,
 )
