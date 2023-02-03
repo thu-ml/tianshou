@@ -4,7 +4,10 @@ import cloudpickle
 import gymnasium
 import numpy as np
 
-from tianshou.env.pettingzoo_env import PettingZooEnv
+try:
+    from tianshou.env.pettingzoo_env import PettingZooEnv
+except (ImportError, ModuleNotFoundError):
+    PettingZooEnv = None
 
 if TYPE_CHECKING:
     import gym
