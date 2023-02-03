@@ -7,7 +7,7 @@ import numpy as np
 try:
     from tianshou.env.pettingzoo_env import PettingZooEnv
 except ImportError:
-    PettingZooEnv = None
+    PettingZooEnv = None  # type: ignore
 
 if TYPE_CHECKING:
     import gym
