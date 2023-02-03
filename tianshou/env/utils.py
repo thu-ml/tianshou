@@ -6,7 +6,7 @@ import numpy as np
 
 try:
     from tianshou.env.pettingzoo_env import PettingZooEnv
-except (ImportError, ModuleNotFoundError):
+except ImportError:
     PettingZooEnv = None
 
 if TYPE_CHECKING:
