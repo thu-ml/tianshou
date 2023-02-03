@@ -5,14 +5,10 @@ from multiprocessing import Array, Pipe, connection
 from multiprocessing.context import Process
 from typing import Any, Callable, List, Optional, Tuple, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 
-from tianshou.env.utils import (
-    CloudpickleWrapper,
-    gym_new_venv_step_type,
-    gym_old_venv_step_type,
-)
+from tianshou.env.utils import CloudpickleWrapper, gym_new_venv_step_type
 from tianshou.env.worker import EnvWorker
 
 _NP_TO_CT = {
@@ -97,21 +93,11 @@ def _worker(
                     env_return = (None, *env_return[1:])
                 p.send(env_return)
             elif cmd == "reset":
-                retval = env.reset(**data)
-                reset_returns_info = isinstance(
-                    retval, (tuple, list)
-                ) and len(retval) == 2 and isinstance(retval[1], dict)
-                if reset_returns_info:
-                    obs, info = retval
-                else:
-                    obs = retval
+                obs, info = env.reset(**data)
                 if obs_bufs is not None:
                     _encode_obs(obs, obs_bufs)
                     obs = None
-                if reset_returns_info:
-                    p.send((obs, info))
-                else:
-                    p.send(obs)
+                p.send((obs, info))
             elif cmd == "close":
                 p.send(env.close())
                 p.close()
@@ -214,8 +200,7 @@ class SubprocEnvWorker(EnvWorker):
 
     def recv(
         self
-    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type, Tuple[np.ndarray, dict],
-               np.ndarray]:  # noqa:E125
+    ) -> Union[gym_new_venv_step_type, Tuple[np.ndarray, dict]]:  # noqa:E125
         result = self.parent_remote.recv()
         if isinstance(result, tuple):
             if len(result) == 2:
@@ -233,7 +218,7 @@ class SubprocEnvWorker(EnvWorker):
                 obs = self._decode_obs()
             return obs
 
-    def reset(self, **kwargs: Any) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
+    def reset(self, **kwargs: Any) -> Tuple[np.ndarray, dict]:
         if "seed" in kwargs:
             super().seed(kwargs["seed"])
         self.parent_remote.send(["reset", kwargs])

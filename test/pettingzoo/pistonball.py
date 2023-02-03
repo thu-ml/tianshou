@@ -3,7 +3,7 @@ import os
 import warnings
 from typing import List, Optional, Tuple
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pettingzoo.butterfly.pistonball_v6 as pistonball_v6
 import torch

@@ -15,7 +15,7 @@ def get_version() -> str:
 
 def get_install_requires() -> str:
     return [
-        "gym>=0.23.1",
+        "gymnasium>=0.26.0",
         "tqdm",
         "numpy>1.16.0",  # https://github.com/numpy/numpy/issues/12793
         "tensorboard>=2.5.0",
@@ -48,18 +48,20 @@ def get_extras_require() -> str:
             "doc8",
             "scipy",
             "pillow",
-            "pettingzoo>=1.17",
+            "pettingzoo>=1.22",
             "pygame>=2.1.0",  # pettingzoo test cases pistonball
             "pymunk>=6.2.1",  # pettingzoo test cases pistonball
             "nni>=2.3,<3.0",  # expect breaking changes at next major version
             "pytorch_lightning",
+            "gym>=0.22.0",
+            "shimmy",
         ],
         "atari": ["atari_py", "opencv-python"],
         "mujoco": ["mujoco_py"],
         "pybullet": ["pybullet"],
     }
     if sys.platform == "linux":
-        req["dev"].append("envpool>=0.5.3")
+        req["dev"].append("envpool>=0.7.0")
     return req
 
 

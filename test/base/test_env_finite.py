@@ -3,7 +3,7 @@
 import copy
 from collections import Counter
 
-import gym
+import gymnasium as gym
 import numpy as np
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
 
@@ -45,15 +45,15 @@ class FiniteEnv(gym.Env):
         try:
             self.current_sample, self.step_count = next(self.iterator)
             self.current_step = 0
-            return self.current_sample
+            return self.current_sample, {}
         except StopIteration:
             self.iterator = None
-            return None
+            return None, {}
 
     def step(self, action):
         self.current_step += 1
         assert self.current_step <= self.step_count
-        return 0, 1.0, self.current_step >= self.step_count, \
+        return 0, 1.0, self.current_step >= self.step_count, False, \
             {'sample': self.current_sample, 'action': action, 'metric': 2.0}
 
 
@@ -94,10 +94,12 @@ class FiniteVectorEnv(BaseVectorEnv):
         # ask super to reset alive envs and remap to current index
         request_id = list(filter(lambda i: i in self._alive_env_ids, id))
         obs = [None] * len(id)
+        infos = [None] * len(id)
         id2idx = {i: k for k, i in enumerate(id)}
         if request_id:
-            for i, o in zip(request_id, super().reset(request_id)):
-                obs[id2idx[i]] = o
+            for k, o, info in zip(request_id, *super().reset(request_id)):
+                obs[id2idx[k]] = o
+                infos[id2idx[k]] = info
         for i, o in zip(id, obs):
             if o is None and i in self._alive_env_ids:
                 self._alive_env_ids.remove(i)
@@ -105,21 +107,24 @@ class FiniteVectorEnv(BaseVectorEnv):
         # fill empty observation with default(fake) observation
         for o in obs:
             self._set_default_obs(o)
+
         for i in range(len(obs)):
             if obs[i] is None:
                 obs[i] = self._get_default_obs()
+            if infos[i] is None:
+                infos[i] = self._get_default_info()
 
         if not self._alive_env_ids:
             self.reset()
             raise StopIteration
 
-        return np.stack(obs)
+        return np.stack(obs), infos
 
     def step(self, action, id=None):
         id = self._wrap_id(id)
         id2idx = {i: k for k, i in enumerate(id)}
         request_id = list(filter(lambda i: i in self._alive_env_ids, id))
-        result = [[None, 0., False, None] for _ in range(len(id))]
+        result = [[None, 0., False, False, None] for _ in range(len(id))]
 
         # ask super to step alive envs and remap to current index
         if request_id:
@@ -133,13 +138,13 @@ class FiniteVectorEnv(BaseVectorEnv):
                 self.tracker.log(*r)
 
         # fill empty observation/info with default(fake)
-        for _, __, ___, i in result:
+        for _, __, ___, ____, i in result:
             self._set_default_info(i)
         for i in range(len(result)):
             if result[i][0] is None:
                 result[i][0] = self._get_default_obs()
-            if result[i][3] is None:
-                result[i][3] = self._get_default_info()
+            if result[i][-1] is None:
+                result[i][-1] = self._get_default_info()
 
         return list(map(np.stack, zip(*result)))
 
@@ -171,8 +176,9 @@ class MetricTracker:
         self.counter = Counter()
         self.finished = set()
 
-    def log(self, obs, rew, done, info):
+    def log(self, obs, rew, terminated, truncated, info):
         assert rew == 1.
+        done = terminated or truncated
         index = info['sample']
         if done:
             assert index not in self.finished

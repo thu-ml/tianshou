@@ -59,10 +59,12 @@ def get_args():
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_sac_with_il(args=get_args()):
     # if you want to use python vector env, please refer to other test scripts
-    train_envs = env = envpool.make_gym(
+    train_envs = env = envpool.make_gymnasium(
         args.task, num_envs=args.training_num, seed=args.seed
     )
-    test_envs = envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed)
+    test_envs = envpool.make_gymnasium(
+        args.task, num_envs=args.test_num, seed=args.seed
+    )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
@@ -185,7 +187,7 @@ def test_sac_with_il(args=get_args()):
     )
     il_test_collector = Collector(
         il_policy,
-        envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed),
+        envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed),
     )
     train_collector.reset()
     result = offpolicy_trainer(

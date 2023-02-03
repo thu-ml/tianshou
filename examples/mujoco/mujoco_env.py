@@ -1,6 +1,6 @@
 import warnings
 
-import gym
+import gymnasium as gym
 
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
 
@@ -18,8 +18,10 @@ def make_mujoco_env(task, seed, training_num, test_num, obs_norm):
     :return: a tuple of (single env, training envs, test envs).
     """
     if envpool is not None:
-        train_envs = env = envpool.make_gym(task, num_envs=training_num, seed=seed)
-        test_envs = envpool.make_gym(task, num_envs=test_num, seed=seed)
+        train_envs = env = envpool.make_gymnasium(
+            task, num_envs=training_num, seed=seed
+        )
+        test_envs = envpool.make_gymnasium(task, num_envs=test_num, seed=seed)
     else:
         warnings.warn(
             "Recommend using envpool (pip install envpool) "

@@ -1,16 +1,16 @@
+"""Same as test_dqn.py, but uses OpenAI Gym environments"""
 import argparse
 import os
-import pickle
 import pprint
 
-import gymnasium as gym
+import gym
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
-from tianshou.policy import C51Policy
+from tianshou.policy import DQNPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
@@ -26,36 +26,31 @@ def get_args():
     parser.add_argument('--buffer-size', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--num-atoms', type=int, default=51)
-    parser.add_argument('--v-min', type=float, default=-10.)
-    parser.add_argument('--v-max', type=float, default=10.)
     parser.add_argument('--n-step', type=int, default=3)
     parser.add_argument('--target-update-freq', type=int, default=320)
-    parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--step-per-epoch', type=int, default=8000)
-    parser.add_argument('--step-per-collect', type=int, default=8)
-    parser.add_argument('--update-per-step', type=float, default=0.125)
+    parser.add_argument('--epoch', type=int, default=20)
+    parser.add_argument('--step-per-epoch', type=int, default=10000)
+    parser.add_argument('--step-per-collect', type=int, default=10)
+    parser.add_argument('--update-per-step', type=float, default=0.1)
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument(
         '--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128]
     )
-    parser.add_argument('--training-num', type=int, default=8)
+    parser.add_argument('--training-num', type=int, default=10)
     parser.add_argument('--test-num', type=int, default=100)
     parser.add_argument('--logdir', type=str, default='log')
     parser.add_argument('--render', type=float, default=0.)
     parser.add_argument('--prioritized-replay', action="store_true", default=False)
     parser.add_argument('--alpha', type=float, default=0.6)
     parser.add_argument('--beta', type=float, default=0.4)
-    parser.add_argument('--resume', action="store_true")
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
-    parser.add_argument("--save-interval", type=int, default=4)
     args = parser.parse_known_args()[0]
     return args
 
 
-def test_c51(args=get_args()):
+def test_dqn(args=get_args()):
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -78,26 +73,23 @@ def test_c51(args=get_args()):
     torch.manual_seed(args.seed)
     train_envs.seed(args.seed)
     test_envs.seed(args.seed)
+    # Q_param = V_param = {"hidden_sizes": [128]}
     # model
     net = Net(
         args.state_shape,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
-        softmax=True,
-        num_atoms=args.num_atoms,
-    )
+        # dueling=(Q_param, V_param),
+    ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = C51Policy(
+    policy = DQNPolicy(
         net,
         optim,
         args.gamma,
-        args.num_atoms,
-        args.v_min,
-        args.v_max,
         args.n_step,
         target_update_freq=args.target_update_freq,
-    ).to(args.device)
+    )
     # buffer
     if args.prioritized_replay:
         buf = PrioritizedVectorReplayBuffer(
@@ -114,12 +106,12 @@ def test_c51(args=get_args()):
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
-    log_path = os.path.join(args.logdir, args.task, "c51")
+    log_path = os.path.join(args.logdir, args.task, 'dqn')
     writer = SummaryWriter(log_path)
-    logger = TensorboardLogger(writer, save_interval=args.save_interval)
+    logger = TensorboardLogger(writer)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
+        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
@@ -138,39 +130,6 @@ def test_c51(args=get_args()):
     def test_fn(epoch, env_step):
         policy.set_eps(args.eps_test)
 
-    def save_checkpoint_fn(epoch, env_step, gradient_step):
-        # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
-        ckpt_path = os.path.join(log_path, "checkpoint.pth")
-        # Example: saving by epoch num
-        # ckpt_path = os.path.join(log_path, f"checkpoint_{epoch}.pth")
-        torch.save(
-            {
-                "model": policy.state_dict(),
-                "optim": optim.state_dict(),
-            }, ckpt_path
-        )
-        buffer_path = os.path.join(log_path, "train_buffer.pkl")
-        pickle.dump(train_collector.buffer, open(buffer_path, "wb"))
-        return ckpt_path
-
-    if args.resume:
-        # load from existing checkpoint
-        print(f"Loading agent under {log_path}")
-        ckpt_path = os.path.join(log_path, "checkpoint.pth")
-        if os.path.exists(ckpt_path):
-            checkpoint = torch.load(ckpt_path, map_location=args.device)
-            policy.load_state_dict(checkpoint["model"])
-            policy.optim.load_state_dict(checkpoint["optim"])
-            print("Successfully restore policy and optim.")
-        else:
-            print("Fail to restore policy and optim.")
-        buffer_path = os.path.join(log_path, "train_buffer.pkl")
-        if os.path.exists(buffer_path):
-            train_collector.buffer = pickle.load(open(buffer_path, "rb"))
-            print("Successfully restore buffer.")
-        else:
-            print("Fail to restore buffer.")
-
     # trainer
     result = offpolicy_trainer(
         policy,
@@ -187,12 +146,10 @@ def test_c51(args=get_args()):
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger,
-        resume_from_log=args.resume,
-        save_checkpoint_fn=save_checkpoint_fn,
     )
-    assert stop_fn(result["best_reward"])
+    assert stop_fn(result['best_reward'])
 
-    if __name__ == "__main__":
+    if __name__ == '__main__':
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
@@ -204,17 +161,12 @@ def test_c51(args=get_args()):
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
-def test_c51_resume(args=get_args()):
-    args.resume = True
-    test_c51(args)
-
-
-def test_pc51(args=get_args()):
+def test_pdqn(args=get_args()):
     args.prioritized_replay = True
     args.gamma = .95
     args.seed = 1
-    test_c51(args)
+    test_dqn(args)
 
 
-if __name__ == "__main__":
-    test_c51(get_args())
+if __name__ == '__main__':
+    test_dqn(get_args())

@@ -2,7 +2,7 @@ import argparse
 import os
 import pprint
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 import torch
@@ -60,10 +60,12 @@ def get_args():
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_a2c_with_il(args=get_args()):
     # if you want to use python vector env, please refer to other test scripts
-    train_envs = env = envpool.make_gym(
-        args.task, num_envs=args.training_num, seed=args.seed
+    train_envs = env = envpool.make(
+        args.task, env_type="gymnasium", num_envs=args.training_num, seed=args.seed
     )
-    test_envs = envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed)
+    test_envs = envpool.make(
+        args.task, env_type="gymnasium", num_envs=args.test_num, seed=args.seed
+    )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
@@ -146,7 +148,9 @@ def test_a2c_with_il(args=get_args()):
     il_policy = ImitationPolicy(net, optim, action_space=env.action_space)
     il_test_collector = Collector(
         il_policy,
-        envpool.make_gym(args.task, num_envs=args.test_num, seed=args.seed),
+        envpool.make(
+            args.task, env_type="gymnasium", num_envs=args.test_num, seed=args.seed
+        ),
     )
     train_collector.reset()
     result = offpolicy_trainer(

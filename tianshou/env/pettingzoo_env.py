@@ -1,6 +1,6 @@
 import warnings
 from abc import ABC
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 import pettingzoo
 from gymnasium import spaces
@@ -65,22 +65,11 @@ class PettingZooEnv(AECEnv, ABC):
 
         self.reset()
 
-    def reset(self, *args: Any, **kwargs: Any) -> Union[dict, Tuple[dict, dict]]:
+    def reset(self, *args: Any, **kwargs: Any) -> Tuple[dict, dict]:
         self.env.reset(*args, **kwargs)
 
-        # Here, we do not label the return values explicitly to keep compatibility with
-        # old step API. TODO: Change once PettingZoo>=1.21.0 is required
-        last_return = self.env.last(self)
+        observation, reward, terminated, truncated, info = self.env.last(self)
 
-        if len(last_return) == 4:
-            warnings.warn(
-                "The PettingZoo environment is using the old step API. "
-                "This API may not be supported in future versions of tianshou. "
-                "We recommend that you update the environment code or apply a "
-                "compatibility wrapper.", DeprecationWarning
-            )
-
-        observation, info = last_return[0], last_return[-1]
         if isinstance(observation, dict) and 'action_mask' in observation:
             observation_dict = {
                 'agent_id': self.env.agent_selection,
@@ -101,21 +90,13 @@ class PettingZooEnv(AECEnv, ABC):
                     'obs': observation,
                 }
 
-        if "return_info" in kwargs and kwargs["return_info"]:
-            return observation_dict, info
-        else:
-            return observation_dict
+        return observation_dict, info
 
-    def step(
-        self, action: Any
-    ) -> Union[Tuple[Dict, List[int], bool, Dict], Tuple[Dict, List[int], bool, bool,
-                                                         Dict]]:
+    def step(self, action: Any) -> Tuple[Dict, List[int], bool, bool, Dict]:
         self.env.step(action)
 
-        # Here, we do not label the return values explicitly to keep compatibility with
-        # old step API. TODO: Change once PettingZoo>=1.21.0 is required
-        last_return = self.env.last()
-        observation = last_return[0]
+        observation, rew, term, trunc, info = self.env.last()
+
         if isinstance(observation, dict) and 'action_mask' in observation:
             obs = {
                 'agent_id': self.env.agent_selection,
@@ -135,7 +116,7 @@ class PettingZooEnv(AECEnv, ABC):
 
         for agent_id, reward in self.env.rewards.items():
             self.rewards[self.agent_idx[agent_id]] = reward
-        return (obs, self.rewards, *last_return[2:])  # type: ignore
+        return obs, self.rewards, term, trunc, info
 
     def close(self) -> None:
         self.env.close()

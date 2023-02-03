@@ -196,7 +196,7 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
     buf = ReplayBuffer(bufsize, stack_num=stack_num)
     buf2 = ReplayBuffer(bufsize, stack_num=stack_num, sample_avail=True)
     buf3 = ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True)
-    obs, info = env.reset(1)
+    obs, info = env.reset(options={"state": 1})
     for _ in range(16):
         obs_next, rew, terminated, truncated, info = env.step(1)
         done = terminated or truncated
@@ -233,7 +233,7 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
         )
         obs = obs_next
         if done:
-            obs, info = env.reset(1)
+            obs, info = env.reset(options={"state": 1})
     indices = np.arange(len(buf))
     assert np.allclose(
         buf.get(indices, 'obs')[..., 0], [
@@ -1017,7 +1017,7 @@ def test_multibuf_stack():
             bufsize, stack_num=stack_num, ignore_obs_next=True, sample_avail=True
         ), cached_num, size
     )
-    obs, info = env.reset(1)
+    obs, info = env.reset(options={"state": 1})
     for i in range(18):
         obs_next, rew, terminated, truncated, info = env.step(1)
         done = terminated or truncated
@@ -1045,7 +1045,7 @@ def test_multibuf_stack():
         assert np.all(buf4.truncated == buf5.truncated)
         obs = obs_next
         if done:
-            obs, info = env.reset(1)
+            obs, info = env.reset(options={"state": 1})
     # check the `add` order is correct
     assert np.allclose(
         buf4.obs.reshape(-1),

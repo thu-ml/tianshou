@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
-from gym.spaces import Box, Discrete, MultiBinary, MultiDiscrete
+from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from torch import nn
 

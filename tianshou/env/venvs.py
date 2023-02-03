@@ -1,9 +1,12 @@
+import warnings
 from typing import Any, Callable, List, Optional, Tuple, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
+import packaging
 
-from tianshou.env.utils import gym_new_venv_step_type, gym_old_venv_step_type
+from tianshou.env.pettingzoo_env import PettingZooEnv
+from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
 from tianshou.env.worker import (
     DummyEnvWorker,
     EnvWorker,
@@ -11,9 +14,74 @@ from tianshou.env.worker import (
     SubprocEnvWorker,
 )
 
+try:
+    import gym as old_gym
+    has_old_gym = True
+except ImportError:
+    has_old_gym = False
+
 GYM_RESERVED_KEYS = [
     "metadata", "reward_range", "spec", "action_space", "observation_space"
 ]
+
+
+def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
+    """Takes an environment generator and patches it to return Gymnasium envs.
+
+    This function takes the environment generator `fn` and returns a patched
+    generator, without invoking `fn`. The original generator may return
+    Gymnasium or OpenAI Gym environments, but the patched generator wraps
+    the result of `fn` in a shimmy wrapper to convert it to Gymnasium,
+    if necessary.
+    """
+
+    def patched() -> gym.Env:
+        assert callable(
+            fn
+        ), "Env generators that are provided to vector environemnts must be callable."
+
+        env = fn()
+        if isinstance(env, (gym.Env, PettingZooEnv)):
+            return env
+
+        if not has_old_gym or not isinstance(env, old_gym.Env):
+            raise ValueError(
+                f"Environment generator returned a {type(env)}, not a Gymnasium "
+                f"environment. In this case, we expect OpenAI Gym to be "
+                f"installed and the environment to be an OpenAI Gym environment."
+            )
+
+        try:
+            import shimmy
+        except ImportError as e:
+            raise ImportError(
+                "Missing shimmy installation. You provided an environment generator "
+                "that returned an OpenAI Gym environment. "
+                "Tianshou has transitioned to using Gymnasium internally. "
+                "In order to use OpenAI Gym environments with tianshou, you need to "
+                "install shimmy (`pip install shimmy`)."
+            ) from e
+
+        warnings.warn(
+            "You provided an environment generator that returned an OpenAI Gym "
+            "environment. We strongly recommend transitioning to Gymnasium "
+            "environments. "
+            "Tianshou is automatically wrapping your environments in a compatibility "
+            "layer, which could potentially cause issues."
+        )
+
+        gym_version = packaging.version.parse(old_gym.__version__)
+        if gym_version >= packaging.version.parse("0.26.0"):
+            return shimmy.GymV26CompatibilityV0(env=env)
+        elif gym_version >= packaging.version.parse("0.22.0"):
+            return shimmy.GymV22CompatibilityV0(env=env)
+        else:
+            raise Exception(
+                f"Found OpenAI Gym version {gym.__version__}. "
+                f"Tianshou only supports OpenAI Gym environments of version>=0.22.0"
+            )
+
+    return patched
 
 
 class BaseVectorEnv(object):
@@ -69,7 +137,7 @@ class BaseVectorEnv(object):
 
     def __init__(
         self,
-        env_fns: List[Callable[[], gym.Env]],
+        env_fns: List[Callable[[], ENV_TYPE]],
         worker_fn: Callable[[Callable[[], gym.Env]], EnvWorker],
         wait_num: Optional[int] = None,
         timeout: Optional[float] = None,
@@ -77,7 +145,7 @@ class BaseVectorEnv(object):
         self._env_fns = env_fns
         # A VectorEnv contains a pool of EnvWorkers, which corresponds to
         # interact with the given envs (one worker <-> one env).
-        self.workers = [worker_fn(fn) for fn in env_fns]
+        self.workers = [worker_fn(_patch_env_generator(fn)) for fn in env_fns]
         self.worker_class = type(self.workers[0])
         assert issubclass(self.worker_class, EnvWorker)
         assert all([isinstance(w, self.worker_class) for w in self.workers])
@@ -186,7 +254,7 @@ class BaseVectorEnv(object):
         self,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, Union[dict, List[dict]]]]:
+    ) -> Tuple[np.ndarray, Union[dict, List[dict]]]:
         """Reset the state of some envs and return initial observations.
 
         If id is None, reset the state of all the environments and return
@@ -203,15 +271,13 @@ class BaseVectorEnv(object):
             self.workers[i].send(None, **kwargs)
         ret_list = [self.workers[i].recv() for i in id]
 
-        reset_returns_info = isinstance(ret_list[0], (tuple, list)) and len(
+        assert isinstance(ret_list[0], (tuple, list)) and len(
             ret_list[0]
         ) == 2 and isinstance(ret_list[0][1], dict)
-        if reset_returns_info:
-            obs_list = [r[0] for r in ret_list]
-        else:
-            obs_list = ret_list
 
-        if isinstance(obs_list[0], tuple):
+        obs_list = [r[0] for r in ret_list]
+
+        if isinstance(obs_list[0], tuple):  # type: ignore
             raise TypeError(
                 "Tuple observation space is not supported. ",
                 "Please change it to array or dict space",
@@ -221,17 +287,14 @@ class BaseVectorEnv(object):
         except ValueError:  # different len(obs)
             obs = np.array(obs_list, dtype=object)
 
-        if reset_returns_info:
-            infos = [r[1] for r in ret_list]
-            return obs, infos  # type: ignore
-        else:
-            return obs
+        infos = [r[1] for r in ret_list]
+        return obs, infos  # type: ignore
 
     def step(
         self,
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
+    ) -> gym_new_venv_step_type:
         """Run one timestep of some environments' dynamics.
 
         If id is None, run one timestep of all the environments’ dynamics;
@@ -249,24 +312,11 @@ class BaseVectorEnv(object):
             * ``obs`` a numpy.ndarray, the agent's observation of current environments
             * ``rew`` a numpy.ndarray, the amount of rewards returned after \
                 previous actions
-            * ``done`` a numpy.ndarray, whether these episodes have ended, in \
-                which case further step() calls will return undefined results
-            * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
-                information (helpful for debugging, and sometimes learning)
-
-            or:
-
-            * ``obs`` a numpy.ndarray, the agent's observation of current environments
-            * ``rew`` a numpy.ndarray, the amount of rewards returned after \
-                previous actions
             * ``terminated`` a numpy.ndarray, whether these episodes have been \
                 terminated
             * ``truncated`` a numpy.ndarray, whether these episodes have been truncated
             * ``info`` a numpy.ndarray, contains auxiliary diagnostic \
                 information (helpful for debugging, and sometimes learning)
-
-            The case distinction is made based on whether the underlying environment
-            uses the old step API (first case) or the new step API (second case).
 
         For the async simulation:
 
@@ -312,14 +362,14 @@ class BaseVectorEnv(object):
                 env_return[-1]["env_id"] = env_id  # Add `env_id` to info
                 result.append(env_return)
                 self.ready_id.append(env_id)
-        return_lists = tuple(zip(*result))
-        obs_list = return_lists[0]
+        obs_list, rew_list, term_list, trunc_list, info_list = tuple(zip(*result))
         try:
             obs_stack = np.stack(obs_list)
         except ValueError:  # different len(obs)
             obs_stack = np.array(obs_list, dtype=object)
-        other_stacks = map(np.stack, return_lists[1:])
-        return (obs_stack, *other_stacks)  # type: ignore
+        return obs_stack, np.stack(rew_list), np.stack(term_list), np.stack(
+            trunc_list
+        ), np.stack(info_list)
 
     def seed(
         self,
@@ -374,7 +424,7 @@ class DummyVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
+    def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
         super().__init__(env_fns, DummyEnvWorker, **kwargs)
 
 
@@ -386,7 +436,7 @@ class SubprocVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
+    def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
 
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=False)
@@ -404,7 +454,7 @@ class ShmemVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
+    def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
 
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
@@ -422,7 +472,7 @@ class RayVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: List[Callable[[], gym.Env]], **kwargs: Any) -> None:
+    def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
         try:
             import ray
         except ImportError as exception:

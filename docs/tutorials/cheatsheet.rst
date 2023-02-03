@@ -4,7 +4,7 @@ Cheat Sheet
 This page shows some code snippets of how to use Tianshou to develop new
 algorithms / apply algorithms to new scenarios.
 
-By the way, some of these issues can be resolved by using a ``gym.Wrapper``.
+By the way, some of these issues can be resolved by using a ``gymnasium.Wrapper``.
 It could be a universal solution in the policy-environment interaction. But
 you can also use the batch processor :ref:`preprocess_fn` or vectorized
 environment wrapper :class:`~tianshou.env.VectorEnvWrapper`.
@@ -159,7 +159,7 @@ toy_text and classic_control environments. For more information, please refer to
     # install envpool: pip3 install envpool
 
     import envpool
-    envs = envpool.make_gym("CartPole-v0", num_envs=10)
+    envs = envpool.make_gymnasium("CartPole-v0", num_envs=10)
     collector = Collector(policy, envs, buffer)
 
 Here are some other `examples <https://github.com/sail-sg/envpool/tree/master/examples/tianshou_examples>`_.

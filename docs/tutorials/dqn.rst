@@ -35,10 +35,10 @@ Here is the overall system:
 Make an Environment
 -------------------
 
-First of all, you have to make an environment for your agent to interact with. You can use ``gym.make(environment_name)`` to make an environment for your agent. For environment interfaces, we follow the convention of `OpenAI Gym <https://github.com/openai/gym>`_. In your Python code, simply import Tianshou and make the environment:
+First of all, you have to make an environment for your agent to interact with. You can use ``gym.make(environment_name)`` to make an environment for your agent. For environment interfaces, we follow the convention of `Gymnasium <https://github.com/Farama-Foundation/Gymnasium>`_. In your Python code, simply import Tianshou and make the environment:
 ::
 
-    import gym
+    import gymnasium as gym
     import tianshou as ts
 
     env = gym.make('CartPole-v0')
@@ -84,8 +84,8 @@ You can also try the super-fast vectorized environment `EnvPool <https://github.
 ::
 
     import envpool
-    train_envs = envpool.make_gym("CartPole-v0", num_envs=10)
-    test_envs = envpool.make_gym("CartPole-v0", num_envs=100)
+    train_envs = envpool.make_gymnasium("CartPole-v0", num_envs=10)
+    test_envs = envpool.make_gymnasium("CartPole-v0", num_envs=100)
 
 For the demonstration, here we use the second code-block.
 

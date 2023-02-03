@@ -2,10 +2,10 @@ import random
 import time
 from copy import deepcopy
 
-import gym
+import gymnasium as gym
 import networkx as nx
 import numpy as np
-from gym.spaces import Box, Dict, Discrete, MultiDiscrete, Tuple
+from gymnasium.spaces import Box, Dict, Discrete, MultiDiscrete, Tuple
 
 
 class MyTestEnv(gym.Env):
@@ -74,11 +74,13 @@ class MyTestEnv(gym.Env):
         self.terminated = False
         self.index = 0
 
-    def reset(self, state=0, seed=None):
+    def reset(self, seed=None, options=None):
+        if options is None:
+            options = {"state": 0}
         super().reset(seed=seed)
         self.terminated = False
         self.do_sleep()
-        self.index = state
+        self.index = options["state"]
         return self._get_state(), {'key': 1, 'env': self}
 
     def _get_reward(self):
@@ -174,7 +176,7 @@ class MyGoalEnv(MyTestEnv):
         assert kwargs.get("dict_state", 0) + kwargs.get("recurse_state", 0) == 0, \
             "dict_state / recurse_state not supported"
         super().__init__(*args, **kwargs)
-        obs, _ = super().reset(state=0)
+        obs, _ = super().reset(options={"state": 0})
         obs, _, _, _, _ = super().step(1)
         self._goal = obs * self.size
         super_obsv = self.observation_space

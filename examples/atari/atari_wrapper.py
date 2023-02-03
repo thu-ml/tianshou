@@ -5,7 +5,7 @@ import warnings
 from collections import deque
 
 import cv2
-import gym
+import gymnasium as gym
 import numpy as np
 
 from tianshou.env import ShmemVectorEnv
@@ -324,7 +324,7 @@ def make_atari_env(task, seed, training_num, test_num, **kwargs):
                 "please set `x = x / 255.0` inside CNN network's forward function."
             )
         # parameters convertion
-        train_envs = env = envpool.make_gym(
+        train_envs = env = envpool.make_gymnasium(
             task.replace("NoFrameskip-v4", "-v5"),
             num_envs=training_num,
             seed=seed,
@@ -332,7 +332,7 @@ def make_atari_env(task, seed, training_num, test_num, **kwargs):
             reward_clip=True,
             stack_num=kwargs.get("frame_stack", 4),
         )
-        test_envs = envpool.make_gym(
+        test_envs = envpool.make_gymnasium(
             task.replace("NoFrameskip-v4", "-v5"),
             num_envs=test_num,
             seed=seed,

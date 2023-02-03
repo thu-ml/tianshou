@@ -2,7 +2,7 @@ import time
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -143,24 +143,14 @@ class Collector(object):
     def reset_env(self, gym_reset_kwargs: Optional[Dict[str, Any]] = None) -> None:
         """Reset all of the environments."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        rval = self.env.reset(**gym_reset_kwargs)
-        returns_info = isinstance(rval, (tuple, list)) and len(rval) == 2 and (
-            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)
-        )
-        if returns_info:
-            obs, info = rval
-            if self.preprocess_fn:
-                processed_data = self.preprocess_fn(
-                    obs=obs, info=info, env_id=np.arange(self.env_num)
-                )
-                obs = processed_data.get("obs", obs)
-                info = processed_data.get("info", info)
-            self.data.info = info
-        else:
-            obs = rval
-            if self.preprocess_fn:
-                obs = self.preprocess_fn(obs=obs, env_id=np.arange(self.env_num
-                                                                   )).get("obs", obs)
+        obs, info = self.env.reset(**gym_reset_kwargs)
+        if self.preprocess_fn:
+            processed_data = self.preprocess_fn(
+                obs=obs, info=info, env_id=np.arange(self.env_num)
+            )
+            obs = processed_data.get("obs", obs)
+            info = processed_data.get("info", info)
+        self.data.info = info
         self.data.obs = obs
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
@@ -181,24 +171,15 @@ class Collector(object):
         gym_reset_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
-        rval = self.env.reset(global_ids, **gym_reset_kwargs)
-        returns_info = isinstance(rval, (tuple, list)) and len(rval) == 2 and (
-            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)
-        )
-        if returns_info:
-            obs_reset, info = rval
-            if self.preprocess_fn:
-                processed_data = self.preprocess_fn(
-                    obs=obs_reset, info=info, env_id=global_ids
-                )
-                obs_reset = processed_data.get("obs", obs_reset)
-                info = processed_data.get("info", info)
-            self.data.info[local_ids] = info
-        else:
-            obs_reset = rval
-            if self.preprocess_fn:
-                obs_reset = self.preprocess_fn(obs=obs_reset, env_id=global_ids
-                                               ).get("obs", obs_reset)
+        obs_reset, info = self.env.reset(global_ids, **gym_reset_kwargs)
+        if self.preprocess_fn:
+            processed_data = self.preprocess_fn(
+                obs=obs_reset, info=info, env_id=global_ids
+            )
+            obs_reset = processed_data.get("obs", obs_reset)
+            info = processed_data.get("info", info)
+        self.data.info[local_ids] = info
+
         self.data.obs_next[local_ids] = obs_reset
 
     def collect(
@@ -311,24 +292,11 @@ class Collector(object):
             # get bounded and remapped actions first (not saved into buffer)
             action_remap = self.policy.map_action(self.data.act)
             # step in env
-            result = self.env.step(action_remap, ready_env_ids)  # type: ignore
-            if len(result) == 5:
-                obs_next, rew, terminated, truncated, info = result
-                done = np.logical_or(terminated, truncated)
-            elif len(result) == 4:
-                obs_next, rew, done, info = result
-                if isinstance(info, dict):
-                    truncated = info["TimeLimit.truncated"]
-                else:
-                    truncated = np.array(
-                        [
-                            info_item.get("TimeLimit.truncated", False)
-                            for info_item in info
-                        ]
-                    )
-                terminated = np.logical_and(done, ~truncated)
-            else:
-                raise ValueError()
+            obs_next, rew, terminated, truncated, info = self.env.step(
+                action_remap,  # type: ignore
+                ready_env_ids
+            )
+            done = np.logical_or(terminated, truncated)
 
             self.data.update(
                 obs_next=obs_next,
@@ -583,25 +551,11 @@ class AsyncCollector(Collector):
             # get bounded and remapped actions first (not saved into buffer)
             action_remap = self.policy.map_action(self.data.act)
             # step in env
-            result = self.env.step(action_remap, ready_env_ids)  # type: ignore
-
-            if len(result) == 5:
-                obs_next, rew, terminated, truncated, info = result
-                done = np.logical_or(terminated, truncated)
-            elif len(result) == 4:
-                obs_next, rew, done, info = result
-                if isinstance(info, dict):
-                    truncated = info["TimeLimit.truncated"]
-                else:
-                    truncated = np.array(
-                        [
-                            info_item.get("TimeLimit.truncated", False)
-                            for info_item in info
-                        ]
-                    )
-                terminated = np.logical_and(done, ~truncated)
-            else:
-                raise ValueError()
+            obs_next, rew, terminated, truncated, info = self.env.step(
+                action_remap,  # type: ignore
+                ready_env_ids
+            )
+            done = np.logical_or(terminated, truncated)
 
             # change self.data here because ready_env_ids has changed
             try:

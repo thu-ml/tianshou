@@ -1,7 +1,7 @@
 import os
 
 import cv2
-import gym
+import gymnasium as gym
 import numpy as np
 import vizdoom as vzd
 
@@ -131,7 +131,7 @@ def make_vizdoom_env(task, frame_skip, res, save_lmp, seed, training_num, test_n
         }
         if "battle" in task:
             reward_config["HEALTH"] = [1.0, -1.0]
-        env = train_envs = envpool.make_gym(
+        env = train_envs = envpool.make_gymnasium(
             task_id,
             frame_skip=frame_skip,
             stack_num=res[0],
@@ -142,7 +142,7 @@ def make_vizdoom_env(task, frame_skip, res, save_lmp, seed, training_num, test_n
             max_episode_steps=2625,
             use_inter_area_resize=False,
         )
-        test_envs = envpool.make_gym(
+        test_envs = envpool.make_gymnasium(
             task_id,
             frame_skip=frame_skip,
             stack_num=res[0],

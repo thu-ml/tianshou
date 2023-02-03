@@ -6,7 +6,7 @@ import datetime
 import os
 import pprint
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 import wandb

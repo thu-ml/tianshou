@@ -2,7 +2,7 @@ from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
 
-from tianshou.env.utils import gym_new_venv_step_type, gym_old_venv_step_type
+from tianshou.env.utils import gym_new_venv_step_type
 from tianshou.env.venvs import GYM_RESERVED_KEYS, BaseVectorEnv
 from tianshou.utils import RunningMeanStd
 
@@ -42,14 +42,14 @@ class VectorEnvWrapper(BaseVectorEnv):
         self,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, Union[dict, List[dict]]]]:
+    ) -> Tuple[np.ndarray, Union[dict, List[dict]]]:
         return self.venv.reset(id, **kwargs)
 
     def step(
         self,
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
+    ) -> gym_new_venv_step_type:
         return self.venv.step(action, id)
 
     def seed(
@@ -85,17 +85,10 @@ class VectorEnvNormObs(VectorEnvWrapper):
         self,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, Union[dict, List[dict]]]]:
-        rval = self.venv.reset(id, **kwargs)
-        returns_info = isinstance(rval, (tuple, list)) and (len(rval) == 2) and (
-            isinstance(rval[1], dict) or isinstance(rval[1][0], dict)
-        )
-        if returns_info:
-            obs, info = rval
-        else:
-            obs = rval
+    ) -> Tuple[np.ndarray, Union[dict, List[dict]]]:
+        obs, info = self.venv.reset(id, **kwargs)
 
-        if isinstance(obs, tuple):
+        if isinstance(obs, tuple):  # type: ignore
             raise TypeError(
                 "Tuple observation space is not supported. ",
                 "Please change it to array or dict space",
@@ -104,20 +97,17 @@ class VectorEnvNormObs(VectorEnvWrapper):
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(obs)
         obs = self._norm_obs(obs)
-        if returns_info:
-            return obs, info
-        else:
-            return obs
+        return obs, info
 
     def step(
         self,
         action: np.ndarray,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-    ) -> Union[gym_old_venv_step_type, gym_new_venv_step_type]:
+    ) -> gym_new_venv_step_type:
         step_results = self.venv.step(action, id)
         if self.obs_rms and self.update_obs_rms:
             self.obs_rms.update(step_results[0])
-        return (self._norm_obs(step_results[0]), *step_results[1:])  # type:ignore
+        return (self._norm_obs(step_results[0]), *step_results[1:])
 
     def _norm_obs(self, obs: np.ndarray) -> np.ndarray:
         if self.obs_rms:

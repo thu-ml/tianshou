@@ -684,7 +684,9 @@ def test_collector_with_atari_setting():
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_collector_envpool_gym_reset_return_info():
-    envs = envpool.make_gym("Pendulum-v1", num_envs=4, gym_reset_return_info=True)
+    envs = envpool.make_gymnasium(
+        "Pendulum-v1", num_envs=4, gym_reset_return_info=True
+    )
     policy = MyPolicy(action_shape=(len(envs), 1))
 
     c0 = Collector(
