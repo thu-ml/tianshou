@@ -315,6 +315,7 @@ class Collector(object):
                         info=self.data.info,
                         policy=self.data.policy,
                         env_id=ready_env_ids,
+                        act=self.data.act,
                     )
                 )
 
@@ -580,6 +581,7 @@ class AsyncCollector(Collector):
                             truncated=self.data.truncated,
                             info=self.data.info,
                             env_id=ready_env_ids,
+                            act=self.data.act,
                         )
                     )
                 except TypeError:
@@ -590,6 +592,7 @@ class AsyncCollector(Collector):
                             done=self.data.done,
                             info=self.data.info,
                             env_id=ready_env_ids,
+                            act=self.data.act,
                         )
                     )
 
