@@ -347,6 +347,7 @@ class Collector(object):
                         info=self.data.info,
                         policy=self.data.policy,
                         env_id=ready_env_ids,
+                        act=self.data.act,
                     )
                 )
 
