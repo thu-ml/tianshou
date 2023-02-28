@@ -120,9 +120,10 @@ class HERReplayBuffer(ReplayBuffer):
         # Calculate future timestep to use
         current = indices[0]
         terminal = indices[-1]
-        future_offset = np.random.uniform(size=len(indices[0])) * (terminal - current)
-        future_offset = future_offset.astype(int)
-        future_t = (current + future_offset)
+        episodes_len = (terminal - current + self.maxsize) % self.maxsize
+        future_offset = np.random.uniform(size=len(indices[0])) * episodes_len
+        future_offset = np.round(future_offset).astype(int)
+        future_t = (current + future_offset) % self.maxsize
 
         # Compute indices
         #   open indices are used to find longest, unique trajectories among

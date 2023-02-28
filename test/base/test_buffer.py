@@ -437,6 +437,35 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     assert np.all(buf[10:].obs.desired_goal == buf[0].obs.desired_goal)  # (same ep)
     assert np.all(buf[0].obs.desired_goal != buf[5].obs.desired_goal)  # (diff ep)
 
+    # Another test case for cycled indices
+    env_size = 99
+    bufsize = 15
+    env = MyGoalEnv(env_size, array_state=False)
+    buf = HERReplayBuffer(bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8)
+    buf.future_p = 1
+    for x, ep_len in enumerate([10, 20]):
+        obs, _ = env.reset()
+        for i in range(ep_len):
+            act = 1
+            obs_next, rew, terminated, truncated, info = env.step(act)
+            batch = Batch(
+                obs=obs,
+                act=[act],
+                rew=rew,
+                terminated=(i == ep_len - 1),
+                truncated=(i == ep_len - 1),
+                obs_next=obs_next,
+                info=info
+            )
+            if x == 1 and obs["observation"] < 10:
+                obs = obs_next
+                continue
+            buf.add(batch)
+            obs = obs_next
+    buf._restore_cache()
+    sample_indices = np.array([10])  # Suppose the sampled indices is [10]
+    buf.rewrite_transitions(sample_indices)
+    assert int(buf.obs.desired_goal[10][0]) in [11,12,13,14,15,16,17,18,19,20]
 
 def test_update():
     buf1 = ReplayBuffer(4, stack_num=2)
