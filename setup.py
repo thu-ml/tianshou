@@ -22,7 +22,6 @@ def get_install_requires() -> str:
         "torch>=1.4.0",
         "numba>=0.51.0",
         "h5py>=2.10.0",  # to match tensorflow's minimal requirements
-        "protobuf~=3.19.0",  # breaking change, sphinx fail
         "packaging",
     ]
 
@@ -30,9 +29,9 @@ def get_install_requires() -> str:
 def get_extras_require() -> str:
     req = {
         "dev": [
-            "sphinx<4",
+            "sphinx",
             "sphinx_rtd_theme",
-            "jinja2<3.1",  # temporary fix
+            "jinja2",
             "sphinxcontrib-bibtex",
             "flake8",
             "flake8-bugbear",
