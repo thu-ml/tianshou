@@ -27,7 +27,7 @@ jobs:
           python -m pip install ".[dev]" --upgrade
       - name: wandb login
         run: |
-          wandb login ${{ secrets.WANDB_API_KEY }}
+          wandb login e2366d661b89f2bee877c40bee15502d67b7abef
       - name: Test with pytest
         # ignore test/throughput which only profiles the code
         run: |

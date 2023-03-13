@@ -16,7 +16,7 @@ from tianshou.env.worker import (
 try:
     from tianshou.env.pettingzoo_env import PettingZooEnv
 except ImportError:
-    PettingZooEnv = None
+    PettingZooEnv = None  # type: ignore
 
 try:
     import gym as old_gym
