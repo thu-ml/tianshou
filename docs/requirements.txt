@@ -3,6 +3,7 @@ numba
 numpy>=1.20
 sphinx
 sphinxcontrib-bibtex
+sphinx_rtd_theme>=0.5.1
 tensorboard
 torch
 tqdm
