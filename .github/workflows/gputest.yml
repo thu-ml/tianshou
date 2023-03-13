@@ -8,12 +8,12 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     steps:
       - name: Cancel previous run
-        uses: styfle/cancel-workflow-action@0.9.1
+        uses: styfle/cancel-workflow-action@0.11.0
         with:
           access_token: ${{ github.token }}
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
       - name: Upgrade pip
@@ -24,7 +24,7 @@ jobs:
           python -m pip install ".[dev]" --upgrade
       - name: wandb login
         run: |
-          wandb login e2366d661b89f2bee877c40bee15502d67b7abef
+          wandb login ${{ secrets.WANDB_API_KEY }}
       - name: Test with pytest
         # ignore test/throughput which only profiles the code
         run: |

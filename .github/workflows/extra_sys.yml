@@ -12,12 +12,12 @@ jobs:
         python-version: [3.7, 3.8]
     steps:
       - name: Cancel previous run
-        uses: styfle/cancel-workflow-action@0.9.1
+        uses: styfle/cancel-workflow-action@0.11.0
         with:
           access_token: ${{ github.token }}
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Upgrade pip
@@ -29,7 +29,7 @@ jobs:
           python -m pip uninstall ray -y
       - name: wandb login
         run: |
-          wandb login e2366d661b89f2bee877c40bee15502d67b7abef
+          wandb login ${{ secrets.WANDB_API_KEY }}
       - name: Test with pytest
         run: |
           pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes
