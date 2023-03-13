@@ -5,7 +5,6 @@ import gymnasium as gym
 import numpy as np
 import packaging
 
-from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
 from tianshou.env.worker import (
     DummyEnvWorker,
@@ -15,7 +14,13 @@ from tianshou.env.worker import (
 )
 
 try:
+    from tianshou.env.pettingzoo_env import PettingZooEnv
+except ImportError:
+    PettingZooEnv = None
+
+try:
     import gym as old_gym
+
     has_old_gym = True
 except ImportError:
     has_old_gym = False
@@ -152,11 +157,13 @@ class BaseVectorEnv(object):
 
         self.env_num = len(env_fns)
         self.wait_num = wait_num or len(env_fns)
-        assert 1 <= self.wait_num <= len(env_fns), \
-            f"wait_num should be in [1, {len(env_fns)}], but got {wait_num}"
+        assert (
+            1 <= self.wait_num <= len(env_fns)
+        ), f"wait_num should be in [1, {len(env_fns)}], but got {wait_num}"
         self.timeout = timeout
-        assert self.timeout is None or self.timeout > 0, \
-            f"timeout is {timeout}, it should be positive if provided!"
+        assert (
+            self.timeout is None or self.timeout > 0
+        ), f"timeout is {timeout}, it should be positive if provided!"
         self.is_async = self.wait_num != len(env_fns) or timeout is not None
         self.waiting_conn: List[EnvWorker] = []
         # environments in self.ready_id is actually ready
@@ -169,8 +176,9 @@ class BaseVectorEnv(object):
         self.is_closed = False
 
     def _assert_is_not_closed(self) -> None:
-        assert not self.is_closed, \
-            f"Methods of {self.__class__.__name__} cannot be called after close."
+        assert (
+            not self.is_closed
+        ), f"Methods of {self.__class__.__name__} cannot be called after close."
 
     def __len__(self) -> int:
         """Return len(self), which is the number of environments."""
@@ -245,10 +253,10 @@ class BaseVectorEnv(object):
 
     def _assert_id(self, id: Union[List[int], np.ndarray]) -> None:
         for i in id:
-            assert i not in self.waiting_id, \
-                f"Cannot interact with environment {i} which is stepping now."
-            assert i in self.ready_id, \
-                f"Can only interact with ready environments {self.ready_id}."
+            assert (
+                i not in self.waiting_id
+            ), f"Cannot interact with environment {i} which is stepping now."
+            assert i in self.ready_id, f"Can only interact with ready environments {self.ready_id}."
 
     def reset(
         self,
@@ -271,9 +279,10 @@ class BaseVectorEnv(object):
             self.workers[i].send(None, **kwargs)
         ret_list = [self.workers[i].recv() for i in id]
 
-        assert isinstance(ret_list[0], (tuple, list)) and len(
-            ret_list[0]
-        ) == 2 and isinstance(ret_list[0][1], dict)
+        assert (
+            isinstance(ret_list[0], (tuple, list)) and len(ret_list[0]) == 2
+            and isinstance(ret_list[0][1], dict)
+        )
 
         obs_list = [r[0] for r in ret_list]
 
@@ -367,9 +376,13 @@ class BaseVectorEnv(object):
             obs_stack = np.stack(obs_list)
         except ValueError:  # different len(obs)
             obs_stack = np.array(obs_list, dtype=object)
-        return obs_stack, np.stack(rew_list), np.stack(term_list), np.stack(
-            trunc_list
-        ), np.stack(info_list)
+        return (
+            obs_stack,
+            np.stack(rew_list),
+            np.stack(term_list),
+            np.stack(trunc_list),
+            np.stack(info_list),
+        )
 
     def seed(
         self,

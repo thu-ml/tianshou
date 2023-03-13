@@ -7,6 +7,6 @@
 - [ ] I have searched through the [issue tracker](https://github.com/thu-ml/tianshou/issues) for duplicates
 - [ ] I have mentioned version numbers, operating system and environment, where applicable:
   ```python
-  import tianshou, gym, torch, numpy, sys
+  import tianshou, gymnasium as gym, torch, numpy, sys
   print(tianshou.__version__, gym.__version__, torch.__version__, numpy.__version__, sys.version, sys.platform)
   ```
