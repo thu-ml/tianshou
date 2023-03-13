@@ -1,6 +1,6 @@
 from tianshou import data, env, exploration, policy, trainer, utils
 
-__version__ = "0.4.11"
+__version__ = "0.5.0"
 
 __all__ = [
     "env",

@@ -1,10 +1,10 @@
 gym
 numba
 numpy>=1.20
-sphinx<4
+sphinx
 sphinxcontrib-bibtex
 tensorboard
 torch
 tqdm
-protobuf~=3.19.0
+protobuf
 pettingzoo

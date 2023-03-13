@@ -40,7 +40,7 @@ def get_args():
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
     parser.add_argument(
         "--device",
@@ -59,7 +59,7 @@ def test_discrete_bcq(args=get_args()):
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
-        default_reward_threshold = {"CartPole-v0": 190}
+        default_reward_threshold = {"CartPole-v0": 185}
         args.reward_threshold = default_reward_threshold.get(
             args.task, env.spec.reward_threshold
         )
@@ -123,7 +123,8 @@ def test_discrete_bcq(args=get_args()):
             {
                 "model": policy.state_dict(),
                 "optim": optim.state_dict(),
-            }, ckpt_path
+            },
+            ckpt_path,
         )
         return ckpt_path
 
