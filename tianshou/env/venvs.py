@@ -256,7 +256,9 @@ class BaseVectorEnv(object):
             assert (
                 i not in self.waiting_id
             ), f"Cannot interact with environment {i} which is stepping now."
-            assert i in self.ready_id, f"Can only interact with ready environments {self.ready_id}."
+            assert (
+                i in self.ready_id
+            ), f"Can only interact with ready environments {self.ready_id}."
 
     def reset(
         self,
