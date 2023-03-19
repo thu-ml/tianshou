@@ -74,7 +74,7 @@ You can simply install Tianshou from PyPI with the following command:
 If you use Anaconda or Miniconda, you can install Tianshou from conda-forge through the following command:
 
 .. code-block:: bash
-    
+
     $ conda install tianshou -c conda-forge
 
 You can also install with the newest version through GitHub:
