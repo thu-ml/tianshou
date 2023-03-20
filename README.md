@@ -80,7 +80,7 @@ $ pip install tianshou
 If you use Anaconda or Miniconda, you can install Tianshou from conda-forge through the following command:
 
 ```bash
-$ conda install -c conda-forge tianshou
+$ conda install tianshou -c conda-forge
 ```
 
 You can also install with the newest version through GitHub:

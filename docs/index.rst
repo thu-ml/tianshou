@@ -75,7 +75,7 @@ If you use Anaconda or Miniconda, you can install Tianshou from conda-forge thro
 
 .. code-block:: bash
 
-    $ conda -c conda-forge install tianshou
+    $ conda install tianshou -c conda-forge
 
 You can also install with the newest version through GitHub:
 

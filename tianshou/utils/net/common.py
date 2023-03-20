@@ -36,11 +36,11 @@ def miniblock(
     layers: List[nn.Module] = [linear_layer(input_size, output_size)]
     if norm_layer is not None:
         if isinstance(norm_args, tuple):
-            layers += [norm_layer(output_size, *norm_args)]  # type: ignore
+            layers += [norm_layer(output_size, *norm_args)]
         elif isinstance(norm_args, dict):
-            layers += [norm_layer(output_size, **norm_args)]  # type: ignore
+            layers += [norm_layer(output_size, **norm_args)]
         else:
-            layers += [norm_layer(output_size)]  # type: ignore
+            layers += [norm_layer(output_size)]
     if activation is not None:
         if isinstance(act_args, tuple):
             layers += [activation(*act_args)]
