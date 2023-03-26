@@ -4,10 +4,7 @@ import cloudpickle
 import gymnasium
 import numpy as np
 
-try:
-    from tianshou.env.pettingzoo_env import PettingZooEnv
-except ImportError:
-    PettingZooEnv = None  # type: ignore
+from tianshou.env.pettingzoo_env import PettingZooEnv
 
 if TYPE_CHECKING:
     import gym
