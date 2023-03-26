@@ -5,6 +5,7 @@ import gymnasium as gym
 import numpy as np
 import packaging
 
+from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
 from tianshou.env.worker import (
     DummyEnvWorker,
@@ -12,11 +13,6 @@ from tianshou.env.worker import (
     RayEnvWorker,
     SubprocEnvWorker,
 )
-
-try:
-    from tianshou.env.pettingzoo_env import PettingZooEnv
-except ImportError:
-    PettingZooEnv = None  # type: ignore
 
 try:
     import gym as old_gym

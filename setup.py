@@ -23,6 +23,7 @@ def get_install_requires() -> str:
         "numba>=0.51.0",
         "h5py>=2.10.0",  # to match tensorflow's minimal requirements
         "packaging",
+        "pettingzoo>=1.22",
     ]
 
 
@@ -47,7 +48,6 @@ def get_extras_require() -> str:
             "doc8",
             "scipy",
             "pillow",
-            "pettingzoo>=1.22",
             "pygame>=2.1.0",  # pettingzoo test cases pistonball
             "pymunk>=6.2.1",  # pettingzoo test cases pistonball
             "nni>=2.3,<3.0",  # expect breaking changes at next major version
