@@ -237,12 +237,6 @@ def train_agent(
     def stop_fn(mean_rewards):
         return False
 
-    def train_fn(epoch, env_step):
-        [agent.set_eps(args.eps_train) for agent in policy.policies.values()]
-
-    def test_fn(epoch, env_step):
-        [agent.set_eps(args.eps_test) for agent in policy.policies.values()]
-
     def reward_metric(rews):
         return rews[:, 0]
 
