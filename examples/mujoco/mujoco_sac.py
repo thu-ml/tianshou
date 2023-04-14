@@ -81,7 +81,6 @@ def test_sac(args=get_args()):
     actor = ActorProb(
         net_a,
         args.action_shape,
-        max_action=args.max_action,
         device=args.device,
         unbounded=True,
         conditioned_sigma=True,

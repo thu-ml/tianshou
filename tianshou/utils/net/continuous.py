@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
@@ -178,6 +179,11 @@ class ActorProb(nn.Module):
         preprocess_net_output_dim: Optional[int] = None,
     ) -> None:
         super().__init__()
+        if unbounded == True and not np.isclose(max_action, 1.0):
+            warnings.warn(
+                "Note that max_action input will be discarded when unbounded is True."
+            )
+            max_action = 1.0
         self.preprocess = preprocess_net
         self.device = device
         self.output_dim = int(np.prod(action_shape))

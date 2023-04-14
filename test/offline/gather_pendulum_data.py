@@ -93,7 +93,6 @@ def gather_data():
     actor = ActorProb(
         net,
         args.action_shape,
-        max_action=args.max_action,
         device=args.device,
         unbounded=True,
     ).to(args.device)

@@ -97,7 +97,6 @@ def test_sac_bipedal(args=get_args()):
     actor = ActorProb(
         net_a,
         args.action_shape,
-        max_action=args.max_action,
         device=args.device,
         unbounded=True
     ).to(args.device)
