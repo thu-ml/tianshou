@@ -246,6 +246,11 @@ class RecurrentActorProb(nn.Module):
         conditioned_sigma: bool = False,
     ) -> None:
         super().__init__()
+        if unbounded and not np.isclose(max_action, 1.0):
+            warnings.warn(
+                "Note that max_action input will be discarded when unbounded is True."
+            )
+            max_action = 1.0
         self.device = device
         self.nn = nn.LSTM(
             input_size=int(np.prod(state_shape)),
