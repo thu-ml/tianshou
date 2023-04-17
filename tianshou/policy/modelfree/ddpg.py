@@ -72,7 +72,8 @@ class DDPGPolicy(BasePolicy):
                 "to deal with unbounded model action space, but find actor model bound"
                 f"action space with max_action={actor.max_action}."
                 "Consider using unbounded=True option of the actor model,"
-                "or set action_scaling to False and action_bound_method to \"\".")
+                "or set action_scaling to False and action_bound_method to \"\"."
+            )
         if actor is not None and actor_optim is not None:
             self.actor: torch.nn.Module = actor
             self.actor_old = deepcopy(actor)

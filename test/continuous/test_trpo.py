@@ -85,12 +85,8 @@ def test_trpo(args=get_args()):
         activation=nn.Tanh,
         device=args.device
     )
-    actor = ActorProb(
-        net,
-        args.action_shape,
-        unbounded=True,
-        device=args.device
-    ).to(args.device)
+    actor = ActorProb(net, args.action_shape, unbounded=True,
+                      device=args.device).to(args.device)
     critic = Critic(
         Net(
             args.state_shape,
