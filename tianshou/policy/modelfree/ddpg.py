@@ -68,9 +68,9 @@ class DDPGPolicy(BasePolicy):
             if action_scaling and not np.isclose(actor.max_action, 1.):  # type: ignore
                 import warnings
                 warnings.warn(
-                    "action_scaling and action_bound_method are only intended"
-                    "to deal with unbounded model action space, but find actor model"
-                    f"bound action space with max_action={actor.max_action}."
+                    "action_scaling and action_bound_method are only intended to deal"
+                    "with unbounded model action space, but find actor model bound"
+                    f"action space with max_action={actor.max_action}."  # type: ignore
                     "Consider using unbounded=True option of the actor model,"
                     "or set action_scaling to False and action_bound_method to \"\"."
                 )
