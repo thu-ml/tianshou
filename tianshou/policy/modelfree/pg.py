@@ -53,7 +53,7 @@ class PGPolicy(BasePolicy):
             **kwargs
         )
         self.actor = model
-        if action_scaling is True and hasattr(model, "max_action") and \
+        if action_scaling is True and hasattr(model, "_max") and \
                 (not np.isclose(model.max_action, 1.0)):
             import warnings
             warnings.warn(

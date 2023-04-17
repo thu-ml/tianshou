@@ -55,7 +55,7 @@ class Actor(nn.Module):
             hidden_sizes,
             device=self.device
         )
-        self._max = max_action
+        self.max_action = max_action
 
     def forward(
         self,
@@ -65,7 +65,7 @@ class Actor(nn.Module):
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> logits -> action."""
         logits, hidden = self.preprocess(obs, state)
-        logits = self._max * torch.tanh(self.last(logits))
+        logits = self.max_action * torch.tanh(self.last(logits))
         return logits, hidden
 
 
@@ -204,7 +204,7 @@ class ActorProb(nn.Module):
             )
         else:
             self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
-        self._max = max_action
+        self.max_action = max_action
         self._unbounded = unbounded
 
     def forward(
@@ -217,7 +217,7 @@ class ActorProb(nn.Module):
         logits, hidden = self.preprocess(obs, state)
         mu = self.mu(logits)
         if not self._unbounded:
-            mu = self._max * torch.tanh(mu)
+            mu = self.max_action * torch.tanh(mu)
         if self._c_sigma:
             sigma = torch.clamp(self.sigma(logits), min=SIGMA_MIN, max=SIGMA_MAX).exp()
         else:
@@ -260,7 +260,7 @@ class RecurrentActorProb(nn.Module):
             self.sigma = nn.Linear(hidden_layer_size, output_dim)
         else:
             self.sigma_param = nn.Parameter(torch.zeros(output_dim, 1))
-        self._max = max_action
+        self.max_action = max_action
         self._unbounded = unbounded
 
     def forward(
@@ -295,7 +295,7 @@ class RecurrentActorProb(nn.Module):
         logits = obs[:, -1]
         mu = self.mu(logits)
         if not self._unbounded:
-            mu = self._max * torch.tanh(mu)
+            mu = self.max_action * torch.tanh(mu)
         if self._c_sigma:
             sigma = torch.clamp(self.sigma(logits), min=SIGMA_MIN, max=SIGMA_MAX).exp()
         else:
