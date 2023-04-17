@@ -66,7 +66,7 @@ class DDPGPolicy(BasePolicy):
             "raw action in range (-inf, inf) will cause instability in training"
         try:
             if actor is not None and action_scaling and \
-                not np.isclose(actor.max_action, 1.):  # type: ignore
+                    not np.isclose(actor.max_action, 1.):  # type: ignore
                 import warnings
                 warnings.warn(
                     "action_scaling and action_bound_method are only intended to deal"
