@@ -53,6 +53,18 @@ class PGPolicy(BasePolicy):
             **kwargs
         )
         self.actor = model
+        try:
+            if action_scaling and not np.isclose(model.max_action, 1.):  # type: ignore
+                import warnings
+                warnings.warn(
+                    "action_scaling and action_bound_method are only intended"
+                    "to deal with unbounded model action space, but find actor model"
+                    f"bound action space with max_action={model.max_action}."
+                    "Consider using unbounded=True option of the actor model,"
+                    "or set action_scaling to False and action_bound_method to \"\"."
+                )
+        except Exception:
+            pass
         self.optim = optim
         self.dist_fn = dist_fn
         assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"

@@ -81,9 +81,8 @@ def test_ppo(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(
-        net, args.action_shape, max_action=args.max_action, device=args.device
-    ).to(args.device)
+    actor = ActorProb(net, args.action_shape, unbounded=True,
+                      device=args.device).to(args.device)
     critic = Critic(
         Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device),
         device=args.device

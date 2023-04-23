@@ -67,13 +67,8 @@ def test_sac(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(
-        net,
-        args.action_shape,
-        max_action=args.max_action,
-        device=args.device,
-        unbounded=True
-    ).to(args.device)
+    actor = ActorProb(net, args.action_shape, device=args.device,
+                      unbounded=True).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c1 = Net(
         args.state_shape,

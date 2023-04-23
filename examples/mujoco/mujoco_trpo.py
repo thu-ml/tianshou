@@ -96,7 +96,6 @@ def test_trpo(args=get_args()):
     actor = ActorProb(
         net_a,
         args.action_shape,
-        max_action=args.max_action,
         unbounded=True,
         device=args.device,
     ).to(args.device)
