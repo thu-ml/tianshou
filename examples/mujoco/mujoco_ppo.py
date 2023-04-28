@@ -17,7 +17,7 @@ from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import Net, ActorCritic
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
@@ -106,8 +106,10 @@ def test_ppo(args=get_args()):
         device=args.device,
     )
     critic = Critic(net_c, device=args.device).to(args.device)
+    actor_critic = ActorCritic(actor, critic)
+
     torch.nn.init.constant_(actor.sigma_param, -0.5)
-    for m in list(actor.modules()) + list(critic.modules()):
+    for m in actor_critic.modules():
         if isinstance(m, torch.nn.Linear):
             # orthogonal initialization
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
@@ -121,7 +123,7 @@ def test_ppo(args=get_args()):
             m.weight.data.copy_(0.01 * m.weight.data)
 
     optim = torch.optim.Adam(
-        list(actor.parameters()) + list(critic.parameters()), lr=args.lr
+        actor_critic.parameters(), lr=args.lr
     )
 
     lr_scheduler = None
