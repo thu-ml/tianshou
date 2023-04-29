@@ -17,7 +17,7 @@ from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import A2CPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
 
@@ -101,8 +101,10 @@ def test_a2c(args=get_args()):
         device=args.device,
     )
     critic = Critic(net_c, device=args.device).to(args.device)
+    actor_critic = ActorCritic(actor, critic)
+
     torch.nn.init.constant_(actor.sigma_param, -0.5)
-    for m in list(actor.modules()) + list(critic.modules()):
+    for m in actor_critic.modules():
         if isinstance(m, torch.nn.Linear):
             # orthogonal initialization
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
@@ -116,7 +118,7 @@ def test_a2c(args=get_args()):
             m.weight.data.copy_(0.01 * m.weight.data)
 
     optim = torch.optim.RMSprop(
-        list(actor.parameters()) + list(critic.parameters()),
+        actor_critic.parameters(),
         lr=args.lr,
         eps=1e-5,
         alpha=0.99,
