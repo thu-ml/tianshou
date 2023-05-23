@@ -337,7 +337,7 @@ class BaseVectorEnv(object):
         id = self._wrap_id(id)
         if not self.is_async:
             assert len(action) == len(id)
-            if len(action.shape) == 1:
+            if isinstance(action, np.ndarray) and len(action.shape) == 1:
                 action = np.expand_dims(action, -1)
             for i, j in enumerate(id):
                 self.workers[j].send(action[i])
@@ -350,7 +350,7 @@ class BaseVectorEnv(object):
             if action is not None:
                 self._assert_id(id)
                 assert len(action) == len(id)
-                if len(action.shape) == 1:
+                if isinstance(action, np.ndarray) and len(action.shape) == 1:
                     action = np.expand_dims(action, -1)
                 for act, env_id in zip(action, id):
                     self.workers[env_id].send(act)
