@@ -280,7 +280,7 @@ class BaseVectorEnv(object):
         assert (
             isinstance(ret_list[0], (tuple, list)) and len(ret_list[0]) == 2
             and isinstance(ret_list[0][1], dict)
-        )
+        ), "The environment does not adhere to the Gymnasium's API."
 
         obs_list = [r[0] for r in ret_list]
 
