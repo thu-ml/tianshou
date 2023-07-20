@@ -320,9 +320,12 @@ class BasePolicy(ABC, nn.Module):
             sequential order. Mind that the end of each finished episode of batch
             should be marked by done flag, unfinished (or collecting) episodes will be
             recognized by buffer.unfinished_index().
+        :param buffer: the corresponding replay buffer.
         :param numpy.ndarray indices: tell batch's location in buffer, batch is equal
             to buffer[indices].
         :param np.ndarray v_s_: the value function of all next states :math:`V(s')`.
+            If None, it will be set to an array of 0.
+        :param v_s: the value function of all current states :math:`V(s)`.
         :param float gamma: the discount factor, should be in [0, 1]. Default to 0.99.
         :param float gae_lambda: the parameter for Generalized Advantage Estimation,
             should be in [0, 1]. Default to 0.95.
@@ -419,6 +422,34 @@ def _gae_return(
     gamma: float,
     gae_lambda: float,
 ) -> np.ndarray:
+    """
+    This doesn't compute returns but rather advantages. The return
+    is given by the output of this + v_s. Note that the advantages plus v_s
+    is exactly the same as the TD-lambda target, which is computed by the recursive
+    formula:
+    
+    .. math::
+        G_t^\lambda = r_t + \gamma ( \lambda G_{t+1}^\lambda + (1 - \lambda) V_{t+1} )
+    
+    The GAE is computed recursively as:
+    
+    .. math::
+        \delta_t = r_t + \gamma V_{t+1} - V_t \n
+        A_t^\lambda= \delta_t + \gamma \lambda A_{t+1}^\lambda
+        
+    And the following equality holds:
+    
+    .. math::
+        G_t^\lambda = A_t^\lambda+ V_t
+    
+    :param v_s: values in an episode, i.e. $V_t$
+    :param v_s_: next values in an episode, i.e. v_s shifted by 1, equivalent to $V_{t+1}$
+    :param rew: rewards in an episode, i.e. $r_t$
+    :param end_flag: boolean array indicating whether the episode is done
+    :param gamma: discount factor
+    :param gae_lambda: lambda parameter for GAE, controlling the bias-variance tradeoff
+    :return: 
+    """
     returns = np.zeros(rew.shape)
     delta = rew + v_s_ * gamma - v_s
     discount = (1.0 - end_flag) * (gamma * gae_lambda)
