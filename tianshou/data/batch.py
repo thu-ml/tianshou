@@ -747,13 +747,16 @@ class Batch:
         """Split whole data into multiple small batches.
 
         :param int size: divide the data batch with the given size, but one
-            batch if the length of the batch is smaller than "size".
+            batch if the length of the batch is smaller than "size". Size of -1 means
+            the whole batch.
         :param bool shuffle: randomly shuffle the entire data batch if it is
             True, otherwise remain in the same. Default to True.
         :param bool merge_last: merge the last batch into the previous one.
             Default to False.
         """
         length = len(self)
+        if size == -1:
+            size = length
         assert 1 <= size  # size can be greater than length, return whole batch
         if shuffle:
             indices = np.random.permutation(length)
