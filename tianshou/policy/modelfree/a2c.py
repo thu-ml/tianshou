@@ -18,7 +18,6 @@ class A2CPolicy(PGPolicy):
     :param torch.nn.Module critic: the critic network. (s -> V(s))
     :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Type[torch.distributions.Distribution]
     :param float discount_factor: in [0, 1]. Default to 0.99.
     :param float vf_coef: weight for value loss. Default to 0.5.
     :param float ent_coef: weight for entropy loss. Default to 0.01.
@@ -92,7 +91,7 @@ class A2CPolicy(PGPolicy):
         v_s = batch.v_s.cpu().numpy()
         v_s_ = torch.cat(v_s_, dim=0).flatten().cpu().numpy()
         # when normalizing values, we do not minus self.ret_rms.mean to be numerically
-        # consistent with OPENAI baselines' value normalization pipeline. Emperical
+        # consistent with OPENAI baselines' value normalization pipeline. Empirical
         # study also shows that "minus mean" will harm performances a tiny little bit
         # due to unknown reasons (on Mujoco envs, not confident, though).
         if self._rew_norm:  # unnormalize v_s & v_s_
