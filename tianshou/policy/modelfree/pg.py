@@ -19,7 +19,7 @@ class PGBatchProtocol(RolloutBatchProtocol, Protocol):
 
 class ActionBatchProtocol(Batch, Protocol):
     logits: Sequence[Union[tuple, torch.Tensor]]  # TODO: is this the right type?
-    dist: torch.Tensor
+    dist: torch.distributions.Distribution
     act: torch.Tensor
     state: Optional[torch.Tensor]
 
