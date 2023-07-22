@@ -15,11 +15,11 @@ def get_version() -> str:
 
 def get_install_requires() -> str:
     return [
-        "gymnasium>=0.26.0",
+        "gymnasium>=0.29.0",
         "tqdm",
         "numpy>1.16.0",  # https://github.com/numpy/numpy/issues/12793
         "tensorboard>=2.5.0",
-        "torch>=1.4.0",
+        "torch>=2.0.1",
         "numba>=0.51.0",
         "h5py>=3.9.0",  # to match tensorflow's minimal requirements
         "packaging",
@@ -74,7 +74,7 @@ setup(
     author="TSAIL",
     author_email="trinkle23897@gmail.com",
     license="MIT",
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     classifiers=[
         # How mature is this project? Common values are
         #   3 - Alpha
@@ -89,8 +89,6 @@ setup(
         "License :: OSI Approved :: MIT License",
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
