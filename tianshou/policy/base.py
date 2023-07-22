@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Literal, Protocol
 
 import gymnasium as gym
 import numpy as np
@@ -10,6 +10,15 @@ from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 from tianshou.utils import MultipleLRSchedulers
+
+
+class RolloutBatchProtocol(Batch, Protocol):
+    obs: torch.Tensor
+    obs_next: torch.Tensor
+    info: Dict[str, Any]
+    rew: torch.Tensor
+    terminated: torch.Tensor
+    truncated: torch.Tensor
 
 
 class BasePolicy(ABC, nn.Module):
@@ -64,10 +73,13 @@ class BasePolicy(ABC, nn.Module):
         observation_space: Optional[gym.Space] = None,
         action_space: Optional[gym.Space] = None,
         action_scaling: bool = False,
-        action_bound_method: str = "",
+        action_bound_method: Optional[Literal["clip", "tanh"]] = None,
         lr_scheduler: Optional[Union[torch.optim.lr_scheduler.LambdaLR,
                                      MultipleLRSchedulers]] = None,
     ) -> None:
+        if action_bound_method is not None:
+            assert action_bound_method in ("clip", "tanh")
+
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
@@ -76,11 +88,11 @@ class BasePolicy(ABC, nn.Module):
             self.action_type = "discrete"
         elif isinstance(action_space, Box):
             self.action_type = "continuous"
+        else:
+            ValueError(f"Unsupported action space: {action_space}.")
         self.agent_id = 0
         self.updating = False
         self.action_scaling = action_scaling
-        # can be one of ("clip", "tanh", ""), empty string means no bounding
-        assert action_bound_method in ("", "clip", "tanh")
         self.action_bound_method = action_bound_method
         self.lr_scheduler = lr_scheduler
         self._compile()
@@ -303,7 +315,7 @@ class BasePolicy(ABC, nn.Module):
 
     @staticmethod
     def compute_episodic_return(
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
         v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
@@ -314,9 +326,11 @@ class BasePolicy(ABC, nn.Module):
         """Compute returns over given batch.
 
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
-        to calculate q/advantage value of given batch.
+        to calculate q/advantage value of given batch. Returns are calculated as
+        advantage + value, which is exactly equivalent to using TD(gae_lambda)
+        for estimating returns.
 
-        :param Batch batch: a data batch which contains several episodes of data in
+        :param batch: a data batch which contains several episodes of data in
             sequential order. Mind that the end of each finished episode of batch
             should be marked by done flag, unfinished (or collecting) episodes will be
             recognized by buffer.unfinished_index().

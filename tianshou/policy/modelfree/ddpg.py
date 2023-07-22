@@ -1,6 +1,6 @@
 import warnings
 from copy import deepcopy
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, Literal
 
 import numpy as np
 import torch
@@ -134,7 +134,7 @@ class DDPGPolicy(BasePolicy):
         self,
         batch: Batch,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
-        model: str = "actor",
+        model: Literal["actor", "actor_old"] = "actor",
         input: str = "obs",
         **kwargs: Any,
     ) -> Batch:

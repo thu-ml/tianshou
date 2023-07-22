@@ -3,13 +3,13 @@ import warnings
 from collections.abc import Collection
 from copy import deepcopy
 from numbers import Number
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Union
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Union, overload, Type, TypeVar
 
 import numpy as np
 import torch
 
 IndexType = Union[slice, int, np.ndarray, List[int]]
-
+TBatch = TypeVar("TBatch", bound="Batch")
 
 def _is_batch_set(obj: Any) -> bool:
     # Batch set is a list/tuple of dict/Batch objects,
@@ -233,7 +233,13 @@ class Batch:
         """
         self.__init__(**state)  # type: ignore
 
-    def __getitem__(self, index: Union[str, IndexType]) -> Any:
+    @overload
+    def __getitem__(self, index: str) -> Any: ...
+
+    @overload
+    def __getitem__(self: TBatch, index: IndexType) -> TBatch: ...
+
+    def __getitem__(self, index):
         """Return self[index]."""
         if isinstance(index, str):
             return self.__dict__[index]
@@ -740,10 +746,10 @@ class Batch:
             return list(map(min, zip(*data_shape))) if len(data_shape) > 1 \
                 else data_shape[0]
 
-    def split(self,
+    def split(self: Type[TBatch],
               size: int,
               shuffle: bool = True,
-              merge_last: bool = False) -> Iterator["Batch"]:
+              merge_last: bool = False) -> Iterator[TBatch]:
         """Split whole data into multiple small batches.
 
         :param int size: divide the data batch with the given size, but one
