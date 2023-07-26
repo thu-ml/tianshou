@@ -19,8 +19,9 @@ from torch import nn
 from tianshou.data.batch import Batch
 
 ModuleType = Type[nn.Module]
-ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]],
-                 Sequence[Dict[Any, Any]]]
+ArgsType = Union[
+    Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]], Sequence[Dict[Any, Any]]
+]
 
 
 def miniblock(
@@ -125,8 +126,12 @@ class MLP(nn.Module):
         hidden_sizes = [input_dim] + list(hidden_sizes)
         model = []
         for in_dim, out_dim, norm, norm_args, activ, act_args in zip(
-            hidden_sizes[:-1], hidden_sizes[1:], norm_layer_list, norm_args_list,
-            activation_list, act_args_list
+            hidden_sizes[:-1],
+            hidden_sizes[1:],
+            norm_layer_list,
+            norm_args_list,
+            activation_list,
+            act_args_list,
         ):
             model += miniblock(
                 in_dim, out_dim, norm, norm_args, activ, act_args, linear_layer
@@ -148,10 +153,7 @@ class MLP(nn.Module):
 class NetBase(nn.Module, ABC):
     @abstractmethod
     def forward(
-        self,
-        obs: Union[np.ndarray, torch.Tensor],
-        state: Any = None,
-        **kwargs,
+        self, obs: Union[np.ndarray, torch.Tensor], state: Any = None, **kwargs
     ) -> Tuple[torch.Tensor, Any]:
         pass
 
@@ -227,8 +229,15 @@ class Net(NetBase):
         self.use_dueling = dueling_param is not None
         output_dim = action_dim if not self.use_dueling and not concat else 0
         self.model = MLP(
-            input_dim, output_dim, hidden_sizes, norm_layer, norm_args, activation,
-            act_args, device, linear_layer
+            input_dim,
+            output_dim,
+            hidden_sizes,
+            norm_layer,
+            norm_args,
+            activation,
+            act_args,
+            device,
+            linear_layer,
         )
         if self.use_dueling:  # dueling DQN
             q_kwargs, v_kwargs = dueling_param  # type: ignore
@@ -236,14 +245,16 @@ class Net(NetBase):
             if not concat:
                 q_output_dim, v_output_dim = action_dim, num_atoms
             q_kwargs: Dict[str, Any] = {
-                **q_kwargs, "input_dim": self.output_dim,
+                **q_kwargs,
+                "input_dim": self.output_dim,
                 "output_dim": q_output_dim,
-                "device": self.device
+                "device": self.device,
             }
             v_kwargs: Dict[str, Any] = {
-                **v_kwargs, "input_dim": self.output_dim,
+                **v_kwargs,
+                "input_dim": self.output_dim,
                 "output_dim": v_output_dim,
-                "device": self.device
+                "device": self.device,
             }
             self.Q, self.V = MLP(**q_kwargs), MLP(**v_kwargs)
             self.output_dim = self.Q.output_dim
@@ -252,10 +263,7 @@ class Net(NetBase):
             self.Q, self.V = None, None
 
     def forward(
-        self,
-        obs: Union[np.ndarray, torch.Tensor],
-        state: Any = None,
-        **kwargs,
+        self, obs: Union[np.ndarray, torch.Tensor], state: Any = None, **kwargs
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> flatten (inside MLP)-> logits.
         :param obs:
@@ -325,11 +333,7 @@ class Recurrent(NetBase):
                 f"Expected to find keys 'hidden' and 'cell' but instead found {list[state.keys()]}"
             )
 
-        obs = torch.as_tensor(
-            obs,
-            device=self.device,
-            dtype=torch.float32,
-        )
+        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -343,16 +347,17 @@ class Recurrent(NetBase):
             # we store the stack data in [bsz, len, ...] format
             # but pytorch rnn needs [len, bsz, ...]
             obs, (hidden, cell) = self.nn(
-                obs, (
+                obs,
+                (
                     state["hidden"].transpose(0, 1).contiguous(),
-                    state["cell"].transpose(0, 1).contiguous()
-                )
+                    state["cell"].transpose(0, 1).contiguous(),
+                ),
             )
         obs = self.fc2(obs[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
         return obs, {
             "hidden": hidden.transpose(0, 1).detach(),
-            "cell": cell.transpose(0, 1).detach()
+            "cell": cell.transpose(0, 1).detach(),
         }
 
 
@@ -386,8 +391,9 @@ class DataParallelNet(nn.Module):
         super().__init__()
         self.net = nn.DataParallel(net)
 
-    def forward(self, obs: Union[np.ndarray, torch.Tensor], *args: Any,
-                **kwargs: Any) -> Tuple[Any, Any]:
+    def forward(
+        self, obs: Union[np.ndarray, torch.Tensor], *args: Any, **kwargs: Any
+    ) -> Tuple[Any, Any]:
         if not isinstance(obs, torch.Tensor):
             obs = torch.as_tensor(obs, dtype=torch.float32)
         return self.net(obs=obs.cuda(), *args, **kwargs)
@@ -403,16 +409,12 @@ class EnsembleLinear(nn.Module):
     """
 
     def __init__(
-        self,
-        ensemble_size: int,
-        in_feature: int,
-        out_feature: int,
-        bias: bool = True,
+        self, ensemble_size: int, in_feature: int, out_feature: int, bias: bool = True
     ) -> None:
         super().__init__()
 
         # To be consistent with PyTorch default initializer
-        k = np.sqrt(1. / in_feature)
+        k = np.sqrt(1.0 / in_feature)
         weight_data = torch.rand((ensemble_size, in_feature, out_feature)) * 2 * k - k
         self.weight = nn.Parameter(weight_data, requires_grad=True)
 
@@ -485,15 +487,27 @@ class BranchingNet(NetBase):
         common_input_dim = int(np.prod(state_shape))
         common_output_dim = 0
         self.common = MLP(
-            common_input_dim, common_output_dim, common_hidden_sizes, norm_layer,
-            norm_args, activation, act_args, device
+            common_input_dim,
+            common_output_dim,
+            common_hidden_sizes,
+            norm_layer,
+            norm_args,
+            activation,
+            act_args,
+            device,
         )
         # value network
         value_input_dim = common_hidden_sizes[-1]
         value_output_dim = 1
         self.value = MLP(
-            value_input_dim, value_output_dim, value_hidden_sizes, norm_layer,
-            norm_args, activation, act_args, device
+            value_input_dim,
+            value_output_dim,
+            value_hidden_sizes,
+            norm_layer,
+            norm_args,
+            activation,
+            act_args,
+            device,
         )
         # action branching network
         action_input_dim = common_hidden_sizes[-1]
@@ -501,17 +515,21 @@ class BranchingNet(NetBase):
         self.branches = nn.ModuleList(
             [
                 MLP(
-                    action_input_dim, action_output_dim, action_hidden_sizes,
-                    norm_layer, norm_args, activation, act_args, device
-                ) for _ in range(self.num_branches)
+                    action_input_dim,
+                    action_output_dim,
+                    action_hidden_sizes,
+                    norm_layer,
+                    norm_args,
+                    activation,
+                    act_args,
+                    device,
+                )
+                for _ in range(self.num_branches)
             ]
         )
 
     def forward(
-        self,
-        obs: Union[np.ndarray, torch.Tensor],
-        state: Any = None,
-        **kwargs,
+        self, obs: Union[np.ndarray, torch.Tensor], state: Any = None, **kwargs
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> model -> logits."""
         common_out = self.common(obs)
@@ -568,14 +586,9 @@ def get_dict_state_decorator(
 
     @no_type_check
     def decorator_fn(net_class):
-
         class new_net_class(net_class):
-
             def forward(
-                self,
-                obs: Union[np.ndarray, torch.Tensor],
-                *args,
-                **kwargs,
+                self, obs: Union[np.ndarray, torch.Tensor], *args, **kwargs
             ) -> Any:
                 return super().forward(preprocess_obs(obs), *args, **kwargs)
 
