@@ -75,8 +75,9 @@ class PPOPolicy(A2CPolicy):
     ) -> None:
         super().__init__(actor, critic, optim, dist_fn, **kwargs)
         self._eps_clip = eps_clip
-        assert dual_clip is None or dual_clip > 1.0, \
-            "Dual-clip PPO parameter should greater than 1.0."
+        assert (
+            dual_clip is None or dual_clip > 1.0
+        ), "Dual-clip PPO parameter should greater than 1.0."
         self._dual_clip = dual_clip
         self._value_clip = value_clip
         self._norm_adv = advantage_normalization
@@ -107,15 +108,18 @@ class PPOPolicy(A2CPolicy):
                 dist = self(minibatch).dist
                 if self._norm_adv:
                     mean, std = minibatch.adv.mean(), minibatch.adv.std()
-                    minibatch.adv = (minibatch.adv -
-                                     mean) / (std + self._eps)  # per-batch norm
-                ratio = (dist.log_prob(minibatch.act) -
-                         minibatch.logp_old).exp().float()
+                    minibatch.adv = (minibatch.adv - mean) / (
+                        std + self._eps
+                    )  # per-batch norm
+                ratio = (
+                    (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
+                )
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 surr1 = ratio * minibatch.adv
-                surr2 = ratio.clamp(
-                    1.0 - self._eps_clip, 1.0 + self._eps_clip
-                ) * minibatch.adv
+                surr2 = (
+                    ratio.clamp(1.0 - self._eps_clip, 1.0 + self._eps_clip)
+                    * minibatch.adv
+                )
                 if self._dual_clip:
                     clip1 = torch.min(surr1, surr2)
                     clip2 = torch.max(clip1, self._dual_clip * minibatch.adv)
@@ -125,8 +129,9 @@ class PPOPolicy(A2CPolicy):
                 # calculate loss for critic
                 value = self.critic(minibatch.obs).flatten()
                 if self._value_clip:
-                    v_clip = minibatch.v_s + \
-                        (value - minibatch.v_s).clamp(-self._eps_clip, self._eps_clip)
+                    v_clip = minibatch.v_s + (value - minibatch.v_s).clamp(
+                        -self._eps_clip, self._eps_clip
+                    )
                     vf1 = (minibatch.returns - value).pow(2)
                     vf2 = (minibatch.returns - v_clip).pow(2)
                     vf_loss = torch.max(vf1, vf2).mean()
@@ -134,8 +139,9 @@ class PPOPolicy(A2CPolicy):
                     vf_loss = (minibatch.returns - value).pow(2).mean()
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
-                loss = clip_loss + self._weight_vf * vf_loss \
-                    - self._weight_ent * ent_loss
+                loss = (
+                    clip_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
+                )
                 self.optim.zero_grad()
                 loss.backward()
                 if self._grad_norm:  # clip large gradient
