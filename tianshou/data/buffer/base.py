@@ -231,10 +231,6 @@ class ReplayBuffer:
         episode_reward is 0.
         """
         # preprocess batch
-        new_batch = Batch()
-        for key in set(self._input_keys).intersection(batch.keys()):
-            new_batch.__dict__[key] = batch[key]
-        batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
         assert set(["obs", "act", "rew", "terminated", "truncated",
                     "done"]).issubset(batch.keys())
@@ -371,19 +367,16 @@ class ReplayBuffer:
             indices = index  # type: ignore
         # raise KeyError first instead of AttributeError,
         # to support np.array([ReplayBuffer()])
-        obs = self.get(indices, "obs")
-        if self._save_obs_next:
-            obs_next = self.get(indices, "obs_next", Batch())
-        else:
-            obs_next = self.get(self.next(indices), "obs", Batch())
-        return Batch(
-            obs=obs,
-            act=self.act[indices],
-            rew=self.rew[indices],
-            terminated=self.terminated[indices],
-            truncated=self.truncated[indices],
-            done=self.done[indices],
-            obs_next=obs_next,
-            info=self.get(indices, "info", Batch()),
-            policy=self.get(indices, "policy", Batch()),
-        )
+        # Loop through all keys in the buffer and retrieve data for each key
+        data_dict = {}
+        for key in self._meta.__dict__.keys():
+            if key in ["obs", "obs_next"]:
+                # Special handling for obs and obs_next if self._save_obs_next is False
+                if key == "obs_next" and not self._save_obs_next:
+                    data_dict[key] = self.get(self.next(indices), "obs", Batch())
+                else:
+                    data_dict[key] = self.get(indices, key, Batch())
+            else:
+                data_dict[key] = self.get(indices, key, Batch())
+
+        return Batch(**data_dict)
