@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import (
     Any,
     Callable,
@@ -138,14 +139,24 @@ class MLP(nn.Module):
 
     @no_type_check
     def forward(self, obs: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
-        if self.device is not None:
-            obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
+        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         if self.flatten_input:
             obs = obs.flatten(1)
         return self.model(obs)
 
 
-class Net(nn.Module):
+class NetBase(nn.Module, ABC):
+    @abstractmethod
+    def forward(
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        state: Any = None,
+        **kwargs,
+    ) -> Tuple[torch.Tensor, Any]:
+        pass
+
+
+class Net(NetBase):
     """Wrapper of MLP to support more specific DRL usage.
 
     For advanced usage (how to customize the network), please refer to
@@ -219,7 +230,6 @@ class Net(nn.Module):
             input_dim, output_dim, hidden_sizes, norm_layer, norm_args, activation,
             act_args, device, linear_layer
         )
-        self.output_dim = self.model.output_dim
         if self.use_dueling:  # dueling DQN
             q_kwargs, v_kwargs = dueling_param  # type: ignore
             q_output_dim, v_output_dim = 0, 0
@@ -237,30 +247,37 @@ class Net(nn.Module):
             }
             self.Q, self.V = MLP(**q_kwargs), MLP(**v_kwargs)
             self.output_dim = self.Q.output_dim
+        else:
+            self.output_dim = self.model.output_dim
+            self.Q, self.V = None, None
 
     def forward(
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
-        info: Dict[str, Any] = {},
+        **kwargs,
     ) -> Tuple[torch.Tensor, Any]:
-        """Mapping: obs -> flatten (inside MLP)-> logits."""
+        """Mapping: obs -> flatten (inside MLP)-> logits.
+        :param obs:
+        :param state: unused and returned as is
+        :param kwargs: unused
+        """
         logits = self.model(obs)
-        bsz = logits.shape[0]
+        batch_size = logits.shape[0]
         if self.use_dueling:  # Dueling DQN
             q, v = self.Q(logits), self.V(logits)
             if self.num_atoms > 1:
-                q = q.view(bsz, -1, self.num_atoms)
-                v = v.view(bsz, -1, self.num_atoms)
+                q = q.view(batch_size, -1, self.num_atoms)
+                v = v.view(batch_size, -1, self.num_atoms)
             logits = q - q.mean(dim=1, keepdim=True) + v
         elif self.num_atoms > 1:
-            logits = logits.view(bsz, -1, self.num_atoms)
+            logits = logits.view(batch_size, -1, self.num_atoms)
         if self.softmax:
             logits = torch.softmax(logits, dim=-1)
         return logits, state
 
 
-class Recurrent(nn.Module):
+class Recurrent(NetBase):
     """Simple Recurrent network based on LSTM.
 
     For advanced usage (how to customize the network), please refer to
@@ -290,14 +307,24 @@ class Recurrent(nn.Module):
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Dict[str, torch.Tensor]] = None,
-        info: Dict[str, Any] = {},
+        **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """Mapping: obs -> flatten -> logits.
 
         In the evaluation mode, `obs` should be with shape ``[bsz, dim]``; in the
         training mode, `obs` should be with shape ``[bsz, len, dim]``. See the code
         and comment for more detail.
+
+        :param obs:
+        :param state: either None or a dict with keys 'hidden' and 'cell'
+        :param kwargs: unused
+        :return: predicted action, next state as dict with keys 'hidden' and 'cell'
         """
+        if state is not None and not {"hidden", "cell"}.issubset(state):
+            raise ValueError(
+                f"Expected to find keys 'hidden' and 'cell' but instead found {list[state.keys()]}"
+            )
+
         obs = torch.as_tensor(
             obs,
             device=self.device,
@@ -403,7 +430,7 @@ class EnsembleLinear(nn.Module):
         return x
 
 
-class BranchingNet(nn.Module):
+class BranchingNet(NetBase):
     """Branching dual Q network.
 
     Network for the BranchingDQNPolicy, it uses a common network module, a value module
@@ -437,9 +464,9 @@ class BranchingNet(nn.Module):
         state_shape: Union[int, Sequence[int]],
         num_branches: int = 0,
         action_per_branch: int = 2,
-        common_hidden_sizes: List[int] = [],
-        value_hidden_sizes: List[int] = [],
-        action_hidden_sizes: List[int] = [],
+        common_hidden_sizes: Optional[List[int]] = None,
+        value_hidden_sizes: Optional[List[int]] = None,
+        action_hidden_sizes: Optional[List[int]] = None,
         norm_layer: Optional[ModuleType] = None,
         norm_args: Optional[ArgsType] = None,
         activation: Optional[ModuleType] = nn.ReLU,
@@ -447,6 +474,10 @@ class BranchingNet(nn.Module):
         device: Union[str, int, torch.device] = "cpu",
     ) -> None:
         super().__init__()
+        common_hidden_sizes = common_hidden_sizes or []
+        value_hidden_sizes = value_hidden_sizes or []
+        action_hidden_sizes = action_hidden_sizes or []
+
         self.device = device
         self.num_branches = num_branches
         self.action_per_branch = action_per_branch
@@ -480,7 +511,7 @@ class BranchingNet(nn.Module):
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
-        info: Dict[str, Any] = {},
+        **kwargs,
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> model -> logits."""
         common_out = self.common(obs)
