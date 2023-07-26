@@ -3,13 +3,26 @@ import warnings
 from collections.abc import Collection
 from copy import deepcopy
 from numbers import Number
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Union, overload, Type, TypeVar
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Protocol,
+    Sequence,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import numpy as np
 import torch
 
 IndexType = Union[slice, int, np.ndarray, List[int]]
 TBatch = TypeVar("TBatch", bound="Batch")
+
 
 def _is_batch_set(obj: Any) -> bool:
     # Batch set is a list/tuple of dict/Batch objects,
@@ -21,8 +34,9 @@ def _is_batch_set(obj: Any) -> bool:
         # so do not use obj.tolist()
         if obj.shape == ():
             return False
-        return obj.dtype == object and \
-            all(isinstance(element, (dict, Batch)) for element in obj)
+        return obj.dtype == object and all(
+            isinstance(element, (dict, Batch)) for element in obj
+        )
     elif isinstance(obj, (list, tuple)):
         if len(obj) > 0 and all(isinstance(element, (dict, Batch)) for element in obj):
             return True
@@ -52,8 +66,9 @@ def _is_number(value: Any) -> bool:
 
 
 def _to_array_with_correct_type(obj: Any) -> np.ndarray:
-    if isinstance(obj, np.ndarray) and \
-            issubclass(obj.dtype.type, (np.bool_, np.number)):
+    if isinstance(obj, np.ndarray) and issubclass(
+        obj.dtype.type, (np.bool_, np.number)
+    ):
         return obj  # most often case
     # convert the value to np.ndarray
     # convert to object obj type if neither bool nor number
@@ -77,9 +92,7 @@ def _to_array_with_correct_type(obj: Any) -> np.ndarray:
 
 
 def _create_value(
-    inst: Any,
-    size: int,
-    stack: bool = True,
+    inst: Any, size: int, stack: bool = True
 ) -> Union["Batch", np.ndarray, torch.Tensor]:
     """Create empty place-holders accroding to inst's shape.
 
@@ -97,9 +110,11 @@ def _create_value(
     if has_shape:
         shape = (size, *inst.shape) if stack else (size, *inst.shape[1:])
     if isinstance(inst, np.ndarray):
-        target_type = inst.dtype.type if issubclass(
-            inst.dtype.type, (np.bool_, np.number)
-        ) else object
+        target_type = (
+            inst.dtype.type
+            if issubclass(inst.dtype.type, (np.bool_, np.number))
+            else object
+        )
         return np.full(
             shape, fill_value=None if target_type == object else 0, dtype=target_type
         )
@@ -117,25 +132,34 @@ def _create_value(
 
 
 def _assert_type_keys(keys: Iterable[str]) -> None:
-    assert all(isinstance(key, str) for key in keys), \
-        f"keys should all be string, but got {keys}"
+    assert all(
+        isinstance(key, str) for key in keys
+    ), f"keys should all be string, but got {keys}"
 
 
 def _parse_value(obj: Any) -> Optional[Union["Batch", np.ndarray, torch.Tensor]]:
     if isinstance(obj, Batch):  # most often case
         return obj
-    elif (isinstance(obj, np.ndarray) and
-          issubclass(obj.dtype.type, (np.bool_, np.number))) or \
-            isinstance(obj, torch.Tensor) or obj is None:  # third often case
+    elif (
+        (
+            isinstance(obj, np.ndarray)
+            and issubclass(obj.dtype.type, (np.bool_, np.number))
+        )
+        or isinstance(obj, torch.Tensor)
+        or obj is None
+    ):  # third often case
         return obj
     elif _is_number(obj):  # second often case, but it is more time-consuming
         return np.asanyarray(obj)
     elif isinstance(obj, dict):
         return Batch(obj)
     else:
-        if not isinstance(obj, np.ndarray) and \
-                isinstance(obj, Collection) and len(obj) > 0 and \
-                all(isinstance(element, torch.Tensor) for element in obj):
+        if (
+            not isinstance(obj, np.ndarray)
+            and isinstance(obj, Collection)
+            and len(obj) > 0
+            and all(isinstance(element, torch.Tensor) for element in obj)
+        ):
             try:
                 return torch.stack(obj)  # type: ignore
             except RuntimeError as exception:
@@ -171,21 +195,199 @@ def _alloc_by_keys_diff(
             meta[key] = _create_value(batch[key], size, stack)
 
 
-class Batch:
+# Note: This is implemented as a protocol because the interface
+# of Batch is always extended by adding new fields. Having a hierarchy of
+# protocols building off this one allows for type safety and IDE support despite
+# the dynamic nature of Batch
+class BatchProtocol(Protocol):
     """The internal data structure in Tianshou.
 
     Batch is a kind of supercharged array (of temporal data) stored individually in a
-    (recursive) dictionary of object that can be either numpy array, torch tensor, or
-    batch themselves. It is designed to make it extremely easily to access, manipulate
+    (recursive) dictionary of objects that can be either numpy arrays, torch tensors, or
+    batches themselves. It is designed to make it extremely easily to access, manipulate
     and set partial view of the heterogeneous data conveniently.
 
     For a detailed description, please refer to :ref:`batch_concept`.
     """
 
+    shape: List[int]
+
+    def __setattr__(self, key: str, value: Any) -> None:
+        ...
+
+    def __getattr__(self, key: str) -> Any:
+        ...
+
+    def __contains__(self, key: str) -> bool:
+        ...
+
+    def __getstate__(self) -> dict:
+        ...
+
+    def __setstate__(self, state: dict) -> None:
+        ...
+
+    def __getitem__(self, index: Union[str, IndexType]) -> Any:
+        ...
+
+    def __setitem__(self, index: Union[str, IndexType], value: Any) -> None:
+        ...
+
+    def __iadd__(self: TBatch, other: Union[TBatch, Number, np.number]) -> TBatch:
+        ...
+
+    def __add__(self: TBatch, other: Union[TBatch, Number, np.number]) -> TBatch:
+        ...
+
+    def __imul__(self: TBatch, value: Union[Number, np.number]) -> TBatch:
+        ...
+
+    def __mul__(self: TBatch, value: Union[Number, np.number]) -> TBatch:
+        ...
+
+    def __itruediv__(self: TBatch, value: Union[Number, np.number]) -> TBatch:
+        ...
+
+    def __truediv__(self: TBatch, value: Union[Number, np.number]) -> TBatch:
+        ...
+
+    def __repr__(self) -> str:
+        ...
+
+    def to_numpy(self) -> None:
+        """Change all torch.Tensor to numpy.ndarray in-place."""
+        ...
+
+    def to_torch(
+        self,
+        dtype: Optional[torch.dtype] = None,
+        device: Union[str, int, torch.device] = "cpu",
+    ) -> None:
+        """Change all numpy.ndarray to torch.Tensor in-place."""
+        ...
+
+    def cat_(self, batches: Union[TBatch, Sequence[Union[dict, TBatch]]]) -> None:
+        """Concatenate a list of (or one) Batch objects into current batch."""
+        ...
+
+    @staticmethod
+    def cat(batches: Sequence[Union[dict, TBatch]]) -> TBatch:
+        """Concatenate a list of Batch object into a single new batch.
+
+        For keys that are not shared across all batches, batches that do not
+        have these keys will be padded by zeros with appropriate shapes. E.g.
+        ::
+
+            >>> a = Batch(a=np.zeros([3, 4]), common=Batch(c=np.zeros([3, 5])))
+            >>> b = Batch(b=np.zeros([4, 3]), common=Batch(c=np.zeros([4, 5])))
+            >>> c = Batch.cat([a, b])
+            >>> c.a.shape
+            (7, 4)
+            >>> c.b.shape
+            (7, 3)
+            >>> c.common.c.shape
+            (7, 5)
+        """
+        ...
+
+    def stack_(self, batches: Sequence[Union[dict, TBatch]], axis: int = 0) -> None:
+        """Stack a list of Batch object into current batch."""
+        ...
+
+    @staticmethod
+    def stack(batches: Sequence[Union[dict, TBatch]], axis: int = 0) -> TBatch:
+        """Stack a list of Batch object into a single new batch.
+
+        For keys that are not shared across all batches, batches that do not
+        have these keys will be padded by zeros. E.g.
+        ::
+
+            >>> a = Batch(a=np.zeros([4, 4]), common=Batch(c=np.zeros([4, 5])))
+            >>> b = Batch(b=np.zeros([4, 6]), common=Batch(c=np.zeros([4, 5])))
+            >>> c = Batch.stack([a, b])
+            >>> c.a.shape
+            (2, 4, 4)
+            >>> c.b.shape
+            (2, 4, 6)
+            >>> c.common.c.shape
+            (2, 4, 5)
+
+        .. note::
+
+            If there are keys that are not shared across all batches, ``stack``
+            with ``axis != 0`` is undefined, and will cause an exception.
+        """
+        ...
+
+    def empty_(self, index: Optional[Union[slice, IndexType]] = None) -> TBatch:
+        """Return an empty Batch object with 0 or None filled.
+
+        If "index" is specified, it will only reset the specific indexed-data.
+        ::
+
+            >>> data.empty_()
+            >>> print(data)
+            Batch(
+                a: array([[0., 0.],
+                          [0., 0.]]),
+                b: array([None, None], dtype=object),
+            )
+            >>> b={'c': [2., 'st'], 'd': [1., 0.]}
+            >>> data = Batch(a=[False,  True], b=b)
+            >>> data[0] = Batch.empty(data[1])
+            >>> data
+            Batch(
+                a: array([False,  True]),
+                b: Batch(
+                       c: array([None, 'st']),
+                       d: array([0., 0.]),
+                   ),
+            )
+        """
+        ...
+
+    @staticmethod
+    def empty(batch: TBatch, index: Optional[IndexType] = None) -> TBatch:
+        """Return an empty Batch object with 0 or None filled.
+
+        The shape is the same as the given Batch.
+        """
+        ...
+
+    def update(
+        self, batch: Optional[Union[dict, TBatch]] = None, **kwargs: Any
+    ) -> None:
+        """Update this batch from another dict/Batch."""
+        ...
+
+    def __len__(self) -> int:
+        ...
+
+    def is_empty(self, recurse: bool = False) -> bool:
+        ...
+
+    def split(
+        self: TBatch, size: int, shuffle: bool = True, merge_last: bool = False
+    ) -> Iterator[TBatch]:
+        """Split whole data into multiple small batches.
+
+        :param int size: divide the data batch with the given size, but one
+            batch if the length of the batch is smaller than "size". Size of -1 means
+            the whole batch.
+        :param bool shuffle: randomly shuffle the entire data batch if it is
+            True, otherwise remain in the same. Default to True.
+        :param bool merge_last: merge the last batch into the previous one.
+            Default to False.
+        """
+        ...
+
+
+class Batch(BatchProtocol):
     def __init__(
         self,
-        batch_dict: Optional[Union[dict, "Batch", Sequence[Union[dict, "Batch"]],
-                                   np.ndarray]] = None,
+        batch_dict: Optional[
+            Union[dict, TBatch, Sequence[Union[dict, TBatch]], np.ndarray]
+        ] = None,
         copy: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -234,10 +436,12 @@ class Batch:
         self.__init__(**state)  # type: ignore
 
     @overload
-    def __getitem__(self, index: str) -> Any: ...
+    def __getitem__(self, index: str) -> Any:
+        ...
 
     @overload
-    def __getitem__(self: TBatch, index: IndexType) -> TBatch: ...
+    def __getitem__(self: TBatch, index: IndexType) -> TBatch:
+        ...
 
     def __getitem__(self, index):
         """Return self[index]."""
@@ -274,14 +478,15 @@ class Batch:
             except KeyError:
                 if isinstance(val, Batch):
                     self.__dict__[key][index] = Batch()
-                elif isinstance(val, torch.Tensor) or \
-                        (isinstance(val, np.ndarray) and
-                         issubclass(val.dtype.type, (np.bool_, np.number))):
+                elif isinstance(val, torch.Tensor) or (
+                    isinstance(val, np.ndarray)
+                    and issubclass(val.dtype.type, (np.bool_, np.number))
+                ):
                     self.__dict__[key][index] = 0
                 else:
                     self.__dict__[key][index] = None
 
-    def __iadd__(self, other: Union["Batch", Number, np.number]) -> "Batch":
+    def __iadd__(self: TBatch, other: Union[TBatch, Number, np.number]) -> TBatch:
         """Algebraic addition with another Batch instance in-place."""
         if isinstance(other, Batch):
             for (batch_key, obj), value in zip(
@@ -302,11 +507,11 @@ class Batch:
         else:
             raise TypeError("Only addition of Batch or number is supported.")
 
-    def __add__(self, other: Union["Batch", Number, np.number]) -> "Batch":
+    def __add__(self: TBatch, other: Union[TBatch, Number, np.number]) -> TBatch:
         """Algebraic addition with another Batch instance out-of-place."""
         return deepcopy(self).__iadd__(other)
 
-    def __imul__(self, value: Union[Number, np.number]) -> "Batch":
+    def __imul__(self: TBatch, value: Union[Number, np.number]) -> TBatch:
         """Algebraic multiplication with a scalar value in-place."""
         assert _is_number(value), "Only multiplication by a number is supported."
         for batch_key, obj in self.__dict__.items():
@@ -315,11 +520,11 @@ class Batch:
             self.__dict__[batch_key] *= value
         return self
 
-    def __mul__(self, value: Union[Number, np.number]) -> "Batch":
+    def __mul__(self: TBatch, value: Union[Number, np.number]) -> TBatch:
         """Algebraic multiplication with a scalar value out-of-place."""
         return deepcopy(self).__imul__(value)
 
-    def __itruediv__(self, value: Union[Number, np.number]) -> "Batch":
+    def __itruediv__(self: TBatch, value: Union[Number, np.number]) -> TBatch:
         """Algebraic division with a scalar value in-place."""
         assert _is_number(value), "Only division by a number is supported."
         for batch_key, obj in self.__dict__.items():
@@ -328,7 +533,7 @@ class Batch:
             self.__dict__[batch_key] /= value
         return self
 
-    def __truediv__(self, value: Union[Number, np.number]) -> "Batch":
+    def __truediv__(self: TBatch, value: Union[Number, np.number]) -> TBatch:
         """Algebraic division with a scalar value out-of-place."""
         return deepcopy(self).__itruediv__(value)
 
@@ -348,7 +553,6 @@ class Batch:
         return self_str
 
     def to_numpy(self) -> None:
-        """Change all torch.Tensor to numpy.ndarray in-place."""
         for batch_key, obj in self.items():
             if isinstance(obj, torch.Tensor):
                 self.__dict__[batch_key] = obj.detach().cpu().numpy()
@@ -360,15 +564,17 @@ class Batch:
         dtype: Optional[torch.dtype] = None,
         device: Union[str, int, torch.device] = "cpu",
     ) -> None:
-        """Change all numpy.ndarray to torch.Tensor in-place."""
         if not isinstance(device, torch.device):
             device = torch.device(device)
 
         for batch_key, obj in self.items():
             if isinstance(obj, torch.Tensor):
-                if dtype is not None and obj.dtype != dtype or \
-                        obj.device.type != device.type or \
-                        device.index != obj.device.index:
+                if (
+                    dtype is not None
+                    and obj.dtype != dtype
+                    or obj.device.type != device.type
+                    or device.index != obj.device.index
+                ):
                     if dtype is not None:
                         obj = obj.type(dtype)
                     self.__dict__[batch_key] = obj.to(device)
@@ -383,7 +589,9 @@ class Batch:
                     obj = obj.type(dtype)
                 self.__dict__[batch_key] = obj
 
-    def __cat(self, batches: Sequence[Union[dict, "Batch"]], lens: List[int]) -> None:
+    def __cat(
+        self: TBatch, batches: Sequence[Union[dict, TBatch]], lens: List[int]
+    ) -> None:
         """Private method for Batch.cat_.
 
         ::
@@ -411,9 +619,11 @@ class Batch:
         # collect non-empty keys
         keys_map = [
             set(
-                batch_key for batch_key, obj in batch.items()
+                batch_key
+                for batch_key, obj in batch.items()
                 if not (isinstance(obj, Batch) and obj.is_empty())
-            ) for batch in batches
+            )
+            for batch in batches
         ]
         keys_shared = set.intersection(*keys_map)
         values_shared = [[batch[key] for batch in batches] for key in keys_shared]
@@ -446,14 +656,12 @@ class Batch:
                 if isinstance(value, Batch) and value.is_empty():
                     continue
                 try:
-                    self.__dict__[key][sum_lens[i]:sum_lens[i + 1]] = value
+                    self.__dict__[key][sum_lens[i] : sum_lens[i + 1]] = value
                 except KeyError:
-                    self.__dict__[key] = \
-                        _create_value(value, sum_lens[-1], stack=False)
-                    self.__dict__[key][sum_lens[i]:sum_lens[i + 1]] = value
+                    self.__dict__[key] = _create_value(value, sum_lens[-1], stack=False)
+                    self.__dict__[key][sum_lens[i] : sum_lens[i + 1]] = value
 
-    def cat_(self, batches: Union["Batch", Sequence[Union[dict, "Batch"]]]) -> None:
-        """Concatenate a list of (or one) Batch objects into current batch."""
+    def cat_(self, batches: Union[TBatch, Sequence[Union[dict, TBatch]]]) -> None:
         if isinstance(batches, Batch):
             batches = [batches]
         # check input format
@@ -490,29 +698,12 @@ class Batch:
         self.__cat(batches, lens)
 
     @staticmethod
-    def cat(batches: Sequence[Union[dict, "Batch"]]) -> "Batch":
-        """Concatenate a list of Batch object into a single new batch.
-
-        For keys that are not shared across all batches, batches that do not
-        have these keys will be padded by zeros with appropriate shapes. E.g.
-        ::
-
-            >>> a = Batch(a=np.zeros([3, 4]), common=Batch(c=np.zeros([3, 5])))
-            >>> b = Batch(b=np.zeros([4, 3]), common=Batch(c=np.zeros([4, 5])))
-            >>> c = Batch.cat([a, b])
-            >>> c.a.shape
-            (7, 4)
-            >>> c.b.shape
-            (7, 3)
-            >>> c.common.c.shape
-            (7, 5)
-        """
+    def cat(batches: Sequence[Union[dict, TBatch]]) -> TBatch:
         batch = Batch()
         batch.cat_(batches)
         return batch
 
-    def stack_(self, batches: Sequence[Union[dict, "Batch"]], axis: int = 0) -> None:
-        """Stack a list of Batch object into current batch."""
+    def stack_(self, batches: Sequence[Union[dict, TBatch]], axis: int = 0) -> None:
         # check input format
         batch_list = []
         for batch in batches:
@@ -533,9 +724,11 @@ class Batch:
         # collect non-empty keys
         keys_map = [
             set(
-                batch_key for batch_key, obj in batch.items()
+                batch_key
+                for batch_key, obj in batch.items()
                 if not (isinstance(obj, Batch) and obj.is_empty())
-            ) for batch in batches
+            )
+            for batch in batches
         ]
         keys_shared = set.intersection(*keys_map)
         values_shared = [[batch[key] for batch in batches] for key in keys_shared]
@@ -548,8 +741,9 @@ class Batch:
                 self.__dict__[shared_key] = Batch.stack(value, axis)
             else:  # most often case is np.ndarray
                 try:
-                    self.__dict__[shared_key] = \
-                        _to_array_with_correct_type(np.stack(value, axis))
+                    self.__dict__[shared_key] = _to_array_with_correct_type(
+                        np.stack(value, axis)
+                    )
                 except ValueError:
                     warnings.warn(
                         "You are using tensors with different shape,"
@@ -586,57 +780,12 @@ class Batch:
                     self.__dict__[key][i] = value
 
     @staticmethod
-    def stack(batches: Sequence[Union[dict, "Batch"]], axis: int = 0) -> "Batch":
-        """Stack a list of Batch object into a single new batch.
-
-        For keys that are not shared across all batches, batches that do not
-        have these keys will be padded by zeros. E.g.
-        ::
-
-            >>> a = Batch(a=np.zeros([4, 4]), common=Batch(c=np.zeros([4, 5])))
-            >>> b = Batch(b=np.zeros([4, 6]), common=Batch(c=np.zeros([4, 5])))
-            >>> c = Batch.stack([a, b])
-            >>> c.a.shape
-            (2, 4, 4)
-            >>> c.b.shape
-            (2, 4, 6)
-            >>> c.common.c.shape
-            (2, 4, 5)
-
-        .. note::
-
-            If there are keys that are not shared across all batches, ``stack``
-            with ``axis != 0`` is undefined, and will cause an exception.
-        """
+    def stack(batches: Sequence[Union[dict, TBatch]], axis: int = 0) -> TBatch:
         batch = Batch()
         batch.stack_(batches, axis)
         return batch
 
-    def empty_(self, index: Optional[Union[slice, IndexType]] = None) -> "Batch":
-        """Return an empty Batch object with 0 or None filled.
-
-        If "index" is specified, it will only reset the specific indexed-data.
-        ::
-
-            >>> data.empty_()
-            >>> print(data)
-            Batch(
-                a: array([[0., 0.],
-                          [0., 0.]]),
-                b: array([None, None], dtype=object),
-            )
-            >>> b={'c': [2., 'st'], 'd': [1., 0.]}
-            >>> data = Batch(a=[False,  True], b=b)
-            >>> data[0] = Batch.empty(data[1])
-            >>> data
-            Batch(
-                a: array([False,  True]),
-                b: Batch(
-                       c: array([None, 'st']),
-                       d: array([0., 0.]),
-                   ),
-            )
-        """
+    def empty_(self: TBatch, index: Optional[Union[slice, IndexType]] = None) -> TBatch:
         for batch_key, obj in self.items():
             if isinstance(obj, torch.Tensor):  # most often case
                 self.__dict__[batch_key][index] = 0
@@ -661,17 +810,12 @@ class Batch:
         return self
 
     @staticmethod
-    def empty(batch: "Batch", index: Optional[IndexType] = None) -> "Batch":
-        """Return an empty Batch object with 0 or None filled.
-
-        The shape is the same as the given Batch.
-        """
+    def empty(batch: TBatch, index: Optional[IndexType] = None) -> TBatch:
         return deepcopy(batch).empty_(index)
 
     def update(
-        self, batch: Optional[Union[dict, "Batch"]] = None, **kwargs: Any
+        self, batch: Optional[Union[dict, TBatch]] = None, **kwargs: Any
     ) -> None:
-        """Update this batch from another dict/Batch."""
         if batch is None:
             self.update(kwargs)
             return
@@ -743,23 +887,15 @@ class Batch:
                     data_shape.append(list(obj.shape))
                 except AttributeError:
                     data_shape.append([])
-            return list(map(min, zip(*data_shape))) if len(data_shape) > 1 \
+            return (
+                list(map(min, zip(*data_shape)))
+                if len(data_shape) > 1
                 else data_shape[0]
+            )
 
-    def split(self: Type[TBatch],
-              size: int,
-              shuffle: bool = True,
-              merge_last: bool = False) -> Iterator[TBatch]:
-        """Split whole data into multiple small batches.
-
-        :param int size: divide the data batch with the given size, but one
-            batch if the length of the batch is smaller than "size". Size of -1 means
-            the whole batch.
-        :param bool shuffle: randomly shuffle the entire data batch if it is
-            True, otherwise remain in the same. Default to True.
-        :param bool merge_last: merge the last batch into the previous one.
-            Default to False.
-        """
+    def split(
+        self: TBatch, size: int, shuffle: bool = True, merge_last: bool = False
+    ) -> Iterator[TBatch]:
         length = len(self)
         if size == -1:
             size = length
@@ -773,4 +909,4 @@ class Batch:
             if merge_last and idx + size + size >= length:
                 yield self[indices[idx:]]
                 break
-            yield self[indices[idx:idx + size]]
+            yield self[indices[idx : idx + size]]

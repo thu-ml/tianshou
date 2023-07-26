@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Literal, Protocol
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
@@ -9,10 +9,11 @@ from numba import njit
 from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data.batch import BatchProtocol
 from tianshou.utils import MultipleLRSchedulers
 
 
-class RolloutBatchProtocol(Batch, Protocol):
+class RolloutBatchProtocol(BatchProtocol):
     obs: torch.Tensor
     obs_next: torch.Tensor
     info: Dict[str, Any]
@@ -74,8 +75,9 @@ class BasePolicy(ABC, nn.Module):
         action_space: Optional[gym.Space] = None,
         action_scaling: bool = False,
         action_bound_method: Optional[Literal["clip", "tanh"]] = None,
-        lr_scheduler: Optional[Union[torch.optim.lr_scheduler.LambdaLR,
-                                     MultipleLRSchedulers]] = None,
+        lr_scheduler: Optional[
+            Union[torch.optim.lr_scheduler.LambdaLR, MultipleLRSchedulers]
+        ] = None,
     ) -> None:
         if action_bound_method is not None:
             assert action_bound_method in ("clip", "tanh")
@@ -101,8 +103,9 @@ class BasePolicy(ABC, nn.Module):
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
-    def exploration_noise(self, act: Union[np.ndarray, Batch],
-                          batch: Batch) -> Union[np.ndarray, Batch]:
+    def exploration_noise(
+        self, act: Union[np.ndarray, Batch], batch: Batch
+    ) -> Union[np.ndarray, Batch]:
         """Modify the action from policy.forward with exploration noise.
 
         :param act: a data batch or numpy.ndarray which is the action taken by
@@ -180,16 +183,18 @@ class BasePolicy(ABC, nn.Module):
         :return: action in the same form of input "act" but remap to the target action
             space.
         """
-        if isinstance(self.action_space, gym.spaces.Box) and \
-                isinstance(act, np.ndarray):
+        if isinstance(self.action_space, gym.spaces.Box) and isinstance(
+            act, np.ndarray
+        ):
             # currently this action mapping only supports np.ndarray action
             if self.action_bound_method == "clip":
                 act = np.clip(act, -1.0, 1.0)
             elif self.action_bound_method == "tanh":
                 act = np.tanh(act)
             if self.action_scaling:
-                assert np.min(act) >= -1.0 and np.max(act) <= 1.0, \
-                    "action scaling only accepts raw action range = [-1, 1]"
+                assert (
+                    np.min(act) >= -1.0 and np.max(act) <= 1.0
+                ), "action scaling only accepts raw action range = [-1, 1]"
                 low, high = self.action_space.low, self.action_space.high
                 act = low + (high - low) * (act + 1.0) / 2.0  # type: ignore
         return act
@@ -265,8 +270,9 @@ class BasePolicy(ABC, nn.Module):
         if hasattr(buffer, "update_weight") and hasattr(batch, "weight"):
             buffer.update_weight(indices, batch.weight)
 
-    def update(self, sample_size: int, buffer: Optional[ReplayBuffer],
-               **kwargs: Any) -> Dict[str, Any]:
+    def update(
+        self, sample_size: int, buffer: Optional[ReplayBuffer], **kwargs: Any
+    ) -> Dict[str, Any]:
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn. In
@@ -393,8 +399,9 @@ class BasePolicy(ABC, nn.Module):
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """
-        assert not rew_norm, \
-            "Reward normalization in computing n-step returns is unsupported now."
+        assert (
+            not rew_norm
+        ), "Reward normalization in computing n-step returns is unsupported now."
         rew = buffer.rew
         bsz = len(indice)
         indices = [indice]
@@ -441,28 +448,28 @@ def _gae_return(
     is given by the output of this + v_s. Note that the advantages plus v_s
     is exactly the same as the TD-lambda target, which is computed by the recursive
     formula:
-    
+
     .. math::
         G_t^\lambda = r_t + \gamma ( \lambda G_{t+1}^\lambda + (1 - \lambda) V_{t+1} )
-    
+
     The GAE is computed recursively as:
-    
+
     .. math::
         \delta_t = r_t + \gamma V_{t+1} - V_t \n
         A_t^\lambda= \delta_t + \gamma \lambda A_{t+1}^\lambda
-        
+
     And the following equality holds:
-    
+
     .. math::
         G_t^\lambda = A_t^\lambda+ V_t
-    
+
     :param v_s: values in an episode, i.e. $V_t$
     :param v_s_: next values in an episode, i.e. v_s shifted by 1, equivalent to $V_{t+1}$
     :param rew: rewards in an episode, i.e. $r_t$
     :param end_flag: boolean array indicating whether the episode is done
     :param gamma: discount factor
     :param gae_lambda: lambda parameter for GAE, controlling the bias-variance tradeoff
-    :return: 
+    :return:
     """
     returns = np.zeros(rew.shape)
     delta = rew + v_s_ * gamma - v_s

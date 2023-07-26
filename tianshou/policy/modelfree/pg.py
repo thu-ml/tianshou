@@ -1,23 +1,26 @@
-from typing import Any, Dict, List, Optional, Type, Union, Sequence, Literal, Protocol
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_torch, to_torch_as
+from tianshou.data.batch import BatchProtocol
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import RolloutBatchProtocol
 from tianshou.utils import RunningMeanStd
 
+TDistParams = Union[torch.Tensor, Tuple[torch.Tensor]]
 
-class PGBatchProtocol(RolloutBatchProtocol, Protocol):
+
+class PGBatchProtocol(RolloutBatchProtocol):
     # TODO: logits is a bit of an unfortunate name, since it's not actually logits for continuous action spaces
     logits: Sequence[Union[tuple, torch.Tensor]]  # TODO: is this the right type?
-    dist: torch.Tensor
+    dist: torch.distributions.Distribution
     act: torch.Tensor
     state: Optional[torch.Tensor]
 
 
-class ActionBatchProtocol(Batch, Protocol):
+class ActionBatchProtocol(BatchProtocol):
     logits: Sequence[Union[tuple, torch.Tensor]]  # TODO: is this the right type?
     dist: torch.distributions.Distribution
     act: torch.Tensor
@@ -31,7 +34,6 @@ class PGPolicy(BasePolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Type[torch.distributions.Distribution]
     :param float discount_factor: in [0, 1]. Default to 0.99.
     :param bool action_scaling: whether to map actions from range [-1, 1] to range
         [action_spaces.low, action_spaces.high]. Default to True.
@@ -55,7 +57,7 @@ class PGPolicy(BasePolicy):
         self,
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Type[torch.distributions.Distribution],
+        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         discount_factor: float = 0.99,
         reward_normalization: bool = False,
         action_scaling: bool = True,
@@ -66,18 +68,19 @@ class PGPolicy(BasePolicy):
         super().__init__(
             action_scaling=action_scaling,
             action_bound_method=action_bound_method,
-            **kwargs
+            **kwargs,
         )
         self.actor = model
         try:
-            if action_scaling and not np.isclose(model.max_action, 1.):  # type: ignore
+            if action_scaling and not np.isclose(model.max_action, 1.0):  # type: ignore
                 import warnings
+
                 warnings.warn(
                     "action_scaling and action_bound_method are only intended"
                     "to deal with unbounded model action space, but find actor model"
                     f"bound action space with max_action={model.max_action}."
                     "Consider using unbounded=True option of the actor model,"
-                    "or set action_scaling to False and action_bound_method to \"\"."
+                    'or set action_scaling to False and action_bound_method to "".'
                 )
         except Exception:
             pass
@@ -117,8 +120,9 @@ class PGPolicy(BasePolicy):
             batch, buffer, indices, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0
         )
         if self._rew_norm:
-            batch.returns = (unnormalized_returns - self.ret_rms.mean) / \
-                np.sqrt(self.ret_rms.var + self._eps)
+            batch.returns = (unnormalized_returns - self.ret_rms.mean) / np.sqrt(
+                self.ret_rms.var + self._eps
+            )
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
