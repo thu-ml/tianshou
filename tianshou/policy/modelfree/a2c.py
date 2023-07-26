@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import torch
@@ -7,6 +7,7 @@ from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
 from tianshou.policy import PGPolicy
+from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
 
 
@@ -54,7 +55,7 @@ class A2CPolicy(PGPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Type[torch.distributions.Distribution],
+        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,
         max_grad_norm: Optional[float] = None,

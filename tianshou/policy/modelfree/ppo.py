@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import torch
@@ -6,6 +6,7 @@ from torch import nn
 
 from tianshou.data import Batch, ReplayBuffer, to_torch_as
 from tianshou.policy import A2CPolicy
+from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
 
 
@@ -17,7 +18,6 @@ class PPOPolicy(A2CPolicy):
     :param torch.nn.Module critic: the critic network. (s -> V(s))
     :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Type[torch.distributions.Distribution]
     :param float discount_factor: in [0, 1]. Default to 0.99.
     :param float eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
         paper. Default to 0.2.
@@ -65,7 +65,7 @@ class PPOPolicy(A2CPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Type[torch.distributions.Distribution],
+        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         eps_clip: float = 0.2,
         dual_clip: Optional[float] = None,
         value_clip: bool = False,
