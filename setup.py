@@ -24,6 +24,7 @@ def get_install_requires() -> str:
         "h5py>=3.9.0",  # to match tensorflow's minimal requirements
         "packaging",
         "pettingzoo>=1.22",
+        "jsonargparse[signatures]>=4.22.1",
     ]
 
 
