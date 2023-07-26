@@ -379,4 +379,4 @@ class ReplayBuffer:
             else:
                 data_dict[key] = self.get(indices, key, Batch())
 
-        return Batch(**data_dict)
+        return Batch(data_dict)
