@@ -59,12 +59,12 @@ class DQN(nn.Module):
             nn.ReLU(inplace=True), nn.Flatten()
         )
         with torch.no_grad():
-            self.output_dim = np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:])
+            self.output_dim = int(np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:]))
         if not features_only:
             self.net = nn.Sequential(
                 self.net, layer_init(nn.Linear(self.output_dim, 512)),
                 nn.ReLU(inplace=True),
-                layer_init(nn.Linear(512, np.prod(action_shape)))
+                layer_init(nn.Linear(512, int(np.prod(action_shape))))
             )
             self.output_dim = np.prod(action_shape)
         elif output_dim is not None:
