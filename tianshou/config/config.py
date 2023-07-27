@@ -14,13 +14,16 @@ class BasicExperimentConfig:
     seed: int = 42
     task: str = "Ant-v4"
     """Mujoco specific"""
-    render: float = 0.0
+    render: float = 0.01
     """Milliseconds between rendered frames"""
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     resume_id: Optional[int] = None
     """For restoring a model and running means of env-specifics from a checkpoint"""
     resume_path: str = None
     """For restoring a model and running means of env-specifics from a checkpoint"""
+    render_mode: Optional[Literal["human", "rgb_array"]] = None
+    """Only affects train environments. None is recommended during training,
+    but other modes may be useful when watch=True."""
     watch: bool = False
     """If True, will not perform training and only watch the restored policy"""
 
@@ -47,6 +50,16 @@ class RLSamplingConfig:
     buffer_size: int = 4096
     step_per_collect: int = 2048
     repeat_per_collect: int = 10
+    num_test_episodes_per_env: int = 1
+    """
+    By default, one episode is sampled from each test env for optimal parallelization.
+    For visualization, it may be useful to decrease this and to set the num_test_envs to
+    1
+    """
+
+    @property
+    def num_test_episodes(self):
+        return self.num_test_envs * self.num_test_episodes_per_env
 
 
 @dataclass

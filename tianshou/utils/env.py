@@ -35,7 +35,7 @@ def get_train_test_collector(
         buffer = ReplayBuffer(buffer_size)
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
-    return test_collector, train_collector
+    return train_collector, test_collector
 
 
 def watch_agent(

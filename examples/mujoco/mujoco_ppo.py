@@ -69,6 +69,7 @@ def main(
         num_train_envs=sampling_config.num_train_envs,
         num_test_envs=sampling_config.num_test_envs,
         obs_norm=True,
+        render_mode=experiment_config.render_mode,
     )
 
     # adding env_info to logged config
@@ -138,8 +139,8 @@ def main(
             device=experiment_config.device,
         )
 
-    test_collector, train_collector = get_train_test_collector(
-        sampling_config.buffer_size, policy, test_envs, train_envs
+    train_collector, test_collector = get_train_test_collector(
+        sampling_config.buffer_size, policy, train_envs, test_envs
     )
 
     # TODO: test num is the number of test envs but used as episode_per_test
@@ -157,7 +158,7 @@ def main(
             max_epoch=sampling_config.num_epochs,
             step_per_epoch=sampling_config.step_per_epoch,
             repeat_per_collect=sampling_config.repeat_per_collect,
-            episode_per_test=sampling_config.num_test_envs,
+            episode_per_test=sampling_config.num_test_episodes,
             batch_size=sampling_config.batch_size,
             step_per_collect=sampling_config.step_per_collect,
             save_best_fn=save_best_fn,
@@ -168,7 +169,7 @@ def main(
         pprint.pprint(result)
 
     watch_agent(
-        sampling_config.num_test_envs,
+        sampling_config.num_test_episodes_per_env,
         policy,
         test_collector,
         render=experiment_config.render,
