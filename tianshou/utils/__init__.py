@@ -1,4 +1,6 @@
 """Utils package."""
+import numpy as np
+import torch
 
 from tianshou.utils.logger.base import BaseLogger, LazyLogger
 from tianshou.utils.logger.tensorboard import BasicLogger, TensorboardLogger
@@ -21,3 +23,8 @@ __all__ = [
     "deprecation",
     "MultipleLRSchedulers",
 ]
+
+
+def set_seed(seed=42):
+    np.random.seed(seed)
+    torch.manual_seed(seed)

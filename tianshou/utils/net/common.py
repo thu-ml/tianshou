@@ -595,3 +595,8 @@ def get_dict_state_decorator(
         return new_net_class
 
     return decorator_fn, new_state_shape
+
+
+def get_module_device(module: nn.Module) -> torch.device:
+    """Assumes that all module parameters are on the same device."""
+    return next(module.parameters()).device

@@ -1,20 +1,11 @@
 #!/usr/bin/env python3
 
-import argparse
-import datetime
 import os
 import pprint
-from collections.abc import Sequence
-from typing import Literal, Optional, Tuple, Union
 
-import gymnasium as gym
-import numpy as np
 import torch
 from jsonargparse import CLI
 from torch import nn
-from torch.distributions import Independent, Normal
-from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.tensorboard import SummaryWriter
 
 from mujoco_env import make_mujoco_env
 from tianshou.config import (
@@ -27,189 +18,22 @@ from tianshou.config import (
     RLSamplingConfig,
 )
 from tianshou.config.utils import collect_configs
-from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
-from tianshou.env import VectorEnvNormObs
-from tianshou.policy import BasePolicy, PPOPolicy
+from tianshou.policy import PPOPolicy
 from tianshou.trainer import OnpolicyTrainer
-from tianshou.utils import TensorboardLogger, WandbLogger
-from tianshou.utils.net.common import ActorCritic, Net
-from tianshou.utils.net.continuous import ActorProb, Critic
-
-
-def set_seed(seed=42):
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-
-
-def get_logger_for_run(
-    algo_name: str,
-    task: str,
-    logger_config: LoggerConfig,
-    config: dict,
-    seed: int,
-    resume_id: Optional[Union[str, int]],
-) -> Tuple[str, Union[WandbLogger, TensorboardLogger]]:
-    """
-
-    :param algo_name:
-    :param task:
-    :param logger_config:
-    :param config: the experiment config
-    :param seed:
-    :param resume_id: used as run_id by wandb, unused for tensorboard
-    :return:
-    """
-    """Returns the log_path and logger."""
-    now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    log_name = os.path.join(task, algo_name, str(seed), now)
-    log_path = os.path.join(logger_config.logdir, log_name)
-
-    logger = get_logger(
-        logger_config.logger,
-        log_path,
-        log_name=log_name,
-        run_id=resume_id,
-        config=config,
-        wandb_project=logger_config.wandb_project,
-    )
-    return log_path, logger
-
-
-def get_continuous_env_info(
-    env: gym.Env,
-) -> Tuple[Tuple[int, ...], Tuple[int, ...], float]:
-    if not isinstance(env.action_space, gym.spaces.Box):
-        raise ValueError(
-            "Only environments with continuous action space are supported here. "
-            f"But got env with action space: {env.action_space.__class__}."
-        )
-    state_shape = env.observation_space.shape or env.observation_space.n
-    if not state_shape:
-        raise ValueError("Observation space shape is not defined")
-    action_shape = env.action_space.shape
-    max_action = env.action_space.high[0]
-    return state_shape, action_shape, max_action
-
-
-def resume_from_checkpoint(
-    path: str,
-    policy: BasePolicy,
-    train_envs: VectorEnvNormObs | None = None,
-    test_envs: VectorEnvNormObs | None = None,
-    device: str | int | torch.device | None = None,
-):
-    ckpt = torch.load(path, map_location=device)
-    policy.load_state_dict(ckpt["model"])
-    if train_envs:
-        train_envs.set_obs_rms(ckpt["obs_rms"])
-    if test_envs:
-        test_envs.set_obs_rms(ckpt["obs_rms"])
-    print("Loaded agent and obs. running means from: ", path)
-
-
-def watch_agent(n_episode, policy: BasePolicy, test_collector: Collector, render=0.0):
-    policy.eval()
-    test_collector.reset()
-    result = test_collector.collect(n_episode=n_episode, render=render)
-    print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
-
-
-def get_train_test_collector(
-    buffer_size: int,
-    policy: BasePolicy,
-    train_envs: VectorEnvNormObs,
-    test_envs: VectorEnvNormObs,
-):
-    if len(train_envs) > 1:
-        buffer = VectorReplayBuffer(buffer_size, len(train_envs))
-    else:
-        buffer = ReplayBuffer(buffer_size)
-    train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
-    test_collector = Collector(policy, test_envs)
-    return test_collector, train_collector
-
-
-TShape = Union[int, Sequence[int]]
-
-
-def get_actor_critic(
-    state_shape: TShape,
-    hidden_sizes: Sequence[int],
-    action_shape: TShape,
-    device: str | int | torch.device = "cpu",
-):
-    net_a = Net(
-        state_shape, hidden_sizes=hidden_sizes, activation=nn.Tanh, device=device
-    )
-    actor = ActorProb(net_a, action_shape, unbounded=True, device=device).to(device)
-    net_c = Net(
-        state_shape, hidden_sizes=hidden_sizes, activation=nn.Tanh, device=device
-    )
-    # TODO: twice device?
-    critic = Critic(net_c, device=device).to(device)
-    return actor, critic
-
-
-def get_logger(
-    kind: Literal["wandb", "tensorboard"],
-    log_path: str,
-    log_name="",
-    run_id: Optional[Union[str, int]] = None,
-    config: Optional[Union[dict, argparse.Namespace]] = None,
-    wandb_project: Optional[str] = None,
-):
-    writer = SummaryWriter(log_path)
-    writer.add_text("args", str(config))
-    if kind == "wandb":
-        logger = WandbLogger(
-            save_interval=1,
-            name=log_name.replace(os.path.sep, "__"),
-            run_id=run_id,
-            config=config,
-            project=wandb_project,
-        )
-        logger.load(writer)
-    elif kind == "tensorboard":
-        logger = TensorboardLogger(writer)
-    else:
-        raise ValueError(f"Unknown logger: {kind}")
-    return logger
-
-
-def get_lr_scheduler(optim, step_per_epoch: int, step_per_collect: int, epochs: int):
-    """Decay learning rate to 0 linearly."""
-    max_update_num = np.ceil(step_per_epoch / step_per_collect) * epochs
-    lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
-    return lr_scheduler
-
-
-def init_and_get_optim(actor: nn.Module, critic: nn.Module, lr: float):
-    """Initializes layers of actor and critic.
-
-    :param actor:
-    :param critic:
-    :param lr:
-    :return:
-    """
-    actor_critic = ActorCritic(actor, critic)
-    torch.nn.init.constant_(actor.sigma_param, -0.5)
-    for m in actor_critic.modules():
-        if isinstance(m, torch.nn.Linear):
-            # orthogonal initialization
-            torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
-            torch.nn.init.zeros_(m.bias)
-    if hasattr(actor, "mu"):
-        # For continuous action spaces with Gaussian policies
-        # do last policy layer scaling, this will make initial actions have (close to)
-        # 0 mean and std, and will help boost performances,
-        # see https://arxiv.org/abs/2006.05990, Fig.24 for details
-        for m in actor.mu.modules():
-            # TODO: seems like biases are initialized twice for the actor
-            if isinstance(m, torch.nn.Linear):
-                torch.nn.init.zeros_(m.bias)
-                m.weight.data.copy_(0.01 * m.weight.data)
-    optim = torch.optim.Adam(actor_critic.parameters(), lr=lr)
-    return optim
+from tianshou.utils import set_seed
+from tianshou.utils.env import (
+    get_continuous_env_info,
+    get_train_test_collector,
+    watch_agent,
+)
+from tianshou.utils.logger import get_logger_for_run
+from tianshou.utils.lr_scheduler import get_linear_lr_schedular
+from tianshou.utils.models import (
+    fixed_std_normal,
+    get_actor_critic,
+    init_and_get_optim,
+    resume_from_checkpoint,
+)
 
 
 def main(
@@ -271,23 +95,19 @@ def main(
 
     lr_scheduler = None
     if nn_config.lr_decay:
-        lr_scheduler = get_lr_scheduler(
+        lr_scheduler = get_linear_lr_schedular(
             optim,
             sampling_config.step_per_epoch,
             sampling_config.step_per_collect,
             sampling_config.num_epochs,
         )
 
-    # Create policy
-    def dist_fn(*logits):
-        return Independent(Normal(*logits), 1)
-
     policy = PPOPolicy(
         # nn-stuff
         actor,
         critic,
         optim,
-        dist_fn=dist_fn,
+        dist_fn=fixed_std_normal,
         lr_scheduler=lr_scheduler,
         # env-stuff
         action_space=train_envs.action_space,

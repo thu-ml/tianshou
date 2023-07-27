@@ -1,6 +1,8 @@
 from typing import Dict, List
 
+import numpy as np
 import torch
+from torch.optim.lr_scheduler import LambdaLR
 
 
 class MultipleLRSchedulers:
@@ -38,5 +40,17 @@ class MultipleLRSchedulers:
         :param List[Dict] state_dict: A list of learning rate scheduler
             state_dict, in the same order as the schedulers.
         """
-        for (s, sd) in zip(self.schedulers, state_dict):
+        for s, sd in zip(self.schedulers, state_dict):
             s.__dict__.update(sd)
+
+
+def get_linear_lr_schedular(
+    optim: torch.optim.Optimizer,
+    step_per_epoch: int,
+    step_per_collect: int,
+    epochs: int,
+):
+    """Decay learning rate to 0 linearly."""
+    max_update_num = np.ceil(step_per_epoch / step_per_collect) * epochs
+    lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
+    return lr_scheduler
