@@ -369,7 +369,7 @@ class ReplayBuffer:
         # to support np.array([ReplayBuffer()])
         # Loop through all keys in the buffer and retrieve data for each key
         data_dict = {}
-        for key in self._meta.__dict__.keys():
+        for key in self._meta:
             if key in ["obs", "obs_next"]:
                 # Special handling for obs and obs_next if self._save_obs_next is False
                 if key == "obs_next" and not self._save_obs_next:
@@ -378,5 +378,9 @@ class ReplayBuffer:
                     data_dict[key] = self.get(indices, key, Batch())
             else:
                 data_dict[key] = self.get(indices, key, Batch())
+        if "info" not in self._meta:
+            data_dict["info"] = self.get(indices, "info", Batch())
+        if "policy" not in self._meta:
+            data_dict["policy"] = self.get(indices, "policy", Batch())
 
         return Batch(data_dict)
