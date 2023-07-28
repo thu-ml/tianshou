@@ -79,8 +79,21 @@ class BasePolicy(ABC, nn.Module):
             Union[torch.optim.lr_scheduler.LambdaLR, MultipleLRSchedulers]
         ] = None,
     ) -> None:
+        """
+        :param observation_space: appears unused!
+        :param action_space: required for action_scaling.
+        :param action_scaling: if True, scale the action from [-1, 1] to the range
+            of action_space. Note that in this case, the action_space must be provided!
+        :param action_bound_method:
+        :param lr_scheduler:
+        """
         if action_bound_method is not None:
             assert action_bound_method in ("clip", "tanh")
+        if action_scaling and not isinstance(action_space, Box):
+            raise ValueError(
+                f"action_scaling can only be True when action_space is Box but "
+                f"got: {action_space}"
+            )
 
         super().__init__()
         self.observation_space = observation_space
@@ -407,7 +420,7 @@ class BasePolicy(ABC, nn.Module):
         for _ in range(n_step - 1):
             indices.append(buffer.next(indices[-1]))
         indices = np.stack(indices)
-        # terminal indicates buffer indexes nstep after 'indice',
+        # terminal indicates buffer indexes nstep after 'indices',
         # and are truncated at the end of each episode
         terminal = indices[-1]
         with torch.no_grad():
@@ -423,7 +436,8 @@ class BasePolicy(ABC, nn.Module):
             batch.weight = to_torch_as(batch.weight, target_q_torch)
         return batch
 
-    def _compile(self) -> None:
+    @staticmethod
+    def _compile() -> None:
         f64 = np.array([0, 1], dtype=np.float64)
         f32 = np.array([0, 1], dtype=np.float32)
         b = np.array([False, True], dtype=np.bool_)
