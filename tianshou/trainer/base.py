@@ -139,8 +139,7 @@ class BaseTrainer(ABC):
         step_per_epoch: Optional[int] = None,
         repeat_per_collect: Optional[int] = None,
         episode_per_test: Optional[int] = None,
-        update_per_step: Union[int, float] = 1,
-        update_per_epoch: Optional[int] = None,
+        update_per_step: float = 1.0,
         step_per_collect: Optional[int] = None,
         episode_per_collect: Optional[int] = None,
         train_fn: Optional[Callable[[int, int], None]] = None,
@@ -156,6 +155,67 @@ class BaseTrainer(ABC):
         test_in_train: bool = True,
         save_fn: Optional[Callable[[BasePolicy], None]] = None,
     ):
+        """An iterator base class for trainers procedure.
+
+        Returns an iterator that yields a 3-tuple (epoch, stats, info) of train results
+        on every epoch.
+
+        :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
+        :param batch_size: the batch size of sample data, which is going to feed in
+            the policy network.
+        :param train_collector: the collector used for training.
+        :param test_collector: the collector used for testing. If it's None,
+            then no testing will be performed.
+        :param max_epoch: the maximum number of epochs for training. The training
+            process might be finished before reaching ``max_epoch`` if ``stop_fn``
+            is set.
+        :param step_per_epoch: the number of transitions collected per epoch.
+        :param repeat_per_collect: the number of repeat time for policy learning,
+            for example, set it to 2 means the policy needs to learn each given batch
+            data twice. Only used in on-policy algorithms
+        :param episode_per_test: the number of episodes for one policy evaluation.
+        :param update_per_step: only used in off-policy algorithms.
+            How many gradient steps to perform per step in the environment
+            (i.e., per sample added to the buffer).
+        :param step_per_collect: the number of transitions the collector would
+            collect before the network update, i.e., trainer will collect
+            "step_per_collect" transitions and do some policy network update repeatedly
+            in each epoch.
+        :param episode_per_collect: the number of episodes the collector would
+            collect before the network update, i.e., trainer will collect
+            "episode_per_collect" episodes and do some policy network update repeatedly
+            in each epoch.
+        :param train_fn: a hook called at the beginning of training in each
+            epoch. It can be used to perform custom additional operations, with the
+            signature ``f(num_epoch: int, step_idx: int) -> None``.
+        :param test_fn: a hook called at the beginning of testing in each
+            epoch. It can be used to perform custom additional operations, with the
+            signature ``f(num_epoch: int, step_idx: int) -> None``.
+        :param save_best_fn: a hook called when the undiscounted average mean
+            reward in evaluation phase gets better, with the signature
+            ``f(policy: BasePolicy) -> None``. It was ``save_fn`` previously.
+        :param save_checkpoint_fn: a function to save training process and
+            return the saved checkpoint path, with the signature ``f(epoch: int,
+            env_step: int, gradient_step: int) -> str``; you can save whatever you want.
+        :param resume_from_log: resume env_step/gradient_step and other metadata
+            from existing tensorboard log. Default to False.
+        :param stop_fn: a function with signature ``f(mean_rewards: float) ->
+            bool``, receives the average undiscounted returns of the testing result,
+            returns a boolean which indicates whether reaching the goal.
+        :param reward_metric: a function with signature
+            ``f(rewards: np.ndarray with shape (num_episode, agent_num)) -> np.ndarray
+            with shape (num_episode,)``, used in multi-agent RL. We need to return a
+            single scalar for each episode's result to monitor training in the
+            multi-agent RL setting. This function specifies what is the desired metric,
+            e.g., the reward of agent 1 or the average reward over all agents.
+        :param logger: A logger that logs statistics during
+            training/testing/updating. Default to a logger that doesn't log anything.
+        :param verbose: whether to print the information. Default to True.
+        :param show_progress: whether to display a progress bar when training.
+            Default to True.
+        :param test_in_train: whether to test in the training phase.
+            Default to True.
+        """
         if save_fn:
             deprecation(
                 "save_fn in trainer is marked as deprecated and will be "
@@ -176,6 +236,8 @@ class BaseTrainer(ABC):
         self.best_reward = 0.0
         self.best_reward_std = 0.0
         self.start_epoch = 0
+        # This is only used for logging but creeps into the implementations
+        # of the trainers. I believe it would be better to remove
         self.gradient_step = 0
         self.env_step = 0
         self.max_epoch = max_epoch
@@ -447,3 +509,114 @@ class BaseTrainer(ABC):
             self.is_run = False
 
         return info
+
+    def _sample_and_update(self, buffer, data: Dict[str, Any]) -> None:
+        self.gradient_step += 1
+        # Note: since sample_size=batch_size, this will perform
+        # exactly one gradient step. This is why we don't need to calculate the
+        # number of gradient steps, like in the on-policy case.
+        losses = self.policy.update(sample_size=self.batch_size, buffer=buffer)
+        data.update({"gradient_step": str(self.gradient_step)})
+        self.log_update_data(data, losses)
+
+
+class OfflineTrainer(BaseTrainer):
+    __doc__ = BaseTrainer.gen_doc("offline") + "\n".join(__doc__.split("\n")[1:])
+
+    def policy_update_fn(
+        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Perform one off-line policy update."""
+        assert self.buffer
+        self._sample_and_update(self.buffer, data)
+
+
+class OffpolicyTrainer(BaseTrainer):
+    __doc__ = BaseTrainer.gen_doc("offpolicy") + "\n".join(__doc__.split("\n")[1:])
+
+    # TODO: this is very similar to the on-policy trainer, so maybe one could refactor
+    #   to make the small differences more explicit?
+    def policy_update_fn(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
+        """Perform off-policy updates.
+
+        :param data:
+        :param result: must contain `n/st` key, see documentation of
+            `:meth:~tianshou.data.collector.Collector.collect` for the kind of
+            data returned there. `n/st` stands for `step_count`
+        """
+        assert self.train_collector is not None
+        n_collected_steps = result["n/st"]
+        # Same as training intensity, right?
+        num_updates = round(self.update_per_step * n_collected_steps)
+        for _ in range(num_updates):
+            self._sample_and_update(self.train_collector.buffer, data)
+
+
+class OnpolicyTrainer(BaseTrainer):
+    __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(__doc__.split("\n")[1:])
+
+    def policy_update_fn(
+        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Perform one on-policy update."""
+        assert self.train_collector is not None
+        losses = self.policy.update(
+            0,
+            self.train_collector.buffer,
+            # Note: sample_size is 0, so the whole buffer is used for the update.
+            # The kwargs are in the end passed to the .learn method, which uses
+            # batch_size to iterate through the buffer in mini-batches
+            # Off-policy algos typically don't use the batch_size kwarg at all
+            batch_size=self.batch_size,
+            repeat=self.repeat_per_collect,
+        )
+
+        # just for logging, no functional role
+        self.gradient_step += (
+            1 + (len(self.train_collector.buffer) - 0.1) // self.batch_size
+        )
+
+        # Note: this is the main difference to the off-policy trainer!
+        # The second difference is that batches of data are sampled without replacement
+        # during training, whereas in off-policy or offline training, the batches are
+        # sampled with replacement (and potentially custom prioritization).
+        self.train_collector.reset_buffer(keep_statistics=True)
+
+        # The step is the number of mini-batches used for the update, so essentially
+        self.log_update_data(data, losses)
+
+
+# TODO: I really don't see the point of the code below...
+def offline_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
+    """Wrapper for offline_trainer run method.
+
+    It is identical to ``OfflineTrainer(...).run()``.
+
+    :return: See :func:`~tianshou.trainer.gather_info`.
+    """
+    return OfflineTrainer(*args, **kwargs).run()
+
+
+def offpolicy_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
+    """Wrapper for OffPolicyTrainer run method.
+
+    It is identical to ``OffpolicyTrainer(...).run()``.
+
+    :return: See :func:`~tianshou.trainer.gather_info`.
+    """
+    return OffpolicyTrainer(*args, **kwargs).run()
+
+
+def onpolicy_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
+    """Wrapper for OnpolicyTrainer run method.
+
+    It is identical to ``OnpolicyTrainer(...).run()``.
+
+    :return: See :func:`~tianshou.trainer.gather_info`.
+    """
+    return OnpolicyTrainer(*args, **kwargs).run()
+
+
+offline_trainer_iter = OfflineTrainer
+offpolicy_trainer_iter = OffpolicyTrainer
+onpolicy_trainer_iter = OnpolicyTrainer
