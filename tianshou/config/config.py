@@ -47,7 +47,16 @@ class RLSamplingConfig:
     batch_size: int = 64
     num_train_envs: int = 64
     num_test_envs: int = 10
+    """For watching a policy perform in the rendered env (e.g. with render_mode="human"), 
+    `num_test_envs=1 `is recommended."""
     buffer_size: int = 4096
+    start_timesteps: int = 0
+    """If more than 0, will collect samples from the environment before training.
+    Useful for prefilling replay buffers for off-policy algorithms."""
+    start_timesteps_random: bool = True
+    """Only used if start_timesteps > 0. If True, will collect samples from the
+    environment using random actions. If False, will use the policy to collect
+    samples."""
     step_per_collect: int = 2048
     repeat_per_collect: int = 10
     num_test_episodes_per_env: int = 1

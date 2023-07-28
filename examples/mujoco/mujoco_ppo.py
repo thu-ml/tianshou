@@ -140,7 +140,12 @@ def main(
         )
 
     train_collector, test_collector = get_train_test_collector(
-        sampling_config.buffer_size, policy, train_envs, test_envs
+        sampling_config.buffer_size,
+        policy,
+        train_envs,
+        test_envs,
+        start_timesteps=sampling_config.start_timesteps,
+        start_timesteps_random=sampling_config.start_timesteps_random,
     )
 
     # TODO: test num is the number of test envs but used as episode_per_test

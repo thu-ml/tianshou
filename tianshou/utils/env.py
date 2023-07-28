@@ -28,13 +28,30 @@ def get_train_test_collector(
     policy: BasePolicy,
     train_envs: VectorEnvNormObs,
     test_envs: VectorEnvNormObs,
+    start_timesteps: int = 0,
+    start_timesteps_random: bool = True,
 ):
+    """Create train and test collectors for the given policy and environments.
+
+    :param buffer_size: size of the replay buffer
+    :param policy: policy to use
+    :param train_envs: training environments
+    :param test_envs: testing environments
+    :param start_timesteps: number of steps to collect before training.
+        Mainly useful for off-policy algorithms.
+    :param start_timesteps_random: if True, collect the initial steps randomly
+        (i.e. without using the policy). Otherwise, use the policy.
+        Only relevant if start_timesteps > 0.
+    :return: train and test collectors
+    """
     if len(train_envs) > 1:
         buffer = VectorReplayBuffer(buffer_size, len(train_envs))
     else:
         buffer = ReplayBuffer(buffer_size)
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
     test_collector = Collector(policy, test_envs)
+    if start_timesteps > 0:
+        train_collector.collect(n_step=start_timesteps, random=start_timesteps_random)
     return train_collector, test_collector
 
 

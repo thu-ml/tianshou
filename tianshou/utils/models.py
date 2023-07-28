@@ -21,11 +21,15 @@ def resume_from_checkpoint(
 ):
     ckpt = torch.load(path, map_location=device)
     policy.load_state_dict(ckpt["model"])
-    if train_envs:
-        train_envs.set_obs_rms(ckpt["obs_rms"])
-    if test_envs:
-        test_envs.set_obs_rms(ckpt["obs_rms"])
-    print("Loaded agent and obs. running means from: ", path)
+    print("Loaded agent from: ", path)
+
+    obs_rms = ckpt.get("obs_rms")
+    if obs_rms is not None:
+        print(f"Loaded observation running mean from {path}")
+        if train_envs:
+            train_envs.set_obs_rms(ckpt["obs_rms"])
+        if test_envs:
+            test_envs.set_obs_rms(ckpt["obs_rms"])
 
 
 def get_actor_critic(
