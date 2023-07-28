@@ -1,10 +1,9 @@
-import time
-import warnings
-from typing import Any, Callable, Dict, List, Optional, Union
-
 import gymnasium as gym
 import numpy as np
+import time
 import torch
+import warnings
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from tianshou.data import (
     Batch,
@@ -19,7 +18,7 @@ from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 
 
-class Collector(object):
+class Collector:
     """Collector enables the policy to interact with different types of envs with \
     exact number of steps or episodes.
 
@@ -125,7 +124,7 @@ class Collector(object):
             done={},
             obs_next={},
             info={},
-            policy={}
+            policy={},
         )
         self.reset_env(gym_reset_kwargs)
         if reset_buffer:
@@ -241,7 +240,7 @@ class Collector(object):
         elif n_episode is not None:
             assert n_episode > 0
             ready_env_ids = np.arange(min(self.env_num, n_episode))
-            self.data = self.data[:min(self.env_num, n_episode)]
+            self.data = self.data[: min(self.env_num, n_episode)]
         else:
             raise TypeError(
                 "Please specify at least one (either n_step or n_episode) "
@@ -264,9 +263,7 @@ class Collector(object):
             # get the next action
             if random:
                 try:
-                    act_sample = [
-                        self._action_space[i].sample() for i in ready_env_ids
-                    ]
+                    act_sample = [self._action_space[i].sample() for i in ready_env_ids]
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
                 act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
@@ -293,8 +290,7 @@ class Collector(object):
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             obs_next, rew, terminated, truncated, info = self.env.step(
-                action_remap,  # type: ignore
-                ready_env_ids
+                action_remap, ready_env_ids  # type: ignore
             )
             done = np.logical_or(terminated, truncated)
 
@@ -304,7 +300,7 @@ class Collector(object):
                 terminated=terminated,
                 truncated=truncated,
                 done=done,
-                info=info
+                info=info,
             )
             if self.preprocess_fn:
                 self.data.update(
@@ -359,8 +355,9 @@ class Collector(object):
 
             self.data.obs = self.data.obs_next
 
-            if (n_step and step_count >= n_step) or \
-                    (n_episode and episode_count >= n_episode):
+            if (n_step and step_count >= n_step) or (
+                n_episode and episode_count >= n_episode
+            ):
                 break
 
         # generate statistics
@@ -378,16 +375,13 @@ class Collector(object):
                 done={},
                 obs_next={},
                 info={},
-                policy={}
+                policy={},
             )
             self.reset_env()
 
         if episode_count > 0:
             rews, lens, idxs = list(
-                map(
-                    np.concatenate,
-                    [episode_rews, episode_lens, episode_start_indices]
-                )
+                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices])
             )
             rew_mean, rew_std = rews.mean(), rews.std()
             len_mean, len_std = lens.mean(), lens.std()
@@ -515,9 +509,7 @@ class AsyncCollector(Collector):
             # get the next action
             if random:
                 try:
-                    act_sample = [
-                        self._action_space[i].sample() for i in ready_env_ids
-                    ]
+                    act_sample = [self._action_space[i].sample() for i in ready_env_ids]
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
                 act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
@@ -552,8 +544,7 @@ class AsyncCollector(Collector):
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             obs_next, rew, terminated, truncated, info = self.env.step(
-                action_remap,  # type: ignore
-                ready_env_ids
+                action_remap, ready_env_ids  # type: ignore
             )
             done = np.logical_or(terminated, truncated)
 
@@ -569,7 +560,7 @@ class AsyncCollector(Collector):
                 rew=rew,
                 terminated=terminated,
                 truncated=truncated,
-                info=info
+                info=info,
             )
             if self.preprocess_fn:
                 try:
@@ -635,8 +626,9 @@ class AsyncCollector(Collector):
                 whole_data[ready_env_ids] = self.data  # lots of overhead
             self.data = whole_data
 
-            if (n_step and step_count >= n_step) or \
-                    (n_episode and episode_count >= n_episode):
+            if (n_step and step_count >= n_step) or (
+                n_episode and episode_count >= n_episode
+            ):
                 break
 
         self._ready_env_ids = ready_env_ids
@@ -648,10 +640,7 @@ class AsyncCollector(Collector):
 
         if episode_count > 0:
             rews, lens, idxs = list(
-                map(
-                    np.concatenate,
-                    [episode_rews, episode_lens, episode_start_indices]
-                )
+                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices])
             )
             rew_mean, rew_std = rews.mean(), rews.std()
             len_mean, len_std = lens.mean(), lens.std()

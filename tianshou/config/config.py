@@ -1,8 +1,7 @@
-from dataclasses import dataclass
-from typing import Literal, Optional, Sequence
-
 import torch
+from dataclasses import dataclass
 from jsonargparse import set_docstring_parse_options
+from typing import Literal, Optional, Sequence
 
 set_docstring_parse_options(attribute_docstrings=True)
 
@@ -39,7 +38,7 @@ class LoggerConfig:
 
 
 @dataclass
-class RLSamplingConfig:
+class TrainerConfig:
     """Sampling, epochs, parallelization, buffers, collectors, and batching."""
 
     num_epochs: int = 100
@@ -65,6 +64,11 @@ class RLSamplingConfig:
     For visualization, it may be useful to decrease this and to set the num_test_envs to
     1
     """
+    update_per_step: float = 1.0
+    """The number of times the policy network would be updated per transition after 
+    (step_per_collect) transitions are collected, e.g., if update_per_step set to 0.3, 
+    and step_per_collect is 256 , policy will be updated round(256 * 0.3 = 76.8) = 77 
+    times after 256 transitions are collected by the collector."""
 
     @property
     def num_test_episodes(self):

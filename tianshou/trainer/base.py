@@ -1,10 +1,10 @@
-import time
-from abc import ABC, abstractmethod
 from collections import defaultdict, deque
-from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Union
 
 import numpy as np
+import time
 import tqdm
+from abc import ABC, abstractmethod
+from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Union
 
 from tianshou.data import AsyncCollector, Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
@@ -20,67 +20,6 @@ from tianshou.utils import (
 
 
 class BaseTrainer(ABC):
-    """An iterator base class for trainers procedure.
-
-    Returns an iterator that yields a 3-tuple (epoch, stats, info) of train results
-    on every epoch.
-
-    :param learning_type str: type of learning iterator, available choices are
-        "offpolicy", "onpolicy" and "offline".
-    :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
-    :param Collector train_collector: the collector used for training.
-    :param Collector test_collector: the collector used for testing. If it's None,
-        then no testing will be performed.
-    :param int max_epoch: the maximum number of epochs for training. The training
-        process might be finished before reaching ``max_epoch`` if ``stop_fn``
-        is set.
-    :param int step_per_epoch: the number of transitions collected per epoch.
-    :param int repeat_per_collect: the number of repeat time for policy learning,
-        for example, set it to 2 means the policy needs to learn each given batch
-        data twice.
-    :param int episode_per_test: the number of episodes for one policy evaluation.
-    :param int batch_size: the batch size of sample data, which is going to feed in
-        the policy network.
-    :param int step_per_collect: the number of transitions the collector would
-        collect before the network update, i.e., trainer will collect
-        "step_per_collect" transitions and do some policy network update repeatedly
-        in each epoch.
-    :param int episode_per_collect: the number of episodes the collector would
-        collect before the network update, i.e., trainer will collect
-        "episode_per_collect" episodes and do some policy network update repeatedly
-        in each epoch.
-    :param function train_fn: a hook called at the beginning of training in each
-        epoch. It can be used to perform custom additional operations, with the
-        signature ``f(num_epoch: int, step_idx: int) -> None``.
-    :param function test_fn: a hook called at the beginning of testing in each
-        epoch. It can be used to perform custom additional operations, with the
-        signature ``f(num_epoch: int, step_idx: int) -> None``.
-    :param function save_best_fn: a hook called when the undiscounted average mean
-        reward in evaluation phase gets better, with the signature
-        ``f(policy: BasePolicy) -> None``. It was ``save_fn`` previously.
-    :param function save_checkpoint_fn: a function to save training process and
-        return the saved checkpoint path, with the signature ``f(epoch: int,
-        env_step: int, gradient_step: int) -> str``; you can save whatever you want.
-    :param bool resume_from_log: resume env_step/gradient_step and other metadata
-        from existing tensorboard log. Default to False.
-    :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
-        bool``, receives the average undiscounted returns of the testing result,
-        returns a boolean which indicates whether reaching the goal.
-    :param function reward_metric: a function with signature
-        ``f(rewards: np.ndarray with shape (num_episode, agent_num)) -> np.ndarray
-        with shape (num_episode,)``, used in multi-agent RL. We need to return a
-        single scalar for each episode's result to monitor training in the
-        multi-agent RL setting. This function specifies what is the desired metric,
-        e.g., the reward of agent 1 or the average reward over all agents.
-    :param BaseLogger logger: A logger that logs statistics during
-        training/testing/updating. Default to a logger that doesn't log anything.
-    :param bool verbose: whether to print the information. Default to True.
-    :param bool show_progress: whether to display a progress bar when training.
-        Default to True.
-    :param bool test_in_train: whether to test in the training phase.
-        Default to True.
-    """
-
     @staticmethod
     def gen_doc(learning_type: str) -> str:
         """Document string for subclass trainer."""
@@ -129,7 +68,6 @@ class BaseTrainer(ABC):
 
     def __init__(
         self,
-        learning_type: str,
         policy: BasePolicy,
         max_epoch: int,
         batch_size: int,
@@ -140,7 +78,6 @@ class BaseTrainer(ABC):
         repeat_per_collect: Optional[int] = None,
         episode_per_test: Optional[int] = None,
         update_per_step: Union[int, float] = 1,
-        update_per_epoch: Optional[int] = None,
         step_per_collect: Optional[int] = None,
         episode_per_collect: Optional[int] = None,
         train_fn: Optional[Callable[[int, int], None]] = None,
@@ -156,6 +93,66 @@ class BaseTrainer(ABC):
         test_in_train: bool = True,
         save_fn: Optional[Callable[[BasePolicy], None]] = None,
     ):
+        """An iterator base class for trainers procedure.
+
+        Returns an iterator that yields a 3-tuple (epoch, stats, info) of train results
+        on every epoch.
+
+        :param learning_type str: type of learning iterator, available choices are
+            "offpolicy", "onpolicy" and "offline".
+        :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
+        :param Collector train_collector: the collector used for training.
+        :param Collector test_collector: the collector used for testing. If it's None,
+            then no testing will be performed.
+        :param int max_epoch: the maximum number of epochs for training. The training
+            process might be finished before reaching ``max_epoch`` if ``stop_fn``
+            is set.
+        :param int step_per_epoch: the number of transitions collected per epoch.
+        :param int repeat_per_collect: the number of repeat time for policy learning,
+            for example, set it to 2 means the policy needs to learn each given batch
+            data twice.
+        :param int episode_per_test: the number of episodes for one policy evaluation.
+        :param int batch_size: the batch size of sample data, which is going to feed in
+            the policy network.
+        :param int step_per_collect: the number of transitions the collector would
+            collect before the network update, i.e., trainer will collect
+            "step_per_collect" transitions and do some policy network update repeatedly
+            in each epoch.
+        :param int episode_per_collect: the number of episodes the collector would
+            collect before the network update, i.e., trainer will collect
+            "episode_per_collect" episodes and do some policy network update repeatedly
+            in each epoch.
+        :param function train_fn: a hook called at the beginning of training in each
+            epoch. It can be used to perform custom additional operations, with the
+            signature ``f(num_epoch: int, step_idx: int) -> None``.
+        :param function test_fn: a hook called at the beginning of testing in each
+            epoch. It can be used to perform custom additional operations, with the
+            signature ``f(num_epoch: int, step_idx: int) -> None``.
+        :param function save_best_fn: a hook called when the undiscounted average mean
+            reward in evaluation phase gets better, with the signature
+            ``f(policy: BasePolicy) -> None``. It was ``save_fn`` previously.
+        :param function save_checkpoint_fn: a function to save training process and
+            return the saved checkpoint path, with the signature ``f(epoch: int,
+            env_step: int, gradient_step: int) -> str``; you can save whatever you want.
+        :param bool resume_from_log: resume env_step/gradient_step and other metadata
+            from existing tensorboard log. Default to False.
+        :param function stop_fn: a function with signature ``f(mean_rewards: float) ->
+            bool``, receives the average undiscounted returns of the testing result,
+            returns a boolean which indicates whether reaching the goal.
+        :param function reward_metric: a function with signature
+            ``f(rewards: np.ndarray with shape (num_episode, agent_num)) -> np.ndarray
+            with shape (num_episode,)``, used in multi-agent RL. We need to return a
+            single scalar for each episode's result to monitor training in the
+            multi-agent RL setting. This function specifies what is the desired metric,
+            e.g., the reward of agent 1 or the average reward over all agents.
+        :param BaseLogger logger: A logger that logs statistics during
+            training/testing/updating. Default to a logger that doesn't log anything.
+        :param bool verbose: whether to print the information. Default to True.
+        :param bool show_progress: whether to display a progress bar when training.
+            Default to True.
+        :param bool test_in_train: whether to test in the training phase.
+            Default to True.
+        """
         if save_fn:
             deprecation(
                 "save_fn in trainer is marked as deprecated and will be "
@@ -217,8 +214,11 @@ class BaseTrainer(ABC):
         self.is_run = False
         self.env_step = 0
         if self.resume_from_log:
-            self.start_epoch, self.env_step, self.gradient_step = \
-                self.logger.restore_data()
+            (
+                self.start_epoch,
+                self.env_step,
+                self.gradient_step,
+            ) = self.logger.restore_data()
 
         self.last_rew, self.last_len = 0.0, 0
         self.start_time = time.time()
@@ -235,12 +235,20 @@ class BaseTrainer(ABC):
             assert not isinstance(self.test_collector, AsyncCollector)  # Issue 700
             self.test_collector.reset_stat()
             test_result = test_episode(
-                self.policy, self.test_collector, self.test_fn, self.start_epoch,
-                self.episode_per_test, self.logger, self.env_step, self.reward_metric
+                self.policy,
+                self.test_collector,
+                self.test_fn,
+                self.start_epoch,
+                self.episode_per_test,
+                self.logger,
+                self.env_step,
+                self.reward_metric,
             )
             self.best_epoch = self.start_epoch
-            self.best_reward, self.best_reward_std = \
-                test_result["rew"], test_result["rew_std"]
+            self.best_reward, self.best_reward_std = (
+                test_result["rew"],
+                test_result["rew_std"],
+            )
         if self.save_best_fn:
             self.save_best_fn(self.policy)
 
@@ -258,7 +266,6 @@ class BaseTrainer(ABC):
         self.iter_num += 1
 
         if self.iter_num > 1:
-
             # iterator exhaustion check
             if self.epoch > self.max_epoch:
                 raise StopIteration
@@ -329,8 +336,11 @@ class BaseTrainer(ABC):
                 }
             )
             info = gather_info(
-                self.start_time, self.train_collector, self.test_collector,
-                self.best_reward, self.best_reward_std
+                self.start_time,
+                self.train_collector,
+                self.test_collector,
+                self.best_reward,
+                self.best_reward_std,
             )
             return self.epoch, epoch_stat, info
         else:
@@ -342,8 +352,14 @@ class BaseTrainer(ABC):
         assert self.test_collector is not None
         stop_fn_flag = False
         test_result = test_episode(
-            self.policy, self.test_collector, self.test_fn, self.epoch,
-            self.episode_per_test, self.logger, self.env_step, self.reward_metric
+            self.policy,
+            self.test_collector,
+            self.test_fn,
+            self.epoch,
+            self.episode_per_test,
+            self.logger,
+            self.env_step,
+            self.reward_metric,
         )
         rew, rew_std = test_result["rew"], test_result["rew_std"]
         if self.best_epoch < 0 or self.best_reward < rew:
@@ -357,7 +373,7 @@ class BaseTrainer(ABC):
                 f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},"
                 f" best_reward: {self.best_reward:.6f} ± "
                 f"{self.best_reward_std:.6f} in #{self.best_epoch}",
-                flush=True
+                flush=True,
             )
         if not self.is_run:
             test_stat = {
@@ -365,7 +381,7 @@ class BaseTrainer(ABC):
                 "test_reward_std": rew_std,
                 "best_reward": self.best_reward,
                 "best_reward_std": self.best_reward_std,
-                "best_epoch": self.best_epoch
+                "best_epoch": self.best_epoch,
             }
         else:
             test_stat = {}
@@ -402,8 +418,13 @@ class BaseTrainer(ABC):
             if self.test_in_train and self.stop_fn and self.stop_fn(result["rew"]):
                 assert self.test_collector is not None
                 test_result = test_episode(
-                    self.policy, self.test_collector, self.test_fn, self.epoch,
-                    self.episode_per_test, self.logger, self.env_step
+                    self.policy,
+                    self.test_collector,
+                    self.test_fn,
+                    self.epoch,
+                    self.episode_per_test,
+                    self.logger,
+                    self.env_step,
                 )
                 if self.stop_fn(test_result["rew"]):
                     stop_fn_flag = True
@@ -440,10 +461,120 @@ class BaseTrainer(ABC):
             self.is_run = True
             deque(self, maxlen=0)  # feed the entire iterator into a zero-length deque
             info = gather_info(
-                self.start_time, self.train_collector, self.test_collector,
-                self.best_reward, self.best_reward_std
+                self.start_time,
+                self.train_collector,
+                self.test_collector,
+                self.best_reward,
+                self.best_reward_std,
             )
         finally:
             self.is_run = False
 
         return info
+
+    def _sample_and_update(self, buffer, data: Dict[str, Any]) -> None:
+        self.gradient_step += 1
+        # Note: since sample_size=batch_size, this will perform
+        # exactly one gradient step. This is why we don't need to calculate the
+        # number of gradient steps, like in the on-policy case.
+        losses = self.policy.update(sample_size=self.batch_size, buffer=buffer)
+        data.update({"gradient_step": str(self.gradient_step)})
+        self.log_update_data(data, losses)
+
+
+class OfflineTrainer(BaseTrainer):
+    def policy_update_fn(
+        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Perform one off-line policy update."""
+        assert self.buffer
+        self._sample_and_update(self.buffer, data)
+
+
+class OffpolicyTrainer(BaseTrainer):
+    __doc__ = BaseTrainer.gen_doc("offpolicy") + "\n".join(__doc__.split("\n")[1:])
+
+    # TODO: this is very similar to the on-policy trainer, so maybe one could refactor
+    #   to make the small differences more explicit?
+    def policy_update_fn(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
+        """Perform off-policy updates.
+
+        :param data:
+        :param result: must contain `n/st` key, see documentation of
+            `:meth:~tianshou.data.collector.Collector.collect` for the kind of
+            data returned there. `n/st` stands for `step_count`
+        """
+        assert self.train_collector is not None
+        step_count = result["n/st"]
+        # Same as training intensity, right?
+        num_updates = round(self.update_per_step * step_count)
+        for _ in range(num_updates):
+            self._sample_and_update(self.train_collector.buffer, data)
+
+
+class OnpolicyTrainer(BaseTrainer):
+    __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(__doc__.split("\n")[1:])
+
+    def policy_update_fn(
+        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Perform one on-policy update."""
+        assert self.train_collector is not None
+        losses = self.policy.update(
+            0,
+            self.train_collector.buffer,
+            # Note: sample_size is 0, so the whole buffer is used for the update.
+            # The kwargs are in the end passed to the .learn method, which uses
+            # batch_size to iterate through the buffer in mini-batches
+            # Off-policy algos typically don't use the batch_size kwarg at all
+            batch_size=self.batch_size,
+            repeat=self.repeat_per_collect,
+        )
+
+        # Note: this is the main difference to the off-policy trainer!
+        # The second difference is that batches of data are sampled without replacement
+        # during training, whereas in off-policy or offline training, the batches are
+        # sampled with replacement (and potentially custom prioritization).
+        self.train_collector.reset_buffer(keep_statistics=True)
+
+        # The step is the number of mini-batches used for the update, so essentially
+        # len(train_collector.buffer) // batch_size
+        step = max([1] + [len(v) for v in losses.values() if isinstance(v, list)])
+        self.gradient_step += step
+        self.log_update_data(data, losses)
+
+
+def offline_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
+    """Wrapper for offline_trainer run method.
+
+    It is identical to ``OfflineTrainer(...).run()``.
+
+    :return: See :func:`~tianshou.trainer.gather_info`.
+    """
+    return OfflineTrainer(*args, **kwargs).run()
+
+
+# TODO: I really don't see the point of the code below...
+def offpolicy_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
+    """Wrapper for OffPolicyTrainer run method.
+
+    It is identical to ``OffpolicyTrainer(...).run()``.
+
+    :return: See :func:`~tianshou.trainer.gather_info`.
+    """
+    return OffpolicyTrainer(*args, **kwargs).run()
+
+
+def onpolicy_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
+    """Wrapper for OnpolicyTrainer run method.
+
+    It is identical to ``OnpolicyTrainer(...).run()``.
+
+    :return: See :func:`~tianshou.trainer.gather_info`.
+    """
+    return OnpolicyTrainer(*args, **kwargs).run()
+
+
+offline_trainer_iter = OfflineTrainer
+offpolicy_trainer_iter = OffpolicyTrainer
+onpolicy_trainer_iter = OnpolicyTrainer

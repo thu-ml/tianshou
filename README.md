@@ -234,13 +234,17 @@ test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)  #
 Let's train it:
 
 ```python
-result = ts.trainer.offpolicy_trainer(
-    policy, train_collector, test_collector, epoch, step_per_epoch, step_per_collect,
+import tianshou.trainer.base
+
+result = tianshou.trainer.base.offpolicy_trainer(
+    policy, train_collector, test_collector, epoch, step_per_epoch,
+    step_per_collect,
     test_num, batch_size, update_per_step=1 / step_per_collect,
     train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
     test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
-    logger=logger)
+    logger=logger
+)
 print(f'Finished training! Use {result["duration"]}')
 ```
 

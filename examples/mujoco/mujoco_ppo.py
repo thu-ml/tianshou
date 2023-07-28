@@ -2,7 +2,6 @@
 
 import os
 import pprint
-
 import torch
 from jsonargparse import CLI
 from torch import nn
@@ -14,7 +13,7 @@ from tianshou.config import (
     PGConfig,
     PPOConfig,
     RLAgentConfig,
-    RLSamplingConfig,
+    TrainerConfig,
 )
 from tianshou.config.utils import collect_configs
 from tianshou.policy import PPOPolicy
@@ -39,7 +38,7 @@ from tianshou.utils.models import (
 def main(
     experiment_config: BasicExperimentConfig,
     logger_config: LoggerConfig,
-    sampling_config: RLSamplingConfig,
+    sampling_config: TrainerConfig,
     general_config: RLAgentConfig,
     pg_config: PGConfig,
     ppo_config: PPOConfig,
@@ -157,10 +156,10 @@ def main(
             torch.save(state, os.path.join(log_path, "policy.pth"))
 
         trainer = OnpolicyTrainer(
-            policy,
-            train_collector,
-            test_collector,
+            policy=policy,
             max_epoch=sampling_config.num_epochs,
+            train_collector=train_collector,
+            test_collector=test_collector,
             step_per_epoch=sampling_config.step_per_epoch,
             repeat_per_collect=sampling_config.repeat_per_collect,
             episode_per_test=sampling_config.num_test_episodes,
