@@ -22,7 +22,11 @@ except ImportError:
     has_old_gym = False
 
 GYM_RESERVED_KEYS = [
-    "metadata", "reward_range", "spec", "action_space", "observation_space"
+    "metadata",
+    "reward_range",
+    "spec",
+    "action_space",
+    "observation_space",
 ]
 
 
@@ -39,7 +43,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
     def patched() -> gym.Env:
         assert callable(
             fn
-        ), "Env generators that are provided to vector environemnts must be callable."
+        ), "Env generators that are provided to vector environments must be callable."
 
         env = fn()
         if isinstance(env, (gym.Env, PettingZooEnv)):
@@ -85,7 +89,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
     return patched
 
 
-class BaseVectorEnv(object):
+class BaseVectorEnv:
     """Base class for vectorized environments.
 
     Usage:
@@ -193,9 +197,7 @@ class BaseVectorEnv(object):
             return super().__getattribute__(key)
 
     def get_env_attr(
-        self,
-        key: str,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        self, key: str, id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> List[Any]:
         """Get an attribute from the underlying environments.
 
@@ -240,8 +242,7 @@ class BaseVectorEnv(object):
             self.workers[j].set_env_attr(key, value)
 
     def _wrap_id(
-        self,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        self, id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> Union[List[int], np.ndarray]:
         if id is None:
             return list(range(self.env_num))
@@ -257,9 +258,7 @@ class BaseVectorEnv(object):
             ), f"Can only interact with ready environments {self.ready_id}."
 
     def reset(
-        self,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
-        **kwargs: Any,
+        self, id: Optional[Union[int, List[int], np.ndarray]] = None, **kwargs: Any
     ) -> Tuple[np.ndarray, Union[dict, List[dict]]]:
         """Reset the state of some envs and return initial observations.
 
@@ -278,7 +277,8 @@ class BaseVectorEnv(object):
         ret_list = [self.workers[i].recv() for i in id]
 
         assert (
-            isinstance(ret_list[0], (tuple, list)) and len(ret_list[0]) == 2
+            isinstance(ret_list[0], (tuple, list))
+            and len(ret_list[0]) == 2
             and isinstance(ret_list[0][1], dict)
         )
 
@@ -298,9 +298,7 @@ class BaseVectorEnv(object):
         return obs, infos  # type: ignore
 
     def step(
-        self,
-        action: np.ndarray,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        self, action: np.ndarray, id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> gym_new_venv_step_type:
         """Run one timestep of some environments' dynamics.
 
@@ -383,8 +381,7 @@ class BaseVectorEnv(object):
         )
 
     def seed(
-        self,
-        seed: Optional[Union[int, List[int]]] = None,
+        self, seed: Optional[Union[int, List[int]]] = None
     ) -> List[Optional[List[int]]]:
         """Set the seed for all environments.
 
@@ -448,7 +445,6 @@ class SubprocVectorEnv(BaseVectorEnv):
     """
 
     def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
-
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=False)
 
@@ -466,7 +462,6 @@ class ShmemVectorEnv(BaseVectorEnv):
     """
 
     def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
-
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
 

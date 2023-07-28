@@ -85,7 +85,6 @@ class BasePolicy(ABC, nn.Module):
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
-        self.action_type = ""
         if isinstance(action_space, (Discrete, MultiDiscrete, MultiBinary)):
             self.action_type = "discrete"
         elif isinstance(action_space, Box):

@@ -3,13 +3,17 @@ from typing import Any, List, Optional, Tuple, Union
 import numpy as np
 
 from tianshou.env.utils import gym_new_venv_step_type
-from tianshou.env.venvs import GYM_RESERVED_KEYS, BaseVectorEnv
+from tianshou.env.venvs import BaseVectorEnv, GYM_RESERVED_KEYS
 from tianshou.utils import RunningMeanStd
 
 
 class VectorEnvWrapper(BaseVectorEnv):
     """Base class for vectorized environments wrapper."""
 
+    # Note: No super call because this is a wrapper with overridden __getattribute__
+    # It's not a "true" subclass of BaseVectorEnv but it does extend its interface, so
+    # it can be used as a drop-in replacement
+    # noinspection PyMissingConstructor
     def __init__(self, venv: BaseVectorEnv) -> None:
         self.venv = venv
         self.is_async = venv.is_async
@@ -24,9 +28,7 @@ class VectorEnvWrapper(BaseVectorEnv):
             return super().__getattribute__(key)
 
     def get_env_attr(
-        self,
-        key: str,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        self, key: str, id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> List[Any]:
         return self.venv.get_env_attr(key, id)
 
@@ -39,22 +41,17 @@ class VectorEnvWrapper(BaseVectorEnv):
         return self.venv.set_env_attr(key, value, id)
 
     def reset(
-        self,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
-        **kwargs: Any,
+        self, id: Optional[Union[int, List[int], np.ndarray]] = None, **kwargs: Any
     ) -> Tuple[np.ndarray, Union[dict, List[dict]]]:
         return self.venv.reset(id, **kwargs)
 
     def step(
-        self,
-        action: np.ndarray,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        self, action: np.ndarray, id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> gym_new_venv_step_type:
         return self.venv.step(action, id)
 
     def seed(
-        self,
-        seed: Optional[Union[int, List[int]]] = None,
+        self, seed: Optional[Union[int, List[int]]] = None
     ) -> List[Optional[List[int]]]:
         return self.venv.seed(seed)
 
@@ -71,20 +68,14 @@ class VectorEnvNormObs(VectorEnvWrapper):
     :param bool update_obs_rms: whether to update obs_rms. Default to True.
     """
 
-    def __init__(
-        self,
-        venv: BaseVectorEnv,
-        update_obs_rms: bool = True,
-    ) -> None:
+    def __init__(self, venv: BaseVectorEnv, update_obs_rms: bool = True) -> None:
         super().__init__(venv)
         # initialize observation running mean/std
         self.update_obs_rms = update_obs_rms
         self.obs_rms = RunningMeanStd()
 
     def reset(
-        self,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
-        **kwargs: Any,
+        self, id: Optional[Union[int, List[int], np.ndarray]] = None, **kwargs: Any
     ) -> Tuple[np.ndarray, Union[dict, List[dict]]]:
         obs, info = self.venv.reset(id, **kwargs)
 
@@ -100,9 +91,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
         return obs, info
 
     def step(
-        self,
-        action: np.ndarray,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        self, action: np.ndarray, id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> gym_new_venv_step_type:
         step_results = self.venv.step(action, id)
         if self.obs_rms and self.update_obs_rms:
