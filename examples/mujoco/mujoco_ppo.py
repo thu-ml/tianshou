@@ -7,7 +7,6 @@ import torch
 from jsonargparse import CLI
 from torch import nn
 
-from mujoco_env import make_mujoco_env
 from tianshou.config import (
     BasicExperimentConfig,
     LoggerConfig,
@@ -24,6 +23,7 @@ from tianshou.utils import set_seed
 from tianshou.utils.env import (
     get_continuous_env_info,
     get_train_test_collector,
+    make_mujoco_env,
     watch_agent,
 )
 from tianshou.utils.logger import get_logger_for_run

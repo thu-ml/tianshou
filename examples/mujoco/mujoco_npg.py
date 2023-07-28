@@ -7,7 +7,6 @@ import pprint
 
 import numpy as np
 import torch
-from mujoco_env import make_mujoco_env
 from torch import nn
 from torch.distributions import Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
@@ -17,6 +16,7 @@ from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import NPGPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
+from tianshou.utils.env import make_mujoco_env
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -45,7 +45,7 @@ def get_args():
     parser.add_argument("--bound-action-method", type=str, default="clip")
     parser.add_argument("--lr-decay", type=int, default=True)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument("--norm-adv", type=int, default=1)
     parser.add_argument("--optim-critic-iters", type=int, default=20)
     parser.add_argument("--actor-step-size", type=float, default=0.1)
@@ -55,10 +55,7 @@ def get_args():
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
     parser.add_argument(
-        "--logger",
-        type=str,
-        default="tensorboard",
-        choices=["tensorboard", "wandb"],
+        "--logger", type=str, default="tensorboard", choices=["tensorboard", "wandb"]
     )
     parser.add_argument("--wandb-project", type=str, default="mujoco.benchmark")
     parser.add_argument(
@@ -90,12 +87,9 @@ def test_npg(args=get_args()):
         activation=nn.Tanh,
         device=args.device,
     )
-    actor = ActorProb(
-        net_a,
-        args.action_shape,
-        unbounded=True,
-        device=args.device,
-    ).to(args.device)
+    actor = ActorProb(net_a, args.action_shape, unbounded=True, device=args.device).to(
+        args.device
+    )
     net_c = Net(
         args.state_shape,
         hidden_sizes=args.hidden_sizes,
@@ -121,9 +115,9 @@ def test_npg(args=get_args()):
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
-        max_update_num = np.ceil(
-            args.step_per_epoch / args.step_per_collect
-        ) * args.epoch
+        max_update_num = (
+            np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
+        )
 
         lr_scheduler = LambdaLR(
             optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num

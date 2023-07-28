@@ -7,13 +7,13 @@ import pprint
 
 import numpy as np
 import torch
-from mujoco_env import make_mujoco_env
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import REDQPolicy
 from tianshou.trainer import offpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
+from tianshou.utils.env import make_mujoco_env
 from tianshou.utils.net.common import EnsembleLinear, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -46,17 +46,14 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=1)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
     parser.add_argument(
-        "--logger",
-        type=str,
-        default="tensorboard",
-        choices=["tensorboard", "wandb"],
+        "--logger", type=str, default="tensorboard", choices=["tensorboard", "wandb"]
     )
     parser.add_argument("--wandb-project", type=str, default="mujoco.benchmark")
     parser.add_argument(
@@ -104,10 +101,7 @@ def test_redq(args=get_args()):
         linear_layer=linear,
     )
     critics = Critic(
-        net_c,
-        device=args.device,
-        linear_layer=linear,
-        flatten_input=False,
+        net_c, device=args.device, linear_layer=linear, flatten_input=False
     ).to(args.device)
     critics_optim = torch.optim.Adam(critics.parameters(), lr=args.critic_lr)
 

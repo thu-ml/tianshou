@@ -7,7 +7,6 @@ import pprint
 
 import numpy as np
 import torch
-from mujoco_env import make_mujoco_env
 from torch import nn
 from torch.distributions import Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR
@@ -17,6 +16,7 @@ from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import A2CPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
+from tianshou.utils.env import make_mujoco_env
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -46,17 +46,14 @@ def get_args():
     parser.add_argument("--lr-decay", type=int, default=True)
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
     parser.add_argument(
-        "--logger",
-        type=str,
-        default="tensorboard",
-        choices=["tensorboard", "wandb"],
+        "--logger", type=str, default="tensorboard", choices=["tensorboard", "wandb"]
     )
     parser.add_argument("--wandb-project", type=str, default="mujoco.benchmark")
     parser.add_argument(
@@ -88,12 +85,9 @@ def test_a2c(args=get_args()):
         activation=nn.Tanh,
         device=args.device,
     )
-    actor = ActorProb(
-        net_a,
-        args.action_shape,
-        unbounded=True,
-        device=args.device,
-    ).to(args.device)
+    actor = ActorProb(net_a, args.action_shape, unbounded=True, device=args.device).to(
+        args.device
+    )
     net_c = Net(
         args.state_shape,
         hidden_sizes=args.hidden_sizes,
@@ -118,18 +112,15 @@ def test_a2c(args=get_args()):
             m.weight.data.copy_(0.01 * m.weight.data)
 
     optim = torch.optim.RMSprop(
-        actor_critic.parameters(),
-        lr=args.lr,
-        eps=1e-5,
-        alpha=0.99,
+        actor_critic.parameters(), lr=args.lr, eps=1e-5, alpha=0.99
     )
 
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
-        max_update_num = np.ceil(
-            args.step_per_epoch / args.step_per_collect
-        ) * args.epoch
+        max_update_num = (
+            np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
+        )
 
         lr_scheduler = LambdaLR(
             optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num
