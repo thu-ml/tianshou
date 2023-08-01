@@ -475,7 +475,7 @@ class BaseTrainer(ABC):
 
         return info
 
-    def _sample_and_update(self, buffer, data: Dict[str, Any]) -> None:
+    def _sample_and_update(self, buffer: ReplayBuffer, data: Dict[str, Any]) -> None:
         self.gradient_step += 1
         # Note: since sample_size=batch_size, this will perform
         # exactly one gradient step. This is why we don't need to calculate the
@@ -484,10 +484,30 @@ class BaseTrainer(ABC):
         data.update({"gradient_step": str(self.gradient_step)})
         self.log_update_data(data, losses)
 
+    def _update_on_full_buffer(
+        self, buffer: ReplayBuffer, data: Dict[str, Any]
+    ) -> None:
+        losses = self.policy.update(
+            sample_size=0,
+            buffer=buffer,
+            # Note: sample_size is 0, so the whole buffer is used for the update.
+            # The kwargs are in the end passed to the .learn method, which uses
+            # batch_size to iterate through the buffer in mini-batches
+            # Off-policy algos typically don't use the batch_size kwarg at all
+            batch_size=self.batch_size,
+            repeat=self.repeat_per_collect,
+        )
+
+        # just for logging, no functional role
+        self.gradient_step += (
+            1 + (len(self.train_collector.buffer) - 0.1) // self.batch_size
+        )
+
+        # The step is the number of mini-batches used for the update, so essentially
+        self.log_update_data(data, losses)
+
 
 class OfflineTrainer(BaseTrainer):
-    __doc__ = BaseTrainer.gen_doc("offline") + "\n".join(__doc__.split("\n")[1:])
-
     def policy_update_fn(
         self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
     ) -> None:
@@ -497,8 +517,6 @@ class OfflineTrainer(BaseTrainer):
 
 
 class OffpolicyTrainer(BaseTrainer):
-    __doc__ = BaseTrainer.gen_doc("offpolicy") + "\n".join(__doc__.split("\n")[1:])
-
     # TODO: this is very similar to the on-policy trainer, so maybe one could refactor
     #   to make the small differences more explicit?
     def policy_update_fn(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
@@ -517,38 +535,32 @@ class OffpolicyTrainer(BaseTrainer):
             self._sample_and_update(self.train_collector.buffer, data)
 
 
-class OnpolicyTrainer(BaseTrainer):
-    __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(__doc__.split("\n")[1:])
+class OffpolicyFullBufferTrainer(BaseTrainer):
+    """Contrary to the on-policy trainer, doesn't empty the buffer after an epoch.
+    And contrary to the off-policy trainer, the updates are computed by
+    applying the policy's `learn` on the full buffer instead of on samples
+    from it"""
 
     def policy_update_fn(
         self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
     ) -> None:
         """Perform one on-policy update."""
         assert self.train_collector is not None
-        losses = self.policy.update(
-            0,
-            self.train_collector.buffer,
-            # Note: sample_size is 0, so the whole buffer is used for the update.
-            # The kwargs are in the end passed to the .learn method, which uses
-            # batch_size to iterate through the buffer in mini-batches
-            # Off-policy algos typically don't use the batch_size kwarg at all
-            batch_size=self.batch_size,
-            repeat=self.repeat_per_collect,
-        )
+        self._update_on_full_buffer(self.train_collector.buffer, data)
 
-        # just for logging, no functional role
-        self.gradient_step += (
-            1 + (len(self.train_collector.buffer) - 0.1) // self.batch_size
-        )
 
+class OnpolicyTrainer(BaseTrainer):
+    def policy_update_fn(
+        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Perform one on-policy update."""
+        assert self.train_collector is not None
+        self._update_on_full_buffer(self.train_collector.buffer, data)
         # Note: this is the main difference to the off-policy trainer!
         # The second difference is that batches of data are sampled without replacement
         # during training, whereas in off-policy or offline training, the batches are
         # sampled with replacement (and potentially custom prioritization).
         self.train_collector.reset_buffer(keep_statistics=True)
-
-        # The step is the number of mini-batches used for the update, so essentially
-        self.log_update_data(data, losses)
 
 
 # TODO: I really don't see the point of the code below...

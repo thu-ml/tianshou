@@ -1,12 +1,11 @@
-from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
-
 import gymnasium as gym
 import numpy as np
 import torch
+from abc import ABC, abstractmethod
 from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from torch import nn
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
@@ -17,7 +16,7 @@ class RolloutBatchProtocol(BatchProtocol):
     obs: torch.Tensor
     obs_next: torch.Tensor
     info: Dict[str, Any]
-    rew: torch.Tensor
+    rew: np.ndarray
     terminated: torch.Tensor
     truncated: torch.Tensor
 
@@ -89,6 +88,10 @@ class BasePolicy(ABC, nn.Module):
         """
         if action_bound_method is not None:
             assert action_bound_method in ("clip", "tanh")
+        # Happens for vector envs
+        # TODO: was this required before? Look into it
+        if isinstance(action_space, list):
+            action_space = action_space[0]
         if action_scaling and not isinstance(action_space, Box):
             raise ValueError(
                 f"action_scaling can only be True when action_space is Box but "
