@@ -1,9 +1,8 @@
-from typing import Optional, Sequence
-
 import numpy as np
 import torch
 from torch import nn
 from torch.distributions import Independent, Normal
+from typing import Optional, Sequence
 
 from tianshou.env import VectorEnvNormObs
 from tianshou.policy import BasePolicy
@@ -49,20 +48,12 @@ def get_actor_critic(
     return actor, critic
 
 
-def init_and_get_optim(
-    actor: nn.Module,
-    critic: nn.Module,
-    lr: float,
-    optim_class: TOptimClass = torch.optim.Adam,
-):
-    """Initializes layers of actor and critic and returns an optimizer.
+def init_actor_critic(actor: nn.Module, critic: nn.Module):
+    """Initializes layers of actor and critic and returns an actor_critic object.
 
-    :param actor:
-    :param critic:
-    :param lr:
-    :param optim_class: optimizer class or callable, should accept `lr` as kwarg
-    :return: the optimizer instance
+    **Note**: this modifies the actor and critic in place.
     """
+
     actor_critic = ActorCritic(actor, critic)
     torch.nn.init.constant_(actor.sigma_param, -0.5)
     for m in actor_critic.modules():
@@ -80,6 +71,24 @@ def init_and_get_optim(
             if isinstance(m, torch.nn.Linear):
                 torch.nn.init.zeros_(m.bias)
                 m.weight.data.copy_(0.01 * m.weight.data)
+    return actor_critic
+
+
+def init_and_get_optim(
+    actor: nn.Module,
+    critic: nn.Module,
+    lr: float,
+    optim_class: TOptimClass = torch.optim.Adam,
+):
+    """Initializes layers of actor and critic and returns an optimizer.
+
+    :param actor:
+    :param critic:
+    :param lr:
+    :param optim_class: optimizer class or callable, should accept `lr` as kwarg
+    :return: the optimizer instance
+    """
+    actor_critic = init_actor_critic(actor, critic)
     optim = optim_class(actor_critic.parameters(), lr=lr)
     return optim
 
