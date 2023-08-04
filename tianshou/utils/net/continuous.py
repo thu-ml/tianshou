@@ -1,9 +1,8 @@
-import warnings
-from typing import Any, Dict, Optional, Sequence, Tuple, Type, Union
-
 import numpy as np
 import torch
+import warnings
 from torch import nn
+from typing import Any, Dict, Optional, Sequence, Tuple, Type, Union
 
 from tianshou.utils.net.common import MLP, get_module_device
 from tianshou.utils.types import TDevice
@@ -13,7 +12,7 @@ SIGMA_MAX = 2
 
 
 class PreprocessNetWrapper(nn.Module):
-    def __init__(self, preprocess_net: nn.Module, device: TDevice = "cpu") -> None:
+    def __init__(self, preprocess_net: nn.Module, device: TDevice = None) -> None:
         """
         :param preprocess_net:
         :param device: if None, use the same device as the preprocess_net.
