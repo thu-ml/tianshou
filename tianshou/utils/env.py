@@ -1,7 +1,6 @@
+import gymnasium as gym
 import warnings
 from typing import Literal, Optional, Tuple
-
-import gymnasium as gym
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
@@ -85,9 +84,7 @@ def make_mujoco_env(
         train_envs = env = envpool.make_gymnasium(
             task, num_envs=num_train_envs, seed=seed
         )
-        test_envs = envpool.make_gymnasium(
-            task, num_envs=num_test_envs, seed=seed, render_mode=render_mode
-        )
+        test_envs = envpool.make_gymnasium(task, num_envs=num_test_envs, seed=seed)
     except ImportError:
         warnings.warn(
             "Recommend using envpool (pip install envpool) "
