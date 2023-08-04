@@ -8,7 +8,7 @@ from tianshou.env import VectorEnvNormObs
 from tianshou.policy import BasePolicy
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
-from tianshou.utils.types import TDevice, TOptimClass, TShape
+from tianshou.utils.types import TDevice, TOptimFactory, TShape
 
 
 def resume_from_checkpoint(
@@ -78,7 +78,7 @@ def init_and_get_optim(
     actor: nn.Module,
     critic: nn.Module,
     lr: float,
-    optim_class: TOptimClass = torch.optim.Adam,
+    optim_class: TOptimFactory = torch.optim.Adam,
 ):
     """Initializes layers of actor and critic and returns an optimizer.
 

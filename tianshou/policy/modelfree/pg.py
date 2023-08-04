@@ -1,10 +1,8 @@
-from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
-
 import numpy as np
 import torch
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 from tianshou.data import Batch, ReplayBuffer, to_torch, to_torch_as
-from tianshou.data.batch import BatchProtocol
 from tianshou.policy import BasePolicy
 from tianshou.policy.base import RolloutBatchProtocol
 from tianshou.utils import RunningMeanStd
@@ -16,13 +14,6 @@ class PGBatchProtocol(RolloutBatchProtocol):
     # TODO: logits is a bit of an unfortunate name, since it's not actually logits for continuous action spaces
     logits: Sequence[Union[tuple, torch.Tensor]]  # TODO: is this the right type?
     dist: torch.Tensor
-    act: torch.Tensor
-    state: Optional[torch.Tensor]
-
-
-class ActionBatchProtocol(BatchProtocol):
-    logits: Sequence[Union[tuple, torch.Tensor]]  # TODO: is this the right type?
-    dist: torch.distributions.Distribution
     act: torch.Tensor
     state: Optional[torch.Tensor]
 
@@ -144,7 +135,7 @@ class PGPolicy(BasePolicy):
         batch: RolloutBatchProtocol,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> ActionBatchProtocol:
+    ) -> PGBatchProtocol:
         """Compute action over the given batch data by applying the actor (and sampling from the dist_fn, if
         appropriate).
         Returns a new object representing the processed batch data

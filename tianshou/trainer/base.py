@@ -484,7 +484,7 @@ class BaseTrainer(ABC):
         data.update({"gradient_step": str(self.gradient_step)})
         self.log_update_data(data, losses)
 
-    def _update_on_full_buffer(
+    def _update_on_entire_buffer(
         self, buffer: ReplayBuffer, data: Dict[str, Any]
     ) -> None:
         losses = self.policy.update(
@@ -546,7 +546,7 @@ class OffpolicyFullBufferTrainer(BaseTrainer):
     ) -> None:
         """Perform one on-policy update."""
         assert self.train_collector is not None
-        self._update_on_full_buffer(self.train_collector.buffer, data)
+        self._update_on_entire_buffer(self.train_collector.buffer, data)
 
 
 class OnpolicyTrainer(BaseTrainer):
@@ -555,7 +555,7 @@ class OnpolicyTrainer(BaseTrainer):
     ) -> None:
         """Perform one on-policy update."""
         assert self.train_collector is not None
-        self._update_on_full_buffer(self.train_collector.buffer, data)
+        self._update_on_entire_buffer(self.train_collector.buffer, data)
         # Note: this is the main difference to the off-policy trainer!
         # The second difference is that batches of data are sampled without replacement
         # during training, whereas in off-policy or offline training, the batches are

@@ -363,7 +363,7 @@ class BasePolicy(ABC, nn.Module):
         :param v_s: the value function of all current states :math:`V(s)`.
         :param float gamma: the discount factor, should be in [0, 1]. Default to 0.99.
         :param float gae_lambda: the parameter for Generalized Advantage Estimation,
-            should be in [0, 1]. Default to 0.95.
+            # should be in [0, 1]. Default to 0.95.
 
         :return: two numpy arrays (returns, advantage) with each shape (bsz, ).
         """

@@ -43,12 +43,12 @@ class TrainerConfig:
 
     num_epochs: int = 100
     step_per_epoch: int = 30000
-    batch_size: int = 64
+    batch_size: int = 1024
     num_train_envs: int = 64
     num_test_envs: int = 10
     """For watching a policy perform in the rendered env (e.g. with render_mode="human"), 
     `num_test_envs=1 `is recommended."""
-    buffer_size: int = 4096
+    buffer_size: int = 20000
     start_timesteps: int = 0
     """If more than 0, will collect samples from the environment before training.
     Useful for prefilling replay buffers for off-policy algorithms."""
