@@ -3,7 +3,6 @@ import pickle
 import sys
 from itertools import starmap
 
-import networkx as nx
 import numpy as np
 import pytest
 import torch
@@ -167,6 +166,7 @@ def test_batch():
     a = Batch.stack([Batch(a=None), Batch(b=None)])
     assert a.a[0] is None and a.a[1] is None
     assert a.b[0] is None and a.b[1] is None
+
 
 def test_batch_over_batch():
     batch = Batch(a=[3, 4, 5], b=[4, 5, 6])
