@@ -204,6 +204,8 @@ class Net(nn.Module):
         num_atoms: int = 1,
         dueling_param: Optional[Tuple[Dict[str, Any], Dict[str, Any]]] = None,
         linear_layer: Type[nn.Linear] = nn.Linear,
+        custom_model = None,
+        custom_model_kwargs: dict = None,
     ) -> None:
         super().__init__()
         self.device = device
@@ -215,10 +217,23 @@ class Net(nn.Module):
             input_dim += action_dim
         self.use_dueling = dueling_param is not None
         output_dim = action_dim if not self.use_dueling and not concat else 0
-        self.model = MLP(
-            input_dim, output_dim, hidden_sizes, norm_layer, norm_args, activation,
-            act_args, device, linear_layer
-        )
+
+        # Custom models
+        if custom_model is None:
+            self.model = MLP(
+                input_dim, output_dim, hidden_sizes, norm_layer, norm_args, activation,
+                act_args, device, linear_layer
+            )
+        else:
+            assert custom_model_kwargs is not None, 'pass output_dim for dilated cnn'
+            input_dim = state_shape[1]
+            if concat:
+                input_dim += action_dim
+            # self.model = custom_model(input_dim=input_dim, hidden_sizes=hidden_sizes,
+            #                 norm_layer=norm_layer, activation=activation, device=device, **custom_model_kwargs)
+            self.model = custom_model(input_dim=input_dim, device=device, **custom_model_kwargs)
+
+        
         self.output_dim = self.model.output_dim
         if self.use_dueling:  # dueling DQN
             q_kwargs, v_kwargs = dueling_param  # type: ignore
