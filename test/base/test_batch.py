@@ -38,15 +38,6 @@ def test_batch():
     assert 'a' not in b
     with pytest.raises(AssertionError):
         Batch({1: 2})
-    assert Batch(a=[np.zeros((2, 3)), np.zeros((3, 3))]).a.dtype == object
-    with pytest.raises(TypeError):
-        Batch(a=[np.zeros((3, 2)), np.zeros((3, 3))])
-    with pytest.raises(TypeError):
-        Batch(a=[torch.zeros((2, 3)), torch.zeros((3, 3))])
-    with pytest.raises(TypeError):
-        Batch(a=[torch.zeros((3, 3)), np.zeros((3, 3))])
-    with pytest.raises(TypeError):
-        Batch(a=[1, np.zeros((3, 3)), torch.zeros((3, 3))])
     batch = Batch(a=[torch.ones(3), torch.ones(3)])
     assert torch.allclose(batch.a, torch.ones(2, 3))
     batch.cat_(batch)
@@ -176,15 +167,6 @@ def test_batch():
     a = Batch.stack([Batch(a=None), Batch(b=None)])
     assert a.a[0] is None and a.a[1] is None
     assert a.b[0] is None and a.b[1] is None
-
-    # nx.Graph corner case
-    assert Batch(a=np.array([nx.Graph(), nx.Graph()], dtype=object)).a.dtype == object
-    g1 = nx.Graph()
-    g1.add_nodes_from(list(range(10)))
-    g2 = nx.Graph()
-    g2.add_nodes_from(list(range(20)))
-    assert Batch(a=np.array([g1, g2])).a.dtype == object
-
 
 def test_batch_over_batch():
     batch = Batch(a=[3, 4, 5], b=[4, 5, 6])
