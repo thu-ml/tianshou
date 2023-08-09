@@ -1368,7 +1368,11 @@ def test_custom_key():
             'done':
             np.array([False]),
             'returns':
-            np.array([74.70343082])
+            np.array([74.70343082]),
+            'info': 
+            Batch(),
+            'policy':
+            Batch(),
         }
     )
     buffer_size = len(batch.rew)
@@ -1376,18 +1380,19 @@ def test_custom_key():
     buffer.add(batch)
     sampled_batch, _ = buffer.sample(1)
     # Check if they have the same keys
-    assert set(batch.__dict__.keys()) == set(sampled_batch.__dict__.keys()), \
+    assert set(batch.keys()) == set(sampled_batch.keys()), \
         "Batches have different keys: {} and {}".format(
-            set(batch.__dict__.keys()), set(sampled_batch.__dict__.keys()))
+            set(batch.keys()), set(sampled_batch.keys()))
     # Compare the values for each key
-    for key in batch.__dict__.keys():
+    for key in batch.keys():
         if isinstance(batch.__dict__[key], np.ndarray
                       ) and isinstance(sampled_batch.__dict__[key], np.ndarray):
             assert np.allclose(batch.__dict__[key], sampled_batch.__dict__[key]), \
                 "Value mismatch for key: {}".format(key)
-        else:
-            assert batch.__dict__[key] == sampled_batch.__dict__[key], \
-                "Value mismatch for key: {}".format(key)
+        if isinstance(batch.__dict__[key], Batch
+                      ) and isinstance(sampled_batch.__dict__[key], Batch):
+            assert batch.__dict__[key].is_empty()
+            assert sampled_batch.__dict__[key].is_empty()
 
 
 if __name__ == '__main__':
