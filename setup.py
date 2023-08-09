@@ -30,7 +30,7 @@ def get_install_requires() -> str:
 def get_extras_require() -> str:
     req = {
         "dev": [
-            "sphinx",
+            "sphinx<7",
             "sphinx_rtd_theme",
             "jinja2",
             "sphinxcontrib-bibtex",

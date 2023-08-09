@@ -32,7 +32,7 @@ def test_replaybuffer(size=10, bufsize=20):
     buf = ReplayBuffer(bufsize)
     buf.update(buf)
     assert str(buf) == buf.__class__.__name__ + '()'
-    obs = env.reset()
+    obs, _ = env.reset()
     action_list = [1] * 5 + [0] * 10 + [1] * 10
     for i, act in enumerate(action_list):
         obs_next, rew, terminated, truncated, info = env.step(act)
