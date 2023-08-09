@@ -1369,7 +1369,7 @@ def test_custom_key():
             np.array([False]),
             'returns':
             np.array([74.70343082]),
-            'info': 
+            'info':
             Batch(),
             'policy':
             Batch(),
@@ -1389,8 +1389,8 @@ def test_custom_key():
                       ) and isinstance(sampled_batch.__dict__[key], np.ndarray):
             assert np.allclose(batch.__dict__[key], sampled_batch.__dict__[key]), \
                 "Value mismatch for key: {}".format(key)
-        if isinstance(batch.__dict__[key], Batch
-                      ) and isinstance(sampled_batch.__dict__[key], Batch):
+        if isinstance(batch.__dict__[key],
+                      Batch) and isinstance(sampled_batch.__dict__[key], Batch):
             assert batch.__dict__[key].is_empty()
             assert sampled_batch.__dict__[key].is_empty()
 
