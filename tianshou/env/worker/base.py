@@ -47,7 +47,7 @@ class EnvWorker(ABC):
 
     def recv(
         self
-    ) -> Union[gym_new_venv_step_type, Tuple[np.ndarray, dict], ]:  # noqa:E125
+    ) -> Union[gym_new_venv_step_type, Tuple[np.ndarray, dict]]:  # noqa:E125
         """Receive result from low-level worker.
 
         If the last "send" function sends a NULL action, it only returns a
