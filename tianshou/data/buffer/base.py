@@ -376,13 +376,18 @@ class ReplayBuffer:
             obs_next = self.get(indices, "obs_next", Batch())
         else:
             obs_next = self.get(self.next(indices), "obs", Batch())
-        # Loop through all keys in the buffer and retrieve data for each key
-        data_dict = {}
-        all_keys = set(list(self._meta.__dict__.keys()) + list(self._reserved_keys))
-        for key in all_keys:
-            data_dict[key] = self.get(indices, key, Batch())
-            if key == "obs":
-                data_dict[key] = obs
-            if key == "obs_next":
-                data_dict[key] = obs_next
-        return Batch(data_dict)
+        batch_dict = {
+            "obs": obs,
+            "act": self.act[indices],
+            "rew": self.rew[indices],
+            "terminated": self.terminated[indices],
+            "truncated": self.truncated[indices],
+            "done": self.done[indices],
+            "obs_next": obs_next,
+            "info": self.get(indices, "info", Batch()),
+            "policy": self.get(indices, "policy", Batch()),
+        }
+        for key in self._meta.__dict__.keys():
+            if key not in self._input_keys:
+                batch_dict[key] = self._meta[key][indices]
+        return Batch(batch_dict)
