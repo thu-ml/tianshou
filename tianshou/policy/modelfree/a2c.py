@@ -84,10 +84,11 @@ class A2CPolicy(PGPolicy):
         self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
     ) -> Batch:
         v_s, v_s_ = [], []
-        with torch.no_grad():
-            for minibatch in batch.split(self._batch, shuffle=False, merge_last=True):
-                v_s.append(self.critic(minibatch.obs))
-                v_s_.append(self.critic(minibatch.obs_next))
+        with torch.autocast('cuda', enabled=self.use_autocast):
+            with torch.no_grad():
+                for minibatch in batch.split(self._batch, shuffle=False, merge_last=True):
+                    v_s.append(self.critic(minibatch.obs).float())
+                    v_s_.append(self.critic(minibatch.obs_next).float())
         batch.v_s = torch.cat(v_s, dim=0).flatten()  # old value
         v_s = batch.v_s.cpu().numpy()
         v_s_ = torch.cat(v_s_, dim=0).flatten().cpu().numpy()
@@ -123,25 +124,34 @@ class A2CPolicy(PGPolicy):
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):
-                # calculate loss for actor
-                dist = self(minibatch).dist
-                log_prob = dist.log_prob(minibatch.act)
-                log_prob = log_prob.reshape(len(minibatch.adv), -1).transpose(0, 1)
-                actor_loss = -(log_prob * minibatch.adv).mean()
-                # calculate loss for critic
-                value = self.critic(minibatch.obs).flatten()
-                vf_loss = F.mse_loss(minibatch.returns, value)
-                # calculate regularization and overall loss
-                ent_loss = dist.entropy().mean()
-                loss = actor_loss + self._weight_vf * vf_loss \
-                    - self._weight_ent * ent_loss
+                with torch.autocast('cuda', enabled=self.use_autocast):
+                    # calculate loss for actor
+                    dist = self(minibatch).dist
+                    log_prob = dist.log_prob(minibatch.act)
+                    log_prob = log_prob.reshape(len(minibatch.adv), -1).transpose(0, 1)
+                    actor_loss = -(log_prob * minibatch.adv).mean()
+                    # calculate loss for critic
+                    value = self.critic(minibatch.obs).flatten()
+                    vf_loss = F.mse_loss(minibatch.returns, value)
+                    # calculate regularization and overall loss
+                    ent_loss = dist.entropy().mean()
+                    loss = actor_loss + self._weight_vf * vf_loss \
+                        - self._weight_ent * ent_loss
+                
                 self.optim.zero_grad()
-                loss.backward()
+
+                self.scaler.scale(loss).backward()
+                # loss.backward()
                 if self._grad_norm:  # clip large gradient
+                    self.scaler.unscale_(self.optim)
                     nn.utils.clip_grad_norm_(
                         self._actor_critic.parameters(), max_norm=self._grad_norm
                     )
-                self.optim.step()
+
+                # self.optim.step()
+                self.scaler.step(self.optim)
+                self.scaler.update()
+
                 actor_losses.append(actor_loss.item())
                 vf_losses.append(vf_loss.item())
                 ent_losses.append(ent_loss.item())

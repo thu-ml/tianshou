@@ -274,9 +274,10 @@ class Collector(object):
                 self.data.update(act=act_sample)
             else:
                 if no_grad:
-                    with torch.no_grad():  # faster than retain_grad version
-                        # self.data.obs will be used by agent to get result
-                        result = self.policy(self.data, last_state)
+                    with torch.autocast("cuda", enabled=self.policy.use_autocast):
+                        with torch.no_grad():  # faster than retain_grad version
+                            # self.data.obs will be used by agent to get result
+                            result = self.policy(self.data, last_state)
                 else:
                     result = self.policy(self.data, last_state)
                 # update state / act / policy into self.data

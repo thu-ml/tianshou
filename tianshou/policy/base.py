@@ -7,6 +7,7 @@ import torch
 from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from torch import nn
+from torch.cuda.amp import GradScaler
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 from tianshou.utils import MultipleLRSchedulers
@@ -67,6 +68,7 @@ class BasePolicy(ABC, nn.Module):
         action_bound_method: str = "",
         lr_scheduler: Optional[Union[torch.optim.lr_scheduler.LambdaLR,
                                      MultipleLRSchedulers]] = None,
+        use_autocast: bool = False,
     ) -> None:
         super().__init__()
         self.observation_space = observation_space
@@ -84,6 +86,9 @@ class BasePolicy(ABC, nn.Module):
         self.action_bound_method = action_bound_method
         self.lr_scheduler = lr_scheduler
         self._compile()
+
+        self.scaler = GradScaler(growth_interval=1000, enabled=use_autocast)
+        self.use_autocast = use_autocast
 
     def set_agent_id(self, agent_id: int) -> None:
         """Set self.agent_id = agent_id, for MARL."""

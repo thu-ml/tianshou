@@ -230,7 +230,7 @@ class BaseTrainer(ABC):
             elif self.test_collector is None:
                 self.test_in_train = False
 
-        if self.test_collector is not None:
+        if self.test_collector is not None and self.epoch > 0:  # Dont test before training, dont waste time
             assert self.episode_per_test is not None
             assert not isinstance(self.test_collector, AsyncCollector)  # Issue 700
             self.test_collector.reset_stat()
