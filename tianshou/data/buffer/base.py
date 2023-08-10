@@ -220,9 +220,8 @@ class ReplayBuffer:
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into replay buffer.
 
-        :param Batch batch: the input data batch. Its keys must belong to the 7
-            input keys, and "obs", "act", "rew", "terminated", "truncated" is
-            required.
+        :param Batch batch: the input data batch. "obs", "act", "rew",
+            "terminated", "truncated" are required keys.
         :param buffer_ids: to make consistent with other buffer's add function; if it
             is not None, we assume the input batch's first dimension is always 1.
 
@@ -232,12 +231,12 @@ class ReplayBuffer:
         """
         # preprocess batch
         new_batch = Batch()
-        for key in set(self._input_keys).intersection(batch.keys()):
+        for key in batch.keys():
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        assert set(["obs", "act", "rew", "terminated", "truncated",
-                    "done"]).issubset(batch.keys())
+        assert set(["obs", "act", "rew", "terminated", "truncated", "done"]
+                   ).issubset(batch.keys())  # important to do after preprocess batch
         stacked_batch = buffer_ids is not None
         if stacked_batch:
             assert len(batch) == 1
@@ -376,14 +375,18 @@ class ReplayBuffer:
             obs_next = self.get(indices, "obs_next", Batch())
         else:
             obs_next = self.get(self.next(indices), "obs", Batch())
-        return Batch(
-            obs=obs,
-            act=self.act[indices],
-            rew=self.rew[indices],
-            terminated=self.terminated[indices],
-            truncated=self.truncated[indices],
-            done=self.done[indices],
-            obs_next=obs_next,
-            info=self.get(indices, "info", Batch()),
-            policy=self.get(indices, "policy", Batch()),
-        )
+        batch_dict = {
+            "obs": obs,
+            "act": self.act[indices],
+            "rew": self.rew[indices],
+            "terminated": self.terminated[indices],
+            "truncated": self.truncated[indices],
+            "done": self.done[indices],
+            "obs_next": obs_next,
+            "info": self.get(indices, "info", Batch()),
+            "policy": self.get(indices, "policy", Batch()),
+        }
+        for key in self._meta.__dict__.keys():
+            if key not in self._input_keys:
+                batch_dict[key] = self._meta[key][indices]
+        return Batch(batch_dict)

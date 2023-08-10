@@ -1336,6 +1336,65 @@ def test_from_data():
     os.remove(path)
 
 
+def test_custom_key():
+    batch = Batch(
+        **{
+            'obs_next':
+            np.array(
+                [
+                    [
+                        1.174, -0.1151, -0.609, -0.5205, -0.9316, 3.236, -2.418, 0.386,
+                        0.2227, -0.5117, 2.293
+                    ]
+                ]
+            ),
+            'rew':
+            np.array([4.28125]),
+            'act':
+            np.array([[-0.3088, -0.4636, 0.4956]]),
+            'truncated':
+            np.array([False]),
+            'obs':
+            np.array(
+                [
+                    [
+                        1.193, -0.1203, -0.6123, -0.519, -0.9434, 3.32, -2.266, 0.9116,
+                        0.623, 0.1259, 0.363
+                    ]
+                ]
+            ),
+            'terminated':
+            np.array([False]),
+            'done':
+            np.array([False]),
+            'returns':
+            np.array([74.70343082]),
+            'info':
+            Batch(),
+            'policy':
+            Batch(),
+        }
+    )
+    buffer_size = len(batch.rew)
+    buffer = ReplayBuffer(buffer_size)
+    buffer.add(batch)
+    sampled_batch, _ = buffer.sample(1)
+    # Check if they have the same keys
+    assert set(batch.keys()) == set(sampled_batch.keys()), \
+        "Batches have different keys: {} and {}".format(
+            set(batch.keys()), set(sampled_batch.keys()))
+    # Compare the values for each key
+    for key in batch.keys():
+        if isinstance(batch.__dict__[key], np.ndarray
+                      ) and isinstance(sampled_batch.__dict__[key], np.ndarray):
+            assert np.allclose(batch.__dict__[key], sampled_batch.__dict__[key]), \
+                "Value mismatch for key: {}".format(key)
+        if isinstance(batch.__dict__[key],
+                      Batch) and isinstance(sampled_batch.__dict__[key], Batch):
+            assert batch.__dict__[key].is_empty()
+            assert sampled_batch.__dict__[key].is_empty()
+
+
 if __name__ == '__main__':
     test_replaybuffer()
     test_ignore_obs_next()
@@ -1351,3 +1410,4 @@ if __name__ == '__main__':
     test_multibuf_hdf5()
     test_from_data()
     test_herreplaybuffer()
+    test_custom_key()
