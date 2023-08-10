@@ -220,9 +220,8 @@ class ReplayBuffer:
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into replay buffer.
 
-        :param Batch batch: the input data batch. Its keys must belong to the 7
-            input keys, and "obs", "act", "rew", "terminated", "truncated" is
-            required.
+        :param Batch batch: the input data batch. "obs", "act", "rew",
+            "terminated", "truncated" are required keys.
         :param buffer_ids: to make consistent with other buffer's add function; if it
             is not None, we assume the input batch's first dimension is always 1.
 
@@ -230,14 +229,14 @@ class ReplayBuffer:
         the episode is not finished, the return value of episode_length and
         episode_reward is 0.
         """
+        assert set(["obs", "act", "rew", "terminated", "truncated",
+                    "done"]).issubset(batch.keys())
         # preprocess batch
         new_batch = Batch()
         for key in batch.keys():
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        assert set(["obs", "act", "rew", "terminated", "truncated",
-                    "done"]).issubset(batch.keys())
         stacked_batch = buffer_ids is not None
         if stacked_batch:
             assert len(batch) == 1
