@@ -229,13 +229,13 @@ class ReplayBuffer:
         the episode is not finished, the return value of episode_length and
         episode_reward is 0.
         """
-        assert set(["obs", "act", "rew", "terminated", "truncated",
-                    "done"]).issubset(batch.keys())
         # preprocess batch
         new_batch = Batch()
         for key in batch.keys():
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
+        assert set(["obs", "act", "rew", "terminated", "truncated", "done"]
+                   ).issubset(batch.keys())  # important to do after preprocess batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
         stacked_batch = buffer_ids is not None
         if stacked_batch:
