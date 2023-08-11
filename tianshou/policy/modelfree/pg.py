@@ -13,7 +13,7 @@ TDistParams = Union[torch.Tensor, Tuple[torch.Tensor]]
 class PGBatchProtocol(RolloutBatchProtocol):
     # TODO: logits is a bit of an unfortunate name, since it's not actually logits for continuous action spaces
     logits: Sequence[Union[tuple, torch.Tensor]]  # TODO: is this the right type?
-    dist: torch.Tensor
+    dist: torch.distributions.Distribution
     act: torch.Tensor
     state: Optional[torch.Tensor]
 
