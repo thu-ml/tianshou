@@ -1,17 +1,13 @@
 """Trainer package."""
 
-from tianshou.trainer.base import BaseTrainer
-from tianshou.trainer.offline import (
+from tianshou.trainer.base import (
+    BaseTrainer,
     OfflineTrainer,
     offline_trainer,
     offline_trainer_iter,
-)
-from tianshou.trainer.offpolicy import (
     OffpolicyTrainer,
     offpolicy_trainer,
     offpolicy_trainer_iter,
-)
-from tianshou.trainer.onpolicy import (
     OnpolicyTrainer,
     onpolicy_trainer,
     onpolicy_trainer_iter,

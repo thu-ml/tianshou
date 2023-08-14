@@ -534,8 +534,6 @@ class OfflineTrainer(BaseTrainer):
 class OffpolicyTrainer(BaseTrainer):
     __doc__ = BaseTrainer.gen_doc("offpolicy") + "\n".join(__doc__.split("\n")[1:])
 
-    # TODO: this is very similar to the on-policy trainer, so maybe one could refactor
-    #   to make the small differences more explicit?
     def policy_update_fn(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
         """Perform off-policy updates.
 
