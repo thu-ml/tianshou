@@ -13,15 +13,16 @@ TDistParams = Union[torch.Tensor, Tuple[torch.Tensor]]
 
 
 class PGBatchProtocol(RolloutBatchProtocol):
-    # TODO: logits is a bit of an unfortunate name, since it's not actually logits for continuous action spaces
-    logits: Sequence[Union[tuple, torch.Tensor]]  # TODO: is this the right type?
+    # TODO: logits is a bit of an unfortunate name, since it's not actually
+    #  logits for continuous action spaces
+    logits: Sequence[Union[tuple, torch.Tensor]]
     dist: torch.distributions.Distribution
     act: torch.Tensor
     state: Optional[torch.Tensor]
 
 
 class ActionBatchProtocol(BatchProtocol):
-    logits: Sequence[Union[tuple, torch.Tensor]]  # TODO: is this the right type?
+    logits: Sequence[Union[tuple, torch.Tensor]]
     dist: torch.distributions.Distribution
     act: torch.Tensor
     state: Optional[torch.Tensor]
@@ -152,8 +153,8 @@ class PGPolicy(BasePolicy):
         (contrary to other methods that modify the input batch inplace).
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
-            * ``act`` the action. In deterministic evaluation, this will be the argmax of the distribution, whereas
-                in stochastic mode, it will be a sample.
+            * ``act`` the action. In deterministic evaluation, this will be the argmax
+                of the distribution, whereasin stochastic mode, it will be a sample.
             * ``logits`` the network's raw output. **Note**: if the actions are continuous, these are not
                logits but rather the inputs to the distribution (typically loc and std)
                from which the actions are sampled.

@@ -336,7 +336,8 @@ class Recurrent(NetBase):
         """
         if state is not None and not {"hidden", "cell"}.issubset(state):
             raise ValueError(
-                f"Expected to find keys 'hidden' and 'cell' but instead found {list[state.keys()]}"
+                f"Expected to find keys 'hidden' and 'cell' "
+                f"but instead found {list[state.keys()]}"
             )
 
         obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
