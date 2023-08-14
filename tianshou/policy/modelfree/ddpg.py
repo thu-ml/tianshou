@@ -68,8 +68,7 @@ class DDPGPolicy(BasePolicy):
         )
         try:
             if (
-                actor is not None
-                and action_scaling
+                actor is not None and action_scaling
                 and not np.isclose(actor.max_action, 1.0)
             ):  # type: ignore
                 import warnings
@@ -122,7 +121,8 @@ class DDPGPolicy(BasePolicy):
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
         target_q = self.critic_old(
-            batch.obs_next, self(batch, model="actor_old", input="obs_next").act
+            batch.obs_next,
+            self(batch, model="actor_old", input="obs_next").act
         )
         return target_q
 
@@ -193,9 +193,8 @@ class DDPGPolicy(BasePolicy):
         self.sync_weight()
         return {"loss/actor": actor_loss.item(), "loss/critic": critic_loss.item()}
 
-    def exploration_noise(
-        self, act: Union[np.ndarray, Batch], batch: Batch
-    ) -> Union[np.ndarray, Batch]:
+    def exploration_noise(self, act: Union[np.ndarray, Batch],
+                          batch: Batch) -> Union[np.ndarray, Batch]:
         if self._noise is None:
             return act
         if isinstance(act, np.ndarray):

@@ -19,9 +19,8 @@ from torch import nn
 from tianshou.data.batch import Batch
 
 ModuleType = Type[nn.Module]
-ArgsType = Union[
-    Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]], Sequence[Dict[Any, Any]]
-]
+ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]],
+                 Sequence[Dict[Any, Any]]]
 
 
 def miniblock(
@@ -151,9 +150,13 @@ class MLP(nn.Module):
 
 
 class NetBase(nn.Module, ABC):
+
     @abstractmethod
     def forward(
-        self, obs: Union[np.ndarray, torch.Tensor], state: Any = None, **kwargs
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        state: Any = None,
+        **kwargs
     ) -> Tuple[torch.Tensor, Any]:
         pass
 
@@ -263,7 +266,10 @@ class Net(NetBase):
             self.Q, self.V = None, None
 
     def forward(
-        self, obs: Union[np.ndarray, torch.Tensor], state: Any = None, **kwargs
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        state: Any = None,
+        **kwargs
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> flatten (inside MLP)-> logits.
         :param obs:
@@ -391,9 +397,8 @@ class DataParallelNet(nn.Module):
         super().__init__()
         self.net = nn.DataParallel(net)
 
-    def forward(
-        self, obs: Union[np.ndarray, torch.Tensor], *args: Any, **kwargs: Any
-    ) -> Tuple[Any, Any]:
+    def forward(self, obs: Union[np.ndarray, torch.Tensor], *args: Any,
+                **kwargs: Any) -> Tuple[Any, Any]:
         if not isinstance(obs, torch.Tensor):
             obs = torch.as_tensor(obs, dtype=torch.float32)
         return self.net(obs=obs.cuda(), *args, **kwargs)
@@ -409,7 +414,11 @@ class EnsembleLinear(nn.Module):
     """
 
     def __init__(
-        self, ensemble_size: int, in_feature: int, out_feature: int, bias: bool = True
+        self,
+        ensemble_size: int,
+        in_feature: int,
+        out_feature: int,
+        bias: bool = True
     ) -> None:
         super().__init__()
 
@@ -523,13 +532,15 @@ class BranchingNet(NetBase):
                     activation,
                     act_args,
                     device,
-                )
-                for _ in range(self.num_branches)
+                ) for _ in range(self.num_branches)
             ]
         )
 
     def forward(
-        self, obs: Union[np.ndarray, torch.Tensor], state: Any = None, **kwargs
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        state: Any = None,
+        **kwargs
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> model -> logits."""
         common_out = self.common(obs)
@@ -586,7 +597,9 @@ def get_dict_state_decorator(
 
     @no_type_check
     def decorator_fn(net_class):
+
         class new_net_class(net_class):
+
             def forward(
                 self, obs: Union[np.ndarray, torch.Tensor], *args, **kwargs
             ) -> Any:

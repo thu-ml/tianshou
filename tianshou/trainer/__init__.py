@@ -3,12 +3,12 @@
 from tianshou.trainer.base import (
     BaseTrainer,
     OfflineTrainer,
+    OffpolicyTrainer,
+    OnpolicyTrainer,
     offline_trainer,
     offline_trainer_iter,
-    OffpolicyTrainer,
     offpolicy_trainer,
     offpolicy_trainer_iter,
-    OnpolicyTrainer,
     onpolicy_trainer,
     onpolicy_trainer_iter,
 )

@@ -75,9 +75,8 @@ class BasePolicy(ABC, nn.Module):
         action_space: Optional[gym.Space] = None,
         action_scaling: bool = False,
         action_bound_method: Optional[Literal["clip", "tanh"]] = None,
-        lr_scheduler: Optional[
-            Union[torch.optim.lr_scheduler.LambdaLR, MultipleLRSchedulers]
-        ] = None,
+        lr_scheduler: Optional[Union[torch.optim.lr_scheduler.LambdaLR,
+                                     MultipleLRSchedulers]] = None,
     ) -> None:
         """
         :param observation_space: appears unused!
@@ -115,9 +114,8 @@ class BasePolicy(ABC, nn.Module):
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
-    def exploration_noise(
-        self, act: Union[np.ndarray, Batch], batch: Batch
-    ) -> Union[np.ndarray, Batch]:
+    def exploration_noise(self, act: Union[np.ndarray, Batch],
+                          batch: Batch) -> Union[np.ndarray, Batch]:
         """Modify the action from policy.forward with exploration noise.
 
         :param act: a data batch or numpy.ndarray which is the action taken by
@@ -195,9 +193,8 @@ class BasePolicy(ABC, nn.Module):
         :return: action in the same form of input "act" but remap to the target action
             space.
         """
-        if isinstance(self.action_space, gym.spaces.Box) and isinstance(
-            act, np.ndarray
-        ):
+        if isinstance(self.action_space,
+                      gym.spaces.Box) and isinstance(act, np.ndarray):
             # currently this action mapping only supports np.ndarray action
             if self.action_bound_method == "clip":
                 act = np.clip(act, -1.0, 1.0)
@@ -282,9 +279,8 @@ class BasePolicy(ABC, nn.Module):
         if hasattr(buffer, "update_weight") and hasattr(batch, "weight"):
             buffer.update_weight(indices, batch.weight)
 
-    def update(
-        self, sample_size: int, buffer: Optional[ReplayBuffer], **kwargs: Any
-    ) -> Dict[str, Any]:
+    def update(self, sample_size: int, buffer: Optional[ReplayBuffer],
+               **kwargs: Any) -> Dict[str, Any]:
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn. In

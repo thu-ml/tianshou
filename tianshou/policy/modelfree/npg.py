@@ -133,9 +133,8 @@ class NPGPolicy(A2CPolicy):
         """Matrix vector product."""
         # caculate second order gradient of kl with respect to theta
         kl_v = (flat_kl_grad * v).sum()
-        flat_kl_grad_grad = self._get_flat_grad(
-            kl_v, self.actor, retain_graph=True
-        ).detach()
+        flat_kl_grad_grad = self._get_flat_grad(kl_v, self.actor,
+                                                retain_graph=True).detach()
         return flat_kl_grad_grad + v * self._damping
 
     def _conjugate_gradients(
@@ -175,7 +174,7 @@ class NPGPolicy(A2CPolicy):
         for param in model.parameters():
             flat_size = int(np.prod(list(param.size())))
             param.data.copy_(
-                flat_params[prev_ind : prev_ind + flat_size].view(param.size())
+                flat_params[prev_ind:prev_ind + flat_size].view(param.size())
             )
             prev_ind += flat_size
         return model
