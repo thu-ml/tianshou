@@ -34,7 +34,7 @@ class CachedReplayBuffer(ReplayBufferManager):
         max_episode_length: int,
     ) -> None:
         assert cached_buffer_num > 0 and max_episode_length > 0
-        assert type(main_buffer) == ReplayBuffer
+        assert isinstance(main_buffer, ReplayBuffer)
         kwargs = main_buffer.options
         buffers = [main_buffer] + [
             ReplayBuffer(max_episode_length, **kwargs)

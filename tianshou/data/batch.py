@@ -73,7 +73,10 @@ def _to_array_with_correct_type(obj: Any) -> np.ndarray:
     # convert the value to np.ndarray
     # convert to object obj type if neither bool nor number
     # raises an exception if array's elements are tensors themselves
-    obj_array = np.asanyarray(obj)
+    try:
+        obj_array = np.asanyarray(obj)
+    except ValueError:
+        obj_array = np.asanyarray(obj, dtype=object)
     if not issubclass(obj_array.dtype.type, (np.bool_, np.number)):
         obj_array = obj_array.astype(object)
     if obj_array.dtype == object:

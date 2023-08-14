@@ -9,6 +9,7 @@ import torch
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
+    PrioritizedReplayBuffer,
     ReplayBuffer,
     ReplayBufferManager,
     VectorReplayBuffer,
@@ -89,10 +90,10 @@ class Collector(object):
         else:  # ReplayBuffer or PrioritizedReplayBuffer
             assert buffer.maxsize > 0
             if self.env_num > 1:
-                if type(buffer) == ReplayBuffer:
+                if isinstance(buffer, ReplayBuffer):
                     buffer_type = "ReplayBuffer"
                     vector_type = "VectorReplayBuffer"
-                else:
+                if isinstance(buffer, PrioritizedReplayBuffer):
                     buffer_type = "PrioritizedReplayBuffer"
                     vector_type = "PrioritizedVectorReplayBuffer"
                 raise TypeError(
