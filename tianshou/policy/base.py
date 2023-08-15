@@ -86,8 +86,13 @@ class BasePolicy(ABC, nn.Module):
         :param action_bound_method:
         :param lr_scheduler:
         """
+        allowed_action_bound_methods = ("clip", "tanh")
         if action_bound_method is not None:
-            assert action_bound_method in ("clip", "tanh")
+            if action_bound_method not in allowed_action_bound_methods:
+                raise ValueError(
+                    f"Got invalid {action_bound_method=}. "
+                    f"Valid values are: {allowed_action_bound_methods}."
+                )
         if action_scaling and not isinstance(action_space, Box):
             raise ValueError(
                 f"action_scaling can only be True when action_space is Box but "

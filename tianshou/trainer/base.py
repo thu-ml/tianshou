@@ -516,9 +516,13 @@ class OnpolicyTrainer(BaseTrainer):
         )
 
         # just for logging, no functional role
-        self.gradient_step += (
-            1 + (len(self.train_collector.buffer) - 0.1) // self.batch_size
-        )
+        # TODO: remove the gradient step counting in trainers? Doesn't seem like
+        #   it's important and it adds complexity
+        self.gradient_step += 1
+        if self.batch_size > 0:
+            self.gradient_step += (
+                len(self.train_collector.buffer) - 0.1
+            ) // self.batch_size
 
         # Note: this is the main difference to the off-policy trainer!
         # The second difference is that batches of data are sampled without replacement

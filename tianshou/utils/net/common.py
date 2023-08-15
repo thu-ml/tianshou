@@ -16,11 +16,16 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.data.batch import Batch
+from tianshou.data.batch import Batch, BatchProtocol
 
 ModuleType = Type[nn.Module]
 ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]],
                  Sequence[Dict[Any, Any]]]
+
+
+class RecurrentStateBatch(BatchProtocol):
+    hidden: torch.Tensor
+    cell: torch.Tensor
 
 
 def miniblock(
@@ -314,7 +319,7 @@ class Recurrent(NetBase):
     def forward(
         self,
         obs: Union[np.ndarray, torch.Tensor],
-        state: Optional[Dict[str, torch.Tensor]] = None,
+        state: Optional[Union[RecurrentStateBatch, Dict[str, torch.Tensor]]] = None,
         **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """Mapping: obs -> flatten -> logits.
@@ -328,10 +333,13 @@ class Recurrent(NetBase):
         :param kwargs: unused
         :return: predicted action, next state as dict with keys 'hidden' and 'cell'
         """
-        if state is not None and not {"hidden", "cell"}.issubset(state):
+        # Note: the original type of state is Batch but it might also be a dict
+        # If it is a Batch, .issubset(state) will not work. However,
+        # issubset(state.keys()) always works
+        if state is not None and not {"hidden", "cell"}.issubset(state.keys()):
             raise ValueError(
                 f"Expected to find keys 'hidden' and 'cell' "
-                f"but instead found {list[state.keys()]}"
+                f"but instead found {state.keys()}"
             )
 
         obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)

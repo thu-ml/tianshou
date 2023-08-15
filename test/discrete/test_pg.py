@@ -5,6 +5,7 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
+from gym.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
@@ -79,6 +80,7 @@ def test_pg(args=get_args()):
         optim,
         dist,
         args.gamma,
+        action_scaling=isinstance(env.action_space, Box),
         reward_normalization=args.rew_norm,
         action_space=env.action_space,
     )

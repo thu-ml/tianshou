@@ -149,7 +149,7 @@ def test_td3(args=get_args()):
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger,
-    ).run()
+    )
     for epoch, epoch_stat, info in trainer:
         print(f"Epoch: {epoch}")
         print(epoch_stat)

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -65,8 +65,9 @@ class DiscreteSACPolicy(SACPolicy):
             reward_normalization,
             estimation_step,
             action_scaling=False,
-            action_bound_method="",
-            **kwargs
+            # TODO: why do we not permit action_bounding here?
+            action_bound_method=None,
+            **kwargs,
         )
         self._alpha: Union[float, torch.Tensor]
 

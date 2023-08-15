@@ -6,6 +6,7 @@ import gymnasium as gym
 import numpy as np
 import pytest
 import torch
+from gym.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
@@ -87,6 +88,7 @@ def test_a2c_with_il(args=get_args()):
         critic,
         optim,
         dist,
+        action_scaling=isinstance(env.action_space, Box),
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         vf_coef=args.vf_coef,

@@ -156,7 +156,7 @@ def test_iqn(args=get_args()):
         save_best_fn=save_best_fn,
         logger=logger,
         update_per_step=args.update_per_step
-    )
+    ).run()
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':

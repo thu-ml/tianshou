@@ -5,6 +5,7 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
+from gym.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
@@ -98,6 +99,7 @@ def test_ppo(args=get_args()):
         critic,
         optim,
         dist,
+        action_scaling=isinstance(env.action_space, Box),
         discount_factor=args.gamma,
         max_grad_norm=args.max_grad_norm,
         eps_clip=args.eps_clip,
