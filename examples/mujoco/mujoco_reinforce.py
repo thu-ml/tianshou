@@ -15,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import PGPolicy
-from tianshou.trainer import onpolicy_trainer
+from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb
@@ -176,15 +176,15 @@ def test_reinforce(args=get_args()):
 
     if not args.watch:
         # trainer
-        result = onpolicy_trainer(
-            policy,
-            train_collector,
-            test_collector,
-            args.epoch,
-            args.step_per_epoch,
-            args.repeat_per_collect,
-            args.test_num,
-            args.batch_size,
+        result = OnpolicyTrainer(
+            policy=policy,
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            repeat_per_collect=args.repeat_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
             step_per_collect=args.step_per_collect,
             save_best_fn=save_best_fn,
             logger=logger,

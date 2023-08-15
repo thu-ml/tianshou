@@ -14,7 +14,7 @@ from examples.offline.utils import load_buffer_d4rl
 from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import ImitationPolicy
-from tianshou.trainer import offline_trainer
+from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor
@@ -150,17 +150,17 @@ def test_il():
     if not args.watch:
         replay_buffer = load_buffer_d4rl(args.expert_data_task)
         # trainer
-        result = offline_trainer(
-            policy,
-            replay_buffer,
-            test_collector,
-            args.epoch,
-            args.step_per_epoch,
-            args.test_num,
-            args.batch_size,
+        result = OfflineTrainer(
+            policy=policy,
+            buffer=replay_buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
             save_best_fn=save_best_fn,
             logger=logger,
-        )
+        ).run()
         pprint.pprint(result)
     else:
         watch()

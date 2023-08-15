@@ -528,39 +528,3 @@ class OnpolicyTrainer(BaseTrainer):
 
         # The step is the number of mini-batches used for the update, so essentially
         self.log_update_data(data, losses)
-
-
-# TODO: I really don't see the point of the code below...
-def offline_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
-    """Wrapper for offline_trainer run method.
-
-    It is identical to ``OfflineTrainer(...).run()``.
-
-    :return: See :func:`~tianshou.trainer.gather_info`.
-    """
-    return OfflineTrainer(*args, **kwargs).run()
-
-
-def offpolicy_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
-    """Wrapper for OffPolicyTrainer run method.
-
-    It is identical to ``OffpolicyTrainer(...).run()``.
-
-    :return: See :func:`~tianshou.trainer.gather_info`.
-    """
-    return OffpolicyTrainer(*args, **kwargs).run()
-
-
-def onpolicy_trainer(*args, **kwargs) -> Dict[str, Union[float, str]]:  # type: ignore
-    """Wrapper for OnpolicyTrainer run method.
-
-    It is identical to ``OnpolicyTrainer(...).run()``.
-
-    :return: See :func:`~tianshou.trainer.gather_info`.
-    """
-    return OnpolicyTrainer(*args, **kwargs).run()
-
-
-offline_trainer_iter = OfflineTrainer
-offpolicy_trainer_iter = OffpolicyTrainer
-onpolicy_trainer_iter = OnpolicyTrainer

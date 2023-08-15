@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import C51Policy
-from tianshou.trainer import offpolicy_trainer
+from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 
 
@@ -194,15 +194,15 @@ def test_c51(args=get_args()):
     # test train_collector and start filling replay buffer
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # trainer
-    result = offpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.step_per_collect,
-        args.test_num,
-        args.batch_size,
+    result = OffpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        step_per_collect=args.step_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
@@ -210,7 +210,7 @@ def test_c51(args=get_args()):
         logger=logger,
         update_per_step=args.update_per_step,
         test_in_train=False,
-    )
+    ).run()
 
     pprint.pprint(result)
     watch()

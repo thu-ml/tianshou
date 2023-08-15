@@ -20,7 +20,7 @@ from tianshou.data.batch import Batch
 
 ModuleType = Type[nn.Module]
 ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]],
-Sequence[Dict[Any, Any]]]
+                 Sequence[Dict[Any, Any]]]
 
 
 def miniblock(
@@ -392,10 +392,8 @@ class DataParallelNet(nn.Module):
         super().__init__()
         self.net = nn.DataParallel(net)
 
-    def forward(
-        self, obs: Union[np.ndarray, torch.Tensor], *args: Any,
-        **kwargs: Any
-    ) -> Tuple[Any, Any]:
+    def forward(self, obs: Union[np.ndarray, torch.Tensor], *args: Any,
+                **kwargs: Any) -> Tuple[Any, Any]:
         if not isinstance(obs, torch.Tensor):
             obs = torch.as_tensor(obs, dtype=torch.float32)
         return self.net(obs=obs.cuda(), *args, **kwargs)
@@ -601,7 +599,6 @@ def get_dict_state_decorator(
                 self, obs: Union[np.ndarray, torch.Tensor], *args, **kwargs
             ) -> Any:
                 return super().forward(preprocess_obs(obs), *args, **kwargs)
-
 
         return new_net_class
 

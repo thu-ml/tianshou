@@ -15,7 +15,7 @@ from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import TD3BCPolicy
-from tianshou.trainer import offline_trainer
+from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
@@ -200,17 +200,17 @@ def test_td3_bc():
             replay_buffer, obs_rms = normalize_all_obs_in_replay_buffer(replay_buffer)
             test_envs.set_obs_rms(obs_rms)
         # trainer
-        result = offline_trainer(
-            policy,
-            replay_buffer,
-            test_collector,
-            args.epoch,
-            args.step_per_epoch,
-            args.test_num,
-            args.batch_size,
+        result = OfflineTrainer(
+            policy=policy,
+            buffer=replay_buffer,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
             save_best_fn=save_best_fn,
             logger=logger,
-        )
+        ).run()
         pprint.pprint(result)
     else:
         watch()

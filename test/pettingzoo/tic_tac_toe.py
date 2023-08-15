@@ -19,7 +19,7 @@ from tianshou.policy import (
     MultiAgentPolicyManager,
     RandomPolicy,
 )
-from tianshou.trainer import offpolicy_trainer
+from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
@@ -203,15 +203,15 @@ def train_agent(
         return rews[:, args.agent_id - 1]
 
     # trainer
-    result = offpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.step_per_collect,
-        args.test_num,
-        args.batch_size,
+    result = OffpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        step_per_collect=args.step_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
@@ -220,7 +220,7 @@ def train_agent(
         logger=logger,
         test_in_train=False,
         reward_metric=reward_metric
-    )
+    ).run()
 
     return result, policy.policies[agents[args.agent_id - 1]]
 

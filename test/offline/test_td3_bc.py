@@ -180,20 +180,20 @@ def test_td3_bc(args=get_args()):
         collector.collect(n_episode=1, render=1 / 35)
 
     # trainer
-    trainer = OfflineTrainer(
-        policy,
-        buffer,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.test_num,
-        args.batch_size,
+    result = OfflineTrainer(
+        policy=policy,
+        buffer=buffer,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         save_best_fn=save_best_fn,
         stop_fn=stop_fn,
         logger=logger,
-    )
+    ).run()
 
-    for epoch, epoch_stat, info in trainer:
+    for epoch, epoch_stat, info in result:
         print(f"Epoch: {epoch}")
         print(epoch_stat)
         print(info)

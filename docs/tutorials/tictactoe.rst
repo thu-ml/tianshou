@@ -200,7 +200,7 @@ So let's start to train our Tic-Tac-Toe agent! First, import some required modul
         MultiAgentPolicyManager,
         RandomPolicy,
     )
-    from tianshou.trainer import offpolicy_trainer
+    from tianshou.trainer import OffpolicyTrainer
     from tianshou.utils import TensorboardLogger
     from tianshou.utils.net.common import Net
 
