@@ -462,7 +462,7 @@ class BaseTrainer(ABC):
 
 class OfflineTrainer(BaseTrainer):
     __doc__ = BaseTrainer.gen_doc("offline") + "\n".join(
-        BaseTrainer.__doc__.split("\n")[1:]
+        BaseTrainer.__doc__.split("\n")[1:]  # type: ignore
     )
 
     def policy_update_fn(
@@ -474,9 +474,8 @@ class OfflineTrainer(BaseTrainer):
 
 
 class OffpolicyTrainer(BaseTrainer):
-    __doc__ = (
-        BaseTrainer.gen_doc("offpolicy") +
-        "\n".join(BaseTrainer.__doc__.split("\n")[1:])
+    __doc__ = BaseTrainer.gen_doc("offpolicy") + "\n".join(
+        BaseTrainer.__doc__.split("\n")[1:]  # type: ignore
     )
 
     def policy_update_fn(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
@@ -497,7 +496,7 @@ class OffpolicyTrainer(BaseTrainer):
 
 class OnpolicyTrainer(BaseTrainer):
     __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(
-        BaseTrainer.__doc__.split("\n")[1:]
+        BaseTrainer.__doc__.split("\n")[1:]  # type: ignore
     )
 
     def policy_update_fn(
