@@ -72,8 +72,8 @@ class REDQPolicy(DDPGPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            None, None, None, None, tau, gamma, exploration_noise,
-            reward_normalization, estimation_step, **kwargs
+            None, None, None, None, tau, gamma, exploration_noise, reward_normalization,
+            estimation_step, **kwargs
         )
         self.actor, self.actor_optim = actor, actor_optim
         self.critics, self.critics_old = critics, deepcopy(critics)

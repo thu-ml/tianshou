@@ -73,9 +73,7 @@ class PGPolicy(BasePolicy):
         )
         self.actor = model
         try:
-            if action_scaling and not np.isclose(
-                model.max_action, 1.0
-            ):  # type: ignore
+            if action_scaling and not np.isclose(model.max_action, 1.0):  # type: ignore
                 import warnings
 
                 warnings.warn(
@@ -123,8 +121,8 @@ class PGPolicy(BasePolicy):
             batch, buffer, indices, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0
         )
         if self._rew_norm:
-            batch.returns = (unnormalized_returns - self.ret_rms.mean
-                             ) / np.sqrt(self.ret_rms.var + self._eps)
+            batch.returns = (unnormalized_returns -
+                             self.ret_rms.mean) / np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns

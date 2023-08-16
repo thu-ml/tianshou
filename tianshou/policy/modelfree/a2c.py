@@ -108,9 +108,7 @@ class A2CPolicy(PGPolicy):
             gae_lambda=self._lambda,
         )
         if self._rew_norm:
-            batch.returns = unnormalized_returns / np.sqrt(
-                self.ret_rms.var + self._eps
-            )
+            batch.returns = unnormalized_returns / np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
@@ -135,8 +133,7 @@ class A2CPolicy(PGPolicy):
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
                 loss = (
-                    actor_loss + self._weight_vf * vf_loss -
-                    self._weight_ent * ent_loss
+                    actor_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
                 )
                 self.optim.zero_grad()
                 loss.backward()

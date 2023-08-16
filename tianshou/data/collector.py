@@ -265,9 +265,7 @@ class Collector(object):
             # get the next action
             if random:
                 try:
-                    act_sample = [
-                        self._action_space[i].sample() for i in ready_env_ids
-                    ]
+                    act_sample = [self._action_space[i].sample() for i in ready_env_ids]
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
                 act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
@@ -386,8 +384,7 @@ class Collector(object):
         if episode_count > 0:
             rews, lens, idxs = list(
                 map(
-                    np.concatenate,
-                    [episode_rews, episode_lens, episode_start_indices]
+                    np.concatenate, [episode_rews, episode_lens, episode_start_indices]
                 )
             )
             rew_mean, rew_std = rews.mean(), rews.std()
@@ -516,9 +513,7 @@ class AsyncCollector(Collector):
             # get the next action
             if random:
                 try:
-                    act_sample = [
-                        self._action_space[i].sample() for i in ready_env_ids
-                    ]
+                    act_sample = [self._action_space[i].sample() for i in ready_env_ids]
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
                 act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
@@ -650,8 +645,7 @@ class AsyncCollector(Collector):
         if episode_count > 0:
             rews, lens, idxs = list(
                 map(
-                    np.concatenate,
-                    [episode_rews, episode_lens, episode_start_indices]
+                    np.concatenate, [episode_rews, episode_lens, episode_start_indices]
                 )
             )
             rew_mean, rew_std = rews.mean(), rews.std()

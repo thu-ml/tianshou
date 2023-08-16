@@ -97,8 +97,8 @@ def get_args():
 def test_ppo(args=get_args()):
     # make environments
     env, train_envs, test_envs = make_vizdoom_env(
-        args.task, args.skip_num, (args.frames_stack, 84, 84), args.save_lmp,
-        args.seed, args.training_num, args.test_num
+        args.task, args.skip_num, (args.frames_stack, 84, 84), args.save_lmp, args.seed,
+        args.training_num, args.test_num
     )
     args.state_shape = env.observation_space.shape
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -243,9 +243,7 @@ def test_ppo(args=get_args()):
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(
-                n_episode=args.test_num, render=args.render
-            )
+            result = test_collector.collect(n_episode=args.test_num, render=args.render)
         rew = result["rews"].mean()
         lens = result["lens"].mean() * args.skip_num
         print(f'Mean reward (over {result["n/ep"]} episodes): {rew}')

@@ -69,8 +69,8 @@ class SACPolicy(DDPGPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            None, None, None, None, tau, gamma, exploration_noise,
-            reward_normalization, estimation_step, **kwargs
+            None, None, None, None, tau, gamma, exploration_noise, reward_normalization,
+            estimation_step, **kwargs
         )
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
@@ -146,12 +146,8 @@ class SACPolicy(DDPGPolicy):
 
     def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
         # critic 1&2
-        td1, critic1_loss = self._mse_optimizer(
-            batch, self.critic1, self.critic1_optim
-        )
-        td2, critic2_loss = self._mse_optimizer(
-            batch, self.critic2, self.critic2_optim
-        )
+        td1, critic1_loss = self._mse_optimizer(batch, self.critic1, self.critic1_optim)
+        td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor

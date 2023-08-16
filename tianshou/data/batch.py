@@ -654,9 +654,7 @@ class Batch(BatchProtocol):
                 try:
                     self.__dict__[key][sum_lens[i]:sum_lens[i + 1]] = value
                 except KeyError:
-                    self.__dict__[key] = _create_value(
-                        value, sum_lens[-1], stack=False
-                    )
+                    self.__dict__[key] = _create_value(value, sum_lens[-1], stack=False)
                     self.__dict__[key][sum_lens[i]:sum_lens[i + 1]] = value
 
     def cat_(self, batches: Union[TBatch, Sequence[Union[dict, TBatch]]]) -> None:
@@ -781,9 +779,7 @@ class Batch(BatchProtocol):
         batch.stack_(batches, axis)
         return batch
 
-    def empty_(
-        self: TBatch, index: Optional[Union[slice, IndexType]] = None
-    ) -> TBatch:
+    def empty_(self: TBatch, index: Optional[Union[slice, IndexType]] = None) -> TBatch:
         for batch_key, obj in self.items():
             if isinstance(obj, torch.Tensor):  # most often case
                 self.__dict__[batch_key][index] = 0

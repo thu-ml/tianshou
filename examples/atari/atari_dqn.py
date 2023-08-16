@@ -102,11 +102,7 @@ def test_dqn(args=get_args()):
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy = DQNPolicy(
-        net,
-        optim,
-        args.gamma,
-        args.n_step,
-        target_update_freq=args.target_update_freq
+        net, optim, args.gamma, args.n_step, target_update_freq=args.target_update_freq
     )
     if args.icm_lr_scale > 0:
         feature_net = DQN(
@@ -219,9 +215,7 @@ def test_dqn(args=get_args()):
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(
-                n_episode=args.test_num, render=args.render
-            )
+            result = test_collector.collect(n_episode=args.test_num, render=args.render)
         rew = result["rews"].mean()
         print(f"Mean reward (over {result['n/ep']} episodes): {rew}")
 

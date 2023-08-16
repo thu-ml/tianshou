@@ -154,8 +154,7 @@ def test_collector(gym_reset_kwargs):
     obs[[2, 3, 27, 52, 53, 77, 78, 79]] = [0, 1, 2, 2, 3, 2, 3, 4]
     assert np.allclose(c1.buffer.obs[:, 0], obs)
     assert np.allclose(
-        c1.buffer[:].obs_next[..., 0],
-        [1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5]
+        c1.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5]
     )
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
     assert np.allclose(c1.buffer.info["key"], keys)
@@ -684,9 +683,7 @@ def test_collector_with_atari_setting():
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_collector_envpool_gym_reset_return_info():
-    envs = envpool.make_gymnasium(
-        "Pendulum-v1", num_envs=4, gym_reset_return_info=True
-    )
+    envs = envpool.make_gymnasium("Pendulum-v1", num_envs=4, gym_reset_return_info=True)
     policy = MyPolicy(action_shape=(len(envs), 1))
 
     c0 = Collector(

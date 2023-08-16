@@ -70,10 +70,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--gamma', type=float, default=0.9, help='a smaller gamma favors earlier win'
     )
     parser.add_argument(
-        '--n-pistons',
-        type=int,
-        default=3,
-        help='Number of pistons(agents) in the env'
+        '--n-pistons', type=int, default=3, help='Number of pistons(agents) in the env'
     )
     parser.add_argument('--n-step', type=int, default=100)
     parser.add_argument('--target-update-freq', type=int, default=320)

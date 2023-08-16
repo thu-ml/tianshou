@@ -193,9 +193,7 @@ def test_iqn(args=get_args()):
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(
-                n_episode=args.test_num, render=args.render
-            )
+            result = test_collector.collect(n_episode=args.test_num, render=args.render)
         rew = result["rews"].mean()
         print(f"Mean reward (over {result['n/ep']} episodes): {rew}")
 

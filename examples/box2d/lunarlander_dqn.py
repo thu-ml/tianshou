@@ -79,11 +79,7 @@ def test_dqn(args=get_args()):
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
-        net,
-        optim,
-        args.gamma,
-        args.n_step,
-        target_update_freq=args.target_update_freq
+        net, optim, args.gamma, args.n_step, target_update_freq=args.target_update_freq
     )
     # collector
     train_collector = Collector(

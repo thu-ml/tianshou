@@ -724,8 +724,7 @@ def test_replaybuffermanager():
     assert np.allclose(indices_next, indices), indices_next
     assert np.allclose(buf.unfinished_index(), [0, 5])
     buf.add(
-        Batch(obs=[4], act=[4], rew=[4], terminated=[1], truncated=[0]),
-        buffer_ids=[3]
+        Batch(obs=[4], act=[4], rew=[4], terminated=[1], truncated=[0]), buffer_ids=[3]
     )
     assert np.allclose(buf.unfinished_index(), [0, 5])
     batch, indices = buf.sample(10)
@@ -834,8 +833,7 @@ def test_replaybuffermanager():
     )
     assert np.allclose(buf.unfinished_index(), [4, 14])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[1], act=[1], rew=[1], terminated=[1], truncated=[0]),
-        buffer_ids=[2]
+        Batch(obs=[1], act=[1], rew=[1], terminated=[1], truncated=[0]), buffer_ids=[2]
     )
     assert np.all(ep_len == [3]) and np.all(ep_rew == [1])
     assert np.all(ptr == [10]) and np.all(ep_idx == [13])
@@ -906,8 +904,7 @@ def test_cachedbuffer():
     assert buf.sample_indices(0).tolist() == []
     # check the normal function/usage/storage in CachedReplayBuffer
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[1], act=[1], rew=[1], terminated=[0], truncated=[0]),
-        buffer_ids=[1]
+        Batch(obs=[1], act=[1], rew=[1], terminated=[0], truncated=[0]), buffer_ids=[1]
     )
     obs = np.zeros(buf.maxsize)
     obs[15] = 1
@@ -919,8 +916,7 @@ def test_cachedbuffer():
     assert np.all(ep_len == [0]) and np.all(ep_rew == [0.0])
     assert np.all(ptr == [15]) and np.all(ep_idx == [15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[2], act=[2], rew=[2], terminated=[1], truncated=[0]),
-        buffer_ids=[3]
+        Batch(obs=[2], act=[2], rew=[2], terminated=[1], truncated=[0]), buffer_ids=[3]
     )
     obs[[0, 25]] = 2
     indices = buf.sample_indices(0)
@@ -1191,10 +1187,7 @@ def test_multibuf_stack():
     # test Atari with CachedReplayBuffer, save_only_last_obs + ignore_obs_next
     buf6 = CachedReplayBuffer(
         ReplayBuffer(
-            bufsize,
-            stack_num=stack_num,
-            save_only_last_obs=True,
-            ignore_obs_next=True
+            bufsize, stack_num=stack_num, save_only_last_obs=True, ignore_obs_next=True
         ), cached_num, size
     )
     obs = np.random.rand(size, 4, 84, 84)

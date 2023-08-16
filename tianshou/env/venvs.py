@@ -386,10 +386,8 @@ class BaseVectorEnv:
             np.stack(info_list),
         )
 
-    def seed(
-        self,
-        seed: Optional[Union[int, List[int]]] = None
-    ) -> List[Optional[List[int]]]:
+    def seed(self,
+             seed: Optional[Union[int, List[int]]] = None) -> List[Optional[List[int]]]:
         """Set the seed for all environments.
 
         Accept ``None``, an int (which will extend ``i`` to

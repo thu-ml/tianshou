@@ -266,7 +266,8 @@ class ReplayBuffer:
             batch.truncated = batch.truncated.astype(bool)
             if self._meta.is_empty():
                 self._meta = _create_value(  # type: ignore
-                    batch, self.maxsize, stack)
+                    batch, self.maxsize, stack
+                )
             else:  # dynamic key pops up in batch
                 _alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
             self._meta[ptr] = batch

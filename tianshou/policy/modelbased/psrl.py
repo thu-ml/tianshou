@@ -80,9 +80,8 @@ class PSRLModel(object):
         self.rew_count = sum_count
 
     def sample_trans_prob(self) -> np.ndarray:
-        sample_prob = torch.distributions.Dirichlet(
-            torch.from_numpy(self.trans_count)
-        ).sample().numpy()
+        sample_prob = torch.distributions.Dirichlet(torch.from_numpy(self.trans_count)
+                                                    ).sample().numpy()
         return sample_prob
 
     def sample_reward(self) -> np.ndarray:
