@@ -4,10 +4,16 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import ReplayBuffer, to_torch_as
+from tianshou.data.batch import RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
+from tianshou.policy.modelfree.a2c import BatchWithAdvantagesProtocol
 from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
+
+
+class BatchWithLogpProtocol(BatchWithAdvantagesProtocol):
+    logp_old: torch.Tensor
 
 
 class PPOPolicy(A2CPolicy):
@@ -85,8 +91,8 @@ class PPOPolicy(A2CPolicy):
         self._actor_critic: ActorCritic
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> BatchWithLogpProtocol:
         if self._recompute_adv:
             # buffer input `buffer` and `indices` to be used in `learn()`.
             self._buffer, self._indices = buffer, indices
@@ -94,10 +100,13 @@ class PPOPolicy(A2CPolicy):
         batch.act = to_torch_as(batch.act, batch.v_s)
         with torch.no_grad():
             batch.logp_old = self(batch).dist.log_prob(batch.act)
+        batch: BatchWithLogpProtocol
         return batch
 
+    # TODO: why does mypy complain?
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+        self, batch: RolloutBatchProtocol, batch_size: int,
+        repeat: int, *args: Any, **kwargs: Any
     ) -> Dict[str, List[float]]:
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         for step in range(repeat):

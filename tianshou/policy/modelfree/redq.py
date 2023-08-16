@@ -6,6 +6,7 @@ import torch
 from torch.distributions import Independent, Normal
 
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.batch import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 
@@ -156,7 +157,8 @@ class REDQPolicy(DDPGPolicy):
 
         return target_q
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         # critic ensemble
         weight = getattr(batch, "weight", 1.0)
         current_qs = self.critics(batch.obs, batch.act).flatten(1)

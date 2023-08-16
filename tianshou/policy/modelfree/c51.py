@@ -3,7 +3,8 @@ from typing import Any, Dict, Optional
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import ReplayBuffer
+from tianshou.data.batch import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
 
 
@@ -70,7 +71,7 @@ class C51Policy(DQNPolicy):
     ) -> torch.Tensor:
         return super().compute_q_value((logits * self.support).sum(2), mask)
 
-    def _target_dist(self, batch: Batch) -> torch.Tensor:
+    def _target_dist(self, batch: RolloutBatchProtocol) -> torch.Tensor:
         if self._target:
             act = self(batch, input="obs_next").act
             next_dist = self(batch, model="model_old", input="obs_next").logits
@@ -88,7 +89,8 @@ class C51Policy(DQNPolicy):
         ).clamp(0, 1) * next_dist.unsqueeze(1)
         return target_dist.sum(-1)
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

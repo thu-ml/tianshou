@@ -15,7 +15,7 @@ from tianshou.data import (
     VectorReplayBuffer,
     to_numpy,
 )
-from tianshou.data.batch import _alloc_by_keys_diff
+from tianshou.data.batch import RolloutBatchProtocol, _alloc_by_keys_diff
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 
@@ -117,7 +117,7 @@ class Collector(object):
         """
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
-        self.data = Batch(
+        self.data: RolloutBatchProtocol = Batch(  # type: ignore
             obs={},
             act={},
             rew={},
@@ -151,7 +151,7 @@ class Collector(object):
             )
             obs = processed_data.get("obs", obs)
             info = processed_data.get("info", info)
-        self.data.info = info
+        self.data.info = info  # type: ignore
         self.data.obs = obs
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
@@ -179,7 +179,7 @@ class Collector(object):
             )
             obs_reset = processed_data.get("obs", obs_reset)
             info = processed_data.get("info", info)
-        self.data.info[local_ids] = info
+        self.data.info[local_ids] = info  # type: ignore
 
         self.data.obs_next[local_ids] = obs_reset
 
@@ -359,7 +359,7 @@ class Collector(object):
             self.data.obs = self.data.obs_next
 
             if (n_step and step_count >= n_step) or \
-                    (n_episode and episode_count >= n_episode):
+                (n_episode and episode_count >= n_episode):
                 break
 
         # generate statistics
@@ -368,7 +368,7 @@ class Collector(object):
         self.collect_time += max(time.time() - start_time, 1e-9)
 
         if n_episode:
-            self.data = Batch(
+            self.data: RolloutBatchProtocol = Batch(  # type: ignore
                 obs={},
                 act={},
                 rew={},
@@ -538,7 +538,7 @@ class AsyncCollector(Collector):
 
             # save act/policy before env.step
             try:
-                whole_data.act[ready_env_ids] = self.data.act
+                whole_data.act[ready_env_ids] = self.data.act  # type: ignore
                 whole_data.policy[ready_env_ids] = self.data.policy
             except ValueError:
                 _alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
@@ -621,10 +621,12 @@ class AsyncCollector(Collector):
                     self._reset_state(i)
 
             try:
-                whole_data.obs[ready_env_ids] = self.data.obs_next
+                # Need to ignore types b/c according to mypy Tensors cannot be indexed
+                # by arrays (which they can...)
+                whole_data.obs[ready_env_ids] = self.data.obs_next  # type: ignore
                 whole_data.rew[ready_env_ids] = self.data.rew
                 whole_data.done[ready_env_ids] = self.data.done
-                whole_data.info[ready_env_ids] = self.data.info
+                whole_data.info[ready_env_ids] = self.data.info  # type: ignore
             except ValueError:
                 _alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
                 self.data.obs = self.data.obs_next
@@ -632,7 +634,7 @@ class AsyncCollector(Collector):
             self.data = whole_data
 
             if (n_step and step_count >= n_step) or \
-                    (n_episode and episode_count >= n_episode):
+                (n_episode and episode_count >= n_episode):
                 break
 
         self._ready_env_ids = ready_env_ids

@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 
 try:
@@ -42,9 +43,10 @@ class MultiAgentPolicyManager(BasePolicy):
         policy.set_agent_id(agent_id)
         self.policies[agent_id] = policy
 
-    def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indice: np.ndarray
-    ) -> Batch:
+    # TODO: violates Liskov substitution principle
+    def process_fn(  # type: ignore
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indice: np.ndarray
+    ) -> BatchProtocol:
         """Dispatch batch data from obs.agent_id to every policy's process_fn.
 
         Save original multi-dimensional rew in "save_rew", set rew to the
@@ -52,12 +54,15 @@ class MultiAgentPolicyManager(BasePolicy):
         original reward afterwards.
         """
         results = {}
+        assert isinstance(batch.obs, BatchProtocol), \
+            (f"here only observations of type Batch are permitted, "
+             f"but got {type(batch.obs)}")
         # reward can be empty Batch (after initial reset) or nparray.
         has_rew = isinstance(buffer.rew, np.ndarray)
         if has_rew:  # save the original reward in save_rew
             # Since we do not override buffer.__setattr__, here we use _meta to
             # change buffer.rew, otherwise buffer.rew = Batch() has no effect.
-            save_rew, buffer._meta.rew = buffer.rew, Batch()
+            save_rew, buffer._meta.rew = buffer.rew, Batch()  # type: ignore
         for agent, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent)[0]
             if len(agent_index) == 0:
@@ -77,9 +82,13 @@ class MultiAgentPolicyManager(BasePolicy):
             buffer._meta.rew = save_rew
         return Batch(results)
 
-    def exploration_noise(self, act: Union[np.ndarray, Batch],
-                          batch: Batch) -> Union[np.ndarray, Batch]:
+    def exploration_noise(
+        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+    ) -> Union[np.ndarray, BatchProtocol]:
         """Add exploration noise from sub-policy onto act."""
+        assert isinstance(batch.obs, BatchProtocol), \
+            (f"here only observations of type Batch are permitted, "
+             f"but got {type(batch.obs)}")
         for agent_id, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
@@ -152,7 +161,7 @@ class MultiAgentPolicyManager(BasePolicy):
                 if (hasattr(out, "state") and out.state is not None) \
                 else Batch()
             results.append((True, agent_index, out, act, each_state))
-        holder = Batch.cat(
+        holder: Batch = Batch.cat(
             [
                 {
                     "act": act
@@ -171,7 +180,7 @@ class MultiAgentPolicyManager(BasePolicy):
         holder["state"] = state_dict
         return holder
 
-    def learn(self, batch: Batch,
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
               **kwargs: Any) -> Dict[str, Union[float, List[float]]]:
         """Dispatch the data to all policies for learning.
 

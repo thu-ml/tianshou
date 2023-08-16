@@ -5,10 +5,16 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import ReplayBuffer, to_torch_as
+from tianshou.data.batch import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
 from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
+
+
+class BatchWithAdvantagesProtocol(BatchWithReturnsProtocol):
+    adv: torch.Tensor
+    v_s: torch.Tensor
 
 
 class A2CPolicy(PGPolicy):
@@ -74,15 +80,15 @@ class A2CPolicy(PGPolicy):
         self._actor_critic = ActorCritic(self.actor, self.critic)
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> BatchWithAdvantagesProtocol:
         batch = self._compute_returns(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
         return batch
 
     def _compute_returns(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> BatchWithAdvantagesProtocol:
         v_s, v_s_ = [], []
         with torch.no_grad():
             for minibatch in batch.split(self._batch, shuffle=False, merge_last=True):
@@ -114,10 +120,12 @@ class A2CPolicy(PGPolicy):
             batch.returns = unnormalized_returns
         batch.returns = to_torch_as(batch.returns, batch.v_s)
         batch.adv = to_torch_as(advantages, batch.v_s)
-        return batch
+        return batch  # type: ignore
 
+    # TODO: why does mypy complain?
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+        self, batch: RolloutBatchProtocol, batch_size: int,
+        repeat: int, *args: Any, **kwargs: Any
     ) -> Dict[str, List[float]]:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):

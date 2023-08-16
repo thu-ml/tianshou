@@ -3,7 +3,8 @@ from typing import Any, Dict, Optional
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, to_torch_as
+from tianshou.data import to_torch_as
+from tianshou.data.batch import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import TD3Policy
 
@@ -76,7 +77,8 @@ class TD3BCPolicy(TD3Policy):
         )
         self._alpha = alpha
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic1, self.critic1_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)

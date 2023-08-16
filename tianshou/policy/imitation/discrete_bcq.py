@@ -6,7 +6,15 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
+
+
+class ImitationBatchProtocol(BatchProtocol):
+    act: torch.Tensor
+    state: Optional[Union[dict, Batch, np.ndarray]]
+    q_value: torch.Tensor
+    imitation_logits: torch.Tensor
 
 
 class DiscreteBCQPolicy(DQNPolicy):
@@ -82,11 +90,14 @@ class DiscreteBCQPolicy(DQNPolicy):
 
     def forward(  # type: ignore
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         input: str = "obs",
         **kwargs: Any,
-    ) -> Batch:
+    ) -> ImitationBatchProtocol:
+        # TODO: Liskov substitution principle is violated here, the superclass
+        #  produces a batch with the field logits, but this one doesn't.
+        #  Should be fixed in the future!
         obs = batch[input]
         q_value, state = self.model(obs, state=state, info=batch.info)
         if not hasattr(self, "max_action_num"):
@@ -100,9 +111,10 @@ class DiscreteBCQPolicy(DQNPolicy):
 
         return Batch(
             act=act, state=state, q_value=q_value, imitation_logits=imitation_logits
-        )
+        )  # type: ignore
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         if self._iter % self._freq == 0:
             self.sync_weight()
         self._iter += 1

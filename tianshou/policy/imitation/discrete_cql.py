@@ -4,7 +4,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, to_torch
+from tianshou.data import to_torch
+from tianshou.data.batch import RolloutBatchProtocol
 from tianshou.policy import QRDQNPolicy
 
 
@@ -49,7 +50,8 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         )
         self._min_q_weight = min_q_weight
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

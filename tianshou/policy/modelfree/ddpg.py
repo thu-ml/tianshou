@@ -6,6 +6,11 @@ import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.batch import (
+    BatchProtocol,
+    BatchWithReturnsProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import BasePolicy
 
@@ -69,8 +74,8 @@ class DDPGPolicy(BasePolicy):
         try:
             if (
                 actor is not None and action_scaling
-                and not np.isclose(actor.max_action, 1.0)
-            ):  # type: ignore
+                and not np.isclose(actor.max_action, 1.0)  # type: ignore
+            ):
                 import warnings
 
                 warnings.warn(
@@ -127,8 +132,8 @@ class DDPGPolicy(BasePolicy):
         return target_q
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> Union[RolloutBatchProtocol, BatchWithReturnsProtocol]:
         batch = self.compute_nstep_return(
             batch,
             buffer,
@@ -142,12 +147,12 @@ class DDPGPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         model: Literal["actor", "actor_old"] = "actor",
         input: str = "obs",
         **kwargs: Any,
-    ) -> Batch:
+    ) -> BatchProtocol:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which has 2 keys:
@@ -167,7 +172,8 @@ class DDPGPolicy(BasePolicy):
 
     @staticmethod
     def _mse_optimizer(
-        batch: Batch, critic: torch.nn.Module, optimizer: torch.optim.Optimizer
+        batch: RolloutBatchProtocol, critic: torch.nn.Module,
+        optimizer: torch.optim.Optimizer
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """A simple wrapper script for updating critic network."""
         weight = getattr(batch, "weight", 1.0)
@@ -181,7 +187,8 @@ class DDPGPolicy(BasePolicy):
         optimizer.step()
         return td, critic_loss
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         # critic
         td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         batch.weight = td  # prio-buffer
@@ -193,8 +200,9 @@ class DDPGPolicy(BasePolicy):
         self.sync_weight()
         return {"loss/actor": actor_loss.item(), "loss/critic": critic_loss.item()}
 
-    def exploration_noise(self, act: Union[np.ndarray, Batch],
-                          batch: Batch) -> Union[np.ndarray, Batch]:
+    def exploration_noise(
+        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+    ) -> Union[np.ndarray, BatchProtocol]:
         if self._noise is None:
             return act
         if isinstance(act, np.ndarray):

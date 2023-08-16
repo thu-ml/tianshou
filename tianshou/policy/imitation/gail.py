@@ -4,9 +4,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
+from tianshou.data import ReplayBuffer, to_numpy, to_torch
+from tianshou.data.batch import RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
 from tianshou.policy.modelfree.pg import TDistParams
+from tianshou.policy.modelfree.ppo import BatchWithLogpProtocol
 
 
 class GAILPolicy(PPOPolicy):
@@ -102,8 +104,8 @@ class GAILPolicy(PPOPolicy):
         self.action_dim = actor.output_dim
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> BatchWithLogpProtocol:
         """Pre-process the data from the provided replay buffer.
 
         Used in :meth:`update`. Check out :ref:`process_fn` for more information.
@@ -113,13 +115,13 @@ class GAILPolicy(PPOPolicy):
             batch.rew = to_numpy(-F.logsigmoid(-self.disc(batch)).flatten())
         return super().process_fn(batch, buffer, indices)
 
-    def disc(self, batch: Batch) -> torch.Tensor:
+    def disc(self, batch: RolloutBatchProtocol) -> torch.Tensor:
         obs = to_torch(batch.obs, device=self.disc_net.device)
         act = to_torch(batch.act, device=self.disc_net.device)
         return self.disc_net(torch.cat([obs, act], dim=1))
 
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+        self, batch: RolloutBatchProtocol, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
         # update discriminator
         losses = []

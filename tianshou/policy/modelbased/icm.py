@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
+from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
@@ -53,10 +54,10 @@ class ICMPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Batch:
+    ) -> BatchProtocol:
         """Compute action over the given batch data by inner policy.
 
         .. seealso::
@@ -66,8 +67,9 @@ class ICMPolicy(BasePolicy):
         """
         return self.policy.forward(batch, state, **kwargs)
 
-    def exploration_noise(self, act: Union[np.ndarray, Batch],
-                          batch: Batch) -> Union[np.ndarray, Batch]:
+    def exploration_noise(
+        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+    ) -> Union[np.ndarray, BatchProtocol]:
         return self.policy.exploration_noise(act, batch)
 
     def set_eps(self, eps: float) -> None:
@@ -78,8 +80,8 @@ class ICMPolicy(BasePolicy):
             raise NotImplementedError()
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> RolloutBatchProtocol:
         """Pre-process the data from the provided replay buffer.
 
         Used in :meth:`update`. Check out :ref:`process_fn` for more information.
@@ -90,7 +92,7 @@ class ICMPolicy(BasePolicy):
         return self.policy.process_fn(batch, buffer, indices)
 
     def post_process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
+        self, batch: BatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
     ) -> None:
         """Post-process the data from the provided replay buffer.
 
@@ -100,7 +102,8 @@ class ICMPolicy(BasePolicy):
         self.policy.post_process_fn(batch, buffer, indices)
         batch.rew = batch.policy.orig_rew  # restore original reward
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         res = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat

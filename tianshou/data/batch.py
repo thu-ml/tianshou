@@ -15,13 +15,15 @@ from typing import (
     TypeVar,
     Union,
     overload,
+    runtime_checkable,
 )
 
 import numpy as np
 import torch
 
 IndexType = Union[slice, int, np.ndarray, List[int]]
-TBatch = TypeVar("TBatch", bound="Batch")
+TBatch = TypeVar("TBatch", bound="BatchProtocol")
+arr_type = Union[torch.Tensor, np.ndarray]
 
 
 def _is_batch_set(obj: Any) -> bool:
@@ -181,7 +183,10 @@ def _parse_value(obj: Any) -> Optional[Union["Batch", np.ndarray, torch.Tensor]]
 
 
 def _alloc_by_keys_diff(
-    meta: "Batch", batch: "Batch", size: int, stack: bool = True
+    meta: "BatchProtocol",
+    batch: "BatchProtocol",
+    size: int,
+    stack: bool = True
 ) -> None:
     for key in batch.keys():
         if key in meta.keys():
@@ -197,6 +202,7 @@ def _alloc_by_keys_diff(
 # of Batch is always extended by adding new fields. Having a hierarchy of
 # protocols building off this one allows for type safety and IDE support despite
 # the dynamic nature of Batch
+@runtime_checkable
 class BatchProtocol(Protocol):
     """The internal data structure in Tianshou.
 
@@ -208,7 +214,9 @@ class BatchProtocol(Protocol):
     For a detailed description, please refer to :ref:`batch_concept`.
     """
 
-    shape: List[int]
+    @property
+    def shape(self) -> List[int]:
+        ...
 
     def __setattr__(self, key: str, value: Any) -> None:
         ...
@@ -223,6 +231,14 @@ class BatchProtocol(Protocol):
         ...
 
     def __setstate__(self, state: dict) -> None:
+        ...
+
+    @overload
+    def __getitem__(self, index: str) -> Any:
+        ...
+
+    @overload
+    def __getitem__(self: TBatch, index: IndexType) -> TBatch:
         ...
 
     def __getitem__(self, index: Union[str, IndexType]) -> Any:
@@ -317,7 +333,7 @@ class BatchProtocol(Protocol):
         """
         ...
 
-    def empty_(self, index: Optional[Union[slice, IndexType]] = None) -> TBatch:
+    def empty_(self: TBatch, index: Optional[Union[slice, IndexType]] = None) -> TBatch:
         """Return an empty Batch object with 0 or None filled.
 
         If "index" is specified, it will only reset the specific indexed-data.
@@ -442,7 +458,7 @@ class Batch(BatchProtocol):
     def __getitem__(self: TBatch, index: IndexType) -> TBatch:
         ...
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Union[str, IndexType]) -> Any:
         """Return self[index]."""
         if isinstance(index, str):
             return self.__dict__[index]
@@ -658,8 +674,10 @@ class Batch(BatchProtocol):
                     self.__dict__[key][sum_lens[i]:sum_lens[i + 1]] = value
 
     def cat_(self, batches: Union[TBatch, Sequence[Union[dict, TBatch]]]) -> None:
-        if isinstance(batches, Batch):
-            batches = [batches]
+        if isinstance(batches, (BatchProtocol, dict)):
+            # TODO: why does mypy complain?
+            batches = [batches]  # type: ignore
+        batches: List[Union[dict, TBatch]]
         # check input format
         batch_list = []
         for batch in batches:
@@ -697,7 +715,7 @@ class Batch(BatchProtocol):
     def cat(batches: Sequence[Union[dict, TBatch]]) -> TBatch:
         batch = Batch()
         batch.cat_(batches)
-        return batch
+        return batch  # type: ignore
 
     def stack_(self, batches: Sequence[Union[dict, TBatch]], axis: int = 0) -> None:
         # check input format
@@ -761,10 +779,10 @@ class Batch(BatchProtocol):
             # reserved keys
             self.__dict__[key] = Batch()
         for key in keys_partial:
-            for i, batch in enumerate(batches):
+            for i, batch in enumerate(batches):  # type: ignore
                 if key not in batch.__dict__:
                     continue
-                value = batch.get(key)
+                value = batch.get(key)  # type: ignore
                 if isinstance(value, Batch) and value.is_empty():  # type: ignore
                     continue  # type: ignore
                 try:
@@ -777,7 +795,7 @@ class Batch(BatchProtocol):
     def stack(batches: Sequence[Union[dict, TBatch]], axis: int = 0) -> TBatch:
         batch = Batch()
         batch.stack_(batches, axis)
-        return batch
+        return batch  # type: ignore
 
     def empty_(self: TBatch, index: Optional[Union[slice, IndexType]] = None) -> TBatch:
         for batch_key, obj in self.items():
@@ -904,3 +922,16 @@ class Batch(BatchProtocol):
                 yield self[indices[idx:]]
                 break
             yield self[indices[idx:idx + size]]
+
+
+class RolloutBatchProtocol(BatchProtocol):
+    obs: Union[arr_type, BatchProtocol]
+    act: arr_type
+    rew: np.ndarray
+    terminated: arr_type
+    truncated: arr_type
+    info: arr_type
+
+
+class BatchWithReturnsProtocol(RolloutBatchProtocol):
+    returns: arr_type

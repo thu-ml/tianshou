@@ -81,6 +81,7 @@ class BaseTrainer(ABC):
     :param test_in_train: whether to test in the training phase.
         Default to True.
     """
+    __doc__: str
 
     @staticmethod
     def gen_doc(learning_type: str) -> str:
@@ -449,7 +450,7 @@ class BaseTrainer(ABC):
 
         return info
 
-    def _sample_and_update(self, buffer, data: Dict[str, Any]) -> None:
+    def _sample_and_update(self, buffer: ReplayBuffer, data: Dict[str, Any]) -> None:
         self.gradient_step += 1
         # Note: since sample_size=batch_size, this will perform
         # exactly one gradient step. This is why we don't need to calculate the
@@ -520,9 +521,9 @@ class OnpolicyTrainer(BaseTrainer):
         #   it's important and it adds complexity
         self.gradient_step += 1
         if self.batch_size > 0:
-            self.gradient_step += (
-                len(self.train_collector.buffer) - 0.1
-            ) // self.batch_size
+            self.gradient_step += int(
+                (len(self.train_collector.buffer) - 0.1) // self.batch_size
+            )
 
         # Note: this is the main difference to the off-policy trainer!
         # The second difference is that batches of data are sampled without replacement

@@ -6,8 +6,17 @@ import torch
 from torch.distributions import Independent, Normal
 
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
+
+
+class SACBatchProtocol(BatchProtocol):
+    logits: Tuple[torch.Tensor, torch.Tensor]
+    state: Optional[Union[dict, Batch, np.ndarray]]
+    act: torch.Tensor
+    dist: torch.distributions.Distribution
+    log_prob: torch.Tensor
 
 
 class SACPolicy(DDPGPolicy):
@@ -104,13 +113,14 @@ class SACPolicy(DDPGPolicy):
         self.soft_update(self.critic1_old, self.critic1, self.tau)
         self.soft_update(self.critic2_old, self.critic2, self.tau)
 
+    # TODO: violates Liskov substitution principle
     def forward(  # type: ignore
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         input: str = "obs",
         **kwargs: Any,
-    ) -> Batch:
+    ) -> SACBatchProtocol:
         obs = batch[input]
         logits, hidden = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
@@ -132,7 +142,7 @@ class SACPolicy(DDPGPolicy):
             state=hidden,
             dist=dist,
             log_prob=log_prob
-        )
+        )  # type: ignore
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}
@@ -144,7 +154,8 @@ class SACPolicy(DDPGPolicy):
         ) - self._alpha * obs_next_result.log_prob
         return target_q
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic1, self.critic1_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)

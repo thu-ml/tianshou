@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
+from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy, QRDQNPolicy
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 
@@ -73,15 +74,16 @@ class FQFPolicy(QRDQNPolicy):
         next_dist = next_dist[np.arange(len(act)), act, :]
         return next_dist  # shape: [bsz, num_quantiles]
 
-    def forward(
+    # TODO: add protocol type for return, fix Liskov substitution principle violation
+    def forward(  # type: ignore
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
         fractions: Optional[Batch] = None,
         **kwargs: Any,
-    ) -> Batch:
+    ) -> BatchProtocol:
         model = getattr(self, model)
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs
@@ -116,7 +118,8 @@ class FQFPolicy(QRDQNPolicy):
             quantiles_tau=quantiles_tau
         )
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         weight = batch.pop("weight", 1.0)

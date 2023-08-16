@@ -5,7 +5,9 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, to_torch
+from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import LogitsActStateBatchProtocol
 
 
 class ImitationPolicy(BasePolicy):
@@ -38,18 +40,19 @@ class ImitationPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Batch:
+    ) -> LogitsActStateBatchProtocol:
         logits, hidden = self.model(batch.obs, state=state, info=batch.info)
         if self.action_type == "discrete":
             act = logits.max(dim=1)[1]
         else:
             act = logits
-        return Batch(logits=logits, act=act, state=hidden)
+        return Batch(logits=logits, act=act, state=hidden)  # type: ignore
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *ags: Any,
+              **kwargs: Any) -> Dict[str, float]:
         self.optim.zero_grad()
         if self.action_type == "continuous":  # regression
             act = self(batch).act

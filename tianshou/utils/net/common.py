@@ -161,7 +161,7 @@ class NetBase(nn.Module, ABC):
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
-        **kwargs
+        **kwargs: Any,
     ) -> Tuple[torch.Tensor, Any]:
         pass
 
@@ -230,6 +230,9 @@ class Net(NetBase):
         self.device = device
         self.softmax = softmax
         self.num_atoms = num_atoms
+        self.Q: Optional[MLP] = None
+        self.V: Optional[MLP] = None
+
         input_dim = int(np.prod(state_shape))
         action_dim = int(np.prod(action_shape)) * num_atoms
         if concat:
@@ -253,8 +256,8 @@ class Net(NetBase):
                 "device": self.device,
             }
             # Important: don't change the original dict (e.g., don't use .update())
-            q_kwargs = {**dueling_param[0], **kwargs_update}
-            v_kwargs = {**dueling_param[1], **kwargs_update}
+            q_kwargs = {**dueling_param[0], **kwargs_update}  # type: ignore
+            v_kwargs = {**dueling_param[1], **kwargs_update}  # type: ignore
 
             q_kwargs["output_dim"] = 0 if concat else action_dim
             v_kwargs["output_dim"] = 0 if concat else num_atoms
@@ -262,13 +265,12 @@ class Net(NetBase):
             self.output_dim = self.Q.output_dim
         else:
             self.output_dim = self.model.output_dim
-            self.Q, self.V = None, None
 
     def forward(
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
-        **kwargs
+        **kwargs: Any,
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> flatten (inside MLP)-> logits.
         :param obs:
@@ -278,6 +280,7 @@ class Net(NetBase):
         logits = self.model(obs)
         batch_size = logits.shape[0]
         if self.use_dueling:  # Dueling DQN
+            assert self.Q is not None and self.V is not None
             q, v = self.Q(logits), self.V(logits)
             if self.num_atoms > 1:
                 q = q.view(batch_size, -1, self.num_atoms)
@@ -320,7 +323,7 @@ class Recurrent(NetBase):
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Union[RecurrentStateBatch, Dict[str, torch.Tensor]]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """Mapping: obs -> flatten -> logits.
 
@@ -543,7 +546,7 @@ class BranchingNet(NetBase):
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
-        **kwargs
+        **kwargs: Any,
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> model -> logits."""
         common_out = self.common(obs)

@@ -4,9 +4,12 @@ import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_torch, to_torch_as
-from tianshou.data.batch import BatchProtocol
+from tianshou.data.batch import (
+    BatchProtocol,
+    BatchWithReturnsProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import RolloutBatchProtocol
 from tianshou.utils import RunningMeanStd
 
 TDistParams = Union[torch.Tensor, Tuple[torch.Tensor]]
@@ -83,6 +86,7 @@ class PGPolicy(BasePolicy):
                     "Consider using unbounded=True option of the actor model,"
                     'or set action_scaling to False and action_bound_method to "".'
                 )
+        # TODO: why this try/except? warnings is a standard library module
         except Exception:
             pass
         self.optim = optim
@@ -96,7 +100,7 @@ class PGPolicy(BasePolicy):
 
     def process_fn(
         self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+    ) -> BatchWithReturnsProtocol:
         r"""Compute the discounted returns (Monte Carlo estimates) for each transition
         and add them to the batch under the field `returns`.
         Note: this function will modify the input batch!
@@ -126,6 +130,7 @@ class PGPolicy(BasePolicy):
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
+        batch: BatchWithReturnsProtocol
         return batch
 
     def _get_deterministic_action(self, logits: torch.Tensor) -> torch.Tensor:
@@ -144,7 +149,7 @@ class PGPolicy(BasePolicy):
     def forward(
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
     ) -> ActionBatchProtocol:
         """Compute action over the given batch data by applying the actor
@@ -181,8 +186,10 @@ class PGPolicy(BasePolicy):
             act = dist.sample()
         return Batch(logits=logits, act=act, state=hidden, dist=dist)  # type: ignore
 
+    # TODO: why does mypy complain?
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+        self, batch: RolloutBatchProtocol, batch_size: int,
+        repeat: int, *args: Any, **kwargs: Any
     ) -> Dict[str, List[float]]:
         losses = []
         for _ in range(repeat):

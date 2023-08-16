@@ -4,7 +4,9 @@ import numpy as np
 import torch
 
 from tianshou.data import Batch
+from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import ActOnlyBatchProtocol
 
 
 class PSRLModel(object):
@@ -129,9 +131,9 @@ class PSRLModel(object):
 
     def __call__(
         self,
-        obs: np.ndarray,
+        obs: Union[np.ndarray],
         state: Any = None,
-        info: Dict[str, Any] = {},
+        info: Any = None,
     ) -> np.ndarray:
         if not self.updated:
             self.solve_policy()
@@ -180,10 +182,10 @@ class PSRLPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Batch:
+    ) -> ActOnlyBatchProtocol:
         """Compute action over the given batch data with PSRL model.
 
         :return: A :class:`~tianshou.data.Batch` with "act" key containing
@@ -194,10 +196,12 @@ class PSRLPolicy(BasePolicy):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
+        assert isinstance(batch.obs, np.ndarray), "only support np.ndarray observation"
         act = self.model(batch.obs, state=state, info=batch.info)
-        return Batch(act=act)
+        return Batch(act=act)  # type: ignore
 
-    def learn(self, batch: Batch, *args: Any, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
@@ -206,9 +210,9 @@ class PSRLPolicy(BasePolicy):
         for minibatch in batch.split(size=1):
             obs, act, obs_next = minibatch.obs, minibatch.act, minibatch.obs_next
             trans_count[obs, act, obs_next] += 1
-            rew_sum[obs, act] += minibatch.rew
-            rew_square_sum[obs, act] += minibatch.rew**2
-            rew_count[obs, act] += 1
+            rew_sum[obs, act] += minibatch.rew  # type: ignore
+            rew_square_sum[obs, act] += minibatch.rew**2  # type: ignore
+            rew_count[obs, act] += 1  # type: ignore
             if self._add_done_loop and minibatch.done:
                 # special operation for terminal states: add a self-loop
                 trans_count[obs_next, :, obs_next] += 1

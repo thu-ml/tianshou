@@ -4,7 +4,13 @@ import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch, to_torch_as
+from tianshou.data.batch import (
+    BatchProtocol,
+    BatchWithReturnsProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.policy import DQNPolicy
+from tianshou.policy.base import LogitsActStateBatchProtocol
 from tianshou.utils.net.common import BranchingNet
 
 
@@ -64,11 +70,11 @@ class BranchingDQNPolicy(DQNPolicy):
 
     def _compute_return(
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indice: np.ndarray,
         gamma: float = 0.99,
-    ) -> Batch:
+    ) -> BatchWithReturnsProtocol:
         rew = batch.rew
         with torch.no_grad():
             target_q_torch = self._target_q(buffer, indice)  # (bsz, ?)
@@ -84,30 +90,31 @@ class BranchingDQNPolicy(DQNPolicy):
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
             batch.weight = to_torch_as(batch.weight, target_q_torch)
-        return batch
+        return batch  # type: ignore
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> BatchWithReturnsProtocol:
         """Compute the 1-step return for BDQ targets."""
         return self._compute_return(batch, buffer, indices)
 
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[Dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[Dict, BatchProtocol, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
-    ) -> Batch:
+    ) -> LogitsActStateBatchProtocol:
         model = getattr(self, model)
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         logits, hidden = model(obs_next, state=state, info=batch.info)
         act = to_numpy(logits.max(dim=-1)[1])
-        return Batch(logits=logits, act=act, state=hidden)
+        return Batch(logits=logits, act=act, state=hidden)  # type: ignore
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -129,9 +136,9 @@ class BranchingDQNPolicy(DQNPolicy):
 
     def exploration_noise(
         self,
-        act: Union[np.ndarray, Batch],
-        batch: Batch,
-    ) -> Union[np.ndarray, Batch]:
+        act: Union[np.ndarray, BatchProtocol],
+        batch: RolloutBatchProtocol,
+    ) -> Union[np.ndarray, BatchProtocol]:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
