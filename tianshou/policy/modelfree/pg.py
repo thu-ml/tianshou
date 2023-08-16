@@ -134,10 +134,12 @@ class PGPolicy(BasePolicy):
         if self.action_type == "discrete":
             return logits.argmax(-1)
         elif self.action_type == "continuous":
-            # assume that the mode of the distribution is the first element of the actor's output (the "logits")
+            # assume that the mode of the distribution is the first element
+            # of the actor's output (the "logits")
             return logits[0]
         raise RuntimeError(
-            f"Unknown action type: {self.action_type}. This should not happen and might be a bug."
+            f"Unknown action type: {self.action_type}. "
+            f"This should not happen and might be a bug."
             f"Supported action types are: 'discrete' and 'continuous'."
         )
 
@@ -147,17 +149,17 @@ class PGPolicy(BasePolicy):
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         **kwargs: Any,
     ) -> ActionBatchProtocol:
-        """Compute action over the given batch data by applying the actor (and sampling from the dist_fn, if
-        appropriate).
+        """Compute action over the given batch data by applying the actor
+        (and sampling from the dist_fn, if appropriate).
         Returns a new object representing the processed batch data
         (contrary to other methods that modify the input batch inplace).
 
         :return: A :class:`~tianshou.data.Batch` which has 4 keys:
             * ``act`` the action. In deterministic evaluation, this will be the argmax
-                of the distribution, whereasin stochastic mode, it will be a sample.
-            * ``logits`` the network's raw output. **Note**: if the actions are continuous, these are not
-               logits but rather the inputs to the distribution (typically loc and std)
-               from which the actions are sampled.
+                of the distribution, whereas in stochastic mode, it will be a sample.
+            * ``logits`` the network's raw output. **Note**: if the actions are
+                continuous, these are not logits but rather the inputs to the
+                distribution (typically loc and std) from which the actions are sampled.
             * ``dist`` the action distribution, an instantiation of self.dist_fn.
             * ``state`` the hidden state.
 
@@ -166,8 +168,8 @@ class PGPolicy(BasePolicy):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
-        # TODO: rename? It's not really logits and there are particular assumptions about the order of the output
-        #   and on distribution type
+        # TODO: rename? It's not really logits and there are particular
+        #  assumptions about the order of the output and on distribution type
         logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)

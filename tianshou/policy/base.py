@@ -478,7 +478,8 @@ def _gae_return(
         G_t^\lambda = A_t^\lambda+ V_t
 
     :param v_s: values in an episode, i.e. $V_t$
-    :param v_s_: next values in an episode, i.e. v_s shifted by 1, equivalent to $V_{t+1}$
+    :param v_s_: next values in an episode, i.e. v_s shifted by 1, equivalent to
+        $V_{t+1}$
     :param rew: rewards in an episode, i.e. $r_t$
     :param end_flag: boolean array indicating whether the episode is done
     :param gamma: discount factor
