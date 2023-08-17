@@ -24,6 +24,8 @@ ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]],
 
 
 class RecurrentStateBatch(BatchProtocol):
+    """Used by RNNs in policies, contains `hidden` and `cell` fields."""
+
     hidden: torch.Tensor
     cell: torch.Tensor
 
@@ -155,6 +157,7 @@ class MLP(nn.Module):
 
 
 class NetBase(nn.Module, ABC):
+    """Interface for NNs used in policies."""
 
     @abstractmethod
     def forward(
@@ -273,6 +276,7 @@ class Net(NetBase):
         **kwargs: Any,
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> flatten (inside MLP)-> logits.
+
         :param obs:
         :param state: unused and returned as is
         :param kwargs: unused

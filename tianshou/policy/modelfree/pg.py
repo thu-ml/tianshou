@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -10,25 +10,19 @@ from tianshou.data.batch import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import ModelOutputBatchProtocol
 from tianshou.utils import RunningMeanStd
 
 TDistParams = Union[torch.Tensor, Tuple[torch.Tensor]]
 
 
-class PGBatchProtocol(RolloutBatchProtocol):
-    # TODO: logits is a bit of an unfortunate name, since it's not actually
-    #  logits for continuous action spaces
-    logits: Sequence[Union[tuple, torch.Tensor]]
-    dist: torch.distributions.Distribution
-    act: torch.Tensor
-    state: Optional[torch.Tensor]
+class DistBatchProtocol(ModelOutputBatchProtocol):
+    """Contains dist instances for actions (created by dist_fn).
 
+    Usually categorical or normal.
+    """
 
-class ActionBatchProtocol(BatchProtocol):
-    logits: Sequence[Union[tuple, torch.Tensor]]
     dist: torch.distributions.Distribution
-    act: torch.Tensor
-    state: Optional[torch.Tensor]
 
 
 class PGPolicy(BasePolicy):
@@ -101,8 +95,9 @@ class PGPolicy(BasePolicy):
     def process_fn(
         self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
     ) -> BatchWithReturnsProtocol:
-        r"""Compute the discounted returns (Monte Carlo estimates) for each transition
-        and add them to the batch under the field `returns`.
+        r"""Compute the discounted returns (Monte Carlo estimates) for each transition.
+
+        They are added to the batch under the field `returns`.
         Note: this function will modify the input batch!
 
         .. math::
@@ -151,20 +146,12 @@ class PGPolicy(BasePolicy):
         batch: RolloutBatchProtocol,
         state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> ActionBatchProtocol:
-        """Compute action over the given batch data by applying the actor
-        (and sampling from the dist_fn, if appropriate).
+    ) -> DistBatchProtocol:
+        """Compute action over the given batch data by applying the actor.
+
+        Will sample from the dist_fn, if appropriate.
         Returns a new object representing the processed batch data
         (contrary to other methods that modify the input batch inplace).
-
-        :return: A :class:`~tianshou.data.Batch` which has 4 keys:
-            * ``act`` the action. In deterministic evaluation, this will be the argmax
-                of the distribution, whereas in stochastic mode, it will be a sample.
-            * ``logits`` the network's raw output. **Note**: if the actions are
-                continuous, these are not logits but rather the inputs to the
-                distribution (typically loc and std) from which the actions are sampled.
-            * ``dist`` the action distribution, an instantiation of self.dist_fn.
-            * ``state`` the hidden state.
 
         .. seealso::
 

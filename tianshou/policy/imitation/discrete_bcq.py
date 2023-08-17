@@ -6,12 +6,14 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
-from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
+from tianshou.data.batch import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
+from tianshou.policy.base import ActBatchProtocol
 
 
-class ImitationBatchProtocol(BatchProtocol):
-    act: torch.Tensor
+class ImitationBatchProtocol(ActBatchProtocol):
+    """Similar to other batches, but contains imitation_logits and q_value fields."""
+
     state: Optional[Union[dict, Batch, np.ndarray]]
     q_value: torch.Tensor
     imitation_logits: torch.Tensor

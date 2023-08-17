@@ -10,7 +10,7 @@ from tianshou.data.batch import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import DQNPolicy
-from tianshou.policy.base import LogitsActStateBatchProtocol
+from tianshou.policy.base import ModelOutputBatchProtocol
 from tianshou.utils.net.common import BranchingNet
 
 
@@ -105,7 +105,7 @@ class BranchingDQNPolicy(DQNPolicy):
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
-    ) -> LogitsActStateBatchProtocol:
+    ) -> ModelOutputBatchProtocol:
         model = getattr(self, model)
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs

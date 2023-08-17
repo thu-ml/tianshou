@@ -11,7 +11,7 @@ from tianshou.data.batch import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import LogitsActStateBatchProtocol
+from tianshou.policy.base import ModelOutputBatchProtocol
 
 
 class DQNPolicy(BasePolicy):
@@ -131,7 +131,7 @@ class DQNPolicy(BasePolicy):
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
-    ) -> LogitsActStateBatchProtocol:
+    ) -> ModelOutputBatchProtocol:
         """Compute action over the given batch data.
 
         If you need to mask the action, please add a "mask" into batch.obs, for

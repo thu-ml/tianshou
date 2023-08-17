@@ -6,15 +6,15 @@ import torch
 from torch.distributions import Independent, Normal
 
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
+from tianshou.data.batch import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
+from tianshou.policy.base import ModelOutputBatchProtocol
 
 
-class SACBatchProtocol(BatchProtocol):
-    logits: Tuple[torch.Tensor, torch.Tensor]
-    state: Optional[Union[dict, Batch, np.ndarray]]
-    act: torch.Tensor
+class DistLogProbBatchProtocol(ModelOutputBatchProtocol):
+    """Contains dist objects that can be sampled from and log_prob of taken action."""
+
     dist: torch.distributions.Distribution
     log_prob: torch.Tensor
 
@@ -120,7 +120,7 @@ class SACPolicy(DDPGPolicy):
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         input: str = "obs",
         **kwargs: Any,
-    ) -> SACBatchProtocol:
+    ) -> DistLogProbBatchProtocol:
         obs = batch[input]
         logits, hidden = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)

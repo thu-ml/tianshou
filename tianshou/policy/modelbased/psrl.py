@@ -6,7 +6,7 @@ import torch
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import ActOnlyBatchProtocol
+from tianshou.policy.base import ActBatchProtocol
 
 
 class PSRLModel(object):
@@ -185,7 +185,7 @@ class PSRLPolicy(BasePolicy):
         batch: RolloutBatchProtocol,
         state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> ActOnlyBatchProtocol:
+    ) -> ActBatchProtocol:
         """Compute action over the given batch data with PSRL model.
 
         :return: A :class:`~tianshou.data.Batch` with "act" key containing

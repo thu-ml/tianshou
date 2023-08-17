@@ -20,7 +20,7 @@ from tianshou.utils import (
 
 
 class BaseTrainer(ABC):
-    """An iterator base class for trainers procedure.
+    """An iterator base class for trainers.
 
     Returns an iterator that yields a 3-tuple (epoch, stats, info) of train results
     on every epoch.
@@ -81,6 +81,7 @@ class BaseTrainer(ABC):
     :param test_in_train: whether to test in the training phase.
         Default to True.
     """
+
     __doc__: str
 
     @staticmethod
@@ -461,7 +462,12 @@ class BaseTrainer(ABC):
 
 
 class OfflineTrainer(BaseTrainer):
-    __doc__ = BaseTrainer.gen_doc("offline") + "\n".join(
+    """Offline trainer, samples mini-batches from buffer and passes them to update.
+
+    Uses a buffer directly and usually does not have a collector.
+    """
+
+    __doc__ += BaseTrainer.gen_doc("offline") + "\n".join(
         BaseTrainer.__doc__.split("\n")[1:]  # type: ignore
     )
 
@@ -474,7 +480,14 @@ class OfflineTrainer(BaseTrainer):
 
 
 class OffpolicyTrainer(BaseTrainer):
-    __doc__ = BaseTrainer.gen_doc("offpolicy") + "\n".join(
+    """Offpolicy trainer, samples mini-batches from buffer and passes them to update.
+
+    Note that with this trainer, it is expected that the policy's `learn` method
+    does not perform additional mini-batching but just updates params from the received
+    mini-batch.
+    """
+
+    __doc__ += BaseTrainer.gen_doc("offpolicy") + "\n".join(
         BaseTrainer.__doc__.split("\n")[1:]  # type: ignore
     )
 
@@ -495,6 +508,12 @@ class OffpolicyTrainer(BaseTrainer):
 
 
 class OnpolicyTrainer(BaseTrainer):
+    """On-policy trainer, passes the entire buffer to .update and resets it after.
+
+    Note that it is expected that the learn method of a policy will perform
+    batching when using this trainer.
+    """
+
     __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(
         BaseTrainer.__doc__.split("\n")[1:]  # type: ignore
     )

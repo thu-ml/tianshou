@@ -5,7 +5,7 @@ import numpy as np
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import ActOnlyBatchProtocol
+from tianshou.policy.base import ActBatchProtocol
 
 
 class RandomPolicy(BasePolicy):
@@ -19,7 +19,7 @@ class RandomPolicy(BasePolicy):
         batch: RolloutBatchProtocol,
         state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> ActOnlyBatchProtocol:
+    ) -> ActBatchProtocol:
         """Compute the random action over the given batch data.
 
         The input should contain a mask in batch.obs, with "True" to be

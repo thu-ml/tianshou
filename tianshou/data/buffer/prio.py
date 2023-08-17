@@ -8,6 +8,8 @@ from tianshou.data.batch import RolloutBatchProtocol
 
 
 class PrioBatchProtocol(RolloutBatchProtocol):
+    """Contains weights that can be used for prioritized replay."""
+
     weight: Union[np.ndarray, torch.Tensor]
 
 

@@ -20,7 +20,7 @@ from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 
 
-class Collector(object):
+class Collector:
     """Collector enables the policy to interact with different types of envs with \
     exact number of steps or episodes.
 

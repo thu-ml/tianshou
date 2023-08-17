@@ -398,6 +398,9 @@ class BatchProtocol(Protocol):
 
 
 class Batch(BatchProtocol):
+    """See :class:`~tianshou.data.batch.BatchProtocol`."""
+
+    __doc__ = BatchProtocol.__doc__
 
     def __init__(
         self,
@@ -925,6 +928,8 @@ class Batch(BatchProtocol):
 
 
 class RolloutBatchProtocol(BatchProtocol):
+    """Typically, the outcome of sampling from a replay buffer."""
+
     obs: Union[arr_type, BatchProtocol]
     act: arr_type
     rew: np.ndarray
@@ -934,4 +939,6 @@ class RolloutBatchProtocol(BatchProtocol):
 
 
 class BatchWithReturnsProtocol(RolloutBatchProtocol):
+    """With added returns, usually computed with GAE."""
+
     returns: arr_type

@@ -8,7 +8,7 @@ from tianshou.data import ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
 from tianshou.policy.modelfree.pg import TDistParams
-from tianshou.policy.modelfree.ppo import BatchWithLogpProtocol
+from tianshou.policy.modelfree.ppo import BatchWithLogpOldProtocol
 
 
 class GAILPolicy(PPOPolicy):
@@ -105,7 +105,7 @@ class GAILPolicy(PPOPolicy):
 
     def process_fn(
         self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> BatchWithLogpProtocol:
+    ) -> BatchWithLogpOldProtocol:
         """Pre-process the data from the provided replay buffer.
 
         Used in :meth:`update`. Check out :ref:`process_fn` for more information.

@@ -13,6 +13,11 @@ from tianshou.utils.net.common import ActorCritic
 
 
 class BatchWithAdvantagesProtocol(BatchWithReturnsProtocol):
+    """Contains estimated advantages and values.
+
+    Returns are usually computed from GAE of advantages by adding the value.
+    """
+
     adv: torch.Tensor
     v_s: torch.Tensor
 

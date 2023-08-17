@@ -12,7 +12,9 @@ from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
 
 
-class BatchWithLogpProtocol(BatchWithAdvantagesProtocol):
+class BatchWithLogpOldProtocol(BatchWithAdvantagesProtocol):
+    """Contains logp_old, often needed for importance weights, in particular in PPO."""
+
     logp_old: torch.Tensor
 
 
@@ -92,7 +94,7 @@ class PPOPolicy(A2CPolicy):
 
     def process_fn(
         self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> BatchWithLogpProtocol:
+    ) -> BatchWithLogpOldProtocol:
         if self._recompute_adv:
             # buffer input `buffer` and `indices` to be used in `learn()`.
             self._buffer, self._indices = buffer, indices
@@ -100,7 +102,7 @@ class PPOPolicy(A2CPolicy):
         batch.act = to_torch_as(batch.act, batch.v_s)
         with torch.no_grad():
             batch.logp_old = self(batch).dist.log_prob(batch.act)
-        batch: BatchWithLogpProtocol
+        batch: BatchWithLogpOldProtocol
         return batch
 
     # TODO: why does mypy complain?

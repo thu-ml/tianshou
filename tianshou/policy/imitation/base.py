@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import LogitsActStateBatchProtocol
+from tianshou.policy.base import ModelOutputBatchProtocol
 
 
 class ImitationPolicy(BasePolicy):
@@ -43,7 +43,7 @@ class ImitationPolicy(BasePolicy):
         batch: RolloutBatchProtocol,
         state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> LogitsActStateBatchProtocol:
+    ) -> ModelOutputBatchProtocol:
         logits, hidden = self.model(batch.obs, state=state, info=batch.info)
         if self.action_type == "discrete":
             act = logits.max(dim=1)[1]

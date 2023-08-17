@@ -66,10 +66,18 @@ class BasePolicy(ABC, nn.Module):
 
         torch.save(policy.state_dict(), "policy.pth")
         policy.load_state_dict(torch.load("policy.pth"))
+
+    :param observation_space: appears unused.
+    :param action_space: required for action_scaling.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range
+        of action_space. Note that in this case, the action_space must be provided!
+    :param action_bound_method:
+    :param lr_scheduler:
     """
 
     def __init__(
         self,
+        # TODO: does the policy actually need the observation space?
         observation_space: Optional[gym.Space] = None,
         action_space: Optional[gym.Space] = None,
         action_scaling: bool = False,
@@ -77,14 +85,6 @@ class BasePolicy(ABC, nn.Module):
         lr_scheduler: Optional[Union[torch.optim.lr_scheduler.LambdaLR,
                                      MultipleLRSchedulers]] = None,
     ) -> None:
-        """
-        :param observation_space: appears unused!
-        :param action_space: required for action_scaling.
-        :param action_scaling: if True, scale the action from [-1, 1] to the range
-            of action_space. Note that in this case, the action_space must be provided!
-        :param action_bound_method:
-        :param lr_scheduler:
-        """
         allowed_action_bound_methods = ("clip", "tanh")
         if action_bound_method is not None:
             if action_bound_method not in allowed_action_bound_methods:
@@ -125,13 +125,13 @@ class BasePolicy(ABC, nn.Module):
         self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
     ) -> Union[np.ndarray, BatchProtocol]:
         """Modify the action from policy.forward with exploration noise.
+
         NOTE: currently does not add any noise! Needs to be overridden by subclasses
         to actually do something.
 
         :param act: a data batch or numpy.ndarray which is the action taken by
             policy.forward.
         :param batch: the input batch for policy.forward, kept for advanced usage.
-
         :return: action in the same form of input "act" but with added exploration
             noise.
         """
@@ -297,6 +297,7 @@ class BasePolicy(ABC, nn.Module):
         self, batch: BatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
     ) -> None:
         """Post-process the data from the provided replay buffer.
+
         This will only have an effect if the buffer has the
         method `update_weight` and the batch has the attribute `weight`.
 
@@ -371,11 +372,11 @@ class BasePolicy(ABC, nn.Module):
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Compute returns over given batch.
+        r"""Compute returns over given batch.
 
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
         to calculate q/advantage value of given batch. Returns are calculated as
-        advantage + value, which is exactly equivalent to using TD(gae_lambda)
+        advantage + value, which is exactly equivalent to using :math:`TD(\lambda)`
         for estimating returns.
 
         :param batch: a data batch which contains several episodes of data in
@@ -483,6 +484,7 @@ class BasePolicy(ABC, nn.Module):
         _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
 
 
+# TODO: rename? See docstring
 @njit
 def _gae_return(
     v_s: np.ndarray,
@@ -492,8 +494,9 @@ def _gae_return(
     gamma: float,
     gae_lambda: float,
 ) -> np.ndarray:
-    """
-    This doesn't compute returns but rather advantages. The return
+    r"""Computes advantages with GAE.
+
+    Note: doesn't compute returns but rather advantages. The return
     is given by the output of this + v_s. Note that the advantages plus v_s
     is exactly the same as the TD-lambda target, which is computed by the recursive
     formula:
@@ -558,11 +561,14 @@ def _nstep_return(
     return target_q.reshape(target_shape)
 
 
-class LogitsActStateBatchProtocol(BatchProtocol):
-    logits: torch.Tensor
-    act: torch.Tensor
-    state: Optional[Union[dict, BatchProtocol, np.ndarray]]
+class ActBatchProtocol(BatchProtocol):
+    """Simplest batch, just containing the action. Useful e.g., for random policy."""
 
-
-class ActOnlyBatchProtocol(BatchProtocol):
     act: np.ndarray
+
+
+class ModelOutputBatchProtocol(ActBatchProtocol):
+    """Contains model output: (logits) and potentially hidden states."""
+
+    logits: torch.Tensor
+    state: Optional[Union[dict, BatchProtocol, np.ndarray]]

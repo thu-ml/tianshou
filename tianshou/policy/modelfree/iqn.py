@@ -7,10 +7,12 @@ import torch.nn.functional as F
 from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
 from tianshou.policy import QRDQNPolicy
-from tianshou.policy.base import LogitsActStateBatchProtocol
+from tianshou.policy.base import ModelOutputBatchProtocol
 
 
-class LogitsActStateTauBatchProtocol(LogitsActStateBatchProtocol):
+class ModelOutputTauBatchProtocol(ModelOutputBatchProtocol):
+    """Model outputs and taus."""
+
     taus: torch.Tensor
 
 
@@ -72,7 +74,7 @@ class IQNPolicy(QRDQNPolicy):
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
-    ) -> LogitsActStateTauBatchProtocol:
+    ) -> ModelOutputTauBatchProtocol:
         if model == "model_old":
             sample_size = self._target_sample_size
         elif self.training:
