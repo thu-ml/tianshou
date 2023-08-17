@@ -44,6 +44,7 @@ class CQLPolicy(SACPolicy):
     :param float alpha_min: lower bound for clipping cql_alpha. Default to 0.0.
     :param float alpha_max: upper bound for clipping cql_alpha. Default to 1e6.
     :param float clip_grad: clip_grad for updating critic network. Default to 1.0.
+    :param calibrated: calibrate Q-values as in CalQL paper arXiv:2303.05479.
     :param Union[str, torch.device] device: which device to create this model on.
         Default to "cpu".
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
@@ -77,6 +78,7 @@ class CQLPolicy(SACPolicy):
         alpha_min: float = 0.0,
         alpha_max: float = 1e6,
         clip_grad: float = 1.0,
+        calibrated: bool = False,
         device: Union[str, torch.device] = "cpu",
         **kwargs: Any
     ) -> None:
@@ -104,6 +106,8 @@ class CQLPolicy(SACPolicy):
         self.alpha_min = alpha_min
         self.alpha_max = alpha_max
         self.clip_grad = clip_grad
+
+        self.calibrated = calibrated
 
     def train(self, mode: bool = True) -> "CQLPolicy":
         """Set the module in training mode, except for the target network."""
@@ -224,6 +228,19 @@ class CQLPolicy(SACPolicy):
             random_value1, random_value2
         ]:
             value.reshape(batch_size, self.num_repeat_actions, 1)
+
+        if self.calibrated:
+            returns = batch.calibration_returns.unsqueeze(1).repeat(
+                (1, self.num_repeat_actions)
+            ).view(-1, 1)
+            random_value1 = torch.max(random_value1, returns)
+            random_value2 = torch.max(random_value2, returns)
+
+            current_pi_value1 = torch.max(current_pi_value1, returns)
+            current_pi_value2 = torch.max(current_pi_value2, returns)
+
+            next_pi_value1 = torch.max(next_pi_value1, returns)
+            next_pi_value2 = torch.max(next_pi_value2, returns)
 
         # cat q values
         cat_q1 = torch.cat([random_value1, current_pi_value1, next_pi_value1], 1)

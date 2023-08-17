@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, VectorReplayBuffer
+from tianshou.data import Batch, Collector, ReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import CQLPolicy
 from tianshou.trainer import OfflineTrainer
@@ -67,14 +67,51 @@ def get_args():
     return args
 
 
-def test_cql(args=get_args()):
+def add_returns(buffer: ReplayBuffer, gamma: float = 0.99) -> ReplayBuffer:
+    """Adds the returns for a given ReplayBuffer.
+
+    Args:
+        buffer: The ReplayBuffer to compute returns for.
+        gamma: The discount factor.
+
+    Returns:
+        A new ReplayBuffer with the returns.
+    """
+    data_dict = buffer._meta.__dict__
+    start_idx = np.concatenate([np.array([0]), np.where(data_dict['done'])[0] + 1])
+    end_idx = np.concatenate(
+        [np.where(data_dict['done'])[0] + 1,
+         np.array([len(data_dict['done'])])]
+    )
+    ep_rew = [data_dict['rew'][i:j] for i, j in zip(start_idx, end_idx)]
+    ep_ret = []
+    for i in range(len(ep_rew)):
+        episode_rewards = ep_rew[i]
+        disc_returns = [0] * len(episode_rewards)
+        discounted_return = 0
+        for j in range(1, len(episode_rewards) + 1):
+            discounted_return = episode_rewards[len(episode_rewards) -
+                                                j] + gamma * discounted_return
+            disc_returns[len(episode_rewards) - j] = discounted_return
+        ep_ret.append(disc_returns)
+
+    new_data_dict = data_dict.copy()
+    ep_rets = np.concatenate(ep_ret)
+    new_data_dict['calibration_returns'] = ep_rets
+    new_batch = Batch(**new_data_dict)
+    buffer._meta = new_batch
+    return buffer
+
+
+def test_cql(args=get_args(), calibrated=False):
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
-            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
+            buffer = ReplayBuffer.load_hdf5(args.load_buffer_name)
         else:
             buffer = pickle.load(open(args.load_buffer_name, "rb"))
     else:
         buffer = gather_data()
+    buffer = add_returns(buffer)
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -157,6 +194,7 @@ def test_cql(args=get_args()):
         lagrange_threshold=args.lagrange_threshold,
         min_action=np.min(env.action_space.low),
         max_action=np.max(env.action_space.high),
+        calibrated=calibrated,
         device=args.device,
     )
 
@@ -227,3 +265,5 @@ def test_cql(args=get_args()):
 
 if __name__ == '__main__':
     test_cql()
+    # test calibrated cql
+    test_cql(calibrated=True)

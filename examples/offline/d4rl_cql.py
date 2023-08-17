@@ -11,7 +11,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from examples.offline.utils import load_buffer_d4rl
-from tianshou.data import Collector
+from tianshou.data import Batch, Collector, ReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import CQLPolicy
 from tianshou.trainer import offline_trainer
@@ -45,6 +45,7 @@ def get_args():
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--cql-weight", type=float, default=1.0)
     parser.add_argument("--with-lagrange", type=bool, default=True)
+    parser.add_argument("--calibrated", type=bool, default=True)
     parser.add_argument("--lagrange-threshold", type=float, default=10.0)
     parser.add_argument("--gamma", type=float, default=0.99)
 
@@ -71,6 +72,42 @@ def get_args():
         help="watch the play of pre-trained policy only",
     )
     return parser.parse_args()
+
+
+def add_returns(buffer: ReplayBuffer, gamma: float = 0.99) -> ReplayBuffer:
+    """Adds the returns for a given ReplayBuffer.
+
+    Args:
+        buffer: The ReplayBuffer to compute returns for.
+        gamma: The discount factor.
+
+    Returns:
+        A new ReplayBuffer with the returns.
+    """
+    data_dict = buffer._meta.__dict__
+    start_idx = np.concatenate([np.array([0]), np.where(data_dict['done'])[0] + 1])
+    end_idx = np.concatenate(
+        [np.where(data_dict['done'])[0] + 1,
+         np.array([len(data_dict['done'])])]
+    )
+    ep_rew = [data_dict['rew'][i:j] for i, j in zip(start_idx, end_idx)]
+    ep_ret = []
+    for i in range(len(ep_rew)):
+        episode_rewards = ep_rew[i]
+        disc_returns = [0] * len(episode_rewards)
+        discounted_return = 0
+        for j in range(1, len(episode_rewards) + 1):
+            discounted_return = episode_rewards[len(episode_rewards) -
+                                                j] + gamma * discounted_return
+            disc_returns[len(episode_rewards) - j] = discounted_return
+        ep_ret.append(disc_returns)
+
+    new_data_dict = data_dict.copy()
+    ep_rets = np.concatenate(ep_ret)
+    new_data_dict['calibration_returns'] = ep_rets
+    new_batch = Batch(**new_data_dict)
+    buffer._meta = new_batch
+    return buffer
 
 
 def test_cql():
@@ -157,6 +194,7 @@ def test_cql():
         lagrange_threshold=args.lagrange_threshold,
         min_action=np.min(env.action_space.low),
         max_action=np.max(env.action_space.high),
+        calibrated=args.calibrated,
         device=args.device,
     )
 
@@ -206,6 +244,8 @@ def test_cql():
 
     if not args.watch:
         replay_buffer = load_buffer_d4rl(args.expert_data_task)
+        if args.calibrated:
+            replay_buffer = add_returns(replay_buffer)
         # trainer
         result = offline_trainer(
             policy,
