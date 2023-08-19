@@ -125,7 +125,7 @@ def test_dqn(args=get_args()):
         test_fn=test_fn,
         save_best_fn=save_best_fn,
         logger=logger
-    )
+    ).run()
 
     assert stop_fn(result['best_reward'])
     if __name__ == '__main__':

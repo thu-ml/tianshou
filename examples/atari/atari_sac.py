@@ -257,7 +257,7 @@ def test_discrete_sac(args=get_args()):
         test_in_train=False,
         resume_from_log=args.resume_id is not None,
         save_checkpoint_fn=save_checkpoint_fn,
-    )
+    ).run()
 
     pprint.pprint(result)
     watch()

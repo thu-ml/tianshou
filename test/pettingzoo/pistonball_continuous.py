@@ -252,7 +252,7 @@ def train_agent(
         save_best_fn=save_best_fn,
         logger=logger,
         resume_from_log=args.resume
-    )
+    ).run()
 
     return result, policy
 
@@ -269,6 +269,6 @@ def watch(
         policy, _, _ = get_agents(args)
     policy.eval()
     collector = Collector(policy, env)
-    result = collector.collect(n_episode=1, render=args.render)
-    rews, lens = result["rews"], result["lens"]
+    collector_result = collector.collect(n_episode=1, render=args.render)
+    rews, lens = collector_result["rews"], collector_result["lens"]
     print(f"Final reward: {rews[:, 0].mean()}, length: {lens.mean()}")

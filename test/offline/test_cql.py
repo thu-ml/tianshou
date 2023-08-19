@@ -222,8 +222,8 @@ def test_cql(args=get_args()):
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
-        trainer = collector.collect(n_episode=1, render=args.render)
-        rews, lens = trainer["rews"], trainer["lens"]
+        collector_result = collector.collect(n_episode=1, render=args.render)
+        rews, lens = collector_result["rews"], collector_result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 

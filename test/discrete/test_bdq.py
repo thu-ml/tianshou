@@ -131,7 +131,7 @@ def test_bdq(args=get_args()):
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
-    )
+    ).run()
 
     # assert stop_fn(result["best_reward"])
     if __name__ == "__main__":
@@ -141,8 +141,10 @@ def test_bdq(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        rews, lens = result["rews"], result["lens"]
+        collector_result = test_collector.collect(
+            n_episode=args.test_num, render=args.render
+        )
+        rews, lens = collector_result["rews"], collector_result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 

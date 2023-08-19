@@ -406,7 +406,7 @@ With the above preparation, we are close to the first learned agent. The followi
             return rews[:, args.agent_id - 1]
 
         # trainer
-        result = offpolicy_trainer(
+        result = OffpolicyTrainer(
             policy,
             train_collector,
             test_collector,
@@ -423,7 +423,7 @@ With the above preparation, we are close to the first learned agent. The followi
             logger=logger,
             test_in_train=False,
             reward_metric=reward_metric
-        )
+        ).run()
 
         return result, policy.policies[agents[args.agent_id - 1]]
 
