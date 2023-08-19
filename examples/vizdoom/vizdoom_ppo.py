@@ -270,7 +270,7 @@ def test_ppo(args=get_args()):
         save_best_fn=save_best_fn,
         logger=logger,
         test_in_train=False,
-    )
+    ).run()
 
     pprint.pprint(result)
     watch()

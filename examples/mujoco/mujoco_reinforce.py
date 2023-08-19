@@ -189,7 +189,7 @@ def test_reinforce(args=get_args()):
             save_best_fn=save_best_fn,
             logger=logger,
             test_in_train=False,
-        )
+        ).run()
         pprint.pprint(result)
 
     # Let's watch its performance!

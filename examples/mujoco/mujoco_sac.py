@@ -179,7 +179,7 @@ def test_sac(args=get_args()):
             logger=logger,
             update_per_step=args.update_per_step,
             test_in_train=False,
-        )
+        ).run()
         pprint.pprint(result)
 
     # Let's watch its performance!
