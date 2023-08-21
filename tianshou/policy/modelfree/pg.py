@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -171,7 +171,8 @@ class PGPolicy(BasePolicy):
             act = self._get_deterministic_action(logits)
         else:
             act = dist.sample()
-        return Batch(logits=logits, act=act, state=hidden, dist=dist)  # type: ignore
+        result = Batch(logits=logits, act=act, state=hidden, dist=dist)
+        return cast(DistBatchProtocol, result)
 
     # TODO: why does mypy complain?
     def learn(  # type: ignore

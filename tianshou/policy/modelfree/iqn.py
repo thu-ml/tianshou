@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -91,7 +91,8 @@ class IQNPolicy(QRDQNPolicy):
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
-        return Batch(logits=logits, act=act, state=hidden, taus=taus)  # type: ignore
+        result = Batch(logits=logits, act=act, state=hidden, taus=taus)
+        return cast(ModelOutputTauBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any,
               **kwargs: Any) -> Dict[str, float]:

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -49,7 +49,8 @@ class ImitationPolicy(BasePolicy):
             act = logits.max(dim=1)[1]
         else:
             act = logits
-        return Batch(logits=logits, act=act, state=hidden)  # type: ignore
+        result = Batch(logits=logits, act=act, state=hidden)
+        return cast(ModelOutputBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *ags: Any,
               **kwargs: Any) -> Dict[str, float]:

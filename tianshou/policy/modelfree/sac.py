@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -136,13 +136,14 @@ class SACPolicy(DDPGPolicy):
         squashed_action = torch.tanh(act)
         log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) +
                                         self.__eps).sum(-1, keepdim=True)
-        return Batch(
+        result = Batch(
             logits=logits,
             act=squashed_action,
             state=hidden,
             dist=dist,
             log_prob=log_prob
-        )  # type: ignore
+        )
+        return cast(DistLogProbBatchProtocol, result)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}

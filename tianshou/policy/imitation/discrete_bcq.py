@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -111,9 +111,10 @@ class DiscreteBCQPolicy(DQNPolicy):
         mask = (ratio < self._log_tau).float()
         act = (q_value - np.inf * mask).argmax(dim=-1)
 
-        return Batch(
+        result = Batch(
             act=act, state=state, q_value=q_value, imitation_logits=imitation_logits
-        )  # type: ignore
+        )
+        return cast(ImitationBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any,
               **kwargs: Any) -> Dict[str, float]:

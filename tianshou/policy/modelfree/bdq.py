@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -90,7 +90,7 @@ class BranchingDQNPolicy(DQNPolicy):
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
             batch.weight = to_torch_as(batch.weight, target_q_torch)
-        return batch  # type: ignore
+        return cast(BatchWithReturnsProtocol, batch)
 
     def process_fn(
         self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
@@ -111,7 +111,8 @@ class BranchingDQNPolicy(DQNPolicy):
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         logits, hidden = model(obs_next, state=state, info=batch.info)
         act = to_numpy(logits.max(dim=-1)[1])
-        return Batch(logits=logits, act=act, state=hidden)  # type: ignore
+        result = Batch(logits=logits, act=act, state=hidden)
+        return cast(ModelOutputBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any,
               **kwargs: Any) -> Dict[str, float]:

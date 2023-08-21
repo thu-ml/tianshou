@@ -1,6 +1,17 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union, overload
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+    overload,
+)
 
 import gymnasium as gym
 import numpy as np
@@ -118,9 +129,10 @@ class BasePolicy(ABC, nn.Module):
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
-    # TODO: this is rather weird, no noise is added, batch argument is unused
-    #   it seems to be meant for being overridden, but that's not very clean design.
-    #   Could be made abstract..
+    # TODO: needed since for most of offline algorithm, the algorithm itself doesn't
+    #  have a method to add noise to action.
+    #  So we add the default behavior here. It's a little messy, maybe one can
+    #  find a better way to do this.
     def exploration_noise(
         self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
     ) -> Union[np.ndarray, BatchProtocol]:
@@ -471,7 +483,7 @@ class BasePolicy(ABC, nn.Module):
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
             batch.weight = to_torch_as(batch.weight, target_q_torch)
-        return batch  # type: ignore
+        return cast(BatchWithReturnsProtocol, batch)
 
     @staticmethod
     def _compile() -> None:

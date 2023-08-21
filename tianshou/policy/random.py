@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 import numpy as np
 
@@ -38,7 +38,8 @@ class RandomPolicy(BasePolicy):
         mask = batch.obs.mask  # type: ignore
         logits = np.random.rand(*mask.shape)
         logits[~mask] = -np.inf
-        return Batch(act=logits.argmax(axis=-1))  # type: ignore
+        result = Batch(act=logits.argmax(axis=-1))
+        return cast(ActBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any,
               **kwargs: Any) -> Dict[str, float]:

@@ -254,13 +254,14 @@ class Net(NetBase):
             linear_layer,
         )
         if self.use_dueling:  # dueling DQN
+            assert dueling_param is not None
             kwargs_update = {
                 "input_dim": self.model.output_dim,
                 "device": self.device,
             }
             # Important: don't change the original dict (e.g., don't use .update())
-            q_kwargs = {**dueling_param[0], **kwargs_update}  # type: ignore
-            v_kwargs = {**dueling_param[1], **kwargs_update}  # type: ignore
+            q_kwargs = {**dueling_param[0], **kwargs_update}
+            v_kwargs = {**dueling_param[1], **kwargs_update}
 
             q_kwargs["output_dim"] = 0 if concat else action_dim
             v_kwargs["output_dim"] = 0 if concat else num_atoms

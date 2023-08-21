@@ -1,10 +1,10 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import h5py
 import numpy as np
 
 from tianshou.data import Batch
-from tianshou.data.batch import RolloutBatchProtocol, _alloc_by_keys_diff, _create_value
+from tianshou.data.batch import RolloutBatchProtocol, alloc_by_keys_diff, create_value
 from tianshou.data.utils.converter import from_hdf5, to_hdf5
 
 
@@ -59,7 +59,7 @@ class ReplayBuffer:
         self._save_obs_next = not ignore_obs_next
         self._save_only_last_obs = save_only_last_obs
         self._sample_avail = sample_avail
-        self._meta: RolloutBatchProtocol = Batch()  # type: ignore
+        self._meta = cast(RolloutBatchProtocol, Batch())
         self._ep_rew: Union[float, np.ndarray]
         self.reset()
 
@@ -118,7 +118,7 @@ class ReplayBuffer:
         buf = cls(size)
         if size == 0:
             return buf
-        batch: RolloutBatchProtocol = Batch(  # type: ignore
+        batch = Batch(
             obs=obs,
             act=act,
             rew=rew,
@@ -127,6 +127,7 @@ class ReplayBuffer:
             done=done,
             obs_next=obs_next
         )
+        batch = cast(RolloutBatchProtocol, batch)
         buf.set_batch(batch)
         buf._size = size
         return buf
@@ -187,7 +188,7 @@ class ReplayBuffer:
             self._size = min(self._size + 1, self.maxsize)
         to_indices = np.array(to_indices)
         if self._meta.is_empty():
-            self._meta = _create_value(  # type: ignore
+            self._meta = create_value(  # type: ignore
                 buffer._meta, self.maxsize, stack=False)
         self._meta[to_indices] = buffer._meta[from_indices]
         return to_indices
@@ -265,11 +266,11 @@ class ReplayBuffer:
             batch.terminated = batch.terminated.astype(bool)
             batch.truncated = batch.truncated.astype(bool)
             if self._meta.is_empty():
-                self._meta = _create_value(  # type: ignore
+                self._meta = create_value(  # type: ignore
                     batch, self.maxsize, stack
                 )
             else:  # dynamic key pops up in batch
-                _alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
+                alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
             self._meta[ptr] = batch
         return ptr, ep_rew, ep_len, ep_idx
 
@@ -393,4 +394,4 @@ class ReplayBuffer:
         for key in self._meta.__dict__.keys():
             if key not in self._input_keys:
                 batch_dict[key] = self._meta[key][indices]
-        return Batch(batch_dict)  # type: ignore
+        return cast(RolloutBatchProtocol, Batch(batch_dict))

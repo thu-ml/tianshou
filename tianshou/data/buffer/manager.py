@@ -4,9 +4,8 @@ import numpy as np
 from numba import njit
 
 from tianshou.data import Batch, HERReplayBuffer, PrioritizedReplayBuffer, ReplayBuffer
-
 # TODO: don't import private functions
-from tianshou.data.batch import RolloutBatchProtocol, _alloc_by_keys_diff, _create_value
+from tianshou.data.batch import RolloutBatchProtocol, alloc_by_keys_diff, create_value
 
 
 class ReplayBufferManager(ReplayBuffer):
@@ -154,10 +153,10 @@ class ReplayBufferManager(ReplayBuffer):
             batch.terminated = batch.terminated.astype(bool)
             batch.truncated = batch.truncated.astype(bool)
             if self._meta.is_empty():
-                self._meta = _create_value(  # type: ignore
+                self._meta = create_value(  # type: ignore
                     batch, self.maxsize, stack=False)
             else:  # dynamic key pops up in batch
-                _alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
+                alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
             self._set_batch_for_children()
             self._meta[ptrs] = batch
         return ptrs, np.array(ep_rews), np.array(ep_lens), np.array(ep_idxs)

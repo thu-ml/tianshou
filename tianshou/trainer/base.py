@@ -466,9 +466,10 @@ class OfflineTrainer(BaseTrainer):
 
     Uses a buffer directly and usually does not have a collector.
     """
-
+    # for mypy
+    assert isinstance(BaseTrainer.__doc__, str)
     __doc__ += BaseTrainer.gen_doc("offline") + "\n".join(
-        BaseTrainer.__doc__.split("\n")[1:]  # type: ignore
+        BaseTrainer.__doc__.split("\n")[1:]
     )
 
     def policy_update_fn(
@@ -486,9 +487,10 @@ class OffpolicyTrainer(BaseTrainer):
     does not perform additional mini-batching but just updates params from the received
     mini-batch.
     """
-
+    # for mypy
+    assert isinstance(BaseTrainer.__doc__, str)
     __doc__ += BaseTrainer.gen_doc("offpolicy") + "\n".join(
-        BaseTrainer.__doc__.split("\n")[1:]  # type: ignore
+        BaseTrainer.__doc__.split("\n")[1:]
     )
 
     def policy_update_fn(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
@@ -513,9 +515,10 @@ class OnpolicyTrainer(BaseTrainer):
     Note that it is expected that the learn method of a policy will perform
     batching when using this trainer.
     """
-
+    # for mypy
+    assert isinstance(BaseTrainer.__doc__, str)
     __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(
-        BaseTrainer.__doc__.split("\n")[1:]  # type: ignore
+        BaseTrainer.__doc__.split("\n")[1:]
     )
 
     def policy_update_fn(

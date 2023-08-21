@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, cast
 
 import numpy as np
 import torch
@@ -125,9 +125,10 @@ class A2CPolicy(PGPolicy):
             batch.returns = unnormalized_returns
         batch.returns = to_torch_as(batch.returns, batch.v_s)
         batch.adv = to_torch_as(advantages, batch.v_s)
-        return batch  # type: ignore
+        return cast(BatchWithAdvantagesProtocol, batch)
 
-    # TODO: why does mypy complain?
+    # TODO: mypy complains b/c signature is different from superclass, although
+    #  it's compatible. Can this be fixed?
     def learn(  # type: ignore
         self, batch: RolloutBatchProtocol, batch_size: int,
         repeat: int, *args: Any, **kwargs: Any

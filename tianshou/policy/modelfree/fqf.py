@@ -1,13 +1,21 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
-from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
+from tianshou.data.batch import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy, QRDQNPolicy
+from tianshou.policy.base import ModelOutputBatchProtocol
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
+
+
+class FQFBatchProtocol(ModelOutputBatchProtocol):
+    """Model outputs, fractions and quantiles_tau."""
+
+    fractions: torch.Tensor
+    quantiles_tau: torch.Tensor
 
 
 class FQFPolicy(QRDQNPolicy):
@@ -83,7 +91,7 @@ class FQFPolicy(QRDQNPolicy):
         input: str = "obs",
         fractions: Optional[Batch] = None,
         **kwargs: Any,
-    ) -> BatchProtocol:
+    ) -> FQFBatchProtocol:
         model = getattr(self, model)
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs
@@ -110,13 +118,14 @@ class FQFPolicy(QRDQNPolicy):
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
-        return Batch(
+        result = Batch(
             logits=logits,
             act=act,
             state=hidden,
             fractions=fractions,
             quantiles_tau=quantiles_tau
         )
+        return cast(FQFBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any,
               **kwargs: Any) -> Dict[str, float]:

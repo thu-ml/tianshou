@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -131,7 +131,7 @@ class PSRLModel(object):
 
     def __call__(
         self,
-        obs: Union[np.ndarray],
+        obs: np.ndarray,
         state: Any = None,
         info: Any = None,
     ) -> np.ndarray:
@@ -198,7 +198,8 @@ class PSRLPolicy(BasePolicy):
         """
         assert isinstance(batch.obs, np.ndarray), "only support np.ndarray observation"
         act = self.model(batch.obs, state=state, info=batch.info)
-        return Batch(act=act)  # type: ignore
+        result = Batch(act=act)
+        return cast(ActBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any,
               **kwargs: Any) -> Dict[str, float]:
@@ -209,10 +210,12 @@ class PSRLPolicy(BasePolicy):
         rew_count = np.zeros((n_s, n_a))
         for minibatch in batch.split(size=1):
             obs, act, obs_next = minibatch.obs, minibatch.act, minibatch.obs_next
+            assert not isinstance(obs, BatchProtocol), \
+                "Observations cannot be Batches here"
             trans_count[obs, act, obs_next] += 1
-            rew_sum[obs, act] += minibatch.rew  # type: ignore
-            rew_square_sum[obs, act] += minibatch.rew**2  # type: ignore
-            rew_count[obs, act] += 1  # type: ignore
+            rew_sum[obs, act] += minibatch.rew
+            rew_square_sum[obs, act] += minibatch.rew**2
+            rew_count[obs, act] += 1
             if self._add_done_loop and minibatch.done:
                 # special operation for terminal states: add a self-loop
                 trans_count[obs_next, :, obs_next] += 1

@@ -66,7 +66,8 @@ class DiscreteSACPolicy(SACPolicy):
             reward_normalization,
             estimation_step,
             action_scaling=False,
-            # TODO: why do we not permit action_bounding here?
+            # Note: inheriting from continuous sac reduces code duplication,
+            # but the action_bound_method has to be disabled
             action_bound_method=None,
             **kwargs,
         )

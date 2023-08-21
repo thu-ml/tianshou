@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -108,8 +108,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         weight = self.get_weight(indices)
         # ref: https://github.com/Kaixhin/Rainbow/blob/master/memory.py L154
         batch.weight = weight / np.max(weight) if self._weight_norm else weight
-        batch: PrioBatchProtocol
-        return batch
+        return cast(PrioBatchProtocol, batch)
 
     def set_beta(self, beta: float) -> None:
         self._beta = beta

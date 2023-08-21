@@ -1,6 +1,6 @@
 import time
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, cast
 
 import gymnasium as gym
 import numpy as np
@@ -15,7 +15,7 @@ from tianshou.data import (
     VectorReplayBuffer,
     to_numpy,
 )
-from tianshou.data.batch import RolloutBatchProtocol, _alloc_by_keys_diff
+from tianshou.data.batch import RolloutBatchProtocol, alloc_by_keys_diff
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 
@@ -76,6 +76,7 @@ class Collector:
         self.policy = policy
         self.preprocess_fn = preprocess_fn
         self._action_space = self.env.action_space
+        self.data: RolloutBatchProtocol
         # avoid creating attribute outside __init__
         self.reset(False)
 
@@ -117,7 +118,7 @@ class Collector:
         """
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
-        self.data: RolloutBatchProtocol = Batch(  # type: ignore
+        data = Batch(
             obs={},
             act={},
             rew={},
@@ -128,6 +129,7 @@ class Collector:
             info={},
             policy={}
         )
+        self.data = cast(RolloutBatchProtocol, data)
         self.reset_env(gym_reset_kwargs)
         if reset_buffer:
             self.reset_buffer()
@@ -368,7 +370,7 @@ class Collector:
         self.collect_time += max(time.time() - start_time, 1e-9)
 
         if n_episode:
-            self.data: RolloutBatchProtocol = Batch(  # type: ignore
+            data = Batch(
                 obs={},
                 act={},
                 rew={},
@@ -379,6 +381,7 @@ class Collector:
                 info={},
                 policy={}
             )
+            self.data = cast(RolloutBatchProtocol, data)
             self.reset_env()
 
         if episode_count > 0:
@@ -541,7 +544,7 @@ class AsyncCollector(Collector):
                 whole_data.act[ready_env_ids] = self.data.act  # type: ignore
                 whole_data.policy[ready_env_ids] = self.data.policy
             except ValueError:
-                _alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
+                alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
                 whole_data[ready_env_ids] = self.data  # lots of overhead
 
             # get bounded and remapped actions first (not saved into buffer)
@@ -628,9 +631,10 @@ class AsyncCollector(Collector):
                 whole_data.done[ready_env_ids] = self.data.done
                 whole_data.info[ready_env_ids] = self.data.info  # type: ignore
             except ValueError:
-                _alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
+                alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
                 self.data.obs = self.data.obs_next
-                whole_data[ready_env_ids] = self.data  # lots of overhead
+                # lots of overhead
+                whole_data[ready_env_ids] = self.data
             self.data = whole_data
 
             if (n_step and step_count >= n_step) or \
