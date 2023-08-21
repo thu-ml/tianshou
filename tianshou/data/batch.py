@@ -796,8 +796,11 @@ class Batch(BatchProtocol):
                 if key not in batch.__dict__:
                     continue
                 value = batch.get(key)
-                if isinstance(value,
-                              BatchProtocol) and value.is_empty():  # type: ignore
+                # TODO: fix code/annotations s.t. the ignores can be removed
+                if (
+                    isinstance(value, BatchProtocol)  # type: ignore
+                    and value.is_empty()  # type: ignore
+                ):
                     continue  # type: ignore
                 try:
                     self.__dict__[key][i] = value
