@@ -5,7 +5,8 @@ import torch
 from torch.distributions import Categorical
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
-from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
 
 

@@ -6,9 +6,8 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
-from tianshou.data.batch import RolloutBatchProtocol
+from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
-from tianshou.policy.base import ActBatchProtocol
 
 
 class ImitationBatchProtocol(ActBatchProtocol):

@@ -5,9 +5,9 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, to_torch
-from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import ModelOutputBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import ModelOutputBatchProtocol
 
 
 class ImitationPolicy(BasePolicy):

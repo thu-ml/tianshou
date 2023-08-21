@@ -466,6 +466,7 @@ class OfflineTrainer(BaseTrainer):
 
     Uses a buffer directly and usually does not have a collector.
     """
+
     # for mypy
     assert isinstance(BaseTrainer.__doc__, str)
     __doc__ += BaseTrainer.gen_doc("offline") + "\n".join(
@@ -487,6 +488,7 @@ class OffpolicyTrainer(BaseTrainer):
     does not perform additional mini-batching but just updates params from the received
     mini-batch.
     """
+
     # for mypy
     assert isinstance(BaseTrainer.__doc__, str)
     __doc__ += BaseTrainer.gen_doc("offpolicy") + "\n".join(
@@ -515,6 +517,7 @@ class OnpolicyTrainer(BaseTrainer):
     Note that it is expected that the learn method of a policy will perform
     batching when using this trainer.
     """
+
     # for mypy
     assert isinstance(BaseTrainer.__doc__, str)
     __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(

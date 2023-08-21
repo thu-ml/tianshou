@@ -4,8 +4,10 @@ import numpy as np
 from numba import njit
 
 from tianshou.data import Batch, HERReplayBuffer, PrioritizedReplayBuffer, ReplayBuffer
+
 # TODO: don't import private functions
-from tianshou.data.batch import RolloutBatchProtocol, alloc_by_keys_diff, create_value
+from tianshou.data.batch import alloc_by_keys_diff, create_value
+from tianshou.data.types import RolloutBatchProtocol
 
 
 class ReplayBufferManager(ReplayBuffer):

@@ -4,13 +4,7 @@ import numpy as np
 import torch
 
 from tianshou.data import ReplayBuffer, SegmentTree, to_numpy
-from tianshou.data.batch import RolloutBatchProtocol
-
-
-class PrioBatchProtocol(RolloutBatchProtocol):
-    """Contains weights that can be used for prioritized replay."""
-
-    weight: Union[np.ndarray, torch.Tensor]
+from tianshou.data.types import PrioBatchProtocol, RolloutBatchProtocol
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):

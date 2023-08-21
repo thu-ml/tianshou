@@ -3,7 +3,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 
 try:

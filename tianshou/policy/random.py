@@ -3,9 +3,9 @@ from typing import Any, Dict, Optional, Union, cast
 import numpy as np
 
 from tianshou.data import Batch
-from tianshou.data.batch import BatchProtocol, RolloutBatchProtocol
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.base import ActBatchProtocol
 
 
 class RandomPolicy(BasePolicy):

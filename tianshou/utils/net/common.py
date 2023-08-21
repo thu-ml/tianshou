@@ -16,18 +16,12 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.data.batch import Batch, BatchProtocol
+from tianshou.data.batch import Batch
+from tianshou.data.types import RecurrentStateBatch
 
 ModuleType = Type[nn.Module]
 ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]],
                  Sequence[Dict[Any, Any]]]
-
-
-class RecurrentStateBatch(BatchProtocol):
-    """Used by RNNs in policies, contains `hidden` and `cell` fields."""
-
-    hidden: torch.Tensor
-    cell: torch.Tensor
 
 
 def miniblock(

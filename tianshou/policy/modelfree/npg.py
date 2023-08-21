@@ -7,7 +7,7 @@ from torch import nn
 from torch.distributions import kl_divergence
 
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.batch import RolloutBatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.modelfree.a2c import BatchWithAdvantagesProtocol
 from tianshou.policy.modelfree.pg import TDistParams

@@ -5,17 +5,9 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
-from tianshou.data.batch import RolloutBatchProtocol
+from tianshou.data.types import FQFBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy, QRDQNPolicy
-from tianshou.policy.base import ModelOutputBatchProtocol
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
-
-
-class FQFBatchProtocol(ModelOutputBatchProtocol):
-    """Model outputs, fractions and quantiles_tau."""
-
-    fractions: torch.Tensor
-    quantiles_tau: torch.Tensor
 
 
 class FQFPolicy(QRDQNPolicy):

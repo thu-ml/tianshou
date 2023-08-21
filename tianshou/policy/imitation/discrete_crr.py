@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 
 from tianshou.data import to_torch, to_torch_as
-from tianshou.data.batch import RolloutBatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.modelfree.pg import PGPolicy
 
 

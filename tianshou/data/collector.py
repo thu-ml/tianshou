@@ -15,7 +15,8 @@ from tianshou.data import (
     VectorReplayBuffer,
     to_numpy,
 )
-from tianshou.data.batch import RolloutBatchProtocol, alloc_by_keys_diff
+from tianshou.data.batch import alloc_by_keys_diff
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 

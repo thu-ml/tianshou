@@ -4,7 +4,8 @@ import h5py
 import numpy as np
 
 from tianshou.data import Batch
-from tianshou.data.batch import RolloutBatchProtocol, alloc_by_keys_diff, create_value
+from tianshou.data.batch import alloc_by_keys_diff, create_value
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.data.utils.converter import from_hdf5, to_hdf5
 
 

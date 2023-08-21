@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from tianshou.data.batch import RolloutBatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import C51Policy
 from tianshou.utils.net.discrete import sample_noise
 

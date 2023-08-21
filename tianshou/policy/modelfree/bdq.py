@@ -4,13 +4,13 @@ import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch, to_torch_as
-from tianshou.data.batch import (
-    BatchProtocol,
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import (
     BatchWithReturnsProtocol,
+    ModelOutputBatchProtocol,
     RolloutBatchProtocol,
 )
 from tianshou.policy import DQNPolicy
-from tianshou.policy.base import ModelOutputBatchProtocol
 from tianshou.utils.net.common import BranchingNet
 
 

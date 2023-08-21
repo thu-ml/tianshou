@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from tianshou.data import ReplayBuffer
-from tianshou.data.batch import RolloutBatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import DDPGPolicy
 

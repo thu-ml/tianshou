@@ -21,12 +21,8 @@ from numba import njit
 from torch import nn
 
 from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
-from tianshou.data.batch import (
-    BatchProtocol,
-    BatchWithReturnsProtocol,
-    RolloutBatchProtocol,
-    TBatch,
-)
+from tianshou.data.batch import BatchProtocol, TBatch
+from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils import MultipleLRSchedulers
 
 log = logging.getLogger(__name__)
@@ -571,16 +567,3 @@ def _nstep_return(
         returns = rew[now].reshape(bsz, 1) + gamma * returns
     target_q = target_q * gamma_buffer[gammas].reshape(bsz, 1) + returns
     return target_q.reshape(target_shape)
-
-
-class ActBatchProtocol(BatchProtocol):
-    """Simplest batch, just containing the action. Useful e.g., for random policy."""
-
-    act: np.ndarray
-
-
-class ModelOutputBatchProtocol(ActBatchProtocol):
-    """Contains model output: (logits) and potentially hidden states."""
-
-    logits: torch.Tensor
-    state: Optional[Union[dict, BatchProtocol, np.ndarray]]

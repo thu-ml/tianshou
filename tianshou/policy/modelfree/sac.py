@@ -6,10 +6,9 @@ import torch
 from torch.distributions import Independent, Normal
 
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.batch import RolloutBatchProtocol
+from tianshou.data.types import ModelOutputBatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
-from tianshou.policy.base import ModelOutputBatchProtocol
 
 
 class DistLogProbBatchProtocol(ModelOutputBatchProtocol):

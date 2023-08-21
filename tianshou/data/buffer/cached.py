@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 
 from tianshou.data import ReplayBuffer, ReplayBufferManager
-from tianshou.data.batch import RolloutBatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 
 
 class CachedReplayBuffer(ReplayBufferManager):

@@ -937,20 +937,3 @@ class Batch(BatchProtocol):
                 yield self[indices[idx:]]
                 break
             yield self[indices[idx:idx + size]]
-
-
-class RolloutBatchProtocol(BatchProtocol):
-    """Typically, the outcome of sampling from a replay buffer."""
-
-    obs: Union[arr_type, BatchProtocol]
-    act: arr_type
-    rew: np.ndarray
-    terminated: arr_type
-    truncated: arr_type
-    info: arr_type
-
-
-class BatchWithReturnsProtocol(RolloutBatchProtocol):
-    """With added returns, usually computed with GAE."""
-
-    returns: arr_type

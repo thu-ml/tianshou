@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 
 from tianshou.data import to_torch_as
-from tianshou.data.batch import RolloutBatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import TD3Policy
 
