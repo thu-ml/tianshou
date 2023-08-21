@@ -418,7 +418,7 @@ class EnsembleLinear(nn.Module):
     """Linear Layer of Ensemble network.
 
     :param int ensemble_size: Number of subnets in the ensemble.
-    :param int inp_feature: dimension of the input vector.
+    :param int in_feature: dimension of the input vector.
     :param int out_feature: dimension of the output vector.
     :param bool bias: whether to include an additive bias, default to be True.
     """
@@ -437,17 +437,15 @@ class EnsembleLinear(nn.Module):
         weight_data = torch.rand((ensemble_size, in_feature, out_feature)) * 2 * k - k
         self.weight = nn.Parameter(weight_data, requires_grad=True)
 
-        self.bias: Union[nn.Parameter, None]
+        self.bias_weights: Optional[nn.Parameter] = None
         if bias:
             bias_data = torch.rand((ensemble_size, 1, out_feature)) * 2 * k - k
-            self.bias = nn.Parameter(bias_data, requires_grad=True)
-        else:
-            self.bias = None
+            self.bias_weights = nn.Parameter(bias_data, requires_grad=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = torch.matmul(x, self.weight)
-        if self.bias is not None:
-            x = x + self.bias
+        if self.bias_weights is not None:
+            x = x + self.bias_weights
         return x
 
 
