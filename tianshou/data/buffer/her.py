@@ -3,6 +3,8 @@ from typing import Any, Callable, List, Optional, Tuple, Union
 import numpy as np
 
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 
 
 class HERReplayBuffer(ReplayBuffer):
@@ -65,7 +67,7 @@ class HERReplayBuffer(ReplayBuffer):
         self._restore_cache()
         return super().save_hdf5(path, compression)
 
-    def set_batch(self, batch: Batch) -> None:
+    def set_batch(self, batch: RolloutBatchProtocol) -> None:
         self._restore_cache()
         return super().set_batch(batch)
 
@@ -75,7 +77,7 @@ class HERReplayBuffer(ReplayBuffer):
 
     def add(
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         self._restore_cache()
@@ -148,9 +150,14 @@ class HERReplayBuffer(ReplayBuffer):
 
         # Copy original obs, ep_rew (and obs_next), and obs of future time step
         ep_obs = self[unique_ep_indices].obs
+        # to satisfy mypy
+        # TODO: add protocol covering these batches
+        assert isinstance(ep_obs, BatchProtocol)
         ep_rew = self[unique_ep_indices].rew
         if self._save_obs_next:
             ep_obs_next = self[unique_ep_indices].obs_next
+            # to satisfy mypy
+            assert isinstance(ep_obs_next, BatchProtocol)
             future_obs = self[future_t[unique_ep_close_indices]].obs_next
         else:
             future_obs = self[self.next(future_t[unique_ep_close_indices])].obs
@@ -165,6 +172,7 @@ class HERReplayBuffer(ReplayBuffer):
                 self._compute_reward(ep_obs_next)[:, her_ep_indices]
         else:
             tmp_ep_obs_next = self[self.next(unique_ep_indices)].obs
+            assert isinstance(tmp_ep_obs_next, BatchProtocol)
             ep_rew[:, her_ep_indices] = \
                 self._compute_reward(tmp_ep_obs_next)[:, her_ep_indices]
 
@@ -174,12 +182,13 @@ class HERReplayBuffer(ReplayBuffer):
         assert ep_rew.shape == unique_ep_indices.shape
 
         # Re-write meta
+        assert isinstance(self._meta.obs, BatchProtocol)
         self._meta.obs[unique_ep_indices] = ep_obs
         if self._save_obs_next:
             self._meta.obs_next[unique_ep_indices] = ep_obs_next
         self._meta.rew[unique_ep_indices] = ep_rew.astype(np.float32)
 
-    def _compute_reward(self, obs: Batch, lead_dims: int = 2) -> np.ndarray:
+    def _compute_reward(self, obs: BatchProtocol, lead_dims: int = 2) -> np.ndarray:
         lead_shape = obs.observation.shape[:lead_dims]
         g = obs.desired_goal.reshape(-1, *obs.desired_goal.shape[lead_dims:])
         ag = obs.achieved_goal.reshape(-1, *obs.achieved_goal.shape[lead_dims:])

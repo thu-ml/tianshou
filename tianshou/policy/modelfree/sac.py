@@ -1,11 +1,12 @@
 from copy import deepcopy
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
 from torch.distributions import Independent, Normal
 
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.types import DistLogProbBatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
 
@@ -69,8 +70,8 @@ class SACPolicy(DDPGPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            None, None, None, None, tau, gamma, exploration_noise,
-            reward_normalization, estimation_step, **kwargs
+            None, None, None, None, tau, gamma, exploration_noise, reward_normalization,
+            estimation_step, **kwargs
         )
         self.actor, self.actor_optim = actor, actor_optim
         self.critic1, self.critic1_old = critic1, deepcopy(critic1)
@@ -104,13 +105,14 @@ class SACPolicy(DDPGPolicy):
         self.soft_update(self.critic1_old, self.critic1, self.tau)
         self.soft_update(self.critic2_old, self.critic2, self.tau)
 
+    # TODO: violates Liskov substitution principle
     def forward(  # type: ignore
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         input: str = "obs",
         **kwargs: Any,
-    ) -> Batch:
+    ) -> DistLogProbBatchProtocol:
         obs = batch[input]
         logits, hidden = self.actor(obs, state=state, info=batch.info)
         assert isinstance(logits, tuple)
@@ -126,13 +128,14 @@ class SACPolicy(DDPGPolicy):
         squashed_action = torch.tanh(act)
         log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) +
                                         self.__eps).sum(-1, keepdim=True)
-        return Batch(
+        result = Batch(
             logits=logits,
             act=squashed_action,
             state=hidden,
             dist=dist,
             log_prob=log_prob
         )
+        return cast(DistLogProbBatchProtocol, result)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}
@@ -144,14 +147,11 @@ class SACPolicy(DDPGPolicy):
         ) - self._alpha * obs_next_result.log_prob
         return target_q
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         # critic 1&2
-        td1, critic1_loss = self._mse_optimizer(
-            batch, self.critic1, self.critic1_optim
-        )
-        td2, critic2_loss = self._mse_optimizer(
-            batch, self.critic2, self.critic2_optim
-        )
+        td1, critic1_loss = self._mse_optimizer(batch, self.critic1, self.critic1_optim)
+        td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor

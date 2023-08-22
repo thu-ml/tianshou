@@ -141,9 +141,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         the learner need not know about any of this behind-the-scenes.
         """
         if self.was_real_done:
-            obs, info, self._return_info = _parse_reset_result(
-                self.env.reset(**kwargs)
-            )
+            obs, info, self._return_info = _parse_reset_result(self.env.reset(**kwargs))
         else:
             # no-op step to advance from terminal/lost life state
             step_result = self.env.step(0)

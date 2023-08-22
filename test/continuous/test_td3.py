@@ -137,14 +137,14 @@ def test_td3(args=get_args()):
 
     # Iterator trainer
     trainer = OffpolicyTrainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.step_per_collect,
-        args.test_num,
-        args.batch_size,
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        step_per_collect=args.step_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         update_per_step=args.update_per_step,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,

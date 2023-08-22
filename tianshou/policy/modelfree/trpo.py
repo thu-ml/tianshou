@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, List, Type
+from typing import Any, Callable, Dict, List
 
 import torch
 import torch.nn.functional as F
@@ -7,6 +7,7 @@ from torch.distributions import kl_divergence
 
 from tianshou.data import Batch
 from tianshou.policy import NPGPolicy
+from tianshou.policy.modelfree.pg import TDistParams
 
 
 class TRPOPolicy(NPGPolicy):
@@ -17,7 +18,6 @@ class TRPOPolicy(NPGPolicy):
     :param torch.nn.Module critic: the critic network. (s -> V(s))
     :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Type[torch.distributions.Distribution]
     :param bool advantage_normalization: whether to do per mini-batch advantage
         normalization. Default to True.
     :param int optim_critic_iters: Number of times to optimize critic network per
@@ -54,7 +54,7 @@ class TRPOPolicy(NPGPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Type[torch.distributions.Distribution],
+        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         max_kl: float = 0.01,
         backtrack_coeff: float = 0.8,
         max_backtracks: int = 10,
@@ -75,8 +75,9 @@ class TRPOPolicy(NPGPolicy):
                 # optimize actor
                 # direction: calculate villia gradient
                 dist = self(minibatch).dist  # TODO could come from batch
-                ratio = (dist.log_prob(minibatch.act) -
-                         minibatch.logp_old).exp().float()
+                ratio = (
+                    (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
+                )
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 actor_loss = -(ratio * minibatch.adv).mean()
                 flat_grads = self._get_flat_grad(
@@ -112,8 +113,9 @@ class TRPOPolicy(NPGPolicy):
                         # calculate kl and if in bound, loss actually down
                         new_dist = self(minibatch).dist
                         new_dratio = (
-                            new_dist.log_prob(minibatch.act) - minibatch.logp_old
-                        ).exp().float()
+                            (new_dist.log_prob(minibatch.act) -
+                             minibatch.logp_old).exp().float()
+                        )
                         new_dratio = new_dratio.reshape(new_dratio.size(0),
                                                         -1).transpose(0, 1)
                         new_actor_loss = -(new_dratio * minibatch.adv).mean()

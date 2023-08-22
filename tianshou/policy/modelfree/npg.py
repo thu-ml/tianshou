@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Type
+from typing import Any, Callable, Dict, List
 
 import numpy as np
 import torch
@@ -7,7 +7,9 @@ from torch import nn
 from torch.distributions import kl_divergence
 
 from tianshou.data import Batch, ReplayBuffer
+from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
+from tianshou.policy.modelfree.pg import TDistParams
 
 
 class NPGPolicy(A2CPolicy):
@@ -20,7 +22,6 @@ class NPGPolicy(A2CPolicy):
     :param torch.nn.Module critic: the critic network. (s -> V(s))
     :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Type[torch.distributions.Distribution]
     :param bool advantage_normalization: whether to do per mini-batch advantage
         normalization. Default to True.
     :param int optim_critic_iters: Number of times to optimize critic network per
@@ -51,7 +52,7 @@ class NPGPolicy(A2CPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Type[torch.distributions.Distribution],
+        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         advantage_normalization: bool = True,
         optim_critic_iters: int = 5,
         actor_step_size: float = 0.5,
@@ -66,8 +67,8 @@ class NPGPolicy(A2CPolicy):
         self._damping = 0.1
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> BatchWithAdvantagesProtocol:
         batch = super().process_fn(batch, buffer, indices)
         old_log_prob = []
         with torch.no_grad():
@@ -127,11 +128,7 @@ class NPGPolicy(A2CPolicy):
                 vf_losses.append(vf_loss.item())
                 kls.append(kl.item())
 
-        return {
-            "loss/actor": actor_losses,
-            "loss/vf": vf_losses,
-            "kl": kls,
-        }
+        return {"loss/actor": actor_losses, "loss/vf": vf_losses, "kl": kls}
 
     def _MVP(self, v: torch.Tensor, flat_kl_grad: torch.Tensor) -> torch.Tensor:
         """Matrix vector product."""
@@ -146,7 +143,7 @@ class NPGPolicy(A2CPolicy):
         minibatch: torch.Tensor,
         flat_kl_grad: torch.Tensor,
         nsteps: int = 10,
-        residual_tol: float = 1e-10
+        residual_tol: float = 1e-10,
     ) -> torch.Tensor:
         x = torch.zeros_like(minibatch)
         r, p = minibatch.clone(), minibatch.clone()

@@ -15,7 +15,7 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, MultiAgentPolicyManager, PPOPolicy
-from tianshou.trainer import onpolicy_trainer
+from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.continuous import ActorProb, Critic
 
@@ -70,10 +70,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--gamma', type=float, default=0.9, help='a smaller gamma favors earlier win'
     )
     parser.add_argument(
-        '--n-pistons',
-        type=int,
-        default=3,
-        help='Number of pistons(agents) in the env'
+        '--n-pistons', type=int, default=3, help='Number of pistons(agents) in the env'
     )
     parser.add_argument('--n-step', type=int, default=100)
     parser.add_argument('--target-update-freq', type=int, default=320)
@@ -241,21 +238,21 @@ def train_agent(
         return rews[:, 0]
 
     # trainer
-    result = onpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.repeat_per_collect,
-        args.test_num,
-        args.batch_size,
+    result = OnpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        repeat_per_collect=args.repeat_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         episode_per_collect=args.episode_per_collect,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger,
         resume_from_log=args.resume
-    )
+    ).run()
 
     return result, policy
 
@@ -272,6 +269,6 @@ def watch(
         policy, _, _ = get_agents(args)
     policy.eval()
     collector = Collector(policy, env)
-    result = collector.collect(n_episode=1, render=args.render)
-    rews, lens = result["rews"], result["lens"]
+    collector_result = collector.collect(n_episode=1, render=args.render)
+    rews, lens = collector_result["rews"], collector_result["lens"]
     print(f"Final reward: {rews[:, 0].mean()}, length: {lens.mean()}")

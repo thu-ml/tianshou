@@ -4,7 +4,8 @@ from typing import Any, Dict, Optional
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import ReplayBuffer
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import DDPGPolicy
 
@@ -108,14 +109,11 @@ class TD3Policy(DDPGPolicy):
         )
         return target_q
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         # critic 1&2
-        td1, critic1_loss = self._mse_optimizer(
-            batch, self.critic1, self.critic1_optim
-        )
-        td2, critic2_loss = self._mse_optimizer(
-            batch, self.critic2, self.critic2_optim
-        )
+        td1, critic1_loss = self._mse_optimizer(batch, self.critic1, self.critic1_optim)
+        td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
         batch.weight = (td1 + td2) / 2.0  # prio-buffer
 
         # actor

@@ -5,7 +5,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, ReplayBuffer
+from tianshou.data import ReplayBuffer
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
 
 
@@ -72,7 +73,8 @@ class QRDQNPolicy(DQNPolicy):
     ) -> torch.Tensor:
         return super().compute_q_value(logits.mean(2), mask)
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

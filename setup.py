@@ -15,13 +15,13 @@ def get_version() -> str:
 
 def get_install_requires() -> str:
     return [
-        "gymnasium>=0.26.0",
+        "gymnasium>=0.29.0",
         "tqdm",
         "numpy>1.16.0",  # https://github.com/numpy/numpy/issues/12793
         "tensorboard>=2.5.0",
-        "torch>=1.4.0",
+        "torch>=2.0.1",
         "numba>=0.51.0",
-        "h5py>=2.10.0",  # to match tensorflow's minimal requirements
+        "h5py>=3.9.0",  # to match tensorflow's minimal requirements
         "packaging",
         "pettingzoo>=1.22",
     ]

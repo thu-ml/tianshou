@@ -5,12 +5,13 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
+from gym.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import PGPolicy
-from tianshou.trainer import onpolicy_trainer
+from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
@@ -79,6 +80,7 @@ def test_pg(args=get_args()):
         optim,
         dist,
         args.gamma,
+        action_scaling=isinstance(env.action_space, Box),
         reward_normalization=args.rew_norm,
         action_space=env.action_space,
     )
@@ -104,20 +106,20 @@ def test_pg(args=get_args()):
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    result = onpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.repeat_per_collect,
-        args.test_num,
-        args.batch_size,
+    result = OnpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        repeat_per_collect=args.repeat_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         episode_per_collect=args.episode_per_collect,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger,
-    )
+    ).run()
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':

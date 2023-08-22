@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import ICMPolicy, PPOPolicy
-from tianshou.trainer import onpolicy_trainer
+from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
@@ -252,9 +252,7 @@ def test_ppo(args=get_args()):
         else:
             print("Testing agent ...")
             test_collector.reset()
-            result = test_collector.collect(
-                n_episode=args.test_num, render=args.render
-            )
+            result = test_collector.collect(n_episode=args.test_num, render=args.render)
         rew = result["rews"].mean()
         print(f"Mean reward (over {result['n/ep']} episodes): {rew}")
 
@@ -265,15 +263,15 @@ def test_ppo(args=get_args()):
     # test train_collector and start filling replay buffer
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # trainer
-    result = onpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.repeat_per_collect,
-        args.test_num,
-        args.batch_size,
+    result = OnpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        repeat_per_collect=args.repeat_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         step_per_collect=args.step_per_collect,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
@@ -281,7 +279,7 @@ def test_ppo(args=get_args()):
         test_in_train=False,
         resume_from_log=args.resume_id is not None,
         save_checkpoint_fn=save_checkpoint_fn,
-    )
+    ).run()
 
     pprint.pprint(result)
     watch()

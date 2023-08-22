@@ -5,7 +5,8 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
-from tianshou.data import Batch, to_torch, to_torch_as
+from tianshou.data import to_torch, to_torch_as
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.modelfree.pg import PGPolicy
 
 
@@ -54,7 +55,7 @@ class DiscreteCRRPolicy(PGPolicy):
         super().__init__(
             actor,
             optim,
-            lambda x: Categorical(logits=x),  # type: ignore
+            lambda x: Categorical(logits=x),
             discount_factor,
             reward_normalization,
             **kwargs,
@@ -81,7 +82,10 @@ class DiscreteCRRPolicy(PGPolicy):
         self.actor_old.load_state_dict(self.actor.state_dict())
         self.critic_old.load_state_dict(self.critic.state_dict())
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:  # type: ignore
+    def learn(  # type: ignore
+        self, batch: RolloutBatchProtocol, *args: Any,
+        **kwargs: Any
+    ) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

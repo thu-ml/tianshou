@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import BCQPolicy
-from tianshou.trainer import offline_trainer
+from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
@@ -199,19 +199,19 @@ def test_bcq(args=get_args()):
         collector.collect(n_episode=1, render=1 / 35)
 
     # trainer
-    result = offline_trainer(
-        policy,
-        buffer,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.test_num,
-        args.batch_size,
+    result = OfflineTrainer(
+        policy=policy,
+        buffer=buffer,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         save_best_fn=save_best_fn,
         stop_fn=stop_fn,
         logger=logger,
         show_progress=args.show_progress,
-    )
+    ).run()
     assert stop_fn(result['best_reward'])
 
     # Let's watch its performance!

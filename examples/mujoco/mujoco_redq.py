@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import REDQPolicy
-from tianshou.trainer import offpolicy_trainer
+from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import EnsembleLinear, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -174,20 +174,20 @@ def test_redq(args=get_args()):
 
     if not args.watch:
         # trainer
-        result = offpolicy_trainer(
-            policy,
-            train_collector,
-            test_collector,
-            args.epoch,
-            args.step_per_epoch,
-            args.step_per_collect,
-            args.test_num,
-            args.batch_size,
+        result = OffpolicyTrainer(
+            policy=policy,
+            train_collector=train_collector,
+            test_collector=test_collector,
+            max_epoch=args.epoch,
+            step_per_epoch=args.step_per_epoch,
+            step_per_collect=args.step_per_collect,
+            episode_per_test=args.test_num,
+            batch_size=args.batch_size,
             save_best_fn=save_best_fn,
             logger=logger,
             update_per_step=args.update_per_step,
             test_in_train=False,
-        )
+        ).run()
         pprint.pprint(result)
 
     # Let's watch its performance!

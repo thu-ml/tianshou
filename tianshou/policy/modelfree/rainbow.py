@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from tianshou.data import Batch
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import C51Policy
 from tianshou.utils.net.discrete import sample_noise
 
@@ -32,7 +32,8 @@ class RainbowPolicy(C51Policy):
         explanation.
     """
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         sample_noise(self.model)
         if self._target and sample_noise(self.model_old):
             self.model_old.train()  # so that NoisyLinear takes effect

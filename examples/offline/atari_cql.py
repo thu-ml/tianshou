@@ -15,7 +15,7 @@ from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DiscreteCQLPolicy
-from tianshou.trainer import offline_trainer
+from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 
 
@@ -166,18 +166,18 @@ def test_discrete_cql(args=get_args()):
         watch()
         exit(0)
 
-    result = offline_trainer(
-        policy,
-        buffer,
-        test_collector,
-        args.epoch,
-        args.update_per_epoch,
-        args.test_num,
-        args.batch_size,
+    result = OfflineTrainer(
+        policy=policy,
+        buffer=buffer,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.update_per_epoch,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger,
-    )
+    ).run()
 
     pprint.pprint(result)
     watch()

@@ -4,7 +4,8 @@ import numpy as np
 from numba import njit
 
 from tianshou.data import Batch, HERReplayBuffer, PrioritizedReplayBuffer, ReplayBuffer
-from tianshou.data.batch import _alloc_by_keys_diff, _create_value
+from tianshou.data.batch import alloc_by_keys_diff, create_value
+from tianshou.data.types import RolloutBatchProtocol
 
 
 class ReplayBufferManager(ReplayBuffer):
@@ -39,7 +40,7 @@ class ReplayBufferManager(ReplayBuffer):
         self._lengths = np.zeros_like(offset)
         super().__init__(size=size, **kwargs)
         self._compile()
-        self._meta: Batch
+        self._meta: RolloutBatchProtocol
 
     def _compile(self) -> None:
         lens = last = index = np.array([0])
@@ -61,7 +62,7 @@ class ReplayBufferManager(ReplayBuffer):
         for offset, buf in zip(self._offset, self.buffers):
             buf.set_batch(self._meta[offset:offset + buf.maxsize])
 
-    def set_batch(self, batch: Batch) -> None:
+    def set_batch(self, batch: RolloutBatchProtocol) -> None:
         super().set_batch(batch)
         self._set_batch_for_children()
 
@@ -103,7 +104,7 @@ class ReplayBufferManager(ReplayBuffer):
 
     def add(
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into ReplayBufferManager.
@@ -152,10 +153,10 @@ class ReplayBufferManager(ReplayBuffer):
             batch.terminated = batch.terminated.astype(bool)
             batch.truncated = batch.truncated.astype(bool)
             if self._meta.is_empty():
-                self._meta = _create_value(  # type: ignore
+                self._meta = create_value(  # type: ignore
                     batch, self.maxsize, stack=False)
             else:  # dynamic key pops up in batch
-                _alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
+                alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
             self._set_batch_for_children()
             self._meta[ptrs] = batch
         return ptrs, np.array(ep_rews), np.array(ep_lens), np.array(ep_idxs)
@@ -239,7 +240,7 @@ class HERReplayBufferManager(ReplayBufferManager):
         self._restore_cache()
         return super().save_hdf5(path, compression)
 
-    def set_batch(self, batch: Batch) -> None:
+    def set_batch(self, batch: RolloutBatchProtocol) -> None:
         self._restore_cache()
         return super().set_batch(batch)
 
@@ -249,7 +250,7 @@ class HERReplayBufferManager(ReplayBufferManager):
 
     def add(
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         self._restore_cache()

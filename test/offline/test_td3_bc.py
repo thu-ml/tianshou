@@ -169,25 +169,15 @@ def test_td3_bc(args=get_args()):
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
 
-    def watch():
-        policy.load_state_dict(
-            torch.load(
-                os.path.join(log_path, 'policy.pth'), map_location=torch.device('cpu')
-            )
-        )
-        policy.eval()
-        collector = Collector(policy, env)
-        collector.collect(n_episode=1, render=1 / 35)
-
     # trainer
     trainer = OfflineTrainer(
-        policy,
-        buffer,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.test_num,
-        args.batch_size,
+        policy=policy,
+        buffer=buffer,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         save_best_fn=save_best_fn,
         stop_fn=stop_fn,
         logger=logger,
@@ -206,8 +196,8 @@ def test_td3_bc(args=get_args()):
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        rews, lens = result["rews"], result["lens"]
+        collector_result = collector.collect(n_episode=1, render=args.render)
+        rews, lens = collector_result["rews"], collector_result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 

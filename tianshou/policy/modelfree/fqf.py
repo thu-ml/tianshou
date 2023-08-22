@@ -1,10 +1,11 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy
+from tianshou.data.types import FQFBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy, QRDQNPolicy
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 
@@ -73,15 +74,16 @@ class FQFPolicy(QRDQNPolicy):
         next_dist = next_dist[np.arange(len(act)), act, :]
         return next_dist  # shape: [bsz, num_quantiles]
 
-    def forward(
+    # TODO: add protocol type for return, fix Liskov substitution principle violation
+    def forward(  # type: ignore
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         state: Optional[Union[dict, Batch, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
         fractions: Optional[Batch] = None,
         **kwargs: Any,
-    ) -> Batch:
+    ) -> FQFBatchProtocol:
         model = getattr(self, model)
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs
@@ -108,15 +110,17 @@ class FQFPolicy(QRDQNPolicy):
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
-        return Batch(
+        result = Batch(
             logits=logits,
             act=act,
             state=hidden,
             fractions=fractions,
             quantiles_tau=quantiles_tau
         )
+        return cast(FQFBatchProtocol, result)
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         weight = batch.pop("weight", 1.0)
@@ -129,10 +133,9 @@ class FQFPolicy(QRDQNPolicy):
         # calculate each element's difference between curr_dist and target_dist
         dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            dist_diff * (
-                tau_hats.unsqueeze(2) -
-                (target_dist - curr_dist).detach().le(0.).float()
-            ).abs()
+            dist_diff *
+            (tau_hats.unsqueeze(2) -
+             (target_dist - curr_dist).detach().le(0.).float()).abs()
         ).sum(-1).mean(1)
         quantile_loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/

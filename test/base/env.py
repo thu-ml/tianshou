@@ -190,11 +190,7 @@ class MyGoalEnv(MyTestEnv):
 
     def reset(self, *args, **kwargs):
         obs, info = super().reset(*args, **kwargs)
-        new_obs = {
-            'observation': obs,
-            'achieved_goal': obs,
-            'desired_goal': self._goal
-        }
+        new_obs = {'observation': obs, 'achieved_goal': obs, 'desired_goal': self._goal}
         return new_obs, info
 
     def step(self, *args, **kwargs):

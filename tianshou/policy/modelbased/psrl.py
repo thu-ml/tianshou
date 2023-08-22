@@ -1,9 +1,11 @@
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
 
 from tianshou.data import Batch
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 
 
@@ -80,9 +82,8 @@ class PSRLModel(object):
         self.rew_count = sum_count
 
     def sample_trans_prob(self) -> np.ndarray:
-        sample_prob = torch.distributions.Dirichlet(
-            torch.from_numpy(self.trans_count)
-        ).sample().numpy()
+        sample_prob = torch.distributions.Dirichlet(torch.from_numpy(self.trans_count)
+                                                    ).sample().numpy()
         return sample_prob
 
     def sample_reward(self) -> np.ndarray:
@@ -132,7 +133,7 @@ class PSRLModel(object):
         self,
         obs: np.ndarray,
         state: Any = None,
-        info: Dict[str, Any] = {},
+        info: Any = None,
     ) -> np.ndarray:
         if not self.updated:
             self.solve_policy()
@@ -181,10 +182,10 @@ class PSRLPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Batch:
+    ) -> ActBatchProtocol:
         """Compute action over the given batch data with PSRL model.
 
         :return: A :class:`~tianshou.data.Batch` with "act" key containing
@@ -195,10 +196,13 @@ class PSRLPolicy(BasePolicy):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
+        assert isinstance(batch.obs, np.ndarray), "only support np.ndarray observation"
         act = self.model(batch.obs, state=state, info=batch.info)
-        return Batch(act=act)
+        result = Batch(act=act)
+        return cast(ActBatchProtocol, result)
 
-    def learn(self, batch: Batch, *args: Any, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
@@ -206,6 +210,8 @@ class PSRLPolicy(BasePolicy):
         rew_count = np.zeros((n_s, n_a))
         for minibatch in batch.split(size=1):
             obs, act, obs_next = minibatch.obs, minibatch.act, minibatch.obs_next
+            assert not isinstance(obs, BatchProtocol), \
+                "Observations cannot be Batches here"
             trans_count[obs, act, obs_next] += 1
             rew_sum[obs, act] += minibatch.rew
             rew_square_sum[obs, act] += minibatch.rew**2
