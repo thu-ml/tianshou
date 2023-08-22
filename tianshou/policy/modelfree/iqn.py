@@ -13,6 +13,7 @@ from tianshou.policy import QRDQNPolicy
 class ModelOutputTauBatchProtocol(ModelOutputBatchProtocol):
     """Model outputs and taus."""
 
+    # taus for quantile regression, see https://arxiv.org/abs/1806.06923
     taus: torch.Tensor
 
 

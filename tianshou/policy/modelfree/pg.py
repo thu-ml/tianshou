@@ -78,7 +78,7 @@ class PGPolicy(BasePolicy):
                     "to deal with unbounded model action space, but find actor model"
                     f"bound action space with max_action={model.max_action}."
                     "Consider using unbounded=True option of the actor model,"
-                    'or set action_scaling to False and action_bound_method to "".'
+                    'or set action_scaling to False and action_bound_method to None.'
                 )
         # TODO: why this try/except? warnings is a standard library module
         except Exception:

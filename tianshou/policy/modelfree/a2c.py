@@ -6,20 +6,10 @@ import torch.nn.functional as F
 from torch import nn
 
 from tianshou.data import ReplayBuffer, to_torch_as
-from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
+from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
 from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
-
-
-class BatchWithAdvantagesProtocol(BatchWithReturnsProtocol):
-    """Contains estimated advantages and values.
-
-    Returns are usually computed from GAE of advantages by adding the value.
-    """
-
-    adv: torch.Tensor
-    v_s: torch.Tensor
 
 
 class A2CPolicy(PGPolicy):

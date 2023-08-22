@@ -80,7 +80,7 @@ class DDPGPolicy(BasePolicy):
                     "with unbounded model action space, but find actor model bound"
                     f"action space with max_action={actor.max_action}."
                     "Consider using unbounded=True option of the actor model,"
-                    'or set action_scaling to False and action_bound_method to "".'
+                    'or set action_scaling to False and action_bound_method to None.'
                 )
         except Exception:
             pass

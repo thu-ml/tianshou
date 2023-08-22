@@ -73,6 +73,7 @@ class Collector:
             self.env = env  # type: ignore
         self.env_num = len(self.env)
         self.exploration_noise = exploration_noise
+        self.buffer: ReplayBuffer
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn

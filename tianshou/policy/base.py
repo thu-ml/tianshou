@@ -25,7 +25,7 @@ from tianshou.data.batch import BatchProtocol, TBatch
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils import MultipleLRSchedulers
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class BasePolicy(ABC, nn.Module):
@@ -316,7 +316,7 @@ class BasePolicy(ABC, nn.Module):
             if hasattr(batch, "weight"):
                 buffer.update_weight(indices, batch.weight)
             else:
-                log.warning(
+                logger.warning(
                     "batch has no attribute 'weight', but buffer has an "
                     "update_weight method. This is probably a mistake."
                     "Prioritized replay is disabled for this batch."
