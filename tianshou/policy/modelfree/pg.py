@@ -7,22 +7,13 @@ from tianshou.data import Batch, ReplayBuffer, to_torch, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
     BatchWithReturnsProtocol,
-    ModelOutputBatchProtocol,
+    DistBatchProtocol,
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
 from tianshou.utils import RunningMeanStd
 
 TDistParams = Union[torch.Tensor, Tuple[torch.Tensor]]
-
-
-class DistBatchProtocol(ModelOutputBatchProtocol):
-    """Contains dist instances for actions (created by dist_fn).
-
-    Usually categorical or normal.
-    """
-
-    dist: torch.distributions.Distribution
 
 
 class PGPolicy(BasePolicy):

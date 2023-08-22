@@ -6,16 +6,9 @@ import torch
 from torch.distributions import Independent, Normal
 
 from tianshou.data import Batch, ReplayBuffer
-from tianshou.data.types import ModelOutputBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import DistLogProbBatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
-
-
-class DistLogProbBatchProtocol(ModelOutputBatchProtocol):
-    """Contains dist objects that can be sampled from and log_prob of taken action."""
-
-    dist: torch.distributions.Distribution
-    log_prob: torch.Tensor
 
 
 class SACPolicy(DDPGPolicy):

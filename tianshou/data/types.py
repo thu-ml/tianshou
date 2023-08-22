@@ -3,6 +3,7 @@ from typing import Optional, Union
 import numpy as np
 import torch
 
+from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol, arr_type
 
 
@@ -64,3 +65,44 @@ class BatchWithAdvantagesProtocol(BatchWithReturnsProtocol):
 
     adv: torch.Tensor
     v_s: torch.Tensor
+
+
+class DistBatchProtocol(ModelOutputBatchProtocol):
+    """Contains dist instances for actions (created by dist_fn).
+
+    Usually categorical or normal.
+    """
+
+    dist: torch.distributions.Distribution
+
+
+class DistLogProbBatchProtocol(DistBatchProtocol):
+    """Contains dist objects that can be sampled from and log_prob of taken action."""
+
+    log_prob: torch.Tensor
+
+
+class LogpOldProtocol(BatchWithAdvantagesProtocol):
+    """Contains logp_old, often needed for importance weights, in particular in PPO.
+
+    Builds on batches that contain advantages and values.
+    """
+
+    logp_old: torch.Tensor
+
+
+class QuantileRegressionBatchProtocol(ModelOutputBatchProtocol):
+    """Contains taus for algorithms using quantile regression.
+
+    See e.g. https://arxiv.org/abs/1806.06923
+    """
+
+    taus: torch.Tensor
+
+
+class ImitationBatchProtocol(ActBatchProtocol):
+    """Similar to other batches, but contains imitation_logits and q_value fields."""
+
+    state: Optional[Union[dict, Batch, np.ndarray]]
+    q_value: torch.Tensor
+    imitation_logits: torch.Tensor

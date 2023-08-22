@@ -6,15 +6,8 @@ import torch.nn.functional as F
 
 from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol
-from tianshou.data.types import ModelOutputBatchProtocol, RolloutBatchProtocol
+from tianshou.data.types import QuantileRegressionBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import QRDQNPolicy
-
-
-class ModelOutputTauBatchProtocol(ModelOutputBatchProtocol):
-    """Model outputs and taus."""
-
-    # taus for quantile regression, see https://arxiv.org/abs/1806.06923
-    taus: torch.Tensor
 
 
 class IQNPolicy(QRDQNPolicy):
@@ -75,7 +68,7 @@ class IQNPolicy(QRDQNPolicy):
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
-    ) -> ModelOutputTauBatchProtocol:
+    ) -> QuantileRegressionBatchProtocol:
         if model == "model_old":
             sample_size = self._target_sample_size
         elif self.training:
@@ -93,7 +86,7 @@ class IQNPolicy(QRDQNPolicy):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         result = Batch(logits=logits, act=act, state=hidden, taus=taus)
-        return cast(ModelOutputTauBatchProtocol, result)
+        return cast(QuantileRegressionBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any,
               **kwargs: Any) -> Dict[str, float]:
