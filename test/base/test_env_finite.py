@@ -5,15 +5,13 @@ from collections import Counter
 
 import gymnasium as gym
 import numpy as np
-from torch.utils.data import DataLoader, Dataset, DistributedSampler
-
 from tianshou.data import Batch, Collector
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
+from torch.utils.data import DataLoader, Dataset, DistributedSampler
 
 
 class DummyDataset(Dataset):
-
     def __init__(self, length):
         self.length = length
         self.episodes = [3 * i % 5 + 1 for i in range(self.length)]
@@ -27,7 +25,6 @@ class DummyDataset(Dataset):
 
 
 class FiniteEnv(gym.Env):
-
     def __init__(self, dataset, num_replicas, rank):
         self.dataset = dataset
         self.num_replicas = num_replicas
@@ -35,7 +32,7 @@ class FiniteEnv(gym.Env):
         self.loader = DataLoader(
             dataset,
             sampler=DistributedSampler(dataset, num_replicas, rank),
-            batch_size=None
+            batch_size=None,
         )
         self.iterator = None
 
@@ -53,12 +50,16 @@ class FiniteEnv(gym.Env):
     def step(self, action):
         self.current_step += 1
         assert self.current_step <= self.step_count
-        return 0, 1.0, self.current_step >= self.step_count, False, \
-            {'sample': self.current_sample, 'action': action, 'metric': 2.0}
+        return (
+            0,
+            1.0,
+            self.current_step >= self.step_count,
+            False,
+            {"sample": self.current_sample, "action": action, "metric": 2.0},
+        )
 
 
 class FiniteVectorEnv(BaseVectorEnv):
-
     def __init__(self, env_fns, **kwargs):
         super().__init__(env_fns, **kwargs)
         self._alive_env_ids = set()
@@ -124,7 +125,7 @@ class FiniteVectorEnv(BaseVectorEnv):
         id = self._wrap_id(id)
         id2idx = {i: k for k, i in enumerate(id)}
         request_id = list(filter(lambda i: i in self._alive_env_ids, id))
-        result = [[None, 0., False, False, None] for _ in range(len(id))]
+        result = [[None, 0.0, False, False, None] for _ in range(len(id))]
 
         # ask super to step alive envs and remap to current index
         if request_id:
@@ -158,7 +159,6 @@ class FiniteSubprocVectorEnv(FiniteVectorEnv, SubprocVectorEnv):
 
 
 class AnyPolicy(BasePolicy):
-
     def forward(self, batch, state=None):
         return Batch(act=np.stack([1] * len(batch)))
 
@@ -171,15 +171,14 @@ def _finite_env_factory(dataset, num_replicas, rank):
 
 
 class MetricTracker:
-
     def __init__(self):
         self.counter = Counter()
         self.finished = set()
 
     def log(self, obs, rew, terminated, truncated, info):
-        assert rew == 1.
+        assert rew == 1.0
         done = terminated or truncated
-        index = info['sample']
+        index = info["sample"]
         if done:
             assert index not in self.finished
             self.finished.add(index)
@@ -223,6 +222,6 @@ def test_finite_subproc_vector_env():
             envs.tracker.validate()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_finite_dummy_vector_env()
     test_finite_subproc_vector_env()

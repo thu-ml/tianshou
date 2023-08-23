@@ -1,7 +1,7 @@
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
-from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 import tqdm
@@ -173,7 +173,7 @@ class BaseTrainer(ABC):
 
         self.logger = logger
         self.start_time = time.time()
-        self.stat: DefaultDict[str, MovAvg] = defaultdict(MovAvg)
+        self.stat: defaultdict[str, MovAvg] = defaultdict(MovAvg)
         self.best_reward = 0.0
         self.best_reward_std = 0.0
         self.start_epoch = 0
@@ -220,8 +220,11 @@ class BaseTrainer(ABC):
         self.is_run = False
         self.env_step = 0
         if self.resume_from_log:
-            self.start_epoch, self.env_step, self.gradient_step = \
-                self.logger.restore_data()
+            (
+                self.start_epoch,
+                self.env_step,
+                self.gradient_step,
+            ) = self.logger.restore_data()
 
         self.last_rew, self.last_len = 0.0, 0
         self.start_time = time.time()
@@ -238,12 +241,20 @@ class BaseTrainer(ABC):
             assert not isinstance(self.test_collector, AsyncCollector)  # Issue 700
             self.test_collector.reset_stat()
             test_result = test_episode(
-                self.policy, self.test_collector, self.test_fn, self.start_epoch,
-                self.episode_per_test, self.logger, self.env_step, self.reward_metric
+                self.policy,
+                self.test_collector,
+                self.test_fn,
+                self.start_epoch,
+                self.episode_per_test,
+                self.logger,
+                self.env_step,
+                self.reward_metric,
             )
             self.best_epoch = self.start_epoch
-            self.best_reward, self.best_reward_std = \
-                test_result["rew"], test_result["rew_std"]
+            self.best_reward, self.best_reward_std = (
+                test_result["rew"],
+                test_result["rew_std"],
+            )
         if self.save_best_fn:
             self.save_best_fn(self.policy)
 
@@ -255,13 +266,12 @@ class BaseTrainer(ABC):
         self.reset()
         return self
 
-    def __next__(self) -> Union[None, Tuple[int, Dict[str, Any], Dict[str, Any]]]:
+    def __next__(self) -> Union[None, tuple[int, dict[str, Any], dict[str, Any]]]:
         """Perform one epoch (both train and eval)."""
         self.epoch += 1
         self.iter_num += 1
 
         if self.iter_num > 1:
-
             # iterator exhaustion check
             if self.epoch > self.max_epoch:
                 raise StopIteration
@@ -273,20 +283,17 @@ class BaseTrainer(ABC):
         # set policy in train mode
         self.policy.train()
 
-        epoch_stat: Dict[str, Any] = dict()
+        epoch_stat: dict[str, Any] = {}
 
-        if self.show_progress:
-            progress = tqdm.tqdm
-        else:
-            progress = DummyTqdm
+        progress = tqdm.tqdm if self.show_progress else DummyTqdm
 
         # perform n step_per_epoch
         with progress(
             total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config
         ) as t:
             while t.n < t.total and not self.stop_fn_flag:
-                data: Dict[str, Any] = dict()
-                result: Dict[str, Any] = dict()
+                data: dict[str, Any] = {}
+                result: dict[str, Any] = {}
                 if self.train_collector is not None:
                     data, result, self.stop_fn_flag = self.train_step()
                     t.update(result["n/st"])
@@ -332,21 +339,30 @@ class BaseTrainer(ABC):
                 }
             )
             info = gather_info(
-                self.start_time, self.train_collector, self.test_collector,
-                self.best_reward, self.best_reward_std
+                self.start_time,
+                self.train_collector,
+                self.test_collector,
+                self.best_reward,
+                self.best_reward_std,
             )
             return self.epoch, epoch_stat, info
         else:
             return None
 
-    def test_step(self) -> Tuple[Dict[str, Any], bool]:
+    def test_step(self) -> tuple[dict[str, Any], bool]:
         """Perform one testing step."""
         assert self.episode_per_test is not None
         assert self.test_collector is not None
         stop_fn_flag = False
         test_result = test_episode(
-            self.policy, self.test_collector, self.test_fn, self.epoch,
-            self.episode_per_test, self.logger, self.env_step, self.reward_metric
+            self.policy,
+            self.test_collector,
+            self.test_fn,
+            self.epoch,
+            self.episode_per_test,
+            self.logger,
+            self.env_step,
+            self.reward_metric,
         )
         rew, rew_std = test_result["rew"], test_result["rew_std"]
         if self.best_epoch < 0 or self.best_reward < rew:
@@ -360,7 +376,7 @@ class BaseTrainer(ABC):
                 f"Epoch #{self.epoch}: test_reward: {rew:.6f} ± {rew_std:.6f},"
                 f" best_reward: {self.best_reward:.6f} ± "
                 f"{self.best_reward_std:.6f} in #{self.best_epoch}",
-                flush=True
+                flush=True,
             )
         if not self.is_run:
             test_stat = {
@@ -368,7 +384,7 @@ class BaseTrainer(ABC):
                 "test_reward_std": rew_std,
                 "best_reward": self.best_reward,
                 "best_reward_std": self.best_reward_std,
-                "best_epoch": self.best_epoch
+                "best_epoch": self.best_epoch,
             }
         else:
             test_stat = {}
@@ -377,7 +393,7 @@ class BaseTrainer(ABC):
 
         return test_stat, stop_fn_flag
 
-    def train_step(self) -> Tuple[Dict[str, Any], Dict[str, Any], bool]:
+    def train_step(self) -> tuple[dict[str, Any], dict[str, Any], bool]:
         """Perform one training step."""
         assert self.episode_per_test is not None
         assert self.train_collector is not None
@@ -405,8 +421,13 @@ class BaseTrainer(ABC):
             if self.test_in_train and self.stop_fn and self.stop_fn(result["rew"]):
                 assert self.test_collector is not None
                 test_result = test_episode(
-                    self.policy, self.test_collector, self.test_fn, self.epoch,
-                    self.episode_per_test, self.logger, self.env_step
+                    self.policy,
+                    self.test_collector,
+                    self.test_fn,
+                    self.epoch,
+                    self.episode_per_test,
+                    self.logger,
+                    self.env_step,
                 )
                 if self.stop_fn(test_result["rew"]):
                     stop_fn_flag = True
@@ -417,23 +438,23 @@ class BaseTrainer(ABC):
 
         return data, result, stop_fn_flag
 
-    def log_update_data(self, data: Dict[str, Any], losses: Dict[str, Any]) -> None:
+    def log_update_data(self, data: dict[str, Any], losses: dict[str, Any]) -> None:
         """Log losses to current logger."""
-        for k in losses.keys():
+        for k in losses:
             self.stat[k].add(losses[k])
             losses[k] = self.stat[k].get()
             data[k] = f"{losses[k]:.3f}"
         self.logger.log_update_data(losses, self.gradient_step)
 
     @abstractmethod
-    def policy_update_fn(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
+    def policy_update_fn(self, data: dict[str, Any], result: dict[str, Any]) -> None:
         """Policy update function for different trainer implementation.
 
         :param data: information in progress bar.
         :param result: collector's return value.
         """
 
-    def run(self) -> Dict[str, Union[float, str]]:
+    def run(self) -> dict[str, Union[float, str]]:
         """Consume iterator.
 
         See itertools - recipes. Use functions that consume iterators at C speed
@@ -443,15 +464,18 @@ class BaseTrainer(ABC):
             self.is_run = True
             deque(self, maxlen=0)  # feed the entire iterator into a zero-length deque
             info = gather_info(
-                self.start_time, self.train_collector, self.test_collector,
-                self.best_reward, self.best_reward_std
+                self.start_time,
+                self.train_collector,
+                self.test_collector,
+                self.best_reward,
+                self.best_reward_std,
             )
         finally:
             self.is_run = False
 
         return info
 
-    def _sample_and_update(self, buffer: ReplayBuffer, data: Dict[str, Any]) -> None:
+    def _sample_and_update(self, buffer: ReplayBuffer, data: dict[str, Any]) -> None:
         self.gradient_step += 1
         # Note: since sample_size=batch_size, this will perform
         # exactly one gradient step. This is why we don't need to calculate the
@@ -474,7 +498,7 @@ class OfflineTrainer(BaseTrainer):
     )
 
     def policy_update_fn(
-        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
+        self, data: dict[str, Any], result: Optional[dict[str, Any]] = None
     ) -> None:
         """Perform one off-line policy update."""
         assert self.buffer
@@ -495,7 +519,7 @@ class OffpolicyTrainer(BaseTrainer):
         BaseTrainer.__doc__.split("\n")[1:]
     )
 
-    def policy_update_fn(self, data: Dict[str, Any], result: Dict[str, Any]) -> None:
+    def policy_update_fn(self, data: dict[str, Any], result: dict[str, Any]) -> None:
         """Perform off-policy updates.
 
         :param data:
@@ -525,7 +549,7 @@ class OnpolicyTrainer(BaseTrainer):
     )
 
     def policy_update_fn(
-        self, data: Dict[str, Any], result: Optional[Dict[str, Any]] = None
+        self, data: dict[str, Any], result: Optional[dict[str, Any]] = None
     ) -> None:
         """Perform one on-policy update."""
         assert self.train_collector is not None

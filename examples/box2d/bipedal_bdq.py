@@ -6,14 +6,13 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, SubprocVectorEnv
 from tianshou.policy import BranchingDQNPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import BranchingNet
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -29,7 +28,7 @@ def get_args():
     parser.add_argument("--action-per-branch", type=int, default=25)
     # training hyperparameters
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--eps-test", type=float, default=0.)
+    parser.add_argument("--eps-test", type=float, default=0.0)
     parser.add_argument("--eps-train", type=float, default=0.73)
     parser.add_argument("--eps-decay", type=float, default=5e-6)
     parser.add_argument("--buffer-size", type=int, default=100000)
@@ -45,7 +44,7 @@ def get_args():
     parser.add_argument("--test-num", type=int, default=10)
     # other
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
@@ -58,8 +57,11 @@ def test_bdq(args=get_args()):
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-    args.num_branches = args.action_shape if isinstance(args.action_shape,
-                                                        int) else args.action_shape[0]
+    args.num_branches = (
+        args.action_shape
+        if isinstance(args.action_shape, int)
+        else args.action_shape[0]
+    )
 
     print("Observations shape:", args.state_shape)
     print("Num branches:", args.num_branches)
@@ -104,7 +106,7 @@ def test_bdq(args=get_args()):
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True
+        exploration_noise=True,
     )
     test_collector = Collector(policy, test_envs, exploration_noise=False)
     # policy.set_eps(1)
@@ -122,7 +124,7 @@ def test_bdq(args=get_args()):
         return mean_rewards >= getattr(env.spec.reward_threshold)
 
     def train_fn(epoch, env_step):  # exp decay
-        eps = max(args.eps_train * (1 - args.eps_decay)**env_step, args.eps_test)
+        eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
         policy.set_eps(eps)
 
     def test_fn(epoch, env_step):
@@ -143,7 +145,7 @@ def test_bdq(args=get_args()):
         train_fn=train_fn,
         test_fn=test_fn,
         save_best_fn=save_best_fn,
-        logger=logger
+        logger=logger,
     ).run()
 
     # assert stop_fn(result["best_reward"])

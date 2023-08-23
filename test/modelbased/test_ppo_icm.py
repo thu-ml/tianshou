@@ -6,8 +6,6 @@ import gymnasium as gym
 import numpy as np
 import torch
 from gym.spaces import Box
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import ICMPolicy, PPOPolicy
@@ -15,57 +13,58 @@ from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--reward-threshold', type=float, default=None)
-    parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=3e-4)
-    parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--step-per-epoch', type=int, default=50000)
-    parser.add_argument('--step-per-collect', type=int, default=2000)
-    parser.add_argument('--repeat-per-collect', type=int, default=10)
-    parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--training-num', type=int, default=20)
-    parser.add_argument('--test-num', type=int, default=100)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=1626)
+    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--epoch", type=int, default=10)
+    parser.add_argument("--step-per-epoch", type=int, default=50000)
+    parser.add_argument("--step-per-collect", type=int, default=2000)
+    parser.add_argument("--repeat-per-collect", type=int, default=10)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--training-num", type=int, default=20)
+    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
     # ppo special
-    parser.add_argument('--vf-coef', type=float, default=0.5)
-    parser.add_argument('--ent-coef', type=float, default=0.0)
-    parser.add_argument('--eps-clip', type=float, default=0.2)
-    parser.add_argument('--max-grad-norm', type=float, default=0.5)
-    parser.add_argument('--gae-lambda', type=float, default=0.95)
-    parser.add_argument('--rew-norm', type=int, default=0)
-    parser.add_argument('--norm-adv', type=int, default=0)
-    parser.add_argument('--recompute-adv', type=int, default=0)
-    parser.add_argument('--dual-clip', type=float, default=None)
-    parser.add_argument('--value-clip', type=int, default=0)
+    parser.add_argument("--vf-coef", type=float, default=0.5)
+    parser.add_argument("--ent-coef", type=float, default=0.0)
+    parser.add_argument("--eps-clip", type=float, default=0.2)
+    parser.add_argument("--max-grad-norm", type=float, default=0.5)
+    parser.add_argument("--gae-lambda", type=float, default=0.95)
+    parser.add_argument("--rew-norm", type=int, default=0)
+    parser.add_argument("--norm-adv", type=int, default=0)
+    parser.add_argument("--recompute-adv", type=int, default=0)
+    parser.add_argument("--dual-clip", type=float, default=None)
+    parser.add_argument("--value-clip", type=int, default=0)
     parser.add_argument(
-        '--lr-scale',
+        "--lr-scale",
         type=float,
-        default=1.,
-        help='use intrinsic curiosity module with this lr scale'
+        default=1.0,
+        help="use intrinsic curiosity module with this lr scale",
     )
     parser.add_argument(
-        '--reward-scale',
+        "--reward-scale",
         type=float,
         default=0.01,
-        help='scaling factor for intrinsic curiosity reward'
+        help="scaling factor for intrinsic curiosity reward",
     )
     parser.add_argument(
-        '--forward-loss-weight',
+        "--forward-loss-weight",
         type=float,
         default=0.2,
-        help='weight for the forward model loss in ICM'
+        help="weight for the forward model loss in ICM",
     )
     args = parser.parse_known_args()[0]
     return args
@@ -124,14 +123,14 @@ def test_ppo(args=get_args()):
         action_space=env.action_space,
         deterministic_eval=True,
         advantage_normalization=args.norm_adv,
-        recompute_advantage=args.recompute_adv
+        recompute_advantage=args.recompute_adv,
     )
     feature_dim = args.hidden_sizes[-1]
     feature_net = MLP(
         np.prod(args.state_shape),
         output_dim=feature_dim,
         hidden_sizes=args.hidden_sizes[:-1],
-        device=args.device
+        device=args.device,
     )
     action_dim = np.prod(args.action_shape)
     icm_net = IntrinsicCuriosityModule(
@@ -139,12 +138,16 @@ def test_ppo(args=get_args()):
         feature_dim,
         action_dim,
         hidden_sizes=args.hidden_sizes[-1:],
-        device=args.device
+        device=args.device,
     ).to(args.device)
     icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
     policy = ICMPolicy(
-        policy, icm_net, icm_optim, args.lr_scale, args.reward_scale,
-        args.forward_loss_weight
+        policy,
+        icm_net,
+        icm_optim,
+        args.lr_scale,
+        args.reward_scale,
+        args.forward_loss_weight,
     )
     # collector
     train_collector = Collector(
@@ -152,12 +155,12 @@ def test_ppo(args=get_args()):
     )
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'ppo_icm')
+    log_path = os.path.join(args.logdir, args.task, "ppo_icm")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
@@ -175,11 +178,11 @@ def test_ppo(args=get_args()):
         step_per_collect=args.step_per_collect,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
-        logger=logger
+        logger=logger,
     ).run()
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
@@ -190,5 +193,5 @@ def test_ppo(args=get_args()):
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_ppo()

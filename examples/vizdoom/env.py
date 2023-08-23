@@ -4,7 +4,6 @@ import cv2
 import gymnasium as gym
 import numpy as np
 import vizdoom as vzd
-
 from tianshou.env import ShmemVectorEnv
 
 try:
@@ -41,7 +40,6 @@ def battle_button_comb():
 
 
 class Env(gym.Env):
-
     def __init__(self, cfg_path, frameskip=4, res=(4, 40, 60), save_lmp=False):
         super().__init__()
         self.save_lmp = save_lmp
@@ -168,7 +166,7 @@ def make_vizdoom_env(task, frame_skip, res, save_lmp, seed, training_num, test_n
     return env, train_envs, test_envs
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # env = Env("maps/D1_basic.cfg", 4, (4, 84, 84))
     env = Env("maps/D3_battle.cfg", 4, (4, 84, 84))
     print(env.available_actions)

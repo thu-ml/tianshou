@@ -1,7 +1,7 @@
 import pickle
 from copy import deepcopy
 from numbers import Number
-from typing import Any, Dict, Optional, Union, no_type_check
+from typing import Any, Optional, Union, no_type_check
 
 import h5py
 import numpy as np
@@ -73,10 +73,11 @@ def to_torch_as(x: Any, y: torch.Tensor) -> Union[Batch, torch.Tensor]:
 
 # Note: object is used as a proxy for objects that can be pickled
 # Note: mypy does not support cyclic definition currently
-Hdf5ConvertibleValues = Union[int, float, Batch, np.ndarray, torch.Tensor, object,
-                              "Hdf5ConvertibleType"]
+Hdf5ConvertibleValues = Union[
+    int, float, Batch, np.ndarray, torch.Tensor, object, "Hdf5ConvertibleType"
+]
 
-Hdf5ConvertibleType = Dict[str, Hdf5ConvertibleValues]
+Hdf5ConvertibleType = dict[str, Hdf5ConvertibleValues]
 
 
 def to_hdf5(

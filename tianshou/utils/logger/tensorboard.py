@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional
 
 from tensorboard.backend.event_processing import event_accumulator
 from torch.utils.tensorboard import SummaryWriter
@@ -55,11 +55,12 @@ class TensorboardLogger(BaseLogger):
             self.write("save/epoch", epoch, {"save/epoch": epoch})
             self.write("save/env_step", env_step, {"save/env_step": env_step})
             self.write(
-                "save/gradient_step", gradient_step,
-                {"save/gradient_step": gradient_step}
+                "save/gradient_step",
+                gradient_step,
+                {"save/gradient_step": gradient_step},
             )
 
-    def restore_data(self) -> Tuple[int, int, int]:
+    def restore_data(self) -> tuple[int, int, int]:
         ea = event_accumulator.EventAccumulator(self.writer.log_dir)
         ea.Reload()
 

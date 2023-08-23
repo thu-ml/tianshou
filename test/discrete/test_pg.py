@@ -6,37 +6,36 @@ import gymnasium as gym
 import numpy as np
 import torch
 from gym.spaces import Box
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import PGPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--reward-threshold', type=float, default=None)
-    parser.add_argument('--seed', type=int, default=1)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.95)
-    parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--step-per-epoch', type=int, default=40000)
-    parser.add_argument('--episode-per-collect', type=int, default=8)
-    parser.add_argument('--repeat-per-collect', type=int, default=2)
-    parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--training-num', type=int, default=8)
-    parser.add_argument('--test-num', type=int, default=100)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--rew-norm', type=int, default=1)
+    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--gamma", type=float, default=0.95)
+    parser.add_argument("--epoch", type=int, default=10)
+    parser.add_argument("--step-per-epoch", type=int, default=40000)
+    parser.add_argument("--episode-per-collect", type=int, default=8)
+    parser.add_argument("--repeat-per-collect", type=int, default=2)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--training-num", type=int, default=8)
+    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.0)
+    parser.add_argument("--rew-norm", type=int, default=1)
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
     args = parser.parse_known_args()[0]
     return args
@@ -71,7 +70,7 @@ def test_pg(args=get_args()):
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         device=args.device,
-        softmax=True
+        softmax=True,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
@@ -95,12 +94,12 @@ def test_pg(args=get_args()):
     )
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'pg')
+    log_path = os.path.join(args.logdir, args.task, "pg")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
@@ -120,9 +119,9 @@ def test_pg(args=get_args()):
         save_best_fn=save_best_fn,
         logger=logger,
     ).run()
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
@@ -133,5 +132,5 @@ def test_pg(args=get_args()):
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_pg()

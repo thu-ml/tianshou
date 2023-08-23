@@ -1,21 +1,18 @@
 import numpy as np
 import tqdm
-
 from tianshou.data import AsyncCollector, Batch, Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from env import MyTestEnv
 else:  # pytest
     from test.base.env import MyTestEnv
 
 
 class MyPolicy(BasePolicy):
-
     def __init__(self, dict_state=False, need_state=True):
-        """
-        :param bool dict_state: if the observation of the environment is a dict
+        """:param bool dict_state: if the observation of the environment is a dict
         :param bool need_state: if the policy needs the hidden state (for RNN)
         """
         super().__init__()
@@ -29,7 +26,7 @@ class MyPolicy(BasePolicy):
             else:
                 state += 1
         if self.dict_state:
-            return Batch(act=np.ones(len(batch.obs['index'])), state=state)
+            return Batch(act=np.ones(len(batch.obs["index"])), state=state)
         return Batch(act=np.ones(len(batch.obs)), state=state)
 
     def learn(self):
@@ -45,7 +42,7 @@ def test_collector_nstep():
     for i in tqdm.trange(1, 400, desc="test step collector n_step"):
         c3.reset()
         result = c3.collect(n_step=i * len(env_fns))
-        assert result['n/st'] >= i
+        assert result["n/st"] >= i
 
 
 def test_collector_nepisode():
@@ -57,8 +54,8 @@ def test_collector_nepisode():
     for i in tqdm.trange(1, 400, desc="test step collector n_episode"):
         c3.reset()
         result = c3.collect(n_episode=i)
-        assert result['n/ep'] == i
-        assert result['n/st'] == len(c3.buffer)
+        assert result["n/ep"] == i
+        assert result["n/st"] == len(c3.buffer)
 
 
 def test_asynccollector():
@@ -101,7 +98,7 @@ def test_asynccollector():
             assert np.all(buf.obs_next.reshape(-1, env_len) == seq + 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_collector_nstep()
     test_collector_nepisode()
     test_asynccollector()

@@ -7,35 +7,36 @@ import networkx as nx
 import numpy as np
 import pytest
 import torch
-
 from tianshou.data import Batch, to_numpy, to_torch
 
 
 def test_batch():
     assert list(Batch()) == []
     assert Batch().is_empty()
-    assert not Batch(b={'c': {}}).is_empty()
-    assert Batch(b={'c': {}}).is_empty(recurse=True)
+    assert not Batch(b={"c": {}}).is_empty()
+    assert Batch(b={"c": {}}).is_empty(recurse=True)
     assert not Batch(a=Batch(), b=Batch(c=Batch())).is_empty()
     assert Batch(a=Batch(), b=Batch(c=Batch())).is_empty(recurse=True)
     assert not Batch(d=1).is_empty()
     assert not Batch(a=np.float64(1.0)).is_empty()
-    assert len(Batch(a=[1, 2, 3], b={'c': {}})) == 3
+    assert len(Batch(a=[1, 2, 3], b={"c": {}})) == 3
     assert not Batch(a=[1, 2, 3]).is_empty()
-    b = Batch({'a': [4, 4], 'b': [5, 5]}, c=[None, None])
+    b = Batch({"a": [4, 4], "b": [5, 5]}, c=[None, None])
     assert b.c.dtype == object
     b = Batch(d=[None], e=[starmap], f=Batch)
-    assert b.d.dtype == b.e.dtype == object and b.f == Batch
+    assert b.d.dtype == b.e.dtype == object
+    assert b.f == Batch
     b = Batch()
     b.update()
     assert b.is_empty()
     b.update(c=[3, 5])
     assert np.allclose(b.c, [3, 5])
     # mimic the behavior of dict.update, where kwargs can overwrite keys
-    b.update({'a': 2}, a=3)
-    assert 'a' in b and b.a == 3
-    assert b.pop('a') == 3
-    assert 'a' not in b
+    b.update({"a": 2}, a=3)
+    assert "a" in b
+    assert b.a == 3
+    assert b.pop("a") == 3
+    assert "a" not in b
     with pytest.raises(AssertionError):
         Batch({1: 2})
     batch = Batch(a=[torch.ones(3), torch.ones(3)])
@@ -92,27 +93,24 @@ def test_batch():
     for size, merge_last, result in data:
         bs = list(batch.split(size, shuffle=False, merge_last=merge_last))
         assert [bs[i].a.tolist() for i in range(len(bs))] == result
-    batch_dict = {'b': np.array([1.0]), 'c': 2.0, 'd': torch.Tensor([3.0])}
-    batch_item = Batch({'a': [batch_dict]})[0]
+    batch_dict = {"b": np.array([1.0]), "c": 2.0, "d": torch.Tensor([3.0])}
+    batch_item = Batch({"a": [batch_dict]})[0]
     assert isinstance(batch_item.a.b, np.ndarray)
-    assert batch_item.a.b == batch_dict['b']
+    assert batch_item.a.b == batch_dict["b"]
     assert isinstance(batch_item.a.c, float)
-    assert batch_item.a.c == batch_dict['c']
+    assert batch_item.a.c == batch_dict["c"]
     assert isinstance(batch_item.a.d, torch.Tensor)
-    assert batch_item.a.d == batch_dict['d']
+    assert batch_item.a.d == batch_dict["d"]
     batch2 = Batch(
-        a=[{
-            'b': np.float64(1.0),
-            'c': np.zeros(1),
-            'd': Batch(e=np.array(3.0))
-        }]
+        a=[{"b": np.float64(1.0), "c": np.zeros(1), "d": Batch(e=np.array(3.0))}]
     )
     assert len(batch2) == 1
     assert Batch().shape == []
     assert Batch(a=1).shape == []
-    assert Batch(a=set((1, 2, 1))).shape == []
+    assert Batch(a={1, 2, 1}).shape == []
     assert batch2.shape[0] == 1
-    assert 'a' in batch2 and all([i in batch2.a for i in 'bcd'])
+    assert "a" in batch2
+    assert all(i in batch2.a for i in "bcd")
     with pytest.raises(IndexError):
         batch2[-2]
     with pytest.raises(IndexError):
@@ -126,7 +124,7 @@ def test_batch():
     assert isinstance(batch2[0].a.b, np.float64)
     assert isinstance(batch2[0].a.d.e, np.float64)
     batch2_from_list = Batch(list(batch2))
-    batch2_from_comp = Batch([e for e in batch2])
+    batch2_from_comp = Batch(list(batch2))
     assert batch2_from_list.a.b == batch2.a.b
     assert batch2_from_list.a.c == batch2.a.c
     assert batch2_from_list.a.d.e == batch2.a.d.e
@@ -146,12 +144,9 @@ def test_batch():
     with pytest.raises(TypeError):
         batch2 += [1]
     batch3 = Batch(
-        a={
-            'c': np.zeros(1),
-            'd': Batch(e=np.array([0.0]), f=np.array([3.0]))
-        }
+        a={"c": np.zeros(1), "d": Batch(e=np.array([0.0]), f=np.array([3.0]))}
     )
-    batch3.a.d[0] = {'e': 4.0}
+    batch3.a.d[0] = {"e": 4.0}
     assert batch3.a.d.e[0] == 4.0
     batch3.a.d[0] = Batch(f=5.0)
     assert batch3.a.d.f[0] == 5.0
@@ -160,22 +155,24 @@ def test_batch():
     with pytest.raises(ValueError):
         batch3[0] = Batch(a={"c": 2, "e": 1})
     # auto convert
-    batch4 = Batch(a=np.array(['a', 'b']))
+    batch4 = Batch(a=np.array(["a", "b"]))
     assert batch4.a.dtype == object  # auto convert to object
-    batch4.update(a=np.array(['c', 'd']))
-    assert list(batch4.a) == ['c', 'd']
+    batch4.update(a=np.array(["c", "d"]))
+    assert list(batch4.a) == ["c", "d"]
     assert batch4.a.dtype == object  # auto convert to object
-    batch5 = Batch(a=np.array([{'index': 0}]))
+    batch5 = Batch(a=np.array([{"index": 0}]))
     assert isinstance(batch5.a, Batch)
     assert np.allclose(batch5.a.index, [0])
-    batch5.b = np.array([{'index': 1}])
+    batch5.b = np.array([{"index": 1}])
     assert isinstance(batch5.b, Batch)
     assert np.allclose(batch5.b.index, [1])
 
     # None is a valid object and can be stored in Batch
     a = Batch.stack([Batch(a=None), Batch(b=None)])
-    assert a.a[0] is None and a.a[1] is None
-    assert a.b[0] is None and a.b[1] is None
+    assert a.a[0] is None
+    assert a.a[1] is None
+    assert a.b[0] is None
+    assert a.b[1] is None
 
     # nx.Graph corner case
     assert Batch(a=np.array([nx.Graph(), nx.Graph()], dtype=object)).a.dtype == object
@@ -188,7 +185,7 @@ def test_batch():
 
 def test_batch_over_batch():
     batch = Batch(a=[3, 4, 5], b=[4, 5, 6])
-    batch2 = Batch({'c': [6, 7, 8], 'b': batch})
+    batch2 = Batch({"c": [6, 7, 8], "b": batch})
     batch2.b.b[-1] = 0
     print(batch2)
     for k, v in batch2.items():
@@ -203,17 +200,17 @@ def test_batch_over_batch():
     assert np.allclose(batch2.a, [3, 4, 5, 3, 4, 5])
     assert np.allclose(batch2.b, [4, 5, 0, 4, 5, 0])
     assert np.allclose(batch2.six, [6, 6, 6])
-    d = {'a': [3, 4, 5], 'b': [4, 5, 6]}
+    d = {"a": [3, 4, 5], "b": [4, 5, 6]}
     batch3 = Batch(c=[6, 7, 8], b=d)
     batch3.cat_(Batch(c=[6, 7, 8], b=d))
     assert np.allclose(batch3.c, [6, 7, 8, 6, 7, 8])
     assert np.allclose(batch3.b.a, [3, 4, 5, 3, 4, 5])
     assert np.allclose(batch3.b.b, [4, 5, 6, 4, 5, 6])
-    batch4 = Batch(({'a': {'b': np.array([1.0])}}, ))
+    batch4 = Batch(({"a": {"b": np.array([1.0])}},))
     assert batch4.a.b.ndim == 2
     assert batch4.a.b[0, 0] == 1.0
     # advanced slicing
-    batch5 = Batch(a=[[1, 2]], b={'c': np.zeros([3, 2, 1])})
+    batch5 = Batch(a=[[1, 2]], b={"c": np.zeros([3, 2, 1])})
     assert batch5.shape == [1, 2]
     with pytest.raises(IndexError):
         batch5[2]
@@ -226,15 +223,15 @@ def test_batch_over_batch():
     assert np.allclose(batch5.b.c.squeeze(), [[0, 1]] * 3)
     with pytest.raises(ValueError):
         batch5[:, -1] = 1
-    batch5[:, 0] = {'a': -1}
+    batch5[:, 0] = {"a": -1}
     assert np.allclose(batch5.a, [-1, 3])
     assert np.allclose(batch5.b.c.squeeze(), [[0, 1]] * 3)
 
 
 def test_batch_cat_and_stack():
     # test cat with compatible keys
-    b1 = Batch(a=[{'b': np.float64(1.0), 'd': Batch(e=np.array(3.0))}])
-    b2 = Batch(a=[{'b': np.float64(4.0), 'd': {'e': np.array(6.0)}}])
+    b1 = Batch(a=[{"b": np.float64(1.0), "d": Batch(e=np.array(3.0))}])
+    b2 = Batch(a=[{"b": np.float64(4.0), "d": {"e": np.array(6.0)}}])
     b12_cat_out = Batch.cat([b1, b2])
     b12_cat_in = copy.deepcopy(b1)
     b12_cat_in.cat_(b2)
@@ -245,8 +242,7 @@ def test_batch_cat_and_stack():
 
     a = Batch(a=Batch(a=np.random.randn(3, 4)))
     assert np.allclose(
-        np.concatenate([a.a.a, a.a.a]),
-        Batch.cat([a, Batch(a=Batch(a=Batch())), a]).a.a
+        np.concatenate([a.a.a, a.a.a]), Batch.cat([a, Batch(a=Batch(a=Batch())), a]).a.a
     )
 
     # test cat with lens infer
@@ -268,7 +264,7 @@ def test_batch_cat_and_stack():
     ans = Batch(
         a=np.concatenate([b1.a, np.zeros((4, 4))]),
         b=torch.cat([torch.zeros(3, 3), b2.b]),
-        common=Batch(c=np.concatenate([b1.common.c, b2.common.c]))
+        common=Batch(c=np.concatenate([b1.common.c, b2.common.c])),
     )
     assert np.allclose(test.a, ans.a)
     assert torch.allclose(test.b, ans.b)
@@ -281,7 +277,7 @@ def test_batch_cat_and_stack():
     ans = Batch(
         a=np.concatenate([b1.a, np.zeros((4, 4))]),
         b=torch.cat([torch.zeros(3, 3), b2.b]),
-        common=Batch(c=np.concatenate([b1.common.c, b2.common.c]))
+        common=Batch(c=np.concatenate([b1.common.c, b2.common.c])),
     )
     assert np.allclose(test.a, ans.a)
     assert torch.allclose(test.b, ans.b)
@@ -294,7 +290,7 @@ def test_batch_cat_and_stack():
     ans = Batch(
         a=Batch(),
         b=torch.cat([torch.zeros(3, 3), b2.b]),
-        common=Batch(c=np.concatenate([b1.common.c, b2.common.c]))
+        common=Batch(c=np.concatenate([b1.common.c, b2.common.c])),
     )
     assert ans.a.is_empty()
     assert torch.allclose(test.b, ans.b)
@@ -307,23 +303,13 @@ def test_batch_cat_and_stack():
     assert np.all(b34_stack.a == np.stack((b3.a, b4.a), axis=1))
     assert np.all(b34_stack.c.d == list(map(list, zip(b3.c.d, b4.c.d))))
     b5_dict = np.array(
-        [{
-            'a': False,
-            'b': {
-                'c': 2.0,
-                'd': 1.0
-            }
-        }, {
-            'a': True,
-            'b': {
-                'c': 3.0
-            }
-        }]
+        [{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}]
     )
     b5 = Batch(b5_dict)
-    assert b5.a[0] == np.array(False) and b5.a[1] == np.array(True)
-    assert np.all(b5.b.c == np.stack([e['b']['c'] for e in b5_dict], axis=0))
-    assert b5.b.d[0] == b5_dict[0]['b']['d']
+    assert b5.a[0] == np.array(False)
+    assert b5.a[1] == np.array(True)
+    assert np.all(b5.b.c == np.stack([e["b"]["c"] for e in b5_dict], axis=0))
+    assert b5.b.d[0] == b5_dict[0]["b"]["d"]
     assert b5.b.d[1] == 0.0
 
     # test stack with incompatible keys
@@ -360,7 +346,7 @@ def test_batch_cat_and_stack():
     ans = Batch(
         a=np.stack([b1.a, np.zeros((4, 4))]),
         b=torch.stack([torch.zeros(4, 6), b2.b]),
-        common=Batch(c=np.stack([b1.common.c, b2.common.c]))
+        common=Batch(c=np.stack([b1.common.c, b2.common.c])),
     )
     assert np.allclose(test.a, ans.a)
     assert torch.allclose(test.b, ans.b)
@@ -387,11 +373,10 @@ def test_batch_over_batch_to_torch():
     batch = Batch(
         a=np.float64(1.0),
         b=Batch(
-            c=np.ones((1, ), dtype=np.float32),
-            d=torch.ones((1, ), dtype=torch.float64)
-        )
+            c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)
+        ),
     )
-    batch.b.__dict__['e'] = 1  # bypass the check
+    batch.b.__dict__["e"] = 1  # bypass the check
     batch.to_torch()
     assert isinstance(batch.a, torch.Tensor)
     assert isinstance(batch.b.c, torch.Tensor)
@@ -415,9 +400,8 @@ def test_utils_to_torch_numpy():
     batch = Batch(
         a=np.float64(1.0),
         b=Batch(
-            c=np.ones((1, ), dtype=np.float32),
-            d=torch.ones((1, ), dtype=torch.float64)
-        )
+            c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)
+        ),
     )
     a_torch_float = to_torch(batch.a, dtype=torch.float32)
     assert a_torch_float.dtype == torch.float32
@@ -427,7 +411,7 @@ def test_utils_to_torch_numpy():
     assert batch_torch_float.a.dtype == torch.float32
     assert batch_torch_float.b.c.dtype == torch.float32
     assert batch_torch_float.b.d.dtype == torch.float32
-    data_list = [float('nan'), 1]
+    data_list = [float("nan"), 1]
     data_list_torch = to_torch(data_list)
     assert data_list_torch.dtype == torch.float64
     data_list_2 = [np.random.rand(3, 3), np.random.rand(3, 3)]
@@ -462,8 +446,8 @@ def test_utils_to_torch_numpy():
     assert np.allclose(to_numpy(to_torch(data_array)), data_array)
     # additional test for to_numpy, for code-coverage
     assert isinstance(to_numpy(1), np.ndarray)
-    assert isinstance(to_numpy(1.), np.ndarray)
-    assert isinstance(to_numpy({'a': torch.tensor(1)})['a'], np.ndarray)
+    assert isinstance(to_numpy(1.0), np.ndarray)
+    assert isinstance(to_numpy({"a": torch.tensor(1)})["a"], np.ndarray)
     assert isinstance(to_numpy(Batch(a=torch.tensor(1))).a, np.ndarray)
     assert to_numpy(None).item() is None
     assert to_numpy(to_numpy).item() == to_numpy
@@ -473,12 +457,12 @@ def test_utils_to_torch_numpy():
         assert to_torch(1).dtype == torch.int32
     else:
         assert to_torch(1).dtype == torch.int64
-    assert to_torch(1.).dtype == torch.float64
-    assert isinstance(to_torch({'a': [1]})['a'], torch.Tensor)
+    assert to_torch(1.0).dtype == torch.float64
+    assert isinstance(to_torch({"a": [1]})["a"], torch.Tensor)
     with pytest.raises(TypeError):
         to_torch(None)
     with pytest.raises(TypeError):
-        to_torch(np.array([{}, '2']))
+        to_torch(np.array([{}, "2"]))
 
 
 def test_batch_pickle():
@@ -490,28 +474,28 @@ def test_batch_pickle():
 
 
 def test_batch_from_to_numpy_without_copy():
-    batch = Batch(a=np.ones((1, )), b=Batch(c=np.ones((1, ))))
-    a_mem_addr_orig = batch.a.__array_interface__['data'][0]
-    c_mem_addr_orig = batch.b.c.__array_interface__['data'][0]
+    batch = Batch(a=np.ones((1,)), b=Batch(c=np.ones((1,))))
+    a_mem_addr_orig = batch.a.__array_interface__["data"][0]
+    c_mem_addr_orig = batch.b.c.__array_interface__["data"][0]
     batch.to_torch()
     batch.to_numpy()
-    a_mem_addr_new = batch.a.__array_interface__['data'][0]
-    c_mem_addr_new = batch.b.c.__array_interface__['data'][0]
+    a_mem_addr_new = batch.a.__array_interface__["data"][0]
+    c_mem_addr_new = batch.b.c.__array_interface__["data"][0]
     assert a_mem_addr_new == a_mem_addr_orig
     assert c_mem_addr_new == c_mem_addr_orig
 
 
 def test_batch_copy():
     batch = Batch(a=np.array([3, 4, 5]), b=np.array([4, 5, 6]))
-    batch2 = Batch({'c': np.array([6, 7, 8]), 'b': batch})
-    orig_c_addr = batch2.c.__array_interface__['data'][0]
-    orig_b_a_addr = batch2.b.a.__array_interface__['data'][0]
-    orig_b_b_addr = batch2.b.b.__array_interface__['data'][0]
+    batch2 = Batch({"c": np.array([6, 7, 8]), "b": batch})
+    orig_c_addr = batch2.c.__array_interface__["data"][0]
+    orig_b_a_addr = batch2.b.a.__array_interface__["data"][0]
+    orig_b_b_addr = batch2.b.b.__array_interface__["data"][0]
     # test with copy=False
     batch3 = Batch(copy=False, **batch2)
-    curr_c_addr = batch3.c.__array_interface__['data'][0]
-    curr_b_a_addr = batch3.b.a.__array_interface__['data'][0]
-    curr_b_b_addr = batch3.b.b.__array_interface__['data'][0]
+    curr_c_addr = batch3.c.__array_interface__["data"][0]
+    curr_b_a_addr = batch3.b.a.__array_interface__["data"][0]
+    curr_b_b_addr = batch3.b.b.__array_interface__["data"][0]
     assert batch2.c is batch3.c
     assert batch2.b is batch3.b
     assert batch2.b.a is batch3.b.a
@@ -521,9 +505,9 @@ def test_batch_copy():
     assert orig_b_b_addr == curr_b_b_addr
     # test with copy=True
     batch3 = Batch(copy=True, **batch2)
-    curr_c_addr = batch3.c.__array_interface__['data'][0]
-    curr_b_a_addr = batch3.b.a.__array_interface__['data'][0]
-    curr_b_b_addr = batch3.b.b.__array_interface__['data'][0]
+    curr_c_addr = batch3.c.__array_interface__["data"][0]
+    curr_b_a_addr = batch3.b.a.__array_interface__["data"][0]
+    curr_b_b_addr = batch3.b.b.__array_interface__["data"][0]
     assert batch2.c is not batch3.c
     assert batch2.b is not batch3.b
     assert batch2.b.a is not batch3.b.a
@@ -535,18 +519,7 @@ def test_batch_copy():
 
 def test_batch_empty():
     b5_dict = np.array(
-        [{
-            'a': False,
-            'b': {
-                'c': 2.0,
-                'd': 1.0
-            }
-        }, {
-            'a': True,
-            'b': {
-                'c': 3.0
-            }
-        }]
+        [{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}]
     )
     b5 = Batch(b5_dict)
     b5[1] = Batch.empty(b5[0])
@@ -556,12 +529,12 @@ def test_batch_empty():
     data = Batch(
         a=[False, True],
         b={
-            'c': np.array([2., 'st'], dtype=object),
-            'd': [1, None],
-            'e': [2., float('nan')]
+            "c": np.array([2.0, "st"], dtype=object),
+            "d": [1, None],
+            "e": [2.0, float("nan")],
         },
         c=np.array([1, 3, 4], dtype=int),
-        t=torch.tensor([4, 5, 6, 7.])
+        t=torch.tensor([4, 5, 6, 7.0]),
     )
     data[-1] = Batch.empty(data[1])
     assert np.allclose(data.c, [1, 3, 0])
@@ -569,9 +542,9 @@ def test_batch_empty():
     assert list(data.b.c) == [2.0, None]
     assert list(data.b.d) == [1, None]
     assert np.allclose(data.b.e, [2, 0])
-    assert torch.allclose(data.t, torch.tensor([4, 5, 6, 0.]))
+    assert torch.allclose(data.t, torch.tensor([4, 5, 6, 0.0]))
     data[0].empty_()  # which will fail in a, b.c, b.d, b.e, c
-    assert torch.allclose(data.t, torch.tensor([0., 5, 6, 0]))
+    assert torch.allclose(data.t, torch.tensor([0.0, 5, 6, 0]))
     data.empty_(index=0)
     assert np.allclose(data.c, [0, 3, 0])
     assert list(data.b.c) == [None, None]
@@ -588,7 +561,7 @@ def test_batch_standard_compatibility():
     )
     batch_mean = np.mean(batch)
     assert isinstance(batch_mean, Batch)
-    assert sorted(batch_mean.keys()) == ['a', 'b', 'c']
+    assert sorted(batch_mean.keys()) == ["a", "b", "c"]
     with pytest.raises(TypeError):
         len(batch_mean)
     assert np.all(batch_mean.a == np.mean(batch.a, axis=0))
@@ -597,7 +570,7 @@ def test_batch_standard_compatibility():
         Batch()[0]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_batch()
     test_batch_over_batch()
     test_batch_over_batch_to_torch()

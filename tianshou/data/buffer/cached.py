@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 
@@ -34,12 +34,12 @@ class CachedReplayBuffer(ReplayBufferManager):
         cached_buffer_num: int,
         max_episode_length: int,
     ) -> None:
-        assert cached_buffer_num > 0 and max_episode_length > 0
+        assert cached_buffer_num > 0
+        assert max_episode_length > 0
         assert isinstance(main_buffer, ReplayBuffer)
         kwargs = main_buffer.options
         buffers = [main_buffer] + [
-            ReplayBuffer(max_episode_length, **kwargs)
-            for _ in range(cached_buffer_num)
+            ReplayBuffer(max_episode_length, **kwargs) for _ in range(cached_buffer_num)
         ]
         super().__init__(buffer_list=buffers)
         self.main_buffer = self.buffers[0]
@@ -49,8 +49,8 @@ class CachedReplayBuffer(ReplayBufferManager):
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into CachedReplayBuffer.
 
         Each of the data's length (first dimension) must equal to the length of

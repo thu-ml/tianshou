@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 
@@ -17,7 +17,7 @@ def test_episode(
     logger: Optional[BaseLogger] = None,
     global_step: Optional[int] = None,
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """A simple wrapper of testing policy in collector."""
     collector.reset_env()
     collector.reset_buffer()
@@ -39,7 +39,7 @@ def gather_info(
     test_collector: Optional[Collector],
     best_reward: float,
     best_reward_std: float,
-) -> Dict[str, Union[float, str]]:
+) -> dict[str, Union[float, str]]:
     """A simple wrapper of gathering information from collectors.
 
     :return: A dictionary with the following keys:
@@ -59,7 +59,7 @@ def gather_info(
     """
     duration = max(0, time.time() - start_time)
     model_time = duration
-    result: Dict[str, Union[float, str]] = {
+    result: dict[str, Union[float, str]] = {
         "duration": f"{duration:.2f}s",
         "train_time/model": f"{model_time:.2f}s",
     }

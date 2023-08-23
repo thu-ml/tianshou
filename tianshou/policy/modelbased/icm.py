@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import torch
@@ -78,7 +78,7 @@ class ICMPolicy(BasePolicy):
         if hasattr(self.policy, "set_eps"):
             self.policy.set_eps(eps)  # type: ignore
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
     def process_fn(
         self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
@@ -103,8 +103,9 @@ class ICMPolicy(BasePolicy):
         self.policy.post_process_fn(batch, buffer, indices)
         batch.rew = batch.policy.orig_rew  # restore original reward
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(
+        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
+    ) -> dict[str, float]:
         res = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
@@ -112,8 +113,8 @@ class ICMPolicy(BasePolicy):
         inverse_loss = F.cross_entropy(act_hat, act).mean()
         forward_loss = batch.policy.mse_loss.mean()
         loss = (
-            (1 - self.forward_loss_weight) * inverse_loss +
-            self.forward_loss_weight * forward_loss
+            (1 - self.forward_loss_weight) * inverse_loss
+            + self.forward_loss_weight * forward_loss
         ) * self.lr_scale
         loss.backward()
         self.optim.step()
@@ -121,7 +122,7 @@ class ICMPolicy(BasePolicy):
             {
                 "loss/icm": loss.item(),
                 "loss/icm/forward": forward_loss.item(),
-                "loss/icm/inverse": inverse_loss.item()
+                "loss/icm/inverse": inverse_loss.item(),
             }
         )
         return res

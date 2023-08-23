@@ -1,0 +1,134 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "tianshou"
+version = "0.5.1"
+description = "A Library for Deep Reinforcement Learning"
+authors = ["TSAIL <trinkle23897@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/thu-ml/tianshou"
+classifiers = [
+    #   3 - Alpha
+    #   4 - Beta
+    #   5 - Production/Stable
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+exclude = ["test/*", "examples/*", "docs/*"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+# TODO: add versions
+atari_py = {version = "*", optional = true}
+
+gymnasium = ">=0.29.0"
+h5py = ">=3.9.0"
+mujoco_py = {version = "*", optional = true}
+numba = ">=0.51.0"
+numpy = ">=1"
+opencv_python = {version = "*", optional = true}
+packaging = "*"
+pettingzoo = ">=1.22"
+pybullet = {version = "*", optional = true}
+ray = "^2.6.3"
+tensorboard = ">=2.5.0"
+torch = ">=2.0.1"
+tqdm = "*"
+
+[tool.poetry.extras]
+atari = ["atari_py", "opencv-python"]
+mujoco = ["mujoco_py"]
+pybullet = ["pybullet"]
+
+
+[tool.poetry.dev-dependencies]
+black = "*"
+doc8 = "*"
+envpool = "^0.8.2"
+jinja2 = "*"
+mypy = ">=1.4.1"
+# networkx is used in a test
+networkx = "*"
+poethepoet = ">=0.20.0"
+pygame = ">=2.1.0"
+pymunk = ">=6.2.1"
+pytest = "*"
+pytest-cov = "*"
+ruff = "*"
+scipy = "*"
+shimmy = "*"
+sphinx = "<7"
+sphinx_rtd_theme = "*"
+sphinxcontrib-bibtex = "*"
+wandb = ">=0.12.0"
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+
+[tool.mypy]
+files = "tianshou/**/*.py"
+allow_redefinition = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+pretty = true
+show_error_codes = true
+show_error_context = true
+show_traceback = true
+strict_equality = true
+strict_optional = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.doc8]
+max-line-length = 1000
+
+[tool.ruff]
+fix = true
+ignore-init-module-imports = true
+line-length = 88
+select = ["A", "ASYNC", "B", "C4", "C90", "D", "DTZ", "E", "F", "FLY", "I", "ISC", "N", "NPY", "PGH", "PIE", "PLC", "PLE", "PLR", "PLW", "PT", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT"]
+ignore = ["E501", "PGH001", "PGH002", "PGH003", "RET504", "S101"]
+unfixable = ["F401", "F841"]
+src = ["tianshou", "test"]
+target-version = "py39"
+
+[tool.ruff.pydocstyle]
+ignore-decorators = ["D100" ,"D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402"]
+# exclude = "^(test/)|(docs/)|(examples/)|(setup.py)"
+
+[tool.poetry_bumpversion.file."tianshou/__init__.py"]
+
+
+[tool.poe.tasks]  # https://github.com/nat-n/poethepoet
+  [tool.poe.tasks.lint]
+  help = "Lint this package"
+
+    [[tool.poe.tasks.lint.sequence]]
+    cmd = """pre-commit run --all-files --color always"""
+
+  [tool.poe.tasks.test]
+  help = "Test this package"
+
+    [[tool.poe.tasks.test.sequence]]
+    cmd = 'pytest test --cov tianshou --durations 0 -v --cov-report term-missing --color=yes'
+
+  [tool.poe.tasks.doc-clean]
+    [[tool.poe.tasks.doc-clean.sequence]]
+    cmd = 'rm -rf docs/_build'

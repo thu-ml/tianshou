@@ -1,10 +1,10 @@
-from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Type, Union
+from collections.abc import Sequence
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 import torch
-from torch import nn
-
 from tianshou.utils.net.discrete import NoisyLinear
+from torch import nn
 
 
 def layer_init(
@@ -15,16 +15,16 @@ def layer_init(
     return layer
 
 
-def scale_obs(module: Type[nn.Module], denom: float = 255.0) -> Type[nn.Module]:
-
+def scale_obs(module: type[nn.Module], denom: float = 255.0) -> type[nn.Module]:
     class scaled_module(module):
-
         def forward(
             self,
             obs: Union[np.ndarray, torch.Tensor],
             state: Optional[Any] = None,
-            info: Dict[str, Any] = {}
-        ) -> Tuple[torch.Tensor, Any]:
+            info: Optional[dict[str, Any]] = None,
+        ) -> tuple[torch.Tensor, Any]:
+            if info is None:
+                info = {}
             return super().forward(obs / denom, state, info)
 
     return scaled_module
@@ -51,26 +51,29 @@ class DQN(nn.Module):
         super().__init__()
         self.device = device
         self.net = nn.Sequential(
-            layer_init(nn.Conv2d(c, 32, kernel_size=8,
-                                 stride=4)), nn.ReLU(inplace=True),
-            layer_init(nn.Conv2d(32, 64, kernel_size=4,
-                                 stride=2)), nn.ReLU(inplace=True),
+            layer_init(nn.Conv2d(c, 32, kernel_size=8, stride=4)),
+            nn.ReLU(inplace=True),
+            layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2)),
+            nn.ReLU(inplace=True),
             layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1)),
-            nn.ReLU(inplace=True), nn.Flatten()
+            nn.ReLU(inplace=True),
+            nn.Flatten(),
         )
         with torch.no_grad():
             self.output_dim = int(np.prod(self.net(torch.zeros(1, c, h, w)).shape[1:]))
         if not features_only:
             self.net = nn.Sequential(
-                self.net, layer_init(nn.Linear(self.output_dim, 512)),
+                self.net,
+                layer_init(nn.Linear(self.output_dim, 512)),
                 nn.ReLU(inplace=True),
-                layer_init(nn.Linear(512, int(np.prod(action_shape))))
+                layer_init(nn.Linear(512, int(np.prod(action_shape)))),
             )
             self.output_dim = np.prod(action_shape)
         elif output_dim is not None:
             self.net = nn.Sequential(
-                self.net, layer_init(nn.Linear(self.output_dim, output_dim)),
-                nn.ReLU(inplace=True)
+                self.net,
+                layer_init(nn.Linear(self.output_dim, output_dim)),
+                nn.ReLU(inplace=True),
             )
             self.output_dim = output_dim
 
@@ -78,9 +81,11 @@ class DQN(nn.Module):
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Any] = None,
-        info: Dict[str, Any] = {},
-    ) -> Tuple[torch.Tensor, Any]:
+        info: Optional[dict[str, Any]] = None,
+    ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
+        if info is None:
+            info = {}
         obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         return self.net(obs), state
 
@@ -109,9 +114,11 @@ class C51(DQN):
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Any] = None,
-        info: Dict[str, Any] = {},
-    ) -> Tuple[torch.Tensor, Any]:
+        info: Optional[dict[str, Any]] = None,
+    ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
+        if info is None:
+            info = {}
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.num_atoms).softmax(dim=-1)
         obs = obs.view(-1, self.action_num, self.num_atoms)
@@ -148,14 +155,16 @@ class Rainbow(DQN):
                 return nn.Linear(x, y)
 
         self.Q = nn.Sequential(
-            linear(self.output_dim, 512), nn.ReLU(inplace=True),
-            linear(512, self.action_num * self.num_atoms)
+            linear(self.output_dim, 512),
+            nn.ReLU(inplace=True),
+            linear(512, self.action_num * self.num_atoms),
         )
         self._is_dueling = is_dueling
         if self._is_dueling:
             self.V = nn.Sequential(
-                linear(self.output_dim, 512), nn.ReLU(inplace=True),
-                linear(512, self.num_atoms)
+                linear(self.output_dim, 512),
+                nn.ReLU(inplace=True),
+                linear(512, self.num_atoms),
             )
         self.output_dim = self.action_num * self.num_atoms
 
@@ -163,9 +172,11 @@ class Rainbow(DQN):
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Any] = None,
-        info: Dict[str, Any] = {},
-    ) -> Tuple[torch.Tensor, Any]:
+        info: Optional[dict[str, Any]] = None,
+    ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
+        if info is None:
+            info = {}
         obs, state = super().forward(obs)
         q = self.Q(obs)
         q = q.view(-1, self.action_num, self.num_atoms)
@@ -204,9 +215,11 @@ class QRDQN(DQN):
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Optional[Any] = None,
-        info: Dict[str, Any] = {},
-    ) -> Tuple[torch.Tensor, Any]:
+        info: Optional[dict[str, Any]] = None,
+    ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
+        if info is None:
+            info = {}
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.action_num, self.num_quantiles)
         return obs, state

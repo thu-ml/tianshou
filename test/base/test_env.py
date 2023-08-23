@@ -5,7 +5,6 @@ import gymnasium as gym
 import numpy as np
 import pytest
 from gymnasium.spaces.discrete import Discrete
-
 from tianshou.data import Batch
 from tianshou.env import (
     ContinuousToDiscrete,
@@ -33,6 +32,7 @@ except ImportError:
 def has_ray():
     try:
         import ray  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -48,8 +48,8 @@ def recurse_comp(a, b):
         elif isinstance(a, (list, tuple)):
             return np.array([recurse_comp(m, n) for m, n in zip(a, b)]).all()
         elif isinstance(a, dict):
-            return np.array([recurse_comp(a[k], b[k]) for k in a.keys()]).all()
-    except (Exception):
+            return np.array([recurse_comp(a[k], b[k]) for k in a]).all()
+    except Exception:
         return False
 
 
@@ -80,17 +80,23 @@ def test_async_env(size=10000, num=8, sleep=0.1):
         o = []
         spent_time = time.time()
         while current_idx_start < len(action_list):
-            A, B, C, D, E, = v.step(action=act, id=env_ids)
+            (
+                A,
+                B,
+                C,
+                D,
+                E,
+            ) = v.step(action=act, id=env_ids)
             b = Batch({"obs": A, "rew": B, "terminate": C, "truncated": D, "info": E})
             env_ids = b.info.env_id
             o.append(b)
             current_idx_start += len(act)
             # len of action may be smaller than len(A) in the end
-            act = action_list[current_idx_start:current_idx_start + len(A)]
+            act = action_list[current_idx_start : current_idx_start + len(A)]
             # truncate env_ids with the first terms
             # typically len(env_ids) == len(A) == len(action), except for the
             # last batch when actions are not enough
-            env_ids = env_ids[:len(act)]
+            env_ids = env_ids[: len(act)]
         spent_time = time.time() - spent_time
         Batch.cat(o)
         v.close()
@@ -100,12 +106,12 @@ def test_async_env(size=10000, num=8, sleep=0.1):
             assert spent_time < 6.0 * sleep * num / (num + 1)
 
 
-def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
+def test_async_check_id(size=100, num=4, sleep=0.2, timeout=0.7):
     env_fns = [
         lambda: MyTestEnv(size=size, sleep=sleep * 2),
         lambda: MyTestEnv(size=size, sleep=sleep * 3),
         lambda: MyTestEnv(size=size, sleep=sleep * 5),
-        lambda: MyTestEnv(size=size, sleep=sleep * 7)
+        lambda: MyTestEnv(size=size, sleep=sleep * 7),
     ]
     test_cls = [SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
@@ -137,8 +143,9 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
             ids = Batch(info).env_id
             print(ids, t)
             if not (
-                len(ids) == len(res) and np.allclose(sorted(ids), res) and
-                (t < timeout) == (len(res) == num - 1)
+                len(ids) == len(res)
+                and np.allclose(sorted(ids), res)
+                and (t < timeout) == (len(res) == num - 1)
             ):
                 pass_check = 0
                 break
@@ -258,10 +265,10 @@ def test_venv_wrapper_gym(num_envs: int = 4):
 
 
 def run_align_norm_obs(raw_env, train_env, test_env, action_list):
-
     def reset_result_to_obs(reset_result):
         """Extract observation from reset result
-        (result is possibly a tuple containing info)"""
+        (result is possibly a tuple containing info).
+        """
         if isinstance(reset_result, tuple) and len(reset_result) == 2:
             obs, _ = reset_result
         else:
@@ -341,12 +348,10 @@ def test_venv_norm_obs():
 
 
 def test_gym_wrappers():
-
     class DummyEnv(gym.Env):
-
         def __init__(self):
             self.action_space = gym.spaces.Box(
-                low=-1.0, high=2.0, shape=(4, ), dtype=np.float32
+                low=-1.0, high=2.0, shape=(4,), dtype=np.float32
             )
             self.observation_space = gym.spaces.Discrete(2)
 
@@ -382,7 +387,7 @@ def test_gym_wrappers():
     # check truncate is True when terminated
     try:
         env_t = TruncatedAsTerminated(env)
-    except EnvironmentError:
+    except OSError:
         env_t = None
     if env_t is not None:
         _, _, truncated, _, _ = env_t.step(env_t.action_space.sample())

@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -110,8 +110,13 @@ class DQNPolicy(BasePolicy):
         :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
         """
         return self.compute_nstep_return(
-            batch, buffer, indices, self._target_q, self._gamma, self._n_step,
-            self._rew_norm
+            batch,
+            buffer,
+            indices,
+            self._target_q,
+            self._gamma,
+            self._n_step,
+            self._rew_norm,
         )
 
     def compute_q_value(
@@ -170,8 +175,9 @@ class DQNPolicy(BasePolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(
+        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
+    ) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

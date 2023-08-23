@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Sequence, Union
+from collections.abc import Sequence
+from typing import Optional, Union
 
 import numpy as np
 
 
-class BaseNoise(ABC, object):
+class BaseNoise(ABC):
     """The action noise base class."""
 
     def __init__(self) -> None:
@@ -12,7 +13,6 @@ class BaseNoise(ABC, object):
 
     def reset(self) -> None:
         """Reset to the initial state."""
-        pass
 
     @abstractmethod
     def __call__(self, size: Sequence[int]) -> np.ndarray:
@@ -26,7 +26,7 @@ class GaussianNoise(BaseNoise):
     def __init__(self, mu: float = 0.0, sigma: float = 1.0) -> None:
         super().__init__()
         self._mu = mu
-        assert 0 <= sigma, "Noise std should not be negative."
+        assert sigma >= 0, "Noise std should not be negative."
         self._sigma = sigma
 
     def __call__(self, size: Sequence[int]) -> np.ndarray:

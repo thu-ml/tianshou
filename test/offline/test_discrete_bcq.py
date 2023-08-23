@@ -6,8 +6,6 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DiscreteBCQPolicy
@@ -15,6 +13,7 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor
+from torch.utils.tensorboard import SummaryWriter
 
 if __name__ == "__main__":
     from gather_cartpole_data import expert_file_name, gather_data

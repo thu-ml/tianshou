@@ -54,7 +54,7 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=1)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
@@ -116,9 +116,9 @@ def test_ddpg(args=get_args()):
         args.task, args.training_num, args.test_num
     )
     args.state_shape = {
-        'observation': env.observation_space['observation'].shape,
-        'achieved_goal': env.observation_space['achieved_goal'].shape,
-        'desired_goal': env.observation_space['desired_goal'].shape,
+        "observation": env.observation_space["observation"].shape,
+        "achieved_goal": env.observation_space["achieved_goal"].shape,
+        "desired_goal": env.observation_space["desired_goal"].shape,
     }
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
@@ -132,7 +132,7 @@ def test_ddpg(args=get_args()):
     # model
     dict_state_dec, flat_state_shape = get_dict_state_decorator(
         state_shape=args.state_shape,
-        keys=['observation', 'achieved_goal', 'desired_goal']
+        keys=["observation", "achieved_goal", "desired_goal"],
     )
     net_a = dict_state_dec(Net)(
         flat_state_shape, hidden_sizes=args.hidden_sizes, device=args.device

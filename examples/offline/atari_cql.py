@@ -5,11 +5,10 @@ import datetime
 import os
 import pickle
 import pprint
+import sys
 
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
-
 from examples.atari.atari_network import QRDQN
 from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
@@ -17,6 +16,7 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DiscreteCQLPolicy
 from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -29,7 +29,7 @@ def get_args():
     parser.add_argument("--num-quantiles", type=int, default=200)
     parser.add_argument("--n-step", type=int, default=1)
     parser.add_argument("--target-update-freq", type=int, default=500)
-    parser.add_argument("--min-q-weight", type=float, default=10.)
+    parser.add_argument("--min-q-weight", type=float, default=10.0)
     parser.add_argument("--epoch", type=int, default=100)
     parser.add_argument("--update-per-epoch", type=int, default=10000)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -38,7 +38,7 @@ def get_args():
     parser.add_argument("--frames-stack", type=int, default=4)
     parser.add_argument("--scale-obs", type=int, default=0)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
     parser.add_argument(
@@ -52,7 +52,7 @@ def get_args():
         "--watch",
         default=False,
         action="store_true",
-        help="watch the play of pre-trained policy only"
+        help="watch the play of pre-trained policy only",
     )
     parser.add_argument("--log-interval", type=int, default=100)
     parser.add_argument(
@@ -107,15 +107,16 @@ def test_discrete_cql(args=get_args()):
     if args.buffer_from_rl_unplugged:
         buffer = load_buffer(args.load_buffer_name)
     else:
-        assert os.path.exists(args.load_buffer_name), \
-            "Please run atari_dqn.py first to get expert's data buffer."
+        assert os.path.exists(
+            args.load_buffer_name
+        ), "Please run atari_dqn.py first to get expert's data buffer."
         if args.load_buffer_name.endswith(".pkl"):
             buffer = pickle.load(open(args.load_buffer_name, "rb"))
         elif args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
         else:
             print(f"Unknown buffer format: {args.load_buffer_name}")
-            exit(0)
+            sys.exit(0)
     print("Replay buffer size:", len(buffer), flush=True)
 
     # collector
@@ -164,7 +165,7 @@ def test_discrete_cql(args=get_args()):
 
     if args.watch:
         watch()
-        exit(0)
+        sys.exit(0)
 
     result = OfflineTrainer(
         policy=policy,

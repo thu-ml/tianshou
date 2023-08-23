@@ -8,8 +8,6 @@ import pprint
 import numpy as np
 import torch
 from mujoco_env import make_mujoco_env
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import DDPGPolicy
@@ -17,6 +15,7 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -40,7 +39,7 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=1)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )

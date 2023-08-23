@@ -1,6 +1,6 @@
 import time
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Union, cast
+from typing import Any, Callable, Optional, Union, cast
 
 import gymnasium as gym
 import numpy as np
@@ -68,7 +68,7 @@ class Collector:
         super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
-            self.env = DummyVectorEnv([lambda: env])  # type: ignore
+            self.env = DummyVectorEnv([lambda: env])
         else:
             self.env = env  # type: ignore
         self.env_num = len(self.env)
@@ -109,7 +109,7 @@ class Collector:
     def reset(
         self,
         reset_buffer: bool = True,
-        gym_reset_kwargs: Optional[Dict[str, Any]] = None,
+        gym_reset_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         """Reset the environment, statistics, current data and possibly replay memory.
 
@@ -129,7 +129,7 @@ class Collector:
             done={},
             obs_next={},
             info={},
-            policy={}
+            policy={},
         )
         self.data = cast(RolloutBatchProtocol, data)
         self.reset_env(gym_reset_kwargs)
@@ -145,7 +145,7 @@ class Collector:
         """Reset the data buffer."""
         self.buffer.reset(keep_statistics=keep_statistics)
 
-    def reset_env(self, gym_reset_kwargs: Optional[Dict[str, Any]] = None) -> None:
+    def reset_env(self, gym_reset_kwargs: Optional[dict[str, Any]] = None) -> None:
         """Reset all of the environments."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs, info = self.env.reset(**gym_reset_kwargs)
@@ -158,7 +158,7 @@ class Collector:
         self.data.info = info  # type: ignore
         self.data.obs = obs
 
-    def _reset_state(self, id: Union[int, List[int]]) -> None:
+    def _reset_state(self, id: Union[int, list[int]]) -> None:
         """Reset the hidden state: self.data.state[id]."""
         if hasattr(self.data.policy, "hidden_state"):
             state = self.data.policy.hidden_state  # it is a reference
@@ -171,9 +171,9 @@ class Collector:
 
     def _reset_env_with_ids(
         self,
-        local_ids: Union[List[int], np.ndarray],
-        global_ids: Union[List[int], np.ndarray],
-        gym_reset_kwargs: Optional[Dict[str, Any]] = None,
+        local_ids: Union[list[int], np.ndarray],
+        global_ids: Union[list[int], np.ndarray],
+        gym_reset_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs_reset, info = self.env.reset(global_ids, **gym_reset_kwargs)
@@ -194,8 +194,8 @@ class Collector:
         random: bool = False,
         render: Optional[float] = None,
         no_grad: bool = True,
-        gym_reset_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        gym_reset_kwargs: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """Collect a specified number of step or episode.
 
         To ensure unbiased sampling result with n_episode option, this function will
@@ -237,7 +237,7 @@ class Collector:
                 f"collect, got n_step={n_step}, n_episode={n_episode}."
             )
             assert n_step > 0
-            if not n_step % self.env_num == 0:
+            if n_step % self.env_num != 0:
                 warnings.warn(
                     f"n_step={n_step} is not a multiple of #env ({self.env_num}), "
                     "which may cause extra transitions collected into the buffer."
@@ -246,7 +246,7 @@ class Collector:
         elif n_episode is not None:
             assert n_episode > 0
             ready_env_ids = np.arange(min(self.env_num, n_episode))
-            self.data = self.data[:min(self.env_num, n_episode)]
+            self.data = self.data[: min(self.env_num, n_episode)]
         else:
             raise TypeError(
                 "Please specify at least one (either n_step or n_episode) "
@@ -296,8 +296,7 @@ class Collector:
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             obs_next, rew, terminated, truncated, info = self.env.step(
-                action_remap,  # type: ignore
-                ready_env_ids
+                action_remap, ready_env_ids  # type: ignore
             )
             done = np.logical_or(terminated, truncated)
 
@@ -307,7 +306,7 @@ class Collector:
                 terminated=terminated,
                 truncated=truncated,
                 done=done,
-                info=info
+                info=info,
             )
             if self.preprocess_fn:
                 self.data.update(
@@ -362,8 +361,9 @@ class Collector:
 
             self.data.obs = self.data.obs_next
 
-            if (n_step and step_count >= n_step) or \
-                (n_episode and episode_count >= n_episode):
+            if (n_step and step_count >= n_step) or (
+                n_episode and episode_count >= n_episode
+            ):
                 break
 
         # generate statistics
@@ -381,16 +381,14 @@ class Collector:
                 done={},
                 obs_next={},
                 info={},
-                policy={}
+                policy={},
             )
             self.data = cast(RolloutBatchProtocol, data)
             self.reset_env()
 
         if episode_count > 0:
             rews, lens, idxs = list(
-                map(
-                    np.concatenate, [episode_rews, episode_lens, episode_start_indices]
-                )
+                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices])
             )
             rew_mean, rew_std = rews.mean(), rews.std()
             len_mean, len_std = lens.mean(), lens.std()
@@ -436,7 +434,7 @@ class AsyncCollector(Collector):
             exploration_noise,
         )
 
-    def reset_env(self, gym_reset_kwargs: Optional[Dict[str, Any]] = None) -> None:
+    def reset_env(self, gym_reset_kwargs: Optional[dict[str, Any]] = None) -> None:
         super().reset_env(gym_reset_kwargs)
         self._ready_env_ids = np.arange(self.env_num)
 
@@ -447,8 +445,8 @@ class AsyncCollector(Collector):
         random: bool = False,
         render: Optional[float] = None,
         no_grad: bool = True,
-        gym_reset_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        gym_reset_kwargs: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """Collect a specified number of step or episode with async env setting.
 
         This function doesn't collect exactly n_step or n_episode number of
@@ -553,8 +551,7 @@ class AsyncCollector(Collector):
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             obs_next, rew, terminated, truncated, info = self.env.step(
-                action_remap,  # type: ignore
-                ready_env_ids
+                action_remap, ready_env_ids  # type: ignore
             )
             done = np.logical_or(terminated, truncated)
 
@@ -570,7 +567,7 @@ class AsyncCollector(Collector):
                 rew=rew,
                 terminated=terminated,
                 truncated=truncated,
-                info=info
+                info=info,
             )
             if self.preprocess_fn:
                 try:
@@ -639,8 +636,9 @@ class AsyncCollector(Collector):
                 whole_data[ready_env_ids] = self.data
             self.data = whole_data
 
-            if (n_step and step_count >= n_step) or \
-                (n_episode and episode_count >= n_episode):
+            if (n_step and step_count >= n_step) or (
+                n_episode and episode_count >= n_episode
+            ):
                 break
 
         self._ready_env_ids = ready_env_ids
@@ -652,9 +650,7 @@ class AsyncCollector(Collector):
 
         if episode_count > 0:
             rews, lens, idxs = list(
-                map(
-                    np.concatenate, [episode_rews, episode_lens, episode_start_indices]
-                )
+                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices])
             )
             rew_mean, rew_std = rews.mean(), rews.std()
             len_mean, len_std = lens.mean(), lens.std()
