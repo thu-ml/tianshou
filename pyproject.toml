@@ -62,6 +62,7 @@ mypy = ">=1.4.1"
 # networkx is used in a test
 networkx = "*"
 poethepoet = ">=0.20.0"
+pre-commit = ">=3.3.3"
 pygame = ">=2.1.0"
 pymunk = ">=6.2.1"
 pytest = "*"
