@@ -530,7 +530,7 @@ files = [
 name = "dm-env"
 version = "1.6"
 description = "A Python interface for Reinforcement Learning environments."
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "dm-env-1.6.tar.gz", hash = "sha256:a436eb1c654c39e0c986a516cee218bea7140b510fceff63f97eb4fcff3d93de"},
@@ -546,7 +546,7 @@ numpy = "*"
 name = "dm-tree"
 version = "0.1.8"
 description = "Tree is a library for working with nested data structures."
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "dm-tree-0.1.8.tar.gz", hash = "sha256:0fcaabbb14e7980377439e7140bd05552739ca5e515ecb3119f234acee4b9430"},
@@ -637,7 +637,7 @@ files = [
 name = "envpool"
 version = "0.8.2"
 description = "\"C++-based high-performance parallel environment execution engine (vectorized env) for general RL environments.\""
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "envpool-0.8.2-cp310-cp310-manylinux_2_24_x86_64.whl", hash = "sha256:f711697a3a014772fed60572262ee3fe915262093952d8dc631356c57ae666d0"},
@@ -931,7 +931,7 @@ protobuf = ["grpcio-tools (>=1.57.0)"]
 name = "gym"
 version = "0.26.2"
 description = "Gym: A universal API for reinforcement learning environments"
-optional = false
+optional = true
 python-versions = ">=3.6"
 files = [
     {file = "gym-0.26.2.tar.gz", hash = "sha256:e0d882f4b54f0c65f203104c24ab8a38b039f1289986803c7d02cdbe214fbcc4"},
@@ -959,7 +959,7 @@ toy-text = ["pygame (==2.1.0)"]
 name = "gym-notices"
 version = "0.0.8"
 description = "Notices for gym"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "gym-notices-0.0.8.tar.gz", hash = "sha256:ad25e200487cafa369728625fe064e88ada1346618526102659b4640f2b4b911"},
@@ -1619,7 +1619,7 @@ numpy = [
 name = "optree"
 version = "0.9.1"
 description = "Optimized PyTree Utilities."
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "optree-0.9.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:1efaad5f538271cfde627fe4dee04ccc01d51c29dd16d2bb8ca6c0a36161148d"},
@@ -3075,7 +3075,7 @@ telegram = ["requests"]
 name = "types-protobuf"
 version = "4.24.0.1"
 description = "Typing stubs for protobuf"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "types-protobuf-4.24.0.1.tar.gz", hash = "sha256:90adea3b693d6a40d8ef075c58fe6b5cc6e01fe1496301a7e6fc70398dcff92e"},
@@ -3219,10 +3219,11 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 
 [extras]
 atari = ["atari_py", "opencv_python"]
+envpool = ["envpool"]
 mujoco = ["mujoco_py"]
 pybullet = ["pybullet"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "0f76c862902a0f0dd124d0be173391009ddfe02817b4b4f28b607ba9fcd6adb4"
+content-hash = "2effb0771ad1dacb42ad227590edb725b846515db30aa85db7c68c8b69b3f182"

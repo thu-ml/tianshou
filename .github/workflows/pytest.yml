@@ -33,7 +33,7 @@ jobs:
           key: venv-${{ hashFiles('poetry.lock') }}
       - name: Install the project dependencies
         run: |
-          poetry install --with dev
+          poetry install --with dev --extras "envpool"
       - name: wandb login
         run: |
           poetry run wandb login e2366d661b89f2bee877c40bee15502d67b7abef
