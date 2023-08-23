@@ -1,10 +1,11 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import h5py
 import numpy as np
 
 from tianshou.data import Batch
-from tianshou.data.batch import _alloc_by_keys_diff, _create_value
+from tianshou.data.batch import alloc_by_keys_diff, create_value
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.data.utils.converter import from_hdf5, to_hdf5
 
 
@@ -59,7 +60,7 @@ class ReplayBuffer:
         self._save_obs_next = not ignore_obs_next
         self._save_only_last_obs = save_only_last_obs
         self._sample_avail = sample_avail
-        self._meta: Batch = Batch()
+        self._meta = cast(RolloutBatchProtocol, Batch())
         self._ep_rew: Union[float, np.ndarray]
         self.reset()
 
@@ -127,6 +128,7 @@ class ReplayBuffer:
             done=done,
             obs_next=obs_next
         )
+        batch = cast(RolloutBatchProtocol, batch)
         buf.set_batch(batch)
         buf._size = size
         return buf
@@ -138,7 +140,7 @@ class ReplayBuffer:
         if not keep_statistics:
             self._ep_rew, self._ep_len, self._ep_idx = 0.0, 0, 0
 
-    def set_batch(self, batch: Batch) -> None:
+    def set_batch(self, batch: RolloutBatchProtocol) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage."""
         assert len(batch) == self.maxsize and set(batch.keys()).issubset(
             self._reserved_keys
@@ -187,7 +189,7 @@ class ReplayBuffer:
             self._size = min(self._size + 1, self.maxsize)
         to_indices = np.array(to_indices)
         if self._meta.is_empty():
-            self._meta = _create_value(  # type: ignore
+            self._meta = create_value(  # type: ignore
                 buffer._meta, self.maxsize, stack=False)
         self._meta[to_indices] = buffer._meta[from_indices]
         return to_indices
@@ -215,7 +217,7 @@ class ReplayBuffer:
 
     def add(
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into replay buffer.
@@ -265,10 +267,11 @@ class ReplayBuffer:
             batch.terminated = batch.terminated.astype(bool)
             batch.truncated = batch.truncated.astype(bool)
             if self._meta.is_empty():
-                self._meta = _create_value(  # type: ignore
-                    batch, self.maxsize, stack)
+                self._meta = create_value(  # type: ignore
+                    batch, self.maxsize, stack
+                )
             else:  # dynamic key pops up in batch
-                _alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
+                alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
             self._meta[ptr] = batch
         return ptr, ep_rew, ep_len, ep_idx
 
@@ -303,7 +306,7 @@ class ReplayBuffer:
             else:
                 return all_indices
 
-    def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
+    def sample(self, batch_size: int) -> Tuple[RolloutBatchProtocol, np.ndarray]:
         """Get a random sample from buffer with size = batch_size.
 
         Return all the data in the buffer if batch_size is 0.
@@ -356,7 +359,9 @@ class ReplayBuffer:
                 raise exception  # val != Batch()
             return Batch()
 
-    def __getitem__(self, index: Union[slice, int, List[int], np.ndarray]) -> Batch:
+    def __getitem__(
+        self, index: Union[slice, int, List[int], np.ndarray]
+    ) -> RolloutBatchProtocol:
         """Return a data batch: self[index].
 
         If stack_num is larger than 1, return the stacked obs and obs_next with shape
@@ -384,9 +389,10 @@ class ReplayBuffer:
             "done": self.done[indices],
             "obs_next": obs_next,
             "info": self.get(indices, "info", Batch()),
+            # TODO: what's the use of this key?
             "policy": self.get(indices, "policy", Batch()),
         }
         for key in self._meta.__dict__.keys():
             if key not in self._input_keys:
                 batch_dict[key] = self._meta[key][indices]
-        return Batch(batch_dict)
+        return cast(RolloutBatchProtocol, Batch(batch_dict))

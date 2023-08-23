@@ -1,10 +1,12 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 
 from tianshou.data import Batch, to_numpy
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import QuantileRegressionBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import QRDQNPolicy
 
 
@@ -61,12 +63,12 @@ class IQNPolicy(QRDQNPolicy):
 
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
-    ) -> Batch:
+    ) -> QuantileRegressionBatchProtocol:
         if model == "model_old":
             sample_size = self._target_sample_size
         elif self.training:
@@ -83,9 +85,11 @@ class IQNPolicy(QRDQNPolicy):
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
-        return Batch(logits=logits, act=act, state=hidden, taus=taus)
+        result = Batch(logits=logits, act=act, state=hidden, taus=taus)
+        return cast(QuantileRegressionBatchProtocol, result)
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

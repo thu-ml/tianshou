@@ -7,6 +7,7 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
+from gym.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Batch, Collector, ReplayBuffer
@@ -184,6 +185,7 @@ def test_cql(args=get_args(), calibrated=False):
         critic1_optim,
         critic2,
         critic2_optim,
+        action_scaling=isinstance(env.action_space, Box),
         cql_alpha_lr=args.cql_alpha_lr,
         cql_weight=args.cql_weight,
         tau=args.tau,
@@ -233,13 +235,13 @@ def test_cql(args=get_args(), calibrated=False):
 
     # trainer
     trainer = OfflineTrainer(
-        policy,
-        buffer,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.test_num,
-        args.batch_size,
+        policy=policy,
+        buffer=buffer,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         save_best_fn=save_best_fn,
         stop_fn=stop_fn,
         logger=logger,
@@ -258,8 +260,8 @@ def test_cql(args=get_args(), calibrated=False):
         env = gym.make(args.task)
         policy.eval()
         collector = Collector(policy, env)
-        result = collector.collect(n_episode=1, render=args.render)
-        rews, lens = result["rews"], result["lens"]
+        collector_result = collector.collect(n_episode=1, render=args.render)
+        rews, lens = collector_result["rews"], collector_result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 

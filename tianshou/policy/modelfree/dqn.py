@@ -1,10 +1,16 @@
 from copy import deepcopy
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import (
+    BatchWithReturnsProtocol,
+    ModelOutputBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.policy import BasePolicy
 
 
@@ -96,18 +102,17 @@ class DQNPolicy(BasePolicy):
             return target_q.max(dim=1)[0]
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> BatchWithReturnsProtocol:
         """Compute the n-step return for Q-learning targets.
 
         More details can be found at
         :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
         """
-        batch = self.compute_nstep_return(
+        return self.compute_nstep_return(
             batch, buffer, indices, self._target_q, self._gamma, self._n_step,
             self._rew_norm
         )
-        return batch
 
     def compute_q_value(
         self, logits: torch.Tensor, mask: Optional[np.ndarray]
@@ -121,12 +126,12 @@ class DQNPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
-    ) -> Batch:
+    ) -> ModelOutputBatchProtocol:
         """Compute action over the given batch data.
 
         If you need to mask the action, please add a "mask" into batch.obs, for
@@ -162,9 +167,11 @@ class DQNPolicy(BasePolicy):
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
-        return Batch(logits=logits, act=act, state=hidden)
+        result = Batch(logits=logits, act=act, state=hidden)
+        return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -189,9 +196,9 @@ class DQNPolicy(BasePolicy):
 
     def exploration_noise(
         self,
-        act: Union[np.ndarray, Batch],
-        batch: Batch,
-    ) -> Union[np.ndarray, Batch]:
+        act: Union[np.ndarray, BatchProtocol],
+        batch: RolloutBatchProtocol,
+    ) -> Union[np.ndarray, BatchProtocol]:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps

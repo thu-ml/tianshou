@@ -8,7 +8,7 @@ import torch
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.policy import BranchingDQNPolicy
-from tianshou.trainer import offpolicy_trainer
+from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import BranchingNet
 
 
@@ -118,20 +118,20 @@ def test_bdq(args=get_args()):
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    result = offpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.step_per_collect,
-        args.test_num,
-        args.batch_size,
+    result = OffpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        step_per_collect=args.step_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         update_per_step=args.update_per_step,
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
-    )
+    ).run()
 
     # assert stop_fn(result["best_reward"])
     if __name__ == "__main__":
@@ -141,8 +141,10 @@ def test_bdq(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        result = test_collector.collect(n_episode=args.test_num, render=args.render)
-        rews, lens = result["rews"], result["lens"]
+        collector_result = test_collector.collect(
+            n_episode=args.test_num, render=args.render
+        )
+        rews, lens = collector_result["rews"], collector_result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 

@@ -1,12 +1,14 @@
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional, cast
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
 
-from tianshou.data import Batch, ReplayBuffer, to_torch_as
+from tianshou.data import ReplayBuffer, to_torch_as
+from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
+from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
 
 
@@ -18,7 +20,6 @@ class A2CPolicy(PGPolicy):
     :param torch.nn.Module critic: the critic network. (s -> V(s))
     :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Type[torch.distributions.Distribution]
     :param float discount_factor: in [0, 1]. Default to 0.99.
     :param float vf_coef: weight for value loss. Default to 0.5.
     :param float ent_coef: weight for entropy loss. Default to 0.01.
@@ -55,13 +56,13 @@ class A2CPolicy(PGPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Type[torch.distributions.Distribution],
+        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,
         max_grad_norm: Optional[float] = None,
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         super().__init__(actor, optim, dist_fn, **kwargs)
         self.critic = critic
@@ -74,15 +75,15 @@ class A2CPolicy(PGPolicy):
         self._actor_critic = ActorCritic(self.actor, self.critic)
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> BatchWithAdvantagesProtocol:
         batch = self._compute_returns(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
         return batch
 
     def _compute_returns(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> BatchWithAdvantagesProtocol:
         v_s, v_s_ = [], []
         with torch.no_grad():
             for minibatch in batch.split(self._batch, shuffle=False, merge_last=True):
@@ -92,7 +93,7 @@ class A2CPolicy(PGPolicy):
         v_s = batch.v_s.cpu().numpy()
         v_s_ = torch.cat(v_s_, dim=0).flatten().cpu().numpy()
         # when normalizing values, we do not minus self.ret_rms.mean to be numerically
-        # consistent with OPENAI baselines' value normalization pipeline. Emperical
+        # consistent with OPENAI baselines' value normalization pipeline. Empirical
         # study also shows that "minus mean" will harm performances a tiny little bit
         # due to unknown reasons (on Mujoco envs, not confident, though).
         if self._rew_norm:  # unnormalize v_s & v_s_
@@ -105,20 +106,22 @@ class A2CPolicy(PGPolicy):
             v_s_,
             v_s,
             gamma=self._gamma,
-            gae_lambda=self._lambda
+            gae_lambda=self._lambda,
         )
         if self._rew_norm:
-            batch.returns = unnormalized_returns / \
-                np.sqrt(self.ret_rms.var + self._eps)
+            batch.returns = unnormalized_returns / np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
         batch.returns = to_torch_as(batch.returns, batch.v_s)
         batch.adv = to_torch_as(advantages, batch.v_s)
-        return batch
+        return cast(BatchWithAdvantagesProtocol, batch)
 
+    # TODO: mypy complains b/c signature is different from superclass, although
+    #  it's compatible. Can this be fixed?
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+        self, batch: RolloutBatchProtocol, batch_size: int,
+        repeat: int, *args: Any, **kwargs: Any
     ) -> Dict[str, List[float]]:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
@@ -133,8 +136,9 @@ class A2CPolicy(PGPolicy):
                 vf_loss = F.mse_loss(minibatch.returns, value)
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
-                loss = actor_loss + self._weight_vf * vf_loss \
-                    - self._weight_ent * ent_loss
+                loss = (
+                    actor_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
+                )
                 self.optim.zero_grad()
                 loss.backward()
                 if self._grad_norm:  # clip large gradient

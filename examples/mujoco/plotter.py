@@ -176,23 +176,16 @@ if __name__ == "__main__":
         help='matplotlib figure length (default: 6)'
     )
     parser.add_argument(
-        '--fig-width',
-        type=int,
-        default=6,
-        help='matplotlib figure width (default: 6)'
+        '--fig-width', type=int, default=6, help='matplotlib figure width (default: 6)'
     )
     parser.add_argument(
-        '--style',
-        default='seaborn',
-        help='matplotlib figure style (default: seaborn)'
+        '--style', default='seaborn', help='matplotlib figure style (default: seaborn)'
     )
     parser.add_argument(
         '--title', default=None, help='matplotlib figure title (default: None)'
     )
     parser.add_argument(
-        '--xkey',
-        default='env_step',
-        help='x-axis key in csv file (default: env_step)'
+        '--xkey', default='env_step', help='x-axis key in csv file (default: env_step)'
     )
     parser.add_argument(
         '--ykey', default='rew', help='y-axis key in csv file (default: rew)'

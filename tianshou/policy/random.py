@@ -1,8 +1,10 @@
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 
 import numpy as np
 
 from tianshou.data import Batch
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 
 
@@ -14,10 +16,10 @@ class RandomPolicy(BasePolicy):
 
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Batch:
+    ) -> ActBatchProtocol:
         """Compute the random action over the given batch data.
 
         The input should contain a mask in batch.obs, with "True" to be
@@ -33,11 +35,13 @@ class RandomPolicy(BasePolicy):
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
-        mask = batch.obs.mask
+        mask = batch.obs.mask  # type: ignore
         logits = np.random.rand(*mask.shape)
         logits[~mask] = -np.inf
-        return Batch(act=logits.argmax(axis=-1))
+        result = Batch(act=logits.argmax(axis=-1))
+        return cast(ActBatchProtocol, result)
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         """Since a random agent learns nothing, it returns an empty dict."""
         return {}

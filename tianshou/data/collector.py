@@ -1,6 +1,6 @@
 import time
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, cast
 
 import gymnasium as gym
 import numpy as np
@@ -15,12 +15,13 @@ from tianshou.data import (
     VectorReplayBuffer,
     to_numpy,
 )
-from tianshou.data.batch import _alloc_by_keys_diff
+from tianshou.data.batch import alloc_by_keys_diff
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.env import BaseVectorEnv, DummyVectorEnv
 from tianshou.policy import BasePolicy
 
 
-class Collector(object):
+class Collector:
     """Collector enables the policy to interact with different types of envs with \
     exact number of steps or episodes.
 
@@ -72,10 +73,12 @@ class Collector(object):
             self.env = env  # type: ignore
         self.env_num = len(self.env)
         self.exploration_noise = exploration_noise
+        self.buffer: ReplayBuffer
         self._assign_buffer(buffer)
         self.policy = policy
         self.preprocess_fn = preprocess_fn
         self._action_space = self.env.action_space
+        self.data: RolloutBatchProtocol
         # avoid creating attribute outside __init__
         self.reset(False)
 
@@ -117,7 +120,7 @@ class Collector(object):
         """
         # use empty Batch for "state" so that self.data supports slicing
         # convert empty Batch to None when passing data to policy
-        self.data = Batch(
+        data = Batch(
             obs={},
             act={},
             rew={},
@@ -128,6 +131,7 @@ class Collector(object):
             info={},
             policy={}
         )
+        self.data = cast(RolloutBatchProtocol, data)
         self.reset_env(gym_reset_kwargs)
         if reset_buffer:
             self.reset_buffer()
@@ -151,7 +155,7 @@ class Collector(object):
             )
             obs = processed_data.get("obs", obs)
             info = processed_data.get("info", info)
-        self.data.info = info
+        self.data.info = info  # type: ignore
         self.data.obs = obs
 
     def _reset_state(self, id: Union[int, List[int]]) -> None:
@@ -179,7 +183,7 @@ class Collector(object):
             )
             obs_reset = processed_data.get("obs", obs_reset)
             info = processed_data.get("info", info)
-        self.data.info[local_ids] = info
+        self.data.info[local_ids] = info  # type: ignore
 
         self.data.obs_next[local_ids] = obs_reset
 
@@ -265,9 +269,7 @@ class Collector(object):
             # get the next action
             if random:
                 try:
-                    act_sample = [
-                        self._action_space[i].sample() for i in ready_env_ids
-                    ]
+                    act_sample = [self._action_space[i].sample() for i in ready_env_ids]
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
                 act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
@@ -361,7 +363,7 @@ class Collector(object):
             self.data.obs = self.data.obs_next
 
             if (n_step and step_count >= n_step) or \
-                    (n_episode and episode_count >= n_episode):
+                (n_episode and episode_count >= n_episode):
                 break
 
         # generate statistics
@@ -370,7 +372,7 @@ class Collector(object):
         self.collect_time += max(time.time() - start_time, 1e-9)
 
         if n_episode:
-            self.data = Batch(
+            data = Batch(
                 obs={},
                 act={},
                 rew={},
@@ -381,13 +383,13 @@ class Collector(object):
                 info={},
                 policy={}
             )
+            self.data = cast(RolloutBatchProtocol, data)
             self.reset_env()
 
         if episode_count > 0:
             rews, lens, idxs = list(
                 map(
-                    np.concatenate,
-                    [episode_rews, episode_lens, episode_start_indices]
+                    np.concatenate, [episode_rews, episode_lens, episode_start_indices]
                 )
             )
             rew_mean, rew_std = rews.mean(), rews.std()
@@ -516,9 +518,7 @@ class AsyncCollector(Collector):
             # get the next action
             if random:
                 try:
-                    act_sample = [
-                        self._action_space[i].sample() for i in ready_env_ids
-                    ]
+                    act_sample = [self._action_space[i].sample() for i in ready_env_ids]
                 except TypeError:  # envpool's action space is not for per-env
                     act_sample = [self._action_space.sample() for _ in ready_env_ids]
                 act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
@@ -543,10 +543,10 @@ class AsyncCollector(Collector):
 
             # save act/policy before env.step
             try:
-                whole_data.act[ready_env_ids] = self.data.act
+                whole_data.act[ready_env_ids] = self.data.act  # type: ignore
                 whole_data.policy[ready_env_ids] = self.data.policy
             except ValueError:
-                _alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
+                alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
                 whole_data[ready_env_ids] = self.data  # lots of overhead
 
             # get bounded and remapped actions first (not saved into buffer)
@@ -626,18 +626,21 @@ class AsyncCollector(Collector):
                     self._reset_state(i)
 
             try:
-                whole_data.obs[ready_env_ids] = self.data.obs_next
+                # Need to ignore types b/c according to mypy Tensors cannot be indexed
+                # by arrays (which they can...)
+                whole_data.obs[ready_env_ids] = self.data.obs_next  # type: ignore
                 whole_data.rew[ready_env_ids] = self.data.rew
                 whole_data.done[ready_env_ids] = self.data.done
-                whole_data.info[ready_env_ids] = self.data.info
+                whole_data.info[ready_env_ids] = self.data.info  # type: ignore
             except ValueError:
-                _alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
+                alloc_by_keys_diff(whole_data, self.data, self.env_num, False)
                 self.data.obs = self.data.obs_next
-                whole_data[ready_env_ids] = self.data  # lots of overhead
+                # lots of overhead
+                whole_data[ready_env_ids] = self.data
             self.data = whole_data
 
             if (n_step and step_count >= n_step) or \
-                    (n_episode and episode_count >= n_episode):
+                (n_episode and episode_count >= n_episode):
                 break
 
         self._ready_env_ids = ready_env_ids
@@ -650,8 +653,7 @@ class AsyncCollector(Collector):
         if episode_count > 0:
             rews, lens, idxs = list(
                 map(
-                    np.concatenate,
-                    [episode_rews, episode_lens, episode_start_indices]
+                    np.concatenate, [episode_rews, episode_lens, episode_start_indices]
                 )
             )
             rew_mean, rew_std = rews.mean(), rews.std()

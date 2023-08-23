@@ -6,11 +6,12 @@ import gymnasium as gym
 import numpy as np
 import pytest
 import torch
+from gym.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import A2CPolicy, ImitationPolicy
-from tianshou.trainer import offpolicy_trainer, onpolicy_trainer
+from tianshou.trainer import OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
@@ -87,6 +88,7 @@ def test_a2c_with_il(args=get_args()):
         critic,
         optim,
         dist,
+        action_scaling=isinstance(env.action_space, Box),
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         vf_coef=args.vf_coef,
@@ -112,20 +114,20 @@ def test_a2c_with_il(args=get_args()):
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    result = onpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.repeat_per_collect,
-        args.test_num,
-        args.batch_size,
+    result = OnpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        repeat_per_collect=args.repeat_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         episode_per_collect=args.episode_per_collect,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger
-    )
+    ).run()
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':
@@ -153,19 +155,19 @@ def test_a2c_with_il(args=get_args()):
         ),
     )
     train_collector.reset()
-    result = offpolicy_trainer(
-        il_policy,
-        train_collector,
-        il_test_collector,
-        args.epoch,
-        args.il_step_per_epoch,
-        args.step_per_collect,
-        args.test_num,
-        args.batch_size,
+    result = OffpolicyTrainer(
+        policy=il_policy,
+        train_collector=train_collector,
+        test_collector=il_test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.il_step_per_epoch,
+        step_per_collect=args.step_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger
-    )
+    ).run()
     assert stop_fn(result['best_reward'])
 
     if __name__ == '__main__':

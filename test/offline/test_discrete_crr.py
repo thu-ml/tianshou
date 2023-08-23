@@ -6,12 +6,13 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
+from gym.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DiscreteCRRPolicy
-from tianshou.trainer import offline_trainer
+from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
@@ -88,6 +89,7 @@ def test_discrete_crr(args=get_args()):
         critic,
         optim,
         args.gamma,
+        action_scaling=isinstance(env.action_space, Box),
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer
@@ -112,18 +114,18 @@ def test_discrete_crr(args=get_args()):
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
 
-    result = offline_trainer(
-        policy,
-        buffer,
-        test_collector,
-        args.epoch,
-        args.update_per_epoch,
-        args.test_num,
-        args.batch_size,
+    result = OfflineTrainer(
+        policy=policy,
+        buffer=buffer,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.update_per_epoch,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger
-    )
+    ).run()
 
     assert stop_fn(result['best_reward'])
 

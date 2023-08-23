@@ -13,7 +13,7 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager
-from tianshou.trainer import offpolicy_trainer
+from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
@@ -29,10 +29,7 @@ def get_parser() -> argparse.ArgumentParser:
         '--gamma', type=float, default=0.9, help='a smaller gamma favors earlier win'
     )
     parser.add_argument(
-        '--n-pistons',
-        type=int,
-        default=3,
-        help='Number of pistons(agents) in the env'
+        '--n-pistons', type=int, default=3, help='Number of pistons(agents) in the env'
     )
     parser.add_argument('--n-step', type=int, default=100)
     parser.add_argument('--target-update-freq', type=int, default=320)
@@ -152,15 +149,15 @@ def train_agent(
         return rews[:, 0]
 
     # trainer
-    result = offpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.step_per_collect,
-        args.test_num,
-        args.batch_size,
+    result = OffpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        step_per_collect=args.step_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
@@ -169,7 +166,7 @@ def train_agent(
         logger=logger,
         test_in_train=False,
         reward_metric=reward_metric
-    )
+    ).run()
 
     return result, policy
 

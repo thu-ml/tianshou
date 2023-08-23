@@ -22,7 +22,11 @@ except ImportError:
     has_old_gym = False
 
 GYM_RESERVED_KEYS = [
-    "metadata", "reward_range", "spec", "action_space", "observation_space"
+    "metadata",
+    "reward_range",
+    "spec",
+    "action_space",
+    "observation_space",
 ]
 
 
@@ -39,7 +43,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
     def patched() -> gym.Env:
         assert callable(
             fn
-        ), "Env generators that are provided to vector environemnts must be callable."
+        ), "Env generators that are provided to vector environments must be callable."
 
         env = fn()
         if isinstance(env, (gym.Env, PettingZooEnv)):
@@ -85,7 +89,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
     return patched
 
 
-class BaseVectorEnv(object):
+class BaseVectorEnv:
     """Base class for vectorized environments.
 
     Usage:
@@ -195,7 +199,7 @@ class BaseVectorEnv(object):
     def get_env_attr(
         self,
         key: str,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> List[Any]:
         """Get an attribute from the underlying environments.
 
@@ -241,7 +245,7 @@ class BaseVectorEnv(object):
 
     def _wrap_id(
         self,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> Union[List[int], np.ndarray]:
         if id is None:
             return list(range(self.env_num))
@@ -259,7 +263,7 @@ class BaseVectorEnv(object):
     def reset(
         self,
         id: Optional[Union[int, List[int], np.ndarray]] = None,
-        **kwargs: Any,
+        **kwargs: Any
     ) -> Tuple[np.ndarray, Union[dict, List[dict]]]:
         """Reset the state of some envs and return initial observations.
 
@@ -300,7 +304,7 @@ class BaseVectorEnv(object):
     def step(
         self,
         action: np.ndarray,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        id: Optional[Union[int, List[int], np.ndarray]] = None
     ) -> gym_new_venv_step_type:
         """Run one timestep of some environments' dynamics.
 
@@ -382,10 +386,8 @@ class BaseVectorEnv(object):
             np.stack(info_list),
         )
 
-    def seed(
-        self,
-        seed: Optional[Union[int, List[int]]] = None,
-    ) -> List[Optional[List[int]]]:
+    def seed(self,
+             seed: Optional[Union[int, List[int]]] = None) -> List[Optional[List[int]]]:
         """Set the seed for all environments.
 
         Accept ``None``, an int (which will extend ``i`` to

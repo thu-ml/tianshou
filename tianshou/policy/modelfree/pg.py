@@ -1,11 +1,19 @@
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
 
 from tianshou.data import Batch, ReplayBuffer, to_torch, to_torch_as
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import (
+    BatchWithReturnsProtocol,
+    DistBatchProtocol,
+    RolloutBatchProtocol,
+)
 from tianshou.policy import BasePolicy
 from tianshou.utils import RunningMeanStd
+
+TDistParams = Union[torch.Tensor, Tuple[torch.Tensor]]
 
 
 class PGPolicy(BasePolicy):
@@ -15,7 +23,6 @@ class PGPolicy(BasePolicy):
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Type[torch.distributions.Distribution]
     :param float discount_factor: in [0, 1]. Default to 0.99.
     :param bool action_scaling: whether to map actions from range [-1, 1] to range
         [action_spaces.low, action_spaces.high]. Default to True.
@@ -39,30 +46,32 @@ class PGPolicy(BasePolicy):
         self,
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Type[torch.distributions.Distribution],
+        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         discount_factor: float = 0.99,
         reward_normalization: bool = False,
         action_scaling: bool = True,
-        action_bound_method: str = "clip",
+        action_bound_method: Optional[Literal["clip", "tanh"]] = "clip",
         deterministic_eval: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(
             action_scaling=action_scaling,
             action_bound_method=action_bound_method,
-            **kwargs
+            **kwargs,
         )
         self.actor = model
         try:
-            if action_scaling and not np.isclose(model.max_action, 1.):  # type: ignore
+            if action_scaling and not np.isclose(model.max_action, 1.0):  # type: ignore
                 import warnings
+
                 warnings.warn(
                     "action_scaling and action_bound_method are only intended"
                     "to deal with unbounded model action space, but find actor model"
                     f"bound action space with max_action={model.max_action}."
                     "Consider using unbounded=True option of the actor model,"
-                    "or set action_scaling to False and action_bound_method to \"\"."
+                    'or set action_scaling to False and action_bound_method to None.'
                 )
+        # TODO: why this try/except? warnings is a standard library module
         except Exception:
             pass
         self.optim = optim
@@ -75,64 +84,91 @@ class PGPolicy(BasePolicy):
         self._deterministic_eval = deterministic_eval
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
-        r"""Compute the discounted returns for each transition.
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> BatchWithReturnsProtocol:
+        r"""Compute the discounted returns (Monte Carlo estimates) for each transition.
+
+        They are added to the batch under the field `returns`.
+        Note: this function will modify the input batch!
 
         .. math::
             G_t = \sum_{i=t}^T \gamma^{i-t}r_i
 
         where :math:`T` is the terminal time step, :math:`\gamma` is the
         discount factor, :math:`\gamma \in [0, 1]`.
+
+        :param batch: a data batch which contains several episodes of data in
+            sequential order. Mind that the end of each finished episode of batch
+            should be marked by done flag, unfinished (or collecting) episodes will be
+            recognized by buffer.unfinished_index().
+        :param buffer: the corresponding replay buffer.
+        :param numpy.ndarray indices: tell batch's location in buffer, batch is equal
+            to buffer[indices].
         """
         v_s_ = np.full(indices.shape, self.ret_rms.mean)
+        # gae_lambda = 1.0 means we use Monte Carlo estimate
         unnormalized_returns, _ = self.compute_episodic_return(
             batch, buffer, indices, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0
         )
         if self._rew_norm:
-            batch.returns = (unnormalized_returns - self.ret_rms.mean) / \
-                np.sqrt(self.ret_rms.var + self._eps)
+            batch.returns = (unnormalized_returns -
+                             self.ret_rms.mean) / np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
+        batch: BatchWithReturnsProtocol
         return batch
+
+    def _get_deterministic_action(self, logits: torch.Tensor) -> torch.Tensor:
+        if self.action_type == "discrete":
+            return logits.argmax(-1)
+        elif self.action_type == "continuous":
+            # assume that the mode of the distribution is the first element
+            # of the actor's output (the "logits")
+            return logits[0]
+        raise RuntimeError(
+            f"Unknown action type: {self.action_type}. "
+            f"This should not happen and might be a bug."
+            f"Supported action types are: 'discrete' and 'continuous'."
+        )
 
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Batch:
-        """Compute action over the given batch data.
+    ) -> DistBatchProtocol:
+        """Compute action over the given batch data by applying the actor.
 
-        :return: A :class:`~tianshou.data.Batch` which has 4 keys:
-
-            * ``act`` the action.
-            * ``logits`` the network's raw output.
-            * ``dist`` the action distribution.
-            * ``state`` the hidden state.
+        Will sample from the dist_fn, if appropriate.
+        Returns a new object representing the processed batch data
+        (contrary to other methods that modify the input batch inplace).
 
         .. seealso::
 
             Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
             more detailed explanation.
         """
+        # TODO: rename? It's not really logits and there are particular
+        #  assumptions about the order of the output and on distribution type
         logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
         if isinstance(logits, tuple):
             dist = self.dist_fn(*logits)
         else:
             dist = self.dist_fn(logits)
+
+        # in this case, the dist is unused!
         if self._deterministic_eval and not self.training:
-            if self.action_type == "discrete":
-                act = logits.argmax(-1)
-            elif self.action_type == "continuous":
-                act = logits[0]
+            act = self._get_deterministic_action(logits)
         else:
             act = dist.sample()
-        return Batch(logits=logits, act=act, state=hidden, dist=dist)
+        result = Batch(logits=logits, act=act, state=hidden, dist=dist)
+        return cast(DistBatchProtocol, result)
 
+    # TODO: why does mypy complain?
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+        self, batch: RolloutBatchProtocol, batch_size: int,
+        repeat: int, *args: Any, **kwargs: Any
     ) -> Dict[str, List[float]]:
         losses = []
         for _ in range(repeat):

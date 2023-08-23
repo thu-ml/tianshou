@@ -407,9 +407,7 @@ def test_venv_wrapper_envpool():
 def test_venv_wrapper_envpool_gym_reset_return_info():
     num_envs = 4
     env = VectorEnvNormObs(
-        envpool.make_gymnasium(
-            "Ant-v3", num_envs=num_envs, gym_reset_return_info=True
-        )
+        envpool.make_gymnasium("Ant-v3", num_envs=num_envs, gym_reset_return_info=True)
     )
     obs, info = env.reset()
     assert obs.shape[0] == num_envs

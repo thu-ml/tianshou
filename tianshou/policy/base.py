@@ -1,5 +1,17 @@
+import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+    overload,
+)
 
 import gymnasium as gym
 import numpy as np
@@ -8,8 +20,12 @@ from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
 from torch import nn
 
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
+from tianshou.data.batch import BatchProtocol, TBatch
+from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils import MultipleLRSchedulers
+
+logger = logging.getLogger(__name__)
 
 
 class BasePolicy(ABC, nn.Module):
@@ -57,30 +73,50 @@ class BasePolicy(ABC, nn.Module):
 
         torch.save(policy.state_dict(), "policy.pth")
         policy.load_state_dict(torch.load("policy.pth"))
+
+    :param observation_space: appears unused.
+    :param action_space: required for action_scaling.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range
+        of action_space. Note that in this case, the action_space must be provided!
+    :param action_bound_method:
+    :param lr_scheduler:
     """
 
     def __init__(
         self,
+        # TODO: does the policy actually need the observation space?
         observation_space: Optional[gym.Space] = None,
         action_space: Optional[gym.Space] = None,
         action_scaling: bool = False,
-        action_bound_method: str = "",
+        action_bound_method: Optional[Literal["clip", "tanh"]] = None,
         lr_scheduler: Optional[Union[torch.optim.lr_scheduler.LambdaLR,
                                      MultipleLRSchedulers]] = None,
     ) -> None:
+        allowed_action_bound_methods = ("clip", "tanh")
+        if action_bound_method is not None:
+            if action_bound_method not in allowed_action_bound_methods:
+                raise ValueError(
+                    f"Got invalid {action_bound_method=}. "
+                    f"Valid values are: {allowed_action_bound_methods}."
+                )
+        if action_scaling and not isinstance(action_space, Box):
+            raise ValueError(
+                f"action_scaling can only be True when action_space is Box but "
+                f"got: {action_space}"
+            )
+
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
-        self.action_type = ""
         if isinstance(action_space, (Discrete, MultiDiscrete, MultiBinary)):
             self.action_type = "discrete"
         elif isinstance(action_space, Box):
             self.action_type = "continuous"
+        else:
+            ValueError(f"Unsupported action space: {action_space}.")
         self.agent_id = 0
         self.updating = False
         self.action_scaling = action_scaling
-        # can be one of ("clip", "tanh", ""), empty string means no bounding
-        assert action_bound_method in ("", "clip", "tanh")
         self.action_bound_method = action_bound_method
         self.lr_scheduler = lr_scheduler
         self._compile()
@@ -89,14 +125,21 @@ class BasePolicy(ABC, nn.Module):
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
-    def exploration_noise(self, act: Union[np.ndarray, Batch],
-                          batch: Batch) -> Union[np.ndarray, Batch]:
+    # TODO: needed since for most of offline algorithm, the algorithm itself doesn't
+    #  have a method to add noise to action.
+    #  So we add the default behavior here. It's a little messy, maybe one can
+    #  find a better way to do this.
+    def exploration_noise(
+        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+    ) -> Union[np.ndarray, BatchProtocol]:
         """Modify the action from policy.forward with exploration noise.
+
+        NOTE: currently does not add any noise! Needs to be overridden by subclasses
+        to actually do something.
 
         :param act: a data batch or numpy.ndarray which is the action taken by
             policy.forward.
         :param batch: the input batch for policy.forward, kept for advanced usage.
-
         :return: action in the same form of input "act" but with added exploration
             noise.
         """
@@ -111,10 +154,10 @@ class BasePolicy(ABC, nn.Module):
     @abstractmethod
     def forward(
         self,
-        batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        batch: RolloutBatchProtocol,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         **kwargs: Any,
-    ) -> Batch:
+    ) -> BatchProtocol:
         """Compute action over the given batch data.
 
         :return: A :class:`~tianshou.data.Batch` which MUST have the following keys:
@@ -150,7 +193,21 @@ class BasePolicy(ABC, nn.Module):
         """
         pass
 
-    def map_action(self, act: Union[Batch, np.ndarray]) -> Union[Batch, np.ndarray]:
+    @overload
+    def map_action(self, act: TBatch) -> TBatch:
+        ...
+
+    @overload
+    def map_action(self, act: np.ndarray) -> np.ndarray:
+        ...
+
+    @overload
+    def map_action(self, act: torch.Tensor) -> torch.Tensor:
+        ...
+
+    def map_action(
+        self, act: Union[BatchProtocol, np.ndarray, torch.Tensor]
+    ) -> Union[BatchProtocol, np.ndarray, torch.Tensor]:
         """Map raw network output to action range in gym's env.action_space.
 
         This function is called in :meth:`~tianshou.data.Collector.collect` and only
@@ -168,23 +225,24 @@ class BasePolicy(ABC, nn.Module):
         :return: action in the same form of input "act" but remap to the target action
             space.
         """
-        if isinstance(self.action_space, gym.spaces.Box) and \
-                isinstance(act, np.ndarray):
+        if isinstance(self.action_space,
+                      gym.spaces.Box) and isinstance(act, np.ndarray):
             # currently this action mapping only supports np.ndarray action
             if self.action_bound_method == "clip":
                 act = np.clip(act, -1.0, 1.0)
             elif self.action_bound_method == "tanh":
                 act = np.tanh(act)
             if self.action_scaling:
-                assert np.min(act) >= -1.0 and np.max(act) <= 1.0, \
-                    "action scaling only accepts raw action range = [-1, 1]"
+                assert (
+                    np.min(act) >= -1.0 and np.max(act) <= 1.0  # type: ignore
+                ), "action scaling only accepts raw action range = [-1, 1]"
                 low, high = self.action_space.low, self.action_space.high
                 act = low + (high - low) * (act + 1.0) / 2.0  # type: ignore
         return act
 
     def map_action_inverse(
-        self, act: Union[Batch, List, np.ndarray]
-    ) -> Union[Batch, List, np.ndarray]:
+        self, act: Union[BatchProtocol, List, np.ndarray]
+    ) -> Union[BatchProtocol, List, np.ndarray]:
         """Inverse operation to :meth:`~tianshou.policy.BasePolicy.map_action`.
 
         This function is called in :meth:`~tianshou.data.Collector.collect` for
@@ -210,8 +268,8 @@ class BasePolicy(ABC, nn.Module):
         return act
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> RolloutBatchProtocol:
         """Pre-process the data from the provided replay buffer.
 
         Used in :meth:`update`. Check out :ref:`process_fn` for more information.
@@ -219,7 +277,8 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
     @abstractmethod
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, Any]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, Any]:
         """Update policy with a given batch of data.
 
         :return: A dict, including the data needed to be logged (e.g., loss).
@@ -243,15 +302,25 @@ class BasePolicy(ABC, nn.Module):
         pass
 
     def post_process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
+        self, batch: BatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
     ) -> None:
         """Post-process the data from the provided replay buffer.
+
+        This will only have an effect if the buffer has the
+        method `update_weight` and the batch has the attribute `weight`.
 
         Typical usage is to update the sampling weight in prioritized
         experience replay. Used in :meth:`update`.
         """
-        if hasattr(buffer, "update_weight") and hasattr(batch, "weight"):
-            buffer.update_weight(indices, batch.weight)
+        if hasattr(buffer, "update_weight"):
+            if hasattr(batch, "weight"):
+                buffer.update_weight(indices, batch.weight)
+            else:
+                logger.warning(
+                    "batch has no attribute 'weight', but buffer has an "
+                    "update_weight method. This is probably a mistake."
+                    "Prioritized replay is disabled for this batch."
+                )
 
     def update(self, sample_size: int, buffer: Optional[ReplayBuffer],
                **kwargs: Any) -> Dict[str, Any]:
@@ -303,7 +372,7 @@ class BasePolicy(ABC, nn.Module):
 
     @staticmethod
     def compute_episodic_return(
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
         v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
@@ -311,18 +380,23 @@ class BasePolicy(ABC, nn.Module):
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Compute returns over given batch.
+        r"""Compute returns over given batch.
 
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
-        to calculate q/advantage value of given batch.
+        to calculate q/advantage value of given batch. Returns are calculated as
+        advantage + value, which is exactly equivalent to using :math:`TD(\lambda)`
+        for estimating returns.
 
-        :param Batch batch: a data batch which contains several episodes of data in
+        :param batch: a data batch which contains several episodes of data in
             sequential order. Mind that the end of each finished episode of batch
             should be marked by done flag, unfinished (or collecting) episodes will be
             recognized by buffer.unfinished_index().
+        :param buffer: the corresponding replay buffer.
         :param numpy.ndarray indices: tell batch's location in buffer, batch is equal
             to buffer[indices].
         :param np.ndarray v_s_: the value function of all next states :math:`V(s')`.
+            If None, it will be set to an array of 0.
+        :param v_s: the value function of all current states :math:`V(s)`.
         :param float gamma: the discount factor, should be in [0, 1]. Default to 0.99.
         :param float gae_lambda: the parameter for Generalized Advantage Estimation,
             should be in [0, 1]. Default to 0.95.
@@ -347,14 +421,14 @@ class BasePolicy(ABC, nn.Module):
 
     @staticmethod
     def compute_nstep_return(
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
-        indice: np.ndarray,
+        indices: np.ndarray,
         target_q_fn: Callable[[ReplayBuffer, np.ndarray], torch.Tensor],
         gamma: float = 0.99,
         n_step: int = 1,
         rew_norm: bool = False,
-    ) -> Batch:
+    ) -> BatchWithReturnsProtocol:
         r"""Compute n-step return for Q-learning targets.
 
         .. math::
@@ -364,8 +438,9 @@ class BasePolicy(ABC, nn.Module):
         where :math:`\gamma` is the discount factor, :math:`\gamma \in [0, 1]`,
         :math:`d_t` is the done flag of step :math:`t`.
 
-        :param Batch batch: a data batch, which is equal to buffer[indice].
+        :param Batch batch: a data batch, which is equal to buffer[indices].
         :param ReplayBuffer buffer: the data buffer.
+        :param indices: tell batch's location in buffer
         :param function target_q_fn: a function which compute target Q value
             of "obs_next" given data buffer and wanted indices.
         :param float gamma: the discount factor, should be in [0, 1]. Default to 0.99.
@@ -376,15 +451,21 @@ class BasePolicy(ABC, nn.Module):
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """
-        assert not rew_norm, \
-            "Reward normalization in computing n-step returns is unsupported now."
+        assert (
+            not rew_norm
+        ), "Reward normalization in computing n-step returns is unsupported now."
+        if len(indices) != len(batch):
+            raise ValueError(
+                f"Batch size {len(batch)} and indices size {len(indices)} mismatch."
+            )
+
         rew = buffer.rew
-        bsz = len(indice)
-        indices = [indice]
+        bsz = len(indices)
+        indices = [indices]
         for _ in range(n_step - 1):
             indices.append(buffer.next(indices[-1]))
         indices = np.stack(indices)
-        # terminal indicates buffer indexes nstep after 'indice',
+        # terminal indicates buffer indexes nstep after 'indices',
         # and are truncated at the end of each episode
         terminal = indices[-1]
         with torch.no_grad():
@@ -398,9 +479,10 @@ class BasePolicy(ABC, nn.Module):
         batch.returns = to_torch_as(target_q, target_q_torch)
         if hasattr(batch, "weight"):  # prio buffer update
             batch.weight = to_torch_as(batch.weight, target_q_torch)
-        return batch
+        return cast(BatchWithReturnsProtocol, batch)
 
-    def _compile(self) -> None:
+    @staticmethod
+    def _compile() -> None:
         f64 = np.array([0, 1], dtype=np.float64)
         f32 = np.array([0, 1], dtype=np.float32)
         b = np.array([False, True], dtype=np.bool_)
@@ -410,6 +492,7 @@ class BasePolicy(ABC, nn.Module):
         _nstep_return(f64, b, f32.reshape(-1, 1), i64, 0.1, 1)
 
 
+# TODO: rename? See docstring
 @njit
 def _gae_return(
     v_s: np.ndarray,
@@ -419,6 +502,36 @@ def _gae_return(
     gamma: float,
     gae_lambda: float,
 ) -> np.ndarray:
+    r"""Computes advantages with GAE.
+
+    Note: doesn't compute returns but rather advantages. The return
+    is given by the output of this + v_s. Note that the advantages plus v_s
+    is exactly the same as the TD-lambda target, which is computed by the recursive
+    formula:
+
+    .. math::
+        G_t^\lambda = r_t + \gamma ( \lambda G_{t+1}^\lambda + (1 - \lambda) V_{t+1} )
+
+    The GAE is computed recursively as:
+
+    .. math::
+        \delta_t = r_t + \gamma V_{t+1} - V_t \n
+        A_t^\lambda= \delta_t + \gamma \lambda A_{t+1}^\lambda
+
+    And the following equality holds:
+
+    .. math::
+        G_t^\lambda = A_t^\lambda+ V_t
+
+    :param v_s: values in an episode, i.e. $V_t$
+    :param v_s_: next values in an episode, i.e. v_s shifted by 1, equivalent to
+        $V_{t+1}$
+    :param rew: rewards in an episode, i.e. $r_t$
+    :param end_flag: boolean array indicating whether the episode is done
+    :param gamma: discount factor
+    :param gae_lambda: lambda parameter for GAE, controlling the bias-variance tradeoff
+    :return:
+    """
     returns = np.zeros(rew.shape)
     delta = rew + v_s_ * gamma - v_s
     discount = (1.0 - end_flag) * (gamma * gae_lambda)

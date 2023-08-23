@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import (
     Any,
     Callable,
@@ -16,6 +17,7 @@ import torch
 from torch import nn
 
 from tianshou.data.batch import Batch
+from tianshou.data.types import RecurrentStateBatch
 
 ModuleType = Type[nn.Module]
 ArgsType = Union[Tuple[Any, ...], Dict[Any, Any], Sequence[Tuple[Any, ...]],
@@ -124,8 +126,12 @@ class MLP(nn.Module):
         hidden_sizes = [input_dim] + list(hidden_sizes)
         model = []
         for in_dim, out_dim, norm, norm_args, activ, act_args in zip(
-            hidden_sizes[:-1], hidden_sizes[1:], norm_layer_list, norm_args_list,
-            activation_list, act_args_list
+            hidden_sizes[:-1],
+            hidden_sizes[1:],
+            norm_layer_list,
+            norm_args_list,
+            activation_list,
+            act_args_list,
         ):
             model += miniblock(
                 in_dim, out_dim, norm, norm_args, activ, act_args, linear_layer
@@ -138,14 +144,26 @@ class MLP(nn.Module):
 
     @no_type_check
     def forward(self, obs: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
-        if self.device is not None:
-            obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
+        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         if self.flatten_input:
             obs = obs.flatten(1)
         return self.model(obs)
 
 
-class Net(nn.Module):
+class NetBase(nn.Module, ABC):
+    """Interface for NNs used in policies."""
+
+    @abstractmethod
+    def forward(
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        state: Any = None,
+        **kwargs: Any,
+    ) -> Tuple[torch.Tensor, Any]:
+        pass
+
+
+class Net(NetBase):
     """Wrapper of MLP to support more specific DRL usage.
 
     For advanced usage (how to customize the network), please refer to
@@ -209,6 +227,9 @@ class Net(nn.Module):
         self.device = device
         self.softmax = softmax
         self.num_atoms = num_atoms
+        self.Q: Optional[MLP] = None
+        self.V: Optional[MLP] = None
+
         input_dim = int(np.prod(state_shape))
         action_dim = int(np.prod(action_shape)) * num_atoms
         if concat:
@@ -216,51 +237,62 @@ class Net(nn.Module):
         self.use_dueling = dueling_param is not None
         output_dim = action_dim if not self.use_dueling and not concat else 0
         self.model = MLP(
-            input_dim, output_dim, hidden_sizes, norm_layer, norm_args, activation,
-            act_args, device, linear_layer
+            input_dim,
+            output_dim,
+            hidden_sizes,
+            norm_layer,
+            norm_args,
+            activation,
+            act_args,
+            device,
+            linear_layer,
         )
-        self.output_dim = self.model.output_dim
         if self.use_dueling:  # dueling DQN
-            q_kwargs, v_kwargs = dueling_param  # type: ignore
-            q_output_dim, v_output_dim = 0, 0
-            if not concat:
-                q_output_dim, v_output_dim = action_dim, num_atoms
-            q_kwargs: Dict[str, Any] = {
-                **q_kwargs, "input_dim": self.output_dim,
-                "output_dim": q_output_dim,
-                "device": self.device
+            assert dueling_param is not None
+            kwargs_update = {
+                "input_dim": self.model.output_dim,
+                "device": self.device,
             }
-            v_kwargs: Dict[str, Any] = {
-                **v_kwargs, "input_dim": self.output_dim,
-                "output_dim": v_output_dim,
-                "device": self.device
-            }
+            # Important: don't change the original dict (e.g., don't use .update())
+            q_kwargs = {**dueling_param[0], **kwargs_update}
+            v_kwargs = {**dueling_param[1], **kwargs_update}
+
+            q_kwargs["output_dim"] = 0 if concat else action_dim
+            v_kwargs["output_dim"] = 0 if concat else num_atoms
             self.Q, self.V = MLP(**q_kwargs), MLP(**v_kwargs)
             self.output_dim = self.Q.output_dim
+        else:
+            self.output_dim = self.model.output_dim
 
     def forward(
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
-        info: Dict[str, Any] = {},
+        **kwargs: Any,
     ) -> Tuple[torch.Tensor, Any]:
-        """Mapping: obs -> flatten (inside MLP)-> logits."""
+        """Mapping: obs -> flatten (inside MLP)-> logits.
+
+        :param obs:
+        :param state: unused and returned as is
+        :param kwargs: unused
+        """
         logits = self.model(obs)
-        bsz = logits.shape[0]
+        batch_size = logits.shape[0]
         if self.use_dueling:  # Dueling DQN
+            assert self.Q is not None and self.V is not None
             q, v = self.Q(logits), self.V(logits)
             if self.num_atoms > 1:
-                q = q.view(bsz, -1, self.num_atoms)
-                v = v.view(bsz, -1, self.num_atoms)
+                q = q.view(batch_size, -1, self.num_atoms)
+                v = v.view(batch_size, -1, self.num_atoms)
             logits = q - q.mean(dim=1, keepdim=True) + v
         elif self.num_atoms > 1:
-            logits = logits.view(bsz, -1, self.num_atoms)
+            logits = logits.view(batch_size, -1, self.num_atoms)
         if self.softmax:
             logits = torch.softmax(logits, dim=-1)
         return logits, state
 
 
-class Recurrent(nn.Module):
+class Recurrent(NetBase):
     """Simple Recurrent network based on LSTM.
 
     For advanced usage (how to customize the network), please refer to
@@ -289,20 +321,30 @@ class Recurrent(nn.Module):
     def forward(
         self,
         obs: Union[np.ndarray, torch.Tensor],
-        state: Optional[Dict[str, torch.Tensor]] = None,
-        info: Dict[str, Any] = {},
+        state: Optional[Union[RecurrentStateBatch, Dict[str, torch.Tensor]]] = None,
+        **kwargs: Any,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """Mapping: obs -> flatten -> logits.
 
         In the evaluation mode, `obs` should be with shape ``[bsz, dim]``; in the
         training mode, `obs` should be with shape ``[bsz, len, dim]``. See the code
         and comment for more detail.
+
+        :param obs:
+        :param state: either None or a dict with keys 'hidden' and 'cell'
+        :param kwargs: unused
+        :return: predicted action, next state as dict with keys 'hidden' and 'cell'
         """
-        obs = torch.as_tensor(
-            obs,
-            device=self.device,
-            dtype=torch.float32,
-        )
+        # Note: the original type of state is Batch but it might also be a dict
+        # If it is a Batch, .issubset(state) will not work. However,
+        # issubset(state.keys()) always works
+        if state is not None and not {"hidden", "cell"}.issubset(state.keys()):
+            raise ValueError(
+                f"Expected to find keys 'hidden' and 'cell' "
+                f"but instead found {state.keys()}"
+            )
+
+        obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -316,16 +358,17 @@ class Recurrent(nn.Module):
             # we store the stack data in [bsz, len, ...] format
             # but pytorch rnn needs [len, bsz, ...]
             obs, (hidden, cell) = self.nn(
-                obs, (
+                obs,
+                (
                     state["hidden"].transpose(0, 1).contiguous(),
-                    state["cell"].transpose(0, 1).contiguous()
-                )
+                    state["cell"].transpose(0, 1).contiguous(),
+                ),
             )
         obs = self.fc2(obs[:, -1])
         # please ensure the first dim is batch size: [bsz, len, ...]
         return obs, {
             "hidden": hidden.transpose(0, 1).detach(),
-            "cell": cell.transpose(0, 1).detach()
+            "cell": cell.transpose(0, 1).detach(),
         }
 
 
@@ -370,7 +413,7 @@ class EnsembleLinear(nn.Module):
     """Linear Layer of Ensemble network.
 
     :param int ensemble_size: Number of subnets in the ensemble.
-    :param int inp_feature: dimension of the input vector.
+    :param int in_feature: dimension of the input vector.
     :param int out_feature: dimension of the output vector.
     :param bool bias: whether to include an additive bias, default to be True.
     """
@@ -380,30 +423,28 @@ class EnsembleLinear(nn.Module):
         ensemble_size: int,
         in_feature: int,
         out_feature: int,
-        bias: bool = True,
+        bias: bool = True
     ) -> None:
         super().__init__()
 
         # To be consistent with PyTorch default initializer
-        k = np.sqrt(1. / in_feature)
+        k = np.sqrt(1.0 / in_feature)
         weight_data = torch.rand((ensemble_size, in_feature, out_feature)) * 2 * k - k
         self.weight = nn.Parameter(weight_data, requires_grad=True)
 
-        self.bias: Union[nn.Parameter, None]
+        self.bias_weights: Optional[nn.Parameter] = None
         if bias:
             bias_data = torch.rand((ensemble_size, 1, out_feature)) * 2 * k - k
-            self.bias = nn.Parameter(bias_data, requires_grad=True)
-        else:
-            self.bias = None
+            self.bias_weights = nn.Parameter(bias_data, requires_grad=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = torch.matmul(x, self.weight)
-        if self.bias is not None:
-            x = x + self.bias
+        if self.bias_weights is not None:
+            x = x + self.bias_weights
         return x
 
 
-class BranchingNet(nn.Module):
+class BranchingNet(NetBase):
     """Branching dual Q network.
 
     Network for the BranchingDQNPolicy, it uses a common network module, a value module
@@ -437,9 +478,9 @@ class BranchingNet(nn.Module):
         state_shape: Union[int, Sequence[int]],
         num_branches: int = 0,
         action_per_branch: int = 2,
-        common_hidden_sizes: List[int] = [],
-        value_hidden_sizes: List[int] = [],
-        action_hidden_sizes: List[int] = [],
+        common_hidden_sizes: Optional[List[int]] = None,
+        value_hidden_sizes: Optional[List[int]] = None,
+        action_hidden_sizes: Optional[List[int]] = None,
         norm_layer: Optional[ModuleType] = None,
         norm_args: Optional[ArgsType] = None,
         activation: Optional[ModuleType] = nn.ReLU,
@@ -447,6 +488,10 @@ class BranchingNet(nn.Module):
         device: Union[str, int, torch.device] = "cpu",
     ) -> None:
         super().__init__()
+        common_hidden_sizes = common_hidden_sizes or []
+        value_hidden_sizes = value_hidden_sizes or []
+        action_hidden_sizes = action_hidden_sizes or []
+
         self.device = device
         self.num_branches = num_branches
         self.action_per_branch = action_per_branch
@@ -454,15 +499,27 @@ class BranchingNet(nn.Module):
         common_input_dim = int(np.prod(state_shape))
         common_output_dim = 0
         self.common = MLP(
-            common_input_dim, common_output_dim, common_hidden_sizes, norm_layer,
-            norm_args, activation, act_args, device
+            common_input_dim,
+            common_output_dim,
+            common_hidden_sizes,
+            norm_layer,
+            norm_args,
+            activation,
+            act_args,
+            device,
         )
         # value network
         value_input_dim = common_hidden_sizes[-1]
         value_output_dim = 1
         self.value = MLP(
-            value_input_dim, value_output_dim, value_hidden_sizes, norm_layer,
-            norm_args, activation, act_args, device
+            value_input_dim,
+            value_output_dim,
+            value_hidden_sizes,
+            norm_layer,
+            norm_args,
+            activation,
+            act_args,
+            device,
         )
         # action branching network
         action_input_dim = common_hidden_sizes[-1]
@@ -470,8 +527,14 @@ class BranchingNet(nn.Module):
         self.branches = nn.ModuleList(
             [
                 MLP(
-                    action_input_dim, action_output_dim, action_hidden_sizes,
-                    norm_layer, norm_args, activation, act_args, device
+                    action_input_dim,
+                    action_output_dim,
+                    action_hidden_sizes,
+                    norm_layer,
+                    norm_args,
+                    activation,
+                    act_args,
+                    device,
                 ) for _ in range(self.num_branches)
             ]
         )
@@ -480,7 +543,7 @@ class BranchingNet(nn.Module):
         self,
         obs: Union[np.ndarray, torch.Tensor],
         state: Any = None,
-        info: Dict[str, Any] = {},
+        **kwargs: Any,
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: obs -> model -> logits."""
         common_out = self.common(obs)
@@ -541,10 +604,7 @@ def get_dict_state_decorator(
         class new_net_class(net_class):
 
             def forward(
-                self,
-                obs: Union[np.ndarray, torch.Tensor],
-                *args,
-                **kwargs,
+                self, obs: Union[np.ndarray, torch.Tensor], *args, **kwargs
             ) -> Any:
                 return super().forward(preprocess_obs(obs), *args, **kwargs)
 

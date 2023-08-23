@@ -176,3 +176,5 @@ metadata
 GPU
 Dopamine
 builtin
+params
+inplace

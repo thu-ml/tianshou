@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import QRDQNPolicy
-from tianshou.trainer import offpolicy_trainer
+from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
@@ -138,22 +138,22 @@ def gather_data():
         policy.set_eps(args.eps_test)
 
     # trainer
-    result = offpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.step_per_collect,
-        args.test_num,
-        args.batch_size,
+    result = OffpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        step_per_collect=args.step_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         train_fn=train_fn,
         test_fn=test_fn,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger,
         update_per_step=args.update_per_step,
-    )
+    ).run()
     assert stop_fn(result['best_reward'])
 
     # save buffer in pickle format, for imitation learning unittest

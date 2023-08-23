@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
 from tianshou.utils.net.continuous import ActorProb
 
@@ -159,11 +160,17 @@ class CQLPolicy(SACPolicy):
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> RolloutBatchProtocol:
+        # TODO: mypy rightly complains here b/c the design violates
+        #   Liskov Substitution Principle
+        #   DDPGPolicy.process_fn() results in a batch with returns but
+        #   CQLPolicy.process_fn() doesn't add the returns.
+        #   Should probably be fixed!
         return batch
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]

@@ -5,6 +5,8 @@ import torch
 from torch.distributions import Categorical
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.data.batch import BatchProtocol
+from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
 
 
@@ -65,8 +67,10 @@ class DiscreteSACPolicy(SACPolicy):
             reward_normalization,
             estimation_step,
             action_scaling=False,
-            action_bound_method="",
-            **kwargs
+            # Note: inheriting from continuous sac reduces code duplication,
+            # but the action_bound_method has to be disabled
+            action_bound_method=None,
+            **kwargs,
         )
         self._alpha: Union[float, torch.Tensor]
 
@@ -97,7 +101,8 @@ class DiscreteSACPolicy(SACPolicy):
         target_q = target_q.sum(dim=-1) + self._alpha * dist.entropy()
         return target_q
 
-    def learn(self, batch: Batch, **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any,
+              **kwargs: Any) -> Dict[str, float]:
         weight = batch.pop("weight", 1.0)
         target_q = batch.returns.flatten()
         act = to_torch(
@@ -156,6 +161,7 @@ class DiscreteSACPolicy(SACPolicy):
 
         return result
 
-    def exploration_noise(self, act: Union[np.ndarray, Batch],
-                          batch: Batch) -> Union[np.ndarray, Batch]:
+    def exploration_noise(
+        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+    ) -> Union[np.ndarray, BatchProtocol]:
         return act

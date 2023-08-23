@@ -1,11 +1,13 @@
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
+from tianshou.data import ReplayBuffer, to_numpy, to_torch
+from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
+from tianshou.policy.modelfree.pg import TDistParams
 
 
 class GAILPolicy(PPOPolicy):
@@ -16,7 +18,6 @@ class GAILPolicy(PPOPolicy):
     :param torch.nn.Module critic: the critic network. (s -> V(s))
     :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :type dist_fn: Type[torch.distributions.Distribution]
     :param ReplayBuffer expert_buffer: the replay buffer contains expert experience.
     :param torch.nn.Module disc_net: the discriminator network with input dim equals
         state dim plus action dim and output dim equals 1.
@@ -71,7 +72,7 @@ class GAILPolicy(PPOPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        dist_fn: Type[torch.distributions.Distribution],
+        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         expert_buffer: ReplayBuffer,
         disc_net: torch.nn.Module,
         disc_optim: torch.optim.Optimizer,
@@ -84,8 +85,16 @@ class GAILPolicy(PPOPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            actor, critic, optim, dist_fn, eps_clip, dual_clip, value_clip,
-            advantage_normalization, recompute_advantage, **kwargs
+            actor,
+            critic,
+            optim,
+            dist_fn,
+            eps_clip,
+            dual_clip,
+            value_clip,
+            advantage_normalization,
+            recompute_advantage,
+            **kwargs,
         )
         self.disc_net = disc_net
         self.disc_optim = disc_optim
@@ -94,8 +103,8 @@ class GAILPolicy(PPOPolicy):
         self.action_dim = actor.output_dim
 
     def process_fn(
-        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
-    ) -> Batch:
+        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> LogpOldProtocol:
         """Pre-process the data from the provided replay buffer.
 
         Used in :meth:`update`. Check out :ref:`process_fn` for more information.
@@ -105,13 +114,13 @@ class GAILPolicy(PPOPolicy):
             batch.rew = to_numpy(-F.logsigmoid(-self.disc(batch)).flatten())
         return super().process_fn(batch, buffer, indices)
 
-    def disc(self, batch: Batch) -> torch.Tensor:
+    def disc(self, batch: RolloutBatchProtocol) -> torch.Tensor:
         obs = to_torch(batch.obs, device=self.disc_net.device)
         act = to_torch(batch.act, device=self.disc_net.device)
         return self.disc_net(torch.cat([obs, act], dim=1))
 
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+        self, batch: RolloutBatchProtocol, batch_size: int, repeat: int, **kwargs: Any
     ) -> Dict[str, List[float]]:
         # update discriminator
         losses = []

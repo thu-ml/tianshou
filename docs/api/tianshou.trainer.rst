@@ -10,10 +10,6 @@ On-policy
    :undoc-members:
    :show-inheritance:
 
-.. autofunction:: tianshou.trainer.onpolicy_trainer
-
-.. autoclass:: tianshou.trainer.onpolicy_trainer_iter
-
 
 Off-policy
 ----------
@@ -23,10 +19,6 @@ Off-policy
    :undoc-members:
    :show-inheritance:
 
-.. autofunction:: tianshou.trainer.offpolicy_trainer
-
-.. autoclass:: tianshou.trainer.offpolicy_trainer_iter
-
 
 Offline
 -------
@@ -35,11 +27,6 @@ Offline
    :members:
    :undoc-members:
    :show-inheritance:
-
-.. autofunction:: tianshou.trainer.offline_trainer
-
-.. autoclass:: tianshou.trainer.offline_trainer_iter
-
 
 utils
 -----

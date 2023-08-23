@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import SACPolicy
-from tianshou.trainer import offpolicy_trainer
+from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
@@ -153,20 +153,20 @@ def gather_data():
         return mean_rewards >= args.reward_threshold
 
     # trainer
-    offpolicy_trainer(
-        policy,
-        train_collector,
-        test_collector,
-        args.epoch,
-        args.step_per_epoch,
-        args.step_per_collect,
-        args.test_num,
-        args.batch_size,
+    OffpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.step_per_epoch,
+        step_per_collect=args.step_per_collect,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         update_per_step=args.update_per_step,
         save_best_fn=save_best_fn,
         stop_fn=stop_fn,
         logger=logger,
-    )
+    ).run()
     train_collector.reset()
     result = train_collector.collect(n_step=args.buffer_size)
     rews, lens = result["rews"], result["lens"]

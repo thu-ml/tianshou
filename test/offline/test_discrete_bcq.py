@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DiscreteBCQPolicy
-from tianshou.trainer import offline_trainer
+from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor
@@ -140,20 +140,20 @@ def test_discrete_bcq(args=get_args()):
         else:
             print("Fail to restore policy and optim.")
 
-    result = offline_trainer(
-        policy,
-        buffer,
-        test_collector,
-        args.epoch,
-        args.update_per_epoch,
-        args.test_num,
-        args.batch_size,
+    result = OfflineTrainer(
+        policy=policy,
+        buffer=buffer,
+        test_collector=test_collector,
+        max_epoch=args.epoch,
+        step_per_epoch=args.update_per_epoch,
+        episode_per_test=args.test_num,
+        batch_size=args.batch_size,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
         logger=logger,
         resume_from_log=args.resume,
         save_checkpoint_fn=save_checkpoint_fn,
-    )
+    ).run()
     assert stop_fn(result["best_reward"])
 
     if __name__ == "__main__":

@@ -1,9 +1,10 @@
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
 
-from tianshou.data import Batch, ReplayBuffer, SegmentTree, to_numpy
+from tianshou.data import ReplayBuffer, SegmentTree, to_numpy
+from tianshou.data.types import PrioBatchProtocol, RolloutBatchProtocol
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
@@ -49,7 +50,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     def add(
         self,
-        batch: Batch,
+        batch: RolloutBatchProtocol,
         buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         ptr, ep_rew, ep_len, ep_idx = super().add(batch, buffer_ids)
@@ -88,7 +89,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._max_prio = max(self._max_prio, weight.max())
         self._min_prio = min(self._min_prio, weight.min())
 
-    def __getitem__(self, index: Union[slice, int, List[int], np.ndarray]) -> Batch:
+    def __getitem__(
+        self, index: Union[slice, int, List[int], np.ndarray]
+    ) -> PrioBatchProtocol:
         if isinstance(index, slice):  # change slice to np array
             # buffer[:] will get all available data
             indices = self.sample_indices(0) if index == slice(None) \
@@ -99,7 +102,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         weight = self.get_weight(indices)
         # ref: https://github.com/Kaixhin/Rainbow/blob/master/memory.py L154
         batch.weight = weight / np.max(weight) if self._weight_norm else weight
-        return batch
+        return cast(PrioBatchProtocol, batch)
 
     def set_beta(self, beta: float) -> None:
         self._beta = beta
