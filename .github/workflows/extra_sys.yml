@@ -35,10 +35,9 @@ jobs:
       - name: Install the project dependencies
         run: |
           poetry install --with dev
-          source $(poetry env info --path)/bin/activate
       - name: wandb login
         run: |
-          wandb login e2366d661b89f2bee877c40bee15502d67b7abef
+          poetry run wandb login e2366d661b89f2bee877c40bee15502d67b7abef
       - name: Test with pytest
         run: |
-          pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes
+          poetry run pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes

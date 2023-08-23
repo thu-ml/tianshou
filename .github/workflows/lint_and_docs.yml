@@ -30,6 +30,5 @@ jobs:
       - name: Install the project dependencies
         run: |
           poetry install --with dev
-          source $(poetry env info --path)/bin/activate
       - name: Lint
-        run: poe lint
+        run: poetry run poe lint
