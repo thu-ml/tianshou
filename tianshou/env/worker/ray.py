@@ -23,7 +23,8 @@ class RayEnvWorker(EnvWorker):
     """Ray worker used in RayVectorEnv."""
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
-        self.env = ray.remote(_SetAttrWrapper).options(num_cpus=0).remote(env_fn())
+        # TODO: numpy claims that .options does not exist for some reason
+        self.env = ray.remote(_SetAttrWrapper).options(num_cpus=0).remote(env_fn())  # type: ignore
         super().__init__(env_fn)
 
     def get_env_attr(self, key: str) -> Any:
@@ -53,7 +54,7 @@ class RayEnvWorker(EnvWorker):
             self.result = self.env.step.remote(action)
 
     def recv(self) -> gym_new_venv_step_type:
-        return ray.get(self.result)
+        return ray.get(self.result)  # type: ignore
 
     def seed(self, seed: Optional[int] = None) -> Optional[list[int]]:
         super().seed(seed)

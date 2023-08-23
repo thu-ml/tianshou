@@ -10,18 +10,14 @@ repos:
     hooks:
       - id: ruff
         name: ruff
-        entry: ruff
+        entry: poetry run ruff
         args: ["--extend-fixable=F401,F841", "--fix-only"]
         require_serial: true
         language: system
         types: [python]
-      - id: nbstripout
-        name: nbstripout
-        entry: nbstripout
-        language: system
       - id: black
         name: black
-        entry: black
+        entry: poetry run black
         require_serial: true
         language: system
         types: [python]
@@ -39,14 +35,8 @@ repos:
         pass_filenames: false
       - id: mypy
         name: mypy
-        entry: mypy
+        entry: poetry run mypy
         # filenames should not be passed as they would collide with the config in pyproject.toml
         pass_filenames: false
         files: '^tianshou(/[^/]*)*/[^/]*\.py$'
         language: system
-      - id: poetry-sort
-        name: poetry-sort
-        entry: poetry sort
-        language: system
-        files: pyproject.toml
-        pass_filenames: false

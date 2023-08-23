@@ -27,23 +27,23 @@ exclude = ["test/*", "examples/*", "docs/*"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
+gymnasium = ">=0.29.0"
+h5py = ">=3.9.0"
+numba = ">=0.57.1"
+numpy = ">=1"
+packaging = "*"
+pettingzoo = ">=1.22"
+ray = ">=2"
+tensorboard = ">=2.5.0"
+torch = ">=2.0.1"
+tqdm = "*"
 
 # TODO: add versions
 atari_py = {version = "*", optional = true}
 envpool = {version = "^0.8.2", optional = true}
-gymnasium = ">=0.29.0"
-h5py = ">=3.9.0"
 mujoco_py = {version = "*", optional = true}
-numba = ">=0.57.1"
-numpy = ">=1"
 opencv_python = {version = "*", optional = true}
-packaging = "*"
-pettingzoo = ">=1.22"
 pybullet = {version = "*", optional = true}
-ray = "^2.6.3"
-tensorboard = ">=2.5.0"
-torch = ">=2.0.1"
-tqdm = "*"
 
 [tool.poetry.extras]
 atari = ["atari_py", "opencv-python"]
@@ -118,6 +118,8 @@ ignore-decorators = ["D100" ,"D102", "D104", "D105", "D107", "D203", "D213", "D4
 
 [tool.poetry_bumpversion.file."tianshou/__init__.py"]
 
+[tool.poetry-sort]
+move-optionals-to-bottom = true
 
 [tool.poe.tasks]  # https://github.com/nat-n/poethepoet
   [tool.poe.tasks.lint]
@@ -125,6 +127,10 @@ ignore-decorators = ["D100" ,"D102", "D104", "D105", "D107", "D203", "D213", "D4
 
     [[tool.poe.tasks.lint.sequence]]
     cmd = """pre-commit run --all-files --color always"""
+    [[tool.poe.tasks.lint.sequence]]
+    cmd = """poetry self add poetry-plugin-sort"""
+    [[tool.poe.tasks.lint.sequence]]
+    cmd = """poetry sort"""
 
   [tool.poe.tasks.test]
   help = "Test this package"
