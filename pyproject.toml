@@ -34,7 +34,7 @@ atari_py = {version = "*", optional = true}
 gymnasium = ">=0.29.0"
 h5py = ">=3.9.0"
 mujoco_py = {version = "*", optional = true}
-numba = ">=0.51.0"
+numba = ">=0.57.1"
 numpy = ">=1"
 opencv_python = {version = "*", optional = true}
 packaging = "*"
