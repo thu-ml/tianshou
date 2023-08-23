@@ -35,7 +35,7 @@ jobs:
       - name: Install the project dependencies
         run: |
           poetry install
-          poetry shell
+          source $(poetry env info --path)/bin/activate
       - name: wandb login
         run: |
           wandb login e2366d661b89f2bee877c40bee15502d67b7abef
