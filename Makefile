@@ -20,7 +20,6 @@ lint:
 	$(call check_install, ruff)
 	$(call check_install, black)
  	$(call check_install, pre-commit)
-	$(call check_install_extra, bugbear, flake8_bugbear)
 	pre-commit run --all-files --color always black
 	pre-commit run --all-files --color always ruff
 

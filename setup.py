@@ -30,13 +30,11 @@ def get_extras_require() -> str:
     req = {
         "dev": [
             "sphinx<7",
-            "black",
-            "ruff",
+            "black>23.7.0",
+            "ruff>0.0.285",
             "sphinx_rtd_theme",
             "jinja2",
-            "flake8_bugbear",
             "sphinxcontrib-bibtex",
-            "isort",
             "pytest",
             "pytest-cov",
             "ray>=1.0.0",
