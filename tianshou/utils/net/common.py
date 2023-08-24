@@ -24,9 +24,7 @@ def miniblock(
     act_args: Optional[Union[tuple[Any, ...], dict[Any, Any]]] = None,
     linear_layer: type[nn.Linear] = nn.Linear,
 ) -> list[nn.Module]:
-    """Construct a miniblock with given input/output-size, norm layer and \
-    activation.
-    """
+    """Construct a miniblock with given input/output-size, norm layer and activation."""
     layers: list[nn.Module] = [linear_layer(input_size, output_size)]
     if norm_layer is not None:
         if isinstance(norm_args, tuple):

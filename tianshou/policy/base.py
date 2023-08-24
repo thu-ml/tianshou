@@ -136,9 +136,7 @@ class BasePolicy(ABC, nn.Module):
         return act
 
     def soft_update(self, tgt: nn.Module, src: nn.Module, tau: float) -> None:
-        """Softly update the parameters of target module towards the parameters \
-        of source module.
-        """
+        """Softly update the parameters of target module towards the parameters of source module."""
         for tgt_param, src_param in zip(tgt.parameters(), src.parameters()):
             tgt_param.data.copy_(tau * src_param.data + (1 - tau) * tgt_param.data)
 

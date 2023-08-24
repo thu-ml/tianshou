@@ -1,0 +1,7 @@
+[flake8]
+# copy from https://github.com/psf/black/blob/main/.flake8
+# this is a simplified version of config, making vscode plugin happy
+max-line-length = 100
+max-complexity = 18
+select = E,F,W,B,C4,ASYNC,PIE
+ignore = E402,E501,E701,E731,E741,B008,B011,B028,C408
