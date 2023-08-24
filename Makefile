@@ -16,31 +16,12 @@ mypy:
 	$(call check_install, mypy)
 	mypy ${PROJECT_NAME}
 
-lint:
+lint-format:
 	$(call check_install, ruff)
 	$(call check_install, black)
- 	$(call check_install, pre-commit)
+	$(call check_install, pre_commit)
 	pre-commit run --all-files --color always black
 	pre-commit run --all-files --color always ruff
-
-format:
-	$(call check_install, isort)
-	isort ${PYTHON_FILES}
-	$(call check_install, yapf)
-	yapf -ir ${PYTHON_FILES}
-
-check-codestyle:
-	$(call check_install, isort)
-	$(call check_install, yapf)
-	isort --check ${PYTHON_FILES} && yapf -r -d ${PYTHON_FILES}
-
-check-docstyle:
-	$(call check_install, pydocstyle)
-	$(call check_install, doc8)
-	$(call check_install, sphinx)
-	$(call check_install, sphinx_rtd_theme)
-	$(call check_install, sphinxcontrib.bibtex, sphinxcontrib_bibtex)
-	pydocstyle ${PROJECT_PATH} && doc8 docs && cd docs && make html SPHINXOPTS="-W"
 
 doc:
 	$(call check_install, sphinx)

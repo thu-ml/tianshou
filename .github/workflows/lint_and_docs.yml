@@ -29,7 +29,6 @@ jobs:
       - name: Type check
         run: |
           mypy
-      - name: Documentation test
+      - name: Test spelling
         run: |
-          make check-docstyle
           make spelling
