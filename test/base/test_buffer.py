@@ -1403,7 +1403,7 @@ def test_custom_key():
         set(batch.keys()), set(sampled_batch.keys())
     )
     # Compare the values for each key
-    for key in batch:
+    for key in batch.keys():
         if isinstance(batch.__dict__[key], np.ndarray) and isinstance(
             sampled_batch.__dict__[key], np.ndarray
         ):
