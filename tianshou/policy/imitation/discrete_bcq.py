@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -52,13 +52,19 @@ class DiscreteBCQPolicy(DQNPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            model, optim, discount_factor, estimation_step, target_update_freq,
-            reward_normalization, **kwargs
+            model,
+            optim,
+            discount_factor,
+            estimation_step,
+            target_update_freq,
+            reward_normalization,
+            **kwargs,
         )
         assert target_update_freq > 0, "BCQ needs target network setting."
         self.imitator = imitator
-        assert 0.0 <= unlikely_action_threshold < 1.0, \
-            "unlikely_action_threshold should be in [0, 1)"
+        assert (
+            0.0 <= unlikely_action_threshold < 1.0
+        ), "unlikely_action_threshold should be in [0, 1)"
         if unlikely_action_threshold > 0:
             self._log_tau = math.log(unlikely_action_threshold)
         else:
@@ -107,8 +113,9 @@ class DiscreteBCQPolicy(DQNPolicy):
         )
         return cast(ImitationBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(
+        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
+    ) -> dict[str, float]:
         if self._iter % self._freq == 0:
             self.sync_weight()
         self._iter += 1

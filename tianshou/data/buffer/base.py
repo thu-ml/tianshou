@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Optional, Union, cast
 
 import h5py
 import numpy as np
@@ -30,11 +30,25 @@ class ReplayBuffer:
     """
 
     _reserved_keys = (
-        "obs", "act", "rew", "terminated", "truncated", "done", "obs_next", "info",
-        "policy"
+        "obs",
+        "act",
+        "rew",
+        "terminated",
+        "truncated",
+        "done",
+        "obs_next",
+        "info",
+        "policy",
     )
     _input_keys = (
-        "obs", "act", "rew", "terminated", "truncated", "obs_next", "info", "policy"
+        "obs",
+        "act",
+        "rew",
+        "terminated",
+        "truncated",
+        "obs_next",
+        "info",
+        "policy",
     )
 
     def __init__(
@@ -46,7 +60,7 @@ class ReplayBuffer:
         sample_avail: bool = False,
         **kwargs: Any,  # otherwise PrioritizedVectorReplayBuffer will cause TypeError
     ) -> None:
-        self.options: Dict[str, Any] = {
+        self.options: dict[str, Any] = {
             "stack_num": stack_num,
             "ignore_obs_next": ignore_obs_next,
             "save_only_last_obs": save_only_last_obs,
@@ -79,7 +93,7 @@ class ReplayBuffer:
         except KeyError as exception:
             raise AttributeError from exception
 
-    def __setstate__(self, state: Dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         """Unpickling interface.
 
         We need it because pickling buffer does not work out-of-the-box
@@ -89,8 +103,9 @@ class ReplayBuffer:
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
-        assert (key not in self._reserved_keys
-                ), "key '{}' is reserved and cannot be assigned".format(key)
+        assert (
+            key not in self._reserved_keys
+        ), f"key '{key}' is reserved and cannot be assigned"
         super().__setattr__(key, value)
 
     def save_hdf5(self, path: str, compression: Optional[str] = None) -> None:
@@ -108,14 +123,20 @@ class ReplayBuffer:
 
     @classmethod
     def from_data(
-        cls, obs: h5py.Dataset, act: h5py.Dataset, rew: h5py.Dataset,
-        terminated: h5py.Dataset, truncated: h5py.Dataset, done: h5py.Dataset,
-        obs_next: h5py.Dataset
+        cls,
+        obs: h5py.Dataset,
+        act: h5py.Dataset,
+        rew: h5py.Dataset,
+        terminated: h5py.Dataset,
+        truncated: h5py.Dataset,
+        done: h5py.Dataset,
+        obs_next: h5py.Dataset,
     ) -> "ReplayBuffer":
         size = len(obs)
-        assert all(len(dset) == size for dset in [obs, act, rew, terminated,
-                                                  truncated, done, obs_next]), \
-            "Lengths of all hdf5 datasets need to be equal."
+        assert all(
+            len(dset) == size
+            for dset in [obs, act, rew, terminated, truncated, done, obs_next]
+        ), "Lengths of all hdf5 datasets need to be equal."
         buf = cls(size)
         if size == 0:
             return buf
@@ -126,7 +147,7 @@ class ReplayBuffer:
             terminated=terminated,
             truncated=truncated,
             done=done,
-            obs_next=obs_next
+            obs_next=obs_next,
         )
         batch = cast(RolloutBatchProtocol, batch)
         buf.set_batch(batch)
@@ -190,12 +211,14 @@ class ReplayBuffer:
         to_indices = np.array(to_indices)
         if self._meta.is_empty():
             self._meta = create_value(  # type: ignore
-                buffer._meta, self.maxsize, stack=False)
+                buffer._meta, self.maxsize, stack=False
+            )
         self._meta[to_indices] = buffer._meta[from_indices]
         return to_indices
 
-    def _add_index(self, rew: Union[float, np.ndarray],
-                   done: bool) -> Tuple[int, Union[float, np.ndarray], int, int]:
+    def _add_index(
+        self, rew: Union[float, np.ndarray], done: bool
+    ) -> tuple[int, Union[float, np.ndarray], int, int]:
         """Maintain the buffer's state after adding one data batch.
 
         Return (index_to_be_modified, episode_reward, episode_length,
@@ -218,8 +241,8 @@ class ReplayBuffer:
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into replay buffer.
 
         :param Batch batch: the input data batch. "obs", "act", "rew",
@@ -233,12 +256,13 @@ class ReplayBuffer:
         """
         # preprocess batch
         new_batch = Batch()
-        for key in batch.keys():
+        for key in batch:
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        assert set(["obs", "act", "rew", "terminated", "truncated", "done"]
-                   ).issubset(batch.keys())  # important to do after preprocess batch
+        assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(
+            batch.keys()
+        )  # important to do after preprocess batch
         stacked_batch = buffer_ids is not None
         if stacked_batch:
             assert len(batch) == 1
@@ -255,8 +279,8 @@ class ReplayBuffer:
             rew, done = batch.rew[0], batch.done[0]
         else:
             rew, done = batch.rew, batch.done
-        ptr, ep_rew, ep_len, ep_idx = list(
-            map(lambda x: np.array([x]), self._add_index(rew, done))
+        ptr, ep_rew, ep_len, ep_idx = (
+            np.array([x]) for x in self._add_index(rew, done)
         )
         try:
             self._meta[ptr] = batch
@@ -267,9 +291,7 @@ class ReplayBuffer:
             batch.terminated = batch.terminated.astype(bool)
             batch.truncated = batch.truncated.astype(bool)
             if self._meta.is_empty():
-                self._meta = create_value(  # type: ignore
-                    batch, self.maxsize, stack
-                )
+                self._meta = create_value(batch, self.maxsize, stack)  # type: ignore
             else:  # dynamic key pops up in batch
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
             self._meta[ptr] = batch
@@ -286,8 +308,7 @@ class ReplayBuffer:
                 return np.random.choice(self._size, batch_size)
             elif batch_size == 0:  # construct current available indices
                 return np.concatenate(
-                    [np.arange(self._index, self._size),
-                     np.arange(self._index)]
+                    [np.arange(self._index, self._size), np.arange(self._index)]
                 )
             else:
                 return np.array([], int)
@@ -295,8 +316,7 @@ class ReplayBuffer:
             if batch_size < 0:
                 return np.array([], int)
             all_indices = prev_indices = np.concatenate(
-                [np.arange(self._index, self._size),
-                 np.arange(self._index)]
+                [np.arange(self._index, self._size), np.arange(self._index)]
             )
             for _ in range(self.stack_num - 2):
                 prev_indices = self.prev(prev_indices)
@@ -306,7 +326,7 @@ class ReplayBuffer:
             else:
                 return all_indices
 
-    def sample(self, batch_size: int) -> Tuple[RolloutBatchProtocol, np.ndarray]:
+    def sample(self, batch_size: int) -> tuple[RolloutBatchProtocol, np.ndarray]:
         """Get a random sample from buffer with size = batch_size.
 
         Return all the data in the buffer if batch_size is 0.
@@ -318,7 +338,7 @@ class ReplayBuffer:
 
     def get(
         self,
-        index: Union[int, List[int], np.ndarray],
+        index: Union[int, list[int], np.ndarray],
         key: str,
         default_value: Any = None,
         stack_num: Optional[int] = None,
@@ -342,13 +362,13 @@ class ReplayBuffer:
         try:
             if stack_num == 1:  # the most often case
                 return val[index]
-            stack: List[Any] = []
+            stack: list[Any] = []
             if isinstance(index, list):
                 indices = np.array(index)
             else:
                 indices = index  # type: ignore
             for _ in range(stack_num):
-                stack = [val[indices]] + stack
+                stack = [val[indices], *stack]
                 indices = self.prev(indices)
             if isinstance(val, Batch):
                 return Batch.stack(stack, axis=indices.ndim)
@@ -360,7 +380,7 @@ class ReplayBuffer:
             return Batch()
 
     def __getitem__(
-        self, index: Union[slice, int, List[int], np.ndarray]
+        self, index: Union[slice, int, list[int], np.ndarray]
     ) -> RolloutBatchProtocol:
         """Return a data batch: self[index].
 
@@ -369,8 +389,11 @@ class ReplayBuffer:
         """
         if isinstance(index, slice):  # change slice to np array
             # buffer[:] will get all available data
-            indices = self.sample_indices(0) if index == slice(None) \
-                else self._indices[:len(self)][index]
+            indices = (
+                self.sample_indices(0)
+                if index == slice(None)
+                else self._indices[: len(self)][index]
+            )
         else:
             indices = index  # type: ignore
         # raise KeyError first instead of AttributeError,
@@ -392,7 +415,7 @@ class ReplayBuffer:
             # TODO: what's the use of this key?
             "policy": self.get(indices, "policy", Batch()),
         }
-        for key in self._meta.__dict__.keys():
+        for key in self._meta.__dict__:
             if key not in self._input_keys:
                 batch_dict[key] = self._meta[key][indices]
         return cast(RolloutBatchProtocol, Batch(batch_dict))

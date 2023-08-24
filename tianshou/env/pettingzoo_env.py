@@ -1,10 +1,11 @@
 import warnings
 from abc import ABC
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
-import pettingzoo
 from gymnasium import spaces
 from packaging import version
+
+import pettingzoo
 from pettingzoo.utils.env import AECEnv
 from pettingzoo.utils.wrappers import BaseWrapper
 
@@ -12,7 +13,8 @@ if version.parse(pettingzoo.__version__) < version.parse("1.21.0"):
     warnings.warn(
         f"You are using PettingZoo {pettingzoo.__version__}. "
         f"Future tianshou versions may not support PettingZoo<1.21.0. "
-        f"Consider upgrading your PettingZoo version.", DeprecationWarning
+        f"Consider upgrading your PettingZoo version.",
+        DeprecationWarning,
     )
 
 
@@ -51,68 +53,71 @@ class PettingZooEnv(AECEnv, ABC):
         # Get first action space, assuming all agents have equal space
         self.action_space: Any = self.env.action_space(self.agents[0])
 
-        assert all(self.env.observation_space(agent) == self.observation_space
-                   for agent in self.agents), \
-            "Observation spaces for all agents must be identical. Perhaps " \
-            "SuperSuit's pad_observations wrapper can help (useage: " \
+        assert all(
+            self.env.observation_space(agent) == self.observation_space
+            for agent in self.agents
+        ), (
+            "Observation spaces for all agents must be identical. Perhaps "
+            "SuperSuit's pad_observations wrapper can help (useage: "
             "`supersuit.aec_wrappers.pad_observations(env)`"
+        )
 
-        assert all(self.env.action_space(agent) == self.action_space
-                   for agent in self.agents), \
-            "Action spaces for all agents must be identical. Perhaps " \
-            "SuperSuit's pad_action_space wrapper can help (useage: " \
+        assert all(
+            self.env.action_space(agent) == self.action_space for agent in self.agents
+        ), (
+            "Action spaces for all agents must be identical. Perhaps "
+            "SuperSuit's pad_action_space wrapper can help (useage: "
             "`supersuit.aec_wrappers.pad_action_space(env)`"
+        )
 
         self.reset()
 
-    def reset(self, *args: Any, **kwargs: Any) -> Tuple[dict, dict]:
+    def reset(self, *args: Any, **kwargs: Any) -> tuple[dict, dict]:
         self.env.reset(*args, **kwargs)
 
         observation, reward, terminated, truncated, info = self.env.last(self)
 
-        if isinstance(observation, dict) and 'action_mask' in observation:
+        if isinstance(observation, dict) and "action_mask" in observation:
             observation_dict = {
-                'agent_id': self.env.agent_selection,
-                'obs': observation['observation'],
-                'mask':
-                [True if obm == 1 else False for obm in observation['action_mask']]
+                "agent_id": self.env.agent_selection,
+                "obs": observation["observation"],
+                "mask": [obm == 1 for obm in observation["action_mask"]],
             }
         else:
             if isinstance(self.action_space, spaces.Discrete):
                 observation_dict = {
-                    'agent_id': self.env.agent_selection,
-                    'obs': observation,
-                    'mask': [True] * self.env.action_space(self.env.agent_selection).n
+                    "agent_id": self.env.agent_selection,
+                    "obs": observation,
+                    "mask": [True] * self.env.action_space(self.env.agent_selection).n,
                 }
             else:
                 observation_dict = {
-                    'agent_id': self.env.agent_selection,
-                    'obs': observation,
+                    "agent_id": self.env.agent_selection,
+                    "obs": observation,
                 }
 
         return observation_dict, info
 
-    def step(self, action: Any) -> Tuple[Dict, List[int], bool, bool, Dict]:
+    def step(self, action: Any) -> tuple[dict, list[int], bool, bool, dict]:
         self.env.step(action)
 
         observation, rew, term, trunc, info = self.env.last()
 
-        if isinstance(observation, dict) and 'action_mask' in observation:
+        if isinstance(observation, dict) and "action_mask" in observation:
             obs = {
-                'agent_id': self.env.agent_selection,
-                'obs': observation['observation'],
-                'mask':
-                [True if obm == 1 else False for obm in observation['action_mask']]
+                "agent_id": self.env.agent_selection,
+                "obs": observation["observation"],
+                "mask": [obm == 1 for obm in observation["action_mask"]],
             }
         else:
             if isinstance(self.action_space, spaces.Discrete):
                 obs = {
-                    'agent_id': self.env.agent_selection,
-                    'obs': observation,
-                    'mask': [True] * self.env.action_space(self.env.agent_selection).n
+                    "agent_id": self.env.agent_selection,
+                    "obs": observation,
+                    "mask": [True] * self.env.action_space(self.env.agent_selection).n,
                 }
             else:
-                obs = {'agent_id': self.env.agent_selection, 'obs': observation}
+                obs = {"agent_id": self.env.agent_selection, "obs": observation}
 
         for agent_id, reward in self.env.rewards.items():
             self.rewards[self.agent_idx[agent_id]] = reward

@@ -58,7 +58,7 @@ def convert_tfevents_to_csv(root_dir, refresh=False):
                 os.path.split(tfevent_file)[0], "test_reward.csv"
             )
             if os.path.exists(output_file) and not refresh:
-                content = list(csv.reader(open(output_file, "r")))
+                content = list(csv.reader(open(output_file)))
                 if content[0] == ["env_step", "reward", "time"]:
                     for i in range(1, len(content)):
                         content[i] = list(map(eval, content[i]))
@@ -76,7 +76,7 @@ def convert_tfevents_to_csv(root_dir, refresh=False):
                         round(test_reward.wall_time - initial_time, 4),
                     ]
                 )
-            csv.writer(open(output_file, 'w')).writerows(content)
+            csv.writer(open(output_file, "w")).writerows(content)
             result[output_file] = content
     return result
 
@@ -91,8 +91,12 @@ def merge_csv(csv_files, root_dir, remove_zero=False):
     sorted_keys = sorted(csv_files.keys())
     sorted_values = [csv_files[k][1:] for k in sorted_keys]
     content = [
-        ["env_step", "reward", "reward:shaded"] +
-        list(map(lambda f: "reward:" + os.path.relpath(f, root_dir), sorted_keys))
+        [
+            "env_step",
+            "reward",
+            "reward:shaded",
+            *["reward:" + os.path.relpath(f, root_dir) for f in sorted_keys],
+        ]
     ]
     for rows in zip(*sorted_values):
         array = np.array(rows)
@@ -108,16 +112,16 @@ def merge_csv(csv_files, root_dir, remove_zero=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--refresh',
+        "--refresh",
         action="store_true",
-        help="Re-generate all csv files instead of using existing one."
+        help="Re-generate all csv files instead of using existing one.",
     )
     parser.add_argument(
-        '--remove-zero',
+        "--remove-zero",
         action="store_true",
-        help="Remove the data point of env_step == 0."
+        help="Remove the data point of env_step == 0.",
     )
-    parser.add_argument('--root-dir', type=str)
+    parser.add_argument("--root-dir", type=str)
     args = parser.parse_args()
 
     csv_files = convert_tfevents_to_csv(args.root_dir, args.refresh)

@@ -17,9 +17,12 @@ mypy:
 	mypy ${PROJECT_NAME}
 
 lint:
-	$(call check_install, flake8)
+	$(call check_install, ruff)
+	$(call check_install, black)
+ 	$(call check_install, pre-commit)
 	$(call check_install_extra, bugbear, flake8_bugbear)
-	flake8 ${PYTHON_FILES} --count --show-source --statistics
+	pre-commit run --all-files --color always black
+	pre-commit run --all-files --color always ruff
 
 format:
 	$(call check_install, isort)

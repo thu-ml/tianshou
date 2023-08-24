@@ -1,4 +1,5 @@
-from typing import List, Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Optional, Union
 
 import numpy as np
 from numba import njit
@@ -23,7 +24,7 @@ class ReplayBufferManager(ReplayBuffer):
     """
 
     def __init__(
-        self, buffer_list: Union[List[ReplayBuffer], List[HERReplayBuffer]]
+        self, buffer_list: Union[list[ReplayBuffer], list[HERReplayBuffer]]
     ) -> None:
         self.buffer_num = len(buffer_list)
         self.buffers = np.array(buffer_list, dtype=object)
@@ -32,11 +33,12 @@ class ReplayBufferManager(ReplayBuffer):
         kwargs = self.buffers[0].options
         for buf in self.buffers:
             assert buf._meta.is_empty()
-            assert isinstance(buf, buffer_type) and buf.options == kwargs
+            assert isinstance(buf, buffer_type)
+            assert buf.options == kwargs
             offset.append(size)
             size += buf.maxsize
         self._offset = np.array(offset)
-        self._extend_offset = np.array(offset + [size])
+        self._extend_offset = np.array([*offset, size])
         self._lengths = np.zeros_like(offset)
         super().__init__(size=size, **kwargs)
         self._compile()
@@ -60,7 +62,7 @@ class ReplayBufferManager(ReplayBuffer):
 
     def _set_batch_for_children(self) -> None:
         for offset, buf in zip(self._offset, self.buffers):
-            buf.set_batch(self._meta[offset:offset + buf.maxsize])
+            buf.set_batch(self._meta[offset : offset + buf.maxsize])
 
     def set_batch(self, batch: RolloutBatchProtocol) -> None:
         super().set_batch(batch)
@@ -77,25 +79,37 @@ class ReplayBufferManager(ReplayBuffer):
     def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
             return _prev_index(
-                np.asarray(index), self._extend_offset, self.done, self.last_index,
-                self._lengths
+                np.asarray(index),
+                self._extend_offset,
+                self.done,
+                self.last_index,
+                self._lengths,
             )
         else:
             return _prev_index(
-                np.array([index]), self._extend_offset, self.done, self.last_index,
-                self._lengths
+                np.array([index]),
+                self._extend_offset,
+                self.done,
+                self.last_index,
+                self._lengths,
             )[0]
 
     def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
             return _next_index(
-                np.asarray(index), self._extend_offset, self.done, self.last_index,
-                self._lengths
+                np.asarray(index),
+                self._extend_offset,
+                self.done,
+                self.last_index,
+                self._lengths,
             )
         else:
             return _next_index(
-                np.array([index]), self._extend_offset, self.done, self.last_index,
-                self._lengths
+                np.array([index]),
+                self._extend_offset,
+                self.done,
+                self.last_index,
+                self._lengths,
             )[0]
 
     def update(self, buffer: ReplayBuffer) -> np.ndarray:
@@ -105,8 +119,8 @@ class ReplayBufferManager(ReplayBuffer):
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into ReplayBufferManager.
 
         Each of the data's length (first dimension) must equal to the length of
@@ -122,8 +136,9 @@ class ReplayBufferManager(ReplayBuffer):
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        assert set(["obs", "act", "rew", "terminated", "truncated",
-                    "done"]).issubset(batch.keys())
+        assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(
+            batch.keys()
+        )
         if self._save_only_last_obs:
             batch.obs = batch.obs[:, -1]
         if not self._save_obs_next:
@@ -154,7 +169,8 @@ class ReplayBufferManager(ReplayBuffer):
             batch.truncated = batch.truncated.astype(bool)
             if self._meta.is_empty():
                 self._meta = create_value(  # type: ignore
-                    batch, self.maxsize, stack=False)
+                    batch, self.maxsize, stack=False
+                )
             else:  # dynamic key pops up in batch
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
             self._set_batch_for_children()
@@ -229,7 +245,7 @@ class HERReplayBufferManager(ReplayBufferManager):
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
-    def __init__(self, buffer_list: List[HERReplayBuffer]) -> None:
+    def __init__(self, buffer_list: list[HERReplayBuffer]) -> None:
         super().__init__(buffer_list)
 
     def _restore_cache(self) -> None:
@@ -251,8 +267,8 @@ class HERReplayBufferManager(ReplayBufferManager):
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         self._restore_cache()
         return super().add(batch, buffer_ids)
 

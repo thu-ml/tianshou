@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import numpy as np
 import torch
@@ -45,8 +45,13 @@ class QRDQNPolicy(DQNPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            model, optim, discount_factor, estimation_step, target_update_freq,
-            reward_normalization, **kwargs
+            model,
+            optim,
+            discount_factor,
+            estimation_step,
+            target_update_freq,
+            reward_normalization,
+            **kwargs,
         )
         assert num_quantiles > 1, "num_quantiles should be greater than 1"
         self._num_quantiles = num_quantiles
@@ -73,8 +78,9 @@ class QRDQNPolicy(DQNPolicy):
     ) -> torch.Tensor:
         return super().compute_q_value(logits.mean(2), mask)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(
+        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
+    ) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -86,9 +92,15 @@ class QRDQNPolicy(DQNPolicy):
         # calculate each element's difference between curr_dist and target_dist
         dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            dist_diff *
-            (self.tau_hat - (target_dist - curr_dist).detach().le(0.).float()).abs()
-        ).sum(-1).mean(1)
+            (
+                dist_diff
+                * (
+                    self.tau_hat - (target_dist - curr_dist).detach().le(0.0).float()
+                ).abs()
+            )
+            .sum(-1)
+            .mean(1)
+        )
         loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130

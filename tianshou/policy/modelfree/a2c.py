@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Optional, cast
 
 import numpy as np
 import torch
@@ -120,9 +120,13 @@ class A2CPolicy(PGPolicy):
     # TODO: mypy complains b/c signature is different from superclass, although
     #  it's compatible. Can this be fixed?
     def learn(  # type: ignore
-        self, batch: RolloutBatchProtocol, batch_size: int,
-        repeat: int, *args: Any, **kwargs: Any
-    ) -> Dict[str, List[float]]:
+        self,
+        batch: RolloutBatchProtocol,
+        batch_size: int,
+        repeat: int,
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, list[float]]:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):

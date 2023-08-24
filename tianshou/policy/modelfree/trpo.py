@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 import torch
 import torch.nn.functional as F
@@ -68,7 +68,7 @@ class TRPOPolicy(NPGPolicy):
 
     def learn(  # type: ignore
         self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
-    ) -> Dict[str, List[float]]:
+    ) -> dict[str, list[float]]:
         actor_losses, vf_losses, step_sizes, kls = [], [], [], []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):
@@ -97,9 +97,11 @@ class TRPOPolicy(NPGPolicy):
 
                 # stepsize: calculate max stepsize constrained by kl bound
                 step_size = torch.sqrt(
-                    2 * self._delta /
-                    (search_direction *
-                     self._MVP(search_direction, flat_kl_grad)).sum(0, keepdim=True)
+                    2
+                    * self._delta
+                    / (
+                        search_direction * self._MVP(search_direction, flat_kl_grad)
+                    ).sum(0, keepdim=True)
                 )
 
                 # stepsize: linesearch stepsize
@@ -113,11 +115,13 @@ class TRPOPolicy(NPGPolicy):
                         # calculate kl and if in bound, loss actually down
                         new_dist = self(minibatch).dist
                         new_dratio = (
-                            (new_dist.log_prob(minibatch.act) -
-                             minibatch.logp_old).exp().float()
+                            (new_dist.log_prob(minibatch.act) - minibatch.logp_old)
+                            .exp()
+                            .float()
                         )
-                        new_dratio = new_dratio.reshape(new_dratio.size(0),
-                                                        -1).transpose(0, 1)
+                        new_dratio = new_dratio.reshape(
+                            new_dratio.size(0), -1
+                        ).transpose(0, 1)
                         new_actor_loss = -(new_dratio * minibatch.adv).mean()
                         kl = kl_divergence(old_dist, new_dist).mean()
 

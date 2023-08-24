@@ -4,7 +4,6 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
-
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.policy import BranchingDQNPolicy
@@ -16,7 +15,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     # task
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument('--reward-threshold', type=float, default=None)
+    parser.add_argument("--reward-threshold", type=float, default=None)
     # network architecture
     parser.add_argument("--common-hidden-sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--action-hidden-sizes", type=int, nargs="*", default=[64])
@@ -39,7 +38,7 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
@@ -101,14 +100,14 @@ def test_bdq(args=get_args()):
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, args.training_num),
-        exploration_noise=True
+        exploration_noise=True,
     )
     test_collector = Collector(policy, test_envs, exploration_noise=False)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
 
     def train_fn(epoch, env_step):  # exp decay
-        eps = max(args.eps_train * (1 - args.eps_decay)**env_step, args.eps_test)
+        eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
         policy.set_eps(eps)
 
     def test_fn(epoch, env_step):

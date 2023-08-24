@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from numbers import Number
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 
-LOG_DATA_TYPE = Dict[str, Union[int, Number, np.number, np.ndarray]]
+LOG_DATA_TYPE = dict[str, Union[int, Number, np.number, np.ndarray]]
 
 
 class BaseLogger(ABC):
@@ -39,7 +39,6 @@ class BaseLogger(ABC):
         :param int step: stands for the ordinate of the data dict.
         :param dict data: the data to write with format ``{key: value}``.
         """
-        pass
 
     def log_train_data(self, collect_result: dict, step: int) -> None:
         """Use writer to log statistics generated during training.
@@ -105,10 +104,9 @@ class BaseLogger(ABC):
         :param function save_checkpoint_fn: a hook defined by user, see trainer
             documentation for detail.
         """
-        pass
 
     @abstractmethod
-    def restore_data(self) -> Tuple[int, int, int]:
+    def restore_data(self) -> tuple[int, int, int]:
         """Return the metadata from existing log.
 
         If it finds nothing or an error occurs during the recover process, it will
@@ -116,7 +114,6 @@ class BaseLogger(ABC):
 
         :return: epoch, env_step, gradient_step.
         """
-        pass
 
 
 class LazyLogger(BaseLogger):
@@ -127,7 +124,6 @@ class LazyLogger(BaseLogger):
 
     def write(self, step_type: str, step: int, data: LOG_DATA_TYPE) -> None:
         """The LazyLogger writes nothing."""
-        pass
 
     def save_data(
         self,
@@ -138,5 +134,5 @@ class LazyLogger(BaseLogger):
     ) -> None:
         pass
 
-    def restore_data(self) -> Tuple[int, int, int]:
+    def restore_data(self) -> tuple[int, int, int]:
         return 0, 0, 0

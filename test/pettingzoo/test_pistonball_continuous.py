@@ -13,11 +13,11 @@ def test_piston_ball_continuous(args=get_args()):
     result, agent = train_agent(args)
     # assert result["best_reward"] >= 30.0
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
         watch(args, agent)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_piston_ball_continuous(get_args())

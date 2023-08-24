@@ -1,0 +1,39 @@
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+
+[tool.mypy]
+files = "tianshou/**/*.py"
+allow_redefinition = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+pretty = true
+show_error_codes = true
+show_error_context = true
+show_traceback = true
+strict_equality = true
+strict_optional = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.doc8]
+max-line-length = 1000
+
+[tool.ruff]
+fix = true
+ignore-init-module-imports = true
+line-length = 88
+select = ["A", "ASYNC", "B", "C4", "C90", "D", "DTZ", "E", "F", "FLY", "I", "ISC", "N", "NPY", "PGH", "PIE", "PLC", "PLE", "PLR", "PLW", "PT", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT"]
+ignore = ["E501", "PGH001", "PGH002", "PGH003", "RET504", "S101"]
+unfixable = ["F401", "F841"]
+src = ["tianshou", "test"]
+target-version = "py39"
+
+[tool.ruff.pydocstyle]
+ignore-decorators = ["D100" ,"D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402"]

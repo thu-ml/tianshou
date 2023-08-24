@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Tuple, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import cloudpickle
 import gymnasium
@@ -11,11 +11,12 @@ if TYPE_CHECKING:
 
 ENV_TYPE = Union[gymnasium.Env, "gym.Env", PettingZooEnv]
 
-gym_new_venv_step_type = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                               np.ndarray]
+gym_new_venv_step_type = tuple[
+    np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
+]
 
 
-class CloudpickleWrapper(object):
+class CloudpickleWrapper:
     """A cloudpickle wrapper used in SubprocVectorEnv."""
 
     def __init__(self, data: Any) -> None:

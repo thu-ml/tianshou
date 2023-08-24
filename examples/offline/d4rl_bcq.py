@@ -8,8 +8,6 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
-
 from examples.offline.utils import load_buffer_d4rl
 from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
@@ -18,6 +16,7 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.continuous import VAE, Critic, Perturbation
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():

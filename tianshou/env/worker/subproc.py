@@ -3,7 +3,7 @@ import time
 from collections import OrderedDict
 from multiprocessing import Array, Pipe, connection
 from multiprocessing.context import Process
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import gymnasium as gym
 import numpy as np
@@ -29,7 +29,7 @@ _NP_TO_CT = {
 class ShArray:
     """Wrapper of multiprocessing Array."""
 
-    def __init__(self, dtype: np.generic, shape: Tuple[int]) -> None:
+    def __init__(self, dtype: np.generic, shape: tuple[int]) -> None:
         self.arr = Array(_NP_TO_CT[dtype.type], int(np.prod(shape)))  # type: ignore
         self.dtype = dtype
         self.shape = shape
@@ -37,8 +37,9 @@ class ShArray:
     def save(self, ndarray: np.ndarray) -> None:
         assert isinstance(ndarray, np.ndarray)
         dst = self.arr.get_obj()
-        dst_np = np.frombuffer(dst,
-                               dtype=self.dtype).reshape(self.shape)  # type: ignore
+        dst_np = np.frombuffer(dst, dtype=self.dtype).reshape(  # type: ignore
+            self.shape
+        )
         np.copyto(dst_np, ndarray)
 
     def get(self) -> np.ndarray:
@@ -63,7 +64,6 @@ def _worker(
     env_fn_wrapper: CloudpickleWrapper,
     obs_bufs: Optional[Union[dict, tuple, ShArray]] = None,
 ) -> None:
-
     def _encode_obs(
         obs: Union[dict, tuple, np.ndarray], buffer: Union[dict, tuple, ShArray]
     ) -> None:
@@ -73,9 +73,8 @@ def _worker(
             for o, b in zip(obs, buffer):
                 _encode_obs(o, b)
         elif isinstance(obs, dict) and isinstance(buffer, dict):
-            for k in obs.keys():
+            for k in obs:
                 _encode_obs(obs[k], buffer[k])
-        return None
 
     parent.close()
     env = env_fn_wrapper.data()
@@ -155,7 +154,6 @@ class SubprocEnvWorker(EnvWorker):
         self.parent_remote.send(["setattr", {"key": key, "value": value}])
 
     def _decode_obs(self) -> Union[dict, tuple, np.ndarray]:
-
         def decode_obs(
             buffer: Optional[Union[dict, tuple, ShArray]]
         ) -> Union[dict, tuple, np.ndarray]:
@@ -172,12 +170,12 @@ class SubprocEnvWorker(EnvWorker):
 
     @staticmethod
     def wait(  # type: ignore
-        workers: List["SubprocEnvWorker"],
+        workers: list["SubprocEnvWorker"],
         wait_num: int,
         timeout: Optional[float] = None,
-    ) -> List["SubprocEnvWorker"]:
+    ) -> list["SubprocEnvWorker"]:
         remain_conns = conns = [x.parent_remote for x in workers]
-        ready_conns: List[connection.Connection] = []
+        ready_conns: list[connection.Connection] = []
         remain_time, t1 = timeout, time.time()
         while len(remain_conns) > 0 and len(ready_conns) < wait_num:
             if timeout:
@@ -198,9 +196,7 @@ class SubprocEnvWorker(EnvWorker):
         else:
             self.parent_remote.send(["step", action])
 
-    def recv(
-        self
-    ) -> Union[gym_new_venv_step_type, Tuple[np.ndarray, dict]]:  # noqa:E125
+    def recv(self) -> Union[gym_new_venv_step_type, tuple[np.ndarray, dict]]:
         result = self.parent_remote.recv()
         if isinstance(result, tuple):
             if len(result) == 2:
@@ -218,7 +214,7 @@ class SubprocEnvWorker(EnvWorker):
                 obs = self._decode_obs()
             return obs
 
-    def reset(self, **kwargs: Any) -> Tuple[np.ndarray, dict]:
+    def reset(self, **kwargs: Any) -> tuple[np.ndarray, dict]:
         if "seed" in kwargs:
             super().seed(kwargs["seed"])
         self.parent_remote.send(["reset", kwargs])
@@ -235,7 +231,7 @@ class SubprocEnvWorker(EnvWorker):
                 obs = self._decode_obs()
             return obs
 
-    def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
+    def seed(self, seed: Optional[int] = None) -> Optional[list[int]]:
         super().seed(seed)
         self.parent_remote.send(["seed", seed])
         return self.parent_remote.recv()

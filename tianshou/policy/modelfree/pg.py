@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union, cast
+from typing import Any, Callable, Literal, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -13,7 +13,7 @@ from tianshou.data.types import (
 from tianshou.policy import BasePolicy
 from tianshou.utils import RunningMeanStd
 
-TDistParams = Union[torch.Tensor, Tuple[torch.Tensor]]
+TDistParams = Union[torch.Tensor, tuple[torch.Tensor]]
 
 
 class PGPolicy(BasePolicy):
@@ -69,7 +69,7 @@ class PGPolicy(BasePolicy):
                     "to deal with unbounded model action space, but find actor model"
                     f"bound action space with max_action={model.max_action}."
                     "Consider using unbounded=True option of the actor model,"
-                    'or set action_scaling to False and action_bound_method to None.'
+                    "or set action_scaling to False and action_bound_method to None."
                 )
         # TODO: why this try/except? warnings is a standard library module
         except Exception:
@@ -111,8 +111,9 @@ class PGPolicy(BasePolicy):
             batch, buffer, indices, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0
         )
         if self._rew_norm:
-            batch.returns = (unnormalized_returns -
-                             self.ret_rms.mean) / np.sqrt(self.ret_rms.var + self._eps)
+            batch.returns = (unnormalized_returns - self.ret_rms.mean) / np.sqrt(
+                self.ret_rms.var + self._eps
+            )
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
@@ -167,9 +168,13 @@ class PGPolicy(BasePolicy):
 
     # TODO: why does mypy complain?
     def learn(  # type: ignore
-        self, batch: RolloutBatchProtocol, batch_size: int,
-        repeat: int, *args: Any, **kwargs: Any
-    ) -> Dict[str, List[float]]:
+        self,
+        batch: RolloutBatchProtocol,
+        batch_size: int,
+        repeat: int,
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, list[float]]:
         losses = []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):

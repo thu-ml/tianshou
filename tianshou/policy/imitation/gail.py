@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 import torch
@@ -121,7 +121,7 @@ class GAILPolicy(PPOPolicy):
 
     def learn(  # type: ignore
         self, batch: RolloutBatchProtocol, batch_size: int, repeat: int, **kwargs: Any
-    ) -> Dict[str, List[float]]:
+    ) -> dict[str, list[float]]:
         # update discriminator
         losses = []
         acc_pis = []

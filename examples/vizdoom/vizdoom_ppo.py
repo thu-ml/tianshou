@@ -2,20 +2,21 @@ import argparse
 import datetime
 import os
 import pprint
+import sys
 
 import numpy as np
 import torch
-from env import make_vizdoom_env
 from network import DQN
-from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
+from torch.optim.lr_scheduler import LambdaLR
+from torch.utils.tensorboard import SummaryWriter
+
+from env import make_vizdoom_env
 
 
 def get_args():
@@ -45,7 +46,7 @@ def get_args():
     parser.add_argument("--norm-adv", type=int, default=1)
     parser.add_argument("--recompute-adv", type=int, default=0)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
@@ -76,7 +77,7 @@ def get_args():
     parser.add_argument(
         "--icm-lr-scale",
         type=float,
-        default=0.,
+        default=0.0,
         help="use intrinsic curiosity module with this lr scale",
     )
     parser.add_argument(
@@ -97,8 +98,13 @@ def get_args():
 def test_ppo(args=get_args()):
     # make environments
     env, train_envs, test_envs = make_vizdoom_env(
-        args.task, args.skip_num, (args.frames_stack, 84, 84), args.save_lmp, args.seed,
-        args.training_num, args.test_num
+        args.task,
+        args.skip_num,
+        (args.frames_stack, 84, 84),
+        args.save_lmp,
+        args.seed,
+        args.training_num,
+        args.test_num,
     )
     args.state_shape = env.observation_space.shape
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -123,9 +129,9 @@ def test_ppo(args=get_args()):
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
-        max_update_num = np.ceil(
-            args.step_per_epoch / args.step_per_collect
-        ) * args.epoch
+        max_update_num = (
+            np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
+        )
 
         lr_scheduler = LambdaLR(
             optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num
@@ -170,8 +176,12 @@ def test_ppo(args=get_args()):
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
         policy = ICMPolicy(
-            policy, icm_net, icm_optim, args.icm_lr_scale, args.icm_reward_scale,
-            args.icm_forward_loss_weight
+            policy,
+            icm_net,
+            icm_optim,
+            args.icm_lr_scale,
+            args.icm_reward_scale,
+            args.icm_forward_loss_weight,
         ).to(args.device)
     # load a previous policy
     if args.resume_path:
@@ -251,7 +261,7 @@ def test_ppo(args=get_args()):
 
     if args.watch:
         watch()
-        exit(0)
+        sys.exit(0)
 
     # test train_collector and start filling replay buffer
     train_collector.collect(n_step=args.batch_size * args.training_num)

@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Tuple, Union, cast
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -26,12 +26,13 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         alpha: float,
         beta: float,
         weight_norm: bool = True,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         # will raise KeyError in PrioritizedVectorReplayBuffer
         # super().__init__(size, **kwargs)
         ReplayBuffer.__init__(self, size, **kwargs)
-        assert alpha > 0.0 and beta >= 0.0
+        assert alpha > 0.0
+        assert beta >= 0.0
         self._alpha, self._beta = alpha, beta
         self._max_prio = self._min_prio = 1.0
         # save weight directly in this class instead of self._meta
@@ -51,8 +52,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         ptr, ep_rew, ep_len, ep_idx = super().add(batch, buffer_ids)
         self.init_weight(ptr)
         return ptr, ep_rew, ep_len, ep_idx
@@ -74,7 +75,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         # important sampling weight calculation
         # original formula: ((p_j/p_sum*N)**(-beta))/((p_min/p_sum*N)**(-beta))
         # simplified formula: (p_j/p_min)**(-beta)
-        return (self.weight[index] / self._min_prio)**(-self._beta)
+        return (self.weight[index] / self._min_prio) ** (-self._beta)
 
     def update_weight(
         self, index: np.ndarray, new_weight: Union[np.ndarray, torch.Tensor]
@@ -90,12 +91,15 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._min_prio = min(self._min_prio, weight.min())
 
     def __getitem__(
-        self, index: Union[slice, int, List[int], np.ndarray]
+        self, index: Union[slice, int, list[int], np.ndarray]
     ) -> PrioBatchProtocol:
         if isinstance(index, slice):  # change slice to np array
             # buffer[:] will get all available data
-            indices = self.sample_indices(0) if index == slice(None) \
-                else self._indices[:len(self)][index]
+            indices = (
+                self.sample_indices(0)
+                if index == slice(None)
+                else self._indices[: len(self)][index]
+            )
         else:
             indices = index  # type: ignore
         batch = super().__getitem__(indices)

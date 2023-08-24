@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import torch
 import torch.nn.functional as F
@@ -71,14 +71,27 @@ class TD3BCPolicy(TD3Policy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim, tau,
-            gamma, exploration_noise, policy_noise, update_actor_freq, noise_clip,
-            reward_normalization, estimation_step, **kwargs
+            actor,
+            actor_optim,
+            critic1,
+            critic1_optim,
+            critic2,
+            critic2_optim,
+            tau,
+            gamma,
+            exploration_noise,
+            policy_noise,
+            update_actor_freq,
+            noise_clip,
+            reward_normalization,
+            estimation_step,
+            **kwargs,
         )
         self._alpha = alpha
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(
+        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
+    ) -> dict[str, float]:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic1, self.critic1_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)

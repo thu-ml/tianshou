@@ -2,17 +2,17 @@ import argparse
 import datetime
 import os
 import pprint
+import sys
 
 import numpy as np
 import torch
 from atari_network import QRDQN
 from atari_wrapper import make_atari_env
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import QRDQNPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -21,7 +21,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--scale-obs", type=int, default=0)
     parser.add_argument("--eps-test", type=float, default=0.005)
-    parser.add_argument("--eps-train", type=float, default=1.)
+    parser.add_argument("--eps-train", type=float, default=1.0)
     parser.add_argument("--eps-train-final", type=float, default=0.05)
     parser.add_argument("--buffer-size", type=int, default=100000)
     parser.add_argument("--lr", type=float, default=0.0001)
@@ -37,7 +37,7 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
@@ -55,7 +55,7 @@ def get_args():
         "--watch",
         default=False,
         action="store_true",
-        help="watch the play of pre-trained policy only"
+        help="watch the play of pre-trained policy only",
     )
     parser.add_argument("--save-buffer-name", type=str, default=None)
     return parser.parse_args()
@@ -88,7 +88,7 @@ def test_qrdqn(args=get_args()):
         args.gamma,
         args.num_quantiles,
         args.n_step,
-        target_update_freq=args.target_update_freq
+        target_update_freq=args.target_update_freq,
     ).to(args.device)
     # load a previous policy
     if args.resume_path:
@@ -101,7 +101,7 @@ def test_qrdqn(args=get_args()):
         buffer_num=len(train_envs),
         ignore_obs_next=True,
         save_only_last_obs=True,
-        stack_num=args.frames_stack
+        stack_num=args.frames_stack,
     )
     # collector
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
@@ -143,8 +143,9 @@ def test_qrdqn(args=get_args()):
     def train_fn(epoch, env_step):
         # nature DQN setting, linear decay in the first 1M steps
         if env_step <= 1e6:
-            eps = args.eps_train - env_step / 1e6 * \
-                (args.eps_train - args.eps_train_final)
+            eps = args.eps_train - env_step / 1e6 * (
+                args.eps_train - args.eps_train_final
+            )
         else:
             eps = args.eps_train_final
         policy.set_eps(eps)
@@ -167,7 +168,7 @@ def test_qrdqn(args=get_args()):
                 buffer_num=len(test_envs),
                 ignore_obs_next=True,
                 save_only_last_obs=True,
-                stack_num=args.frames_stack
+                stack_num=args.frames_stack,
             )
             collector = Collector(policy, test_envs, buffer, exploration_noise=True)
             result = collector.collect(n_step=args.buffer_size)
@@ -183,7 +184,7 @@ def test_qrdqn(args=get_args()):
 
     if args.watch:
         watch()
-        exit(0)
+        sys.exit(0)
 
     # test train_collector and start filling replay buffer
     train_collector.collect(n_step=args.batch_size * args.training_num)

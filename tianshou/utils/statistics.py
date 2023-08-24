@@ -1,11 +1,11 @@
 from numbers import Number
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import torch
 
 
-class MovAvg(object):
+class MovAvg:
     """Class for moving average.
 
     It will automatically exclude the infinity and NaN. Usage:
@@ -27,7 +27,7 @@ class MovAvg(object):
     def __init__(self, size: int = 100) -> None:
         super().__init__()
         self.size = size
-        self.cache: List[np.number] = []
+        self.cache: list[np.number] = []
         self.banned = [np.inf, np.nan, -np.inf]
 
     def add(
@@ -46,7 +46,7 @@ class MovAvg(object):
             if number not in self.banned:
                 self.cache.append(number)
         if self.size > 0 and len(self.cache) > self.size:
-            self.cache = self.cache[-self.size:]
+            self.cache = self.cache[-self.size :]
         return self.get()
 
     def get(self) -> float:
@@ -66,7 +66,7 @@ class MovAvg(object):
         return float(np.std(self.cache))  # type: ignore
 
 
-class RunningMeanStd(object):
+class RunningMeanStd:
     """Calculates the running mean and std of a data stream.
 
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm

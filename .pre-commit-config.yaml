@@ -1,35 +1,30 @@
----
+default_install_hook_types: [commit-msg, pre-commit]
+default_stages: [commit, manual]
+fail_fast: false
 repos:
-  # - repo: local
-  #   hooks:
-  #     - id: mypy
-  #       name: mypy
-  #       entry: mypy
-  #       language: python
-  #       pass_filenames: false
-  #       args: [--config-file=setup.cfg, tianshou]
-
-  - repo: https://github.com/google/yapf
-    rev: v0.32.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
     hooks:
-      - id: yapf
-        args: [-r, -i]
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+      - id: check-added-large-files
+  - repo: local
     hooks:
-      - id: isort
-        name: isort
-
-  - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
-    hooks:
-      - id: flake8
-        args: [--config=setup.cfg, --count, --show-source, --statistics]
-        additional_dependencies: ["flake8_bugbear"]
-
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.1.1
-    hooks:
-      - id: pydocstyle
-        exclude: ^(test/)|(docs/)|(examples/)|(setup.py)
+      - id: ruff
+        name: ruff
+        entry: ruff
+        args: ["--extend-fixable=F401,F841", "--fix-only"]
+        require_serial: true
+        language: system
+        types: [python]
+      - id: black
+        name: black
+        entry: black
+        require_serial: true
+        language: system
+        types: [python]
+      - id: mypy
+        name: mypy
+        entry: mypy
+        # filenames should not be passed as they would collide with the config in pyproject.toml
+        pass_filenames: false
+        files: '^tianshou(/[^/]*)*/[^/]*\.py$'
+        language: system

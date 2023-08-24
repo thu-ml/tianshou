@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import os
 import sys
@@ -9,7 +8,7 @@ from setuptools import find_packages, setup
 
 def get_version() -> str:
     # https://packaging.python.org/guides/single-sourcing-package-version/
-    init = open(os.path.join("tianshou", "__init__.py"), "r").read().split()
+    init = open(os.path.join("tianshou", "__init__.py")).read().split()
     return init[init.index("__version__") + 2][1:-1]
 
 
@@ -31,12 +30,11 @@ def get_extras_require() -> str:
     req = {
         "dev": [
             "sphinx<7",
+            "black",
+            "ruff",
             "sphinx_rtd_theme",
             "jinja2",
-            "sphinxcontrib-bibtex",
-            "flake8",
-            "flake8-bugbear",
-            "yapf",
+            "flake8_bugbearsphinxcontrib-bibtex",
             "isort",
             "pytest",
             "pytest-cov",
@@ -44,7 +42,6 @@ def get_extras_require() -> str:
             "wandb>=0.12.0",
             "networkx",
             "mypy",
-            "pydocstyle",
             "doc8",
             "scipy",
             "pillow",
@@ -74,7 +71,7 @@ setup(
     author="TSAIL",
     author_email="trinkle23897@gmail.com",
     license="MIT",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     classifiers=[
         # How mature is this project? Common values are
         #   3 - Alpha
@@ -89,7 +86,6 @@ setup(
         "License :: OSI Approved :: MIT License",
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",

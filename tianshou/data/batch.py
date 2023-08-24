@@ -1,17 +1,12 @@
 import pprint
 import warnings
-from collections.abc import Collection
+from collections.abc import Collection, Iterable, Iterator, Sequence
 from copy import deepcopy
 from numbers import Number
 from typing import (
     Any,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
     Optional,
     Protocol,
-    Sequence,
     TypeVar,
     Union,
     cast,
@@ -22,7 +17,7 @@ from typing import (
 import numpy as np
 import torch
 
-IndexType = Union[slice, int, np.ndarray, List[int]]
+IndexType = Union[slice, int, np.ndarray, list[int]]
 TBatch = TypeVar("TBatch", bound="BatchProtocol")
 arr_type = Union[torch.Tensor, np.ndarray]
 
@@ -69,8 +64,9 @@ def _is_number(value: Any) -> bool:
 
 
 def _to_array_with_correct_type(obj: Any) -> np.ndarray:
-    if isinstance(obj,
-                  np.ndarray) and issubclass(obj.dtype.type, (np.bool_, np.number)):
+    if isinstance(obj, np.ndarray) and issubclass(
+        obj.dtype.type, (np.bool_, np.number)
+    ):
         return obj  # most often case
     # convert the value to np.ndarray
     # convert to object obj type if neither bool nor number
@@ -96,9 +92,9 @@ def _to_array_with_correct_type(obj: Any) -> np.ndarray:
     return obj_array
 
 
-def create_value(inst: Any,
-                 size: int,
-                 stack: bool = True) -> Union["Batch", np.ndarray, torch.Tensor]:
+def create_value(
+    inst: Any, size: int, stack: bool = True
+) -> Union["Batch", np.ndarray, torch.Tensor]:
     """Create empty place-holders accroding to inst's shape.
 
     :param bool stack: whether to stack or to concatenate. E.g. if inst has shape of
@@ -116,8 +112,9 @@ def create_value(inst: Any,
         shape = (size, *inst.shape) if stack else (size, *inst.shape[1:])
     if isinstance(inst, np.ndarray):
         target_type = (
-            inst.dtype.type if issubclass(inst.dtype.type,
-                                          (np.bool_, np.number)) else object
+            inst.dtype.type
+            if issubclass(inst.dtype.type, (np.bool_, np.number))
+            else object
         )
         return np.full(
             shape, fill_value=None if target_type == object else 0, dtype=target_type
@@ -148,7 +145,9 @@ def _parse_value(obj: Any) -> Optional[Union["Batch", np.ndarray, torch.Tensor]]
         (
             isinstance(obj, np.ndarray)
             and issubclass(obj.dtype.type, (np.bool_, np.number))
-        ) or isinstance(obj, torch.Tensor) or obj is None
+        )
+        or isinstance(obj, torch.Tensor)
+        or obj is None
     ):  # third often case
         return obj
     elif _is_number(obj):  # second often case, but it is more time-consuming
@@ -157,12 +156,13 @@ def _parse_value(obj: Any) -> Optional[Union["Batch", np.ndarray, torch.Tensor]]
         return Batch(obj)
     else:
         if (
-            not isinstance(obj, np.ndarray) and isinstance(obj, Collection)
+            not isinstance(obj, np.ndarray)
+            and isinstance(obj, Collection)
             and len(obj) > 0
             and all(isinstance(element, torch.Tensor) for element in obj)
         ):
             try:
-                obj = cast(List[torch.Tensor], obj)
+                obj = cast(list[torch.Tensor], obj)
                 return torch.stack(obj)
             except RuntimeError as exception:
                 raise TypeError(
@@ -185,17 +185,14 @@ def _parse_value(obj: Any) -> Optional[Union["Batch", np.ndarray, torch.Tensor]]
 
 
 def alloc_by_keys_diff(
-    meta: "BatchProtocol",
-    batch: "BatchProtocol",
-    size: int,
-    stack: bool = True
+    meta: "BatchProtocol", batch: "BatchProtocol", size: int, stack: bool = True
 ) -> None:
     """Creates place-holders inside meta for keys that are in batch but not in meta.
 
     This mainly is an internal method, use it only if you know what you are doing.
     """
-    for key in batch.keys():
-        if key in meta.keys():
+    for key in batch:
+        if key in meta:
             if isinstance(meta[key], Batch) and isinstance(batch[key], Batch):
                 alloc_by_keys_diff(meta[key], batch[key], size, stack)
             elif isinstance(meta[key], Batch) and meta[key].is_empty():
@@ -221,7 +218,10 @@ class BatchProtocol(Protocol):
     """
 
     @property
-    def shape(self) -> List[int]:
+    def shape(self) -> list[int]:
+        ...
+
+    def __iter__(self) -> Iterator[str]:
         ...
 
     def __setattr__(self, key: str, value: Any) -> None:
@@ -386,10 +386,9 @@ class BatchProtocol(Protocol):
     def is_empty(self, recurse: bool = False) -> bool:
         ...
 
-    def split(self: TBatch,
-              size: int,
-              shuffle: bool = True,
-              merge_last: bool = False) -> Iterator[TBatch]:
+    def split(
+        self: TBatch, size: int, shuffle: bool = True, merge_last: bool = False
+    ) -> Iterator[TBatch]:
         """Split whole data into multiple small batches.
 
         :param int size: divide the data batch with the given size, but one
@@ -410,9 +409,9 @@ class Batch(BatchProtocol):
 
     def __init__(
         self,
-        batch_dict: Optional[Union[dict, BatchProtocol, Sequence[Union[dict,
-                                                                       BatchProtocol]],
-                                   np.ndarray]] = None,
+        batch_dict: Optional[
+            Union[dict, BatchProtocol, Sequence[Union[dict, BatchProtocol]], np.ndarray]
+        ] = None,
         copy: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -429,6 +428,10 @@ class Batch(BatchProtocol):
         if len(kwargs) > 0:
             self.__init__(kwargs, copy=copy)  # type: ignore
 
+    def __iter__(self) -> Iterator[str]:
+        """Iterator over the keys of the batch."""
+        return iter(self.__dict__)
+
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
         self.__dict__[key] = _parse_value(value)
@@ -441,7 +444,7 @@ class Batch(BatchProtocol):
         """Return key in self."""
         return key in self.__dict__
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         """Pickling interface.
 
         Only the actual data are serialized for both efficiency and simplicity.
@@ -453,7 +456,7 @@ class Batch(BatchProtocol):
             state[batch_key] = obj
         return state
 
-    def __setstate__(self, state: Dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         """Unpickling interface.
 
         At this point, self is an empty Batch instance that has not been
@@ -596,7 +599,8 @@ class Batch(BatchProtocol):
         for batch_key, obj in self.items():
             if isinstance(obj, torch.Tensor):
                 if (
-                    dtype is not None and obj.dtype != dtype
+                    dtype is not None
+                    and obj.dtype != dtype
                     or obj.device.type != device.type
                     or device.index != obj.device.index
                 ):
@@ -615,7 +619,7 @@ class Batch(BatchProtocol):
                 self.__dict__[batch_key] = obj
 
     def __cat(
-        self: TBatch, batches: Sequence[Union[dict, TBatch]], lens: List[int]
+        self: TBatch, batches: Sequence[Union[dict, TBatch]], lens: list[int]
     ) -> None:
         """Private method for Batch.cat_.
 
@@ -643,10 +647,12 @@ class Batch(BatchProtocol):
             sum_lens.append(sum_lens[-1] + len_)
         # collect non-empty keys
         keys_map = [
-            set(
-                batch_key for batch_key, obj in batch.items()
+            {
+                batch_key
+                for batch_key, obj in batch.items()
                 if not (isinstance(obj, Batch) and obj.is_empty())
-            ) for batch in batches
+            }
+            for batch in batches
         ]
         keys_shared = set.intersection(*keys_map)
         values_shared = [[batch[key] for batch in batches] for key in keys_shared]
@@ -679,10 +685,10 @@ class Batch(BatchProtocol):
                 if isinstance(value, Batch) and value.is_empty():
                     continue
                 try:
-                    self.__dict__[key][sum_lens[i]:sum_lens[i + 1]] = value
+                    self.__dict__[key][sum_lens[i] : sum_lens[i + 1]] = value
                 except KeyError:
                     self.__dict__[key] = create_value(value, sum_lens[-1], stack=False)
-                    self.__dict__[key][sum_lens[i]:sum_lens[i + 1]] = value
+                    self.__dict__[key][sum_lens[i] : sum_lens[i + 1]] = value
 
     def cat_(
         self, batches: Union[BatchProtocol, Sequence[Union[dict, BatchProtocol]]]
@@ -718,8 +724,8 @@ class Batch(BatchProtocol):
                 "concatenation of scalar."
             ) from exception
         if not self.is_empty():
-            batches = [self] + list(batches)
-            lens = [0 if self.is_empty(recurse=True) else len(self)] + lens
+            batches = [self, *list(batches)]
+            lens = [0 if self.is_empty(recurse=True) else len(self), *lens]
         self.__cat(batches, lens)
 
     @staticmethod
@@ -747,13 +753,15 @@ class Batch(BatchProtocol):
             return
         batches = batch_list
         if not self.is_empty():
-            batches = [self] + batches
+            batches = [self, *batches]
         # collect non-empty keys
         keys_map = [
-            set(
-                batch_key for batch_key, obj in batch.items()
+            {
+                batch_key
+                for batch_key, obj in batch.items()
                 if not (isinstance(obj, BatchProtocol) and obj.is_empty())
-            ) for batch in batches
+            }
+            for batch in batches
         ]
         keys_shared = set.intersection(*keys_map)
         values_shared = [[batch[key] for batch in batches] for key in keys_shared]
@@ -906,7 +914,7 @@ class Batch(BatchProtocol):
         )
 
     @property
-    def shape(self) -> List[int]:
+    def shape(self) -> list[int]:
         """Return self.shape."""
         if self.is_empty():
             return []
@@ -919,24 +927,21 @@ class Batch(BatchProtocol):
                     data_shape.append([])
             return (
                 list(map(min, zip(*data_shape)))
-                if len(data_shape) > 1 else data_shape[0]
+                if len(data_shape) > 1
+                else data_shape[0]
             )
 
-    def split(self: TBatch,
-              size: int,
-              shuffle: bool = True,
-              merge_last: bool = False) -> Iterator[TBatch]:
+    def split(
+        self: TBatch, size: int, shuffle: bool = True, merge_last: bool = False
+    ) -> Iterator[TBatch]:
         length = len(self)
         if size == -1:
             size = length
-        assert 1 <= size  # size can be greater than length, return whole batch
-        if shuffle:
-            indices = np.random.permutation(length)
-        else:
-            indices = np.arange(length)
+        assert size >= 1  # size can be greater than length, return whole batch
+        indices = np.random.permutation(length) if shuffle else np.arange(length)
         merge_last = merge_last and length % size > 0
         for idx in range(0, length, size):
             if merge_last and idx + size + size >= length:
                 yield self[indices[idx:]]
                 break
-            yield self[indices[idx:idx + size]]
+            yield self[indices[idx : idx + size]]

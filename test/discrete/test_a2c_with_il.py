@@ -7,14 +7,13 @@ import numpy as np
 import pytest
 import torch
 from gym.spaces import Box
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
+from torch.utils.tensorboard import SummaryWriter
 
 try:
     import envpool
@@ -24,36 +23,36 @@ except ImportError:
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--reward-threshold', type=float, default=None)
-    parser.add_argument('--seed', type=int, default=1)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--il-lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--step-per-epoch', type=int, default=50000)
-    parser.add_argument('--il-step-per-epoch', type=int, default=1000)
-    parser.add_argument('--episode-per-collect', type=int, default=16)
-    parser.add_argument('--step-per-collect', type=int, default=16)
-    parser.add_argument('--update-per-step', type=float, default=1 / 16)
-    parser.add_argument('--repeat-per-collect', type=int, default=1)
-    parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--imitation-hidden-sizes', type=int, nargs='*', default=[128])
-    parser.add_argument('--training-num', type=int, default=16)
-    parser.add_argument('--test-num', type=int, default=100)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--il-lr", type=float, default=1e-3)
+    parser.add_argument("--gamma", type=float, default=0.9)
+    parser.add_argument("--epoch", type=int, default=10)
+    parser.add_argument("--step-per-epoch", type=int, default=50000)
+    parser.add_argument("--il-step-per-epoch", type=int, default=1000)
+    parser.add_argument("--episode-per-collect", type=int, default=16)
+    parser.add_argument("--step-per-collect", type=int, default=16)
+    parser.add_argument("--update-per-step", type=float, default=1 / 16)
+    parser.add_argument("--repeat-per-collect", type=int, default=1)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--imitation-hidden-sizes", type=int, nargs="*", default=[128])
+    parser.add_argument("--training-num", type=int, default=16)
+    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
     # a2c special
-    parser.add_argument('--vf-coef', type=float, default=0.5)
-    parser.add_argument('--ent-coef', type=float, default=0.0)
-    parser.add_argument('--max-grad-norm', type=float, default=None)
-    parser.add_argument('--gae-lambda', type=float, default=1.)
-    parser.add_argument('--rew-norm', action="store_true", default=False)
+    parser.add_argument("--vf-coef", type=float, default=0.5)
+    parser.add_argument("--ent-coef", type=float, default=0.0)
+    parser.add_argument("--max-grad-norm", type=float, default=None)
+    parser.add_argument("--gae-lambda", type=float, default=1.0)
+    parser.add_argument("--rew-norm", action="store_true", default=False)
     args = parser.parse_known_args()[0]
     return args
 
@@ -95,7 +94,7 @@ def test_a2c_with_il(args=get_args()):
         ent_coef=args.ent_coef,
         max_grad_norm=args.max_grad_norm,
         reward_normalization=args.rew_norm,
-        action_space=env.action_space
+        action_space=env.action_space,
     )
     # collector
     train_collector = Collector(
@@ -103,12 +102,12 @@ def test_a2c_with_il(args=get_args()):
     )
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'a2c')
+    log_path = os.path.join(args.logdir, args.task, "a2c")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
@@ -126,11 +125,11 @@ def test_a2c_with_il(args=get_args()):
         episode_per_collect=args.episode_per_collect,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
-        logger=logger
+        logger=logger,
     ).run()
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
@@ -166,11 +165,11 @@ def test_a2c_with_il(args=get_args()):
         batch_size=args.batch_size,
         stop_fn=stop_fn,
         save_best_fn=save_best_fn,
-        logger=logger
+        logger=logger,
     ).run()
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
         env = gym.make(args.task)
@@ -181,5 +180,5 @@ def test_a2c_with_il(args=get_args()):
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_a2c_with_il()

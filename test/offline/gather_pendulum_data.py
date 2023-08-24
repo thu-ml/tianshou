@@ -5,8 +5,6 @@ import pickle
 import gymnasium as gym
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import SACPolicy
@@ -14,6 +12,7 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+from torch.utils.tensorboard import SummaryWriter
 
 
 def expert_file_name():
@@ -22,41 +21,41 @@ def expert_file_name():
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pendulum-v1')
-    parser.add_argument('--reward-threshold', type=float, default=None)
-    parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[128, 128])
-    parser.add_argument('--actor-lr', type=float, default=1e-3)
-    parser.add_argument('--critic-lr', type=float, default=1e-3)
-    parser.add_argument('--epoch', type=int, default=7)
-    parser.add_argument('--step-per-epoch', type=int, default=8000)
-    parser.add_argument('--batch-size', type=int, default=256)
-    parser.add_argument('--training-num', type=int, default=10)
-    parser.add_argument('--test-num', type=int, default=10)
-    parser.add_argument('--step-per-collect', type=int, default=10)
-    parser.add_argument('--update-per-step', type=float, default=0.125)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument("--task", type=str, default="Pendulum-v1")
+    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128])
+    parser.add_argument("--actor-lr", type=float, default=1e-3)
+    parser.add_argument("--critic-lr", type=float, default=1e-3)
+    parser.add_argument("--epoch", type=int, default=7)
+    parser.add_argument("--step-per-epoch", type=int, default=8000)
+    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--training-num", type=int, default=10)
+    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--step-per-collect", type=int, default=10)
+    parser.add_argument("--update-per-step", type=float, default=0.125)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.0)
 
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument("--tau", default=0.005)
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )
-    parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument(
-        '--watch',
+        "--watch",
         default=False,
-        action='store_true',
-        help='watch the play of pre-trained policy only'
+        action="store_true",
+        help="watch the play of pre-trained policy only",
     )
     # sac:
-    parser.add_argument('--alpha', type=float, default=0.2)
-    parser.add_argument('--auto-alpha', type=int, default=1)
-    parser.add_argument('--alpha-lr', type=float, default=3e-4)
-    parser.add_argument('--rew-norm', action="store_true", default=False)
-    parser.add_argument('--n-step', type=int, default=3)
+    parser.add_argument("--alpha", type=float, default=0.2)
+    parser.add_argument("--auto-alpha", type=int, default=1)
+    parser.add_argument("--alpha-lr", type=float, default=3e-4)
+    parser.add_argument("--rew-norm", action="store_true", default=False)
+    parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--save-buffer-name", type=str, default=expert_file_name())
     args = parser.parse_known_args()[0]
     return args
@@ -142,12 +141,12 @@ def gather_data():
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'sac')
+    log_path = os.path.join(args.logdir, args.task, "sac")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -24,11 +24,11 @@ class MultiAgentPolicyManager(BasePolicy):
     """
 
     def __init__(
-        self, policies: List[BasePolicy], env: PettingZooEnv, **kwargs: Any
+        self, policies: list[BasePolicy], env: PettingZooEnv, **kwargs: Any
     ) -> None:
         super().__init__(action_space=env.action_space, **kwargs)
-        assert (
-            len(policies) == len(env.agents)
+        assert len(policies) == len(
+            env.agents
         ), "One policy must be assigned for each agent."
 
         self.agent_idx = env.agent_idx
@@ -55,9 +55,10 @@ class MultiAgentPolicyManager(BasePolicy):
         original reward afterwards.
         """
         results = {}
-        assert isinstance(batch.obs, BatchProtocol), \
-            (f"here only observations of type Batch are permitted, "
-             f"but got {type(batch.obs)}")
+        assert isinstance(batch.obs, BatchProtocol), (
+            f"here only observations of type Batch are permitted, "
+            f"but got {type(batch.obs)}"
+        )
         # reward can be empty Batch (after initial reset) or nparray.
         has_rew = isinstance(buffer.rew, np.ndarray)
         if has_rew:  # save the original reward in save_rew
@@ -74,9 +75,9 @@ class MultiAgentPolicyManager(BasePolicy):
                 tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent]]
                 buffer._meta.rew = save_rew[:, self.agent_idx[agent]]
             if not hasattr(tmp_batch.obs, "mask"):
-                if hasattr(tmp_batch.obs, 'obs'):
+                if hasattr(tmp_batch.obs, "obs"):
                     tmp_batch.obs = tmp_batch.obs.obs
-                if hasattr(tmp_batch.obs_next, 'obs'):
+                if hasattr(tmp_batch.obs_next, "obs"):
                     tmp_batch.obs_next = tmp_batch.obs_next.obs
             results[agent] = policy.process_fn(tmp_batch, buffer, tmp_indice)
         if has_rew:  # restore from save_rew
@@ -87,9 +88,10 @@ class MultiAgentPolicyManager(BasePolicy):
         self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
     ) -> Union[np.ndarray, BatchProtocol]:
         """Add exploration noise from sub-policy onto act."""
-        assert isinstance(batch.obs, BatchProtocol), \
-            (f"here only observations of type Batch are permitted, "
-             f"but got {type(batch.obs)}")
+        assert isinstance(batch.obs, BatchProtocol), (
+            f"here only observations of type Batch are permitted, "
+            f"but got {type(batch.obs)}"
+        )
         for agent_id, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
@@ -128,8 +130,9 @@ class MultiAgentPolicyManager(BasePolicy):
                     "agent_n": xxx}
             }
         """
-        results: List[Tuple[bool, np.ndarray, Batch, Union[np.ndarray, Batch],
-                            Batch]] = []
+        results: list[
+            tuple[bool, np.ndarray, Batch, Union[np.ndarray, Batch], Batch]
+        ] = []
         for agent_id, policy in self.policies.items():
             # This part of code is difficult to understand.
             # Let's follow an example with two agents
@@ -148,31 +151,33 @@ class MultiAgentPolicyManager(BasePolicy):
                 # reward can be empty Batch (after initial reset) or nparray.
                 tmp_batch.rew = tmp_batch.rew[:, self.agent_idx[agent_id]]
             if not hasattr(tmp_batch.obs, "mask"):
-                if hasattr(tmp_batch.obs, 'obs'):
+                if hasattr(tmp_batch.obs, "obs"):
                     tmp_batch.obs = tmp_batch.obs.obs
-                if hasattr(tmp_batch.obs_next, 'obs'):
+                if hasattr(tmp_batch.obs_next, "obs"):
                     tmp_batch.obs_next = tmp_batch.obs_next.obs
             out = policy(
                 batch=tmp_batch,
                 state=None if state is None else state[agent_id],
-                **kwargs
+                **kwargs,
             )
             act = out.act
-            each_state = out.state \
-                if (hasattr(out, "state") and out.state is not None) \
+            each_state = (
+                out.state
+                if (hasattr(out, "state") and out.state is not None)
                 else Batch()
+            )
             results.append((True, agent_index, out, act, each_state))
         holder: Batch = Batch.cat(
             [
-                {
-                    "act": act
-                } for (has_data, agent_index, out, act, each_state) in results
+                {"act": act}
+                for (has_data, agent_index, out, act, each_state) in results
                 if has_data
             ]
         )
         state_dict, out_dict = {}, {}
-        for (agent_id, _), (has_data, agent_index, out, act,
-                            state) in zip(self.policies.items(), results):
+        for (agent_id, _), (has_data, agent_index, out, act, state) in zip(
+            self.policies.items(), results
+        ):
             if has_data:
                 holder.act[agent_index] = act
             state_dict[agent_id] = state
@@ -181,8 +186,9 @@ class MultiAgentPolicyManager(BasePolicy):
         holder["state"] = state_dict
         return holder
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, Union[float, List[float]]]:
+    def learn(
+        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
+    ) -> dict[str, Union[float, list[float]]]:
         """Dispatch the data to all policies for learning.
 
         :return: a dict with the following contents:
