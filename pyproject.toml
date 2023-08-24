@@ -30,10 +30,7 @@ fix = true
 ignore-init-module-imports = true
 line-length = 88
 select = ["A", "ASYNC", "B", "C4", "C90", "D", "DTZ", "E", "F", "FLY", "I", "ISC", "N", "NPY", "PGH", "PIE", "PLC", "PLE", "PLR", "PLW", "PT", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT"]
-ignore = ["E501", "PGH001", "PGH002", "PGH003", "RET504", "S101"]
+ignore = ["E501", "PGH001", "PGH002", "PGH003", "RET504", "S101", "D100", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402"]
 unfixable = ["F401", "F841"]
 src = ["tianshou", "test"]
 target-version = "py39"
-
-[tool.ruff.pydocstyle]
-ignore-decorators = ["D100" ,"D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402"]
