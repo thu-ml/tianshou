@@ -191,8 +191,8 @@ def alloc_by_keys_diff(
 
     This mainly is an internal method, use it only if you know what you are doing.
     """
-    for key in batch:
-        if key in meta:
+    for key in batch.keys():
+        if key in meta.keys():
             if isinstance(meta[key], Batch) and isinstance(batch[key], Batch):
                 alloc_by_keys_diff(meta[key], batch[key], size, stack)
             elif isinstance(meta[key], Batch) and meta[key].is_empty():
@@ -219,9 +219,6 @@ class BatchProtocol(Protocol):
 
     @property
     def shape(self) -> list[int]:
-        ...
-
-    def __iter__(self) -> Iterator[str]:
         ...
 
     def __setattr__(self, key: str, value: Any) -> None:
@@ -427,10 +424,6 @@ class Batch(BatchProtocol):
                 self.stack_(batch_dict)
         if len(kwargs) > 0:
             self.__init__(kwargs, copy=copy)  # type: ignore
-
-    def __iter__(self) -> Iterator[str]:
-        """Iterator over the keys of the batch."""
-        return iter(self.__dict__)
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
