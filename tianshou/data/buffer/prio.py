@@ -1,8 +1,8 @@
 from typing import Any, Optional, Union, cast
 
 import numpy as np
-import torch
 
+import torch
 from tianshou.data import ReplayBuffer, SegmentTree, to_numpy
 from tianshou.data.types import PrioBatchProtocol, RolloutBatchProtocol
 

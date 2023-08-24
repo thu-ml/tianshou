@@ -2,8 +2,9 @@ from collections.abc import Sequence
 from typing import Any, Callable, Optional, Union
 
 import numpy as np
-import torch
 from tianshou.utils.net.discrete import NoisyLinear
+
+import torch
 from torch import nn
 
 

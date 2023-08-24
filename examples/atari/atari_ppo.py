@@ -5,7 +5,6 @@ import pprint
 import sys
 
 import numpy as np
-import torch
 from atari_network import DQN, layer_init, scale_obs
 from atari_wrapper import make_atari_env
 from tianshou.data import Collector, VectorReplayBuffer
@@ -14,6 +13,8 @@ from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
+
+import torch
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 

@@ -1,14 +1,14 @@
 from typing import Any, Union
 
 import numpy as np
+
 import torch
 import torch.nn.functional as F
-from torch.nn.utils import clip_grad_norm_
-
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
 from tianshou.utils.net.continuous import ActorProb
+from torch.nn.utils import clip_grad_norm_
 
 
 class CQLPolicy(SACPolicy):

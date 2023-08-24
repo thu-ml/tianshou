@@ -6,7 +6,6 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
-import torch
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.exploration import GaussianNoise
@@ -15,6 +14,8 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 if __name__ == "__main__":

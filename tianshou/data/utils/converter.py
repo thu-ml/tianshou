@@ -5,8 +5,8 @@ from typing import Any, Optional, Union, no_type_check
 
 import h5py
 import numpy as np
-import torch
 
+import torch
 from tianshou.data.batch import Batch, _parse_value
 
 

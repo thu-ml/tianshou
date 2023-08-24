@@ -34,3 +34,6 @@ ignore = ["SIM118", "E501", "PGH001", "PGH002", "PGH003", "RET504", "S101", "D10
 unfixable = ["F401", "F841"]
 src = ["tianshou", "test"]
 target-version = "py39"
+
+[tool.ruff.isort]
+known-first-party = ["torch"]

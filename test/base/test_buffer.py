@@ -6,7 +6,6 @@ from timeit import timeit
 import h5py
 import numpy as np
 import pytest
-import torch
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
@@ -19,6 +18,8 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.data.utils.converter import to_hdf5
+
+import torch
 
 if __name__ == "__main__":
     from env import MyGoalEnv, MyTestEnv

@@ -8,7 +8,6 @@ import pprint
 import sys
 
 import numpy as np
-import torch
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
@@ -18,6 +17,8 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 

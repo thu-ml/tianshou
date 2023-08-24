@@ -3,12 +3,13 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
-import torch
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.policy import BranchingDQNPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import BranchingNet
+
+import torch
 
 
 def get_args():

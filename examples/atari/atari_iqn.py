@@ -5,7 +5,6 @@ import pprint
 import sys
 
 import numpy as np
-import torch
 from atari_network import DQN
 from atari_wrapper import make_atari_env
 from tianshou.data import Collector, VectorReplayBuffer
@@ -13,6 +12,8 @@ from tianshou.policy import IQNPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.discrete import ImplicitQuantileNetwork
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 

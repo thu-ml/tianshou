@@ -4,7 +4,6 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
-import torch
 from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQNPolicy, ICMPolicy
@@ -12,6 +11,8 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import MLP, Net
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 

@@ -4,11 +4,12 @@ import pprint
 
 import numpy as np
 import pytest
-import torch
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 try:

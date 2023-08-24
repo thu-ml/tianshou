@@ -12,15 +12,15 @@ from typing import (
 
 import gymnasium as gym
 import numpy as np
-import torch
 from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
-from torch import nn
 
+import torch
 from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol, TBatch
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils import MultipleLRSchedulers
+from torch import nn
 
 logger = logging.getLogger(__name__)
 

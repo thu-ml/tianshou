@@ -3,10 +3,10 @@ from collections.abc import Sequence
 from typing import Any, Optional, Union
 
 import numpy as np
-import torch
-from torch import nn
 
+import torch
 from tianshou.utils.net.common import MLP
+from torch import nn
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2

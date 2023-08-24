@@ -4,8 +4,8 @@ from typing import Any, Callable, Optional, Union, cast
 
 import gymnasium as gym
 import numpy as np
-import torch
 
+import torch
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,

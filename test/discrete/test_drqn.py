@@ -4,13 +4,14 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
-import torch
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Recurrent
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 

@@ -5,15 +5,15 @@ import pprint
 import sys
 
 import numpy as np
-import torch
 from network import C51
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import C51Policy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
-from torch.utils.tensorboard import SummaryWriter
 
+import torch
 from env import make_vizdoom_env
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():

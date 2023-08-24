@@ -6,8 +6,9 @@ from itertools import starmap
 import networkx as nx
 import numpy as np
 import pytest
-import torch
 from tianshou.data import Batch, to_numpy, to_torch
+
+import torch
 
 
 def test_batch():

@@ -1,9 +1,9 @@
 from typing import Any, Optional, Union
 
 import numpy as np
+
 import torch
 import torch.nn.functional as F
-
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol

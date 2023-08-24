@@ -3,11 +3,10 @@ from typing import Any, Callable
 
 import torch
 import torch.nn.functional as F
-from torch.distributions import kl_divergence
-
 from tianshou.data import Batch
 from tianshou.policy import NPGPolicy
 from tianshou.policy.modelfree.pg import TDistParams
+from torch.distributions import kl_divergence
 
 
 class TRPOPolicy(NPGPolicy):

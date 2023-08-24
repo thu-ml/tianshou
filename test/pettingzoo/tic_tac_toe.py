@@ -6,7 +6,6 @@ from typing import Optional
 
 import gymnasium
 import numpy as np
-import torch
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
@@ -14,9 +13,10 @@ from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager, Rand
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-from torch.utils.tensorboard import SummaryWriter
 
+import torch
 from pettingzoo.classic import tictactoe_v3
+from torch.utils.tensorboard import SummaryWriter
 
 
 def get_env(render_mode: Optional[str] = None):

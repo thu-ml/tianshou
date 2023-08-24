@@ -1,13 +1,13 @@
 from typing import Any, Optional, Union
 
 import numpy as np
-import torch
-from torch.distributions import Categorical
 
+import torch
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
+from torch.distributions import Categorical
 
 
 class DiscreteSACPolicy(SACPolicy):

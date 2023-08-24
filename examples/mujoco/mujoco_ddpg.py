@@ -6,7 +6,6 @@ import os
 import pprint
 
 import numpy as np
-import torch
 from mujoco_env import make_mujoco_env
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import GaussianNoise
@@ -15,6 +14,8 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 

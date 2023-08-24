@@ -3,10 +3,9 @@ import contextlib
 import os
 from typing import Callable, Optional
 
-from torch.utils.tensorboard import SummaryWriter
-
 from tianshou.utils import BaseLogger, TensorboardLogger
 from tianshou.utils.logger.base import LOG_DATA_TYPE
+from torch.utils.tensorboard import SummaryWriter
 
 with contextlib.suppress(ImportError):
     import wandb

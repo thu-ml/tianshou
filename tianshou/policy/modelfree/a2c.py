@@ -1,15 +1,15 @@
 from typing import Any, Callable, Optional, cast
 
 import numpy as np
+
 import torch
 import torch.nn.functional as F
-from torch import nn
-
 from tianshou.data import ReplayBuffer, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
 from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
+from torch import nn
 
 
 class A2CPolicy(PGPolicy):

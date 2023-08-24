@@ -1,14 +1,14 @@
 from typing import Any, Callable, Optional
 
 import numpy as np
-import torch
-from torch import nn
 
+import torch
 from tianshou.data import ReplayBuffer, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
+from torch import nn
 
 
 class PPOPolicy(A2CPolicy):

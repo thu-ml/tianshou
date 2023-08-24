@@ -1,10 +1,10 @@
 from typing import Any, Callable, Optional
 
 from tensorboard.backend.event_processing import event_accumulator
-from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils.logger.base import LOG_DATA_TYPE, BaseLogger
 from tianshou.utils.warning import deprecation
+from torch.utils.tensorboard import SummaryWriter
 
 
 class TensorboardLogger(BaseLogger):

@@ -2,13 +2,13 @@ from copy import deepcopy
 from typing import Any, Optional, Union
 
 import numpy as np
-import torch
-from torch.distributions import Independent, Normal
 
+import torch
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
+from torch.distributions import Independent, Normal
 
 
 class REDQPolicy(DDPGPolicy):

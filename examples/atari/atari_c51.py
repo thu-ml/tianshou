@@ -5,13 +5,14 @@ import pprint
 import sys
 
 import numpy as np
-import torch
 from atari_network import C51
 from atari_wrapper import make_atari_env
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import C51Policy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 

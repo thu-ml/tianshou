@@ -8,7 +8,6 @@ import pprint
 import d4rl
 import gymnasium as gym
 import numpy as np
-import torch
 from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import GAILPolicy
@@ -16,6 +15,8 @@ from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+
+import torch
 from torch import nn
 from torch.distributions import Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR

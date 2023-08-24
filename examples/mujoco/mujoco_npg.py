@@ -6,7 +6,6 @@ import os
 import pprint
 
 import numpy as np
-import torch
 from mujoco_env import make_mujoco_env
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import NPGPolicy
@@ -14,6 +13,8 @@ from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
+
+import torch
 from torch import nn
 from torch.distributions import Independent, Normal
 from torch.optim.lr_scheduler import LambdaLR

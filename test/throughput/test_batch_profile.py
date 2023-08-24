@@ -3,8 +3,9 @@ import pickle
 
 import numpy as np
 import pytest
-import torch
 from tianshou.data import Batch
+
+import torch
 
 
 @pytest.fixture(scope="module")

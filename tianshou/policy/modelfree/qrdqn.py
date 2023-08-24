@@ -2,9 +2,9 @@ import warnings
 from typing import Any, Optional
 
 import numpy as np
+
 import torch
 import torch.nn.functional as F
-
 from tianshou.data import ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy

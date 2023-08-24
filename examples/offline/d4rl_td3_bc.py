@@ -7,7 +7,6 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
-import torch
 from examples.offline.utils import load_buffer_d4rl, normalize_all_obs_in_replay_buffer
 from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
@@ -17,6 +16,8 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 

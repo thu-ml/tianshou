@@ -3,8 +3,8 @@ from copy import deepcopy
 from typing import Any, Literal, Optional, Union
 
 import numpy as np
-import torch
 
+import torch
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol

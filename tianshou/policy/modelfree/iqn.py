@@ -1,9 +1,9 @@
 from typing import Any, Optional, Union, cast
 
 import numpy as np
+
 import torch
 import torch.nn.functional as F
-
 from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import QuantileRegressionBatchProtocol, RolloutBatchProtocol

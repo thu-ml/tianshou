@@ -9,11 +9,11 @@ from typing import (
 )
 
 import numpy as np
-import torch
-from torch import nn
 
+import torch
 from tianshou.data.batch import Batch
 from tianshou.data.types import RecurrentStateBatch
+from torch import nn
 
 ModuleType = type[nn.Module]
 ArgsType = Union[

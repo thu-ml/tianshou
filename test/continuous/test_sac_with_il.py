@@ -3,13 +3,14 @@ import os
 
 import numpy as np
 import pytest
-import torch
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import ImitationPolicy, SACPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, ActorProb, Critic
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 try:

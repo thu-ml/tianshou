@@ -1,8 +1,8 @@
 from typing import Any, Callable, Literal, Optional, Union, cast
 
 import numpy as np
-import torch
 
+import torch
 from tianshou.data import Batch, ReplayBuffer, to_torch, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (

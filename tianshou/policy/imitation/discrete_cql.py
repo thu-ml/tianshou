@@ -1,9 +1,9 @@
 from typing import Any
 
 import numpy as np
+
 import torch
 import torch.nn.functional as F
-
 from tianshou.data import to_torch
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import QRDQNPolicy

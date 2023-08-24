@@ -1,9 +1,10 @@
 from timeit import timeit
 
 import numpy as np
-import torch
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.policy import BasePolicy
+
+import torch
 
 
 def compute_episodic_return_base(batch, gamma):

@@ -5,7 +5,6 @@ from typing import Any, Optional, Union
 
 import gymnasium as gym
 import numpy as np
-import torch
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
@@ -13,11 +12,12 @@ from tianshou.policy import BasePolicy, MultiAgentPolicyManager, PPOPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.continuous import ActorProb, Critic
+
+import torch
+from pettingzoo.butterfly import pistonball_v6
 from torch import nn
 from torch.distributions import Independent, Normal
 from torch.utils.tensorboard import SummaryWriter
-
-from pettingzoo.butterfly import pistonball_v6
 
 
 class DQN(nn.Module):

@@ -5,7 +5,6 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import pytest
-import torch
 from gym.spaces import Box
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import A2CPolicy, ImitationPolicy
@@ -13,6 +12,8 @@ from tianshou.trainer import OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
+
+import torch
 from torch.utils.tensorboard import SummaryWriter
 
 try:
