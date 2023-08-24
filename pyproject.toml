@@ -1,5 +1,4 @@
 [tool.mypy]
-files = "tianshou/**/*.py"
 allow_redefinition = true
 check_untyped_defs = true
 disallow_incomplete_defs = true
@@ -17,6 +16,7 @@ warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
+exclude = "^build/|^docs/|^test/|^examples/"
 
 [tool.doc8]
 max-line-length = 1000
@@ -24,6 +24,14 @@ max-line-length = 1000
 [tool.black]
 line-length = 100
 target-version = ['py39']
+
+[tool.flake8]
+# copy from https://github.com/psf/black/blob/main/.flake8
+# this is a simplified version of config, making vscode plugin happy
+max-line-length = 100
+max-complexity = 18
+select = ["E", "F", "W", "B", "C4", "ASYNC", "PIE"]
+ignore = ["E402", "E501", "E701", "E731", "E741", "B008", "B011", "B028", "C408"]
 
 [tool.ruff]
 # To customise ruff rules for your project, use the "extend", "extend-select" and "extend-ignore"
