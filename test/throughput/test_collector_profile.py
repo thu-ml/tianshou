@@ -1,5 +1,6 @@
 import numpy as np
 import tqdm
+
 from tianshou.data import AsyncCollector, Batch, Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
@@ -60,16 +61,12 @@ def test_collector_nepisode():
 
 def test_asynccollector():
     env_lens = [2, 3, 4, 5]
-    env_fns = [
-        lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens
-    ]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
 
     venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
     policy = MyPolicy()
     bufsize = 300
-    c1 = AsyncCollector(
-        policy, venv, VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4)
-    )
+    c1 = AsyncCollector(policy, venv, VectorReplayBuffer(total_size=bufsize * 4, buffer_num=4))
     ptr = [0, 0, 0, 0]
     for n_episode in tqdm.trange(1, 100, desc="test async n_episode"):
         result = c1.collect(n_episode=n_episode)

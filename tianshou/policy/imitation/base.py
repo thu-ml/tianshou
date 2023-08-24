@@ -1,9 +1,9 @@
 from typing import Any, Optional, Union, cast
 
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+
 from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ModelOutputBatchProtocol, RolloutBatchProtocol
@@ -51,9 +51,7 @@ class ImitationPolicy(BasePolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *ags: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *ags: Any, **kwargs: Any) -> dict[str, float]:
         self.optim.zero_grad()
         if self.action_type == "continuous":  # regression
             act = self(batch).act

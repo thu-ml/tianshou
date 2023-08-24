@@ -54,9 +54,7 @@ def convert_tfevents_to_csv(root_dir, refresh=False):
     with tqdm.tqdm(tfevent_files) as t:
         for tfevent_file in t:
             t.set_postfix(file=tfevent_file)
-            output_file = os.path.join(
-                os.path.split(tfevent_file)[0], "test_reward.csv"
-            )
+            output_file = os.path.join(os.path.split(tfevent_file)[0], "test_reward.csv")
             if os.path.exists(output_file) and not refresh:
                 content = list(csv.reader(open(output_file)))
                 if content[0] == ["env_step", "reward", "time"]:

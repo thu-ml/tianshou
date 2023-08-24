@@ -23,11 +23,7 @@ class RayEnvWorker(EnvWorker):
     """Ray worker used in RayVectorEnv."""
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
-        self.env = (
-            ray.remote(_SetAttrWrapper)
-            .options(num_cpus=0)  # type: ignore
-            .remote(env_fn())
-        )
+        self.env = ray.remote(_SetAttrWrapper).options(num_cpus=0).remote(env_fn())  # type: ignore
         super().__init__(env_fn)
 
     def get_env_attr(self, key: str) -> Any:

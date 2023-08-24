@@ -7,6 +7,9 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
 from examples.offline.utils import load_buffer_d4rl
 from tianshou.data import Collector
 from tianshou.env import SubprocVectorEnv
@@ -15,9 +18,6 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -70,9 +70,7 @@ def test_il():
     args.action_dim = args.action_shape[0]
     print("Max_action", args.max_action)
 
-    test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -138,9 +136,7 @@ def test_il():
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
-        policy.load_state_dict(
-            torch.load(args.resume_path, map_location=torch.device("cpu"))
-        )
+        policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
         policy.eval()
         collector = Collector(policy, env)
         collector.collect(n_episode=1, render=1 / 35)

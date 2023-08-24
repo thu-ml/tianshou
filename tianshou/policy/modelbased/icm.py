@@ -1,9 +1,9 @@
 from typing import Any, Optional, Union
 
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
@@ -103,9 +103,7 @@ class ICMPolicy(BasePolicy):
         self.policy.post_process_fn(batch, buffer, indices)
         batch.rew = batch.policy.orig_rew  # restore original reward
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         res = self.policy.learn(batch, **kwargs)
         self.optim.zero_grad()
         act_hat = batch.policy.act_hat
@@ -113,8 +111,7 @@ class ICMPolicy(BasePolicy):
         inverse_loss = F.cross_entropy(act_hat, act).mean()
         forward_loss = batch.policy.mse_loss.mean()
         loss = (
-            (1 - self.forward_loss_weight) * inverse_loss
-            + self.forward_loss_weight * forward_loss
+            (1 - self.forward_loss_weight) * inverse_loss + self.forward_loss_weight * forward_loss
         ) * self.lr_scale
         loss.backward()
         self.optim.step()

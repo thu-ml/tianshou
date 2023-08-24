@@ -3,19 +3,9 @@ import warnings
 from collections.abc import Collection, Iterable, Iterator, Sequence
 from copy import deepcopy
 from numbers import Number
-from typing import (
-    Any,
-    Optional,
-    Protocol,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-    runtime_checkable,
-)
+from typing import Any, Optional, Protocol, TypeVar, Union, cast, overload, runtime_checkable
 
 import numpy as np
-
 import torch
 
 IndexType = Union[slice, int, np.ndarray, list[int]]
@@ -33,9 +23,7 @@ def _is_batch_set(obj: Any) -> bool:
         # so do not use obj.tolist()
         if obj.shape == ():
             return False
-        return obj.dtype == object and all(
-            isinstance(element, (dict, Batch)) for element in obj
-        )
+        return obj.dtype == object and all(isinstance(element, (dict, Batch)) for element in obj)
     elif isinstance(obj, (list, tuple)):
         if len(obj) > 0 and all(isinstance(element, (dict, Batch)) for element in obj):
             return True
@@ -65,9 +53,7 @@ def _is_number(value: Any) -> bool:
 
 
 def _to_array_with_correct_type(obj: Any) -> np.ndarray:
-    if isinstance(obj, np.ndarray) and issubclass(
-        obj.dtype.type, (np.bool_, np.number)
-    ):
+    if isinstance(obj, np.ndarray) and issubclass(obj.dtype.type, (np.bool_, np.number)):
         return obj  # most often case
     # convert the value to np.ndarray
     # convert to object obj type if neither bool nor number
@@ -113,13 +99,9 @@ def create_value(
         shape = (size, *inst.shape) if stack else (size, *inst.shape[1:])
     if isinstance(inst, np.ndarray):
         target_type = (
-            inst.dtype.type
-            if issubclass(inst.dtype.type, (np.bool_, np.number))
-            else object
+            inst.dtype.type if issubclass(inst.dtype.type, (np.bool_, np.number)) else object
         )
-        return np.full(
-            shape, fill_value=None if target_type == object else 0, dtype=target_type
-        )
+        return np.full(shape, fill_value=None if target_type == object else 0, dtype=target_type)
     elif isinstance(inst, torch.Tensor):
         return torch.full(shape, fill_value=0, device=inst.device, dtype=inst.dtype)
     elif isinstance(inst, (dict, Batch)):
@@ -134,19 +116,14 @@ def create_value(
 
 
 def _assert_type_keys(keys: Iterable[str]) -> None:
-    assert all(
-        isinstance(key, str) for key in keys
-    ), f"keys should all be string, but got {keys}"
+    assert all(isinstance(key, str) for key in keys), f"keys should all be string, but got {keys}"
 
 
 def _parse_value(obj: Any) -> Optional[Union["Batch", np.ndarray, torch.Tensor]]:
     if isinstance(obj, Batch):  # most often case
         return obj
     elif (
-        (
-            isinstance(obj, np.ndarray)
-            and issubclass(obj.dtype.type, (np.bool_, np.number))
-        )
+        (isinstance(obj, np.ndarray) and issubclass(obj.dtype.type, (np.bool_, np.number)))
         or isinstance(obj, torch.Tensor)
         or obj is None
     ):  # third often case
@@ -372,9 +349,7 @@ class BatchProtocol(Protocol):
         """
         ...
 
-    def update(
-        self, batch: Optional[Union[dict, TBatch]] = None, **kwargs: Any
-    ) -> None:
+    def update(self, batch: Optional[Union[dict, TBatch]] = None, **kwargs: Any) -> None:
         """Update this batch from another dict/Batch."""
         ...
 
@@ -612,9 +587,7 @@ class Batch(BatchProtocol):
                     obj = obj.type(dtype)
                 self.__dict__[batch_key] = obj
 
-    def __cat(
-        self: TBatch, batches: Sequence[Union[dict, TBatch]], lens: list[int]
-    ) -> None:
+    def __cat(self: TBatch, batches: Sequence[Union[dict, TBatch]], lens: list[int]) -> None:
         """Private method for Batch.cat_.
 
         ::
@@ -684,9 +657,7 @@ class Batch(BatchProtocol):
                     self.__dict__[key] = create_value(value, sum_lens[-1], stack=False)
                     self.__dict__[key][sum_lens[i] : sum_lens[i + 1]] = value
 
-    def cat_(
-        self, batches: Union[BatchProtocol, Sequence[Union[dict, BatchProtocol]]]
-    ) -> None:
+    def cat_(self, batches: Union[BatchProtocol, Sequence[Union[dict, BatchProtocol]]]) -> None:
         if isinstance(batches, (BatchProtocol, dict)):
             batches = [batches]
         # check input format
@@ -708,9 +679,7 @@ class Batch(BatchProtocol):
             # x.is_empty(recurse=True) here means x is a nested empty batch
             # like Batch(a=Batch), and we have to treat it as length zero and
             # keep it.
-            lens = [
-                0 if batch.is_empty(recurse=True) else len(batch) for batch in batches
-            ]
+            lens = [0 if batch.is_empty(recurse=True) else len(batch) for batch in batches]
         except TypeError as exception:
             raise ValueError(
                 "Batch.cat_ meets an exception. Maybe because there is any "
@@ -728,9 +697,7 @@ class Batch(BatchProtocol):
         batch.cat_(batches)
         return batch  # type: ignore
 
-    def stack_(
-        self, batches: Sequence[Union[dict, BatchProtocol]], axis: int = 0
-    ) -> None:
+    def stack_(self, batches: Sequence[Union[dict, BatchProtocol]], axis: int = 0) -> None:
         # check input format
         batch_list = []
         for batch in batches:
@@ -768,9 +735,7 @@ class Batch(BatchProtocol):
                 self.__dict__[shared_key] = Batch.stack(value, axis)
             else:  # most often case is np.ndarray
                 try:
-                    self.__dict__[shared_key] = _to_array_with_correct_type(
-                        np.stack(value, axis)
-                    )
+                    self.__dict__[shared_key] = _to_array_with_correct_type(np.stack(value, axis))
                 except ValueError:
                     warnings.warn(
                         "You are using tensors with different shape,"
@@ -845,9 +810,7 @@ class Batch(BatchProtocol):
     def empty(batch: TBatch, index: Optional[IndexType] = None) -> TBatch:
         return deepcopy(batch).empty_(index)
 
-    def update(
-        self, batch: Optional[Union[dict, TBatch]] = None, **kwargs: Any
-    ) -> None:
+    def update(self, batch: Optional[Union[dict, TBatch]] = None, **kwargs: Any) -> None:
         if batch is None:
             self.update(kwargs)
             return
@@ -919,11 +882,7 @@ class Batch(BatchProtocol):
                     data_shape.append(list(obj.shape))
                 except AttributeError:
                     data_shape.append([])
-            return (
-                list(map(min, zip(*data_shape)))
-                if len(data_shape) > 1
-                else data_shape[0]
-            )
+            return list(map(min, zip(*data_shape))) if len(data_shape) > 1 else data_shape[0]
 
     def split(
         self: TBatch, size: int, shuffle: bool = True, merge_last: bool = False

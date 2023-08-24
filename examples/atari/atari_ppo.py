@@ -5,18 +5,18 @@ import pprint
 import sys
 
 import numpy as np
+import torch
 from atari_network import DQN, layer_init, scale_obs
 from atari_wrapper import make_atari_env
+from torch.optim.lr_scheduler import LambdaLR
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
-
-import torch
-from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -118,20 +118,14 @@ def test_ppo(args=get_args()):
     )
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
     critic = Critic(net, device=args.device)
-    optim = torch.optim.Adam(
-        ActorCritic(actor, critic).parameters(), lr=args.lr, eps=1e-5
-    )
+    optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr, eps=1e-5)
 
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
-        max_update_num = (
-            np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
-        )
+        max_update_num = np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
 
-        lr_scheduler = LambdaLR(
-            optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num
-        )
+        lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
     # define policy
     def dist(p):
@@ -158,9 +152,7 @@ def test_ppo(args=get_args()):
         recompute_advantage=args.recompute_adv,
     ).to(args.device)
     if args.icm_lr_scale > 0:
-        feature_net = DQN(
-            *args.state_shape, args.action_shape, args.device, features_only=True
-        )
+        feature_net = DQN(*args.state_shape, args.action_shape, args.device, features_only=True)
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(

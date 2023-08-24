@@ -5,16 +5,16 @@ import pprint
 import sys
 
 import numpy as np
+import torch
 from atari_network import DQN
 from atari_wrapper import make_atari_env
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import DiscreteSACPolicy, ICMPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -136,9 +136,7 @@ def test_discrete_sac(args=get_args()):
         reward_normalization=args.rew_norm,
     ).to(args.device)
     if args.icm_lr_scale > 0:
-        feature_net = DQN(
-            *args.state_shape, args.action_shape, args.device, features_only=True
-        )
+        feature_net = DQN(*args.state_shape, args.action_shape, args.device, features_only=True)
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(

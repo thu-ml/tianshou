@@ -8,6 +8,8 @@ from typing import Union
 import nni.nas.execution.api
 import nni.nas.nn.pytorch as nn
 import pytest
+import torch
+import torch.nn.functional as F
 from nni.nas import strategy
 from nni.nas.execution import wait_models
 from nni.nas.execution.common import (
@@ -21,9 +23,6 @@ from nni.nas.execution.common import (
 )
 from nni.nas.execution.pytorch.converter import convert_to_graph
 from nni.nas.nn.pytorch.mutator import process_inline_mutation
-
-import torch
-import torch.nn.functional as F
 
 
 class MockExecutionEngine(AbstractExecutionEngine):

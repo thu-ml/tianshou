@@ -103,9 +103,7 @@ class ReplayBuffer:
 
     def __setattr__(self, key: str, value: Any) -> None:
         """Set self.key = value."""
-        assert (
-            key not in self._reserved_keys
-        ), f"key '{key}' is reserved and cannot be assigned"
+        assert key not in self._reserved_keys, f"key '{key}' is reserved and cannot be assigned"
         super().__setattr__(key, value)
 
     def save_hdf5(self, path: str, compression: Optional[str] = None) -> None:
@@ -134,8 +132,7 @@ class ReplayBuffer:
     ) -> "ReplayBuffer":
         size = len(obs)
         assert all(
-            len(dset) == size
-            for dset in [obs, act, rew, terminated, truncated, done, obs_next]
+            len(dset) == size for dset in [obs, act, rew, terminated, truncated, done, obs_next]
         ), "Lengths of all hdf5 datasets need to be equal."
         buf = cls(size)
         if size == 0:
@@ -210,9 +207,7 @@ class ReplayBuffer:
             self._size = min(self._size + 1, self.maxsize)
         to_indices = np.array(to_indices)
         if self._meta.is_empty():
-            self._meta = create_value(  # type: ignore
-                buffer._meta, self.maxsize, stack=False
-            )
+            self._meta = create_value(buffer._meta, self.maxsize, stack=False)  # type: ignore
         self._meta[to_indices] = buffer._meta[from_indices]
         return to_indices
 
@@ -271,17 +266,13 @@ class ReplayBuffer:
         if not self._save_obs_next:
             batch.pop("obs_next", None)
         elif self._save_only_last_obs:
-            batch.obs_next = (
-                batch.obs_next[:, -1] if stacked_batch else batch.obs_next[-1]
-            )
+            batch.obs_next = batch.obs_next[:, -1] if stacked_batch else batch.obs_next[-1]
         # get ptr
         if stacked_batch:
             rew, done = batch.rew[0], batch.done[0]
         else:
             rew, done = batch.rew, batch.done
-        ptr, ep_rew, ep_len, ep_idx = (
-            np.array([x]) for x in self._add_index(rew, done)
-        )
+        ptr, ep_rew, ep_len, ep_idx = (np.array([x]) for x in self._add_index(rew, done))
         try:
             self._meta[ptr] = batch
         except ValueError:
@@ -307,9 +298,7 @@ class ReplayBuffer:
             if batch_size > 0:
                 return np.random.choice(self._size, batch_size)
             elif batch_size == 0:  # construct current available indices
-                return np.concatenate(
-                    [np.arange(self._index, self._size), np.arange(self._index)]
-                )
+                return np.concatenate([np.arange(self._index, self._size), np.arange(self._index)])
             else:
                 return np.array([], int)
         else:
@@ -379,9 +368,7 @@ class ReplayBuffer:
                 raise exception  # val != Batch()
             return Batch()
 
-    def __getitem__(
-        self, index: Union[slice, int, list[int], np.ndarray]
-    ) -> RolloutBatchProtocol:
+    def __getitem__(self, index: Union[slice, int, list[int], np.ndarray]) -> RolloutBatchProtocol:
         """Return a data batch: self[index].
 
         If stack_num is larger than 1, return the stacked obs and obs_next with shape

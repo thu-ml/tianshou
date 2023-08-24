@@ -23,13 +23,9 @@ class MultiAgentPolicyManager(BasePolicy):
     :ref:`marl_example` can help you better understand this procedure.
     """
 
-    def __init__(
-        self, policies: list[BasePolicy], env: PettingZooEnv, **kwargs: Any
-    ) -> None:
+    def __init__(self, policies: list[BasePolicy], env: PettingZooEnv, **kwargs: Any) -> None:
         super().__init__(action_space=env.action_space, **kwargs)
-        assert len(policies) == len(
-            env.agents
-        ), "One policy must be assigned for each agent."
+        assert len(policies) == len(env.agents), "One policy must be assigned for each agent."
 
         self.agent_idx = env.agent_idx
         for i, policy in enumerate(policies):
@@ -56,8 +52,7 @@ class MultiAgentPolicyManager(BasePolicy):
         """
         results = {}
         assert isinstance(batch.obs, BatchProtocol), (
-            f"here only observations of type Batch are permitted, "
-            f"but got {type(batch.obs)}"
+            f"here only observations of type Batch are permitted, " f"but got {type(batch.obs)}"
         )
         # reward can be empty Batch (after initial reset) or nparray.
         has_rew = isinstance(buffer.rew, np.ndarray)
@@ -89,16 +84,13 @@ class MultiAgentPolicyManager(BasePolicy):
     ) -> Union[np.ndarray, BatchProtocol]:
         """Add exploration noise from sub-policy onto act."""
         assert isinstance(batch.obs, BatchProtocol), (
-            f"here only observations of type Batch are permitted, "
-            f"but got {type(batch.obs)}"
+            f"here only observations of type Batch are permitted, " f"but got {type(batch.obs)}"
         )
         for agent_id, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
                 continue
-            act[agent_index] = policy.exploration_noise(
-                act[agent_index], batch[agent_index]
-            )
+            act[agent_index] = policy.exploration_noise(act[agent_index], batch[agent_index])
         return act
 
     def forward(  # type: ignore
@@ -130,9 +122,7 @@ class MultiAgentPolicyManager(BasePolicy):
                     "agent_n": xxx}
             }
         """
-        results: list[
-            tuple[bool, np.ndarray, Batch, Union[np.ndarray, Batch], Batch]
-        ] = []
+        results: list[tuple[bool, np.ndarray, Batch, Union[np.ndarray, Batch], Batch]] = []
         for agent_id, policy in self.policies.items():
             # This part of code is difficult to understand.
             # Let's follow an example with two agents
@@ -161,18 +151,10 @@ class MultiAgentPolicyManager(BasePolicy):
                 **kwargs,
             )
             act = out.act
-            each_state = (
-                out.state
-                if (hasattr(out, "state") and out.state is not None)
-                else Batch()
-            )
+            each_state = out.state if (hasattr(out, "state") and out.state is not None) else Batch()
             results.append((True, agent_index, out, act, each_state))
         holder: Batch = Batch.cat(
-            [
-                {"act": act}
-                for (has_data, agent_index, out, act, each_state) in results
-                if has_data
-            ]
+            [{"act": act} for (has_data, agent_index, out, act, each_state) in results if has_data]
         )
         state_dict, out_dict = {}, {}
         for (agent_id, _), (has_data, agent_index, out, act, state) in zip(

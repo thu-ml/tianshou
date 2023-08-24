@@ -2,9 +2,9 @@ import copy
 from typing import Any, Optional, Union
 
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+
 from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
@@ -129,9 +129,7 @@ class BCQPolicy(BasePolicy):
         self.soft_update(self.critic2_target, self.critic2, self.tau)
         self.soft_update(self.actor_target, self.actor, self.tau)
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
@@ -162,9 +160,9 @@ class BCQPolicy(BasePolicy):
             target_Q2 = self.critic2_target(obs_next, act_next)
 
             # Clipped Double Q-learning
-            target_Q = self.lmbda * torch.min(target_Q1, target_Q2) + (
-                1 - self.lmbda
-            ) * torch.max(target_Q1, target_Q2)
+            target_Q = self.lmbda * torch.min(target_Q1, target_Q2) + (1 - self.lmbda) * torch.max(
+                target_Q1, target_Q2
+            )
             # now target_Q: (num_sampled_action * batch_size, 1)
 
             # the max value of Q
@@ -172,8 +170,7 @@ class BCQPolicy(BasePolicy):
             # now target_Q: (batch_size, 1)
 
             target_Q = (
-                batch.rew.reshape(-1, 1)
-                + (1 - batch.done).reshape(-1, 1) * self.gamma * target_Q
+                batch.rew.reshape(-1, 1) + (1 - batch.done).reshape(-1, 1) * self.gamma * target_Q
             )
 
         current_Q1 = self.critic1(obs, act)

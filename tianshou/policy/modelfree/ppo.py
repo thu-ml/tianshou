@@ -1,14 +1,14 @@
 from typing import Any, Callable, Optional
 
 import numpy as np
-
 import torch
+from torch import nn
+
 from tianshou.data import ReplayBuffer, to_torch_as
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
 from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
-from torch import nn
 
 
 class PPOPolicy(A2CPolicy):
@@ -116,18 +116,11 @@ class PPOPolicy(A2CPolicy):
                 dist = self(minibatch).dist
                 if self._norm_adv:
                     mean, std = minibatch.adv.mean(), minibatch.adv.std()
-                    minibatch.adv = (minibatch.adv - mean) / (
-                        std + self._eps
-                    )  # per-batch norm
-                ratio = (
-                    (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
-                )
+                    minibatch.adv = (minibatch.adv - mean) / (std + self._eps)  # per-batch norm
+                ratio = (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 surr1 = ratio * minibatch.adv
-                surr2 = (
-                    ratio.clamp(1.0 - self._eps_clip, 1.0 + self._eps_clip)
-                    * minibatch.adv
-                )
+                surr2 = ratio.clamp(1.0 - self._eps_clip, 1.0 + self._eps_clip) * minibatch.adv
                 if self._dual_clip:
                     clip1 = torch.min(surr1, surr2)
                     clip2 = torch.max(clip1, self._dual_clip * minibatch.adv)
@@ -147,9 +140,7 @@ class PPOPolicy(A2CPolicy):
                     vf_loss = (minibatch.returns - value).pow(2).mean()
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
-                loss = (
-                    clip_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
-                )
+                loss = clip_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
                 if self._grad_norm:  # clip large gradient

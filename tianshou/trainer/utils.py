@@ -81,9 +81,7 @@ def gather_info(
     if train_collector is not None:
         model_time = max(0, model_time - train_collector.collect_time)
         if test_collector is not None:
-            train_speed = train_collector.collect_step / (
-                duration - test_collector.collect_time
-            )
+            train_speed = train_collector.collect_step / (duration - test_collector.collect_time)
         else:
             train_speed = train_collector.collect_step / duration
         result.update(

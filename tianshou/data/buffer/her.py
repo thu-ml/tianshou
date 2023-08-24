@@ -133,9 +133,7 @@ class HERReplayBuffer(ReplayBuffer):
         unique_ep_open_indices = np.sort(np.unique(terminal, return_index=True)[1])
         unique_ep_indices = indices[:, unique_ep_open_indices]
         #   close indices are used to find max future_t among presented episodes
-        unique_ep_close_indices = np.hstack(
-            [(unique_ep_open_indices - 1)[1:], len(terminal) - 1]
-        )
+        unique_ep_close_indices = np.hstack([(unique_ep_open_indices - 1)[1:], len(terminal) - 1])
         #   episode indices that will be altered
         her_ep_indices = np.random.choice(
             len(unique_ep_open_indices),
@@ -162,22 +160,16 @@ class HERReplayBuffer(ReplayBuffer):
             future_obs = self[self.next(future_t[unique_ep_close_indices])].obs
 
         # Re-assign goals and rewards via broadcast assignment
-        ep_obs.desired_goal[:, her_ep_indices] = future_obs.achieved_goal[
-            None, her_ep_indices
-        ]
+        ep_obs.desired_goal[:, her_ep_indices] = future_obs.achieved_goal[None, her_ep_indices]
         if self._save_obs_next:
             ep_obs_next.desired_goal[:, her_ep_indices] = future_obs.achieved_goal[
                 None, her_ep_indices
             ]
-            ep_rew[:, her_ep_indices] = self._compute_reward(ep_obs_next)[
-                :, her_ep_indices
-            ]
+            ep_rew[:, her_ep_indices] = self._compute_reward(ep_obs_next)[:, her_ep_indices]
         else:
             tmp_ep_obs_next = self[self.next(unique_ep_indices)].obs
             assert isinstance(tmp_ep_obs_next, BatchProtocol)
-            ep_rew[:, her_ep_indices] = self._compute_reward(tmp_ep_obs_next)[
-                :, her_ep_indices
-            ]
+            ep_rew[:, her_ep_indices] = self._compute_reward(tmp_ep_obs_next)[:, her_ep_indices]
 
         # Sanity check
         assert ep_obs.desired_goal.shape[:2] == unique_ep_indices.shape

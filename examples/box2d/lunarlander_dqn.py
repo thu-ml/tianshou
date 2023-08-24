@@ -4,15 +4,15 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import DQNPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -33,12 +33,8 @@ def get_args():
     parser.add_argument("--update-per-step", type=float, default=0.0625)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128])
-    parser.add_argument(
-        "--dueling-q-hidden-sizes", type=int, nargs="*", default=[128, 128]
-    )
-    parser.add_argument(
-        "--dueling-v-hidden-sizes", type=int, nargs="*", default=[128, 128]
-    )
+    parser.add_argument("--dueling-q-hidden-sizes", type=int, nargs="*", default=[128, 128])
+    parser.add_argument("--dueling-v-hidden-sizes", type=int, nargs="*", default=[128, 128])
     parser.add_argument("--training-num", type=int, default=16)
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
@@ -55,13 +51,9 @@ def test_dqn(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)]
-    )
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)

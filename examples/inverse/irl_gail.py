@@ -8,6 +8,12 @@ import pprint
 import d4rl
 import gymnasium as gym
 import numpy as np
+import torch
+from torch import nn
+from torch.distributions import Independent, Normal
+from torch.optim.lr_scheduler import LambdaLR
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import GAILPolicy
@@ -15,12 +21,6 @@ from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
-
-import torch
-from torch import nn
-from torch.distributions import Independent, Normal
-from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.tensorboard import SummaryWriter
 
 
 class NoRewardEnv(gym.RewardWrapper):
@@ -117,9 +117,7 @@ def test_gail(args=get_args()):
         activation=nn.Tanh,
         device=args.device,
     )
-    actor = ActorProb(net_a, args.action_shape, unbounded=True, device=args.device).to(
-        args.device
-    )
+    actor = ActorProb(net_a, args.action_shape, unbounded=True, device=args.device).to(args.device)
     net_c = Net(
         args.state_shape,
         hidden_sizes=args.hidden_sizes,
@@ -162,13 +160,9 @@ def test_gail(args=get_args()):
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
-        max_update_num = (
-            np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
-        )
+        max_update_num = np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
 
-        lr_scheduler = LambdaLR(
-            optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num
-        )
+        lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
     def dist(*logits):
         return Independent(Normal(*logits), 1)

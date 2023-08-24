@@ -2,9 +2,9 @@ import math
 from typing import Any, Optional, Union, cast
 
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.types import ImitationBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
@@ -108,14 +108,10 @@ class DiscreteBCQPolicy(DQNPolicy):
         mask = (ratio < self._log_tau).float()
         act = (q_value - np.inf * mask).argmax(dim=-1)
 
-        result = Batch(
-            act=act, state=state, q_value=q_value, imitation_logits=imitation_logits
-        )
+        result = Batch(act=act, state=state, q_value=q_value, imitation_logits=imitation_logits)
         return cast(ImitationBatchProtocol, result)
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._iter % self._freq == 0:
             self.sync_weight()
         self._iter += 1

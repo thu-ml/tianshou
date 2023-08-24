@@ -47,7 +47,6 @@ def get_extras_require() -> str:
             "pygame>=2.1.0",  # pettingzoo test cases pistonball
             "pymunk>=6.2.1",  # pettingzoo test cases pistonball
             "nni>=2.3,<3.0",  # expect breaking changes at next major version
-            "pytorch_lightning",
             "gym>=0.22.0",
             "shimmy",
         ],
@@ -90,9 +89,7 @@ setup(
         "Programming Language :: Python :: 3.11",
     ],
     keywords="reinforcement learning platform pytorch",
-    packages=find_packages(
-        exclude=["test", "test.*", "examples", "examples.*", "docs", "docs.*"]
-    ),
+    packages=find_packages(exclude=["test", "test.*", "examples", "examples.*", "docs", "docs.*"]),
     install_requires=get_install_requires(),
     extras_require=get_extras_require(),
 )

@@ -5,8 +5,8 @@ from typing import Any, Optional, Union, no_type_check
 
 import h5py
 import numpy as np
-
 import torch
+
 from tianshou.data.batch import Batch, _parse_value
 
 
@@ -80,9 +80,7 @@ Hdf5ConvertibleValues = Union[
 Hdf5ConvertibleType = dict[str, Hdf5ConvertibleValues]
 
 
-def to_hdf5(
-    x: Hdf5ConvertibleType, y: h5py.Group, compression: Optional[str] = None
-) -> None:
+def to_hdf5(x: Hdf5ConvertibleType, y: h5py.Group, compression: Optional[str] = None) -> None:
     """Copy object into HDF5 group."""
 
     def to_hdf5_via_pickle(

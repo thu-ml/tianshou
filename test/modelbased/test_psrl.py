@@ -4,13 +4,13 @@ import pprint
 
 import numpy as np
 import pytest
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import PSRLPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import LazyLogger, TensorboardLogger, WandbLogger
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 try:
     import envpool
@@ -48,17 +48,11 @@ def get_args():
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_psrl(args=get_args()):
     # if you want to use python vector env, please refer to other test scripts
-    train_envs = env = envpool.make_gymnasium(
-        args.task, num_envs=args.training_num, seed=args.seed
-    )
-    test_envs = envpool.make_gymnasium(
-        args.task, num_envs=args.test_num, seed=args.seed
-    )
+    train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
+    test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
     if args.reward_threshold is None:
         default_reward_threshold = {"NChain-v0": 3400}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     print("reward threshold:", args.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -89,9 +83,7 @@ def test_psrl(args=get_args()):
     test_collector = Collector(policy, test_envs)
     # Logger
     if args.logger == "wandb":
-        logger = WandbLogger(
-            save_interval=1, project="psrl", name="wandb_test", config=args
-        )
+        logger = WandbLogger(save_interval=1, project="psrl", name="wandb_test", config=args)
     if args.logger != "none":
         log_path = os.path.join(args.logdir, args.task, "psrl")
         writer = SummaryWriter(log_path)

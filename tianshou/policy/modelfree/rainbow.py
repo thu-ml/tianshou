@@ -32,9 +32,7 @@ class RainbowPolicy(C51Policy):
         explanation.
     """
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         sample_noise(self.model)
         if self._target and sample_noise(self.model_old):
             self.model_old.train()  # so that NoisyLinear takes effect

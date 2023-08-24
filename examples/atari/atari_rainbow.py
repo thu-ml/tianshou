@@ -5,15 +5,15 @@ import pprint
 import sys
 
 import numpy as np
+import torch
 from atari_network import Rainbow
 from atari_wrapper import make_atari_env
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
 from tianshou.policy import RainbowPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -177,9 +177,7 @@ def test_rainbow(args=get_args()):
     def train_fn(epoch, env_step):
         # nature DQN setting, linear decay in the first 1M steps
         if env_step <= 1e6:
-            eps = args.eps_train - env_step / 1e6 * (
-                args.eps_train - args.eps_train_final
-            )
+            eps = args.eps_train - env_step / 1e6 * (args.eps_train - args.eps_train_final)
         else:
             eps = args.eps_train_final
         policy.set_eps(eps)
@@ -187,9 +185,7 @@ def test_rainbow(args=get_args()):
             logger.write("train/env_step", env_step, {"train/eps": eps})
         if not args.no_priority:
             if env_step <= args.beta_anneal_step:
-                beta = args.beta - env_step / args.beta_anneal_step * (
-                    args.beta - args.beta_final
-                )
+                beta = args.beta - env_step / args.beta_anneal_step * (args.beta - args.beta_final)
             else:
                 beta = args.beta_final
             buffer.set_beta(beta)

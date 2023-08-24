@@ -1,13 +1,13 @@
 from typing import Any, Optional, Union
 
 import numpy as np
-
 import torch
+from torch.distributions import Categorical
+
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
-from torch.distributions import Categorical
 
 
 class DiscreteSACPolicy(SACPolicy):
@@ -101,14 +101,10 @@ class DiscreteSACPolicy(SACPolicy):
         target_q = target_q.sum(dim=-1) + self._alpha * dist.entropy()
         return target_q
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         weight = batch.pop("weight", 1.0)
         target_q = batch.returns.flatten()
-        act = to_torch(
-            batch.act[:, np.newaxis], device=target_q.device, dtype=torch.long
-        )
+        act = to_torch(batch.act[:, np.newaxis], device=target_q.device, dtype=torch.long)
 
         # critic 1
         current_q1 = self.critic1(batch.obs).gather(1, act).flatten()

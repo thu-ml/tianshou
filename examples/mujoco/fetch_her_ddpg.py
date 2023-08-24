@@ -46,9 +46,7 @@ def get_args():
     parser.add_argument("--update-per-step", type=int, default=1)
     parser.add_argument("--n-step", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=512)
-    parser.add_argument(
-        "--replay-buffer", type=str, default="her", choices=["normal", "her"]
-    )
+    parser.add_argument("--replay-buffer", type=str, default="her", choices=["normal", "her"])
     parser.add_argument("--her-horizon", type=int, default=50)
     parser.add_argument("--her-future-k", type=int, default=8)
     parser.add_argument("--training-num", type=int, default=1)
@@ -112,9 +110,7 @@ def test_ddpg(args=get_args()):
     else:  # wandb
         logger.load(writer)
 
-    env, train_envs, test_envs = make_fetch_env(
-        args.task, args.training_num, args.test_num
-    )
+    env, train_envs, test_envs = make_fetch_env(args.task, args.training_num, args.test_num)
     args.state_shape = {
         "observation": env.observation_space["observation"].shape,
         "achieved_goal": env.observation_space["achieved_goal"].shape,

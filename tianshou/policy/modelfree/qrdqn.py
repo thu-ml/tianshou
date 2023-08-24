@@ -2,9 +2,9 @@ import warnings
 from typing import Any, Optional
 
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+
 from tianshou.data import ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
@@ -73,14 +73,10 @@ class QRDQNPolicy(DQNPolicy):
         next_dist = next_dist[np.arange(len(act)), act, :]
         return next_dist  # shape: [bsz, num_quantiles]
 
-    def compute_q_value(
-        self, logits: torch.Tensor, mask: Optional[np.ndarray]
-    ) -> torch.Tensor:
+    def compute_q_value(self, logits: torch.Tensor, mask: Optional[np.ndarray]) -> torch.Tensor:
         return super().compute_q_value(logits.mean(2), mask)
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -92,12 +88,7 @@ class QRDQNPolicy(DQNPolicy):
         # calculate each element's difference between curr_dist and target_dist
         dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            (
-                dist_diff
-                * (
-                    self.tau_hat - (target_dist - curr_dist).detach().le(0.0).float()
-                ).abs()
-            )
+            (dist_diff * (self.tau_hat - (target_dist - curr_dist).detach().le(0.0).float()).abs())
             .sum(-1)
             .mean(1)
         )

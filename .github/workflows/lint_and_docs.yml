@@ -24,11 +24,10 @@ jobs:
       - name: Lint
         run: |
           python -m pip install pre-commit
-          pre-commit run --all-files --color always black
-          pre-commit run --all-files --color always ruff
+          make lint
       - name: Type check
         run: |
-          mypy
+          make mypy
       - name: Test spelling
         run: |
           make spelling

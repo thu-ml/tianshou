@@ -3,8 +3,8 @@ from copy import deepcopy
 from typing import Any, Literal, Optional, Union
 
 import numpy as np
-
 import torch
+
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
@@ -185,9 +185,7 @@ class DDPGPolicy(BasePolicy):
         optimizer.step()
         return td, critic_loss
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         # critic
         td, critic_loss = self._mse_optimizer(batch, self.critic, self.critic_optim)
         batch.weight = td  # prio-buffer

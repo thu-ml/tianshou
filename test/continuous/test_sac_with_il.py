@@ -3,15 +3,15 @@ import os
 
 import numpy as np
 import pytest
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import ImitationPolicy, SACPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, ActorProb, Critic
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 try:
     import envpool
@@ -40,9 +40,7 @@ def get_args():
     parser.add_argument("--update-per-step", type=float, default=0.1)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128])
-    parser.add_argument(
-        "--imitation-hidden-sizes", type=int, nargs="*", default=[128, 128]
-    )
+    parser.add_argument("--imitation-hidden-sizes", type=int, nargs="*", default=[128, 128])
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
@@ -59,29 +57,21 @@ def get_args():
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_sac_with_il(args=get_args()):
     # if you want to use python vector env, please refer to other test scripts
-    train_envs = env = envpool.make_gymnasium(
-        args.task, num_envs=args.training_num, seed=args.seed
-    )
-    test_envs = envpool.make_gymnasium(
-        args.task, num_envs=args.test_num, seed=args.seed
-    )
+    train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
+    test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # you can also use tianshou.env.SubprocVectorEnv
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(net, args.action_shape, device=args.device, unbounded=True).to(
-        args.device
-    )
+    actor = ActorProb(net, args.action_shape, device=args.device, unbounded=True).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c1 = Net(
         args.state_shape,

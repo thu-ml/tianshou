@@ -4,6 +4,7 @@ import cv2
 import gymnasium as gym
 import numpy as np
 import vizdoom as vzd
+
 from tianshou.env import ShmemVectorEnv
 
 try:
@@ -48,9 +49,7 @@ class Env(gym.Env):
             os.makedirs("lmps", exist_ok=True)
         self.res = res
         self.skip = frameskip
-        self.observation_space = gym.spaces.Box(
-            low=0, high=255, shape=res, dtype=np.float32
-        )
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=res, dtype=np.float32)
         self.game = vzd.DoomGame()
         self.game.load_config(cfg_path)
         self.game.init()

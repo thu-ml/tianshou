@@ -34,9 +34,7 @@ class SegmentTree:
         """Return self[index]."""
         return self._value[index + self._bound]
 
-    def __setitem__(
-        self, index: Union[int, np.ndarray], value: Union[float, np.ndarray]
-    ) -> None:
+    def __setitem__(self, index: Union[int, np.ndarray], value: Union[float, np.ndarray]) -> None:
         """Update values in segment tree.
 
         Duplicate values in ``index`` are handled by numpy: later index
@@ -64,9 +62,7 @@ class SegmentTree:
             end += self._size
         return _reduce(self._value, start + self._bound - 1, end + self._bound)
 
-    def get_prefix_sum_idx(
-        self, value: Union[float, np.ndarray]
-    ) -> Union[int, np.ndarray]:
+    def get_prefix_sum_idx(self, value: Union[float, np.ndarray]) -> Union[int, np.ndarray]:
         r"""Find the index with given value.
 
         Return the minimum index for each ``v`` in ``value`` so that

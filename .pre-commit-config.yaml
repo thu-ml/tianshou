@@ -1,30 +1,22 @@
-default_install_hook_types: [commit-msg, pre-commit]
-default_stages: [commit, manual]
-fail_fast: false
+# version is pinned here, if CI is broken, check if there is a new version
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
       - id: check-added-large-files
-  - repo: local
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.0.283
     hooks:
       - id: ruff
-        name: ruff
-        entry: ruff
-        args: ["--extend-fixable=F401,F841", "--fix-only"]
-        require_serial: true
-        language: system
-        types: [python]
+        args: [--fix, --fix-only, --exit-non-zero-on-fix]
+  - repo: https://github.com/hauntsaninja/black-pre-commit-mirror
+    rev: 22.8.0
+    hooks:
       - id: black
-        name: black
-        entry: black
-        require_serial: true
-        language: system
-        types: [python]
-      - id: mypy
-        name: mypy
-        entry: mypy
-        # filenames should not be passed as they would collide with the config in pyproject.toml
-        pass_filenames: false
-        files: '^tianshou(/[^/]*)*/[^/]*\.py$'
-        language: system
+        # specify workers explicitly to workaround https://github.com/psf/black/issues/2513
+        args: [--line-length=100, --exclude="", --workers=6]
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: [--line-length=100, --profile=black]

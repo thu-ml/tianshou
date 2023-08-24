@@ -50,9 +50,7 @@ class VectorEnvWrapper(BaseVectorEnv):
     ) -> gym_new_venv_step_type:
         return self.venv.step(action, id)
 
-    def seed(
-        self, seed: Optional[Union[int, list[int]]] = None
-    ) -> list[Optional[list[int]]]:
+    def seed(self, seed: Optional[Union[int, list[int]]] = None) -> list[Optional[list[int]]]:
         return self.venv.seed(seed)
 
     def render(self, **kwargs: Any) -> list[Any]:

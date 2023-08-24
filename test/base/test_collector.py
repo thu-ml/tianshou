@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 import tqdm
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import (
     AsyncCollector,
     Batch,
@@ -12,8 +14,6 @@ from tianshou.data import (
 )
 from tianshou.env import DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
-
-from torch.utils.tensorboard import SummaryWriter
 
 try:
     import envpool
@@ -43,9 +43,7 @@ class MyPolicy(BasePolicy):
             else:
                 state += 1
         if self.dict_state:
-            action_shape = (
-                self.action_shape if self.action_shape else len(batch.obs["index"])
-            )
+            action_shape = self.action_shape if self.action_shape else len(batch.obs["index"])
             return Batch(act=np.ones(action_shape), state=state)
         action_shape = self.action_shape if self.action_shape else len(batch.obs)
         return Batch(act=np.ones(action_shape), state=state)
@@ -204,9 +202,7 @@ def test_collector(gym_reset_kwargs):
 
     # test NXEnv
     for obs_type in ["array", "object"]:
-        envs = SubprocVectorEnv(
-            [lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]]
-        )
+        envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
         c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
         c3.collect(n_step=6, gym_reset_kwargs=gym_reset_kwargs)
         assert c3.buffer.obs.dtype == object
@@ -217,9 +213,7 @@ def test_collector_with_async(gym_reset_kwargs):
     env_lens = [2, 3, 4, 5]
     writer = SummaryWriter("log/async_collector")
     logger = Logger(writer)
-    env_fns = [
-        lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens
-    ]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
 
     venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
     policy = MyPolicy()
@@ -267,9 +261,7 @@ def test_collector_with_dict_state():
     c0.collect(n_step=3)
     c0.collect(n_episode=2)
     assert len(c0.buffer) == 10
-    env_fns = [
-        lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True) for i in [2, 3, 4, 5]
-    ]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     envs.seed(666)
     obs, info = envs.reset()
@@ -557,7 +549,7 @@ def test_collector_with_atari_setting():
     c1.collect(n_episode=3)
     assert np.allclose(c0.buffer.obs, c1.buffer.obs)
     with pytest.raises(AttributeError):
-        c1.buffer.obs_next
+        c1.buffer.obs_next  # noqa: B018
     assert np.all(reference_obs[[1, 2, 3, 4, 4] * 3] == c1.buffer[:].obs_next)
 
     c2 = Collector(
@@ -570,14 +562,10 @@ def test_collector_with_atari_setting():
     obs = np.zeros_like(c2.buffer.obs)
     obs[np.arange(8)] = reference_obs[[0, 1, 2, 3, 4, 0, 1, 2], -1]
     assert np.all(c2.buffer.obs == obs)
-    assert np.allclose(
-        c2.buffer[:].obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1]
-    )
+    assert np.allclose(c2.buffer[:].obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1])
 
     # atari multi buffer
-    env_fns = [
-        lambda x=i: MyTestEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]
-    ]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
     c3.collect(n_step=12)

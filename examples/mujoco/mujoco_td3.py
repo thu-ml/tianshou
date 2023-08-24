@@ -6,7 +6,10 @@ import os
 import pprint
 
 import numpy as np
+import torch
 from mujoco_env import make_mujoco_env
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import GaussianNoise
 from tianshou.policy import TD3Policy
@@ -14,9 +17,6 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import Actor, Critic
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -83,9 +83,9 @@ def test_td3(args=get_args()):
     torch.manual_seed(args.seed)
     # model
     net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = Actor(
-        net_a, args.action_shape, max_action=args.max_action, device=args.device
-    ).to(args.device)
+    actor = Actor(net_a, args.action_shape, max_action=args.max_action, device=args.device).to(
+        args.device
+    )
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c1 = Net(
         args.state_shape,

@@ -6,6 +6,10 @@ from typing import Optional
 
 import gymnasium
 import numpy as np
+import torch
+from pettingzoo.classic import tictactoe_v3
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
@@ -13,10 +17,6 @@ from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager, Rand
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-
-import torch
-from pettingzoo.classic import tictactoe_v3
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_env(render_mode: Optional[str] = None):
@@ -40,9 +40,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--step-per-collect", type=int, default=10)
     parser.add_argument("--update-per-step", type=float, default=0.1)
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument(
-        "--hidden-sizes", type=int, nargs="*", default=[128, 128, 128, 128]
-    )
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128, 128, 128])
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
@@ -63,8 +61,7 @@ def get_parser() -> argparse.ArgumentParser:
         "--agent-id",
         type=int,
         default=2,
-        help="the learned agent plays as the"
-        " agent_id-th player. Choices are 1 and 2.",
+        help="the learned agent plays as the" " agent_id-th player. Choices are 1 and 2.",
     )
     parser.add_argument(
         "--resume-path",
@@ -76,8 +73,7 @@ def get_parser() -> argparse.ArgumentParser:
         "--opponent-path",
         type=str,
         default="",
-        help="the path of opponent agent pth file "
-        "for resuming from a pre-trained agent",
+        help="the path of opponent agent pth file " "for resuming from a pre-trained agent",
     )
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
@@ -177,12 +173,8 @@ def train_agent(
         if hasattr(args, "model_save_path"):
             model_save_path = args.model_save_path
         else:
-            model_save_path = os.path.join(
-                args.logdir, "tic_tac_toe", "dqn", "policy.pth"
-            )
-        torch.save(
-            policy.policies[agents[args.agent_id - 1]].state_dict(), model_save_path
-        )
+            model_save_path = os.path.join(args.logdir, "tic_tac_toe", "dqn", "policy.pth")
+        torch.save(policy.policies[agents[args.agent_id - 1]].state_dict(), model_save_path)
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.win_rate
@@ -225,9 +217,7 @@ def watch(
     agent_opponent: Optional[BasePolicy] = None,
 ) -> None:
     env = DummyVectorEnv([partial(get_env, render_mode="human")])
-    policy, optim, agents = get_agents(
-        args, agent_learn=agent_learn, agent_opponent=agent_opponent
-    )
+    policy, optim, agents = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)
     policy.eval()
     policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
     collector = Collector(policy, env, exploration_noise=True)

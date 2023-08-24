@@ -1,7 +1,3 @@
-[tool.black]
-line-length = 88
-target-version = ["py39"]
-
 [tool.mypy]
 files = "tianshou/**/*.py"
 allow_redefinition = true
@@ -25,15 +21,43 @@ warn_unused_ignores = true
 [tool.doc8]
 max-line-length = 1000
 
-[tool.ruff]
-fix = true
-ignore-init-module-imports = true
-line-length = 88
-select = ["A", "ASYNC", "B", "C4", "C90", "D", "DTZ", "E", "F", "FLY", "I", "ISC", "N", "NPY", "PGH", "PIE", "PLC", "PLE", "PLR", "PLW", "PT", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT"]
-ignore = ["SIM118", "E501", "PGH001", "PGH002", "PGH003", "RET504", "S101", "D100", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402"]
-unfixable = ["F401", "F841"]
-src = ["tianshou", "test"]
-target-version = "py39"
+[tool.black]
+line-length = 100
+target-version = ['py39']
 
-[tool.ruff.isort]
-known-first-party = ["torch"]
+[tool.ruff]
+# To customise ruff rules for your project, use the "extend", "extend-select" and "extend-ignore"
+# keys in your project configuration. This can let you inherit most of this configuration.
+select = [
+    "E", "F", "W", "B", "C4", "ASYNC", "PIE",
+    # grab bag of random things
+    "DTZ003", "DTZ004",
+    "G010",
+    "PLE1205", "PLE1206", "PLE1310", "PLW0120", "PLW0129",
+    "SIM101", "SIM110", "SIM201", "SIM202", "SIM222", "SIM223",
+    "S506",
+    "RET501", "RET502",  # RET503 is also nice, but there's currently some noise
+    "RUF006", "RUF008", "RUF011", "RUF013", "RUF200",
+    "COM819",
+]
+ignore = [
+    "E402",   # a people usually know what they're doing
+    "E501",   # line too long. black does a good enough job
+    "E701",   # multiple statements on one line. black does a good enough job
+    "E731",   # lambda expression assignments. these are nice sometimes
+    "E741",   # variable names like "l". this isn't a huge problem
+    "B008",   # do not perform function calls in argument defaults. we do this sometimes
+    "B011",   # assert false. we don't use python -O
+    "B028",   # we don't need explicit stacklevel for warnings
+    "C408",   # we often use dict with keyword args
+]
+unfixable = [
+    "F841",  # unused variable. ruff keeps the call, but mostly we want to get rid of it all
+    "F601",  # automatic fix might obscure issue
+    "F602",  # automatic fix might obscure issue
+    "B018",  # automatic fix might obscure issue
+    "SIM222",  # automatic fix might obscure issue
+    "SIM223",  # automatic fix might obscure issue
+]
+
+target-version = "py39"

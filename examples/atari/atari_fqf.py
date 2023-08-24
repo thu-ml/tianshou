@@ -5,16 +5,16 @@ import pprint
 import sys
 
 import numpy as np
+import torch
 from atari_network import DQN
 from atari_wrapper import make_atari_env
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import FQFPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -85,9 +85,7 @@ def test_fqf(args=get_args()):
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     # define model
-    feature_net = DQN(
-        *args.state_shape, args.action_shape, args.device, features_only=True
-    )
+    feature_net = DQN(*args.state_shape, args.action_shape, args.device, features_only=True)
     net = FullQuantileFunction(
         feature_net,
         args.action_shape,
@@ -163,9 +161,7 @@ def test_fqf(args=get_args()):
     def train_fn(epoch, env_step):
         # nature DQN setting, linear decay in the first 1M steps
         if env_step <= 1e6:
-            eps = args.eps_train - env_step / 1e6 * (
-                args.eps_train - args.eps_train_final
-            )
+            eps = args.eps_train - env_step / 1e6 * (args.eps_train - args.eps_train_final)
         else:
             eps = args.eps_train_final
         policy.set_eps(eps)

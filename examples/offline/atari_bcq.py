@@ -8,6 +8,9 @@ import pprint
 import sys
 
 import numpy as np
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
 from examples.atari.atari_network import DQN
 from examples.atari.atari_wrapper import make_atari_env
 from examples.offline.utils import load_buffer
@@ -17,9 +20,6 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import ActorCritic
 from tianshou.utils.net.discrete import Actor
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -61,9 +61,7 @@ def get_args():
     parser.add_argument(
         "--load-buffer-name", type=str, default="./expert_DQN_PongNoFrameskip-v4.hdf5"
     )
-    parser.add_argument(
-        "--buffer-from-rl-unplugged", action="store_true", default=False
-    )
+    parser.add_argument("--buffer-from-rl-unplugged", action="store_true", default=False)
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
     )

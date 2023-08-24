@@ -2,13 +2,13 @@ from copy import deepcopy
 from typing import Any, Optional, Union, cast
 
 import numpy as np
-
 import torch
+from torch.distributions import Independent, Normal
+
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import DistLogProbBatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
-from torch.distributions import Independent, Normal
 
 
 class SACPolicy(DDPGPolicy):
@@ -160,9 +160,7 @@ class SACPolicy(DDPGPolicy):
         )
         return target_q
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic1, self.critic1_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
@@ -174,8 +172,7 @@ class SACPolicy(DDPGPolicy):
         current_q1a = self.critic1(batch.obs, act).flatten()
         current_q2a = self.critic2(batch.obs, act).flatten()
         actor_loss = (
-            self._alpha * obs_result.log_prob.flatten()
-            - torch.min(current_q1a, current_q2a)
+            self._alpha * obs_result.log_prob.flatten() - torch.min(current_q1a, current_q2a)
         ).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()

@@ -6,6 +6,8 @@ from timeit import timeit
 import h5py
 import numpy as np
 import pytest
+import torch
+
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
@@ -18,8 +20,6 @@ from tianshou.data import (
     VectorReplayBuffer,
 )
 from tianshou.data.utils.converter import to_hdf5
-
-import torch
 
 if __name__ == "__main__":
     from env import MyGoalEnv, MyTestEnv
@@ -336,9 +336,7 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     def compute_reward_fn(ag, g):
         return env.compute_reward_fn(ag, g, {})
 
-    buf = HERReplayBuffer(
-        bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8
-    )
+    buf = HERReplayBuffer(bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8)
     buf2 = HERVectorReplayBuffer(
         bufsize,
         buffer_num=3,
@@ -436,9 +434,7 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     def compute_reward_fn(ag, g):
         return env.compute_reward_fn(ag, g, {})
 
-    buf = HERReplayBuffer(
-        bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8
-    )
+    buf = HERReplayBuffer(bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8)
     buf._index = 5  # shifted start index
     buf.future_p = 1
     action_list = [1] * 10
@@ -468,9 +464,7 @@ def test_herreplaybuffer(size=10, bufsize=100, sample_sz=4):
     env_size = 99
     bufsize = 15
     env = MyGoalEnv(env_size, array_state=False)
-    buf = HERReplayBuffer(
-        bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8
-    )
+    buf = HERReplayBuffer(bufsize, compute_reward_fn=compute_reward_fn, horizon=30, future_k=8)
     buf.future_p = 1
     for x, ep_len in enumerate([10, 20]):
         obs, _ = env.reset()
@@ -657,9 +651,7 @@ def test_pickle():
     assert np.allclose(_pbuf.act, pbuf.act)
     # make sure the meta var is identical
     assert _vbuf.stack_num == vbuf.stack_num
-    assert np.allclose(
-        _pbuf.weight[np.arange(len(_pbuf))], pbuf.weight[np.arange(len(pbuf))]
-    )
+    assert np.allclose(_pbuf.weight[np.arange(len(_pbuf))], pbuf.weight[np.arange(len(pbuf))])
 
 
 def test_hdf5():
@@ -749,9 +741,7 @@ def test_replaybuffermanager():
     indices_next = buf.next(indices)
     assert np.allclose(indices_next, indices), indices_next
     assert np.allclose(buf.unfinished_index(), [0, 5])
-    buf.add(
-        Batch(obs=[4], act=[4], rew=[4], terminated=[1], truncated=[0]), buffer_ids=[3]
-    )
+    buf.add(Batch(obs=[4], act=[4], rew=[4], terminated=[1], truncated=[0]), buffer_ids=[3])
     assert np.allclose(buf.unfinished_index(), [0, 5])
     batch, indices = buf.sample(10)
     batch, indices = buf.sample(0)
@@ -988,30 +978,12 @@ def test_cachedbuffer():
     buf = CachedReplayBuffer(ReplayBuffer(0, sample_avail=True), 4, 5)
     data = np.zeros(4)
     rew = np.ones([4, 4])
-    buf.add(
-        Batch(
-            obs=data, act=data, rew=rew, terminated=[0, 0, 1, 1], truncated=[0, 0, 0, 0]
-        )
-    )
-    buf.add(
-        Batch(
-            obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]
-        )
-    )
-    buf.add(
-        Batch(
-            obs=data, act=data, rew=rew, terminated=[1, 1, 1, 1], truncated=[0, 0, 0, 0]
-        )
-    )
-    buf.add(
-        Batch(
-            obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]
-        )
-    )
+    buf.add(Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 1, 1], truncated=[0, 0, 0, 0]))
+    buf.add(Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]))
+    buf.add(Batch(obs=data, act=data, rew=rew, terminated=[1, 1, 1, 1], truncated=[0, 0, 0, 0]))
+    buf.add(Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]))
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(
-            obs=data, act=data, rew=rew, terminated=[0, 1, 0, 1], truncated=[0, 0, 0, 0]
-        )
+        Batch(obs=data, act=data, rew=rew, terminated=[0, 1, 0, 1], truncated=[0, 0, 0, 0])
     )
     assert np.all(ptr == [1, -1, 11, -1])
     assert np.all(ep_idx == [0, -1, 10, -1])
@@ -1063,9 +1035,7 @@ def test_multibuf_stack():
     # test if CachedReplayBuffer can handle corner case:
     # buffer + stack_num + ignore_obs_next + sample_avail
     buf5 = CachedReplayBuffer(
-        ReplayBuffer(
-            bufsize, stack_num=stack_num, ignore_obs_next=True, sample_avail=True
-        ),
+        ReplayBuffer(bufsize, stack_num=stack_num, ignore_obs_next=True, sample_avail=True),
         cached_num,
         size,
     )
@@ -1212,9 +1182,7 @@ def test_multibuf_stack():
     batch, _ = buf5.sample(0)
     # test Atari with CachedReplayBuffer, save_only_last_obs + ignore_obs_next
     buf6 = CachedReplayBuffer(
-        ReplayBuffer(
-            bufsize, stack_num=stack_num, save_only_last_obs=True, ignore_obs_next=True
-        ),
+        ReplayBuffer(bufsize, stack_num=stack_num, save_only_last_obs=True, ignore_obs_next=True),
         cached_num,
         size,
     )
@@ -1256,12 +1224,8 @@ def test_multibuf_hdf5():
             "done": i % 3 == 2,
             "info": {"number": {"n": i, "t": info_t}, "extra": None},
         }
-        buffers["vector"].add(
-            Batch.stack([kwargs, kwargs, kwargs]), buffer_ids=[0, 1, 2]
-        )
-        buffers["cached"].add(
-            Batch.stack([kwargs, kwargs, kwargs]), buffer_ids=[0, 1, 2]
-        )
+        buffers["vector"].add(Batch.stack([kwargs, kwargs, kwargs]), buffer_ids=[0, 1, 2])
+        buffers["cached"].add(Batch.stack([kwargs, kwargs, kwargs]), buffer_ids=[0, 1, 2])
 
     # save
     paths = {}
@@ -1333,9 +1297,7 @@ def test_from_data():
         truncated = f.create_dataset("truncated", data=np.zeros(10, dtype="bool"))
         done = f.create_dataset("done", data=np.zeros(10, dtype="bool"))
         obs_next = f.create_dataset("obs_next", data=obs_next_data)
-        buf = ReplayBuffer.from_data(
-            obs, act, rew, terminated, truncated, done, obs_next
-        )
+        buf = ReplayBuffer.from_data(obs, act, rew, terminated, truncated, done, obs_next)
     assert len(buf) == 10
     batch = buf[3]
     assert np.array_equal(batch.obs, 3 * np.ones((3, 3), dtype="uint8"))
@@ -1348,50 +1310,48 @@ def test_from_data():
 
 def test_custom_key():
     batch = Batch(
-        **{
-            "obs_next": np.array(
+        obs_next=np.array(
+            [
                 [
-                    [
-                        1.174,
-                        -0.1151,
-                        -0.609,
-                        -0.5205,
-                        -0.9316,
-                        3.236,
-                        -2.418,
-                        0.386,
-                        0.2227,
-                        -0.5117,
-                        2.293,
-                    ]
+                    1.174,
+                    -0.1151,
+                    -0.609,
+                    -0.5205,
+                    -0.9316,
+                    3.236,
+                    -2.418,
+                    0.386,
+                    0.2227,
+                    -0.5117,
+                    2.293,
                 ]
-            ),
-            "rew": np.array([4.28125]),
-            "act": np.array([[-0.3088, -0.4636, 0.4956]]),
-            "truncated": np.array([False]),
-            "obs": np.array(
+            ]
+        ),
+        rew=np.array([4.28125]),
+        act=np.array([[-0.3088, -0.4636, 0.4956]]),
+        truncated=np.array([False]),
+        obs=np.array(
+            [
                 [
-                    [
-                        1.193,
-                        -0.1203,
-                        -0.6123,
-                        -0.519,
-                        -0.9434,
-                        3.32,
-                        -2.266,
-                        0.9116,
-                        0.623,
-                        0.1259,
-                        0.363,
-                    ]
+                    1.193,
+                    -0.1203,
+                    -0.6123,
+                    -0.519,
+                    -0.9434,
+                    3.32,
+                    -2.266,
+                    0.9116,
+                    0.623,
+                    0.1259,
+                    0.363,
                 ]
-            ),
-            "terminated": np.array([False]),
-            "done": np.array([False]),
-            "returns": np.array([74.70343082]),
-            "info": Batch(),
-            "policy": Batch(),
-        }
+            ]
+        ),
+        terminated=np.array([False]),
+        done=np.array([False]),
+        returns=np.array([74.70343082]),
+        info=Batch(),
+        policy=Batch(),
     )
     buffer_size = len(batch.rew)
     buffer = ReplayBuffer(buffer_size)
@@ -1400,9 +1360,7 @@ def test_custom_key():
     # Check if they have the same keys
     assert set(batch.keys()) == set(
         sampled_batch.keys()
-    ), "Batches have different keys: {} and {}".format(
-        set(batch.keys()), set(sampled_batch.keys())
-    )
+    ), "Batches have different keys: {} and {}".format(set(batch.keys()), set(sampled_batch.keys()))
     # Compare the values for each key
     for key in batch.keys():
         if isinstance(batch.__dict__[key], np.ndarray) and isinstance(

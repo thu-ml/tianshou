@@ -5,6 +5,9 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import DiscreteBCQPolicy
@@ -12,9 +15,6 @@ from tianshou.trainer import OfflineTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 if __name__ == "__main__":
     from gather_cartpole_data import expert_file_name, gather_data
@@ -60,12 +60,8 @@ def test_discrete_bcq(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 185}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
-    test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)

@@ -5,6 +5,7 @@ import gymnasium as gym
 import numpy as np
 import pytest
 from gymnasium.spaces.discrete import Discrete
+
 from tianshou.data import Batch
 from tianshou.env import (
     ContinuousToDiscrete,
@@ -229,9 +230,7 @@ def test_attr_unwrapped():
 
 def test_env_obs_dtype():
     for obs_type in ["array", "object"]:
-        envs = SubprocVectorEnv(
-            [lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]]
-        )
+        envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
         obs, info = envs.reset()
         assert obs.dtype == object
         obs = envs.step([1, 1, 1, 1])[0]
@@ -350,9 +349,7 @@ def test_venv_norm_obs():
 def test_gym_wrappers():
     class DummyEnv(gym.Env):
         def __init__(self):
-            self.action_space = gym.spaces.Box(
-                low=-1.0, high=2.0, shape=(4,), dtype=np.float32
-            )
+            self.action_space = gym.spaces.Box(low=-1.0, high=2.0, shape=(4,), dtype=np.float32)
             self.observation_space = gym.spaces.Discrete(2)
 
         def step(self, act):
@@ -376,9 +373,7 @@ def test_gym_wrappers():
     # dimension to discrete action space
     env_d = MultiDiscreteToDiscrete(env_m)
     # check conversion is working properly for one action
-    np.testing.assert_allclose(
-        env_d.action(env_d.action_space.n - 1), env_m.action_space.nvec - 1
-    )
+    np.testing.assert_allclose(env_d.action(env_d.action_space.n - 1), env_m.action_space.nvec - 1)
     # check conversion is working properly for a batch of actions
     np.testing.assert_allclose(
         env_d.action(np.array([env_d.action_space.n - 1] * bsz)),
@@ -398,13 +393,9 @@ def test_gym_wrappers():
 def test_venv_wrapper_envpool():
     raw = envpool.make_gymnasium("Ant-v3", num_envs=4)
     train = VectorEnvNormObs(envpool.make_gymnasium("Ant-v3", num_envs=4))
-    test = VectorEnvNormObs(
-        envpool.make_gymnasium("Ant-v3", num_envs=4), update_obs_rms=False
-    )
+    test = VectorEnvNormObs(envpool.make_gymnasium("Ant-v3", num_envs=4), update_obs_rms=False)
     test.set_obs_rms(train.get_obs_rms())
-    actions = [
-        np.array([raw.action_space.sample() for _ in range(4)]) for i in range(30)
-    ]
+    actions = [np.array([raw.action_space.sample() for _ in range(4)]) for i in range(30)]
     run_align_norm_obs(raw, train, test, actions)
 
 

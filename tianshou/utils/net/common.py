@@ -1,19 +1,13 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import (
-    Any,
-    Callable,
-    Optional,
-    Union,
-    no_type_check,
-)
+from typing import Any, Callable, Optional, Union, no_type_check
 
 import numpy as np
-
 import torch
+from torch import nn
+
 from tianshou.data.batch import Batch
 from tianshou.data.types import RecurrentStateBatch
-from torch import nn
 
 ModuleType = type[nn.Module]
 ArgsType = Union[
@@ -131,9 +125,7 @@ class MLP(nn.Module):
             activation_list,
             act_args_list,
         ):
-            model += miniblock(
-                in_dim, out_dim, norm, norm_args, activ, act_args, linear_layer
-            )
+            model += miniblock(in_dim, out_dim, norm, norm_args, activ, act_args, linear_layer)
         if output_dim > 0:
             model += [linear_layer(hidden_sizes[-1], output_dim)]
         self.output_dim = output_dim or hidden_sizes[-1]
@@ -339,8 +331,7 @@ class Recurrent(NetBase):
         # issubset(state.keys()) always works
         if state is not None and not {"hidden", "cell"}.issubset(state.keys()):
             raise ValueError(
-                f"Expected to find keys 'hidden' and 'cell' "
-                f"but instead found {state.keys()}"
+                f"Expected to find keys 'hidden' and 'cell' " f"but instead found {state.keys()}"
             )
 
         obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
@@ -406,7 +397,7 @@ class DataParallelNet(nn.Module):
     ) -> tuple[Any, Any]:
         if not isinstance(obs, torch.Tensor):
             obs = torch.as_tensor(obs, dtype=torch.float32)
-        return self.net(obs=obs.cuda(), *args, **kwargs)
+        return self.net(obs=obs.cuda(), *args, **kwargs)  # noqa: B026
 
 
 class EnsembleLinear(nn.Module):
@@ -578,9 +569,7 @@ def get_dict_state_decorator(
         flat_state_shapes.append(int(np.prod(state_shape[k])))
     new_state_shape = sum(flat_state_shapes)
 
-    def preprocess_obs(
-        obs: Union[Batch, dict, torch.Tensor, np.ndarray]
-    ) -> torch.Tensor:
+    def preprocess_obs(obs: Union[Batch, dict, torch.Tensor, np.ndarray]) -> torch.Tensor:
         if isinstance(obs, dict) or (isinstance(obs, Batch) and keys[0] in obs):
             if original_shape[keys[0]] == obs[keys[0]].shape:
                 # No batch dim
@@ -588,9 +577,7 @@ def get_dict_state_decorator(
                 # new_obs = torch.Tensor([obs[k] for k in keys]).reshape(1, -1)
             else:
                 bsz = obs[keys[0]].shape[0]
-                new_obs = torch.cat(
-                    [torch.Tensor(obs[k].reshape(bsz, -1)) for k in keys], dim=1
-                )
+                new_obs = torch.cat([torch.Tensor(obs[k].reshape(bsz, -1)) for k in keys], dim=1)
         else:
             new_obs = torch.Tensor(obs)
         return new_obs
@@ -598,9 +585,7 @@ def get_dict_state_decorator(
     @no_type_check
     def decorator_fn(net_class):
         class new_net_class(net_class):
-            def forward(
-                self, obs: Union[np.ndarray, torch.Tensor], *args, **kwargs
-            ) -> Any:
+            def forward(self, obs: Union[np.ndarray, torch.Tensor], *args, **kwargs) -> Any:
                 return super().forward(preprocess_obs(obs), *args, **kwargs)
 
         return new_net_class

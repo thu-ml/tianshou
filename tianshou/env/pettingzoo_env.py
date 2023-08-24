@@ -2,10 +2,9 @@ import warnings
 from abc import ABC
 from typing import Any
 
+import pettingzoo
 from gymnasium import spaces
 from packaging import version
-
-import pettingzoo
 from pettingzoo.utils.env import AECEnv
 from pettingzoo.utils.wrappers import BaseWrapper
 
@@ -54,17 +53,14 @@ class PettingZooEnv(AECEnv, ABC):
         self.action_space: Any = self.env.action_space(self.agents[0])
 
         assert all(
-            self.env.observation_space(agent) == self.observation_space
-            for agent in self.agents
+            self.env.observation_space(agent) == self.observation_space for agent in self.agents
         ), (
             "Observation spaces for all agents must be identical. Perhaps "
             "SuperSuit's pad_observations wrapper can help (useage: "
             "`supersuit.aec_wrappers.pad_observations(env)`"
         )
 
-        assert all(
-            self.env.action_space(agent) == self.action_space for agent in self.agents
-        ), (
+        assert all(self.env.action_space(agent) == self.action_space for agent in self.agents), (
             "Action spaces for all agents must be identical. Perhaps "
             "SuperSuit's pad_action_space wrapper can help (useage: "
             "`supersuit.aec_wrappers.pad_action_space(env)`"

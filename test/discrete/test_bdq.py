@@ -3,13 +3,13 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
+import torch
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import ContinuousToDiscrete, DummyVectorEnv
 from tianshou.policy import BranchingDQNPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils.net.common import BranchingNet
-
-import torch
 
 
 def get_args():
@@ -56,9 +56,7 @@ def test_bdq(args=get_args()):
 
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
 
     print("Observations shape:", args.state_shape)
     print("Num branches:", args.num_branches)
@@ -93,9 +91,7 @@ def test_bdq(args=get_args()):
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = BranchingDQNPolicy(
-        net, optim, args.gamma, target_update_freq=args.target_update_freq
-    )
+    policy = BranchingDQNPolicy(net, optim, args.gamma, target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(
         policy,
@@ -141,9 +137,7 @@ def test_bdq(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        collector_result = test_collector.collect(
-            n_episode=args.test_num, render=args.render
-        )
+        collector_result = test_collector.collect(n_episode=args.test_num, render=args.render)
         rews, lens = collector_result["rews"], collector_result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 

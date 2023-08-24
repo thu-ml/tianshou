@@ -41,8 +41,6 @@ class RandomPolicy(BasePolicy):
         result = Batch(act=logits.argmax(axis=-1))
         return cast(ActBatchProtocol, result)
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         """Since a random agent learns nothing, it returns an empty dict."""
         return {}

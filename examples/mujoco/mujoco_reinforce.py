@@ -6,19 +6,19 @@ import os
 import pprint
 
 import numpy as np
+import torch
 from mujoco_env import make_mujoco_env
+from torch import nn
+from torch.distributions import Independent, Normal
+from torch.optim.lr_scheduler import LambdaLR
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import PGPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb
-
-import torch
-from torch import nn
-from torch.distributions import Independent, Normal
-from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -109,13 +109,9 @@ def test_reinforce(args=get_args()):
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
-        max_update_num = (
-            np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
-        )
+        max_update_num = np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
 
-        lr_scheduler = LambdaLR(
-            optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num
-        )
+        lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
     def dist(*logits):
         return Independent(Normal(*logits), 1)

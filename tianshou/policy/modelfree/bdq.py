@@ -1,8 +1,8 @@
 from typing import Any, Optional, Union, cast
 
 import numpy as np
-
 import torch
+
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
@@ -119,9 +119,7 @@ class BranchingDQNPolicy(DQNPolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -149,9 +147,7 @@ class BranchingDQNPolicy(DQNPolicy):
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
-            rand_act = np.random.randint(
-                low=0, high=self.max_action_num, size=(bsz, act.shape[-1])
-            )
+            rand_act = np.random.randint(low=0, high=self.max_action_num, size=(bsz, act.shape[-1]))
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]

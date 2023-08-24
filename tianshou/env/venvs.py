@@ -7,12 +7,7 @@ import packaging
 
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
-from tianshou.env.worker import (
-    DummyEnvWorker,
-    EnvWorker,
-    RayEnvWorker,
-    SubprocEnvWorker,
-)
+from tianshou.env.worker import DummyEnvWorker, EnvWorker, RayEnvWorker, SubprocEnvWorker
 
 try:
     import gym as old_gym
@@ -253,9 +248,7 @@ class BaseVectorEnv:
             assert (
                 i not in self.waiting_id
             ), f"Cannot interact with environment {i} which is stepping now."
-            assert (
-                i in self.ready_id
-            ), f"Can only interact with ready environments {self.ready_id}."
+            assert i in self.ready_id, f"Can only interact with ready environments {self.ready_id}."
 
     def reset(
         self, id: Optional[Union[int, list[int], np.ndarray]] = None, **kwargs: Any
@@ -353,9 +346,7 @@ class BaseVectorEnv:
                 self.ready_id = [x for x in self.ready_id if x not in id]
             ready_conns: list[EnvWorker] = []
             while not ready_conns:
-                ready_conns = self.worker_class.wait(
-                    self.waiting_conn, self.wait_num, self.timeout
-                )
+                ready_conns = self.worker_class.wait(self.waiting_conn, self.wait_num, self.timeout)
             result = []
             for conn in ready_conns:
                 waiting_index = self.waiting_conn.index(conn)
@@ -380,9 +371,7 @@ class BaseVectorEnv:
             np.stack(info_list),
         )
 
-    def seed(
-        self, seed: Optional[Union[int, list[int]]] = None
-    ) -> list[Optional[list[int]]]:
+    def seed(self, seed: Optional[Union[int, list[int]]] = None) -> list[Optional[list[int]]]:
         """Set the seed for all environments.
 
         Accept ``None``, an int (which will extend ``i`` to
@@ -407,8 +396,7 @@ class BaseVectorEnv:
         self._assert_is_not_closed()
         if self.is_async and len(self.waiting_id) > 0:
             raise RuntimeError(
-                f"Environments {self.waiting_id} are still stepping, cannot "
-                "render them now."
+                f"Environments {self.waiting_id} are still stepping, cannot " "render them now."
             )
         return [w.render(**kwargs) for w in self.workers]
 

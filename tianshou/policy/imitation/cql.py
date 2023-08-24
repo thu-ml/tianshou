@@ -1,14 +1,14 @@
 from typing import Any, Union
 
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+from torch.nn.utils import clip_grad_norm_
+
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
 from tianshou.utils.net.continuous import ActorProb
-from torch.nn.utils import clip_grad_norm_
 
 
 class CQLPolicy(SACPolicy):
@@ -173,9 +173,7 @@ class CQLPolicy(SACPolicy):
         #   Should probably be fixed!
         return batch
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]

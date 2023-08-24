@@ -1,15 +1,15 @@
 from typing import Any, Callable, Optional, cast
 
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+from torch import nn
+
 from tianshou.data import ReplayBuffer, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
 from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
-from torch import nn
 
 
 class A2CPolicy(PGPolicy):
@@ -140,9 +140,7 @@ class A2CPolicy(PGPolicy):
                 vf_loss = F.mse_loss(minibatch.returns, value)
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
-                loss = (
-                    actor_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
-                )
+                loss = actor_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
                 if self._grad_norm:  # clip large gradient

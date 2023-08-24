@@ -26,7 +26,7 @@ class ContinuousToDiscrete(gym.ActionWrapper):
             dtype=object,
         )
 
-    def action(self, act: np.ndarray) -> np.ndarray:
+    def action(self, act: np.ndarray) -> np.ndarray:  # type: ignore
         # modify act
         assert len(act.shape) <= 2, f"Unknown action format with shape {act.shape}."
         if len(act.shape) == 1:
@@ -50,7 +50,7 @@ class MultiDiscreteToDiscrete(gym.ActionWrapper):
             self.bases[i] = self.bases[i - 1] * nvec[-i]
         self.action_space = gym.spaces.Discrete(np.prod(nvec))
 
-    def action(self, act: np.ndarray) -> np.ndarray:
+    def action(self, act: np.ndarray) -> np.ndarray:  # type: ignore
         converted_act = []
         for b in np.flip(self.bases):
             converted_act.append(act // b)
@@ -74,9 +74,7 @@ class TruncatedAsTerminated(gym.Wrapper):
                 {gym.__version__}"
             )
 
-    def step(
-        self, act: np.ndarray
-    ) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self, act: np.ndarray) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         observation, reward, terminated, truncated, info = super().step(act)
         terminated = terminated or truncated
         return observation, reward, terminated, truncated, info

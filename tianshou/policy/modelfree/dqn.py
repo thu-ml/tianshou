@@ -2,8 +2,8 @@ from copy import deepcopy
 from typing import Any, Optional, Union, cast
 
 import numpy as np
-
 import torch
+
 from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import (
@@ -119,9 +119,7 @@ class DQNPolicy(BasePolicy):
             self._rew_norm,
         )
 
-    def compute_q_value(
-        self, logits: torch.Tensor, mask: Optional[np.ndarray]
-    ) -> torch.Tensor:
+    def compute_q_value(self, logits: torch.Tensor, mask: Optional[np.ndarray]) -> torch.Tensor:
         """Compute the q value based on the network's raw output and action mask."""
         if mask is not None:
             # the masked q value should be smaller than logits.min()
@@ -175,9 +173,7 @@ class DQNPolicy(BasePolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

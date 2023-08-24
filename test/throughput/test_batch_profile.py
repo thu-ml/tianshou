@@ -3,9 +3,9 @@ import pickle
 
 import numpy as np
 import pytest
-from tianshou.data import Batch
-
 import torch
+
+from tianshou.data import Batch
 
 
 @pytest.fixture(scope="module")
@@ -31,9 +31,7 @@ def data():
     batchs1 = [copy.deepcopy(batch0) for _ in np.arange(1e4)]
     batchs2 = [copy.deepcopy(batch0) for _ in np.arange(1e4)]
     batch_len = int(1e4)
-    batch3 = Batch(
-        obs=[np.arange(20) for _ in np.arange(batch_len)], reward=np.arange(batch_len)
-    )
+    batch3 = Batch(obs=[np.arange(20) for _ in np.arange(batch_len)], reward=np.arange(batch_len))
     indexs = np.random.choice(batch_len, size=batch_len // 10, replace=False)
     slice_dict = {
         "obs": [np.arange(20) for _ in np.arange(batch_len // 10)],

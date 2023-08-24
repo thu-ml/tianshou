@@ -1,8 +1,8 @@
 from typing import Optional, Union
 
 import numpy as np
-
 import torch
+
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol, arr_type
 

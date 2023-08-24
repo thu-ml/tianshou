@@ -6,16 +6,16 @@ import os
 import pprint
 
 import numpy as np
+import torch
 from mujoco_env import make_mujoco_env
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.policy import REDQPolicy
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger, WandbLogger
 from tianshou.utils.net.common import EnsembleLinear, Net
 from tianshou.utils.net.continuous import ActorProb, Critic
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -40,9 +40,7 @@ def get_args():
     parser.add_argument("--update-per-step", type=int, default=20)
     parser.add_argument("--n-step", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument(
-        "--target-mode", type=str, choices=("min", "mean"), default="min"
-    )
+    parser.add_argument("--target-mode", type=str, choices=("min", "mean"), default="min")
     parser.add_argument("--training-num", type=int, default=1)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")

@@ -2,7 +2,6 @@ from numbers import Number
 from typing import Optional, Union
 
 import numpy as np
-
 import torch
 
 
@@ -31,9 +30,7 @@ class MovAvg:
         self.cache: list[np.number] = []
         self.banned = [np.inf, np.nan, -np.inf]
 
-    def add(
-        self, data_array: Union[Number, np.number, list, np.ndarray, torch.Tensor]
-    ) -> float:
+    def add(self, data_array: Union[Number, np.number, list, np.ndarray, torch.Tensor]) -> float:
         """Add a scalar into :class:`MovAvg`.
 
         You can add ``torch.Tensor`` with only one element, a python scalar, or

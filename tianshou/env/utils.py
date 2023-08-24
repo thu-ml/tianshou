@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 #  if gym.Env is removed from the Union
 ENV_TYPE = Union[gymnasium.Env, "gym.Env", PettingZooEnv]
 
-gym_new_venv_step_type = tuple[
-    np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
-]
+gym_new_venv_step_type = tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
 
 class CloudpickleWrapper:

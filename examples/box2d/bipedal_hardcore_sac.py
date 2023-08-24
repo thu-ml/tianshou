@@ -4,6 +4,9 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import SubprocVectorEnv
 from tianshou.policy import SACPolicy
@@ -11,9 +14,6 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -94,9 +94,7 @@ def test_sac_bipedal(args=get_args()):
 
     # model
     net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(net_a, args.action_shape, device=args.device, unbounded=True).to(
-        args.device
-    )
+    actor = ActorProb(net_a, args.action_shape, device=args.device, unbounded=True).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
     net_c1 = Net(

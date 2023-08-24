@@ -5,16 +5,16 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import pytest
+import torch
 from gym.spaces import Box
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import A2CPolicy, ImitationPolicy
 from tianshou.trainer import OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import ActorCritic, Net
 from tianshou.utils.net.discrete import Actor, Critic
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 try:
     import envpool
@@ -71,9 +71,7 @@ def test_a2c_with_il(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 195}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -150,9 +148,7 @@ def test_a2c_with_il(args=get_args()):
     il_policy = ImitationPolicy(net, optim, action_space=env.action_space)
     il_test_collector = Collector(
         il_policy,
-        envpool.make(
-            args.task, env_type="gymnasium", num_envs=args.test_num, seed=args.seed
-        ),
+        envpool.make(args.task, env_type="gymnasium", num_envs=args.test_num, seed=args.seed),
     )
     train_collector.reset()
     result = OffpolicyTrainer(

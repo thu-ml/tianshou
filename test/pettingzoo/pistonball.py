@@ -5,6 +5,10 @@ from typing import Optional
 
 import gymnasium as gym
 import numpy as np
+import torch
+from pettingzoo.butterfly import pistonball_v6
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
@@ -12,10 +16,6 @@ from tianshou.policy import BasePolicy, DQNPolicy, MultiAgentPolicyManager
 from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
-
-import torch
-from pettingzoo.butterfly import pistonball_v6
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -172,14 +172,11 @@ def train_agent(
     return result, policy
 
 
-def watch(
-    args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None
-) -> None:
+def watch(args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None) -> None:
     env = DummyVectorEnv([get_env])
     if not policy:
         warnings.warn(
-            "watching random agents, as loading pre-trained policies is "
-            "currently not supported"
+            "watching random agents, as loading pre-trained policies is " "currently not supported"
         )
         policy, _, _ = get_agents(args)
     policy.eval()

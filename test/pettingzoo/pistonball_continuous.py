@@ -5,6 +5,12 @@ from typing import Any, Optional, Union
 
 import gymnasium as gym
 import numpy as np
+import torch
+from pettingzoo.butterfly import pistonball_v6
+from torch import nn
+from torch.distributions import Independent, Normal
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.env.pettingzoo_env import PettingZooEnv
@@ -12,12 +18,6 @@ from tianshou.policy import BasePolicy, MultiAgentPolicyManager, PPOPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.continuous import ActorProb, Critic
-
-import torch
-from pettingzoo.butterfly import pistonball_v6
-from torch import nn
-from torch.distributions import Independent, Normal
-from torch.utils.tensorboard import SummaryWriter
 
 
 class DQN(nn.Module):
@@ -168,9 +168,7 @@ def get_agents(
                 if isinstance(m, torch.nn.Linear):
                     torch.nn.init.orthogonal_(m.weight)
                     torch.nn.init.zeros_(m.bias)
-            optim = torch.optim.Adam(
-                set(actor.parameters()).union(critic.parameters()), lr=args.lr
-            )
+            optim = torch.optim.Adam(set(actor.parameters()).union(critic.parameters()), lr=args.lr)
 
             def dist(*logits):
                 return Independent(Normal(*logits), 1)
@@ -198,9 +196,7 @@ def get_agents(
             agents.append(agent)
             optims.append(optim)
 
-    policy = MultiAgentPolicyManager(
-        agents, env, action_scaling=True, action_bound_method="clip"
-    )
+    policy = MultiAgentPolicyManager(agents, env, action_scaling=True, action_bound_method="clip")
     return policy, optims, env.agents
 
 
@@ -263,14 +259,11 @@ def train_agent(
     return result, policy
 
 
-def watch(
-    args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None
-) -> None:
+def watch(args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None) -> None:
     env = DummyVectorEnv([get_env])
     if not policy:
         warnings.warn(
-            "watching random agents, as loading pre-trained policies is "
-            "currently not supported"
+            "watching random agents, as loading pre-trained policies is " "currently not supported"
         )
         policy, _, _ = get_agents(args)
     policy.eval()

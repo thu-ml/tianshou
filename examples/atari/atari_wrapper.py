@@ -7,6 +7,7 @@ from collections import deque
 import cv2
 import gymnasium as gym
 import numpy as np
+
 from tianshou.env import ShmemVectorEnv
 
 try:
@@ -342,23 +343,18 @@ def make_atari_env(task, seed, training_num, test_num, **kwargs):
         )
     else:
         warnings.warn(
-            "Recommend using envpool (pip install envpool) "
-            "to run Atari games more efficiently."
+            "Recommend using envpool (pip install envpool) " "to run Atari games more efficiently."
         )
         env = wrap_deepmind(task, **kwargs)
         train_envs = ShmemVectorEnv(
             [
-                lambda: wrap_deepmind(
-                    task, episode_life=True, clip_rewards=True, **kwargs
-                )
+                lambda: wrap_deepmind(task, episode_life=True, clip_rewards=True, **kwargs)
                 for _ in range(training_num)
             ]
         )
         test_envs = ShmemVectorEnv(
             [
-                lambda: wrap_deepmind(
-                    task, episode_life=False, clip_rewards=False, **kwargs
-                )
+                lambda: wrap_deepmind(task, episode_life=False, clip_rewards=False, **kwargs)
                 for _ in range(test_num)
             ]
         )

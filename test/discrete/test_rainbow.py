@@ -5,6 +5,9 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, PrioritizedVectorReplayBuffer, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import RainbowPolicy
@@ -12,9 +15,6 @@ from tianshou.trainer import OffpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.discrete import NoisyLinear
-
-import torch
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -38,9 +38,7 @@ def get_args():
     parser.add_argument("--step-per-collect", type=int, default=8)
     parser.add_argument("--update-per-step", type=float, default=0.125)
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument(
-        "--hidden-sizes", type=int, nargs="*", default=[128, 128, 128, 128]
-    )
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128, 128, 128])
     parser.add_argument("--training-num", type=int, default=8)
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
@@ -64,18 +62,12 @@ def test_rainbow(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 195}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)]
-    )
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -148,9 +140,7 @@ def test_rainbow(args=get_args()):
             if env_step <= 10000:
                 beta = args.beta
             elif env_step <= 50000:
-                beta = args.beta - (env_step - 10000) / 40000 * (
-                    args.beta - args.beta_final
-                )
+                beta = args.beta - (env_step - 10000) / 40000 * (args.beta - args.beta_final)
             else:
                 beta = args.beta_final
             buf.set_beta(beta)

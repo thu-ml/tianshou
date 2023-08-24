@@ -1,26 +1,18 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import (
-    Any,
-    Callable,
-    Literal,
-    Optional,
-    Union,
-    cast,
-    overload,
-)
+from typing import Any, Callable, Literal, Optional, Union, cast, overload
 
 import gymnasium as gym
 import numpy as np
+import torch
 from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 from numba import njit
+from torch import nn
 
-import torch
 from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol, TBatch
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils import MultipleLRSchedulers
-from torch import nn
 
 logger = logging.getLogger(__name__)
 
@@ -223,9 +215,7 @@ class BasePolicy(ABC, nn.Module):
         :return: action in the same form of input "act" but remap to the target action
             space.
         """
-        if isinstance(self.action_space, gym.spaces.Box) and isinstance(
-            act, np.ndarray
-        ):
+        if isinstance(self.action_space, gym.spaces.Box) and isinstance(act, np.ndarray):
             # currently this action mapping only supports np.ndarray action
             if self.action_bound_method == "clip":
                 act = np.clip(act, -1.0, 1.0)
@@ -276,9 +266,7 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
     @abstractmethod
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, Any]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Update policy with a given batch of data.
 
         :return: A dict, including the data needed to be logged (e.g., loss).
@@ -451,13 +439,9 @@ class BasePolicy(ABC, nn.Module):
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """
-        assert (
-            not rew_norm
-        ), "Reward normalization in computing n-step returns is unsupported now."
+        assert not rew_norm, "Reward normalization in computing n-step returns is unsupported now."
         if len(indices) != len(batch):
-            raise ValueError(
-                f"Batch size {len(batch)} and indices size {len(indices)} mismatch."
-            )
+            raise ValueError(f"Batch size {len(batch)} and indices size {len(indices)} mismatch.")
 
         rew = buffer.rew
         bsz = len(indices)

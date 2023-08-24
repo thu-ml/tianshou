@@ -11,6 +11,7 @@ class BaseNoise(ABC):
     def __init__(self) -> None:
         super().__init__()
 
+    @abstractmethod
     def reset(self) -> None:
         """Reset to the initial state."""
 
@@ -31,6 +32,9 @@ class GaussianNoise(BaseNoise):
 
     def __call__(self, size: Sequence[int]) -> np.ndarray:
         return np.random.normal(self._mu, self._sigma, size)
+
+    def reset(self) -> None:
+        pass
 
 
 class OUNoise(BaseNoise):

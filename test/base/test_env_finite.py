@@ -5,11 +5,11 @@ from collections import Counter
 
 import gymnasium as gym
 import numpy as np
+from torch.utils.data import DataLoader, Dataset, DistributedSampler
+
 from tianshou.data import Batch, Collector
 from tianshou.env import BaseVectorEnv, DummyVectorEnv, SubprocVectorEnv
 from tianshou.policy import BasePolicy
-
-from torch.utils.data import DataLoader, Dataset, DistributedSampler
 
 
 class DummyDataset(Dataset):
@@ -193,9 +193,7 @@ class MetricTracker:
 
 def test_finite_dummy_vector_env():
     dataset = DummyDataset(100)
-    envs = FiniteSubprocVectorEnv(
-        [_finite_env_factory(dataset, 5, i) for i in range(5)]
-    )
+    envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()
     test_collector = Collector(policy, envs, exploration_noise=True)
 
@@ -209,9 +207,7 @@ def test_finite_dummy_vector_env():
 
 def test_finite_subproc_vector_env():
     dataset = DummyDataset(100)
-    envs = FiniteSubprocVectorEnv(
-        [_finite_env_factory(dataset, 5, i) for i in range(5)]
-    )
+    envs = FiniteSubprocVectorEnv([_finite_env_factory(dataset, 5, i) for i in range(5)])
     policy = AnyPolicy()
     test_collector = Collector(policy, envs, exploration_noise=True)
 

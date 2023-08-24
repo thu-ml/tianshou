@@ -4,8 +4,8 @@ from typing import Any, Callable, Optional, Union, cast
 
 import gymnasium as gym
 import numpy as np
-
 import torch
+
 from tianshou.data import (
     Batch,
     CachedReplayBuffer,
@@ -150,9 +150,7 @@ class Collector:
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs, info = self.env.reset(**gym_reset_kwargs)
         if self.preprocess_fn:
-            processed_data = self.preprocess_fn(
-                obs=obs, info=info, env_id=np.arange(self.env_num)
-            )
+            processed_data = self.preprocess_fn(obs=obs, info=info, env_id=np.arange(self.env_num))
             obs = processed_data.get("obs", obs)
             info = processed_data.get("info", info)
         self.data.info = info  # type: ignore
@@ -178,9 +176,7 @@ class Collector:
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs_reset, info = self.env.reset(global_ids, **gym_reset_kwargs)
         if self.preprocess_fn:
-            processed_data = self.preprocess_fn(
-                obs=obs_reset, info=info, env_id=global_ids
-            )
+            processed_data = self.preprocess_fn(obs=obs_reset, info=info, env_id=global_ids)
             obs_reset = processed_data.get("obs", obs_reset)
             info = processed_data.get("info", info)
         self.data.info[local_ids] = info  # type: ignore
@@ -327,9 +323,7 @@ class Collector:
                     time.sleep(render)
 
             # add data into the buffer
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
-                self.data, buffer_ids=ready_env_ids
-            )
+            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(self.data, buffer_ids=ready_env_ids)
 
             # collect statistics
             step_count += len(ready_env_ids)
@@ -343,9 +337,7 @@ class Collector:
                 episode_start_indices.append(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_env_with_ids(
-                    env_ind_local, env_ind_global, gym_reset_kwargs
-                )
+                self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
                 for i in env_ind_local:
                     self._reset_state(i)
 
@@ -361,9 +353,7 @@ class Collector:
 
             self.data.obs = self.data.obs_next
 
-            if (n_step and step_count >= n_step) or (
-                n_episode and episode_count >= n_episode
-            ):
+            if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
                 break
 
         # generate statistics
@@ -600,9 +590,7 @@ class AsyncCollector(Collector):
                     time.sleep(render)
 
             # add data into the buffer
-            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
-                self.data, buffer_ids=ready_env_ids
-            )
+            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(self.data, buffer_ids=ready_env_ids)
 
             # collect statistics
             step_count += len(ready_env_ids)
@@ -616,9 +604,7 @@ class AsyncCollector(Collector):
                 episode_start_indices.append(ep_idx[env_ind_local])
                 # now we copy obs_next to obs, but since there might be
                 # finished episodes, we have to reset finished envs first.
-                self._reset_env_with_ids(
-                    env_ind_local, env_ind_global, gym_reset_kwargs
-                )
+                self._reset_env_with_ids(env_ind_local, env_ind_global, gym_reset_kwargs)
                 for i in env_ind_local:
                     self._reset_state(i)
 
@@ -636,9 +622,7 @@ class AsyncCollector(Collector):
                 whole_data[ready_env_ids] = self.data
             self.data = whole_data
 
-            if (n_step and step_count >= n_step) or (
-                n_episode and episode_count >= n_episode
-            ):
+            if (n_step and step_count >= n_step) or (n_episode and episode_count >= n_episode):
                 break
 
         self._ready_env_ids = ready_env_ids

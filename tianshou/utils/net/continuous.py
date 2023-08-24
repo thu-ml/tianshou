@@ -3,10 +3,10 @@ from collections.abc import Sequence
 from typing import Any, Optional, Union
 
 import numpy as np
-
 import torch
-from tianshou.utils.net.common import MLP
 from torch import nn
+
+from tianshou.utils.net.common import MLP
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2
@@ -182,17 +182,13 @@ class ActorProb(nn.Module):
     ) -> None:
         super().__init__()
         if unbounded and not np.isclose(max_action, 1.0):
-            warnings.warn(
-                "Note that max_action input will be discarded when unbounded is True."
-            )
+            warnings.warn("Note that max_action input will be discarded when unbounded is True.")
             max_action = 1.0
         self.preprocess = preprocess_net
         self.device = device
         self.output_dim = int(np.prod(action_shape))
         input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        self.mu = MLP(
-            input_dim, self.output_dim, hidden_sizes, device=self.device  # type: ignore
-        )
+        self.mu = MLP(input_dim, self.output_dim, hidden_sizes, device=self.device)  # type: ignore
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
             self.sigma = MLP(
@@ -248,9 +244,7 @@ class RecurrentActorProb(nn.Module):
     ) -> None:
         super().__init__()
         if unbounded and not np.isclose(max_action, 1.0):
-            warnings.warn(
-                "Note that max_action input will be discarded when unbounded is True."
-            )
+            warnings.warn("Note that max_action input will be discarded when unbounded is True.")
             max_action = 1.0
         self.device = device
         self.nn = nn.LSTM(
@@ -488,12 +482,8 @@ class VAE(nn.Module):
             # state.shape[0] may be batch_size
             # latent vector clipped to [-0.5, 0.5]
             latent_z = (
-                torch.randn(state.shape[:-1] + (self.latent_dim,))
-                .to(self.device)
-                .clamp(-0.5, 0.5)
+                torch.randn(state.shape[:-1] + (self.latent_dim,)).to(self.device).clamp(-0.5, 0.5)
             )
 
         # decode z with state!
-        return self.max_action * torch.tanh(
-            self.decoder(torch.cat([state, latent_z], -1))
-        )
+        return self.max_action * torch.tanh(self.decoder(torch.cat([state, latent_z], -1)))

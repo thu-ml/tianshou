@@ -9,14 +9,7 @@ import tqdm
 from tianshou.data import AsyncCollector, Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
-from tianshou.utils import (
-    BaseLogger,
-    DummyTqdm,
-    LazyLogger,
-    MovAvg,
-    deprecation,
-    tqdm_config,
-)
+from tianshou.utils import BaseLogger, DummyTqdm, LazyLogger, MovAvg, deprecation, tqdm_config
 
 
 class BaseTrainer(ABC):
@@ -288,9 +281,7 @@ class BaseTrainer(ABC):
         progress = tqdm.tqdm if self.show_progress else DummyTqdm
 
         # perform n step_per_epoch
-        with progress(
-            total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config
-        ) as t:
+        with progress(total=self.step_per_epoch, desc=f"Epoch #{self.epoch}", **tqdm_config) as t:
             while t.n < t.total and not self.stop_fn_flag:
                 data: dict[str, Any] = {}
                 result: dict[str, Any] = {}
@@ -493,9 +484,7 @@ class OfflineTrainer(BaseTrainer):
 
     # for mypy
     assert isinstance(BaseTrainer.__doc__, str)
-    __doc__ += BaseTrainer.gen_doc("offline") + "\n".join(
-        BaseTrainer.__doc__.split("\n")[1:]
-    )
+    __doc__ += BaseTrainer.gen_doc("offline") + "\n".join(BaseTrainer.__doc__.split("\n")[1:])
 
     def policy_update_fn(
         self, data: dict[str, Any], result: Optional[dict[str, Any]] = None
@@ -515,9 +504,7 @@ class OffpolicyTrainer(BaseTrainer):
 
     # for mypy
     assert isinstance(BaseTrainer.__doc__, str)
-    __doc__ += BaseTrainer.gen_doc("offpolicy") + "\n".join(
-        BaseTrainer.__doc__.split("\n")[1:]
-    )
+    __doc__ += BaseTrainer.gen_doc("offpolicy") + "\n".join(BaseTrainer.__doc__.split("\n")[1:])
 
     def policy_update_fn(self, data: dict[str, Any], result: dict[str, Any]) -> None:
         """Perform off-policy updates.
@@ -544,9 +531,7 @@ class OnpolicyTrainer(BaseTrainer):
 
     # for mypy
     assert isinstance(BaseTrainer.__doc__, str)
-    __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(
-        BaseTrainer.__doc__.split("\n")[1:]
-    )
+    __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(BaseTrainer.__doc__.split("\n")[1:])
 
     def policy_update_fn(
         self, data: dict[str, Any], result: Optional[dict[str, Any]] = None
@@ -569,9 +554,7 @@ class OnpolicyTrainer(BaseTrainer):
         #   it's important and it adds complexity
         self.gradient_step += 1
         if self.batch_size > 0:
-            self.gradient_step += int(
-                (len(self.train_collector.buffer) - 0.1) // self.batch_size
-            )
+            self.gradient_step += int((len(self.train_collector.buffer) - 0.1) // self.batch_size)
 
         # Note: this is the main difference to the off-policy trainer!
         # The second difference is that batches of data are sampled without replacement

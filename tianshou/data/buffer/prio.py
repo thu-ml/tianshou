@@ -1,8 +1,8 @@
 from typing import Any, Optional, Union, cast
 
 import numpy as np
-
 import torch
+
 from tianshou.data import ReplayBuffer, SegmentTree, to_numpy
 from tianshou.data.types import PrioBatchProtocol, RolloutBatchProtocol
 
@@ -77,9 +77,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         # simplified formula: (p_j/p_min)**(-beta)
         return (self.weight[index] / self._min_prio) ** (-self._beta)
 
-    def update_weight(
-        self, index: np.ndarray, new_weight: Union[np.ndarray, torch.Tensor]
-    ) -> None:
+    def update_weight(self, index: np.ndarray, new_weight: Union[np.ndarray, torch.Tensor]) -> None:
         """Update priority weight by index in this buffer.
 
         :param np.ndarray index: index you want to update weight.
@@ -90,9 +88,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._max_prio = max(self._max_prio, weight.max())
         self._min_prio = min(self._min_prio, weight.min())
 
-    def __getitem__(
-        self, index: Union[slice, int, list[int], np.ndarray]
-    ) -> PrioBatchProtocol:
+    def __getitem__(self, index: Union[slice, int, list[int], np.ndarray]) -> PrioBatchProtocol:
         if isinstance(index, slice):  # change slice to np array
             # buffer[:] will get all available data
             indices = (

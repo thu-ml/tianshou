@@ -3,10 +3,11 @@ from typing import Any
 
 import torch
 import torch.nn.functional as F
+from torch.distributions import Categorical
+
 from tianshou.data import to_torch, to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy.modelfree.pg import PGPolicy
-from torch.distributions import Categorical
 
 
 class DiscreteCRRPolicy(PGPolicy):
@@ -108,9 +109,7 @@ class DiscreteCRRPolicy(PGPolicy):
         if self._policy_improvement_mode == "binary":
             actor_loss_coef = (advantage > 0).float()
         elif self._policy_improvement_mode == "exp":
-            actor_loss_coef = (
-                (advantage / self._beta).exp().clamp(0, self._ratio_upper_bound)
-            )
+            actor_loss_coef = (advantage / self._beta).exp().clamp(0, self._ratio_upper_bound)
         else:
             actor_loss_coef = 1.0  # effectively behavior cloning
         actor_loss = (-dist.log_prob(act) * actor_loss_coef).mean()

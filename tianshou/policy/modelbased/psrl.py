@@ -1,8 +1,8 @@
 from typing import Any, Optional, Union, cast
 
 import numpy as np
-
 import torch
+
 from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
@@ -83,9 +83,7 @@ class PSRLModel:
 
     def sample_trans_prob(self) -> np.ndarray:
         sample_prob = (
-            torch.distributions.Dirichlet(torch.from_numpy(self.trans_count))
-            .sample()
-            .numpy()
+            torch.distributions.Dirichlet(torch.from_numpy(self.trans_count)).sample().numpy()
         )
         return sample_prob
 
@@ -204,9 +202,7 @@ class PSRLPolicy(BasePolicy):
         result = Batch(act=act)
         return cast(ActBatchProtocol, result)
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
@@ -214,9 +210,7 @@ class PSRLPolicy(BasePolicy):
         rew_count = np.zeros((n_s, n_a))
         for minibatch in batch.split(size=1):
             obs, act, obs_next = minibatch.obs, minibatch.act, minibatch.obs_next
-            assert not isinstance(
-                obs, BatchProtocol
-            ), "Observations cannot be Batches here"
+            assert not isinstance(obs, BatchProtocol), "Observations cannot be Batches here"
             trans_count[obs, act, obs_next] += 1
             rew_sum[obs, act] += minibatch.rew
             rew_square_sum[obs, act] += minibatch.rew**2

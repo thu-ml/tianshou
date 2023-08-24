@@ -4,6 +4,11 @@ import pprint
 
 import gymnasium as gym
 import numpy as np
+import torch
+from torch import nn
+from torch.distributions import Independent, Normal
+from torch.utils.tensorboard import SummaryWriter
+
 from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import NPGPolicy
@@ -11,11 +16,6 @@ from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb, Critic
-
-import torch
-from torch import nn
-from torch.distributions import Independent, Normal
-from torch.utils.tensorboard import SummaryWriter
 
 
 def get_args():
@@ -29,9 +29,7 @@ def get_args():
     parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--step-per-epoch", type=int, default=50000)
     parser.add_argument("--step-per-collect", type=int, default=2048)
-    parser.add_argument(
-        "--repeat-per-collect", type=int, default=2
-    )  # theoretically it should be 1
+    parser.add_argument("--repeat-per-collect", type=int, default=2)  # theoretically it should be 1
     parser.add_argument("--batch-size", type=int, default=99999)
     parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--training-num", type=int, default=16)
@@ -58,18 +56,12 @@ def test_npg(args=get_args()):
     args.max_action = env.action_space.high[0]
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
-    train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)]
-    )
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -82,9 +74,7 @@ def test_npg(args=get_args()):
         activation=nn.Tanh,
         device=args.device,
     )
-    actor = ActorProb(net, args.action_shape, unbounded=True, device=args.device).to(
-        args.device
-    )
+    actor = ActorProb(net, args.action_shape, unbounded=True, device=args.device).to(args.device)
     critic = Critic(
         Net(
             args.state_shape,

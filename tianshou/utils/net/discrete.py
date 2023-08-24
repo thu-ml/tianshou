@@ -2,12 +2,12 @@ from collections.abc import Sequence
 from typing import Any, Optional, Union
 
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+from torch import nn
+
 from tianshou.data import Batch, to_torch
 from tianshou.utils.net.common import MLP
-from torch import nn
 
 
 class Actor(nn.Module):
@@ -106,13 +106,9 @@ class Critic(nn.Module):
         self.preprocess = preprocess_net
         self.output_dim = last_size
         input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
-        self.last = MLP(
-            input_dim, last_size, hidden_sizes, device=self.device  # type: ignore
-        )
+        self.last = MLP(input_dim, last_size, hidden_sizes, device=self.device)  # type: ignore
 
-    def forward(
-        self, obs: Union[np.ndarray, torch.Tensor], **kwargs: Any
-    ) -> torch.Tensor:
+    def forward(self, obs: Union[np.ndarray, torch.Tensor], **kwargs: Any) -> torch.Tensor:
         """Mapping: s -> V(s)."""
         logits, _ = self.preprocess(obs, state=kwargs.get("state", None))
         return self.last(logits)
@@ -185,15 +181,11 @@ class ImplicitQuantileNetwork(Critic):
         device: Union[str, int, torch.device] = "cpu",
     ) -> None:
         last_size = int(np.prod(action_shape))
-        super().__init__(
-            preprocess_net, hidden_sizes, last_size, preprocess_net_output_dim, device
+        super().__init__(preprocess_net, hidden_sizes, last_size, preprocess_net_output_dim, device)
+        self.input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
+        self.embed_model = CosineEmbeddingNetwork(num_cosines, self.input_dim).to(  # type: ignore
+            device
         )
-        self.input_dim = getattr(
-            preprocess_net, "output_dim", preprocess_net_output_dim
-        )
-        self.embed_model = CosineEmbeddingNetwork(
-            num_cosines, self.input_dim  # type: ignore
-        ).to(device)
 
     def forward(  # type: ignore
         self, obs: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
@@ -202,9 +194,7 @@ class ImplicitQuantileNetwork(Critic):
         logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
         # Sample fractions.
         batch_size = logits.size(0)
-        taus = torch.rand(
-            batch_size, sample_size, dtype=logits.dtype, device=logits.device
-        )
+        taus = torch.rand(batch_size, sample_size, dtype=logits.dtype, device=logits.device)
         embedding = (logits.unsqueeze(1) * self.embed_model(taus)).view(
             batch_size * sample_size, -1
         )
@@ -287,12 +277,8 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
 
     def _compute_quantiles(self, obs: torch.Tensor, taus: torch.Tensor) -> torch.Tensor:
         batch_size, sample_size = taus.shape
-        embedding = (obs.unsqueeze(1) * self.embed_model(taus)).view(
-            batch_size * sample_size, -1
-        )
-        quantiles = (
-            self.last(embedding).view(batch_size, sample_size, -1).transpose(1, 2)
-        )
+        embedding = (obs.unsqueeze(1) * self.embed_model(taus)).view(batch_size * sample_size, -1)
+        quantiles = self.last(embedding).view(batch_size, sample_size, -1).transpose(1, 2)
         return quantiles
 
     def forward(  # type: ignore
@@ -332,9 +318,7 @@ class NoisyLinear(nn.Module):
         /fqf_iqn_qrdqn/network.py .
     """
 
-    def __init__(
-        self, in_features: int, out_features: int, noisy_std: float = 0.5
-    ) -> None:
+    def __init__(self, in_features: int, out_features: int, noisy_std: float = 0.5) -> None:
         super().__init__()
 
         # Learnable parameters.
@@ -371,9 +355,7 @@ class NoisyLinear(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.training:
-            weight = self.mu_W + self.sigma_W * (
-                self.eps_q.ger(self.eps_p)  # type: ignore
-            )
+            weight = self.mu_W + self.sigma_W * (self.eps_q.ger(self.eps_p))  # type: ignore
             bias = self.mu_bias + self.sigma_bias * self.eps_q.clone()  # type: ignore
         else:
             weight = self.mu_W

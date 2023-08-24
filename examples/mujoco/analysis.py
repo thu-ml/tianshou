@@ -29,9 +29,7 @@ def numerical_analysis(root_dir, xlim, norm=False):
                 ]
             )
         else:
-            result = np.stack(
-                [result["env_step"], result["reward"], result["reward:shaded"]]
-            )
+            result = np.stack([result["env_step"], result["reward"], result["reward:shaded"]])
 
         if result[0, -1] < xlim:
             continue

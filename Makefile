@@ -16,12 +16,13 @@ mypy:
 	$(call check_install, mypy)
 	mypy ${PROJECT_NAME}
 
-lint-format:
+lint:
 	$(call check_install, ruff)
-	$(call check_install, black)
+	ruff check .
+
+lint-format:
 	$(call check_install, pre_commit)
-	pre-commit run --all-files --color always black
-	pre-commit run --all-files --color always ruff
+	pre-commit run --all-files
 
 doc:
 	$(call check_install, sphinx)

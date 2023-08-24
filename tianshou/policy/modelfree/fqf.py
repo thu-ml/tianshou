@@ -1,9 +1,9 @@
 from typing import Any, Optional, Union, cast
 
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy, QRDQNPolicy
@@ -70,9 +70,7 @@ class FQFPolicy(QRDQNPolicy):
         if self._target:
             result = self(batch, input="obs_next")
             act, fractions = result.act, result.fractions
-            next_dist = self(
-                batch, model="model_old", input="obs_next", fractions=fractions
-            ).logits
+            next_dist = self(batch, model="model_old", input="obs_next", fractions=fractions).logits
         else:
             next_batch = self(batch, input="obs_next")
             act = next_batch.act
@@ -105,12 +103,8 @@ class FQFPolicy(QRDQNPolicy):
                 state=state,
                 info=batch.info,
             )
-        weighted_logits = (fractions.taus[:, 1:] - fractions.taus[:, :-1]).unsqueeze(
-            1
-        ) * logits
-        q = DQNPolicy.compute_q_value(
-            self, weighted_logits.sum(2), getattr(obs, "mask", None)
-        )
+        weighted_logits = (fractions.taus[:, 1:] - fractions.taus[:, :-1]).unsqueeze(1) * logits
+        q = DQNPolicy.compute_q_value(self, weighted_logits.sum(2), getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
@@ -123,9 +117,7 @@ class FQFPolicy(QRDQNPolicy):
         )
         return cast(FQFBatchProtocol, result)
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         weight = batch.pop("weight", 1.0)
@@ -140,10 +132,7 @@ class FQFPolicy(QRDQNPolicy):
         huber_loss = (
             (
                 dist_diff
-                * (
-                    tau_hats.unsqueeze(2)
-                    - (target_dist - curr_dist).detach().le(0.0).float()
-                ).abs()
+                * (tau_hats.unsqueeze(2) - (target_dist - curr_dist).detach().le(0.0).float()).abs()
             )
             .sum(-1)
             .mean(1)

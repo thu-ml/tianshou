@@ -1,9 +1,9 @@
 from typing import Any, Optional, Union, cast
 
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+
 from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import QuantileRegressionBatchProtocol, RolloutBatchProtocol
@@ -94,9 +94,7 @@ class IQNPolicy(QRDQNPolicy):
         result = Batch(logits=logits, act=act, state=hidden, taus=taus)
         return cast(QuantileRegressionBatchProtocol, result)
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -111,10 +109,7 @@ class IQNPolicy(QRDQNPolicy):
         huber_loss = (
             (
                 dist_diff
-                * (
-                    taus.unsqueeze(2)
-                    - (target_dist - curr_dist).detach().le(0.0).float()
-                ).abs()
+                * (taus.unsqueeze(2) - (target_dist - curr_dist).detach().le(0.0).float()).abs()
             )
             .sum(-1)
             .mean(1)

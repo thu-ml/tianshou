@@ -2,6 +2,7 @@ from typing import Any, Optional
 
 import torch
 import torch.nn.functional as F
+
 from tianshou.data import to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
@@ -88,9 +89,7 @@ class TD3BCPolicy(TD3Policy):
         )
         self._alpha = alpha
 
-    def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
-    ) -> dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         # critic 1&2
         td1, critic1_loss = self._mse_optimizer(batch, self.critic1, self.critic1_optim)
         td2, critic2_loss = self._mse_optimizer(batch, self.critic2, self.critic2_optim)
@@ -101,9 +100,7 @@ class TD3BCPolicy(TD3Policy):
             act = self(batch, eps=0.0).act
             q_value = self.critic1(batch.obs, act)
             lmbda = self._alpha / q_value.abs().mean().detach()
-            actor_loss = -lmbda * q_value.mean() + F.mse_loss(
-                act, to_torch_as(batch.act, act)
-            )
+            actor_loss = -lmbda * q_value.mean() + F.mse_loss(act, to_torch_as(batch.act, act))
             self.actor_optim.zero_grad()
             actor_loss.backward()
             self._last = actor_loss.item()

@@ -23,9 +23,7 @@ class ReplayBufferManager(ReplayBuffer):
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
-    def __init__(
-        self, buffer_list: Union[list[ReplayBuffer], list[HERReplayBuffer]]
-    ) -> None:
+    def __init__(self, buffer_list: Union[list[ReplayBuffer], list[HERReplayBuffer]]) -> None:
         self.buffer_num = len(buffer_list)
         self.buffers = np.array(buffer_list, dtype=object)
         offset, size = [], 0
@@ -70,10 +68,7 @@ class ReplayBufferManager(ReplayBuffer):
 
     def unfinished_index(self) -> np.ndarray:
         return np.concatenate(
-            [
-                buf.unfinished_index() + offset
-                for offset, buf in zip(self._offset, self.buffers)
-            ]
+            [buf.unfinished_index() + offset for offset, buf in zip(self._offset, self.buffers)]
         )
 
     def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
@@ -136,9 +131,7 @@ class ReplayBufferManager(ReplayBuffer):
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
-        assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(
-            batch.keys()
-        )
+        assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(batch.keys())
         if self._save_only_last_obs:
             batch.obs = batch.obs[:, -1]
         if not self._save_obs_next:
@@ -168,9 +161,7 @@ class ReplayBufferManager(ReplayBuffer):
             batch.terminated = batch.terminated.astype(bool)
             batch.truncated = batch.truncated.astype(bool)
             if self._meta.is_empty():
-                self._meta = create_value(  # type: ignore
-                    batch, self.maxsize, stack=False
-                )
+                self._meta = create_value(batch, self.maxsize, stack=False)  # type: ignore
             else:  # dynamic key pops up in batch
                 alloc_by_keys_diff(self._meta, batch, self.maxsize, False)
             self._set_batch_for_children()
@@ -182,10 +173,7 @@ class ReplayBufferManager(ReplayBuffer):
             return np.array([], int)
         if self._sample_avail and self.stack_num > 1:
             all_indices = np.concatenate(
-                [
-                    buf.sample_indices(0) + offset
-                    for offset, buf in zip(self._offset, self.buffers)
-                ]
+                [buf.sample_indices(0) + offset for offset, buf in zip(self._offset, self.buffers)]
             )
             if batch_size == 0:
                 return all_indices

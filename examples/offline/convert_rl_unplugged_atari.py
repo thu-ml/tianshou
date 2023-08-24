@@ -34,8 +34,9 @@ import h5py
 import numpy as np
 import requests
 import tensorflow as tf
-from tianshou.data import Batch
 from tqdm import tqdm
+
+from tianshou.data import Batch
 
 tf.config.set_visible_devices([], "GPU")
 
@@ -283,9 +284,7 @@ if __name__ == "__main__":
         default=0,
         help="Shard id to download and convert. Value in [0..99].",
     )
-    parser.add_argument(
-        "--total-num-shards", type=int, default=100, help="Total number of shards."
-    )
+    parser.add_argument("--total-num-shards", type=int, default=100, help="Total number of shards.")
     parser.add_argument(
         "--dataset-dir",
         default=os.path.expanduser("~/.rl_unplugged/datasets"),

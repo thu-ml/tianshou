@@ -6,9 +6,9 @@ from itertools import starmap
 import networkx as nx
 import numpy as np
 import pytest
-from tianshou.data import Batch, to_numpy, to_torch
-
 import torch
+
+from tianshou.data import Batch, to_numpy, to_torch
 
 
 def test_batch():
@@ -68,9 +68,9 @@ def test_batch():
             assert b.obs == batch[i].obs
         else:
             with pytest.raises(AttributeError):
-                batch[i].obs
+                batch[i].obs  # noqa: B018
             with pytest.raises(AttributeError):
-                b.obs
+                b.obs  # noqa: B018
     print(batch)
     batch = Batch(a=np.arange(10))
     with pytest.raises(AssertionError):
@@ -102,13 +102,11 @@ def test_batch():
     assert batch_item.a.c == batch_dict["c"]
     assert isinstance(batch_item.a.d, torch.Tensor)
     assert batch_item.a.d == batch_dict["d"]
-    batch2 = Batch(
-        a=[{"b": np.float64(1.0), "c": np.zeros(1), "d": Batch(e=np.array(3.0))}]
-    )
+    batch2 = Batch(a=[{"b": np.float64(1.0), "c": np.zeros(1), "d": Batch(e=np.array(3.0))}])
     assert len(batch2) == 1
     assert Batch().shape == []
     assert Batch(a=1).shape == []
-    assert Batch(a={1, 2, 1}).shape == []
+    assert Batch(a={1, 2}).shape == []
     assert batch2.shape[0] == 1
     assert "a" in batch2
     assert all(i in batch2.a for i in "bcd")
@@ -144,9 +142,7 @@ def test_batch():
     assert batch2_sum.a.d.f.is_empty()
     with pytest.raises(TypeError):
         batch2 += [1]
-    batch3 = Batch(
-        a={"c": np.zeros(1), "d": Batch(e=np.array([0.0]), f=np.array([3.0]))}
-    )
+    batch3 = Batch(a={"c": np.zeros(1), "d": Batch(e=np.array([0.0]), f=np.array([3.0]))})
     batch3.a.d[0] = {"e": 4.0}
     assert batch3.a.d.e[0] == 4.0
     batch3.a.d[0] = Batch(f=5.0)
@@ -303,9 +299,7 @@ def test_batch_cat_and_stack():
     b34_stack = Batch.stack((b3, b4), axis=1)
     assert np.all(b34_stack.a == np.stack((b3.a, b4.a), axis=1))
     assert np.all(b34_stack.c.d == list(map(list, zip(b3.c.d, b4.c.d))))
-    b5_dict = np.array(
-        [{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}]
-    )
+    b5_dict = np.array([{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}])
     b5 = Batch(b5_dict)
     assert b5.a[0] == np.array(False)
     assert b5.a[1] == np.array(True)
@@ -373,9 +367,7 @@ def test_batch_cat_and_stack():
 def test_batch_over_batch_to_torch():
     batch = Batch(
         a=np.float64(1.0),
-        b=Batch(
-            c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)
-        ),
+        b=Batch(c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)),
     )
     batch.b.__dict__["e"] = 1  # bypass the check
     batch.to_torch()
@@ -400,9 +392,7 @@ def test_batch_over_batch_to_torch():
 def test_utils_to_torch_numpy():
     batch = Batch(
         a=np.float64(1.0),
-        b=Batch(
-            c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)
-        ),
+        b=Batch(c=np.ones((1,), dtype=np.float32), d=torch.ones((1,), dtype=torch.float64)),
     )
     a_torch_float = to_torch(batch.a, dtype=torch.float32)
     assert a_torch_float.dtype == torch.float32
@@ -519,9 +509,7 @@ def test_batch_copy():
 
 
 def test_batch_empty():
-    b5_dict = np.array(
-        [{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}]
-    )
+    b5_dict = np.array([{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}])
     b5 = Batch(b5_dict)
     b5[1] = Batch.empty(b5[0])
     assert np.allclose(b5.a, [False, False])
@@ -557,9 +545,7 @@ def test_batch_empty():
 
 
 def test_batch_standard_compatibility():
-    batch = Batch(
-        a=np.array([[1.0, 2.0], [3.0, 4.0]]), b=Batch(), c=np.array([5.0, 6.0])
-    )
+    batch = Batch(a=np.array([[1.0, 2.0], [3.0, 4.0]]), b=Batch(), c=np.array([5.0, 6.0]))
     batch_mean = np.mean(batch)
     assert isinstance(batch_mean, Batch)
     assert sorted(batch_mean.keys()) == ["a", "b", "c"]

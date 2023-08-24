@@ -180,24 +180,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--style", default="seaborn", help="matplotlib figure style (default: seaborn)"
     )
-    parser.add_argument(
-        "--title", default=None, help="matplotlib figure title (default: None)"
-    )
+    parser.add_argument("--title", default=None, help="matplotlib figure title (default: None)")
     parser.add_argument(
         "--xkey", default="env_step", help="x-axis key in csv file (default: env_step)"
     )
-    parser.add_argument(
-        "--ykey", default="rew", help="y-axis key in csv file (default: rew)"
-    )
+    parser.add_argument("--ykey", default="rew", help="y-axis key in csv file (default: rew)")
     parser.add_argument(
         "--smooth", type=int, default=0, help="smooth radius of y axis (default: 0)"
     )
-    parser.add_argument(
-        "--xlabel", default="Timesteps", help="matplotlib figure xlabel"
-    )
-    parser.add_argument(
-        "--ylabel", default="Episode Reward", help="matplotlib figure ylabel"
-    )
+    parser.add_argument("--xlabel", default="Timesteps", help="matplotlib figure xlabel")
+    parser.add_argument("--ylabel", default="Episode Reward", help="matplotlib figure ylabel")
     parser.add_argument(
         "--shaded-std",
         action="store_true",
@@ -218,9 +210,7 @@ if __name__ == "__main__":
         action="store_true",
         help="place the legend outside of the figure",
     )
-    parser.add_argument(
-        "--xlim", type=int, default=None, help="x-axis limitation (default: None)"
-    )
+    parser.add_argument("--xlim", type=int, default=None, help="x-axis limitation (default: None)")
     parser.add_argument("--root-dir", default="./", help="root dir (default: ./)")
     parser.add_argument(
         "--file-pattern",
@@ -244,12 +234,8 @@ if __name__ == "__main__":
         "using file path as legend name.",
     )
     parser.add_argument("--show", action="store_true", help="show figure")
-    parser.add_argument(
-        "--output-path", type=str, help="figure save path", default="./figure.png"
-    )
-    parser.add_argument(
-        "--dpi", type=int, default=200, help="figure dpi (default: 200)"
-    )
+    parser.add_argument("--output-path", type=str, help="figure save path", default="./figure.png")
+    parser.add_argument("--dpi", type=int, default=200, help="figure dpi (default: 200)")
     args = parser.parse_args()
     file_lists = find_all_files(args.root_dir, re.compile(args.file_pattern))
     file_lists = [os.path.relpath(f, args.root_dir) for f in file_lists]
