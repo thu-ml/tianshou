@@ -183,8 +183,8 @@ def alloc_by_keys_diff(
 
     This mainly is an internal method, use it only if you know what you are doing.
     """
-    for key in batch:
-        if key in meta:
+    for key in batch.keys():
+        if key in meta.keys():
             if isinstance(meta[key], Batch) and isinstance(batch[key], Batch):
                 alloc_by_keys_diff(meta[key], batch[key], size, stack)
             elif isinstance(meta[key], Batch) and meta[key].is_empty():

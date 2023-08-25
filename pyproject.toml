@@ -30,6 +30,7 @@ select = [
     "ASYNC", "B", "C4", "C90", "COM", "D", "DTZ", "E", "F", "FLY", "G", "I", "ISC", "PIE", "PLC", "PLE", "PLW", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT",
 ]
 ignore = [
+    "SIM118", # Needed b/c iter(batch) != iter(batch.keys()). See https://github.com/thu-ml/tianshou/issues/922
     "E501",   # line too long. black does a good enough job
     "E741",   # variable names like "l". this isn't a huge problem
     "B008",   # do not perform function calls in argument defaults. we do this sometimes
@@ -37,9 +38,9 @@ ignore = [
     "B028",   # we don't need explicit stacklevel for warnings
     "D100", "D101", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402",  # docstring stuff
     "DTZ005",  # we don't need that
-    # remaining rules from https://github.com/psf/black/blob/main/.flake8
+    # remaining rules from https://github.com/psf/black/blob/main/.flake8 (except W503)
     # this is a simplified version of config, making vscode plugin happy
-    "E402", "E501", "E701", "E731", 'C408', 'W503', "E203"
+    "E402", "E501", "E701", "E731", "C408", "E203"
 ]
 unfixable = [
     "F841",  # unused variable. ruff keeps the call, but mostly we want to get rid of it all
