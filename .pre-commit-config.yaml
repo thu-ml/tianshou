@@ -10,7 +10,7 @@ repos:
       - id: ruff
         args: [--fix, --fix-only, --exit-non-zero-on-fix]
   - repo: https://github.com/hauntsaninja/black-pre-commit-mirror
-    rev: 22.8.0
+    rev: 23.7.0
     hooks:
       - id: black
         # specify workers explicitly to workaround https://github.com/psf/black/issues/2513
