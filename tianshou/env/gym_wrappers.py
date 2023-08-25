@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, SupportsFloat, Tuple, Union
+from typing import Any, SupportsFloat, Union
 
 import gymnasium as gym
 import numpy as np
@@ -13,7 +13,7 @@ class ContinuousToDiscrete(gym.ActionWrapper):
         of the action space.
     """
 
-    def __init__(self, env: gym.Env, action_per_dim: Union[int, List[int]]) -> None:
+    def __init__(self, env: gym.Env, action_per_dim: Union[int, list[int]]) -> None:
         super().__init__(env)
         assert isinstance(env.action_space, gym.spaces.Box)
         low, high = env.action_space.low, env.action_space.high
@@ -23,10 +23,10 @@ class ContinuousToDiscrete(gym.ActionWrapper):
         self.action_space = gym.spaces.MultiDiscrete(action_per_dim)
         self.mesh = np.array(
             [np.linspace(lo, hi, a) for lo, hi, a in zip(low, high, action_per_dim)],
-            dtype=object
+            dtype=object,
         )
 
-    def action(self, act: np.ndarray) -> np.ndarray:
+    def action(self, act: np.ndarray) -> np.ndarray:  # type: ignore
         # modify act
         assert len(act.shape) <= 2, f"Unknown action format with shape {act.shape}."
         if len(act.shape) == 1:
@@ -50,7 +50,7 @@ class MultiDiscreteToDiscrete(gym.ActionWrapper):
             self.bases[i] = self.bases[i - 1] * nvec[-i]
         self.action_space = gym.spaces.Discrete(np.prod(nvec))
 
-    def action(self, act: np.ndarray) -> np.ndarray:
+    def action(self, act: np.ndarray) -> np.ndarray:  # type: ignore
         converted_act = []
         for b in np.flip(self.bases):
             converted_act.append(act // b)
@@ -68,14 +68,13 @@ class TruncatedAsTerminated(gym.Wrapper):
 
     def __init__(self, env: gym.Env):
         super().__init__(env)
-        if not version.parse(gym.__version__) >= version.parse('0.26.0'):
-            raise EnvironmentError(
+        if not version.parse(gym.__version__) >= version.parse("0.26.0"):
+            raise OSError(
                 f"TruncatedAsTerminated is not applicable with gym version \
-                {gym.__version__}"
+                {gym.__version__}",
             )
 
-    def step(self,
-             act: np.ndarray) -> Tuple[Any, SupportsFloat, bool, bool, Dict[str, Any]]:
+    def step(self, act: np.ndarray) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:
         observation, reward, terminated, truncated, info = super().step(act)
-        terminated = (terminated or truncated)
+        terminated = terminated or truncated
         return observation, reward, terminated, truncated, info

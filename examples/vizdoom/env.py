@@ -41,7 +41,6 @@ def battle_button_comb():
 
 
 class Env(gym.Env):
-
     def __init__(self, cfg_path, frameskip=4, res=(4, 40, 60), save_lmp=False):
         super().__init__()
         self.save_lmp = save_lmp
@@ -50,9 +49,7 @@ class Env(gym.Env):
             os.makedirs("lmps", exist_ok=True)
         self.res = res
         self.skip = frameskip
-        self.observation_space = gym.spaces.Box(
-            low=0, high=255, shape=res, dtype=np.float32
-        )
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=res, dtype=np.float32)
         self.game = vzd.DoomGame()
         self.game.load_config(cfg_path)
         self.game.init()
@@ -91,9 +88,7 @@ class Env(gym.Env):
         reward = 0.0
         self.get_obs()
         health = self.game.get_game_variable(vzd.GameVariable.HEALTH)
-        if self.health_setting:
-            reward += health - self.health
-        elif health > self.health:  # positive health reward only for d1/d2
+        if self.health_setting or health > self.health:  # positive health reward only for d1/d2
             reward += health - self.health
         self.health = health
         killcount = self.game.get_game_variable(vzd.GameVariable.KILLCOUNT)
@@ -158,17 +153,17 @@ def make_vizdoom_env(task, frame_skip, res, save_lmp, seed, training_num, test_n
         cfg_path = f"maps/{task}.cfg"
         env = Env(cfg_path, frame_skip, res)
         train_envs = ShmemVectorEnv(
-            [lambda: Env(cfg_path, frame_skip, res) for _ in range(training_num)]
+            [lambda: Env(cfg_path, frame_skip, res) for _ in range(training_num)],
         )
         test_envs = ShmemVectorEnv(
-            [lambda: Env(cfg_path, frame_skip, res, save_lmp) for _ in range(test_num)]
+            [lambda: Env(cfg_path, frame_skip, res, save_lmp) for _ in range(test_num)],
         )
         train_envs.seed(seed)
         test_envs.seed(seed)
     return env, train_envs, test_envs
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # env = Env("maps/D1_basic.cfg", 4, (4, 84, 84))
     env = Env("maps/D3_battle.cfg", 4, (4, 84, 84))
     print(env.available_actions)

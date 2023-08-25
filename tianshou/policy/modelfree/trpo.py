@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 import torch
 import torch.nn.functional as F
@@ -67,22 +67,22 @@ class TRPOPolicy(NPGPolicy):
         self._optim_critic_iters: int
 
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
-    ) -> Dict[str, List[float]]:
+        self,
+        batch: Batch,
+        batch_size: int,
+        repeat: int,
+        **kwargs: Any,
+    ) -> dict[str, list[float]]:
         actor_losses, vf_losses, step_sizes, kls = [], [], [], []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):
                 # optimize actor
                 # direction: calculate villia gradient
                 dist = self(minibatch).dist  # TODO could come from batch
-                ratio = (
-                    (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
-                )
+                ratio = (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 actor_loss = -(ratio * minibatch.adv).mean()
-                flat_grads = self._get_flat_grad(
-                    actor_loss, self.actor, retain_graph=True
-                ).detach()
+                flat_grads = self._get_flat_grad(actor_loss, self.actor, retain_graph=True).detach()
 
                 # direction: calculate natural gradient
                 with torch.no_grad():
@@ -91,21 +91,22 @@ class TRPOPolicy(NPGPolicy):
                 kl = kl_divergence(old_dist, dist).mean()
                 # calculate first order gradient of kl with respect to theta
                 flat_kl_grad = self._get_flat_grad(kl, self.actor, create_graph=True)
-                search_direction = -self._conjugate_gradients(
-                    flat_grads, flat_kl_grad, nsteps=10
-                )
+                search_direction = -self._conjugate_gradients(flat_grads, flat_kl_grad, nsteps=10)
 
                 # stepsize: calculate max stepsize constrained by kl bound
                 step_size = torch.sqrt(
-                    2 * self._delta /
-                    (search_direction *
-                     self._MVP(search_direction, flat_kl_grad)).sum(0, keepdim=True)
+                    2
+                    * self._delta
+                    / (search_direction * self._MVP(search_direction, flat_kl_grad)).sum(
+                        0,
+                        keepdim=True,
+                    ),
                 )
 
                 # stepsize: linesearch stepsize
                 with torch.no_grad():
                     flat_params = torch.cat(
-                        [param.data.view(-1) for param in self.actor.parameters()]
+                        [param.data.view(-1) for param in self.actor.parameters()],
                     )
                     for i in range(self._max_backtracks):
                         new_flat_params = flat_params + step_size * search_direction
@@ -113,11 +114,9 @@ class TRPOPolicy(NPGPolicy):
                         # calculate kl and if in bound, loss actually down
                         new_dist = self(minibatch).dist
                         new_dratio = (
-                            (new_dist.log_prob(minibatch.act) -
-                             minibatch.logp_old).exp().float()
+                            (new_dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
                         )
-                        new_dratio = new_dratio.reshape(new_dratio.size(0),
-                                                        -1).transpose(0, 1)
+                        new_dratio = new_dratio.reshape(new_dratio.size(0), -1).transpose(0, 1)
                         new_actor_loss = -(new_dratio * minibatch.adv).mean()
                         kl = kl_divergence(old_dist, new_dist).mean()
 
@@ -125,14 +124,14 @@ class TRPOPolicy(NPGPolicy):
                             if i > 0:
                                 warnings.warn(f"Backtracking to step {i}.")
                             break
-                        elif i < self._max_backtracks - 1:
+                        if i < self._max_backtracks - 1:
                             step_size = step_size * self._backtrack_coeff
                         else:
                             self._set_from_flat_params(self.actor, new_flat_params)
                             step_size = torch.tensor([0.0])
                             warnings.warn(
                                 "Line search failed! It seems hyperparamters"
-                                " are poor and need to be changed."
+                                " are poor and need to be changed.",
                             )
 
                 # optimize citirc

@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import torch
@@ -63,7 +63,7 @@ class BCQPolicy(BasePolicy):
         lmbda: float = 0.75,
         forward_sampled_times: int = 100,
         num_sampled_action: int = 10,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         # actor is Perturbation!
         super().__init__(**kwargs)
@@ -108,9 +108,9 @@ class BCQPolicy(BasePolicy):
         # obs_group: several groups. Each group has a state.
         obs_group: torch.Tensor = to_torch(batch.obs, device=self.device)
         act_group = []
-        for obs in obs_group:
+        for obs_orig in obs_group:
             # now obs is (state_dim)
-            obs = (obs.reshape(1, -1)).repeat(self.forward_sampled_times, 1)
+            obs = (obs_orig.reshape(1, -1)).repeat(self.forward_sampled_times, 1)
             # now obs is (forward_sampled_times, state_dim)
 
             # decode(obs) generates action and actor perturbs it
@@ -129,8 +129,7 @@ class BCQPolicy(BasePolicy):
         self.soft_update(self.critic2_target, self.critic2, self.tau)
         self.soft_update(self.actor_target, self.actor, self.tau)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         # batch: obs, act, rew, done, obs_next. (numpy array)
         # (batch_size, state_dim)
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
@@ -161,18 +160,19 @@ class BCQPolicy(BasePolicy):
             target_Q2 = self.critic2_target(obs_next, act_next)
 
             # Clipped Double Q-learning
-            target_Q = \
-                self.lmbda * torch.min(target_Q1, target_Q2) + \
-                (1 - self.lmbda) * torch.max(target_Q1, target_Q2)
+            target_Q = self.lmbda * torch.min(target_Q1, target_Q2) + (1 - self.lmbda) * torch.max(
+                target_Q1,
+                target_Q2,
+            )
             # now target_Q: (num_sampled_action * batch_size, 1)
 
             # the max value of Q
             target_Q = target_Q.reshape(batch_size, -1).max(dim=1)[0].reshape(-1, 1)
             # now target_Q: (batch_size, 1)
 
-            target_Q = \
-                batch.rew.reshape(-1, 1) + \
-                (1 - batch.done).reshape(-1, 1) * self.gamma * target_Q
+            target_Q = (
+                batch.rew.reshape(-1, 1) + (1 - batch.done).reshape(-1, 1) * self.gamma * target_Q
+            )
 
         current_Q1 = self.critic1(obs, act)
         current_Q2 = self.critic2(obs, act)
@@ -200,10 +200,9 @@ class BCQPolicy(BasePolicy):
         # update target network
         self.sync_weight()
 
-        result = {
+        return {
             "loss/actor": actor_loss.item(),
             "loss/critic1": critic1_loss.item(),
             "loss/critic2": critic2_loss.item(),
             "loss/vae": vae_loss.item(),
         }
-        return result

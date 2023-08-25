@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import numpy as np
 import torch
@@ -49,8 +49,13 @@ class C51Policy(DQNPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            model, optim, discount_factor, estimation_step, target_update_freq,
-            reward_normalization, **kwargs
+            model,
+            optim,
+            discount_factor,
+            estimation_step,
+            target_update_freq,
+            reward_normalization,
+            **kwargs,
         )
         assert num_atoms > 1, "num_atoms should be greater than 1"
         assert v_min < v_max, "v_max should be larger than v_min"
@@ -66,9 +71,7 @@ class C51Policy(DQNPolicy):
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         return self.support.repeat(len(indices), 1)  # shape: [bsz, num_atoms]
 
-    def compute_q_value(
-        self, logits: torch.Tensor, mask: Optional[np.ndarray]
-    ) -> torch.Tensor:
+    def compute_q_value(self, logits: torch.Tensor, mask: Optional[np.ndarray]) -> torch.Tensor:
         return super().compute_q_value((logits * self.support).sum(2), mask)
 
     def _target_dist(self, batch: RolloutBatchProtocol) -> torch.Tensor:
@@ -84,13 +87,11 @@ class C51Policy(DQNPolicy):
         # An amazing trick for calculating the projection gracefully.
         # ref: https://github.com/ShangtongZhang/DeepRL
         target_dist = (
-            1 - (target_support.unsqueeze(1) - self.support.view(1, -1, 1)).abs() /
-            self.delta_z
+            1 - (target_support.unsqueeze(1) - self.support.view(1, -1, 1)).abs() / self.delta_z
         ).clamp(0, 1) * next_dist.unsqueeze(1)
         return target_dist.sum(-1)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()

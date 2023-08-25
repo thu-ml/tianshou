@@ -21,38 +21,37 @@ def expert_file_name():
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--reward-threshold', type=float, default=None)
-    parser.add_argument('--seed', type=int, default=1)
-    parser.add_argument('--eps-test', type=float, default=0.05)
-    parser.add_argument('--eps-train', type=float, default=0.1)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--num-quantiles', type=int, default=200)
-    parser.add_argument('--n-step', type=int, default=3)
-    parser.add_argument('--target-update-freq', type=int, default=320)
-    parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--step-per-epoch', type=int, default=10000)
-    parser.add_argument('--step-per-collect', type=int, default=10)
-    parser.add_argument('--update-per-step', type=float, default=0.1)
-    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--eps-test", type=float, default=0.05)
+    parser.add_argument("--eps-train", type=float, default=0.1)
+    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--gamma", type=float, default=0.9)
+    parser.add_argument("--num-quantiles", type=int, default=200)
+    parser.add_argument("--n-step", type=int, default=3)
+    parser.add_argument("--target-update-freq", type=int, default=320)
+    parser.add_argument("--epoch", type=int, default=10)
+    parser.add_argument("--step-per-epoch", type=int, default=10000)
+    parser.add_argument("--step-per-collect", type=int, default=10)
+    parser.add_argument("--update-per-step", type=float, default=0.1)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128, 128, 128])
+    parser.add_argument("--training-num", type=int, default=10)
+    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.0)
+    parser.add_argument("--prioritized-replay", action="store_true", default=False)
+    parser.add_argument("--alpha", type=float, default=0.6)
+    parser.add_argument("--beta", type=float, default=0.4)
+    parser.add_argument("--save-buffer-name", type=str, default=expert_file_name())
     parser.add_argument(
-        '--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128]
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument('--training-num', type=int, default=10)
-    parser.add_argument('--test-num', type=int, default=100)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--prioritized-replay', action="store_true", default=False)
-    parser.add_argument('--alpha', type=float, default=0.6)
-    parser.add_argument('--beta', type=float, default=0.4)
-    parser.add_argument('--save-buffer-name', type=str, default=expert_file_name())
-    parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
-    )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def gather_data():
@@ -62,18 +61,12 @@ def gather_data():
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 190}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)]
-    )
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -113,12 +106,12 @@ def gather_data():
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'qrdqn')
+    log_path = os.path.join(args.logdir, args.task, "qrdqn")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
@@ -128,8 +121,7 @@ def gather_data():
         if env_step <= 10000:
             policy.set_eps(args.eps_train)
         elif env_step <= 50000:
-            eps = args.eps_train - (env_step - 10000) / \
-                40000 * (0.9 * args.eps_train)
+            eps = args.eps_train - (env_step - 10000) / 40000 * (0.9 * args.eps_train)
             policy.set_eps(eps)
         else:
             policy.set_eps(0.1 * args.eps_train)
@@ -154,7 +146,7 @@ def gather_data():
         logger=logger,
         update_per_step=args.update_per_step,
     ).run()
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
 
     # save buffer in pickle format, for imitation learning unittest
     buf = VectorReplayBuffer(args.buffer_size, buffer_num=len(test_envs))
@@ -164,6 +156,7 @@ def gather_data():
     if args.save_buffer_name.endswith(".hdf5"):
         buf.save_hdf5(args.save_buffer_name)
     else:
-        pickle.dump(buf, open(args.save_buffer_name, "wb"))
+        with open(args.save_buffer_name, "wb") as f:
+            pickle.dump(buf, f)
     print(result["rews"].mean())
     return buf

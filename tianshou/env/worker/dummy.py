@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Optional
 
 import gymnasium as gym
 import numpy as np
@@ -19,15 +19,17 @@ class DummyEnvWorker(EnvWorker):
     def set_env_attr(self, key: str, value: Any) -> None:
         setattr(self.env.unwrapped, key, value)
 
-    def reset(self, **kwargs: Any) -> Tuple[np.ndarray, dict]:
+    def reset(self, **kwargs: Any) -> tuple[np.ndarray, dict]:
         if "seed" in kwargs:
             super().seed(kwargs["seed"])
         return self.env.reset(**kwargs)
 
     @staticmethod
     def wait(  # type: ignore
-        workers: List["DummyEnvWorker"], wait_num: int, timeout: Optional[float] = None
-    ) -> List["DummyEnvWorker"]:
+        workers: list["DummyEnvWorker"],
+        wait_num: int,
+        timeout: Optional[float] = None,
+    ) -> list["DummyEnvWorker"]:
         # Sequential EnvWorker objects are always ready
         return workers
 
@@ -37,7 +39,7 @@ class DummyEnvWorker(EnvWorker):
         else:
             self.result = self.env.step(action)  # type: ignore
 
-    def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
+    def seed(self, seed: Optional[int] = None) -> Optional[list[int]]:
         super().seed(seed)
         try:
             return self.env.seed(seed)  # type: ignore

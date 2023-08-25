@@ -1,4 +1,5 @@
-from typing import Any, Callable, List, Optional
+import contextlib
+from typing import Any, Callable, Optional
 
 import gymnasium as gym
 import numpy as np
@@ -6,14 +7,11 @@ import numpy as np
 from tianshou.env.utils import gym_new_venv_step_type
 from tianshou.env.worker import EnvWorker
 
-try:
+with contextlib.suppress(ImportError):
     import ray
-except ImportError:
-    pass
 
 
 class _SetAttrWrapper(gym.Wrapper):
-
     def set_env_attr(self, key: str, value: Any) -> None:
         setattr(self.env.unwrapped, key, value)
 
@@ -25,9 +23,7 @@ class RayEnvWorker(EnvWorker):
     """Ray worker used in RayVectorEnv."""
 
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
-        self.env = ray.remote(_SetAttrWrapper).options(  # type: ignore
-            num_cpus=0
-        ).remote(env_fn())
+        self.env = ray.remote(_SetAttrWrapper).options(num_cpus=0).remote(env_fn())  # type: ignore
         super().__init__(env_fn)
 
     def get_env_attr(self, key: str) -> Any:
@@ -43,8 +39,10 @@ class RayEnvWorker(EnvWorker):
 
     @staticmethod
     def wait(  # type: ignore
-        workers: List["RayEnvWorker"], wait_num: int, timeout: Optional[float] = None
-    ) -> List["RayEnvWorker"]:
+        workers: list["RayEnvWorker"],
+        wait_num: int,
+        timeout: Optional[float] = None,
+    ) -> list["RayEnvWorker"]:
         results = [x.result for x in workers]
         ready_results, _ = ray.wait(results, num_returns=wait_num, timeout=timeout)
         return [workers[results.index(result)] for result in ready_results]
@@ -59,7 +57,7 @@ class RayEnvWorker(EnvWorker):
     def recv(self) -> gym_new_venv_step_type:
         return ray.get(self.result)  # type: ignore
 
-    def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
+    def seed(self, seed: Optional[int] = None) -> Optional[list[int]]:
         super().seed(seed)
         try:
             return ray.get(self.env.seed.remote(seed))

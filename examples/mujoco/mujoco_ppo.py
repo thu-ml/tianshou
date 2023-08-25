@@ -51,9 +51,11 @@ def get_args():
     parser.add_argument("--norm-adv", type=int, default=0)
     parser.add_argument("--recompute-adv", type=int, default=1)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
@@ -75,7 +77,11 @@ def get_args():
 
 def test_ppo(args=get_args()):
     env, train_envs, test_envs = make_mujoco_env(
-        args.task, args.seed, args.training_num, args.test_num, obs_norm=True
+        args.task,
+        args.seed,
+        args.training_num,
+        args.test_num,
+        obs_norm=True,
     )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -127,13 +133,9 @@ def test_ppo(args=get_args()):
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
-        max_update_num = np.ceil(
-            args.step_per_epoch / args.step_per_collect
-        ) * args.epoch
+        max_update_num = np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
 
-        lr_scheduler = LambdaLR(
-            optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num
-        )
+        lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
     def dist(*logits):
         return Independent(Normal(*logits), 1)

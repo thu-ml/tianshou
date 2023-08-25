@@ -17,28 +17,14 @@ mypy:
 	mypy ${PROJECT_NAME}
 
 lint:
-	$(call check_install, flake8)
-	$(call check_install_extra, bugbear, flake8_bugbear)
-	flake8 ${PYTHON_FILES} --count --show-source --statistics
+	$(call check_install, ruff)
+	$(call check_install, black)
+	ruff check .
+	black --check .
 
-format:
-	$(call check_install, isort)
-	isort ${PYTHON_FILES}
-	$(call check_install, yapf)
-	yapf -ir ${PYTHON_FILES}
-
-check-codestyle:
-	$(call check_install, isort)
-	$(call check_install, yapf)
-	isort --check ${PYTHON_FILES} && yapf -r -d ${PYTHON_FILES}
-
-check-docstyle:
-	$(call check_install, pydocstyle)
-	$(call check_install, doc8)
-	$(call check_install, sphinx)
-	$(call check_install, sphinx_rtd_theme)
-	$(call check_install, sphinxcontrib.bibtex, sphinxcontrib_bibtex)
-	pydocstyle ${PROJECT_PATH} && doc8 docs && cd docs && make html SPHINXOPTS="-W"
+lint-format:
+	$(call check_install, pre_commit)
+	pre-commit run --all-files
 
 doc:
 	$(call check_install, sphinx)

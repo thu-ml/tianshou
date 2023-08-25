@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import torch
@@ -45,13 +45,18 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            model, optim, discount_factor, num_quantiles, estimation_step,
-            target_update_freq, reward_normalization, **kwargs
+            model,
+            optim,
+            discount_factor,
+            num_quantiles,
+            estimation_step,
+            target_update_freq,
+            reward_normalization,
+            **kwargs,
         )
         self._min_q_weight = min_q_weight
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -63,9 +68,10 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         # calculate each element's difference between curr_dist and target_dist
         dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            dist_diff *
-            (self.tau_hat - (target_dist - curr_dist).detach().le(0.).float()).abs()
-        ).sum(-1).mean(1)
+            (dist_diff * (self.tau_hat - (target_dist - curr_dist).detach().le(0.0).float()).abs())
+            .sum(-1)
+            .mean(1)
+        )
         qr_loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130

@@ -2,6 +2,7 @@ import argparse
 import datetime
 import os
 import pprint
+import sys
 
 import numpy as np
 import torch
@@ -23,7 +24,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--scale-obs", type=int, default=0)
     parser.add_argument("--eps-test", type=float, default=0.005)
-    parser.add_argument("--eps-train", type=float, default=1.)
+    parser.add_argument("--eps-train", type=float, default=1.0)
     parser.add_argument("--eps-train-final", type=float, default=0.05)
     parser.add_argument("--buffer-size", type=int, default=100000)
     parser.add_argument("--lr", type=float, default=0.0001)
@@ -38,9 +39,11 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--frames-stack", type=int, default=4)
     parser.add_argument("--resume-path", type=str, default=None)
@@ -56,26 +59,26 @@ def get_args():
         "--watch",
         default=False,
         action="store_true",
-        help="watch the play of pre-trained policy only"
+        help="watch the play of pre-trained policy only",
     )
     parser.add_argument("--save-buffer-name", type=str, default=None)
     parser.add_argument(
         "--icm-lr-scale",
         type=float,
-        default=0.,
-        help="use intrinsic curiosity module with this lr scale"
+        default=0.0,
+        help="use intrinsic curiosity module with this lr scale",
     )
     parser.add_argument(
         "--icm-reward-scale",
         type=float,
         default=0.01,
-        help="scaling factor for intrinsic curiosity reward"
+        help="scaling factor for intrinsic curiosity reward",
     )
     parser.add_argument(
         "--icm-forward-loss-weight",
         type=float,
         default=0.2,
-        help="weight for the forward model loss in ICM"
+        help="weight for the forward model loss in ICM",
     )
     return parser.parse_args()
 
@@ -102,12 +105,14 @@ def test_dqn(args=get_args()):
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy = DQNPolicy(
-        net, optim, args.gamma, args.n_step, target_update_freq=args.target_update_freq
+        net,
+        optim,
+        args.gamma,
+        args.n_step,
+        target_update_freq=args.target_update_freq,
     )
     if args.icm_lr_scale > 0:
-        feature_net = DQN(
-            *args.state_shape, args.action_shape, args.device, features_only=True
-        )
+        feature_net = DQN(*args.state_shape, args.action_shape, args.device, features_only=True)
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(
@@ -115,12 +120,16 @@ def test_dqn(args=get_args()):
             feature_dim,
             action_dim,
             hidden_sizes=[512],
-            device=args.device
+            device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
         policy = ICMPolicy(
-            policy, icm_net, icm_optim, args.icm_lr_scale, args.icm_reward_scale,
-            args.icm_forward_loss_weight
+            policy,
+            icm_net,
+            icm_optim,
+            args.icm_lr_scale,
+            args.icm_reward_scale,
+            args.icm_forward_loss_weight,
         ).to(args.device)
     # load a previous policy
     if args.resume_path:
@@ -133,7 +142,7 @@ def test_dqn(args=get_args()):
         buffer_num=len(train_envs),
         ignore_obs_next=True,
         save_only_last_obs=True,
-        stack_num=args.frames_stack
+        stack_num=args.frames_stack,
     )
     # collector
     train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
@@ -164,19 +173,17 @@ def test_dqn(args=get_args()):
     def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         if env.spec.reward_threshold:
             return mean_rewards >= env.spec.reward_threshold
-        elif "Pong" in args.task:
+        if "Pong" in args.task:
             return mean_rewards >= 20
-        else:
-            return False
+        return False
 
     def train_fn(epoch, env_step):
         # nature DQN setting, linear decay in the first 1M steps
         if env_step <= 1e6:
-            eps = args.eps_train - env_step / 1e6 * \
-                (args.eps_train - args.eps_train_final)
+            eps = args.eps_train - env_step / 1e6 * (args.eps_train - args.eps_train_final)
         else:
             eps = args.eps_train_final
         policy.set_eps(eps)
@@ -205,7 +212,7 @@ def test_dqn(args=get_args()):
                 buffer_num=len(test_envs),
                 ignore_obs_next=True,
                 save_only_last_obs=True,
-                stack_num=args.frames_stack
+                stack_num=args.frames_stack,
             )
             collector = Collector(policy, test_envs, buffer, exploration_noise=True)
             result = collector.collect(n_step=args.buffer_size)
@@ -221,7 +228,7 @@ def test_dqn(args=get_args()):
 
     if args.watch:
         watch()
-        exit(0)
+        sys.exit(0)
 
     # test train_collector and start filling replay buffer
     train_collector.collect(n_step=args.batch_size * args.training_num)

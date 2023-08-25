@@ -58,9 +58,7 @@ class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
     def __init__(self, total_size: int, buffer_num: int, **kwargs: Any) -> None:
         assert buffer_num > 0
         size = int(np.ceil(total_size / buffer_num))
-        buffer_list = [
-            PrioritizedReplayBuffer(size, **kwargs) for _ in range(buffer_num)
-        ]
+        buffer_list = [PrioritizedReplayBuffer(size, **kwargs) for _ in range(buffer_num)]
         super().__init__(buffer_list)
 
     def set_beta(self, beta: float) -> None:

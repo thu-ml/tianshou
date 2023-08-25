@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import torch
@@ -63,7 +63,7 @@ class REDQPolicy(DDPGPolicy):
         subset_size: int = 2,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
+        alpha: Union[float, tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
         reward_normalization: bool = False,
         estimation_step: int = 1,
         actor_delay: int = 20,
@@ -73,15 +73,22 @@ class REDQPolicy(DDPGPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            None, None, None, None, tau, gamma, exploration_noise, reward_normalization,
-            estimation_step, **kwargs
+            None,
+            None,
+            None,
+            None,
+            tau,
+            gamma,
+            exploration_noise,
+            reward_normalization,
+            estimation_step,
+            **kwargs,
         )
         self.actor, self.actor_optim = actor, actor_optim
         self.critics, self.critics_old = critics, deepcopy(critics)
         self.critics_old.eval()
         self.critics_optim = critics_optim
-        assert 0 < subset_size <= ensemble_size, \
-            "Invalid choice of ensemble size or subset size."
+        assert 0 < subset_size <= ensemble_size, "Invalid choice of ensemble size or subset size."
         self.ensemble_size = ensemble_size
         self.subset_size = subset_size
 
@@ -90,7 +97,8 @@ class REDQPolicy(DDPGPolicy):
         if isinstance(alpha, tuple):
             self._is_auto_alpha = True
             self._target_entropy, self._log_alpha, self._alpha_optim = alpha
-            assert alpha[1].shape == torch.Size([1]) and alpha[1].requires_grad
+            assert alpha[1].shape == torch.Size([1])
+            assert alpha[1].requires_grad
             self._alpha = self._log_alpha.detach().exp()
         else:
             self._alpha = alpha
@@ -135,19 +143,17 @@ class REDQPolicy(DDPGPolicy):
         # You can check out the original SAC paper (arXiv 1801.01290): Eq 21.
         # in appendix C to get some understanding of this equation.
         squashed_action = torch.tanh(act)
-        log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) +
-                                        self.__eps).sum(-1, keepdim=True)
-        return Batch(
-            logits=logits, act=squashed_action, state=h, dist=dist, log_prob=log_prob
+        log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) + self.__eps).sum(
+            -1,
+            keepdim=True,
         )
+        return Batch(logits=logits, act=squashed_action, state=h, dist=dist, log_prob=log_prob)
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs: s_{t+n}
         obs_next_result = self(batch, input="obs_next")
         a_ = obs_next_result.act
-        sample_ensemble_idx = np.random.choice(
-            self.ensemble_size, self.subset_size, replace=False
-        )
+        sample_ensemble_idx = np.random.choice(self.ensemble_size, self.subset_size, replace=False)
         qs = self.critics_old(batch.obs_next, a_)[sample_ensemble_idx, ...]
         if self.target_mode == "min":
             target_q, _ = torch.min(qs, dim=0)
@@ -157,8 +163,7 @@ class REDQPolicy(DDPGPolicy):
 
         return target_q
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         # critic ensemble
         weight = getattr(batch, "weight", 1.0)
         current_qs = self.critics(batch.obs, batch.act).flatten(1)
@@ -176,8 +181,7 @@ class REDQPolicy(DDPGPolicy):
             obs_result = self(batch)
             a = obs_result.act
             current_qa = self.critics(batch.obs, a).mean(dim=0).flatten()
-            actor_loss = (self._alpha * obs_result.log_prob.flatten() -
-                          current_qa).mean()
+            actor_loss = (self._alpha * obs_result.log_prob.flatten() - current_qa).mean()
             self.actor_optim.zero_grad()
             actor_loss.backward()
             self.actor_optim.step()
@@ -194,7 +198,7 @@ class REDQPolicy(DDPGPolicy):
 
         result = {"loss/critics": critic_loss.item()}
         if self.critic_gradient_step % self.actor_delay == 0:
-            result["loss/actor"] = actor_loss.item(),
+            result["loss/actor"] = (actor_loss.item(),)
             if self._is_auto_alpha:
                 result["loss/alpha"] = alpha_loss.item()
                 result["alpha"] = self._alpha.item()  # type: ignore

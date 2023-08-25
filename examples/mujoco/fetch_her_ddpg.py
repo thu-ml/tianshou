@@ -46,17 +46,17 @@ def get_args():
     parser.add_argument("--update-per-step", type=int, default=1)
     parser.add_argument("--n-step", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=512)
-    parser.add_argument(
-        "--replay-buffer", type=str, default="her", choices=["normal", "her"]
-    )
+    parser.add_argument("--replay-buffer", type=str, default="her", choices=["normal", "her"])
     parser.add_argument("--her-horizon", type=int, default=50)
     parser.add_argument("--her-future-k", type=int, default=8)
     parser.add_argument("--training-num", type=int, default=1)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
@@ -79,10 +79,10 @@ def get_args():
 def make_fetch_env(task, training_num, test_num):
     env = TruncatedAsTerminated(gym.make(task))
     train_envs = ShmemVectorEnv(
-        [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(training_num)]
+        [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(training_num)],
     )
     test_envs = ShmemVectorEnv(
-        [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(test_num)]
+        [lambda: TruncatedAsTerminated(gym.make(task)) for _ in range(test_num)],
     )
     return env, train_envs, test_envs
 
@@ -112,13 +112,11 @@ def test_ddpg(args=get_args()):
     else:  # wandb
         logger.load(writer)
 
-    env, train_envs, test_envs = make_fetch_env(
-        args.task, args.training_num, args.test_num
-    )
+    env, train_envs, test_envs = make_fetch_env(args.task, args.training_num, args.test_num)
     args.state_shape = {
-        'observation': env.observation_space['observation'].shape,
-        'achieved_goal': env.observation_space['achieved_goal'].shape,
-        'desired_goal': env.observation_space['desired_goal'].shape,
+        "observation": env.observation_space["observation"].shape,
+        "achieved_goal": env.observation_space["achieved_goal"].shape,
+        "desired_goal": env.observation_space["desired_goal"].shape,
     }
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
@@ -132,13 +130,18 @@ def test_ddpg(args=get_args()):
     # model
     dict_state_dec, flat_state_shape = get_dict_state_decorator(
         state_shape=args.state_shape,
-        keys=['observation', 'achieved_goal', 'desired_goal']
+        keys=["observation", "achieved_goal", "desired_goal"],
     )
     net_a = dict_state_dec(Net)(
-        flat_state_shape, hidden_sizes=args.hidden_sizes, device=args.device
+        flat_state_shape,
+        hidden_sizes=args.hidden_sizes,
+        device=args.device,
     )
     actor = dict_state_dec(Actor)(
-        net_a, args.action_shape, max_action=args.max_action, device=args.device
+        net_a,
+        args.action_shape,
+        max_action=args.max_action,
+        device=args.device,
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c = dict_state_dec(Net)(

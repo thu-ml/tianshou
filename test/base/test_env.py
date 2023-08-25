@@ -33,6 +33,7 @@ except ImportError:
 def has_ray():
     try:
         import ray  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -43,13 +44,12 @@ def recurse_comp(a, b):
         if isinstance(a, np.ndarray):
             if a.dtype == object:
                 return np.array([recurse_comp(m, n) for m, n in zip(a, b)]).all()
-            else:
-                return np.allclose(a, b)
-        elif isinstance(a, (list, tuple)):
+            return np.allclose(a, b)
+        if isinstance(a, (list, tuple)):
             return np.array([recurse_comp(m, n) for m, n in zip(a, b)]).all()
-        elif isinstance(a, dict):
-            return np.array([recurse_comp(a[k], b[k]) for k in a.keys()]).all()
-    except (Exception):
+        if isinstance(a, dict):
+            return np.array([recurse_comp(a[k], b[k]) for k in a]).all()
+    except Exception:
         return False
 
 
@@ -80,17 +80,23 @@ def test_async_env(size=10000, num=8, sleep=0.1):
         o = []
         spent_time = time.time()
         while current_idx_start < len(action_list):
-            A, B, C, D, E, = v.step(action=act, id=env_ids)
+            (
+                A,
+                B,
+                C,
+                D,
+                E,
+            ) = v.step(action=act, id=env_ids)
             b = Batch({"obs": A, "rew": B, "terminate": C, "truncated": D, "info": E})
             env_ids = b.info.env_id
             o.append(b)
             current_idx_start += len(act)
             # len of action may be smaller than len(A) in the end
-            act = action_list[current_idx_start:current_idx_start + len(A)]
+            act = action_list[current_idx_start : current_idx_start + len(A)]
             # truncate env_ids with the first terms
             # typically len(env_ids) == len(A) == len(action), except for the
             # last batch when actions are not enough
-            env_ids = env_ids[:len(act)]
+            env_ids = env_ids[: len(act)]
         spent_time = time.time() - spent_time
         Batch.cat(o)
         v.close()
@@ -100,12 +106,12 @@ def test_async_env(size=10000, num=8, sleep=0.1):
             assert spent_time < 6.0 * sleep * num / (num + 1)
 
 
-def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
+def test_async_check_id(size=100, num=4, sleep=0.2, timeout=0.7):
     env_fns = [
         lambda: MyTestEnv(size=size, sleep=sleep * 2),
         lambda: MyTestEnv(size=size, sleep=sleep * 3),
         lambda: MyTestEnv(size=size, sleep=sleep * 5),
-        lambda: MyTestEnv(size=size, sleep=sleep * 7)
+        lambda: MyTestEnv(size=size, sleep=sleep * 7),
     ]
     test_cls = [SubprocVectorEnv, ShmemVectorEnv]
     if has_ray():
@@ -137,8 +143,9 @@ def test_async_check_id(size=100, num=4, sleep=.2, timeout=.7):
             ids = Batch(info).env_id
             print(ids, t)
             if not (
-                len(ids) == len(res) and np.allclose(sorted(ids), res) and
-                (t < timeout) == (len(res) == num - 1)
+                len(ids) == len(res)
+                and np.allclose(sorted(ids), res)
+                and (t < timeout) == (len(res) == num - 1)
             ):
                 pass_check = 0
                 break
@@ -222,9 +229,7 @@ def test_attr_unwrapped():
 
 def test_env_obs_dtype():
     for obs_type in ["array", "object"]:
-        envs = SubprocVectorEnv(
-            [lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]]
-        )
+        envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
         obs, info = envs.reset()
         assert obs.dtype == object
         obs = envs.step([1, 1, 1, 1])[0]
@@ -258,10 +263,8 @@ def test_venv_wrapper_gym(num_envs: int = 4):
 
 
 def run_align_norm_obs(raw_env, train_env, test_env, action_list):
-
     def reset_result_to_obs(reset_result):
-        """Extract observation from reset result
-        (result is possibly a tuple containing info)"""
+        """Extract observation from reset result (result is possibly a tuple containing info)."""
         if isinstance(reset_result, tuple) and len(reset_result) == 2:
             obs, _ = reset_result
         else:
@@ -341,13 +344,9 @@ def test_venv_norm_obs():
 
 
 def test_gym_wrappers():
-
     class DummyEnv(gym.Env):
-
         def __init__(self):
-            self.action_space = gym.spaces.Box(
-                low=-1.0, high=2.0, shape=(4, ), dtype=np.float32
-            )
+            self.action_space = gym.spaces.Box(low=-1.0, high=2.0, shape=(4,), dtype=np.float32)
             self.observation_space = gym.spaces.Discrete(2)
 
         def step(self, act):
@@ -371,9 +370,7 @@ def test_gym_wrappers():
     # dimension to discrete action space
     env_d = MultiDiscreteToDiscrete(env_m)
     # check conversion is working properly for one action
-    np.testing.assert_allclose(
-        env_d.action(env_d.action_space.n - 1), env_m.action_space.nvec - 1
-    )
+    np.testing.assert_allclose(env_d.action(env_d.action_space.n - 1), env_m.action_space.nvec - 1)
     # check conversion is working properly for a batch of actions
     np.testing.assert_allclose(
         env_d.action(np.array([env_d.action_space.n - 1] * bsz)),
@@ -382,7 +379,7 @@ def test_gym_wrappers():
     # check truncate is True when terminated
     try:
         env_t = TruncatedAsTerminated(env)
-    except EnvironmentError:
+    except OSError:
         env_t = None
     if env_t is not None:
         _, _, truncated, _, _ = env_t.step(env_t.action_space.sample())
@@ -393,13 +390,9 @@ def test_gym_wrappers():
 def test_venv_wrapper_envpool():
     raw = envpool.make_gymnasium("Ant-v3", num_envs=4)
     train = VectorEnvNormObs(envpool.make_gymnasium("Ant-v3", num_envs=4))
-    test = VectorEnvNormObs(
-        envpool.make_gymnasium("Ant-v3", num_envs=4), update_obs_rms=False
-    )
+    test = VectorEnvNormObs(envpool.make_gymnasium("Ant-v3", num_envs=4), update_obs_rms=False)
     test.set_obs_rms(train.get_obs_rms())
-    actions = [
-        np.array([raw.action_space.sample() for _ in range(4)]) for i in range(30)
-    ]
+    actions = [np.array([raw.action_space.sample() for _ in range(4)]) for i in range(30)]
     run_align_norm_obs(raw, train, test, actions)
 
 
@@ -407,7 +400,7 @@ def test_venv_wrapper_envpool():
 def test_venv_wrapper_envpool_gym_reset_return_info():
     num_envs = 4
     env = VectorEnvNormObs(
-        envpool.make_gymnasium("Ant-v3", num_envs=num_envs, gym_reset_return_info=True)
+        envpool.make_gymnasium("Ant-v3", num_envs=num_envs, gym_reset_return_info=True),
     )
     obs, info = env.reset()
     assert obs.shape[0] == num_envs

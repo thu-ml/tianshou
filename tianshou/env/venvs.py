@@ -1,9 +1,10 @@
 import warnings
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import gymnasium as gym
 import numpy as np
 import packaging
+import torch
 
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
@@ -42,7 +43,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
 
     def patched() -> gym.Env:
         assert callable(
-            fn
+            fn,
         ), "Env generators that are provided to vector environments must be callable."
 
         env = fn()
@@ -53,7 +54,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
             raise ValueError(
                 f"Environment generator returned a {type(env)}, not a Gymnasium "
                 f"environment. In this case, we expect OpenAI Gym to be "
-                f"installed and the environment to be an OpenAI Gym environment."
+                f"installed and the environment to be an OpenAI Gym environment.",
             )
 
         try:
@@ -64,7 +65,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
                 "that returned an OpenAI Gym environment. "
                 "Tianshou has transitioned to using Gymnasium internally. "
                 "In order to use OpenAI Gym environments with tianshou, you need to "
-                "install shimmy (`pip install shimmy`)."
+                "install shimmy (`pip install shimmy`).",
             ) from e
 
         warnings.warn(
@@ -72,19 +73,18 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
             "environment. We strongly recommend transitioning to Gymnasium "
             "environments. "
             "Tianshou is automatically wrapping your environments in a compatibility "
-            "layer, which could potentially cause issues."
+            "layer, which could potentially cause issues.",
         )
 
         gym_version = packaging.version.parse(old_gym.__version__)
         if gym_version >= packaging.version.parse("0.26.0"):
             return shimmy.GymV26CompatibilityV0(env=env)
-        elif gym_version >= packaging.version.parse("0.22.0"):
+        if gym_version >= packaging.version.parse("0.22.0"):
             return shimmy.GymV22CompatibilityV0(env=env)
-        else:
-            raise Exception(
-                f"Found OpenAI Gym version {gym.__version__}. "
-                f"Tianshou only supports OpenAI Gym environments of version>=0.22.0"
-            )
+        raise Exception(
+            f"Found OpenAI Gym version {gym.__version__}. "
+            f"Tianshou only supports OpenAI Gym environments of version>=0.22.0",
+        )
 
     return patched
 
@@ -142,7 +142,7 @@ class BaseVectorEnv:
 
     def __init__(
         self,
-        env_fns: List[Callable[[], ENV_TYPE]],
+        env_fns: list[Callable[[], ENV_TYPE]],
         worker_fn: Callable[[Callable[[], gym.Env]], EnvWorker],
         wait_num: Optional[int] = None,
         timeout: Optional[float] = None,
@@ -153,7 +153,7 @@ class BaseVectorEnv:
         self.workers = [worker_fn(_patch_env_generator(fn)) for fn in env_fns]
         self.worker_class = type(self.workers[0])
         assert issubclass(self.worker_class, EnvWorker)
-        assert all([isinstance(w, self.worker_class) for w in self.workers])
+        assert all(isinstance(w, self.worker_class) for w in self.workers)
 
         self.env_num = len(env_fns)
         self.wait_num = wait_num or len(env_fns)
@@ -165,12 +165,12 @@ class BaseVectorEnv:
             self.timeout is None or self.timeout > 0
         ), f"timeout is {timeout}, it should be positive if provided!"
         self.is_async = self.wait_num != len(env_fns) or timeout is not None
-        self.waiting_conn: List[EnvWorker] = []
+        self.waiting_conn: list[EnvWorker] = []
         # environments in self.ready_id is actually ready
         # but environments in self.waiting_id are just waiting when checked,
         # and they may be ready now, but this is not known until we check it
         # in the step() function
-        self.waiting_id: List[int] = []
+        self.waiting_id: list[int] = []
         # all environments are ready in the beginning
         self.ready_id = list(range(self.env_num))
         self.is_closed = False
@@ -193,14 +193,13 @@ class BaseVectorEnv:
         """
         if key in GYM_RESERVED_KEYS:  # reserved keys in gym.Env
             return self.get_env_attr(key)
-        else:
-            return super().__getattribute__(key)
+        return super().__getattribute__(key)
 
     def get_env_attr(
         self,
         key: str,
-        id: Optional[Union[int, List[int], np.ndarray]] = None
-    ) -> List[Any]:
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
+    ) -> list[Any]:
         """Get an attribute from the underlying environments.
 
         If id is an int, retrieve the attribute denoted by key from the environment
@@ -224,7 +223,7 @@ class BaseVectorEnv:
         self,
         key: str,
         value: Any,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> None:
         """Set an attribute in the underlying environments.
 
@@ -245,26 +244,24 @@ class BaseVectorEnv:
 
     def _wrap_id(
         self,
-        id: Optional[Union[int, List[int], np.ndarray]] = None
-    ) -> Union[List[int], np.ndarray]:
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
+    ) -> Union[list[int], np.ndarray]:
         if id is None:
             return list(range(self.env_num))
         return [id] if np.isscalar(id) else id  # type: ignore
 
-    def _assert_id(self, id: Union[List[int], np.ndarray]) -> None:
+    def _assert_id(self, id: Union[list[int], np.ndarray]) -> None:
         for i in id:
             assert (
                 i not in self.waiting_id
             ), f"Cannot interact with environment {i} which is stepping now."
-            assert (
-                i in self.ready_id
-            ), f"Can only interact with ready environments {self.ready_id}."
+            assert i in self.ready_id, f"Can only interact with ready environments {self.ready_id}."
 
     def reset(
         self,
-        id: Optional[Union[int, List[int], np.ndarray]] = None,
-        **kwargs: Any
-    ) -> Tuple[np.ndarray, Union[dict, List[dict]]]:
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        **kwargs: Any,
+    ) -> tuple[np.ndarray, Union[dict, list[dict]]]:
         """Reset the state of some envs and return initial observations.
 
         If id is None, reset the state of all the environments and return
@@ -282,7 +279,8 @@ class BaseVectorEnv:
         ret_list = [self.workers[i].recv() for i in id]
 
         assert (
-            isinstance(ret_list[0], (tuple, list)) and len(ret_list[0]) == 2
+            isinstance(ret_list[0], (tuple, list))
+            and len(ret_list[0]) == 2
             and isinstance(ret_list[0][1], dict)
         ), "The environment does not adhere to the Gymnasium's API."
 
@@ -303,15 +301,15 @@ class BaseVectorEnv:
 
     def step(
         self,
-        action: np.ndarray,
-        id: Optional[Union[int, List[int], np.ndarray]] = None
+        action: Union[np.ndarray, torch.Tensor],
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> gym_new_venv_step_type:
         """Run one timestep of some environments' dynamics.
 
-        If id is None, run one timestep of all the environments’ dynamics;
+        If id is None, run one timestep of all the environments` dynamics;
         otherwise run one timestep for some environments with given id,  either
         an int or a list. When the end of episode is reached, you are
-        responsible for calling reset(id) to reset this environment’s state.
+        responsible for calling reset(id) to reset this environment`s state.
 
         Accept a batch of action and return a tuple (batch_obs, batch_rew,
         batch_done, batch_info) in numpy format.
@@ -357,11 +355,9 @@ class BaseVectorEnv:
                     self.waiting_conn.append(self.workers[env_id])
                     self.waiting_id.append(env_id)
                 self.ready_id = [x for x in self.ready_id if x not in id]
-            ready_conns: List[EnvWorker] = []
+            ready_conns: list[EnvWorker] = []
             while not ready_conns:
-                ready_conns = self.worker_class.wait(
-                    self.waiting_conn, self.wait_num, self.timeout
-                )
+                ready_conns = self.worker_class.wait(self.waiting_conn, self.wait_num, self.timeout)
             result = []
             for conn in ready_conns:
                 waiting_index = self.waiting_conn.index(conn)
@@ -386,8 +382,7 @@ class BaseVectorEnv:
             np.stack(info_list),
         )
 
-    def seed(self,
-             seed: Optional[Union[int, List[int]]] = None) -> List[Optional[List[int]]]:
+    def seed(self, seed: Optional[Union[int, list[int]]] = None) -> list[Optional[list[int]]]:
         """Set the seed for all environments.
 
         Accept ``None``, an int (which will extend ``i`` to
@@ -398,7 +393,7 @@ class BaseVectorEnv:
             which a reproducer pass to "seed".
         """
         self._assert_is_not_closed()
-        seed_list: Union[List[None], List[int]]
+        seed_list: Union[list[None], list[int]]
         if seed is None:
             seed_list = [seed] * self.env_num
         elif isinstance(seed, int):
@@ -407,13 +402,12 @@ class BaseVectorEnv:
             seed_list = seed
         return [w.seed(s) for w, s in zip(self.workers, seed_list)]
 
-    def render(self, **kwargs: Any) -> List[Any]:
+    def render(self, **kwargs: Any) -> list[Any]:
         """Render all of the environments."""
         self._assert_is_not_closed()
         if self.is_async and len(self.waiting_id) > 0:
             raise RuntimeError(
-                f"Environments {self.waiting_id} are still stepping, cannot "
-                "render them now."
+                f"Environments {self.waiting_id} are still stepping, cannot render them now.",
             )
         return [w.render(**kwargs) for w in self.workers]
 
@@ -437,7 +431,7 @@ class DummyVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(self, env_fns: list[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
         super().__init__(env_fns, DummyEnvWorker, **kwargs)
 
 
@@ -449,8 +443,7 @@ class SubprocVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
-
+    def __init__(self, env_fns: list[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=False)
 
@@ -467,8 +460,7 @@ class ShmemVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
-
+    def __init__(self, env_fns: list[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
         def worker_fn(fn: Callable[[], gym.Env]) -> SubprocEnvWorker:
             return SubprocEnvWorker(fn, share_memory=True)
 
@@ -485,12 +477,12 @@ class RayVectorEnv(BaseVectorEnv):
         Please refer to :class:`~tianshou.env.BaseVectorEnv` for other APIs' usage.
     """
 
-    def __init__(self, env_fns: List[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
+    def __init__(self, env_fns: list[Callable[[], ENV_TYPE]], **kwargs: Any) -> None:
         try:
             import ray
         except ImportError as exception:
             raise ImportError(
-                "Please install ray to support RayVectorEnv: pip install ray"
+                "Please install ray to support RayVectorEnv: pip install ray",
             ) from exception
         if not ray.is_initialized():
             ray.init()

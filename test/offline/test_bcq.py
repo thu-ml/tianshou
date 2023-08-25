@@ -25,22 +25,22 @@ else:  # pytest
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pendulum-v1')
-    parser.add_argument('--reward-threshold', type=float, default=None)
-    parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64])
-    parser.add_argument('--actor-lr', type=float, default=1e-3)
-    parser.add_argument('--critic-lr', type=float, default=1e-3)
-    parser.add_argument('--epoch', type=int, default=5)
-    parser.add_argument('--step-per-epoch', type=int, default=500)
-    parser.add_argument('--batch-size', type=int, default=32)
-    parser.add_argument('--test-num', type=int, default=10)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=1 / 35)
+    parser.add_argument("--task", type=str, default="Pendulum-v1")
+    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64])
+    parser.add_argument("--actor-lr", type=float, default=1e-3)
+    parser.add_argument("--critic-lr", type=float, default=1e-3)
+    parser.add_argument("--epoch", type=int, default=5)
+    parser.add_argument("--step-per-epoch", type=int, default=500)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=1 / 35)
 
-    parser.add_argument("--vae-hidden-sizes", type=int, nargs='*', default=[32, 32])
+    parser.add_argument("--vae-hidden-sizes", type=int, nargs="*", default=[32, 32])
     # default to 2 * action_dim
-    parser.add_argument('--latent_dim', type=int, default=None)
+    parser.add_argument("--latent_dim", type=int, default=None)
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument("--tau", default=0.005)
     # Weighting for Clipped Double Q-learning in BCQ
@@ -48,19 +48,20 @@ def get_args():
     # Max perturbation hyper-parameter for BCQ
     parser.add_argument("--phi", default=0.05)
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    parser.add_argument('--resume-path', type=str, default=None)
+    parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument(
-        '--watch',
+        "--watch",
         default=False,
-        action='store_true',
-        help='watch the play of pre-trained policy only',
+        action="store_true",
+        help="watch the play of pre-trained policy only",
     )
     parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
     parser.add_argument("--show-progress", action="store_true")
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_bcq(args=get_args()):
@@ -68,7 +69,8 @@ def test_bcq(args=get_args()):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
         else:
-            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+            with open(args.load_buffer_name, "rb") as f:
+                buffer = pickle.load(f)
     else:
         buffer = gather_data()
     env = gym.make(args.task)
@@ -78,16 +80,12 @@ def test_bcq(args=get_args()):
     if args.reward_threshold is None:
         # too low?
         default_reward_threshold = {"Pendulum-v0": -1100, "Pendulum-v1": -1100}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
 
     args.state_dim = args.state_shape[0]
     args.action_dim = args.action_shape[0]
     # test_envs = gym.make(args.task)
-    test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -101,9 +99,9 @@ def test_bcq(args=get_args()):
         hidden_sizes=args.hidden_sizes,
         device=args.device,
     )
-    actor = Perturbation(
-        net_a, max_action=args.max_action, device=args.device, phi=args.phi
-    ).to(args.device)
+    actor = Perturbation(net_a, max_action=args.max_action, device=args.device, phi=args.phi).to(
+        args.device,
+    )
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
     net_c1 = Net(
@@ -177,22 +175,20 @@ def test_bcq(args=get_args()):
     # log
     t0 = datetime.datetime.now().strftime("%m%d_%H%M%S")
     log_file = f'seed_{args.seed}_{t0}-{args.task.replace("-", "_")}_bcq'
-    log_path = os.path.join(args.logdir, args.task, 'bcq', log_file)
+    log_path = os.path.join(args.logdir, args.task, "bcq", log_file)
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
     def save_best_fn(policy):
-        torch.save(policy.state_dict(), os.path.join(log_path, 'policy.pth'))
+        torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
 
     def watch():
         policy.load_state_dict(
-            torch.load(
-                os.path.join(log_path, 'policy.pth'), map_location=torch.device('cpu')
-            )
+            torch.load(os.path.join(log_path, "policy.pth"), map_location=torch.device("cpu")),
         )
         policy.eval()
         collector = Collector(policy, env)
@@ -212,10 +208,10 @@ def test_bcq(args=get_args()):
         logger=logger,
         show_progress=args.show_progress,
     ).run()
-    assert stop_fn(result['best_reward'])
+    assert stop_fn(result["best_reward"])
 
     # Let's watch its performance!
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         env = gym.make(args.task)
         policy.eval()
@@ -225,5 +221,5 @@ def test_bcq(args=get_args()):
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_bcq()

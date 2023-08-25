@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -35,8 +35,10 @@ class ImitationPolicy(BasePolicy):
         super().__init__(**kwargs)
         self.model = model
         self.optim = optim
-        assert self.action_type in ["continuous", "discrete"], \
-            "Please specify action_space."
+        assert self.action_type in [
+            "continuous",
+            "discrete",
+        ], "Please specify action_space."
 
     def forward(
         self,
@@ -45,15 +47,11 @@ class ImitationPolicy(BasePolicy):
         **kwargs: Any,
     ) -> ModelOutputBatchProtocol:
         logits, hidden = self.model(batch.obs, state=state, info=batch.info)
-        if self.action_type == "discrete":
-            act = logits.max(dim=1)[1]
-        else:
-            act = logits
+        act = logits.max(dim=1)[1] if self.action_type == "discrete" else logits
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *ags: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *ags: Any, **kwargs: Any) -> dict[str, float]:
         self.optim.zero_grad()
         if self.action_type == "continuous":  # regression
             act = self(batch).act

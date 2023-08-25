@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 
@@ -17,7 +17,7 @@ def test_episode(
     logger: Optional[BaseLogger] = None,
     global_step: Optional[int] = None,
     reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """A simple wrapper of testing policy in collector."""
     collector.reset_env()
     collector.reset_buffer()
@@ -39,7 +39,7 @@ def gather_info(
     test_collector: Optional[Collector],
     best_reward: float,
     best_reward_std: float,
-) -> Dict[str, Union[float, str]]:
+) -> dict[str, Union[float, str]]:
     """A simple wrapper of gathering information from collectors.
 
     :return: A dictionary with the following keys:
@@ -59,7 +59,7 @@ def gather_info(
     """
     duration = max(0, time.time() - start_time)
     model_time = duration
-    result: Dict[str, Union[float, str]] = {
+    result: dict[str, Union[float, str]] = {
         "duration": f"{duration:.2f}s",
         "train_time/model": f"{model_time:.2f}s",
     }
@@ -76,14 +76,12 @@ def gather_info(
                 "best_result": f"{best_reward:.2f} ± {best_reward_std:.2f}",
                 "duration": f"{duration:.2f}s",
                 "train_time/model": f"{model_time:.2f}s",
-            }
+            },
         )
     if train_collector is not None:
         model_time = max(0, model_time - train_collector.collect_time)
         if test_collector is not None:
-            train_speed = train_collector.collect_step / (
-                duration - test_collector.collect_time
-            )
+            train_speed = train_collector.collect_step / (duration - test_collector.collect_time)
         else:
             train_speed = train_collector.collect_step / duration
         result.update(
@@ -93,6 +91,6 @@ def gather_info(
                 "train_time/collector": f"{train_collector.collect_time:.2f}s",
                 "train_time/model": f"{model_time:.2f}s",
                 "train_speed": f"{train_speed:.2f} step/s",
-            }
+            },
         )
     return result

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -51,8 +51,14 @@ class IQNPolicy(QRDQNPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            model, optim, discount_factor, sample_size, estimation_step,
-            target_update_freq, reward_normalization, **kwargs
+            model,
+            optim,
+            discount_factor,
+            sample_size,
+            estimation_step,
+            target_update_freq,
+            reward_normalization,
+            **kwargs,
         )
         assert sample_size > 1, "sample_size should be greater than 1"
         assert online_sample_size > 1, "online_sample_size should be greater than 1"
@@ -79,7 +85,10 @@ class IQNPolicy(QRDQNPolicy):
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         (logits, taus), hidden = model(
-            obs_next, sample_size=sample_size, state=state, info=batch.info
+            obs_next,
+            sample_size=sample_size,
+            state=state,
+            info=batch.info,
         )
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
@@ -88,8 +97,7 @@ class IQNPolicy(QRDQNPolicy):
         result = Batch(logits=logits, act=act, state=hidden, taus=taus)
         return cast(QuantileRegressionBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -102,10 +110,13 @@ class IQNPolicy(QRDQNPolicy):
         # calculate each element's difference between curr_dist and target_dist
         dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            dist_diff *
-            (taus.unsqueeze(2) -
-             (target_dist - curr_dist).detach().le(0.).float()).abs()
-        ).sum(-1).mean(1)
+            (
+                dist_diff
+                * (taus.unsqueeze(2) - (target_dist - curr_dist).detach().le(0.0).float()).abs()
+            )
+            .sum(-1)
+            .mean(1)
+        )
         loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130

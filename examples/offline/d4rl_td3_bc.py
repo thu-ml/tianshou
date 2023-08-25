@@ -49,7 +49,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=1 / 35)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
@@ -84,9 +86,7 @@ def test_td3_bc():
     args.action_dim = args.action_shape[0]
     print("Max_action", args.max_action)
 
-    test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     if args.norm_obs:
         test_envs = VectorEnvNormObs(test_envs, update_obs_rms=False)
 
@@ -185,9 +185,7 @@ def test_td3_bc():
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
-        policy.load_state_dict(
-            torch.load(args.resume_path, map_location=torch.device("cpu"))
-        )
+        policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
         policy.eval()
         collector = Collector(policy, env)
         collector.collect(n_episode=1, render=1 / 35)

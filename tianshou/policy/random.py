@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 
@@ -41,7 +41,6 @@ class RandomPolicy(BasePolicy):
         result = Batch(act=logits.argmax(axis=-1))
         return cast(ActBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         """Since a random agent learns nothing, it returns an empty dict."""
         return {}

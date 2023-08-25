@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Optional, cast
 
 import numpy as np
 import torch
@@ -75,14 +75,20 @@ class A2CPolicy(PGPolicy):
         self._actor_critic = ActorCritic(self.actor, self.critic)
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> BatchWithAdvantagesProtocol:
         batch = self._compute_returns(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
         return batch
 
     def _compute_returns(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> BatchWithAdvantagesProtocol:
         v_s, v_s_ = [], []
         with torch.no_grad():
@@ -120,9 +126,13 @@ class A2CPolicy(PGPolicy):
     # TODO: mypy complains b/c signature is different from superclass, although
     #  it's compatible. Can this be fixed?
     def learn(  # type: ignore
-        self, batch: RolloutBatchProtocol, batch_size: int,
-        repeat: int, *args: Any, **kwargs: Any
-    ) -> Dict[str, List[float]]:
+        self,
+        batch: RolloutBatchProtocol,
+        batch_size: int,
+        repeat: int,
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, list[float]]:
         losses, actor_losses, vf_losses, ent_losses = [], [], [], []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):
@@ -136,14 +146,13 @@ class A2CPolicy(PGPolicy):
                 vf_loss = F.mse_loss(minibatch.returns, value)
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
-                loss = (
-                    actor_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
-                )
+                loss = actor_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
                 if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
-                        self._actor_critic.parameters(), max_norm=self._grad_norm
+                        self._actor_critic.parameters(),
+                        max_norm=self._grad_norm,
                     )
                 self.optim.step()
                 actor_losses.append(actor_loss.item())

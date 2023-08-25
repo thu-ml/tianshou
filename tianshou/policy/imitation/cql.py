@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Union
 
 import numpy as np
 import torch
@@ -68,7 +68,7 @@ class CQLPolicy(SACPolicy):
         cql_weight: float = 1.0,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
+        alpha: Union[float, tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
         temperature: float = 1.0,
         with_lagrange: bool = True,
         lagrange_threshold: float = 10.0,
@@ -79,11 +79,19 @@ class CQLPolicy(SACPolicy):
         alpha_max: float = 1e6,
         clip_grad: float = 1.0,
         device: Union[str, torch.device] = "cpu",
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         super().__init__(
-            actor, actor_optim, critic1, critic1_optim, critic2, critic2_optim, tau,
-            gamma, alpha, **kwargs
+            actor,
+            actor_optim,
+            critic1,
+            critic1_optim,
+            critic2,
+            critic2_optim,
+            tau,
+            gamma,
+            alpha,
+            **kwargs,
         )
         # There are _target_entropy, _log_alpha, _alpha_optim in SACPolicy.
         self.device = device
@@ -119,14 +127,12 @@ class CQLPolicy(SACPolicy):
         self.soft_update(self.critic1_old, self.critic1, self.tau)
         self.soft_update(self.critic2_old, self.critic2, self.tau)
 
-    def actor_pred(self, obs: torch.Tensor) -> \
-            Tuple[torch.Tensor, torch.Tensor]:
+    def actor_pred(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         batch = Batch(obs=obs, info=None)
         obs_result = self(batch)
         return obs_result.act, obs_result.log_prob
 
-    def calc_actor_loss(self, obs: torch.Tensor) -> \
-            Tuple[torch.Tensor, torch.Tensor]:
+    def calc_actor_loss(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         act_pred, log_pi = self.actor_pred(obs)
         q1 = self.critic1(obs, act_pred)
         q2 = self.critic2(obs, act_pred)
@@ -136,8 +142,11 @@ class CQLPolicy(SACPolicy):
         # actor_loss.shape: (), log_pi.shape: (batch_size, 1)
         return actor_loss, log_pi
 
-    def calc_pi_values(self, obs_pi: torch.Tensor, obs_to_pred: torch.Tensor) -> \
-            Tuple[torch.Tensor, torch.Tensor]:
+    def calc_pi_values(
+        self,
+        obs_pi: torch.Tensor,
+        obs_to_pred: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         act_pred, log_pi = self.actor_pred(obs_pi)
 
         q1 = self.critic1(obs_to_pred, act_pred)
@@ -145,18 +154,24 @@ class CQLPolicy(SACPolicy):
 
         return q1 - log_pi.detach(), q2 - log_pi.detach()
 
-    def calc_random_values(self, obs: torch.Tensor, act: torch.Tensor) -> \
-            Tuple[torch.Tensor, torch.Tensor]:
+    def calc_random_values(
+        self,
+        obs: torch.Tensor,
+        act: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         random_value1 = self.critic1(obs, act)
-        random_log_prob1 = np.log(0.5**act.shape[-1])
+        random_log_prob1 = np.log(0.5 ** act.shape[-1])
 
         random_value2 = self.critic2(obs, act)
-        random_log_prob2 = np.log(0.5**act.shape[-1])
+        random_log_prob2 = np.log(0.5 ** act.shape[-1])
 
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> RolloutBatchProtocol:
         # TODO: mypy rightly complains here b/c the design violates
         #   Liskov Substitution Principle
@@ -165,8 +180,7 @@ class CQLPolicy(SACPolicy):
         #   Should probably be fixed!
         return batch
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]
@@ -197,8 +211,7 @@ class CQLPolicy(SACPolicy):
 
             target_Q = torch.min(target_Q1, target_Q2) - self._alpha * new_log_pi
 
-            target_Q = \
-                rew + self._gamma * (1 - batch.done) * target_Q.flatten()
+            target_Q = rew + self._gamma * (1 - batch.done) * target_Q.flatten()
             # shape: (batch_size)
 
         # compute critic loss
@@ -210,13 +223,15 @@ class CQLPolicy(SACPolicy):
         critic2_loss = F.mse_loss(current_Q2, target_Q)
 
         # CQL
-        random_actions = torch.FloatTensor(
-            batch_size * self.num_repeat_actions, act.shape[-1]
-        ).uniform_(-self.min_action, self.max_action).to(self.device)
+        random_actions = (
+            torch.FloatTensor(batch_size * self.num_repeat_actions, act.shape[-1])
+            .uniform_(-self.min_action, self.max_action)
+            .to(self.device)
+        )
 
         obs_len = len(obs.shape)
         repeat_size = [1, self.num_repeat_actions] + [1] * (obs_len - 1)
-        view_size = [batch_size * self.num_repeat_actions] + list(obs.shape[1:])
+        view_size = [batch_size * self.num_repeat_actions, *list(obs.shape[1:])]
         tmp_obs = obs.unsqueeze(1).repeat(*repeat_size).view(*view_size)
         tmp_obs_next = obs_next.unsqueeze(1).repeat(*repeat_size).view(*view_size)
         # tmp_obs & tmp_obs_next: (batch_size * num_repeat, state_dim)
@@ -227,8 +242,12 @@ class CQLPolicy(SACPolicy):
         random_value1, random_value2 = self.calc_random_values(tmp_obs, random_actions)
 
         for value in [
-            current_pi_value1, current_pi_value2, next_pi_value1, next_pi_value2,
-            random_value1, random_value2
+            current_pi_value1,
+            current_pi_value2,
+            next_pi_value1,
+            next_pi_value2,
+            random_value1,
+            random_value2,
         ]:
             value.reshape(batch_size, self.num_repeat_actions, 1)
 
@@ -237,14 +256,18 @@ class CQLPolicy(SACPolicy):
         cat_q2 = torch.cat([random_value2, current_pi_value2, next_pi_value2], 1)
         # shape: (batch_size, 3 * num_repeat, 1)
 
-        cql1_scaled_loss = \
-            torch.logsumexp(cat_q1 / self.temperature, dim=1).mean() * \
-            self.cql_weight * self.temperature - current_Q1.mean() * \
-            self.cql_weight
-        cql2_scaled_loss = \
-            torch.logsumexp(cat_q2 / self.temperature, dim=1).mean() * \
-            self.cql_weight * self.temperature - current_Q2.mean() * \
-            self.cql_weight
+        cql1_scaled_loss = (
+            torch.logsumexp(cat_q1 / self.temperature, dim=1).mean()
+            * self.cql_weight
+            * self.temperature
+            - current_Q1.mean() * self.cql_weight
+        )
+        cql2_scaled_loss = (
+            torch.logsumexp(cat_q2 / self.temperature, dim=1).mean()
+            * self.cql_weight
+            * self.temperature
+            - current_Q2.mean() * self.cql_weight
+        )
         # shape: (1)
 
         if self.with_lagrange:
@@ -253,10 +276,8 @@ class CQLPolicy(SACPolicy):
                 self.alpha_min,
                 self.alpha_max,
             )
-            cql1_scaled_loss = \
-                cql_alpha * (cql1_scaled_loss - self.lagrange_threshold)
-            cql2_scaled_loss = \
-                cql_alpha * (cql2_scaled_loss - self.lagrange_threshold)
+            cql1_scaled_loss = cql_alpha * (cql1_scaled_loss - self.lagrange_threshold)
+            cql2_scaled_loss = cql_alpha * (cql2_scaled_loss - self.lagrange_threshold)
 
             self.cql_alpha_optim.zero_grad()
             cql_alpha_loss = -(cql1_scaled_loss + cql2_scaled_loss) * 0.5

@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import numpy as np
 import torch
@@ -45,14 +45,20 @@ class QRDQNPolicy(DQNPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            model, optim, discount_factor, estimation_step, target_update_freq,
-            reward_normalization, **kwargs
+            model,
+            optim,
+            discount_factor,
+            estimation_step,
+            target_update_freq,
+            reward_normalization,
+            **kwargs,
         )
         assert num_quantiles > 1, "num_quantiles should be greater than 1"
         self._num_quantiles = num_quantiles
         tau = torch.linspace(0, 1, self._num_quantiles + 1)
         self.tau_hat = torch.nn.Parameter(
-            ((tau[:-1] + tau[1:]) / 2).view(1, -1, 1), requires_grad=False
+            ((tau[:-1] + tau[1:]) / 2).view(1, -1, 1),
+            requires_grad=False,
         )
         warnings.filterwarnings("ignore", message="Using a target size")
 
@@ -65,16 +71,12 @@ class QRDQNPolicy(DQNPolicy):
             next_batch = self(batch, input="obs_next")
             act = next_batch.act
             next_dist = next_batch.logits
-        next_dist = next_dist[np.arange(len(act)), act, :]
-        return next_dist  # shape: [bsz, num_quantiles]
+        return next_dist[np.arange(len(act)), act, :]
 
-    def compute_q_value(
-        self, logits: torch.Tensor, mask: Optional[np.ndarray]
-    ) -> torch.Tensor:
+    def compute_q_value(self, logits: torch.Tensor, mask: Optional[np.ndarray]) -> torch.Tensor:
         return super().compute_q_value(logits.mean(2), mask)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -86,9 +88,10 @@ class QRDQNPolicy(DQNPolicy):
         # calculate each element's difference between curr_dist and target_dist
         dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            dist_diff *
-            (self.tau_hat - (target_dist - curr_dist).detach().le(0.).float()).abs()
-        ).sum(-1).mean(1)
+            (dist_diff * (self.tau_hat - (target_dist - curr_dist).detach().le(0.0).float()).abs())
+            .sum(-1)
+            .mean(1)
+        )
         loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130

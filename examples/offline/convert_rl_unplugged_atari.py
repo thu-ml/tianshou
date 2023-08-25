@@ -38,7 +38,7 @@ from tqdm import tqdm
 
 from tianshou.data import Batch
 
-tf.config.set_visible_devices([], 'GPU')
+tf.config.set_visible_devices([], "GPU")
 
 # 9 tuning games.
 TUNING_SUITE = [
@@ -106,11 +106,9 @@ def _filename(run_id: int, shard_id: int, total_num_shards: int = 100) -> str:
 def _decode_frames(pngs: tf.Tensor) -> tf.Tensor:
     """Decode PNGs.
 
-    Args:
-      pngs: String Tensor of size (4,) containing PNG encoded images.
+    :param pngs: String Tensor of size (4,) containing PNG encoded images.
 
-    Returns:
-      4 84x84 grayscale images packed in a (4, 84, 84) uint8 Tensor.
+    :returns: Tensor of size (4, 84, 84) containing decoded images.
     """
     # Statically unroll png decoding
     frames = [tf.image.decode_png(pngs[i], channels=1) for i in range(4)]
@@ -130,29 +128,26 @@ def _make_tianshou_batch(
 ) -> Batch:
     """Create Tianshou batch with offline data.
 
-    Args:
-      o_t: Observation at time t.
-      a_t: Action at time t.
-      r_t: Reward at time t.
-      d_t: Discount at time t.
-      o_tp1: Observation at time t+1.
-      a_tp1: Action at time t+1.
+    :param o_t: Observation at time t.
+    :param a_t: Action at time t.
+    :param r_t: Reward at time t.
+    :param d_t: Discount at time t.
+    :param o_tp1: Observation at time t+1.
+    :param a_tp1: Action at time t+1.
 
-    Returns:
-      A tianshou.data.Batch object.
+    :returns: A tianshou.data.Batch object.
     """
     return Batch(
         obs=o_t.numpy(),
         act=a_t.numpy(),
         rew=r_t.numpy(),
         done=1 - d_t.numpy(),
-        obs_next=o_tp1.numpy()
+        obs_next=o_tp1.numpy(),
     )
 
 
 def _tf_example_to_tianshou_batch(tf_example: tf.train.Example) -> Batch:
     """Create a tianshou Batch replay sample from a TF example."""
-
     # Parse tf.Example.
     feature_description = {
         "o_t": tf.io.FixedLenFeature([4], tf.string),
@@ -179,14 +174,14 @@ def _tf_example_to_tianshou_batch(tf_example: tf.train.Example) -> Batch:
 # Adapted From https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51
 def download(url: str, fname: str, chunk_size=1024):
     resp = requests.get(url, stream=True)
-    total = int(resp.headers.get('content-length', 0))
+    total = int(resp.headers.get("content-length", 0))
     if os.path.exists(fname):
         print(f"Found cached file at {fname}.")
         return
-    with open(fname, 'wb') as ofile, tqdm(
+    with open(fname, "wb") as ofile, tqdm(
         desc=fname,
         total=total,
-        unit='iB',
+        unit="iB",
         unit_scale=True,
         unit_divisor=1024,
     ) as bar:
@@ -198,9 +193,9 @@ def download(url: str, fname: str, chunk_size=1024):
 def process_shard(url: str, fname: str, ofname: str, maxsize: int = 500000) -> None:
     download(url, fname)
     obs = np.ndarray((maxsize, 4, 84, 84), dtype="uint8")
-    act = np.ndarray((maxsize, ), dtype="int64")
-    rew = np.ndarray((maxsize, ), dtype="float32")
-    done = np.ndarray((maxsize, ), dtype="bool")
+    act = np.ndarray((maxsize,), dtype="int64")
+    rew = np.ndarray((maxsize,), dtype="float32")
+    done = np.ndarray((maxsize,), dtype="bool")
     obs_next = np.ndarray((maxsize, 4, 84, 84), dtype="uint8")
     i = 0
     file_ds = tf.data.TFRecordDataset(fname, compression_type="GZIP")
@@ -209,7 +204,11 @@ def process_shard(url: str, fname: str, ofname: str, maxsize: int = 500000) -> N
             break
         batch = _tf_example_to_tianshou_batch(example)
         obs[i], act[i], rew[i], done[i], obs_next[i] = (
-            batch.obs, batch.act, batch.rew, batch.done, batch.obs_next
+            batch.obs,
+            batch.act,
+            batch.rew,
+            batch.done,
+            batch.obs_next,
         )
         i += 1
         if i % 1000 == 0:
@@ -245,7 +244,7 @@ def main(args):
     fn = _filename(args.run_id, args.shard_id, total_num_shards=args.total_num_shards)
     dataset_path = os.path.join(args.dataset_dir, args.task, f"{fn}.hdf5")
     if os.path.exists(dataset_path):
-        raise IOError(f"Found existing dataset at {dataset_path}. Will not overwrite.")
+        raise OSError(f"Found existing dataset at {dataset_path}. Will not overwrite.")
     args.cache_dir = os.environ.get("RLU_CACHE_DIR", args.cache_dir)
     args.dataset_dir = os.environ.get("RLU_DATASET_DIR", args.dataset_dir)
     cache_path = os.path.join(args.cache_dir, args.task)
@@ -258,7 +257,7 @@ def main(args):
         args.dataset_dir,
         run_id=args.run_id,
         shard_id=args.shard_id,
-        total_num_shards=args.total_num_shards
+        total_num_shards=args.total_num_shards,
     )
 
 
@@ -269,17 +268,15 @@ if __name__ == "__main__":
         "--run-id",
         type=int,
         default=1,
-        help="Run id to download and convert. Value in [1..5]."
+        help="Run id to download and convert. Value in [1..5].",
     )
     parser.add_argument(
         "--shard-id",
         type=int,
         default=0,
-        help="Shard id to download and convert. Value in [0..99]."
+        help="Shard id to download and convert. Value in [0..99].",
     )
-    parser.add_argument(
-        "--total-num-shards", type=int, default=100, help="Total number of shards."
-    )
+    parser.add_argument("--total-num-shards", type=int, default=100, help="Total number of shards.")
     parser.add_argument(
         "--dataset-dir",
         default=os.path.expanduser("~/.rl_unplugged/datasets"),

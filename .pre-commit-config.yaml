@@ -1,35 +1,17 @@
----
+# version is pinned here, if CI is broken, check if there is a new version
 repos:
-  # - repo: local
-  #   hooks:
-  #     - id: mypy
-  #       name: mypy
-  #       entry: mypy
-  #       language: python
-  #       pass_filenames: false
-  #       args: [--config-file=setup.cfg, tianshou]
-
-  - repo: https://github.com/google/yapf
-    rev: v0.32.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
     hooks:
-      - id: yapf
-        args: [-r, -i]
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+      - id: check-added-large-files
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.0.283
     hooks:
-      - id: isort
-        name: isort
-
-  - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+      - id: ruff
+        args: [--fix, --fix-only, --exit-non-zero-on-fix]
+  - repo: https://github.com/hauntsaninja/black-pre-commit-mirror
+    rev: 23.7.0
     hooks:
-      - id: flake8
-        args: [--config=setup.cfg, --count, --show-source, --statistics]
-        additional_dependencies: ["flake8_bugbear"]
-
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.1.1
-    hooks:
-      - id: pydocstyle
-        exclude: ^(test/)|(docs/)|(examples/)|(setup.py)
+      - id: black
+        # specify workers explicitly to workaround https://github.com/psf/black/issues/2513
+        args: [--line-length=100, --exclude="", --workers=6]

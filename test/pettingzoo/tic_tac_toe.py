@@ -2,7 +2,7 @@ import argparse
 import os
 from copy import deepcopy
 from functools import partial
-from typing import Optional, Tuple
+from typing import Optional
 
 import gymnasium
 import numpy as np
@@ -25,64 +25,63 @@ def get_env(render_mode: Optional[str] = None):
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--eps-test', type=float, default=0.05)
-    parser.add_argument('--eps-train', type=float, default=0.1)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument("--seed", type=int, default=1626)
+    parser.add_argument("--eps-test", type=float, default=0.05)
+    parser.add_argument("--eps-train", type=float, default=0.1)
+    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument(
-        '--gamma', type=float, default=0.9, help='a smaller gamma favors earlier win'
+        "--gamma",
+        type=float,
+        default=0.9,
+        help="a smaller gamma favors earlier win",
     )
-    parser.add_argument('--n-step', type=int, default=3)
-    parser.add_argument('--target-update-freq', type=int, default=320)
-    parser.add_argument('--epoch', type=int, default=50)
-    parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--step-per-collect', type=int, default=10)
-    parser.add_argument('--update-per-step', type=float, default=0.1)
-    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument("--n-step", type=int, default=3)
+    parser.add_argument("--target-update-freq", type=int, default=320)
+    parser.add_argument("--epoch", type=int, default=50)
+    parser.add_argument("--step-per-epoch", type=int, default=1000)
+    parser.add_argument("--step-per-collect", type=int, default=10)
+    parser.add_argument("--update-per-step", type=float, default=0.1)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128, 128, 128])
+    parser.add_argument("--training-num", type=int, default=10)
+    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.1)
     parser.add_argument(
-        '--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128]
-    )
-    parser.add_argument('--training-num', type=int, default=10)
-    parser.add_argument('--test-num', type=int, default=10)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.1)
-    parser.add_argument(
-        '--win-rate',
+        "--win-rate",
         type=float,
         default=0.6,
-        help='the expected winning rate: Optimal policy can get 0.7'
+        help="the expected winning rate: Optimal policy can get 0.7",
     )
     parser.add_argument(
-        '--watch',
+        "--watch",
         default=False,
-        action='store_true',
-        help='no training, '
-        'watch the play of pre-trained models'
+        action="store_true",
+        help="no training, watch the play of pre-trained models",
     )
     parser.add_argument(
-        '--agent-id',
+        "--agent-id",
         type=int,
         default=2,
-        help='the learned agent plays as the'
-        ' agent_id-th player. Choices are 1 and 2.'
+        help="the learned agent plays as the agent_id-th player. Choices are 1 and 2.",
     )
     parser.add_argument(
-        '--resume-path',
+        "--resume-path",
         type=str,
-        default='',
-        help='the path of agent pth file '
-        'for resuming from a pre-trained agent'
+        default="",
+        help="the path of agent pth file for resuming from a pre-trained agent",
     )
     parser.add_argument(
-        '--opponent-path',
+        "--opponent-path",
         type=str,
-        default='',
-        help='the path of opponent agent pth file '
-        'for resuming from a pre-trained agent'
+        default="",
+        help="the path of opponent agent pth file for resuming from a pre-trained agent",
     )
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     return parser
 
@@ -97,11 +96,13 @@ def get_agents(
     agent_learn: Optional[BasePolicy] = None,
     agent_opponent: Optional[BasePolicy] = None,
     optim: Optional[torch.optim.Optimizer] = None,
-) -> Tuple[BasePolicy, torch.optim.Optimizer, list]:
+) -> tuple[BasePolicy, torch.optim.Optimizer, list]:
     env = get_env()
-    observation_space = env.observation_space['observation'] if isinstance(
-        env.observation_space, gymnasium.spaces.Dict
-    ) else env.observation_space
+    observation_space = (
+        env.observation_space["observation"]
+        if isinstance(env.observation_space, gymnasium.spaces.Dict)
+        else env.observation_space
+    )
     args.state_shape = observation_space.shape or observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     if agent_learn is None:
@@ -110,7 +111,7 @@ def get_agents(
             args.state_shape,
             args.action_shape,
             hidden_sizes=args.hidden_sizes,
-            device=args.device
+            device=args.device,
         ).to(args.device)
         if optim is None:
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
@@ -119,7 +120,7 @@ def get_agents(
             optim,
             args.gamma,
             args.n_step,
-            target_update_freq=args.target_update_freq
+            target_update_freq=args.target_update_freq,
         )
         if args.resume_path:
             agent_learn.load_state_dict(torch.load(args.resume_path))
@@ -144,8 +145,7 @@ def train_agent(
     agent_learn: Optional[BasePolicy] = None,
     agent_opponent: Optional[BasePolicy] = None,
     optim: Optional[torch.optim.Optimizer] = None,
-) -> Tuple[dict, BasePolicy]:
-
+) -> tuple[dict, BasePolicy]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
     # seed
@@ -155,7 +155,10 @@ def train_agent(
     test_envs.seed(args.seed)
 
     policy, optim, agents = get_agents(
-        args, agent_learn=agent_learn, agent_opponent=agent_opponent, optim=optim
+        args,
+        agent_learn=agent_learn,
+        agent_opponent=agent_opponent,
+        optim=optim,
     )
 
     # collector
@@ -163,27 +166,23 @@ def train_agent(
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True
+        exploration_noise=True,
     )
     test_collector = Collector(policy, test_envs, exploration_noise=True)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
     # log
-    log_path = os.path.join(args.logdir, 'tic_tac_toe', 'dqn')
+    log_path = os.path.join(args.logdir, "tic_tac_toe", "dqn")
     writer = SummaryWriter(log_path)
     writer.add_text("args", str(args))
     logger = TensorboardLogger(writer)
 
     def save_best_fn(policy):
-        if hasattr(args, 'model_save_path'):
+        if hasattr(args, "model_save_path"):
             model_save_path = args.model_save_path
         else:
-            model_save_path = os.path.join(
-                args.logdir, 'tic_tac_toe', 'dqn', 'policy.pth'
-            )
-        torch.save(
-            policy.policies[agents[args.agent_id - 1]].state_dict(), model_save_path
-        )
+            model_save_path = os.path.join(args.logdir, "tic_tac_toe", "dqn", "policy.pth")
+        torch.save(policy.policies[agents[args.agent_id - 1]].state_dict(), model_save_path)
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.win_rate
@@ -214,7 +213,7 @@ def train_agent(
         update_per_step=args.update_per_step,
         logger=logger,
         test_in_train=False,
-        reward_metric=reward_metric
+        reward_metric=reward_metric,
     ).run()
 
     return result, policy.policies[agents[args.agent_id - 1]]
@@ -226,9 +225,7 @@ def watch(
     agent_opponent: Optional[BasePolicy] = None,
 ) -> None:
     env = DummyVectorEnv([partial(get_env, render_mode="human")])
-    policy, optim, agents = get_agents(
-        args, agent_learn=agent_learn, agent_opponent=agent_opponent
-    )
+    policy, optim, agents = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)
     policy.eval()
     policy.policies[agents[args.agent_id - 1]].set_eps(args.eps_test)
     collector = Collector(policy, env, exploration_noise=True)

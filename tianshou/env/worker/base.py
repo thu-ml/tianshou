@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import gymnasium as gym
 import numpy as np
@@ -14,8 +14,8 @@ class EnvWorker(ABC):
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self._env_fn = env_fn
         self.is_closed = False
-        self.result: Union[gym_new_venv_step_type, Tuple[np.ndarray, dict]]
-        self.action_space = self.get_env_attr("action_space")  # noqa: B009
+        self.result: Union[gym_new_venv_step_type, tuple[np.ndarray, dict]]
+        self.action_space = self.get_env_attr("action_space")
         self.is_reset = False
 
     @abstractmethod
@@ -36,7 +36,7 @@ class EnvWorker(ABC):
         if hasattr(self, "send_action"):
             deprecation(
                 "send_action will soon be deprecated. "
-                "Please use send and recv for your own EnvWorker."
+                "Please use send and recv for your own EnvWorker.",
             )
             if action is None:
                 self.is_reset = True
@@ -45,9 +45,7 @@ class EnvWorker(ABC):
                 self.is_reset = False
                 self.send_action(action)
 
-    def recv(
-        self
-    ) -> Union[gym_new_venv_step_type, Tuple[np.ndarray, dict]]:  # noqa:E125
+    def recv(self) -> Union[gym_new_venv_step_type, tuple[np.ndarray, dict]]:
         """Receive result from low-level worker.
 
         If the last "send" function sends a NULL action, it only returns a
@@ -58,14 +56,14 @@ class EnvWorker(ABC):
         if hasattr(self, "get_result"):
             deprecation(
                 "get_result will soon be deprecated. "
-                "Please use send and recv for your own EnvWorker."
+                "Please use send and recv for your own EnvWorker.",
             )
             if not self.is_reset:
                 self.result = self.get_result()
         return self.result
 
     @abstractmethod
-    def reset(self, **kwargs: Any) -> Tuple[np.ndarray, dict]:
+    def reset(self, **kwargs: Any) -> tuple[np.ndarray, dict]:
         pass
 
     def step(self, action: np.ndarray) -> gym_new_venv_step_type:
@@ -80,20 +78,19 @@ class EnvWorker(ABC):
 
     @staticmethod
     def wait(
-        workers: List["EnvWorker"],
+        workers: list["EnvWorker"],
         wait_num: int,
-        timeout: Optional[float] = None
-    ) -> List["EnvWorker"]:
+        timeout: Optional[float] = None,
+    ) -> list["EnvWorker"]:
         """Given a list of workers, return those ready ones."""
         raise NotImplementedError
 
-    def seed(self, seed: Optional[int] = None) -> Optional[List[int]]:
+    def seed(self, seed: Optional[int] = None) -> Optional[list[int]]:
         return self.action_space.seed(seed)  # issue 299
 
     @abstractmethod
     def render(self, **kwargs: Any) -> Any:
         """Render the environment."""
-        pass
 
     @abstractmethod
     def close_env(self) -> None:
@@ -101,6 +98,6 @@ class EnvWorker(ABC):
 
     def close(self) -> None:
         if self.is_closed:
-            return None
+            return
         self.is_closed = True
         self.close_env()
