@@ -1,6 +1,6 @@
 import warnings
 from collections.abc import Sequence
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -51,11 +51,12 @@ class Actor(nn.Module):
         self.preprocess = preprocess_net
         self.output_dim = int(np.prod(action_shape))
         input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
+        input_dim = cast(int, input_dim)
         self.last = MLP(
             input_dim,
             self.output_dim,
             hidden_sizes,
-            device=self.device,  # type: ignore
+            device=self.device,
         )
         self.max_action = max_action
 

@@ -346,16 +346,21 @@ class ReplayBuffer:
         if stack_num is None:
             stack_num = self.stack_num
         try:
-            if stack_num == 1:  # the most often case
+            if stack_num == 1:  # the most common case
                 return val[index]
+
             stack = list[Any]()
             indices = np.array(index) if isinstance(index, list) else index
+            # NOTE: stack_num > 1, so the range is not empty and indices is turned into
+            # np.ndarray by self.prev
             for _ in range(stack_num):
                 stack = [val[indices], *stack]
                 indices = self.prev(indices)
+            indices = cast(np.ndarray, indices)
             if isinstance(val, Batch):
                 return Batch.stack(stack, axis=indices.ndim)
             return np.stack(stack, axis=indices.ndim)
+
         except IndexError as exception:
             if not (isinstance(val, Batch) and val.is_empty()):
                 raise exception  # val != Batch()

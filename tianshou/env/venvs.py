@@ -4,6 +4,7 @@ from typing import Any, Callable, Optional, Union
 import gymnasium as gym
 import numpy as np
 import packaging
+import torch
 
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
@@ -300,7 +301,7 @@ class BaseVectorEnv:
 
     def step(
         self,
-        action: np.ndarray,
+        action: Union[np.ndarray, torch.Tensor],
         id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> gym_new_venv_step_type:
         """Run one timestep of some environments' dynamics.

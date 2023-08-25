@@ -290,9 +290,10 @@ class Collector:
             # get bounded and remapped actions first (not saved into buffer)
             action_remap = self.policy.map_action(self.data.act)
             # step in env
+
             obs_next, rew, terminated, truncated, info = self.env.step(
                 action_remap,
-                ready_env_ids,  # type: ignore
+                ready_env_ids,
             )
             done = np.logical_or(terminated, truncated)
 
@@ -542,7 +543,7 @@ class AsyncCollector(Collector):
             # step in env
             obs_next, rew, terminated, truncated, info = self.env.step(
                 action_remap,
-                ready_env_ids,  # type: ignore
+                ready_env_ids,
             )
             done = np.logical_or(terminated, truncated)
 

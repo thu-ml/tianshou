@@ -1,6 +1,7 @@
 from typing import Any, Optional, Union
 
 import numpy as np
+import torch
 
 from tianshou.env.utils import gym_new_venv_step_type
 from tianshou.env.venvs import GYM_RESERVED_KEYS, BaseVectorEnv
@@ -50,7 +51,7 @@ class VectorEnvWrapper(BaseVectorEnv):
 
     def step(
         self,
-        action: np.ndarray,
+        action: Union[np.ndarray, torch.Tensor],
         id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> gym_new_venv_step_type:
         return self.venv.step(action, id)
@@ -97,7 +98,7 @@ class VectorEnvNormObs(VectorEnvWrapper):
 
     def step(
         self,
-        action: np.ndarray,
+        action: Union[np.ndarray, torch.Tensor],
         id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> gym_new_venv_step_type:
         step_results = self.venv.step(action, id)
