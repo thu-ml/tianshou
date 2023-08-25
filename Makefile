@@ -18,7 +18,9 @@ mypy:
 
 lint:
 	$(call check_install, ruff)
+	$(call check_install, black)
 	ruff check .
+	black --check .
 
 lint-format:
 	$(call check_install, pre_commit)
