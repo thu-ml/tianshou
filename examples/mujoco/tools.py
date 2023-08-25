@@ -33,10 +33,10 @@ def group_files(file_list, pattern):
 
 def csv2numpy(csv_file):
     csv_dict = defaultdict(list)
-    reader = csv.DictReader(open(csv_file))
-    for row in reader:
-        for k, v in row.items():
-            csv_dict[k].append(eval(v))
+    with open(csv_file) as f:
+        for row in csv.DictReader(f):
+            for k, v in row.items():
+                csv_dict[k].append(eval(v))
     return {k: np.array(v) for k, v in csv_dict.items()}
 
 
@@ -56,7 +56,8 @@ def convert_tfevents_to_csv(root_dir, refresh=False):
             t.set_postfix(file=tfevent_file)
             output_file = os.path.join(os.path.split(tfevent_file)[0], "test_reward.csv")
             if os.path.exists(output_file) and not refresh:
-                content = list(csv.reader(open(output_file)))
+                with open(output_file) as f:
+                    content = list(csv.reader(f))
                 if content[0] == ["env_step", "reward", "time"]:
                     for i in range(1, len(content)):
                         content[i] = list(map(eval, content[i]))
@@ -72,9 +73,10 @@ def convert_tfevents_to_csv(root_dir, refresh=False):
                         round(test_reward.step, 4),
                         round(test_reward.value, 4),
                         round(test_reward.wall_time - initial_time, 4),
-                    ]
+                    ],
                 )
-            csv.writer(open(output_file, "w")).writerows(content)
+            with open(output_file, "w") as f:
+                csv.writer(f).writerows(content)
             result[output_file] = content
     return result
 
@@ -94,7 +96,7 @@ def merge_csv(csv_files, root_dir, remove_zero=False):
             "reward",
             "reward:shaded",
             *["reward:" + os.path.relpath(f, root_dir) for f in sorted_keys],
-        ]
+        ],
     ]
     for rows in zip(*sorted_values):
         array = np.array(rows)
@@ -104,7 +106,8 @@ def merge_csv(csv_files, root_dir, remove_zero=False):
         content.append(line)
     output_path = os.path.join(root_dir, f"test_reward_{len(csv_files)}seeds.csv")
     print(f"Output merged csv file to {output_path} with {len(content[1:])} lines.")
-    csv.writer(open(output_path, "w")).writerows(content)
+    with open(output_path, "w") as f:
+        csv.writer(f).writerows(content)
 
 
 if __name__ == "__main__":

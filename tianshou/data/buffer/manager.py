@@ -10,8 +10,7 @@ from tianshou.data.types import RolloutBatchProtocol
 
 
 class ReplayBufferManager(ReplayBuffer):
-    """ReplayBufferManager contains a list of ReplayBuffer with exactly the same \
-    configuration.
+    """ReplayBufferManager contains a list of ReplayBuffer with exactly the same configuration.
 
     These replay buffers have contiguous memory layout, and the storage space each
     buffer has is a shallow copy of the topmost memory.
@@ -68,7 +67,7 @@ class ReplayBufferManager(ReplayBuffer):
 
     def unfinished_index(self) -> np.ndarray:
         return np.concatenate(
-            [buf.unfinished_index() + offset for offset, buf in zip(self._offset, self.buffers)]
+            [buf.unfinished_index() + offset for offset, buf in zip(self._offset, self.buffers)],
         )
 
     def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
@@ -80,14 +79,13 @@ class ReplayBufferManager(ReplayBuffer):
                 self.last_index,
                 self._lengths,
             )
-        else:
-            return _prev_index(
-                np.array([index]),
-                self._extend_offset,
-                self.done,
-                self.last_index,
-                self._lengths,
-            )[0]
+        return _prev_index(
+            np.array([index]),
+            self._extend_offset,
+            self.done,
+            self.last_index,
+            self._lengths,
+        )[0]
 
     def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
         if isinstance(index, (list, np.ndarray)):
@@ -98,14 +96,13 @@ class ReplayBufferManager(ReplayBuffer):
                 self.last_index,
                 self._lengths,
             )
-        else:
-            return _next_index(
-                np.array([index]),
-                self._extend_offset,
-                self.done,
-                self.last_index,
-                self._lengths,
-            )[0]
+        return _next_index(
+            np.array([index]),
+            self._extend_offset,
+            self.done,
+            self.last_index,
+            self._lengths,
+        )[0]
 
     def update(self, buffer: ReplayBuffer) -> np.ndarray:
         """The ReplayBufferManager cannot be updated by any buffer."""
@@ -144,7 +141,8 @@ class ReplayBufferManager(ReplayBuffer):
         ptrs, ep_lens, ep_rews, ep_idxs = [], [], [], []
         for batch_idx, buffer_id in enumerate(buffer_ids):
             ptr, ep_rew, ep_len, ep_idx = self.buffers[buffer_id]._add_index(
-                batch.rew[batch_idx], batch.done[batch_idx]
+                batch.rew[batch_idx],
+                batch.done[batch_idx],
             )
             ptrs.append(ptr + self._offset[buffer_id])
             ep_lens.append(ep_len)
@@ -173,17 +171,18 @@ class ReplayBufferManager(ReplayBuffer):
             return np.array([], int)
         if self._sample_avail and self.stack_num > 1:
             all_indices = np.concatenate(
-                [buf.sample_indices(0) + offset for offset, buf in zip(self._offset, self.buffers)]
+                [buf.sample_indices(0) + offset for offset, buf in zip(self._offset, self.buffers)],
             )
             if batch_size == 0:
                 return all_indices
-            else:
-                return np.random.choice(all_indices, batch_size)
+            return np.random.choice(all_indices, batch_size)
         if batch_size == 0:  # get all available indices
             sample_num = np.zeros(self.buffer_num, int)
         else:
             buffer_idx = np.random.choice(
-                self.buffer_num, batch_size, p=self._lengths / self._lengths.sum()
+                self.buffer_num,
+                batch_size,
+                p=self._lengths / self._lengths.sum(),
             )
             sample_num = np.bincount(buffer_idx, minlength=self.buffer_num)
             # avoid batch_size > 0 and sample_num == 0 -> get child's all data
@@ -193,13 +192,12 @@ class ReplayBufferManager(ReplayBuffer):
             [
                 buf.sample_indices(bsz) + offset
                 for offset, buf, bsz in zip(self._offset, self.buffers, sample_num)
-            ]
+            ],
         )
 
 
 class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManager):
-    """PrioritizedReplayBufferManager contains a list of PrioritizedReplayBuffer with \
-    exactly the same configuration.
+    """PrioritizedReplayBufferManager contains a list of PrioritizedReplayBuffer with exactly the same configuration.
 
     These replay buffers have contiguous memory layout, and the storage space each
     buffer has is a shallow copy of the topmost memory.
@@ -220,8 +218,7 @@ class PrioritizedReplayBufferManager(PrioritizedReplayBuffer, ReplayBufferManage
 
 
 class HERReplayBufferManager(ReplayBufferManager):
-    """HERReplayBufferManager contains a list of HERReplayBuffer with \
-    exactly the same configuration.
+    """HERReplayBufferManager contains a list of HERReplayBuffer with exactly the same configuration.
 
     These replay buffers have contiguous memory layout, and the storage space each
     buffer has is a shallow copy of the topmost memory.
@@ -273,12 +270,12 @@ def _prev_index(
     prev_index = np.zeros_like(index)
     for start, end, cur_len, last in zip(offset[:-1], offset[1:], lengths, last_index):
         mask = (start <= index) & (index < end)
-        cur_len = max(1, cur_len)
+        correct_cur_len = max(1, cur_len)
         if np.sum(mask) > 0:
             subind = index[mask]
-            subind = (subind - start - 1) % cur_len
+            subind = (subind - start - 1) % correct_cur_len
             end_flag = done[subind + start] | (subind + start == last)
-            prev_index[mask] = (subind + end_flag) % cur_len + start
+            prev_index[mask] = (subind + end_flag) % correct_cur_len + start
     return prev_index
 
 
@@ -294,9 +291,9 @@ def _next_index(
     next_index = np.zeros_like(index)
     for start, end, cur_len, last in zip(offset[:-1], offset[1:], lengths, last_index):
         mask = (start <= index) & (index < end)
-        cur_len = max(1, cur_len)
+        correct_cur_len = max(1, cur_len)
         if np.sum(mask) > 0:
             subind = index[mask]
             end_flag = done[subind] | (subind == last)
-            next_index[mask] = (subind - start + 1 - end_flag) % cur_len + start
+            next_index[mask] = (subind - start + 1 - end_flag) % correct_cur_len + start
     return next_index

@@ -8,8 +8,16 @@ from setuptools import find_packages, setup
 
 def get_version() -> str:
     # https://packaging.python.org/guides/single-sourcing-package-version/
-    init = open(os.path.join("tianshou", "__init__.py")).read().split()
-    return init[init.index("__version__") + 2][1:-1]
+    with open(os.path.join("tianshou", "__init__.py")) as f:
+        for line in f:
+            if line.startswith("__version__"):
+                return line.strip().split()[-1][1:-1]
+        return None
+
+
+def get_readme() -> str:
+    with open("README.md") as f:
+        return f.read()
 
 
 def get_install_requires() -> str:
@@ -63,7 +71,7 @@ setup(
     name="tianshou",
     version=get_version(),
     description="A Library for Deep Reinforcement Learning",
-    long_description=open("README.md", encoding="utf8").read(),
+    long_description=get_readme(),
     long_description_content_type="text/markdown",
     url="https://github.com/thu-ml/tianshou",
     author="TSAIL",

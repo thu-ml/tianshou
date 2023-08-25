@@ -45,7 +45,7 @@ def test_replaybuffer(size=10, bufsize=20):
                 truncated=truncated,
                 obs_next=obs_next,
                 info=info,
-            )
+            ),
         )
         obs = obs_next
         assert len(buf) == min(bufsize, i + 1)
@@ -72,7 +72,7 @@ def test_replaybuffer(size=10, bufsize=20):
             truncated=0,
             obs_next="str",
             info={"a": 3, "b": {"c": 5.0}},
-        )
+        ),
     )
     assert b.obs[0] == 1
     assert b.done[0]
@@ -155,7 +155,7 @@ def test_ignore_obs_next(size=10):
                 terminated=i % 3 == 0,
                 truncated=False,
                 info={"if": i},
-            )
+            ),
         )
     indices = np.arange(len(buf))
     orig = np.arange(len(buf))
@@ -184,7 +184,7 @@ def test_ignore_obs_next(size=10):
                 [7, 7, 7, 8],
                 [7, 7, 8, 9],
                 [7, 7, 8, 9],
-            ]
+            ],
         ),
     )
     assert np.allclose(data.info["if"], data2.info["if"])
@@ -202,7 +202,7 @@ def test_ignore_obs_next(size=10):
                 [7, 7, 7, 7],
                 [7, 7, 7, 8],
                 [7, 7, 8, 9],
-            ]
+            ],
         ),
     )
     assert data.obs_next
@@ -225,7 +225,7 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
                 terminated=terminated,
                 truncated=truncated,
                 info=info,
-            )
+            ),
         )
         buf2.add(
             Batch(
@@ -235,7 +235,7 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
                 terminated=terminated,
                 truncated=truncated,
                 info=info,
-            )
+            ),
         )
         buf3.add(
             Batch(
@@ -246,7 +246,7 @@ def test_stack(size=5, bufsize=9, stack_num=4, cached_num=3):
                 truncated=truncated,
                 obs_next=[obs, obs],
                 info=info,
-            )
+            ),
         )
         obs = obs_next
         if done:
@@ -503,7 +503,7 @@ def test_update():
                 terminated=i % 2 == 0,
                 truncated=False,
                 info={"incident": "found"},
-            )
+            ),
         )
     assert len(buf1) > len(buf2)
     buf2.update(buf1)
@@ -629,7 +629,7 @@ def test_pickle():
                 rew=rew,
                 terminated=0,
                 truncated=0,
-            )
+            ),
         )
     for i in range(5):
         pbuf.add(
@@ -640,7 +640,7 @@ def test_pickle():
                 terminated=0,
                 truncated=0,
                 info=np.random.rand(),
-            )
+            ),
         )
     # save & load
     _vbuf = pickle.loads(pickle.dumps(vbuf))
@@ -852,7 +852,8 @@ def test_replaybuffermanager():
     )
     assert np.allclose(buf.unfinished_index(), [4, 14])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[1], act=[1], rew=[1], terminated=[1], truncated=[0]), buffer_ids=[2]
+        Batch(obs=[1], act=[1], rew=[1], terminated=[1], truncated=[0]),
+        buffer_ids=[2],
     )
     assert np.all(ep_len == [3])
     assert np.all(ep_rew == [1])
@@ -927,7 +928,8 @@ def test_cachedbuffer():
     assert buf.sample_indices(0).tolist() == []
     # check the normal function/usage/storage in CachedReplayBuffer
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[1], act=[1], rew=[1], terminated=[0], truncated=[0]), buffer_ids=[1]
+        Batch(obs=[1], act=[1], rew=[1], terminated=[0], truncated=[0]),
+        buffer_ids=[1],
     )
     obs = np.zeros(buf.maxsize)
     obs[15] = 1
@@ -941,7 +943,8 @@ def test_cachedbuffer():
     assert np.all(ptr == [15])
     assert np.all(ep_idx == [15])
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=[2], act=[2], rew=[2], terminated=[1], truncated=[0]), buffer_ids=[3]
+        Batch(obs=[2], act=[2], rew=[2], terminated=[1], truncated=[0]),
+        buffer_ids=[3],
     )
     obs[[0, 25]] = 2
     indices = buf.sample_indices(0)
@@ -983,7 +986,7 @@ def test_cachedbuffer():
     buf.add(Batch(obs=data, act=data, rew=rew, terminated=[1, 1, 1, 1], truncated=[0, 0, 0, 0]))
     buf.add(Batch(obs=data, act=data, rew=rew, terminated=[0, 0, 0, 0], truncated=[0, 0, 0, 0]))
     ptr, ep_rew, ep_len, ep_idx = buf.add(
-        Batch(obs=data, act=data, rew=rew, terminated=[0, 1, 0, 1], truncated=[0, 0, 0, 0])
+        Batch(obs=data, act=data, rew=rew, terminated=[0, 1, 0, 1], truncated=[0, 0, 0, 0]),
     )
     assert np.all(ptr == [1, -1, 11, -1])
     assert np.all(ep_idx == [0, -1, 10, -1])
@@ -1324,8 +1327,8 @@ def test_custom_key():
                     0.2227,
                     -0.5117,
                     2.293,
-                ]
-            ]
+                ],
+            ],
         ),
         rew=np.array([4.28125]),
         act=np.array([[-0.3088, -0.4636, 0.4956]]),
@@ -1344,8 +1347,8 @@ def test_custom_key():
                     0.623,
                     0.1259,
                     0.363,
-                ]
-            ]
+                ],
+            ],
         ),
         terminated=np.array([False]),
         done=np.array([False]),
@@ -1359,18 +1362,21 @@ def test_custom_key():
     sampled_batch, _ = buffer.sample(1)
     # Check if they have the same keys
     assert set(batch.keys()) == set(
-        sampled_batch.keys()
+        sampled_batch.keys(),
     ), "Batches have different keys: {} and {}".format(set(batch.keys()), set(sampled_batch.keys()))
     # Compare the values for each key
-    for key in batch.keys():
+    for key in batch:
         if isinstance(batch.__dict__[key], np.ndarray) and isinstance(
-            sampled_batch.__dict__[key], np.ndarray
+            sampled_batch.__dict__[key],
+            np.ndarray,
         ):
             assert np.allclose(
-                batch.__dict__[key], sampled_batch.__dict__[key]
+                batch.__dict__[key],
+                sampled_batch.__dict__[key],
             ), f"Value mismatch for key: {key}"
         if isinstance(batch.__dict__[key], Batch) and isinstance(
-            sampled_batch.__dict__[key], Batch
+            sampled_batch.__dict__[key],
+            Batch,
         ):
             assert batch.__dict__[key].is_empty()
             assert sampled_batch.__dict__[key].is_empty()

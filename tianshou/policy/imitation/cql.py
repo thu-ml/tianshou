@@ -143,7 +143,9 @@ class CQLPolicy(SACPolicy):
         return actor_loss, log_pi
 
     def calc_pi_values(
-        self, obs_pi: torch.Tensor, obs_to_pred: torch.Tensor
+        self,
+        obs_pi: torch.Tensor,
+        obs_to_pred: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         act_pred, log_pi = self.actor_pred(obs_pi)
 
@@ -153,7 +155,9 @@ class CQLPolicy(SACPolicy):
         return q1 - log_pi.detach(), q2 - log_pi.detach()
 
     def calc_random_values(
-        self, obs: torch.Tensor, act: torch.Tensor
+        self,
+        obs: torch.Tensor,
+        act: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         random_value1 = self.critic1(obs, act)
         random_log_prob1 = np.log(0.5 ** act.shape[-1])
@@ -164,7 +168,10 @@ class CQLPolicy(SACPolicy):
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> RolloutBatchProtocol:
         # TODO: mypy rightly complains here b/c the design violates
         #   Liskov Substitution Principle

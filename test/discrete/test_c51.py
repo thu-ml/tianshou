@@ -46,11 +46,12 @@ def get_args():
     parser.add_argument("--beta", type=float, default=0.4)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--save-interval", type=int, default=4)
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_c51(args=get_args()):
@@ -142,7 +143,8 @@ def test_c51(args=get_args()):
             ckpt_path,
         )
         buffer_path = os.path.join(log_path, "train_buffer.pkl")
-        pickle.dump(train_collector.buffer, open(buffer_path, "wb"))
+        with open(buffer_path, "wb") as f:
+            pickle.dump(train_collector.buffer, f)
         return ckpt_path
 
     if args.resume:
@@ -158,7 +160,8 @@ def test_c51(args=get_args()):
             print("Fail to restore policy and optim.")
         buffer_path = os.path.join(log_path, "train_buffer.pkl")
         if os.path.exists(buffer_path):
-            train_collector.buffer = pickle.load(open(buffer_path, "rb"))
+            with open(buffer_path, "rb") as f:
+                train_collector.buffer = pickle.load(f)
             print("Successfully restore buffer.")
         else:
             print("Fail to restore buffer.")

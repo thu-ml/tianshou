@@ -42,7 +42,10 @@ class MultiAgentPolicyManager(BasePolicy):
 
     # TODO: violates Liskov substitution principle
     def process_fn(  # type: ignore
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indice: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indice: np.ndarray,
     ) -> BatchProtocol:
         """Dispatch batch data from obs.agent_id to every policy's process_fn.
 
@@ -51,9 +54,10 @@ class MultiAgentPolicyManager(BasePolicy):
         original reward afterwards.
         """
         results = {}
-        assert isinstance(batch.obs, BatchProtocol), (
-            f"here only observations of type Batch are permitted, " f"but got {type(batch.obs)}"
-        )
+        assert isinstance(
+            batch.obs,
+            BatchProtocol,
+        ), f"here only observations of type Batch are permitted, but got {type(batch.obs)}"
         # reward can be empty Batch (after initial reset) or nparray.
         has_rew = isinstance(buffer.rew, np.ndarray)
         if has_rew:  # save the original reward in save_rew
@@ -80,12 +84,15 @@ class MultiAgentPolicyManager(BasePolicy):
         return Batch(results)
 
     def exploration_noise(
-        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+        self,
+        act: Union[np.ndarray, BatchProtocol],
+        batch: RolloutBatchProtocol,
     ) -> Union[np.ndarray, BatchProtocol]:
         """Add exploration noise from sub-policy onto act."""
-        assert isinstance(batch.obs, BatchProtocol), (
-            f"here only observations of type Batch are permitted, " f"but got {type(batch.obs)}"
-        )
+        assert isinstance(
+            batch.obs,
+            BatchProtocol,
+        ), f"here only observations of type Batch are permitted, but got {type(batch.obs)}"
         for agent_id, policy in self.policies.items():
             agent_index = np.nonzero(batch.obs.agent_id == agent_id)[0]
             if len(agent_index) == 0:
@@ -154,11 +161,12 @@ class MultiAgentPolicyManager(BasePolicy):
             each_state = out.state if (hasattr(out, "state") and out.state is not None) else Batch()
             results.append((True, agent_index, out, act, each_state))
         holder: Batch = Batch.cat(
-            [{"act": act} for (has_data, agent_index, out, act, each_state) in results if has_data]
+            [{"act": act} for (has_data, agent_index, out, act, each_state) in results if has_data],
         )
         state_dict, out_dict = {}, {}
         for (agent_id, _), (has_data, agent_index, out, act, state) in zip(
-            self.policies.items(), results
+            self.policies.items(),
+            results,
         ):
             if has_data:
                 holder.act[agent_index] = act
@@ -169,7 +177,10 @@ class MultiAgentPolicyManager(BasePolicy):
         return holder
 
     def learn(
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
     ) -> dict[str, Union[float, list[float]]]:
         """Dispatch the data to all policies for learning.
 

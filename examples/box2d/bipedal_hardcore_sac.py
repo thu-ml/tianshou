@@ -40,7 +40,9 @@ def get_args():
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument("--n-step", type=int, default=4)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     return parser.parse_args()
@@ -76,14 +78,14 @@ def test_sac_bipedal(args=get_args()):
     args.max_action = env.action_space.high[0]
 
     train_envs = SubprocVectorEnv(
-        [lambda: Wrapper(gym.make(args.task)) for _ in range(args.training_num)]
+        [lambda: Wrapper(gym.make(args.task)) for _ in range(args.training_num)],
     )
     # test_envs = gym.make(args.task)
     test_envs = SubprocVectorEnv(
         [
             lambda: Wrapper(gym.make(args.task), reward_scale=1, rm_done=False)
             for _ in range(args.test_num)
-        ]
+        ],
     )
 
     # seed

@@ -42,7 +42,9 @@ def get_args():
     parser.add_argument("--alpha", type=float, default=0.6)
     parser.add_argument("--beta", type=float, default=0.4)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument(
         "--lr-scale",
@@ -62,8 +64,7 @@ def get_args():
         default=0.2,
         help="weight for the forward model loss in ICM",
     )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_dqn_icm(args=get_args()):

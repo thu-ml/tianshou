@@ -77,15 +77,12 @@ class PSRLModel:
         self.rew_square_sum += rew_square_sum
         raw_std2 = self.rew_square_sum / sum_count - self.rew_mean**2
         self.rew_std = np.sqrt(
-            1 / (sum_count / (raw_std2 + self.__eps) + 1 / self.rew_std_prior**2)
+            1 / (sum_count / (raw_std2 + self.__eps) + 1 / self.rew_std_prior**2),
         )
         self.rew_count = sum_count
 
     def sample_trans_prob(self) -> np.ndarray:
-        sample_prob = (
-            torch.distributions.Dirichlet(torch.from_numpy(self.trans_count)).sample().numpy()
-        )
-        return sample_prob
+        return torch.distributions.Dirichlet(torch.from_numpy(self.trans_count)).sample().numpy()
 
     def sample_reward(self) -> np.ndarray:
         return np.random.normal(self.rew_mean, self.rew_std)
@@ -177,7 +174,11 @@ class PSRLPolicy(BasePolicy):
         super().__init__(**kwargs)
         assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self.model = PSRLModel(
-            trans_count_prior, rew_mean_prior, rew_std_prior, discount_factor, epsilon
+            trans_count_prior,
+            rew_mean_prior,
+            rew_std_prior,
+            discount_factor,
+            epsilon,
         )
         self._add_done_loop = add_done_loop
 

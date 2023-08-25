@@ -83,16 +83,18 @@ class BasePolicy(ABC, nn.Module):
         ] = None,
     ) -> None:
         allowed_action_bound_methods = ("clip", "tanh")
-        if action_bound_method is not None:
-            if action_bound_method not in allowed_action_bound_methods:
-                raise ValueError(
-                    f"Got invalid {action_bound_method=}. "
-                    f"Valid values are: {allowed_action_bound_methods}."
-                )
+        if (
+            action_bound_method is not None
+            and action_bound_method not in allowed_action_bound_methods
+        ):
+            raise ValueError(
+                f"Got invalid {action_bound_method=}. "
+                f"Valid values are: {allowed_action_bound_methods}.",
+            )
         if action_scaling and not isinstance(action_space, Box):
             raise ValueError(
                 f"action_scaling can only be True when action_space is Box but "
-                f"got: {action_space}"
+                f"got: {action_space}",
             )
 
         super().__init__()
@@ -120,7 +122,9 @@ class BasePolicy(ABC, nn.Module):
     #  So we add the default behavior here. It's a little messy, maybe one can
     #  find a better way to do this.
     def exploration_noise(
-        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+        self,
+        act: Union[np.ndarray, BatchProtocol],
+        batch: RolloutBatchProtocol,
     ) -> Union[np.ndarray, BatchProtocol]:
         """Modify the action from policy.forward with exploration noise.
 
@@ -194,7 +198,8 @@ class BasePolicy(ABC, nn.Module):
         ...
 
     def map_action(
-        self, act: Union[BatchProtocol, np.ndarray, torch.Tensor]
+        self,
+        act: Union[BatchProtocol, np.ndarray, torch.Tensor],
     ) -> Union[BatchProtocol, np.ndarray, torch.Tensor]:
         """Map raw network output to action range in gym's env.action_space.
 
@@ -228,7 +233,8 @@ class BasePolicy(ABC, nn.Module):
         return act
 
     def map_action_inverse(
-        self, act: Union[BatchProtocol, list, np.ndarray]
+        self,
+        act: Union[BatchProtocol, list, np.ndarray],
     ) -> Union[BatchProtocol, list, np.ndarray]:
         """Inverse operation to :meth:`~tianshou.policy.BasePolicy.map_action`.
 
@@ -255,7 +261,10 @@ class BasePolicy(ABC, nn.Module):
         return act
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> RolloutBatchProtocol:
         """Pre-process the data from the provided replay buffer.
 
@@ -287,7 +296,10 @@ class BasePolicy(ABC, nn.Module):
         """
 
     def post_process_fn(
-        self, batch: BatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: BatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> None:
         """Post-process the data from the provided replay buffer.
 
@@ -304,11 +316,14 @@ class BasePolicy(ABC, nn.Module):
                 logger.warning(
                     "batch has no attribute 'weight', but buffer has an "
                     "update_weight method. This is probably a mistake."
-                    "Prioritized replay is disabled for this batch."
+                    "Prioritized replay is disabled for this batch.",
                 )
 
     def update(
-        self, sample_size: int, buffer: Optional[ReplayBuffer], **kwargs: Any
+        self,
+        sample_size: int,
+        buffer: Optional[ReplayBuffer],
+        **kwargs: Any,
     ) -> dict[str, Any]:
         """Update the policy network and replay buffer.
 

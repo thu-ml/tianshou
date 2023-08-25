@@ -75,14 +75,20 @@ class A2CPolicy(PGPolicy):
         self._actor_critic = ActorCritic(self.actor, self.critic)
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> BatchWithAdvantagesProtocol:
         batch = self._compute_returns(batch, buffer, indices)
         batch.act = to_torch_as(batch.act, batch.v_s)
         return batch
 
     def _compute_returns(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> BatchWithAdvantagesProtocol:
         v_s, v_s_ = [], []
         with torch.no_grad():
@@ -145,7 +151,8 @@ class A2CPolicy(PGPolicy):
                 loss.backward()
                 if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
-                        self._actor_critic.parameters(), max_norm=self._grad_norm
+                        self._actor_critic.parameters(),
+                        max_norm=self._grad_norm,
                     )
                 self.optim.step()
                 actor_losses.append(actor_loss.item())

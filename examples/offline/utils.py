@@ -9,7 +9,7 @@ from tianshou.utils import RunningMeanStd
 
 def load_buffer_d4rl(expert_data_task: str) -> ReplayBuffer:
     dataset = d4rl.qlearning_dataset(gym.make(expert_data_task))
-    replay_buffer = ReplayBuffer.from_data(
+    return ReplayBuffer.from_data(
         obs=dataset["observations"],
         act=dataset["actions"],
         rew=dataset["rewards"],
@@ -18,12 +18,11 @@ def load_buffer_d4rl(expert_data_task: str) -> ReplayBuffer:
         terminated=dataset["terminals"],
         truncated=np.zeros(len(dataset["terminals"])),
     )
-    return replay_buffer
 
 
 def load_buffer(buffer_path: str) -> ReplayBuffer:
     with h5py.File(buffer_path, "r") as dataset:
-        buffer = ReplayBuffer.from_data(
+        return ReplayBuffer.from_data(
             obs=dataset["observations"],
             act=dataset["actions"],
             rew=dataset["rewards"],
@@ -32,7 +31,6 @@ def load_buffer(buffer_path: str) -> ReplayBuffer:
             terminated=dataset["terminals"],
             truncated=np.zeros(len(dataset["terminals"])),
         )
-    return buffer
 
 
 def normalize_all_obs_in_replay_buffer(
@@ -45,6 +43,6 @@ def normalize_all_obs_in_replay_buffer(
     # normalize obs
     replay_buffer._meta["obs"] = (replay_buffer.obs - obs_rms.mean) / np.sqrt(obs_rms.var + _eps)
     replay_buffer._meta["obs_next"] = (replay_buffer.obs_next - obs_rms.mean) / np.sqrt(
-        obs_rms.var + _eps
+        obs_rms.var + _eps,
     )
     return replay_buffer, obs_rms

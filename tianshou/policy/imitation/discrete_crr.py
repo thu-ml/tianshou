@@ -83,7 +83,10 @@ class DiscreteCRRPolicy(PGPolicy):
         self.critic_old.load_state_dict(self.critic.state_dict())
 
     def learn(  # type: ignore
-        self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any
+        self,
+        batch: RolloutBatchProtocol,
+        *args: Any,
+        **kwargs: Any,
     ) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()

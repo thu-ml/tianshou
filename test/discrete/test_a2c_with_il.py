@@ -46,7 +46,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # a2c special
     parser.add_argument("--vf-coef", type=float, default=0.5)
@@ -54,18 +56,23 @@ def get_args():
     parser.add_argument("--max-grad-norm", type=float, default=None)
     parser.add_argument("--gae-lambda", type=float, default=1.0)
     parser.add_argument("--rew-norm", action="store_true", default=False)
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_a2c_with_il(args=get_args()):
     # if you want to use python vector env, please refer to other test scripts
     train_envs = env = envpool.make(
-        args.task, env_type="gymnasium", num_envs=args.training_num, seed=args.seed
+        args.task,
+        env_type="gymnasium",
+        num_envs=args.training_num,
+        seed=args.seed,
     )
     test_envs = envpool.make(
-        args.task, env_type="gymnasium", num_envs=args.test_num, seed=args.seed
+        args.task,
+        env_type="gymnasium",
+        num_envs=args.test_num,
+        seed=args.seed,
     )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -97,7 +104,9 @@ def test_a2c_with_il(args=get_args()):
     )
     # collector
     train_collector = Collector(
-        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs))
+        policy,
+        train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
     test_collector = Collector(policy, test_envs)
     # log

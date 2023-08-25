@@ -37,7 +37,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # trpo special
     parser.add_argument("--gae-lambda", type=float, default=0.95)
@@ -48,8 +50,7 @@ def get_args():
     parser.add_argument("--backtrack-coeff", type=float, default=0.8)
     parser.add_argument("--max-backtracks", type=int, default=10)
 
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_trpo(args=get_args()):
@@ -116,7 +117,9 @@ def test_trpo(args=get_args()):
     )
     # collector
     train_collector = Collector(
-        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs))
+        policy,
+        train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
     test_collector = Collector(policy, test_envs)
     # log

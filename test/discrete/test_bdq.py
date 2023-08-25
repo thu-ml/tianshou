@@ -41,10 +41,11 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_bdq(args=get_args()):
@@ -66,13 +67,13 @@ def test_bdq(args=get_args()):
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.training_num)
-        ]
+        ],
     )
     test_envs = DummyVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.test_num)
-        ]
+        ],
     )
 
     # seed

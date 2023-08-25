@@ -36,7 +36,7 @@ class EnvWorker(ABC):
         if hasattr(self, "send_action"):
             deprecation(
                 "send_action will soon be deprecated. "
-                "Please use send and recv for your own EnvWorker."
+                "Please use send and recv for your own EnvWorker.",
             )
             if action is None:
                 self.is_reset = True
@@ -56,7 +56,7 @@ class EnvWorker(ABC):
         if hasattr(self, "get_result"):
             deprecation(
                 "get_result will soon be deprecated. "
-                "Please use send and recv for your own EnvWorker."
+                "Please use send and recv for your own EnvWorker.",
             )
             if not self.is_reset:
                 self.result = self.get_result()
@@ -78,7 +78,9 @@ class EnvWorker(ABC):
 
     @staticmethod
     def wait(
-        workers: list["EnvWorker"], wait_num: int, timeout: Optional[float] = None
+        workers: list["EnvWorker"],
+        wait_num: int,
+        timeout: Optional[float] = None,
     ) -> list["EnvWorker"]:
         """Given a list of workers, return those ready ones."""
         raise NotImplementedError

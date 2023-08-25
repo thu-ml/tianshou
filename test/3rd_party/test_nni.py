@@ -108,7 +108,7 @@ def _get_model_and_mutators(**kwargs):
 
 
 @pytest.mark.skip(
-    reason="NNI currently uses OpenAI Gym"
+    reason="NNI currently uses OpenAI Gym",
 )  # TODO: Remove once NNI transitions to Gymnasium
 def test_rl():
     rl = strategy.PolicyBasedRL(max_collect=2, trial_per_collect=10)

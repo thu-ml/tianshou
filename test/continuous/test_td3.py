@@ -44,10 +44,11 @@ def get_args():
     parser.add_argument("--rew-norm", action="store_true", default=False)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_td3(args=get_args()):
@@ -71,7 +72,7 @@ def test_td3(args=get_args()):
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = Actor(net, args.action_shape, max_action=args.max_action, device=args.device).to(
-        args.device
+        args.device,
     )
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c1 = Net(

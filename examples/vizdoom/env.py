@@ -88,9 +88,7 @@ class Env(gym.Env):
         reward = 0.0
         self.get_obs()
         health = self.game.get_game_variable(vzd.GameVariable.HEALTH)
-        if self.health_setting:
-            reward += health - self.health
-        elif health > self.health:  # positive health reward only for d1/d2
+        if self.health_setting or health > self.health:  # positive health reward only for d1/d2
             reward += health - self.health
         self.health = health
         killcount = self.game.get_game_variable(vzd.GameVariable.KILLCOUNT)
@@ -155,10 +153,10 @@ def make_vizdoom_env(task, frame_skip, res, save_lmp, seed, training_num, test_n
         cfg_path = f"maps/{task}.cfg"
         env = Env(cfg_path, frame_skip, res)
         train_envs = ShmemVectorEnv(
-            [lambda: Env(cfg_path, frame_skip, res) for _ in range(training_num)]
+            [lambda: Env(cfg_path, frame_skip, res) for _ in range(training_num)],
         )
         test_envs = ShmemVectorEnv(
-            [lambda: Env(cfg_path, frame_skip, res, save_lmp) for _ in range(test_num)]
+            [lambda: Env(cfg_path, frame_skip, res, save_lmp) for _ in range(test_num)],
         )
         train_envs.seed(seed)
         test_envs.seed(seed)

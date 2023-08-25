@@ -47,15 +47,14 @@ class BaseLogger(ABC):
             training stage, i.e., returns of collector.collect().
         :param int step: stands for the timestep the collect_result being logged.
         """
-        if collect_result["n/ep"] > 0:
-            if step - self.last_log_train_step >= self.train_interval:
-                log_data = {
-                    "train/episode": collect_result["n/ep"],
-                    "train/reward": collect_result["rew"],
-                    "train/length": collect_result["len"],
-                }
-                self.write("train/env_step", step, log_data)
-                self.last_log_train_step = step
+        if collect_result["n/ep"] > 0 and step - self.last_log_train_step >= self.train_interval:
+            log_data = {
+                "train/episode": collect_result["n/ep"],
+                "train/reward": collect_result["rew"],
+                "train/length": collect_result["len"],
+            }
+            self.write("train/env_step", step, log_data)
+            self.last_log_train_step = step
 
     def log_test_data(self, collect_result: dict, step: int) -> None:
         """Use writer to log statistics generated during evaluating.

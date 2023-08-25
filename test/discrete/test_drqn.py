@@ -39,10 +39,11 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_drqn(args=get_args()):
@@ -64,11 +65,15 @@ def test_drqn(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Recurrent(args.layer_num, args.state_shape, args.action_shape, args.device).to(
-        args.device
+        args.device,
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
-        net, optim, args.gamma, args.n_step, target_update_freq=args.target_update_freq
+        net,
+        optim,
+        args.gamma,
+        args.n_step,
+        target_update_freq=args.target_update_freq,
     )
     # collector
     buffer = VectorReplayBuffer(

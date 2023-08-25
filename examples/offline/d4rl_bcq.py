@@ -48,7 +48,9 @@ def get_args():
     # Max perturbation hyper-parameter for BCQ
     parser.add_argument("--phi", default=0.05)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
@@ -99,7 +101,7 @@ def test_bcq():
         device=args.device,
     )
     actor = Perturbation(net_a, max_action=args.max_action, device=args.device, phi=args.phi).to(
-        args.device
+        args.device,
     )
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 

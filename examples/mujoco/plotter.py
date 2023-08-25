@@ -22,17 +22,21 @@ def smooth(y, radius, mode="two_sided", valid_only=False):
     assert mode in ("two_sided", "causal")
     if len(y) < 2 * radius + 1:
         return np.ones_like(y) * y.mean()
-    elif mode == "two_sided":
+    if mode == "two_sided":
         convkernel = np.ones(2 * radius + 1)
         out = np.convolve(y, convkernel, mode="same") / np.convolve(
-            np.ones_like(y), convkernel, mode="same"
+            np.ones_like(y),
+            convkernel,
+            mode="same",
         )
         if valid_only:
             out[:radius] = out[-radius:] = np.nan
     elif mode == "causal":
         convkernel = np.ones(radius)
         out = np.convolve(y, convkernel, mode="full") / np.convolve(
-            np.ones_like(y), convkernel, mode="full"
+            np.ones_like(y),
+            convkernel,
+            mode="full",
         )
         out = out[: -radius + 1]
         if valid_only:
@@ -175,18 +179,28 @@ if __name__ == "__main__":
         help="matplotlib figure length (default: 6)",
     )
     parser.add_argument(
-        "--fig-width", type=int, default=6, help="matplotlib figure width (default: 6)"
+        "--fig-width",
+        type=int,
+        default=6,
+        help="matplotlib figure width (default: 6)",
     )
     parser.add_argument(
-        "--style", default="seaborn", help="matplotlib figure style (default: seaborn)"
+        "--style",
+        default="seaborn",
+        help="matplotlib figure style (default: seaborn)",
     )
     parser.add_argument("--title", default=None, help="matplotlib figure title (default: None)")
     parser.add_argument(
-        "--xkey", default="env_step", help="x-axis key in csv file (default: env_step)"
+        "--xkey",
+        default="env_step",
+        help="x-axis key in csv file (default: env_step)",
     )
     parser.add_argument("--ykey", default="rew", help="y-axis key in csv file (default: rew)")
     parser.add_argument(
-        "--smooth", type=int, default=0, help="smooth radius of y axis (default: 0)"
+        "--smooth",
+        type=int,
+        default=0,
+        help="smooth radius of y axis (default: 0)",
     )
     parser.add_argument("--xlabel", default="Timesteps", help="matplotlib figure xlabel")
     parser.add_argument("--ylabel", default="Episode Reward", help="matplotlib figure ylabel")

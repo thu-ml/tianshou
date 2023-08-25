@@ -42,10 +42,11 @@ def get_args():
     parser.add_argument("--alpha", type=float, default=0.6)
     parser.add_argument("--beta", type=float, default=0.4)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_qrdqn(args=get_args()):

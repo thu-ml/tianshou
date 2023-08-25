@@ -40,7 +40,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     return parser.parse_args()
 
@@ -71,7 +73,11 @@ def test_dqn(args=get_args()):
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
-        net, optim, args.gamma, args.n_step, target_update_freq=args.target_update_freq
+        net,
+        optim,
+        args.gamma,
+        args.n_step,
+        target_update_freq=args.target_update_freq,
     )
     # collector
     train_collector = Collector(

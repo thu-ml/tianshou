@@ -57,7 +57,8 @@ class QRDQNPolicy(DQNPolicy):
         self._num_quantiles = num_quantiles
         tau = torch.linspace(0, 1, self._num_quantiles + 1)
         self.tau_hat = torch.nn.Parameter(
-            ((tau[:-1] + tau[1:]) / 2).view(1, -1, 1), requires_grad=False
+            ((tau[:-1] + tau[1:]) / 2).view(1, -1, 1),
+            requires_grad=False,
         )
         warnings.filterwarnings("ignore", message="Using a target size")
 
@@ -70,8 +71,7 @@ class QRDQNPolicy(DQNPolicy):
             next_batch = self(batch, input="obs_next")
             act = next_batch.act
             next_dist = next_batch.logits
-        next_dist = next_dist[np.arange(len(act)), act, :]
-        return next_dist  # shape: [bsz, num_quantiles]
+        return next_dist[np.arange(len(act)), act, :]
 
     def compute_q_value(self, logits: torch.Tensor, mask: Optional[np.ndarray]) -> torch.Tensor:
         return super().compute_q_value(logits.mean(2), mask)

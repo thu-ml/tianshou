@@ -98,7 +98,10 @@ class BranchingDQNPolicy(DQNPolicy):
         return cast(BatchWithReturnsProtocol, batch)
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> BatchWithReturnsProtocol:
         """Compute the 1-step return for BDQ targets."""
         return self._compute_return(batch, buffer, indices)

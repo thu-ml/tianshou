@@ -106,13 +106,9 @@ def _filename(run_id: int, shard_id: int, total_num_shards: int = 100) -> str:
 def _decode_frames(pngs: tf.Tensor) -> tf.Tensor:
     """Decode PNGs.
 
-    Args:
-    ----
-      pngs: String Tensor of size (4,) containing PNG encoded images.
+    :param pngs: String Tensor of size (4,) containing PNG encoded images.
 
-    Returns:
-    -------
-      4 84x84 grayscale images packed in a (4, 84, 84) uint8 Tensor.
+    :returns: Tensor of size (4, 84, 84) containing decoded images.
     """
     # Statically unroll png decoding
     frames = [tf.image.decode_png(pngs[i], channels=1) for i in range(4)]
@@ -132,18 +128,14 @@ def _make_tianshou_batch(
 ) -> Batch:
     """Create Tianshou batch with offline data.
 
-    Args:
-    ----
-      o_t: Observation at time t.
-      a_t: Action at time t.
-      r_t: Reward at time t.
-      d_t: Discount at time t.
-      o_tp1: Observation at time t+1.
-      a_tp1: Action at time t+1.
+    :param o_t: Observation at time t.
+    :param a_t: Action at time t.
+    :param r_t: Reward at time t.
+    :param d_t: Discount at time t.
+    :param o_tp1: Observation at time t+1.
+    :param a_tp1: Action at time t+1.
 
-    Returns:
-    -------
-      A tianshou.data.Batch object.
+    :returns: A tianshou.data.Batch object.
     """
     return Batch(
         obs=o_t.numpy(),

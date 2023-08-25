@@ -62,8 +62,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         if batch_size > 0 and len(self) > 0:
             scalar = np.random.rand(batch_size) * self.weight.reduce()
             return self.weight.get_prefix_sum_idx(scalar)  # type: ignore
-        else:
-            return super().sample_indices(batch_size)
+        return super().sample_indices(batch_size)
 
     def get_weight(self, index: Union[int, np.ndarray]) -> Union[float, np.ndarray]:
         """Get the importance sampling weight.

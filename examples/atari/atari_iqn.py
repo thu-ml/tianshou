@@ -45,7 +45,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--frames-stack", type=int, default=4)
     parser.add_argument("--resume-path", type=str, default=None)
@@ -147,13 +149,12 @@ def test_iqn(args=get_args()):
     def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         if env.spec.reward_threshold:
             return mean_rewards >= env.spec.reward_threshold
-        elif "Pong" in args.task:
+        if "Pong" in args.task:
             return mean_rewards >= 20
-        else:
-            return False
+        return False
 
     def train_fn(epoch, env_step):
         # nature DQN setting, linear decay in the first 1M steps

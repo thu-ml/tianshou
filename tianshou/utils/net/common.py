@@ -11,7 +11,10 @@ from tianshou.data.types import RecurrentStateBatch
 
 ModuleType = type[nn.Module]
 ArgsType = Union[
-    tuple[Any, ...], dict[Any, Any], Sequence[tuple[Any, ...]], Sequence[dict[Any, Any]]
+    tuple[Any, ...],
+    dict[Any, Any],
+    Sequence[tuple[Any, ...]],
+    Sequence[dict[Any, Any]],
 ]
 
 
@@ -329,7 +332,7 @@ class Recurrent(NetBase):
         # issubset(state.keys()) always works
         if state is not None and not {"hidden", "cell"}.issubset(state.keys()):
             raise ValueError(
-                f"Expected to find keys 'hidden' and 'cell' " f"but instead found {state.keys()}"
+                f"Expected to find keys 'hidden' and 'cell' but instead found {state.keys()}",
             )
 
         obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
@@ -391,7 +394,10 @@ class DataParallelNet(nn.Module):
         self.net = nn.DataParallel(net)
 
     def forward(
-        self, obs: Union[np.ndarray, torch.Tensor], *args: Any, **kwargs: Any
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        *args: Any,
+        **kwargs: Any,
     ) -> tuple[Any, Any]:
         if not isinstance(obs, torch.Tensor):
             obs = torch.as_tensor(obs, dtype=torch.float32)
@@ -408,7 +414,11 @@ class EnsembleLinear(nn.Module):
     """
 
     def __init__(
-        self, ensemble_size: int, in_feature: int, out_feature: int, bias: bool = True
+        self,
+        ensemble_size: int,
+        in_feature: int,
+        out_feature: int,
+        bias: bool = True,
     ) -> None:
         super().__init__()
 
@@ -522,7 +532,7 @@ class BranchingNet(NetBase):
                     device,
                 )
                 for _ in range(self.num_branches)
-            ]
+            ],
         )
 
     def forward(
@@ -545,10 +555,10 @@ class BranchingNet(NetBase):
 
 
 def get_dict_state_decorator(
-    state_shape: dict[str, Union[int, Sequence[int]]], keys: Sequence[str]
+    state_shape: dict[str, Union[int, Sequence[int]]],
+    keys: Sequence[str],
 ) -> tuple[Callable, int]:
-    """A helper function to make Net or equivalent classes (e.g. Actor, Critic) \
-    applicable to dict state.
+    """A helper function to make Net or equivalent classes (e.g. Actor, Critic) applicable to dict state.
 
     The first return item, ``decorator_fn``, will alter the implementation of forward
     function of the given class by preprocessing the observation. The preprocessing is
@@ -557,8 +567,8 @@ def get_dict_state_decorator(
     be equal to ``new_state_shape``, the second return item.
 
     :param state_shape: A dictionary indicating each state's shape
-    :param keys: A list of state's keys. The flatten observation will be according to \
-    this list order.
+    :param keys: A list of state's keys. The flatten observation will be according to
+        this list order.
     :returns: a 2-items tuple ``decorator_fn`` and ``new_state_shape``
     """
     original_shape = state_shape

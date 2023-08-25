@@ -44,7 +44,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # ppo special
     parser.add_argument("--vf-coef", type=float, default=0.25)
@@ -60,8 +62,7 @@ def get_args():
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--save-interval", type=int, default=4)
     parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_gail(args=get_args()):
@@ -69,7 +70,8 @@ def test_gail(args=get_args()):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
         else:
-            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+            with open(args.load_buffer_name, "rb") as f:
+                buffer = pickle.load(f)
     else:
         buffer = gather_data()
     env = gym.make(args.task)
@@ -92,7 +94,7 @@ def test_gail(args=get_args()):
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
     actor = ActorProb(net, args.action_shape, max_action=args.max_action, device=args.device).to(
-        args.device
+        args.device,
     )
     critic = Critic(
         Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device),
@@ -153,7 +155,9 @@ def test_gail(args=get_args()):
     )
     # collector
     train_collector = Collector(
-        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs))
+        policy,
+        train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
     test_collector = Collector(policy, test_envs)
     # log

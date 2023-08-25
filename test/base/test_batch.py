@@ -239,7 +239,8 @@ def test_batch_cat_and_stack():
 
     a = Batch(a=Batch(a=np.random.randn(3, 4)))
     assert np.allclose(
-        np.concatenate([a.a.a, a.a.a]), Batch.cat([a, Batch(a=Batch(a=Batch())), a]).a.a
+        np.concatenate([a.a.a, a.a.a]),
+        Batch.cat([a, Batch(a=Batch(a=Batch())), a]).a.a,
     )
 
     # test cat with lens infer

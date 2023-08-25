@@ -69,7 +69,9 @@ class ICMPolicy(BasePolicy):
         return self.policy.forward(batch, state, **kwargs)
 
     def exploration_noise(
-        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+        self,
+        act: Union[np.ndarray, BatchProtocol],
+        batch: RolloutBatchProtocol,
     ) -> Union[np.ndarray, BatchProtocol]:
         return self.policy.exploration_noise(act, batch)
 
@@ -81,7 +83,10 @@ class ICMPolicy(BasePolicy):
             raise NotImplementedError
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> RolloutBatchProtocol:
         """Pre-process the data from the provided replay buffer.
 
@@ -93,7 +98,10 @@ class ICMPolicy(BasePolicy):
         return self.policy.process_fn(batch, buffer, indices)
 
     def post_process_fn(
-        self, batch: BatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: BatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> None:
         """Post-process the data from the provided replay buffer.
 
@@ -120,6 +128,6 @@ class ICMPolicy(BasePolicy):
                 "loss/icm": loss.item(),
                 "loss/icm/forward": forward_loss.item(),
                 "loss/icm/inverse": inverse_loss.item(),
-            }
+            },
         )
         return res

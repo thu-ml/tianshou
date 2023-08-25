@@ -22,8 +22,7 @@ from tianshou.policy import BasePolicy
 
 
 class Collector:
-    """Collector enables the policy to interact with different types of envs with \
-    exact number of steps or episodes.
+    """Collector enables the policy to interact with different types of envs with exact number of steps or episodes.
 
     :param policy: an instance of the :class:`~tianshou.policy.BasePolicy` class.
     :param env: a ``gym.Env`` environment or an instance of the
@@ -102,7 +101,7 @@ class Collector:
                 raise TypeError(
                     f"Cannot use {buffer_type}(size={buffer.maxsize}, ...) to collect "
                     f"{self.env_num} envs,\n\tplease use {vector_type}(total_size="
-                    f"{buffer.maxsize}, buffer_num={self.env_num}, ...) instead."
+                    f"{buffer.maxsize}, buffer_num={self.env_num}, ...) instead.",
                 )
         self.buffer = buffer
 
@@ -236,7 +235,7 @@ class Collector:
             if n_step % self.env_num != 0:
                 warnings.warn(
                     f"n_step={n_step} is not a multiple of #env ({self.env_num}), "
-                    "which may cause extra transitions collected into the buffer."
+                    "which may cause extra transitions collected into the buffer.",
                 )
             ready_env_ids = np.arange(self.env_num)
         elif n_episode is not None:
@@ -246,7 +245,7 @@ class Collector:
         else:
             raise TypeError(
                 "Please specify at least one (either n_step or n_episode) "
-                "in AsyncCollector.collect()."
+                "in AsyncCollector.collect().",
             )
 
         start_time = time.time()
@@ -292,7 +291,8 @@ class Collector:
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             obs_next, rew, terminated, truncated, info = self.env.step(
-                action_remap, ready_env_ids  # type: ignore
+                action_remap,
+                ready_env_ids,  # type: ignore
             )
             done = np.logical_or(terminated, truncated)
 
@@ -314,7 +314,7 @@ class Collector:
                         policy=self.data.policy,
                         env_id=ready_env_ids,
                         act=self.data.act,
-                    )
+                    ),
                 )
 
             if render:
@@ -378,7 +378,7 @@ class Collector:
 
         if episode_count > 0:
             rews, lens, idxs = list(
-                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices])
+                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices]),
             )
             rew_mean, rew_std = rews.mean(), rews.std()
             len_mean, len_std = lens.mean(), lens.std()
@@ -483,7 +483,7 @@ class AsyncCollector(Collector):
         else:
             raise TypeError(
                 "Please specify at least one (either n_step or n_episode) "
-                "in AsyncCollector.collect()."
+                "in AsyncCollector.collect().",
             )
 
         ready_env_ids = self._ready_env_ids
@@ -541,7 +541,8 @@ class AsyncCollector(Collector):
             action_remap = self.policy.map_action(self.data.act)
             # step in env
             obs_next, rew, terminated, truncated, info = self.env.step(
-                action_remap, ready_env_ids  # type: ignore
+                action_remap,
+                ready_env_ids,  # type: ignore
             )
             done = np.logical_or(terminated, truncated)
 
@@ -570,7 +571,7 @@ class AsyncCollector(Collector):
                             info=self.data.info,
                             env_id=ready_env_ids,
                             act=self.data.act,
-                        )
+                        ),
                     )
                 except TypeError:
                     self.data.update(
@@ -581,7 +582,7 @@ class AsyncCollector(Collector):
                             info=self.data.info,
                             env_id=ready_env_ids,
                             act=self.data.act,
-                        )
+                        ),
                     )
 
             if render:
@@ -634,7 +635,7 @@ class AsyncCollector(Collector):
 
         if episode_count > 0:
             rews, lens, idxs = list(
-                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices])
+                map(np.concatenate, [episode_rews, episode_lens, episode_start_indices]),
             )
             rew_mean, rew_std = rews.mean(), rews.std()
             len_mean, len_std = lens.mean(), lens.std()

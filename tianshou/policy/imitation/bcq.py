@@ -108,9 +108,9 @@ class BCQPolicy(BasePolicy):
         # obs_group: several groups. Each group has a state.
         obs_group: torch.Tensor = to_torch(batch.obs, device=self.device)
         act_group = []
-        for obs in obs_group:
+        for obs_orig in obs_group:
             # now obs is (state_dim)
-            obs = (obs.reshape(1, -1)).repeat(self.forward_sampled_times, 1)
+            obs = (obs_orig.reshape(1, -1)).repeat(self.forward_sampled_times, 1)
             # now obs is (forward_sampled_times, state_dim)
 
             # decode(obs) generates action and actor perturbs it
@@ -161,7 +161,8 @@ class BCQPolicy(BasePolicy):
 
             # Clipped Double Q-learning
             target_Q = self.lmbda * torch.min(target_Q1, target_Q2) + (1 - self.lmbda) * torch.max(
-                target_Q1, target_Q2
+                target_Q1,
+                target_Q2,
             )
             # now target_Q: (num_sampled_action * batch_size, 1)
 
@@ -199,10 +200,9 @@ class BCQPolicy(BasePolicy):
         # update target network
         self.sync_weight()
 
-        result = {
+        return {
             "loss/actor": actor_loss.item(),
             "loss/critic1": critic1_loss.item(),
             "loss/critic2": critic2_loss.item(),
             "loss/vae": vae_loss.item(),
         }
-        return result

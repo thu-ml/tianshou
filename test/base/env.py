@@ -9,7 +9,7 @@ from gymnasium.spaces import Box, Dict, Discrete, MultiDiscrete, Tuple
 
 
 class MyTestEnv(gym.Env):
-    """This is a "going right" task. The task is to go right ``size`` steps."""
+    """A task for "going right". The task is to go right ``size`` steps."""
 
     def __init__(
         self,
@@ -40,7 +40,7 @@ class MyTestEnv(gym.Env):
                 {
                     "index": Box(shape=(1,), low=0, high=size - 1),
                     "rand": Box(shape=(1,), low=0, high=1, dtype=np.float64),
-                }
+                },
             )
         elif recurse_state:
             self.observation_space = Dict(
@@ -52,12 +52,12 @@ class MyTestEnv(gym.Env):
                                 (
                                     Discrete(2),
                                     Box(shape=(2,), low=0, high=1, dtype=np.float64),
-                                )
+                                ),
                             ),
                             "rand": Box(shape=(1, 2), low=0, high=1, dtype=np.float64),
-                        }
+                        },
                     ),
-                }
+                },
             )
         elif array_state:
             self.observation_space = Box(shape=(4, 84, 84), low=0, high=255)
@@ -93,7 +93,7 @@ class MyTestEnv(gym.Env):
                 "index": np.array([self.index], dtype=np.float32),
                 "rand": self.np_random.random(1),
             }
-        elif self.recurse_state:
+        if self.recurse_state:
             return {
                 "index": np.array([self.index], dtype=np.float32),
                 "dict": {
@@ -101,15 +101,14 @@ class MyTestEnv(gym.Env):
                     "rand": self.np_random.random((1, 2)),
                 },
             }
-        elif self.array_state:
+        if self.array_state:
             img = np.zeros([4, 84, 84], int)
             img[3, np.arange(84), np.arange(84)] = self.index
             img[2, np.arange(84)] = self.index
             img[1, :, np.arange(84)] = self.index
             img[0] = self.index
             return img
-        else:
-            return np.array([self.index], dtype=np.float32)
+        return np.array([self.index], dtype=np.float32)
 
     def do_sleep(self):
         if self.sleep > 0:
@@ -136,7 +135,7 @@ class MyTestEnv(gym.Env):
                 False,
                 {"key": 1, "env": self} if self.dict_state else {},
             )
-        elif action == 1:
+        if action == 1:
             self.index += 1
             self.terminated = self.index == self.size
             return (
@@ -191,7 +190,7 @@ class MyGoalEnv(MyTestEnv):
                 "observation": super_obsv,
                 "achieved_goal": super_obsv,
                 "desired_goal": super_obsv,
-            }
+            },
         )
 
     def reset(self, *args, **kwargs):
@@ -209,7 +208,10 @@ class MyGoalEnv(MyTestEnv):
         return new_obs_next, rew, terminated, truncated, info
 
     def compute_reward_fn(
-        self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: dict
+        self,
+        achieved_goal: np.ndarray,
+        desired_goal: np.ndarray,
+        info: dict,
     ) -> np.ndarray:
         axis = -1
         if self.array_state:

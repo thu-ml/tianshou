@@ -7,7 +7,12 @@ import packaging
 
 from tianshou.env.pettingzoo_env import PettingZooEnv
 from tianshou.env.utils import ENV_TYPE, gym_new_venv_step_type
-from tianshou.env.worker import DummyEnvWorker, EnvWorker, RayEnvWorker, SubprocEnvWorker
+from tianshou.env.worker import (
+    DummyEnvWorker,
+    EnvWorker,
+    RayEnvWorker,
+    SubprocEnvWorker,
+)
 
 try:
     import gym as old_gym
@@ -37,7 +42,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
 
     def patched() -> gym.Env:
         assert callable(
-            fn
+            fn,
         ), "Env generators that are provided to vector environments must be callable."
 
         env = fn()
@@ -48,7 +53,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
             raise ValueError(
                 f"Environment generator returned a {type(env)}, not a Gymnasium "
                 f"environment. In this case, we expect OpenAI Gym to be "
-                f"installed and the environment to be an OpenAI Gym environment."
+                f"installed and the environment to be an OpenAI Gym environment.",
             )
 
         try:
@@ -59,7 +64,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
                 "that returned an OpenAI Gym environment. "
                 "Tianshou has transitioned to using Gymnasium internally. "
                 "In order to use OpenAI Gym environments with tianshou, you need to "
-                "install shimmy (`pip install shimmy`)."
+                "install shimmy (`pip install shimmy`).",
             ) from e
 
         warnings.warn(
@@ -67,19 +72,18 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
             "environment. We strongly recommend transitioning to Gymnasium "
             "environments. "
             "Tianshou is automatically wrapping your environments in a compatibility "
-            "layer, which could potentially cause issues."
+            "layer, which could potentially cause issues.",
         )
 
         gym_version = packaging.version.parse(old_gym.__version__)
         if gym_version >= packaging.version.parse("0.26.0"):
             return shimmy.GymV26CompatibilityV0(env=env)
-        elif gym_version >= packaging.version.parse("0.22.0"):
+        if gym_version >= packaging.version.parse("0.22.0"):
             return shimmy.GymV22CompatibilityV0(env=env)
-        else:
-            raise Exception(
-                f"Found OpenAI Gym version {gym.__version__}. "
-                f"Tianshou only supports OpenAI Gym environments of version>=0.22.0"
-            )
+        raise Exception(
+            f"Found OpenAI Gym version {gym.__version__}. "
+            f"Tianshou only supports OpenAI Gym environments of version>=0.22.0",
+        )
 
     return patched
 
@@ -188,11 +192,12 @@ class BaseVectorEnv:
         """
         if key in GYM_RESERVED_KEYS:  # reserved keys in gym.Env
             return self.get_env_attr(key)
-        else:
-            return super().__getattribute__(key)
+        return super().__getattribute__(key)
 
     def get_env_attr(
-        self, key: str, id: Optional[Union[int, list[int], np.ndarray]] = None
+        self,
+        key: str,
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> list[Any]:
         """Get an attribute from the underlying environments.
 
@@ -237,7 +242,8 @@ class BaseVectorEnv:
             self.workers[j].set_env_attr(key, value)
 
     def _wrap_id(
-        self, id: Optional[Union[int, list[int], np.ndarray]] = None
+        self,
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> Union[list[int], np.ndarray]:
         if id is None:
             return list(range(self.env_num))
@@ -251,7 +257,9 @@ class BaseVectorEnv:
             assert i in self.ready_id, f"Can only interact with ready environments {self.ready_id}."
 
     def reset(
-        self, id: Optional[Union[int, list[int], np.ndarray]] = None, **kwargs: Any
+        self,
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        **kwargs: Any,
     ) -> tuple[np.ndarray, Union[dict, list[dict]]]:
         """Reset the state of some envs and return initial observations.
 
@@ -291,7 +299,9 @@ class BaseVectorEnv:
         return obs, infos  # type: ignore
 
     def step(
-        self, action: np.ndarray, id: Optional[Union[int, list[int], np.ndarray]] = None
+        self,
+        action: np.ndarray,
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> gym_new_venv_step_type:
         """Run one timestep of some environments' dynamics.
 
@@ -396,7 +406,7 @@ class BaseVectorEnv:
         self._assert_is_not_closed()
         if self.is_async and len(self.waiting_id) > 0:
             raise RuntimeError(
-                f"Environments {self.waiting_id} are still stepping, cannot " "render them now."
+                f"Environments {self.waiting_id} are still stepping, cannot render them now.",
             )
         return [w.render(**kwargs) for w in self.workers]
 
@@ -471,7 +481,7 @@ class RayVectorEnv(BaseVectorEnv):
             import ray
         except ImportError as exception:
             raise ImportError(
-                "Please install ray to support RayVectorEnv: pip install ray"
+                "Please install ray to support RayVectorEnv: pip install ray",
             ) from exception
         if not ray.is_initialized():
             ray.init()

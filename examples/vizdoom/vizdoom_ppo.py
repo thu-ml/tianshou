@@ -48,7 +48,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--frames-stack", type=int, default=4)
     parser.add_argument("--skip-num", type=int, default=4)
@@ -168,7 +170,10 @@ def test_ppo(args=get_args()):
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(
-            feature_net.net, feature_dim, action_dim, device=args.device
+            feature_net.net,
+            feature_dim,
+            action_dim,
+            device=args.device,
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
         policy = ICMPolicy(
@@ -221,11 +226,10 @@ def test_ppo(args=get_args()):
     def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         if env.spec.reward_threshold:
             return mean_rewards >= env.spec.reward_threshold
-        else:
-            return False
+        return False
 
     # watch agent's performance
     def watch():

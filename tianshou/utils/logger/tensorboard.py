@@ -8,8 +8,7 @@ from tianshou.utils.warning import deprecation
 
 
 class TensorboardLogger(BaseLogger):
-    """A logger that relies on tensorboard SummaryWriter by default to visualize \
-    and log statistics.
+    """A logger that relies on tensorboard SummaryWriter by default to visualize and log statistics.
 
     :param SummaryWriter writer: the writer to log data.
     :param int train_interval: the log interval in log_train_data(). Default to 1000.
@@ -89,6 +88,6 @@ class BasicLogger(TensorboardLogger):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         deprecation(
             "Class BasicLogger is marked as deprecated and will be removed soon. "
-            "Please use TensorboardLogger instead."
+            "Please use TensorboardLogger instead.",
         )
         super().__init__(*args, **kwargs)

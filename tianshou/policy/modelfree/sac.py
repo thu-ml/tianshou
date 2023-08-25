@@ -136,7 +136,8 @@ class SACPolicy(DDPGPolicy):
         # in appendix C to get some understanding of this equation.
         squashed_action = torch.tanh(act)
         log_prob = log_prob - torch.log((1 - squashed_action.pow(2)) + self.__eps).sum(
-            -1, keepdim=True
+            -1,
+            keepdim=True,
         )
         result = Batch(
             logits=logits,
@@ -151,14 +152,13 @@ class SACPolicy(DDPGPolicy):
         batch = buffer[indices]  # batch.obs: s_{t+n}
         obs_next_result = self(batch, input="obs_next")
         act_ = obs_next_result.act
-        target_q = (
+        return (
             torch.min(
                 self.critic1_old(batch.obs_next, act_),
                 self.critic2_old(batch.obs_next, act_),
             )
             - self._alpha * obs_next_result.log_prob
         )
-        return target_q
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         # critic 1&2

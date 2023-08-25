@@ -27,7 +27,10 @@ def get_args():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--buffer-size", type=int, default=4096)
     parser.add_argument(
-        "--hidden-sizes", type=int, nargs="*", default=[64, 64]
+        "--hidden-sizes",
+        type=int,
+        nargs="*",
+        default=[64, 64],
     )  # baselines [32, 32]
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -50,7 +53,9 @@ def get_args():
     parser.add_argument("--optim-critic-iters", type=int, default=20)
     parser.add_argument("--actor-step-size", type=float, default=0.1)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
@@ -72,7 +77,11 @@ def get_args():
 
 def test_npg(args=get_args()):
     env, train_envs, test_envs = make_mujoco_env(
-        args.task, args.seed, args.training_num, args.test_num, obs_norm=True
+        args.task,
+        args.seed,
+        args.training_num,
+        args.test_num,
+        obs_norm=True,
     )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n

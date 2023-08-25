@@ -84,8 +84,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         # target_Q = Q_old(s_, argmax(Q_new(s_, *)))
         act = self(batch, input="obs_next").act
         target_q, _ = self.model_old(batch.obs_next)
-        target_q = target_q[np.arange(len(act)), act]
-        return target_q
+        return target_q[np.arange(len(act)), act]
 
     def forward(  # type: ignore
         self,

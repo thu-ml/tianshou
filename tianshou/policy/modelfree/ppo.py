@@ -86,7 +86,10 @@ class PPOPolicy(A2CPolicy):
         self._actor_critic: ActorCritic
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> LogpOldProtocol:
         if self._recompute_adv:
             # buffer input `buffer` and `indices` to be used in `learn()`.
@@ -131,7 +134,8 @@ class PPOPolicy(A2CPolicy):
                 value = self.critic(minibatch.obs).flatten()
                 if self._value_clip:
                     v_clip = minibatch.v_s + (value - minibatch.v_s).clamp(
-                        -self._eps_clip, self._eps_clip
+                        -self._eps_clip,
+                        self._eps_clip,
                     )
                     vf1 = (minibatch.returns - value).pow(2)
                     vf2 = (minibatch.returns - v_clip).pow(2)
@@ -145,7 +149,8 @@ class PPOPolicy(A2CPolicy):
                 loss.backward()
                 if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
-                        self._actor_critic.parameters(), max_norm=self._grad_norm
+                        self._actor_critic.parameters(),
+                        max_norm=self._grad_norm,
                     )
                 self.optim.step()
                 clip_losses.append(clip_loss.item())

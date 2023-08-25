@@ -103,7 +103,10 @@ class GAILPolicy(PPOPolicy):
         self.action_dim = actor.output_dim
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> LogpOldProtocol:
         """Pre-process the data from the provided replay buffer.
 
@@ -120,7 +123,11 @@ class GAILPolicy(PPOPolicy):
         return self.disc_net(torch.cat([obs, act], dim=1))
 
     def learn(  # type: ignore
-        self, batch: RolloutBatchProtocol, batch_size: int, repeat: int, **kwargs: Any
+        self,
+        batch: RolloutBatchProtocol,
+        batch_size: int,
+        repeat: int,
+        **kwargs: Any,
     ) -> dict[str, list[float]]:
         # update discriminator
         losses = []

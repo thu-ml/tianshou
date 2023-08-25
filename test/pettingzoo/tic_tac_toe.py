@@ -31,7 +31,10 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--buffer-size", type=int, default=20000)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument(
-        "--gamma", type=float, default=0.9, help="a smaller gamma favors earlier win"
+        "--gamma",
+        type=float,
+        default=0.9,
+        help="a smaller gamma favors earlier win",
     )
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--target-update-freq", type=int, default=320)
@@ -61,7 +64,7 @@ def get_parser() -> argparse.ArgumentParser:
         "--agent-id",
         type=int,
         default=2,
-        help="the learned agent plays as the" " agent_id-th player. Choices are 1 and 2.",
+        help="the learned agent plays as the agent_id-th player. Choices are 1 and 2.",
     )
     parser.add_argument(
         "--resume-path",
@@ -73,10 +76,12 @@ def get_parser() -> argparse.ArgumentParser:
         "--opponent-path",
         type=str,
         default="",
-        help="the path of opponent agent pth file " "for resuming from a pre-trained agent",
+        help="the path of opponent agent pth file for resuming from a pre-trained agent",
     )
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     return parser
 
@@ -150,7 +155,10 @@ def train_agent(
     test_envs.seed(args.seed)
 
     policy, optim, agents = get_agents(
-        args, agent_learn=agent_learn, agent_opponent=agent_opponent, optim=optim
+        args,
+        agent_learn=agent_learn,
+        agent_opponent=agent_opponent,
+        optim=optim,
     )
 
     # collector

@@ -76,7 +76,7 @@ def gather_info(
                 "best_result": f"{best_reward:.2f} ± {best_reward_std:.2f}",
                 "duration": f"{duration:.2f}s",
                 "train_time/model": f"{model_time:.2f}s",
-            }
+            },
         )
     if train_collector is not None:
         model_time = max(0, model_time - train_collector.collect_time)
@@ -91,6 +91,6 @@ def gather_info(
                 "train_time/collector": f"{train_collector.collect_time:.2f}s",
                 "train_time/model": f"{model_time:.2f}s",
                 "train_speed": f"{train_speed:.2f} step/s",
-            }
+            },
         )
     return result

@@ -45,8 +45,7 @@ def get_args():
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_discrete_crr(args=get_args()):
@@ -93,7 +92,8 @@ def test_discrete_crr(args=get_args()):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
         else:
-            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+            with open(args.load_buffer_name, "rb") as f:
+                buffer = pickle.load(f)
     else:
         buffer = gather_data()
 

@@ -29,6 +29,7 @@ def _parse_reset_result(reset_result):
 
 class NoopResetEnv(gym.Wrapper):
     """Sample initial states by taking random number of no-ops on reset.
+
     No-op is assumed to be action 0.
 
     :param gym.Env env: the environment to wrap.
@@ -62,8 +63,7 @@ class NoopResetEnv(gym.Wrapper):
 
 
 class MaxAndSkipEnv(gym.Wrapper):
-    """Return only every `skip`-th frame (frameskipping) using most recent raw
-    observations (for max pooling across time steps).
+    """Return only every `skip`-th frame (frameskipping) using most recent raw observations (for max pooling across time steps).
 
     :param gym.Env env: the environment to wrap.
     :param int skip: number of `skip`-th frame.
@@ -74,8 +74,9 @@ class MaxAndSkipEnv(gym.Wrapper):
         self._skip = skip
 
     def step(self, action):
-        """Step the environment with the given action. Repeat action, sum
-        reward, and max over last observations.
+        """Step the environment with the given action.
+
+        Repeat action, sum reward, and max over last observations.
         """
         obs_list, total_reward = [], 0.0
         new_step_api = False
@@ -99,8 +100,9 @@ class MaxAndSkipEnv(gym.Wrapper):
 
 
 class EpisodicLifeEnv(gym.Wrapper):
-    """Make end-of-life == end-of-episode, but only reset on true game over. It
-    helps the value estimation.
+    """Make end-of-life == end-of-episode, but only reset on true game over.
+
+    It helps the value estimation.
 
     :param gym.Env env: the environment to wrap.
     """
@@ -137,8 +139,9 @@ class EpisodicLifeEnv(gym.Wrapper):
         return obs, reward, done, info
 
     def reset(self, **kwargs):
-        """Calls the Gym environment reset, only when lives are exhausted. This
-        way all states are still reachable even though lives are episodic, and
+        """Calls the Gym environment reset, only when lives are exhausted.
+
+        This way all states are still reachable even though lives are episodic, and
         the learner need not know about any of this behind-the-scenes.
         """
         if self.was_real_done:
@@ -150,12 +153,12 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.lives = self.env.unwrapped.ale.lives()
         if self._return_info:
             return obs, info
-        else:
-            return obs
+        return obs
 
 
 class FireResetEnv(gym.Wrapper):
     """Take action on reset for environments that are fixed until firing.
+
     Related discussion: https://github.com/openai/baselines/issues/240.
 
     :param gym.Env env: the environment to wrap.
@@ -207,7 +210,10 @@ class ScaledFloatFrame(gym.ObservationWrapper):
         self.bias = low
         self.scale = high - low
         self.observation_space = gym.spaces.Box(
-            low=0.0, high=1.0, shape=env.observation_space.shape, dtype=np.float32
+            low=0.0,
+            high=1.0,
+            shape=env.observation_space.shape,
+            dtype=np.float32,
         )
 
     def observation(self, observation):
@@ -281,8 +287,9 @@ def wrap_deepmind(
     scale=False,
     warp_frame=True,
 ):
-    """Configure environment for DeepMind-style Atari. The observation is
-    channel-first: (c, h, w) instead of (h, w, c).
+    """Configure environment for DeepMind-style Atari.
+
+    The observation is channel-first: (c, h, w) instead of (h, w, c).
 
     :param str env_id: the atari environment id.
     :param bool episode_life: wrap the episode life wrapper.
@@ -322,7 +329,7 @@ def make_atari_env(task, seed, training_num, test_num, **kwargs):
         if kwargs.get("scale", 0):
             warnings.warn(
                 "EnvPool does not include ScaledFloatFrame wrapper, "
-                "please set `x = x / 255.0` inside CNN network's forward function."
+                "please set `x = x / 255.0` inside CNN network's forward function.",
             )
         # parameters convertion
         train_envs = env = envpool.make_gymnasium(
@@ -343,20 +350,20 @@ def make_atari_env(task, seed, training_num, test_num, **kwargs):
         )
     else:
         warnings.warn(
-            "Recommend using envpool (pip install envpool) " "to run Atari games more efficiently."
+            "Recommend using envpool (pip install envpool) to run Atari games more efficiently.",
         )
         env = wrap_deepmind(task, **kwargs)
         train_envs = ShmemVectorEnv(
             [
                 lambda: wrap_deepmind(task, episode_life=True, clip_rewards=True, **kwargs)
                 for _ in range(training_num)
-            ]
+            ],
         )
         test_envs = ShmemVectorEnv(
             [
                 lambda: wrap_deepmind(task, episode_life=False, clip_rewards=False, **kwargs)
                 for _ in range(test_num)
-            ]
+            ],
         )
         env.seed(seed)
         train_envs.seed(seed)

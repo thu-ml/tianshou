@@ -13,7 +13,9 @@ else:  # pytest
 
 class MyPolicy(BasePolicy):
     def __init__(self, dict_state=False, need_state=True):
-        """:param bool dict_state: if the observation of the environment is a dict
+        """Mock policy for testing.
+
+        :param bool dict_state: if the observation of the environment is a dict
         :param bool need_state: if the policy needs the hidden state (for RNN)
         """
         super().__init__()

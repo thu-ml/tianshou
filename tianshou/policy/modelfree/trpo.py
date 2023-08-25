@@ -67,7 +67,11 @@ class TRPOPolicy(NPGPolicy):
         self._optim_critic_iters: int
 
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+        self,
+        batch: Batch,
+        batch_size: int,
+        repeat: int,
+        **kwargs: Any,
     ) -> dict[str, list[float]]:
         actor_losses, vf_losses, step_sizes, kls = [], [], [], []
         for _ in range(repeat):
@@ -94,14 +98,15 @@ class TRPOPolicy(NPGPolicy):
                     2
                     * self._delta
                     / (search_direction * self._MVP(search_direction, flat_kl_grad)).sum(
-                        0, keepdim=True
-                    )
+                        0,
+                        keepdim=True,
+                    ),
                 )
 
                 # stepsize: linesearch stepsize
                 with torch.no_grad():
                     flat_params = torch.cat(
-                        [param.data.view(-1) for param in self.actor.parameters()]
+                        [param.data.view(-1) for param in self.actor.parameters()],
                     )
                     for i in range(self._max_backtracks):
                         new_flat_params = flat_params + step_size * search_direction
@@ -119,14 +124,14 @@ class TRPOPolicy(NPGPolicy):
                             if i > 0:
                                 warnings.warn(f"Backtracking to step {i}.")
                             break
-                        elif i < self._max_backtracks - 1:
+                        if i < self._max_backtracks - 1:
                             step_size = step_size * self._backtrack_coeff
                         else:
                             self._set_from_flat_params(self.actor, new_flat_params)
                             step_size = torch.tensor([0.0])
                             warnings.warn(
                                 "Line search failed! It seems hyperparamters"
-                                " are poor and need to be changed."
+                                " are poor and need to be changed.",
                             )
 
                 # optimize citirc

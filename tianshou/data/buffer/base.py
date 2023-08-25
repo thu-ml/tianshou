@@ -10,8 +10,7 @@ from tianshou.data.utils.converter import from_hdf5, to_hdf5
 
 
 class ReplayBuffer:
-    """:class:`~tianshou.data.ReplayBuffer` stores data generated from interaction \
-    between the policy and environment.
+    """:class:`~tianshou.data.ReplayBuffer` stores data generated from interaction between the policy and environment.
 
     ReplayBuffer can be considered as a specialized form (or management) of Batch. It
     stores all the data in a batch with circular-queue style.
@@ -161,7 +160,7 @@ class ReplayBuffer:
     def set_batch(self, batch: RolloutBatchProtocol) -> None:
         """Manually choose the batch you want the ReplayBuffer to manage."""
         assert len(batch) == self.maxsize and set(batch.keys()).issubset(
-            self._reserved_keys
+            self._reserved_keys,
         ), "Input batch doesn't meet ReplayBuffer's data form requirement."
         self._meta = batch
 
@@ -212,7 +211,9 @@ class ReplayBuffer:
         return to_indices
 
     def _add_index(
-        self, rew: Union[float, np.ndarray], done: bool
+        self,
+        rew: Union[float, np.ndarray],
+        done: bool,
     ) -> tuple[int, Union[float, np.ndarray], int, int]:
         """Maintain the buffer's state after adding one data batch.
 
@@ -230,8 +231,7 @@ class ReplayBuffer:
             result = ptr, self._ep_rew, self._ep_len, self._ep_idx
             self._ep_rew, self._ep_len, self._ep_idx = 0.0, 0, self._index
             return result
-        else:
-            return ptr, self._ep_rew * 0.0, 0, self._ep_idx
+        return ptr, self._ep_rew * 0.0, 0, self._ep_idx
 
     def add(
         self,
@@ -251,12 +251,12 @@ class ReplayBuffer:
         """
         # preprocess batch
         new_batch = Batch()
-        for key in batch.keys():
+        for key in batch:
             new_batch.__dict__[key] = batch[key]
         batch = new_batch
         batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
         assert {"obs", "act", "rew", "terminated", "truncated", "done"}.issubset(
-            batch.keys()
+            batch.keys(),
         )  # important to do after preprocess batch
         stacked_batch = buffer_ids is not None
         if stacked_batch:
@@ -297,23 +297,20 @@ class ReplayBuffer:
         if self.stack_num == 1 or not self._sample_avail:  # most often case
             if batch_size > 0:
                 return np.random.choice(self._size, batch_size)
-            elif batch_size == 0:  # construct current available indices
+            if batch_size == 0:  # construct current available indices
                 return np.concatenate([np.arange(self._index, self._size), np.arange(self._index)])
-            else:
-                return np.array([], int)
-        else:
-            if batch_size < 0:
-                return np.array([], int)
-            all_indices = prev_indices = np.concatenate(
-                [np.arange(self._index, self._size), np.arange(self._index)]
-            )
-            for _ in range(self.stack_num - 2):
-                prev_indices = self.prev(prev_indices)
-            all_indices = all_indices[prev_indices != self.prev(prev_indices)]
-            if batch_size > 0:
-                return np.random.choice(all_indices, batch_size)
-            else:
-                return all_indices
+            return np.array([], int)
+        if batch_size < 0:
+            return np.array([], int)
+        all_indices = prev_indices = np.concatenate(
+            [np.arange(self._index, self._size), np.arange(self._index)],
+        )
+        for _ in range(self.stack_num - 2):
+            prev_indices = self.prev(prev_indices)
+        all_indices = all_indices[prev_indices != self.prev(prev_indices)]
+        if batch_size > 0:
+            return np.random.choice(all_indices, batch_size)
+        return all_indices
 
     def sample(self, batch_size: int) -> tuple[RolloutBatchProtocol, np.ndarray]:
         """Get a random sample from buffer with size = batch_size.
@@ -351,18 +348,14 @@ class ReplayBuffer:
         try:
             if stack_num == 1:  # the most often case
                 return val[index]
-            stack: list[Any] = []
-            if isinstance(index, list):
-                indices = np.array(index)
-            else:
-                indices = index  # type: ignore
+            stack = list[Any]()
+            indices = np.array(index) if isinstance(index, list) else index
             for _ in range(stack_num):
                 stack = [val[indices], *stack]
                 indices = self.prev(indices)
             if isinstance(val, Batch):
                 return Batch.stack(stack, axis=indices.ndim)
-            else:
-                return np.stack(stack, axis=indices.ndim)
+            return np.stack(stack, axis=indices.ndim)
         except IndexError as exception:
             if not (isinstance(val, Batch) and val.is_empty()):
                 raise exception  # val != Batch()

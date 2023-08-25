@@ -98,8 +98,7 @@ class DiscreteSACPolicy(SACPolicy):
             self.critic1_old(batch.obs_next),
             self.critic2_old(batch.obs_next),
         )
-        target_q = target_q.sum(dim=-1) + self._alpha * dist.entropy()
-        return target_q
+        return target_q.sum(dim=-1) + self._alpha * dist.entropy()
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         weight = batch.pop("weight", 1.0)
@@ -159,6 +158,8 @@ class DiscreteSACPolicy(SACPolicy):
         return result
 
     def exploration_noise(
-        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+        self,
+        act: Union[np.ndarray, BatchProtocol],
+        batch: RolloutBatchProtocol,
     ) -> Union[np.ndarray, BatchProtocol]:
         return act

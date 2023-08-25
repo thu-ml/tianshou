@@ -75,8 +75,7 @@ class FQFPolicy(QRDQNPolicy):
             next_batch = self(batch, input="obs_next")
             act = next_batch.act
             next_dist = next_batch.logits
-        next_dist = next_dist[np.arange(len(act)), act, :]
-        return next_dist  # shape: [bsz, num_quantiles]
+        return next_dist[np.arange(len(act)), act, :]
 
     # TODO: add protocol type for return, fix Liskov substitution principle violation
     def forward(  # type: ignore
@@ -93,7 +92,10 @@ class FQFPolicy(QRDQNPolicy):
         obs_next = obs.obs if hasattr(obs, "obs") else obs
         if fractions is None:
             (logits, fractions, quantiles_tau), hidden = model(
-                obs_next, propose_model=self.propose_model, state=state, info=batch.info
+                obs_next,
+                propose_model=self.propose_model,
+                state=state,
+                info=batch.info,
             )
         else:
             (logits, _, quantiles_tau), hidden = model(
@@ -149,16 +151,20 @@ class FQFPolicy(QRDQNPolicy):
             # blob/master/fqf_iqn_qrdqn/agent/fqf_agent.py L169
             values_1 = sa_quantiles - sa_quantile_hats[:, :-1]
             signs_1 = sa_quantiles > torch.cat(
-                [sa_quantile_hats[:, :1], sa_quantiles[:, :-1]], dim=1
+                [sa_quantile_hats[:, :1], sa_quantiles[:, :-1]],
+                dim=1,
             )
 
             values_2 = sa_quantiles - sa_quantile_hats[:, 1:]
             signs_2 = sa_quantiles < torch.cat(
-                [sa_quantiles[:, 1:], sa_quantile_hats[:, -1:]], dim=1
+                [sa_quantiles[:, 1:], sa_quantile_hats[:, -1:]],
+                dim=1,
             )
 
             gradient_of_taus = torch.where(signs_1, values_1, -values_1) + torch.where(
-                signs_2, values_2, -values_2
+                signs_2,
+                values_2,
+                -values_2,
             )
         fraction_loss = (gradient_of_taus * taus[:, 1:-1]).sum(1).mean()
         # calculate entropy loss

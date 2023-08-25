@@ -45,10 +45,11 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_redq(args=get_args()):
@@ -92,7 +93,7 @@ def test_redq(args=get_args()):
         linear_layer=linear,
     )
     critic = Critic(net_c, device=args.device, linear_layer=linear, flatten_input=False).to(
-        args.device
+        args.device,
     )
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
 

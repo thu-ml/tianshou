@@ -72,7 +72,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument(
@@ -182,7 +184,7 @@ def test_gail(args=get_args()):
                 rew=dataset["rewards"][i],
                 done=dataset["terminals"][i],
                 obs_next=dataset["next_observations"][i],
-            )
+            ),
         )
     print("dataset loaded")
 

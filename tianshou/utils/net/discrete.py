@@ -51,7 +51,10 @@ class Actor(nn.Module):
         self.output_dim = int(np.prod(action_shape))
         input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
         self.last = MLP(
-            input_dim, self.output_dim, hidden_sizes, device=self.device  # type: ignore
+            input_dim,
+            self.output_dim,
+            hidden_sizes,
+            device=self.device,  # type: ignore
         )
         self.softmax_output = softmax_output
 
@@ -72,8 +75,9 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """Simple critic network. Will create an actor operated in discrete \
-    action space with structure of preprocess_net ---> 1(q value).
+    """Simple critic network.
+
+    It will create an actor operated in discrete action space with structure of preprocess_net ---> 1(q value).
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
@@ -115,8 +119,7 @@ class Critic(nn.Module):
 
 
 class CosineEmbeddingNetwork(nn.Module):
-    """Cosine embedding network for IQN. Convert a scalar in [0, 1] to a list \
-    of n-dim vectors.
+    """Cosine embedding network for IQN. Convert a scalar in [0, 1] to a list of n-dim vectors.
 
     :param num_cosines: the number of cosines used for the embedding.
     :param embedding_dim: the dimension of the embedding/output.
@@ -138,15 +141,18 @@ class CosineEmbeddingNetwork(nn.Module):
         N = taus.shape[1]
         # Calculate i * \pi (i=1,...,N).
         i_pi = np.pi * torch.arange(
-            start=1, end=self.num_cosines + 1, dtype=taus.dtype, device=taus.device
+            start=1,
+            end=self.num_cosines + 1,
+            dtype=taus.dtype,
+            device=taus.device,
         ).view(1, 1, self.num_cosines)
         # Calculate cos(i * \pi * \tau).
         cosines = torch.cos(taus.view(batch_size, N, 1) * i_pi).view(
-            batch_size * N, self.num_cosines
+            batch_size * N,
+            self.num_cosines,
         )
         # Calculate embeddings of taus.
-        tau_embeddings = self.net(cosines).view(batch_size, N, self.embedding_dim)
-        return tau_embeddings
+        return self.net(cosines).view(batch_size, N, self.embedding_dim)
 
 
 class ImplicitQuantileNetwork(Critic):
@@ -184,11 +190,14 @@ class ImplicitQuantileNetwork(Critic):
         super().__init__(preprocess_net, hidden_sizes, last_size, preprocess_net_output_dim, device)
         self.input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
         self.embed_model = CosineEmbeddingNetwork(num_cosines, self.input_dim).to(  # type: ignore
-            device
+            device,
         )
 
     def forward(  # type: ignore
-        self, obs: Union[np.ndarray, torch.Tensor], sample_size: int, **kwargs: Any
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        sample_size: int,
+        **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
         logits, hidden = self.preprocess(obs, state=kwargs.get("state", None))
@@ -196,7 +205,8 @@ class ImplicitQuantileNetwork(Critic):
         batch_size = logits.size(0)
         taus = torch.rand(batch_size, sample_size, dtype=logits.dtype, device=logits.device)
         embedding = (logits.unsqueeze(1) * self.embed_model(taus)).view(
-            batch_size * sample_size, -1
+            batch_size * sample_size,
+            -1,
         )
         out = self.last(embedding).view(batch_size, sample_size, -1).transpose(1, 2)
         return (out, taus), hidden
@@ -223,7 +233,8 @@ class FractionProposalNetwork(nn.Module):
         self.embedding_dim = embedding_dim
 
     def forward(
-        self, obs_embeddings: torch.Tensor
+        self,
+        obs_embeddings: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Calculate (log of) probabilities q_i in the paper.
         dist = torch.distributions.Categorical(logits=self.net(obs_embeddings))
@@ -278,8 +289,7 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
     def _compute_quantiles(self, obs: torch.Tensor, taus: torch.Tensor) -> torch.Tensor:
         batch_size, sample_size = taus.shape
         embedding = (obs.unsqueeze(1) * self.embed_model(taus)).view(batch_size * sample_size, -1)
-        quantiles = self.last(embedding).view(batch_size, sample_size, -1).transpose(1, 2)
-        return quantiles
+        return self.last(embedding).view(batch_size, sample_size, -1).transpose(1, 2)
 
     def forward(  # type: ignore
         self,
@@ -429,7 +439,7 @@ class IntrinsicCuriosityModule(nn.Module):
         phi1, phi2 = self.feature_net(s1), self.feature_net(s2)
         act = to_torch(act, dtype=torch.long, device=self.device)
         phi2_hat = self.forward_model(
-            torch.cat([phi1, F.one_hot(act, num_classes=self.action_dim)], dim=1)
+            torch.cat([phi1, F.one_hot(act, num_classes=self.action_dim)], dim=1),
         )
         mse_loss = 0.5 * F.mse_loss(phi2_hat, phi2, reduction="none").sum(1)
         act_hat = self.inverse_model(torch.cat([phi1, phi2], dim=1))

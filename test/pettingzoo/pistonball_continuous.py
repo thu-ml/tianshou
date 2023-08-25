@@ -72,10 +72,16 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument("--buffer-size", type=int, default=2000)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument(
-        "--gamma", type=float, default=0.9, help="a smaller gamma favors earlier win"
+        "--gamma",
+        type=float,
+        default=0.9,
+        help="a smaller gamma favors earlier win",
     )
     parser.add_argument(
-        "--n-pistons", type=int, default=3, help="Number of pistons(agents) in the env"
+        "--n-pistons",
+        type=int,
+        default=3,
+        help="Number of pistons(agents) in the env",
     )
     parser.add_argument("--n-step", type=int, default=100)
     parser.add_argument("--target-update-freq", type=int, default=320)
@@ -98,7 +104,9 @@ def get_parser() -> argparse.ArgumentParser:
         help="no training, watch the play of pre-trained models",
     )
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # ppo special
     parser.add_argument("--vf-coef", type=float, default=0.25)
@@ -155,7 +163,10 @@ def get_agents(
             ).to(args.device)
 
             actor = ActorProb(
-                net, args.action_shape, max_action=args.max_action, device=args.device
+                net,
+                args.action_shape,
+                max_action=args.max_action,
+                device=args.device,
             ).to(args.device)
             net2 = DQN(
                 observation_space.shape[2],
@@ -263,7 +274,7 @@ def watch(args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = 
     env = DummyVectorEnv([get_env])
     if not policy:
         warnings.warn(
-            "watching random agents, as loading pre-trained policies is " "currently not supported"
+            "watching random agents, as loading pre-trained policies is currently not supported",
         )
         policy, _, _ = get_agents(args)
     policy.eval()

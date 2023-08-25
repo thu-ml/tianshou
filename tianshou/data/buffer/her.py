@@ -163,7 +163,8 @@ class HERReplayBuffer(ReplayBuffer):
         ep_obs.desired_goal[:, her_ep_indices] = future_obs.achieved_goal[None, her_ep_indices]
         if self._save_obs_next:
             ep_obs_next.desired_goal[:, her_ep_indices] = future_obs.achieved_goal[
-                None, her_ep_indices
+                None,
+                her_ep_indices,
             ]
             ep_rew[:, her_ep_indices] = self._compute_reward(ep_obs_next)[:, her_ep_indices]
         else:

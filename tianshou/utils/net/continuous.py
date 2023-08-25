@@ -13,8 +13,9 @@ SIGMA_MAX = 2
 
 
 class Actor(nn.Module):
-    """Simple actor network. Will create an actor operated in continuous \
-    action space with structure of preprocess_net ---> action_shape.
+    """Simple actor network.
+
+    It will create an actor operated in continuous action space with structure of preprocess_net ---> action_shape.
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
@@ -51,7 +52,10 @@ class Actor(nn.Module):
         self.output_dim = int(np.prod(action_shape))
         input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
         self.last = MLP(
-            input_dim, self.output_dim, hidden_sizes, device=self.device  # type: ignore
+            input_dim,
+            self.output_dim,
+            hidden_sizes,
+            device=self.device,  # type: ignore
         )
         self.max_action = max_action
 
@@ -70,8 +74,9 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """Simple critic network. Will create an actor operated in continuous \
-    action space with structure of preprocess_net ---> 1(q value).
+    """Simple critic network.
+
+    It will create an actor operated in continuous action space with structure of preprocess_net ---> 1(q value).
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
@@ -138,8 +143,7 @@ class Critic(nn.Module):
             ).flatten(1)
             obs = torch.cat([obs, act], dim=1)
         logits, hidden = self.preprocess(obs)
-        logits = self.last(logits)
-        return logits
+        return self.last(logits)
 
 
 class ActorProb(nn.Module):
@@ -367,13 +371,13 @@ class RecurrentCritic(nn.Module):
                 dtype=torch.float32,
             )
             obs = torch.cat([obs, act], dim=1)
-        obs = self.fc2(obs)
-        return obs
+        return self.fc2(obs)
 
 
 class Perturbation(nn.Module):
-    """Implementation of perturbation network in BCQ algorithm. Given a state and \
-    action, it can generate perturbed action.
+    """Implementation of perturbation network in BCQ algorithm.
+
+    Given a state and action, it can generate perturbed action.
 
     :param torch.nn.Module preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
@@ -413,9 +417,10 @@ class Perturbation(nn.Module):
 
 
 class VAE(nn.Module):
-    """Implementation of VAE. It models the distribution of action. Given a \
-    state, it can generate actions similar to those in batch. It is used \
-    in BCQ algorithm.
+    """Implementation of VAE.
+
+    It models the distribution of action. Given a state, it can generate actions similar to those in batch.
+    It is used in BCQ algorithm.
 
     :param torch.nn.Module encoder: the encoder in VAE. Its input_dim must be
         state_dim + action_dim, and output_dim must be hidden_dim.
@@ -457,7 +462,9 @@ class VAE(nn.Module):
         self.device = device
 
     def forward(
-        self, state: torch.Tensor, action: torch.Tensor
+        self,
+        state: torch.Tensor,
+        action: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # [state, action] -> z , [state, z] -> action
         latent_z = self.encoder(torch.cat([state, action], -1))
@@ -475,7 +482,9 @@ class VAE(nn.Module):
         return reconstruction, mean, std
 
     def decode(
-        self, state: torch.Tensor, latent_z: Union[torch.Tensor, None] = None
+        self,
+        state: torch.Tensor,
+        latent_z: Union[torch.Tensor, None] = None,
     ) -> torch.Tensor:
         # decode(state) -> action
         if latent_z is None:

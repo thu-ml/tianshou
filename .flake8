@@ -4,4 +4,4 @@
 max-line-length = 100
 max-complexity = 18
 select = E,F,W,B,C4,ASYNC,PIE
-ignore = E402,E501,E701,E731,E741,B008,B011,B028,C408
+ignore = E402,E501,E701,E731,E741,B008,B011,B028,C408,W503,E203

@@ -42,7 +42,9 @@ def get_args():
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument("--tau", default=0.005)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument(
@@ -58,8 +60,7 @@ def get_args():
     parser.add_argument("--rew-norm", action="store_true", default=False)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--save-buffer-name", type=str, default=expert_file_name())
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def gather_data():
@@ -168,5 +169,6 @@ def gather_data():
     if args.save_buffer_name.endswith(".hdf5"):
         buffer.save_hdf5(args.save_buffer_name)
     else:
-        pickle.dump(buffer, open(args.save_buffer_name, "wb"))
+        with open(args.save_buffer_name, "wb") as f:
+            pickle.dump(buffer, f)
     return buffer

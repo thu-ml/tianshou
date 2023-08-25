@@ -98,11 +98,14 @@ class DQNPolicy(BasePolicy):
             target_q = result.logits
         if self._is_double:
             return target_q[np.arange(len(result.act)), result.act]
-        else:  # Nature DQN, over estimate
-            return target_q.max(dim=1)[0]
+        # Nature DQN, over estimate
+        return target_q.max(dim=1)[0]
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> BatchWithReturnsProtocol:
         """Compute the n-step return for Q-learning targets.
 

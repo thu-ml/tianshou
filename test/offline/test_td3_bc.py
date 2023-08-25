@@ -49,7 +49,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=1 / 35)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument(
@@ -59,8 +61,7 @@ def get_args():
         help="watch the play of pre-trained policy only",
     )
     parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_td3_bc(args=get_args()):
@@ -68,7 +69,8 @@ def test_td3_bc(args=get_args()):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
         else:
-            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+            with open(args.load_buffer_name, "rb") as f:
+                buffer = pickle.load(f)
     else:
         buffer = gather_data()
     env = gym.make(args.task)

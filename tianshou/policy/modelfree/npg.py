@@ -67,7 +67,10 @@ class NPGPolicy(A2CPolicy):
         self._damping = 0.1
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> BatchWithAdvantagesProtocol:
         batch = super().process_fn(batch, buffer, indices)
         old_log_prob = []
@@ -80,7 +83,11 @@ class NPGPolicy(A2CPolicy):
         return batch
 
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+        self,
+        batch: Batch,
+        batch_size: int,
+        repeat: int,
+        **kwargs: Any,
     ) -> dict[str, list[float]]:
         actor_losses, vf_losses, kls = [], [], []
         for _ in range(repeat):
@@ -105,7 +112,7 @@ class NPGPolicy(A2CPolicy):
                 # step
                 with torch.no_grad():
                     flat_params = torch.cat(
-                        [param.data.view(-1) for param in self.actor.parameters()]
+                        [param.data.view(-1) for param in self.actor.parameters()],
                     )
                     new_flat_params = flat_params + self._step_size * search_direction
                     self._set_from_flat_params(self.actor, new_flat_params)

@@ -49,11 +49,10 @@ def _setup_buf(space: gym.Space) -> Union[dict, tuple, ShArray]:
     if isinstance(space, gym.spaces.Dict):
         assert isinstance(space.spaces, OrderedDict)
         return {k: _setup_buf(v) for k, v in space.spaces.items()}
-    elif isinstance(space, gym.spaces.Tuple):
+    if isinstance(space, gym.spaces.Tuple):
         assert isinstance(space.spaces, tuple)
         return tuple([_setup_buf(t) for t in space.spaces])
-    else:
-        return ShArray(space.dtype, space.shape)  # type: ignore
+    return ShArray(space.dtype, space.shape)  # type: ignore
 
 
 def _worker(
@@ -63,7 +62,8 @@ def _worker(
     obs_bufs: Optional[Union[dict, tuple, ShArray]] = None,
 ) -> None:
     def _encode_obs(
-        obs: Union[dict, tuple, np.ndarray], buffer: Union[dict, tuple, ShArray]
+        obs: Union[dict, tuple, np.ndarray],
+        buffer: Union[dict, tuple, ShArray],
     ) -> None:
         if isinstance(obs, np.ndarray) and isinstance(buffer, ShArray):
             buffer.save(obs)
@@ -151,16 +151,15 @@ class SubprocEnvWorker(EnvWorker):
 
     def _decode_obs(self) -> Union[dict, tuple, np.ndarray]:
         def decode_obs(
-            buffer: Optional[Union[dict, tuple, ShArray]]
+            buffer: Optional[Union[dict, tuple, ShArray]],
         ) -> Union[dict, tuple, np.ndarray]:
             if isinstance(buffer, ShArray):
                 return buffer.get()
-            elif isinstance(buffer, tuple):
+            if isinstance(buffer, tuple):
                 return tuple([decode_obs(b) for b in buffer])
-            elif isinstance(buffer, dict):
+            if isinstance(buffer, dict):
                 return {k: decode_obs(v) for k, v in buffer.items()}
-            else:
-                raise NotImplementedError
+            raise NotImplementedError
 
         return decode_obs(self.buffer)
 
@@ -204,11 +203,10 @@ class SubprocEnvWorker(EnvWorker):
             if self.share_memory:
                 obs = self._decode_obs()
             return (obs, *result[1:])  # type: ignore
-        else:
-            obs = result
-            if self.share_memory:
-                obs = self._decode_obs()
-            return obs
+        obs = result
+        if self.share_memory:
+            obs = self._decode_obs()
+        return obs
 
     def reset(self, **kwargs: Any) -> tuple[np.ndarray, dict]:
         if "seed" in kwargs:
@@ -221,11 +219,10 @@ class SubprocEnvWorker(EnvWorker):
             if self.share_memory:
                 obs = self._decode_obs()
             return obs, info
-        else:
-            obs = result
-            if self.share_memory:
-                obs = self._decode_obs()
-            return obs
+        obs = result
+        if self.share_memory:
+            obs = self._decode_obs()
+        return obs
 
     def seed(self, seed: Optional[int] = None) -> Optional[list[int]]:
         super().seed(seed)

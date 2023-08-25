@@ -44,11 +44,10 @@ def recurse_comp(a, b):
         if isinstance(a, np.ndarray):
             if a.dtype == object:
                 return np.array([recurse_comp(m, n) for m, n in zip(a, b)]).all()
-            else:
-                return np.allclose(a, b)
-        elif isinstance(a, (list, tuple)):
+            return np.allclose(a, b)
+        if isinstance(a, (list, tuple)):
             return np.array([recurse_comp(m, n) for m, n in zip(a, b)]).all()
-        elif isinstance(a, dict):
+        if isinstance(a, dict):
             return np.array([recurse_comp(a[k], b[k]) for k in a]).all()
     except Exception:
         return False
@@ -265,9 +264,7 @@ def test_venv_wrapper_gym(num_envs: int = 4):
 
 def run_align_norm_obs(raw_env, train_env, test_env, action_list):
     def reset_result_to_obs(reset_result):
-        """Extract observation from reset result
-        (result is possibly a tuple containing info).
-        """
+        """Extract observation from reset result (result is possibly a tuple containing info)."""
         if isinstance(reset_result, tuple) and len(reset_result) == 2:
             obs, _ = reset_result
         else:
@@ -403,7 +400,7 @@ def test_venv_wrapper_envpool():
 def test_venv_wrapper_envpool_gym_reset_return_info():
     num_envs = 4
     env = VectorEnvNormObs(
-        envpool.make_gymnasium("Ant-v3", num_envs=num_envs, gym_reset_return_info=True)
+        envpool.make_gymnasium("Ant-v3", num_envs=num_envs, gym_reset_return_info=True),
     )
     obs, info = env.reset()
     assert obs.shape[0] == num_envs

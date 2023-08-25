@@ -26,7 +26,7 @@ def numerical_analysis(root_dir, xlim, norm=False):
                     result["env_step"],
                     result["reward"] - result["reward"][0],
                     result["reward:shaded"],
-                ]
+                ],
             )
         else:
             result = np.stack([result["env_step"], result["reward"], result["reward:shaded"]])
@@ -83,7 +83,10 @@ def numerical_analysis(root_dir, xlim, norm=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--xlim", type=int, default=1000000, help="x-axis limitation (default: 1000000)"
+        "--xlim",
+        type=int,
+        default=1000000,
+        help="x-axis limitation (default: 1000000)",
     )
     parser.add_argument("--root-dir", type=str)
     parser.add_argument(

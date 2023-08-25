@@ -95,10 +95,9 @@ class WandbLogger(BaseLogger):
         if self.tensorboard_logger is None:
             raise Exception(
                 "`logger` needs to load the Tensorboard Writer before "
-                "writing data. Try `logger.load(SummaryWriter(log_path))`"
+                "writing data. Try `logger.load(SummaryWriter(log_path))`",
             )
-        else:
-            self.tensorboard_logger.write(step_type, step, data)
+        self.tensorboard_logger.write(step_type, step, data)
 
     def save_data(
         self,
@@ -134,12 +133,12 @@ class WandbLogger(BaseLogger):
 
     def restore_data(self) -> tuple[int, int, int]:
         checkpoint_artifact = self.wandb_run.use_artifact(  # type: ignore
-            f"run_{self.wandb_run.id}_checkpoint:latest"  # type: ignore
+            f"run_{self.wandb_run.id}_checkpoint:latest",  # type: ignore
         )
         assert checkpoint_artifact is not None, "W&B dataset artifact doesn't exist"
 
         checkpoint_artifact.download(
-            os.path.dirname(checkpoint_artifact.metadata["checkpoint_path"])
+            os.path.dirname(checkpoint_artifact.metadata["checkpoint_path"]),
         )
 
         try:  # epoch / gradient_step

@@ -9,7 +9,14 @@ import tqdm
 from tianshou.data import AsyncCollector, Collector, ReplayBuffer
 from tianshou.policy import BasePolicy
 from tianshou.trainer.utils import gather_info, test_episode
-from tianshou.utils import BaseLogger, DummyTqdm, LazyLogger, MovAvg, deprecation, tqdm_config
+from tianshou.utils import (
+    BaseLogger,
+    DummyTqdm,
+    LazyLogger,
+    MovAvg,
+    deprecation,
+    tqdm_config,
+)
 
 
 class BaseTrainer(ABC):
@@ -153,7 +160,7 @@ class BaseTrainer(ABC):
         if save_fn:
             deprecation(
                 "save_fn in trainer is marked as deprecated and will be "
-                "removed in the future. Please use save_best_fn instead."
+                "removed in the future. Please use save_best_fn instead.",
             )
             assert save_best_fn is None
             save_best_fn = save_fn
@@ -224,9 +231,7 @@ class BaseTrainer(ABC):
         if self.train_collector is not None:
             self.train_collector.reset_stat()
 
-            if self.train_collector.policy != self.policy:
-                self.test_in_train = False
-            elif self.test_collector is None:
+            if self.train_collector.policy != self.policy or self.test_collector is None:
                 self.test_in_train = False
 
         if self.test_collector is not None:
@@ -309,7 +314,10 @@ class BaseTrainer(ABC):
 
         if not self.stop_fn_flag:
             self.logger.save_data(
-                self.epoch, self.env_step, self.gradient_step, self.save_checkpoint_fn
+                self.epoch,
+                self.env_step,
+                self.gradient_step,
+                self.save_checkpoint_fn,
             )
             # test
             if self.test_collector is not None:
@@ -327,7 +335,7 @@ class BaseTrainer(ABC):
                     "len": int(self.last_len),
                     "n/ep": int(result["n/ep"]),
                     "n/st": int(result["n/st"]),
-                }
+                },
             )
             info = gather_info(
                 self.start_time,
@@ -337,8 +345,7 @@ class BaseTrainer(ABC):
                 self.best_reward_std,
             )
             return self.epoch, epoch_stat, info
-        else:
-            return None
+        return None
 
     def test_step(self) -> tuple[dict[str, Any], bool]:
         """Perform one testing step."""
@@ -392,7 +399,8 @@ class BaseTrainer(ABC):
         if self.train_fn:
             self.train_fn(self.epoch, self.env_step)
         result = self.train_collector.collect(
-            n_step=self.step_per_collect, n_episode=self.episode_per_collect
+            n_step=self.step_per_collect,
+            n_episode=self.episode_per_collect,
         )
         if result["n/ep"] > 0 and self.reward_metric:
             rew = self.reward_metric(result["rews"])
@@ -408,24 +416,28 @@ class BaseTrainer(ABC):
             "n/ep": str(int(result["n/ep"])),
             "n/st": str(int(result["n/st"])),
         }
-        if result["n/ep"] > 0:
-            if self.test_in_train and self.stop_fn and self.stop_fn(result["rew"]):
-                assert self.test_collector is not None
-                test_result = test_episode(
-                    self.policy,
-                    self.test_collector,
-                    self.test_fn,
-                    self.epoch,
-                    self.episode_per_test,
-                    self.logger,
-                    self.env_step,
-                )
-                if self.stop_fn(test_result["rew"]):
-                    stop_fn_flag = True
-                    self.best_reward = test_result["rew"]
-                    self.best_reward_std = test_result["rew_std"]
-                else:
-                    self.policy.train()
+        if (
+            result["n/ep"] > 0
+            and self.test_in_train
+            and self.stop_fn
+            and self.stop_fn(result["rew"])
+        ):
+            assert self.test_collector is not None
+            test_result = test_episode(
+                self.policy,
+                self.test_collector,
+                self.test_fn,
+                self.epoch,
+                self.episode_per_test,
+                self.logger,
+                self.env_step,
+            )
+            if self.stop_fn(test_result["rew"]):
+                stop_fn_flag = True
+                self.best_reward = test_result["rew"]
+                self.best_reward_std = test_result["rew_std"]
+            else:
+                self.policy.train()
 
         return data, result, stop_fn_flag
 
@@ -487,7 +499,9 @@ class OfflineTrainer(BaseTrainer):
     __doc__ += BaseTrainer.gen_doc("offline") + "\n".join(BaseTrainer.__doc__.split("\n")[1:])
 
     def policy_update_fn(
-        self, data: dict[str, Any], result: Optional[dict[str, Any]] = None
+        self,
+        data: dict[str, Any],
+        result: Optional[dict[str, Any]] = None,
     ) -> None:
         """Perform one off-line policy update."""
         assert self.buffer
@@ -534,7 +548,9 @@ class OnpolicyTrainer(BaseTrainer):
     __doc__ = BaseTrainer.gen_doc("onpolicy") + "\n".join(BaseTrainer.__doc__.split("\n")[1:])
 
     def policy_update_fn(
-        self, data: dict[str, Any], result: Optional[dict[str, Any]] = None
+        self,
+        data: dict[str, Any],
+        result: Optional[dict[str, Any]] = None,
     ) -> None:
         """Perform one on-policy update."""
         assert self.train_collector is not None

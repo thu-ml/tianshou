@@ -15,14 +15,3 @@ repos:
       - id: black
         # specify workers explicitly to workaround https://github.com/psf/black/issues/2513
         args: [--line-length=100, --exclude="", --workers=6]
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-        args: [--line-length=100, --profile=black]
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.3.0
-    hooks:
-      - id: pydocstyle
-        exclude: ^(test/)|(docs/)|(examples/)|(setup.py)
-        args: ["--ignore=D100,D102,D104,D105,D107,D203,D213,D401,D402"]

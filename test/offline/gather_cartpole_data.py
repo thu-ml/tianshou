@@ -47,10 +47,11 @@ def get_args():
     parser.add_argument("--beta", type=float, default=0.4)
     parser.add_argument("--save-buffer-name", type=str, default=expert_file_name())
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def gather_data():
@@ -155,6 +156,7 @@ def gather_data():
     if args.save_buffer_name.endswith(".hdf5"):
         buf.save_hdf5(args.save_buffer_name)
     else:
-        pickle.dump(buf, open(args.save_buffer_name, "wb"))
+        with open(args.save_buffer_name, "wb") as f:
+            pickle.dump(buf, f)
     print(result["rews"].mean())
     return buf

@@ -24,11 +24,12 @@ class VectorEnvWrapper(BaseVectorEnv):
     def __getattribute__(self, key: str) -> Any:
         if key in GYM_RESERVED_KEYS:  # reserved keys in gym.Env
             return getattr(self.venv, key)
-        else:
-            return super().__getattribute__(key)
+        return super().__getattribute__(key)
 
     def get_env_attr(
-        self, key: str, id: Optional[Union[int, list[int], np.ndarray]] = None
+        self,
+        key: str,
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> list[Any]:
         return self.venv.get_env_attr(key, id)
 
@@ -41,12 +42,16 @@ class VectorEnvWrapper(BaseVectorEnv):
         return self.venv.set_env_attr(key, value, id)
 
     def reset(
-        self, id: Optional[Union[int, list[int], np.ndarray]] = None, **kwargs: Any
+        self,
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        **kwargs: Any,
     ) -> tuple[np.ndarray, Union[dict, list[dict]]]:
         return self.venv.reset(id, **kwargs)
 
     def step(
-        self, action: np.ndarray, id: Optional[Union[int, list[int], np.ndarray]] = None
+        self,
+        action: np.ndarray,
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> gym_new_venv_step_type:
         return self.venv.step(action, id)
 
@@ -73,7 +78,9 @@ class VectorEnvNormObs(VectorEnvWrapper):
         self.obs_rms = RunningMeanStd()
 
     def reset(
-        self, id: Optional[Union[int, list[int], np.ndarray]] = None, **kwargs: Any
+        self,
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        **kwargs: Any,
     ) -> tuple[np.ndarray, Union[dict, list[dict]]]:
         obs, info = self.venv.reset(id, **kwargs)
 
@@ -89,7 +96,9 @@ class VectorEnvNormObs(VectorEnvWrapper):
         return obs, info
 
     def step(
-        self, action: np.ndarray, id: Optional[Union[int, list[int], np.ndarray]] = None
+        self,
+        action: np.ndarray,
+        id: Optional[Union[int, list[int], np.ndarray]] = None,
     ) -> gym_new_venv_step_type:
         step_results = self.venv.step(action, id)
         if self.obs_rms and self.update_obs_rms:

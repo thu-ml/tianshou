@@ -150,8 +150,7 @@ class Rainbow(DQN):
         def linear(x, y):
             if is_noisy:
                 return NoisyLinear(x, y, noisy_std)
-            else:
-                return nn.Linear(x, y)
+            return nn.Linear(x, y)
 
         self.Q = nn.Sequential(
             linear(self.output_dim, 512),
@@ -190,8 +189,7 @@ class Rainbow(DQN):
 
 
 class QRDQN(DQN):
-    """Reference: Distributional Reinforcement Learning with Quantile \
-    Regression.
+    """Reference: Distributional Reinforcement Learning with Quantile Regression.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.

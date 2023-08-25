@@ -42,10 +42,11 @@ def get_args():
     parser.add_argument("--rew-norm", action="store_true", default=False)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_discrete_sac(args=get_args()):
@@ -96,7 +97,9 @@ def test_discrete_sac(args=get_args()):
     )
     # collector
     train_collector = Collector(
-        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs))
+        policy,
+        train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
     test_collector = Collector(policy, test_envs)
     # train_collector.collect(n_step=args.buffer_size)

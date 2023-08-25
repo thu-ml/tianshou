@@ -28,7 +28,9 @@ else:  # pytest
 
 class MyPolicy(BasePolicy):
     def __init__(self, dict_state=False, need_state=True, action_shape=None):
-        """:param bool dict_state: if the observation of the environment is a dict
+        """Mock policy for testing.
+
+        :param bool dict_state: if the observation of the environment is a dict
         :param bool need_state: if the policy needs the hidden state (for RNN)
         """
         super().__init__()
@@ -68,8 +70,7 @@ class Logger:
                 self.writer.add_scalar("key", np.mean(info.key), global_step=self.cnt)
             self.cnt += 1
             return Batch(info=info)
-        else:
-            return Batch()
+        return Batch()
 
     @staticmethod
     def single_preprocess_fn(**kwargs):
@@ -78,8 +79,7 @@ class Logger:
             info = kwargs["info"]
             info.rew = kwargs["rew"]
             return Batch(info=info)
-        else:
-            return Batch()
+        return Batch()
 
 
 @pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
@@ -151,7 +151,8 @@ def test_collector(gym_reset_kwargs):
     obs[[2, 3, 27, 52, 53, 77, 78, 79]] = [0, 1, 2, 2, 3, 2, 3, 4]
     assert np.allclose(c1.buffer.obs[:, 0], obs)
     assert np.allclose(
-        c1.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5]
+        c1.buffer[:].obs_next[..., 0],
+        [1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5],
     )
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
     assert np.allclose(c1.buffer.info["key"], keys)
@@ -331,7 +332,7 @@ def test_collector_with_dict_state():
                 2,
                 3,
                 4,
-            ]
+            ],
         ), c0.buffer[:].obs.index[..., 0]
     else:
         assert np.all(
@@ -380,7 +381,7 @@ def test_collector_with_dict_state():
                 2,
                 3,
                 4,
-            ]
+            ],
         ), c0.buffer[:].obs.index[..., 0]
     c2 = Collector(
         policy,
@@ -646,7 +647,7 @@ def test_collector_with_atari_setting():
             3,
             4,
             4,
-        ]
+        ],
     )
     obs_next[:, -1] = slice_obs[ref_index]
     ref_index -= 1
@@ -709,7 +710,7 @@ def test_collector_with_atari_setting():
                 3,
                 4,
             ]
-        ]
+        ],
     )
     assert np.all(
         buf[:].obs_next[:, -1]
@@ -751,7 +752,7 @@ def test_collector_with_atari_setting():
                 4,
                 4,
             ]
-        ]
+        ],
     )
     assert len(buf) == len(c5.buffer)
 

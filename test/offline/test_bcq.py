@@ -48,7 +48,9 @@ def get_args():
     # Max perturbation hyper-parameter for BCQ
     parser.add_argument("--phi", default=0.05)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument(
@@ -59,8 +61,7 @@ def get_args():
     )
     parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
     parser.add_argument("--show-progress", action="store_true")
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_bcq(args=get_args()):
@@ -68,7 +69,8 @@ def test_bcq(args=get_args()):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
         else:
-            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+            with open(args.load_buffer_name, "rb") as f:
+                buffer = pickle.load(f)
     else:
         buffer = gather_data()
     env = gym.make(args.task)
@@ -98,7 +100,7 @@ def test_bcq(args=get_args()):
         device=args.device,
     )
     actor = Perturbation(net_a, max_action=args.max_action, device=args.device, phi=args.phi).to(
-        args.device
+        args.device,
     )
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
@@ -186,7 +188,7 @@ def test_bcq(args=get_args()):
 
     def watch():
         policy.load_state_dict(
-            torch.load(os.path.join(log_path, "policy.pth"), map_location=torch.device("cpu"))
+            torch.load(os.path.join(log_path, "policy.pth"), map_location=torch.device("cpu")),
         )
         policy.eval()
         collector = Collector(policy, env)

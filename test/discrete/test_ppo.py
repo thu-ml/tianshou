@@ -36,7 +36,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # ppo special
     parser.add_argument("--vf-coef", type=float, default=0.5)
@@ -49,8 +51,7 @@ def get_args():
     parser.add_argument("--recompute-adv", type=int, default=0)
     parser.add_argument("--dual-clip", type=float, default=None)
     parser.add_argument("--value-clip", type=int, default=0)
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_ppo(args=get_args()):
@@ -108,7 +109,9 @@ def test_ppo(args=get_args()):
     )
     # collector
     train_collector = Collector(
-        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs))
+        policy,
+        train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
     test_collector = Collector(policy, test_envs)
     # log

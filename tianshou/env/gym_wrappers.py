@@ -71,7 +71,7 @@ class TruncatedAsTerminated(gym.Wrapper):
         if not version.parse(gym.__version__) >= version.parse("0.26.0"):
             raise OSError(
                 f"TruncatedAsTerminated is not applicable with gym version \
-                {gym.__version__}"
+                {gym.__version__}",
             )
 
     def step(self, act: np.ndarray) -> tuple[Any, SupportsFloat, bool, bool, dict[str, Any]]:

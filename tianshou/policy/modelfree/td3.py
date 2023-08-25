@@ -111,11 +111,10 @@ class TD3Policy(DDPGPolicy):
         if self._noise_clip > 0.0:
             noise = noise.clamp(-self._noise_clip, self._noise_clip)
         act_ += noise
-        target_q = torch.min(
+        return torch.min(
             self.critic1_old(batch.obs_next, act_),
             self.critic2_old(batch.obs_next, act_),
         )
-        return target_q
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         # critic 1&2
