@@ -194,8 +194,8 @@ move-optionals-to-bottom = true
         cmd = 'sphinx-build -b html docs docs/_build'
 
 
-  [tool.poe.tasks.mypy]
+  [tool.poe.tasks.type-check]
     help = "Check types"
-       [[tool.poe.tasks.mypy.sequence]]
+       [[tool.poe.tasks.type-check.sequence]]
         cmd = "mypy tianshou"
 
