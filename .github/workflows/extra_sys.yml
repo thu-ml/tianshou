@@ -40,4 +40,4 @@ jobs:
           poetry run wandb login e2366d661b89f2bee877c40bee15502d67b7abef
       - name: Test with pytest
         run: |
-          poetry run pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes
+          poetry run poe test

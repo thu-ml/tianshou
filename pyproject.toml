@@ -189,7 +189,10 @@ move-optionals-to-bottom = true
   [tool.poe.tasks.doc-build]
     help = "Build docs"
         [[tool.poe.tasks.doc-build.sequence]]
+        cmd = 'sphinx-build -b spelling docs docs/_build'
+        [[tool.poe.tasks.doc-build.sequence]]
         cmd = 'sphinx-build -b html docs docs/_build'
+
 
   [tool.poe.tasks.mypy]
     help = "Check types"

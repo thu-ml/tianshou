@@ -32,3 +32,5 @@ jobs:
           poetry install --with dev
       - name: Lint
         run: poetry run poe lint
+      - name: Docs
+        run: poetry run poe doc-build
