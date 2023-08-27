@@ -44,6 +44,7 @@ envpool = {version = "^0.8.2", optional = true}
 mujoco_py = {version = "*", optional = true}
 opencv_python = {version = "*", optional = true}
 pybullet = {version = "*", optional = true}
+sphinxcontrib-spelling = "^8.0.0"
 
 [tool.poetry.extras]
 atari = ["atari_py", "opencv-python"]
