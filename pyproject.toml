@@ -1,3 +1,87 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "tianshou"
+version = "0.5.1"
+description = "A Library for Deep Reinforcement Learning"
+authors = ["TSAIL <trinkle23897@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/thu-ml/tianshou"
+classifiers = [
+    #   3 - Alpha
+    #   4 - Beta
+    #   5 - Production/Stable
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+exclude = ["test/*", "examples/*", "docs/*"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+gymnasium = ">=0.29.0"
+h5py = ">=3.9.0"
+numba = ">=0.57.1"
+numpy = ">=1"
+packaging = "*"
+pettingzoo = ">=1.22"
+tensorboard = ">=2.5.0"
+# Torch 2.0.1 causes problems, see https://github.com/pytorch/pytorch/issues/100974
+torch = ">=2.0.0, !=2.0.1"
+tqdm = "*"
+
+# TODO: add versions
+atari_py = {version = "*", optional = true}
+envpool = {version = "^0.8.2", optional = true}
+mujoco_py = {version = "*", optional = true}
+opencv_python = {version = "*", optional = true}
+pybullet = {version = "*", optional = true}
+
+[tool.poetry.extras]
+atari = ["atari_py", "opencv-python"]
+mujoco = ["mujoco_py"]
+pybullet = ["pybullet"]
+envpool = ["envpool"]
+
+
+[tool.poetry.group.dev]
+optional = true
+[tool.poetry.group.dev.dependencies]
+black = ">=23.7.0"
+# gym used in compatibility test. TODO: drop this and test in future?
+gym = ">=0.22.0"
+jinja2 = "*"
+mypy = ">=1.4.1"
+# networkx is used in a test
+networkx = "*"
+# nni used in a 3rd party test
+# TODO: this test is currently not even executed, is it worth the dependency?
+nni = ">=2.3,<3.0"
+poethepoet = ">=0.20.0"
+pre-commit = ">=3.3.3"
+pygame = ">=2.1.0"
+pymunk = ">=6.2.1"
+pytest = "*"
+pytest-cov = "*"
+# optional import for parallelization. Without installing it, the corresponding modules are not parsed by linters
+# TODO: include ray in extras?
+ray = ">1"
+ruff = ">=0.0.285"
+scipy = "*"
+shimmy = "*"
+sphinx = "<7"
+sphinx_rtd_theme = "*"
+sphinxcontrib-bibtex = "*"
+wandb = ">=0.12.0"
+
 [tool.mypy]
 allow_redefinition = true
 check_untyped_defs = true
@@ -48,6 +132,9 @@ unfixable = [
     "F602",  # automatic fix might obscure issue
     "B018",  # automatic fix might obscure issue
 ]
+extend-fixable = [
+    "F401",  # unused import
+]
 
 target-version = "py39"
 
@@ -58,4 +145,54 @@ max-complexity = 20
 "test/**" = ["D103"]
 "docs/**" = ["D103"]
 "examples/**" = ["D103"]
-"setup.py" = ["D103"]
+
+
+[tool.poetry_bumpversion.file."tianshou/__init__.py"]
+
+[tool.poetry-sort]
+move-optionals-to-bottom = true
+
+# keep relevant parts in sync with pre-commit
+[tool.poe.tasks]  # https://github.com/nat-n/poethepoet
+  [tool.poe.tasks.lint]
+  help = "Lint with ruff and black"
+
+    [[tool.poe.tasks.lint.sequence]]
+    cmd = """ruff check ."""
+    [[tool.poe.tasks.lint.sequence]]
+    cmd = """black --check ."""
+
+  [tool.poe.tasks.format]
+  help = "Format with poetry-sort, ruff, and black"
+
+    [[tool.poe.tasks.format.sequence]]
+    cmd = """poetry self add poetry-plugin-sort"""
+    [[tool.poe.tasks.format.sequence]]
+    cmd = """poetry sort"""
+    [[tool.poe.tasks.format.sequence]]
+    cmd = """black ."""
+    [[tool.poe.tasks.format.sequence]]
+    cmd = """ruff --fix ."""
+
+  [tool.poe.tasks.test]
+  help = "Test with pytest and coverage"
+
+    [[tool.poe.tasks.test.sequence]]
+    # TODO: remove 3rd party tests and nni? See todo above
+    cmd = "pytest test  --ignore-glob='*profile.py' --ignore='test/3rd_party' --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v --color=yes"
+
+  [tool.poe.tasks.doc-clean]
+  help = "Clean docs/_build"
+    [[tool.poe.tasks.doc-clean.sequence]]
+    cmd = 'rm -rf docs/_build'
+
+  [tool.poe.tasks.doc-build]
+    help = "Build docs"
+        [[tool.poe.tasks.doc-build.sequence]]
+        cmd = 'sphinx-build -b html docs docs/_build'
+
+  [tool.poe.tasks.mypy]
+    help = "Check types"
+       [[tool.poe.tasks.mypy.sequence]]
+        cmd = "mypy tianshou"
+
