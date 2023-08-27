@@ -44,7 +44,6 @@ envpool = {version = "^0.8.2", optional = true}
 mujoco_py = {version = "*", optional = true}
 opencv_python = {version = "*", optional = true}
 pybullet = {version = "*", optional = true}
-sphinxcontrib-spelling = "^8.0.0"
 
 [tool.poetry.extras]
 atari = ["atari_py", "opencv-python"]
@@ -72,6 +71,9 @@ pygame = ">=2.1.0"
 pymunk = ">=6.2.1"
 pytest = "*"
 pytest-cov = "*"
+# lightning used in a 3rd party test
+# TODO: see above, worth the dependency?
+pytorch-lightning = "^2.0.7"
 # optional import for parallelization. Without installing it, the corresponding modules are not parsed by linters
 # TODO: include ray in extras?
 ray = ">1"
@@ -81,6 +83,7 @@ shimmy = "*"
 sphinx = "<7"
 sphinx_rtd_theme = "*"
 sphinxcontrib-bibtex = "*"
+sphinxcontrib-spelling = "^8.0.0"
 wandb = ">=0.12.0"
 
 [tool.mypy]
