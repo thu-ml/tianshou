@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -52,8 +52,14 @@ class FQFPolicy(QRDQNPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            model, optim, discount_factor, num_fractions, estimation_step,
-            target_update_freq, reward_normalization, **kwargs
+            model,
+            optim,
+            discount_factor,
+            num_fractions,
+            estimation_step,
+            target_update_freq,
+            reward_normalization,
+            **kwargs,
         )
         self.propose_model = fraction_model
         self._ent_coef = ent_coef
@@ -64,15 +70,12 @@ class FQFPolicy(QRDQNPolicy):
         if self._target:
             result = self(batch, input="obs_next")
             act, fractions = result.act, result.fractions
-            next_dist = self(
-                batch, model="model_old", input="obs_next", fractions=fractions
-            ).logits
+            next_dist = self(batch, model="model_old", input="obs_next", fractions=fractions).logits
         else:
             next_batch = self(batch, input="obs_next")
             act = next_batch.act
             next_dist = next_batch.logits
-        next_dist = next_dist[np.arange(len(act)), act, :]
-        return next_dist  # shape: [bsz, num_quantiles]
+        return next_dist[np.arange(len(act)), act, :]
 
     # TODO: add protocol type for return, fix Liskov substitution principle violation
     def forward(  # type: ignore
@@ -92,7 +95,7 @@ class FQFPolicy(QRDQNPolicy):
                 obs_next,
                 propose_model=self.propose_model,
                 state=state,
-                info=batch.info
+                info=batch.info,
             )
         else:
             (logits, _, quantiles_tau), hidden = model(
@@ -100,13 +103,10 @@ class FQFPolicy(QRDQNPolicy):
                 propose_model=self.propose_model,
                 fractions=fractions,
                 state=state,
-                info=batch.info
+                info=batch.info,
             )
-        weighted_logits = (fractions.taus[:, 1:] -
-                           fractions.taus[:, :-1]).unsqueeze(1) * logits
-        q = DQNPolicy.compute_q_value(
-            self, weighted_logits.sum(2), getattr(obs, "mask", None)
-        )
+        weighted_logits = (fractions.taus[:, 1:] - fractions.taus[:, :-1]).unsqueeze(1) * logits
+        q = DQNPolicy.compute_q_value(self, weighted_logits.sum(2), getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
@@ -115,12 +115,11 @@ class FQFPolicy(QRDQNPolicy):
             act=act,
             state=hidden,
             fractions=fractions,
-            quantiles_tau=quantiles_tau
+            quantiles_tau=quantiles_tau,
         )
         return cast(FQFBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         weight = batch.pop("weight", 1.0)
@@ -133,10 +132,13 @@ class FQFPolicy(QRDQNPolicy):
         # calculate each element's difference between curr_dist and target_dist
         dist_diff = F.smooth_l1_loss(target_dist, curr_dist, reduction="none")
         huber_loss = (
-            dist_diff *
-            (tau_hats.unsqueeze(2) -
-             (target_dist - curr_dist).detach().le(0.).float()).abs()
-        ).sum(-1).mean(1)
+            (
+                dist_diff
+                * (tau_hats.unsqueeze(2) - (target_dist - curr_dist).detach().le(0.0).float()).abs()
+            )
+            .sum(-1)
+            .mean(1)
+        )
         quantile_loss = (huber_loss * weight).mean()
         # ref: https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/
         # blob/master/fqf_iqn_qrdqn/agent/qrdqn_agent.py L130
@@ -149,17 +151,20 @@ class FQFPolicy(QRDQNPolicy):
             # blob/master/fqf_iqn_qrdqn/agent/fqf_agent.py L169
             values_1 = sa_quantiles - sa_quantile_hats[:, :-1]
             signs_1 = sa_quantiles > torch.cat(
-                [sa_quantile_hats[:, :1], sa_quantiles[:, :-1]], dim=1
+                [sa_quantile_hats[:, :1], sa_quantiles[:, :-1]],
+                dim=1,
             )
 
             values_2 = sa_quantiles - sa_quantile_hats[:, 1:]
             signs_2 = sa_quantiles < torch.cat(
-                [sa_quantiles[:, 1:], sa_quantile_hats[:, -1:]], dim=1
+                [sa_quantiles[:, 1:], sa_quantile_hats[:, -1:]],
+                dim=1,
             )
 
-            gradient_of_taus = (
-                torch.where(signs_1, values_1, -values_1) +
-                torch.where(signs_2, values_2, -values_2)
+            gradient_of_taus = torch.where(signs_1, values_1, -values_1) + torch.where(
+                signs_2,
+                values_2,
+                -values_2,
             )
         fraction_loss = (gradient_of_taus * taus[:, 1:-1]).sum(1).mean()
         # calculate entropy loss
@@ -176,5 +181,5 @@ class FQFPolicy(QRDQNPolicy):
             "loss": quantile_loss.item() + fraction_entropy_loss.item(),
             "loss/quantile": quantile_loss.item(),
             "loss/fraction": fraction_loss.item(),
-            "loss/entropy": entropy_loss.item()
+            "loss/entropy": entropy_loss.item(),
         }

@@ -8,7 +8,6 @@
 # To see the scenario description go to "../../scenarios/README.md"
 #####################################################################
 
-from __future__ import print_function
 
 from argparse import ArgumentParser
 from time import sleep
@@ -19,8 +18,8 @@ import vizdoom as vzd
 
 if __name__ == "__main__":
     parser = ArgumentParser("ViZDoom example showing how to use SPECTATOR mode.")
-    parser.add_argument('-c', type=str, dest="config", default="D3_battle.cfg")
-    parser.add_argument('-w', type=str, dest="wad_file", default="D3_battle.wad")
+    parser.add_argument("-c", type=str, dest="config", default="D3_battle.cfg")
+    parser.add_argument("-w", type=str, dest="wad_file", default="D3_battle.wad")
     args = parser.parse_args()
     game = vzd.DoomGame()
 

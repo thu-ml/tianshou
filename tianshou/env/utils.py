@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Tuple, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import cloudpickle
 import gymnasium
@@ -9,13 +9,14 @@ from tianshou.env.pettingzoo_env import PettingZooEnv
 if TYPE_CHECKING:
     import gym
 
+# TODO: remove gym entirely? Currently mypy complains in several places
+#  if gym.Env is removed from the Union
 ENV_TYPE = Union[gymnasium.Env, "gym.Env", PettingZooEnv]
 
-gym_new_venv_step_type = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                               np.ndarray]
+gym_new_venv_step_type = tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
 
-class CloudpickleWrapper(object):
+class CloudpickleWrapper:
     """A cloudpickle wrapper used in SubprocVectorEnv."""
 
     def __init__(self, data: Any) -> None:

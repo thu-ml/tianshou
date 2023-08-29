@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union, cast
+from typing import Any, Callable, Literal, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -13,7 +13,7 @@ from tianshou.data.types import (
 from tianshou.policy import BasePolicy
 from tianshou.utils import RunningMeanStd
 
-TDistParams = Union[torch.Tensor, Tuple[torch.Tensor]]
+TDistParams = Union[torch.Tensor, tuple[torch.Tensor]]
 
 
 class PGPolicy(BasePolicy):
@@ -69,7 +69,7 @@ class PGPolicy(BasePolicy):
                     "to deal with unbounded model action space, but find actor model"
                     f"bound action space with max_action={model.max_action}."
                     "Consider using unbounded=True option of the actor model,"
-                    'or set action_scaling to False and action_bound_method to None.'
+                    "or set action_scaling to False and action_bound_method to None.",
                 )
         # TODO: why this try/except? warnings is a standard library module
         except Exception:
@@ -84,7 +84,10 @@ class PGPolicy(BasePolicy):
         self._deterministic_eval = deterministic_eval
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> BatchWithReturnsProtocol:
         r"""Compute the discounted returns (Monte Carlo estimates) for each transition.
 
@@ -108,11 +111,17 @@ class PGPolicy(BasePolicy):
         v_s_ = np.full(indices.shape, self.ret_rms.mean)
         # gae_lambda = 1.0 means we use Monte Carlo estimate
         unnormalized_returns, _ = self.compute_episodic_return(
-            batch, buffer, indices, v_s_=v_s_, gamma=self._gamma, gae_lambda=1.0
+            batch,
+            buffer,
+            indices,
+            v_s_=v_s_,
+            gamma=self._gamma,
+            gae_lambda=1.0,
         )
         if self._rew_norm:
-            batch.returns = (unnormalized_returns -
-                             self.ret_rms.mean) / np.sqrt(self.ret_rms.var + self._eps)
+            batch.returns = (unnormalized_returns - self.ret_rms.mean) / np.sqrt(
+                self.ret_rms.var + self._eps,
+            )
             self.ret_rms.update(unnormalized_returns)
         else:
             batch.returns = unnormalized_returns
@@ -122,14 +131,14 @@ class PGPolicy(BasePolicy):
     def _get_deterministic_action(self, logits: torch.Tensor) -> torch.Tensor:
         if self.action_type == "discrete":
             return logits.argmax(-1)
-        elif self.action_type == "continuous":
+        if self.action_type == "continuous":
             # assume that the mode of the distribution is the first element
             # of the actor's output (the "logits")
             return logits[0]
         raise RuntimeError(
             f"Unknown action type: {self.action_type}. "
             f"This should not happen and might be a bug."
-            f"Supported action types are: 'discrete' and 'continuous'."
+            f"Supported action types are: 'discrete' and 'continuous'.",
         )
 
     def forward(
@@ -167,9 +176,13 @@ class PGPolicy(BasePolicy):
 
     # TODO: why does mypy complain?
     def learn(  # type: ignore
-        self, batch: RolloutBatchProtocol, batch_size: int,
-        repeat: int, *args: Any, **kwargs: Any
-    ) -> Dict[str, List[float]]:
+        self,
+        batch: RolloutBatchProtocol,
+        batch_size: int,
+        repeat: int,
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, list[float]]:
         losses = []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):

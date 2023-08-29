@@ -35,7 +35,9 @@ def get_args():
     parser.add_argument("--render", type=float, default=1 / 35)
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
@@ -70,9 +72,7 @@ def test_il():
     args.action_dim = args.action_shape[0]
     print("Max_action", args.max_action)
 
-    test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -89,7 +89,7 @@ def test_il():
         net,
         action_shape=args.action_shape,
         max_action=args.max_action,
-        device=args.device
+        device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(actor.parameters(), lr=args.lr)
 
@@ -98,7 +98,7 @@ def test_il():
         optim,
         action_space=env.action_space,
         action_scaling=True,
-        action_bound_method="clip"
+        action_bound_method="clip",
     )
 
     # load a previous policy
@@ -138,9 +138,7 @@ def test_il():
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
-        policy.load_state_dict(
-            torch.load(args.resume_path, map_location=torch.device("cpu"))
-        )
+        policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
         policy.eval()
         collector = Collector(policy, env)
         collector.collect(n_episode=1, render=1 / 35)

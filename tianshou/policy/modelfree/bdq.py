@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -46,8 +46,13 @@ class BranchingDQNPolicy(DQNPolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            model, optim, discount_factor, estimation_step, target_update_freq,
-            reward_normalization, is_double
+            model,
+            optim,
+            discount_factor,
+            estimation_step,
+            target_update_freq,
+            reward_normalization,
+            is_double,
         )
         assert estimation_step == 1, "N-step bigger than one is not supported by BDQ"
         self.max_action_num = model.action_per_branch
@@ -93,7 +98,10 @@ class BranchingDQNPolicy(DQNPolicy):
         return cast(BatchWithReturnsProtocol, batch)
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> BatchWithReturnsProtocol:
         """Compute the 1-step return for BDQ targets."""
         return self._compute_return(batch, buffer, indices)
@@ -101,7 +109,7 @@ class BranchingDQNPolicy(DQNPolicy):
     def forward(
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[Dict, BatchProtocol, np.ndarray]] = None,
+        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
@@ -114,8 +122,7 @@ class BranchingDQNPolicy(DQNPolicy):
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         if self._target and self._iter % self._freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
@@ -143,9 +150,7 @@ class BranchingDQNPolicy(DQNPolicy):
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps
-            rand_act = np.random.randint(
-                low=0, high=self.max_action_num, size=(bsz, act.shape[-1])
-            )
+            rand_act = np.random.randint(low=0, high=self.max_action_num, size=(bsz, act.shape[-1]))
             if hasattr(batch.obs, "mask"):
                 rand_act += batch.obs.mask
             act[rand_mask] = rand_act[rand_mask]

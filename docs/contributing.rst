@@ -18,7 +18,7 @@ in the main directory. This installation is removable by
     $ python setup.py develop --uninstall
 
 
-PEP8 Code Style Check and Code Formatter
+PEP8 Code Style Check and Formatting
 ----------------------------------------
 
 Please set up pre-commit by running
@@ -30,23 +30,13 @@ Please set up pre-commit by running
 in the main directory. This should make sure that your contribution is properly
 formatted before every commit.
 
-We follow PEP8 python code style with flake8. To check, in the main directory, run:
+The code is inspected and formatted by `black` and `ruff`. They are executed as
+pre-commit hooks. To format manually you can run e.g.:
 
 .. code-block:: bash
 
-    $ make lint
-
-We use isort and yapf to format all codes. To format, in the main directory, run:
-
-.. code-block:: bash
-
-    $ make format
-
-To check if formatted correctly, in the main directory, run:
-
-.. code-block:: bash
-
-    $ make check-codestyle
+    $ pre-commit run --all-files black
+    $ pre-commit run --all-files ruff
 
 
 Type Check

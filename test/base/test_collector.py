@@ -20,16 +20,16 @@ try:
 except ImportError:
     envpool = None
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from env import MyTestEnv, NXEnv
 else:  # pytest
     from test.base.env import MyTestEnv, NXEnv
 
 
 class MyPolicy(BasePolicy):
-
     def __init__(self, dict_state=False, need_state=True, action_shape=None):
-        """
+        """Mock policy for testing.
+
         :param bool dict_state: if the observation of the environment is a dict
         :param bool need_state: if the policy needs the hidden state (for RNN)
         """
@@ -45,9 +45,7 @@ class MyPolicy(BasePolicy):
             else:
                 state += 1
         if self.dict_state:
-            action_shape = self.action_shape if self.action_shape else len(
-                batch.obs['index']
-            )
+            action_shape = self.action_shape if self.action_shape else len(batch.obs["index"])
             return Batch(act=np.ones(action_shape), state=state)
         action_shape = self.action_shape if self.action_shape else len(batch.obs)
         return Batch(act=np.ones(action_shape), state=state)
@@ -57,7 +55,6 @@ class MyPolicy(BasePolicy):
 
 
 class Logger:
-
     def __init__(self, writer):
         self.cnt = 0
         self.writer = writer
@@ -66,30 +63,28 @@ class Logger:
         # modify info before adding into the buffer, and recorded into tfb
         # if obs && env_id exist -> reset
         # if obs_next/rew/done/info/env_id exist -> normal step
-        if 'rew' in kwargs:
-            info = kwargs['info']
-            info.rew = kwargs['rew']
-            if 'key' in info.keys():
-                self.writer.add_scalar('key', np.mean(info.key), global_step=self.cnt)
+        if "rew" in kwargs:
+            info = kwargs["info"]
+            info.rew = kwargs["rew"]
+            if "key" in info:
+                self.writer.add_scalar("key", np.mean(info.key), global_step=self.cnt)
             self.cnt += 1
             return Batch(info=info)
-        else:
-            return Batch()
+        return Batch()
 
     @staticmethod
     def single_preprocess_fn(**kwargs):
         # same as above, without tfb
-        if 'rew' in kwargs:
-            info = kwargs['info']
-            info.rew = kwargs['rew']
+        if "rew" in kwargs:
+            info = kwargs["info"]
+            info.rew = kwargs["rew"]
             return Batch(info=info)
-        else:
-            return Batch()
+        return Batch()
 
 
-@pytest.mark.parametrize("gym_reset_kwargs", [None, dict()])
+@pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
 def test_collector(gym_reset_kwargs):
-    writer = SummaryWriter('log/collector')
+    writer = SummaryWriter("log/collector")
     logger = Logger(writer)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0) for i in [2, 3, 4, 5]]
 
@@ -128,8 +123,10 @@ def test_collector(gym_reset_kwargs):
     c0.collect(n_step=3, random=True, gym_reset_kwargs=gym_reset_kwargs)
 
     c1 = Collector(
-        policy, venv, VectorReplayBuffer(total_size=100, buffer_num=4),
-        logger.preprocess_fn
+        policy,
+        venv,
+        VectorReplayBuffer(total_size=100, buffer_num=4),
+        logger.preprocess_fn,
     )
     c1.collect(n_step=8, gym_reset_kwargs=gym_reset_kwargs)
     obs = np.zeros(100)
@@ -154,7 +151,8 @@ def test_collector(gym_reset_kwargs):
     obs[[2, 3, 27, 52, 53, 77, 78, 79]] = [0, 1, 2, 2, 3, 2, 3, 4]
     assert np.allclose(c1.buffer.obs[:, 0], obs)
     assert np.allclose(
-        c1.buffer[:].obs_next[..., 0], [1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5]
+        c1.buffer[:].obs_next[..., 0],
+        [1, 2, 1, 2, 1, 2, 3, 1, 2, 3, 4, 1, 2, 3, 4, 5],
     )
     keys[valid_indices] = [1, 1, 1, 1, 1, 1, 1, 1]
     assert np.allclose(c1.buffer.info["key"], keys)
@@ -167,8 +165,10 @@ def test_collector(gym_reset_kwargs):
     c1.collect(n_episode=4, random=True, gym_reset_kwargs=gym_reset_kwargs)
 
     c2 = Collector(
-        policy, dum, VectorReplayBuffer(total_size=100, buffer_num=4),
-        logger.preprocess_fn
+        policy,
+        dum,
+        VectorReplayBuffer(total_size=100, buffer_num=4),
+        logger.preprocess_fn,
     )
     c2.collect(n_episode=7, gym_reset_kwargs=gym_reset_kwargs)
     obs1 = obs.copy()
@@ -179,7 +179,7 @@ def test_collector(gym_reset_kwargs):
     assert np.all(c2obs == obs1) or np.all(c2obs == obs2)
     c2.reset_env(gym_reset_kwargs=gym_reset_kwargs)
     c2.reset_buffer()
-    assert c2.collect(n_episode=8, gym_reset_kwargs=gym_reset_kwargs)['n/ep'] == 8
+    assert c2.collect(n_episode=8, gym_reset_kwargs=gym_reset_kwargs)["n/ep"] == 8
     valid_indices = [4, 5, 28, 29, 30, 54, 55, 56, 57]
     obs[valid_indices] = [0, 1, 0, 1, 2, 0, 1, 2, 3]
     assert np.all(c2.buffer.obs[:, 0] == obs)
@@ -203,22 +203,18 @@ def test_collector(gym_reset_kwargs):
 
     # test NXEnv
     for obs_type in ["array", "object"]:
-        envs = SubprocVectorEnv(
-            [lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]]
-        )
+        envs = SubprocVectorEnv([lambda i=x, t=obs_type: NXEnv(i, t) for x in [5, 10, 15, 20]])
         c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
         c3.collect(n_step=6, gym_reset_kwargs=gym_reset_kwargs)
         assert c3.buffer.obs.dtype == object
 
 
-@pytest.mark.parametrize("gym_reset_kwargs", [None, dict()])
+@pytest.mark.parametrize("gym_reset_kwargs", [None, {}])
 def test_collector_with_async(gym_reset_kwargs):
     env_lens = [2, 3, 4, 5]
-    writer = SummaryWriter('log/async_collector')
+    writer = SummaryWriter("log/async_collector")
     logger = Logger(writer)
-    env_fns = [
-        lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens
-    ]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0.001, random_sleep=True) for i in env_lens]
 
     venv = SubprocVectorEnv(env_fns, wait_num=len(env_fns) - 1)
     policy = MyPolicy()
@@ -266,29 +262,34 @@ def test_collector_with_dict_state():
     c0.collect(n_step=3)
     c0.collect(n_episode=2)
     assert len(c0.buffer) == 10
-    env_fns = [
-        lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True) for i in [2, 3, 4, 5]
-    ]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, dict_state=True) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     envs.seed(666)
     obs, info = envs.reset()
-    assert not np.isclose(obs[0]['rand'], obs[1]['rand'])
+    assert not np.isclose(obs[0]["rand"], obs[1]["rand"])
     c1 = Collector(
-        policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4),
-        Logger.single_preprocess_fn
+        policy,
+        envs,
+        VectorReplayBuffer(total_size=100, buffer_num=4),
+        Logger.single_preprocess_fn,
     )
     c1.collect(n_step=12)
     result = c1.collect(n_episode=8)
-    assert result['n/ep'] == 8
-    lens = np.bincount(result['lens'])
-    assert result['n/st'] == 21 and np.all(lens == [0, 0, 2, 2, 2, 2]) or \
-        result['n/st'] == 20 and np.all(lens == [0, 0, 3, 1, 2, 2])
+    assert result["n/ep"] == 8
+    lens = np.bincount(result["lens"])
+    assert (
+        result["n/st"] == 21
+        and np.all(lens == [0, 0, 2, 2, 2, 2])
+        or result["n/st"] == 20
+        and np.all(lens == [0, 0, 3, 1, 2, 2])
+    )
     batch, _ = c1.buffer.sample(10)
     c0.buffer.update(c1.buffer)
     assert len(c0.buffer) in [42, 43]
     if len(c0.buffer) == 42:
         assert np.all(
-            c0.buffer[:].obs.index[..., 0] == [
+            c0.buffer[:].obs.index[..., 0]
+            == [
                 0,
                 1,
                 2,
@@ -331,11 +332,12 @@ def test_collector_with_dict_state():
                 2,
                 3,
                 4,
-            ]
+            ],
         ), c0.buffer[:].obs.index[..., 0]
     else:
         assert np.all(
-            c0.buffer[:].obs.index[..., 0] == [
+            c0.buffer[:].obs.index[..., 0]
+            == [
                 0,
                 1,
                 2,
@@ -379,11 +381,13 @@ def test_collector_with_dict_state():
                 2,
                 3,
                 4,
-            ]
+            ],
         ), c0.buffer[:].obs.index[..., 0]
     c2 = Collector(
-        policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
-        Logger.single_preprocess_fn
+        policy,
+        envs,
+        VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
+        Logger.single_preprocess_fn,
     )
     c2.collect(n_episode=10)
     batch, _ = c2.buffer.sample(10)
@@ -394,20 +398,24 @@ def test_collector_with_ma():
     policy = MyPolicy()
     c0 = Collector(policy, env, ReplayBuffer(size=100), Logger.single_preprocess_fn)
     # n_step=3 will collect a full episode
-    rew = c0.collect(n_step=3)['rews']
+    rew = c0.collect(n_step=3)["rews"]
     assert len(rew) == 0
-    rew = c0.collect(n_episode=2)['rews']
-    assert rew.shape == (2, 4) and np.all(rew == 1)
+    rew = c0.collect(n_episode=2)["rews"]
+    assert rew.shape == (2, 4)
+    assert np.all(rew == 1)
     env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, ma_rew=4) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     c1 = Collector(
-        policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4),
-        Logger.single_preprocess_fn
+        policy,
+        envs,
+        VectorReplayBuffer(total_size=100, buffer_num=4),
+        Logger.single_preprocess_fn,
     )
-    rew = c1.collect(n_step=12)['rews']
+    rew = c1.collect(n_step=12)["rews"]
     assert rew.shape == (2, 4) and np.all(rew == 1), rew
-    rew = c1.collect(n_episode=8)['rews']
-    assert rew.shape == (8, 4) and np.all(rew == 1)
+    rew = c1.collect(n_episode=8)["rews"]
+    assert rew.shape == (8, 4)
+    assert np.all(rew == 1)
     batch, _ = c1.buffer.sample(10)
     print(batch)
     c0.buffer.update(c1.buffer)
@@ -506,11 +514,14 @@ def test_collector_with_ma():
     assert np.all(c0.buffer[:].rew == [[x] * 4 for x in rew])
     assert np.all(c0.buffer[:].done == rew)
     c2 = Collector(
-        policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
-        Logger.single_preprocess_fn
+        policy,
+        envs,
+        VectorReplayBuffer(total_size=100, buffer_num=4, stack_num=4),
+        Logger.single_preprocess_fn,
     )
-    rew = c2.collect(n_episode=10)['rews']
-    assert rew.shape == (10, 4) and np.all(rew == 1)
+    rew = c2.collect(n_episode=10)["rews"]
+    assert rew.shape == (10, 4)
+    assert np.all(rew == 1)
     batch, _ = c2.buffer.sample(10)
 
 
@@ -539,31 +550,29 @@ def test_collector_with_atari_setting():
     c1.collect(n_episode=3)
     assert np.allclose(c0.buffer.obs, c1.buffer.obs)
     with pytest.raises(AttributeError):
-        c1.buffer.obs_next
+        c1.buffer.obs_next  # noqa: B018
     assert np.all(reference_obs[[1, 2, 3, 4, 4] * 3] == c1.buffer[:].obs_next)
 
     c2 = Collector(
-        policy, env,
-        ReplayBuffer(size=100, ignore_obs_next=True, save_only_last_obs=True)
+        policy,
+        env,
+        ReplayBuffer(size=100, ignore_obs_next=True, save_only_last_obs=True),
     )
     c2.collect(n_step=8)
     assert c2.buffer.obs.shape == (100, 84, 84)
     obs = np.zeros_like(c2.buffer.obs)
     obs[np.arange(8)] = reference_obs[[0, 1, 2, 3, 4, 0, 1, 2], -1]
     assert np.all(c2.buffer.obs == obs)
-    assert np.allclose(
-        c2.buffer[:].obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1]
-    )
+    assert np.allclose(c2.buffer[:].obs_next, reference_obs[[1, 2, 3, 4, 4, 1, 2, 2], -1])
 
     # atari multi buffer
-    env_fns = [
-        lambda x=i: MyTestEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]
-    ]
+    env_fns = [lambda x=i: MyTestEnv(size=x, sleep=0, array_state=True) for i in [2, 3, 4, 5]]
     envs = DummyVectorEnv(env_fns)
     c3 = Collector(policy, envs, VectorReplayBuffer(total_size=100, buffer_num=4))
     c3.collect(n_step=12)
     result = c3.collect(n_episode=9)
-    assert result["n/ep"] == 9 and result["n/st"] == 23
+    assert result["n/ep"] == 9
+    assert result["n/st"] == 23
     assert c3.buffer.obs.shape == (100, 4, 84, 84)
     obs = np.zeros_like(c3.buffer.obs)
     obs[np.arange(8)] = reference_obs[[0, 1, 0, 1, 0, 1, 0, 1]]
@@ -578,18 +587,20 @@ def test_collector_with_atari_setting():
     obs_next[np.arange(75, 85)] = reference_obs[[1, 2, 3, 4, 5, 1, 2, 3, 4, 5]]
     assert np.all(obs_next == c3.buffer.obs_next)
     c4 = Collector(
-        policy, envs,
+        policy,
+        envs,
         VectorReplayBuffer(
             total_size=100,
             buffer_num=4,
             stack_num=4,
             ignore_obs_next=True,
-            save_only_last_obs=True
-        )
+            save_only_last_obs=True,
+        ),
     )
     c4.collect(n_step=12)
     result = c4.collect(n_episode=9)
-    assert result["n/ep"] == 9 and result["n/st"] == 23
+    assert result["n/ep"] == 9
+    assert result["n/st"] == 23
     assert c4.buffer.obs.shape == (100, 84, 84)
     obs = np.zeros_like(c4.buffer.obs)
     slice_obs = reference_obs[:, -1]
@@ -636,7 +647,7 @@ def test_collector_with_atari_setting():
             3,
             4,
             4,
-        ]
+        ],
     )
     obs_next[:, -1] = slice_obs[ref_index]
     ref_index -= 1
@@ -653,21 +664,95 @@ def test_collector_with_atari_setting():
     buf = ReplayBuffer(100, stack_num=4, ignore_obs_next=True, save_only_last_obs=True)
     c5 = Collector(policy, envs, CachedReplayBuffer(buf, 4, 10))
     result_ = c5.collect(n_step=12)
-    assert len(buf) == 5 and len(c5.buffer) == 12
+    assert len(buf) == 5
+    assert len(c5.buffer) == 12
     result = c5.collect(n_episode=9)
-    assert result["n/ep"] == 9 and result["n/st"] == 23
+    assert result["n/ep"] == 9
+    assert result["n/st"] == 23
     assert len(buf) == 35
     assert np.all(
-        buf.obs[:len(buf)] == slice_obs[[
-            0, 1, 0, 1, 2, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 0, 1, 0, 1, 2, 0, 1, 0, 1,
-            2, 3, 0, 1, 2, 0, 1, 2, 3, 4
-        ]]
+        buf.obs[: len(buf)]
+        == slice_obs[
+            [
+                0,
+                1,
+                0,
+                1,
+                2,
+                0,
+                1,
+                0,
+                1,
+                2,
+                3,
+                0,
+                1,
+                2,
+                3,
+                4,
+                0,
+                1,
+                0,
+                1,
+                2,
+                0,
+                1,
+                0,
+                1,
+                2,
+                3,
+                0,
+                1,
+                2,
+                0,
+                1,
+                2,
+                3,
+                4,
+            ]
+        ],
     )
     assert np.all(
-        buf[:].obs_next[:, -1] == slice_obs[[
-            1, 1, 1, 2, 2, 1, 1, 1, 2, 3, 3, 1, 2, 3, 4, 4, 1, 1, 1, 2, 2, 1, 1, 1, 2,
-            3, 3, 1, 2, 2, 1, 2, 3, 4, 4
-        ]]
+        buf[:].obs_next[:, -1]
+        == slice_obs[
+            [
+                1,
+                1,
+                1,
+                2,
+                2,
+                1,
+                1,
+                1,
+                2,
+                3,
+                3,
+                1,
+                2,
+                3,
+                4,
+                4,
+                1,
+                1,
+                1,
+                2,
+                2,
+                1,
+                1,
+                1,
+                2,
+                3,
+                3,
+                1,
+                2,
+                2,
+                1,
+                2,
+                3,
+                4,
+                4,
+            ]
+        ],
     )
     assert len(buf) == len(c5.buffer)
 
@@ -690,7 +775,7 @@ def test_collector_envpool_gym_reset_return_info():
         policy,
         envs,
         VectorReplayBuffer(len(envs) * 10, len(envs)),
-        exploration_noise=True
+        exploration_noise=True,
     )
     c0.collect(n_step=8)
     env_ids = np.zeros(len(envs) * 10)
@@ -698,12 +783,12 @@ def test_collector_envpool_gym_reset_return_info():
     assert np.allclose(c0.buffer.info["env_id"], env_ids)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_collector(gym_reset_kwargs=None)
-    test_collector(gym_reset_kwargs=dict())
+    test_collector(gym_reset_kwargs={})
     test_collector_with_dict_state()
     test_collector_with_ma()
     test_collector_with_atari_setting()
     test_collector_with_async(gym_reset_kwargs=None)
-    test_collector_with_async(gym_reset_kwargs=dict(return_info=True))
+    test_collector_with_async(gym_reset_kwargs={"return_info": True})
     test_collector_envpool_gym_reset_return_info()

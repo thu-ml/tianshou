@@ -2,6 +2,7 @@ import argparse
 import datetime
 import os
 import pprint
+import sys
 
 import numpy as np
 import torch
@@ -46,9 +47,11 @@ def get_args():
     parser.add_argument("--norm-adv", type=int, default=1)
     parser.add_argument("--recompute-adv", type=int, default=0)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--frames-stack", type=int, default=4)
     parser.add_argument("--resume-path", type=str, default=None)
@@ -64,26 +67,26 @@ def get_args():
         "--watch",
         default=False,
         action="store_true",
-        help="watch the play of pre-trained policy only"
+        help="watch the play of pre-trained policy only",
     )
     parser.add_argument("--save-buffer-name", type=str, default=None)
     parser.add_argument(
         "--icm-lr-scale",
         type=float,
-        default=0.,
-        help="use intrinsic curiosity module with this lr scale"
+        default=0.0,
+        help="use intrinsic curiosity module with this lr scale",
     )
     parser.add_argument(
         "--icm-reward-scale",
         type=float,
         default=0.01,
-        help="scaling factor for intrinsic curiosity reward"
+        help="scaling factor for intrinsic curiosity reward",
     )
     parser.add_argument(
         "--icm-forward-loss-weight",
         type=float,
         default=0.2,
-        help="weight for the forward model loss in ICM"
+        help="weight for the forward model loss in ICM",
     )
     return parser.parse_args()
 
@@ -117,20 +120,14 @@ def test_ppo(args=get_args()):
     )
     actor = Actor(net, args.action_shape, device=args.device, softmax_output=False)
     critic = Critic(net, device=args.device)
-    optim = torch.optim.Adam(
-        ActorCritic(actor, critic).parameters(), lr=args.lr, eps=1e-5
-    )
+    optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr, eps=1e-5)
 
     lr_scheduler = None
     if args.lr_decay:
         # decay learning rate to 0 linearly
-        max_update_num = np.ceil(
-            args.step_per_epoch / args.step_per_collect
-        ) * args.epoch
+        max_update_num = np.ceil(args.step_per_epoch / args.step_per_collect) * args.epoch
 
-        lr_scheduler = LambdaLR(
-            optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num
-        )
+        lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
     # define policy
     def dist(p):
@@ -157,9 +154,7 @@ def test_ppo(args=get_args()):
         recompute_advantage=args.recompute_adv,
     ).to(args.device)
     if args.icm_lr_scale > 0:
-        feature_net = DQN(
-            *args.state_shape, args.action_shape, args.device, features_only=True
-        )
+        feature_net = DQN(*args.state_shape, args.action_shape, args.device, features_only=True)
         action_dim = np.prod(args.action_shape)
         feature_dim = feature_net.output_dim
         icm_net = IntrinsicCuriosityModule(
@@ -171,8 +166,12 @@ def test_ppo(args=get_args()):
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
         policy = ICMPolicy(
-            policy, icm_net, icm_optim, args.icm_lr_scale, args.icm_reward_scale,
-            args.icm_forward_loss_weight
+            policy,
+            icm_net,
+            icm_optim,
+            args.icm_lr_scale,
+            args.icm_reward_scale,
+            args.icm_forward_loss_weight,
         ).to(args.device)
     # load a previous policy
     if args.resume_path:
@@ -216,13 +215,12 @@ def test_ppo(args=get_args()):
     def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         if env.spec.reward_threshold:
             return mean_rewards >= env.spec.reward_threshold
-        elif "Pong" in args.task:
+        if "Pong" in args.task:
             return mean_rewards >= 20
-        else:
-            return False
+        return False
 
     def save_checkpoint_fn(epoch, env_step, gradient_step):
         # see also: https://pytorch.org/tutorials/beginner/saving_loading_models.html
@@ -258,7 +256,7 @@ def test_ppo(args=get_args()):
 
     if args.watch:
         watch()
-        exit(0)
+        sys.exit(0)
 
     # test train_collector and start filling replay buffer
     train_collector.collect(n_step=args.batch_size * args.training_num)

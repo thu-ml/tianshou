@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import torch
@@ -49,7 +49,7 @@ class DiscreteSACPolicy(SACPolicy):
         critic2_optim: torch.optim.Optimizer,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
+        alpha: Union[float, tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
         reward_normalization: bool = False,
         estimation_step: int = 1,
         **kwargs: Any,
@@ -98,16 +98,12 @@ class DiscreteSACPolicy(SACPolicy):
             self.critic1_old(batch.obs_next),
             self.critic2_old(batch.obs_next),
         )
-        target_q = target_q.sum(dim=-1) + self._alpha * dist.entropy()
-        return target_q
+        return target_q.sum(dim=-1) + self._alpha * dist.entropy()
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         weight = batch.pop("weight", 1.0)
         target_q = batch.returns.flatten()
-        act = to_torch(
-            batch.act[:, np.newaxis], device=target_q.device, dtype=torch.long
-        )
+        act = to_torch(batch.act[:, np.newaxis], device=target_q.device, dtype=torch.long)
 
         # critic 1
         current_q1 = self.critic1(batch.obs).gather(1, act).flatten()
@@ -162,6 +158,8 @@ class DiscreteSACPolicy(SACPolicy):
         return result
 
     def exploration_noise(
-        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+        self,
+        act: Union[np.ndarray, BatchProtocol],
+        batch: RolloutBatchProtocol,
     ) -> Union[np.ndarray, BatchProtocol]:
         return act

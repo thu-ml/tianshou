@@ -40,9 +40,11 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=1)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
@@ -64,7 +66,11 @@ def get_args():
 
 def test_ddpg(args=get_args()):
     env, train_envs, test_envs = make_mujoco_env(
-        args.task, args.seed, args.training_num, args.test_num, obs_norm=False
+        args.task,
+        args.seed,
+        args.training_num,
+        args.test_num,
+        obs_norm=False,
     )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -78,9 +84,9 @@ def test_ddpg(args=get_args()):
     torch.manual_seed(args.seed)
     # model
     net_a = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = Actor(
-        net_a, args.action_shape, max_action=args.max_action, device=args.device
-    ).to(args.device)
+    actor = Actor(net_a, args.action_shape, max_action=args.max_action, device=args.device).to(
+        args.device,
+    )
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     net_c = Net(
         args.state_shape,

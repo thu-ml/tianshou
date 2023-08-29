@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import os
 import sys
@@ -9,8 +8,16 @@ from setuptools import find_packages, setup
 
 def get_version() -> str:
     # https://packaging.python.org/guides/single-sourcing-package-version/
-    init = open(os.path.join("tianshou", "__init__.py"), "r").read().split()
-    return init[init.index("__version__") + 2][1:-1]
+    with open(os.path.join("tianshou", "__init__.py")) as f:
+        for line in f:
+            if line.startswith("__version__"):
+                return line.strip().split()[-1][1:-1]
+        return None
+
+
+def get_readme() -> str:
+    with open("README.md", encoding="utf8") as f:
+        return f.read()
 
 
 def get_install_requires() -> str:
@@ -31,27 +38,23 @@ def get_extras_require() -> str:
     req = {
         "dev": [
             "sphinx<7",
+            "black>=23.7.0",
+            "ruff>=0.0.285",
             "sphinx_rtd_theme",
             "jinja2",
             "sphinxcontrib-bibtex",
-            "flake8",
-            "flake8-bugbear",
-            "yapf",
-            "isort",
             "pytest",
             "pytest-cov",
             "ray>=1.0.0",
             "wandb>=0.12.0",
             "networkx",
             "mypy",
-            "pydocstyle",
             "doc8",
             "scipy",
             "pillow",
             "pygame>=2.1.0",  # pettingzoo test cases pistonball
             "pymunk>=6.2.1",  # pettingzoo test cases pistonball
             "nni>=2.3,<3.0",  # expect breaking changes at next major version
-            "pytorch_lightning",
             "gym>=0.22.0",
             "shimmy",
         ],
@@ -68,13 +71,13 @@ setup(
     name="tianshou",
     version=get_version(),
     description="A Library for Deep Reinforcement Learning",
-    long_description=open("README.md", encoding="utf8").read(),
+    long_description=get_readme(),
     long_description_content_type="text/markdown",
     url="https://github.com/thu-ml/tianshou",
     author="TSAIL",
     author_email="trinkle23897@gmail.com",
     license="MIT",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     classifiers=[
         # How mature is this project? Common values are
         #   3 - Alpha
@@ -89,15 +92,12 @@ setup(
         "License :: OSI Approved :: MIT License",
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
     keywords="reinforcement learning platform pytorch",
-    packages=find_packages(
-        exclude=["test", "test.*", "examples", "examples.*", "docs", "docs.*"]
-    ),
+    packages=find_packages(exclude=["test", "test.*", "examples", "examples.*", "docs", "docs.*"]),
     install_requires=get_install_requires(),
     extras_require=get_extras_require(),
 )

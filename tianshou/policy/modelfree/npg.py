@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 import numpy as np
 import torch
@@ -67,7 +67,10 @@ class NPGPolicy(A2CPolicy):
         self._damping = 0.1
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> BatchWithAdvantagesProtocol:
         batch = super().process_fn(batch, buffer, indices)
         old_log_prob = []
@@ -80,8 +83,12 @@ class NPGPolicy(A2CPolicy):
         return batch
 
     def learn(  # type: ignore
-        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
-    ) -> Dict[str, List[float]]:
+        self,
+        batch: Batch,
+        batch_size: int,
+        repeat: int,
+        **kwargs: Any,
+    ) -> dict[str, list[float]]:
         actor_losses, vf_losses, kls = [], [], []
         for _ in range(repeat):
             for minibatch in batch.split(batch_size, merge_last=True):
@@ -91,9 +98,7 @@ class NPGPolicy(A2CPolicy):
                 log_prob = dist.log_prob(minibatch.act)
                 log_prob = log_prob.reshape(log_prob.size(0), -1).transpose(0, 1)
                 actor_loss = -(log_prob * minibatch.adv).mean()
-                flat_grads = self._get_flat_grad(
-                    actor_loss, self.actor, retain_graph=True
-                ).detach()
+                flat_grads = self._get_flat_grad(actor_loss, self.actor, retain_graph=True).detach()
 
                 # direction: calculate natural gradient
                 with torch.no_grad():
@@ -102,14 +107,12 @@ class NPGPolicy(A2CPolicy):
                 kl = kl_divergence(old_dist, dist).mean()
                 # calculate first order gradient of kl with respect to theta
                 flat_kl_grad = self._get_flat_grad(kl, self.actor, create_graph=True)
-                search_direction = -self._conjugate_gradients(
-                    flat_grads, flat_kl_grad, nsteps=10
-                )
+                search_direction = -self._conjugate_gradients(flat_grads, flat_kl_grad, nsteps=10)
 
                 # step
                 with torch.no_grad():
                     flat_params = torch.cat(
-                        [param.data.view(-1) for param in self.actor.parameters()]
+                        [param.data.view(-1) for param in self.actor.parameters()],
                     )
                     new_flat_params = flat_params + self._step_size * search_direction
                     self._set_from_flat_params(self.actor, new_flat_params)
@@ -134,8 +137,7 @@ class NPGPolicy(A2CPolicy):
         """Matrix vector product."""
         # caculate second order gradient of kl with respect to theta
         kl_v = (flat_kl_grad * v).sum()
-        flat_kl_grad_grad = self._get_flat_grad(kl_v, self.actor,
-                                                retain_graph=True).detach()
+        flat_kl_grad_grad = self._get_flat_grad(kl_v, self.actor, retain_graph=True).detach()
         return flat_kl_grad_grad + v * self._damping
 
     def _conjugate_gradients(
@@ -162,20 +164,14 @@ class NPGPolicy(A2CPolicy):
             rdotr = new_rdotr
         return x
 
-    def _get_flat_grad(
-        self, y: torch.Tensor, model: nn.Module, **kwargs: Any
-    ) -> torch.Tensor:
+    def _get_flat_grad(self, y: torch.Tensor, model: nn.Module, **kwargs: Any) -> torch.Tensor:
         grads = torch.autograd.grad(y, model.parameters(), **kwargs)  # type: ignore
         return torch.cat([grad.reshape(-1) for grad in grads])
 
-    def _set_from_flat_params(
-        self, model: nn.Module, flat_params: torch.Tensor
-    ) -> nn.Module:
+    def _set_from_flat_params(self, model: nn.Module, flat_params: torch.Tensor) -> nn.Module:
         prev_ind = 0
         for param in model.parameters():
             flat_size = int(np.prod(list(param.size())))
-            param.data.copy_(
-                flat_params[prev_ind:prev_ind + flat_size].view(param.size())
-            )
+            param.data.copy_(flat_params[prev_ind : prev_ind + flat_size].view(param.size()))
             prev_ind += flat_size
         return model

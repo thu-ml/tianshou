@@ -2,6 +2,7 @@ import argparse
 import datetime
 import os
 import pprint
+import sys
 
 import numpy as np
 import torch
@@ -20,14 +21,14 @@ def get_args():
     parser.add_argument("--task", type=str, default="D1_basic")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--eps-test", type=float, default=0.005)
-    parser.add_argument("--eps-train", type=float, default=1.)
+    parser.add_argument("--eps-train", type=float, default=1.0)
     parser.add_argument("--eps-train-final", type=float, default=0.05)
     parser.add_argument("--buffer-size", type=int, default=2000000)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--num-atoms", type=int, default=51)
-    parser.add_argument("--v-min", type=float, default=-10.)
-    parser.add_argument("--v-max", type=float, default=10.)
+    parser.add_argument("--v-min", type=float, default=-10.0)
+    parser.add_argument("--v-max", type=float, default=10.0)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--target-update-freq", type=int, default=500)
     parser.add_argument("--epoch", type=int, default=300)
@@ -38,9 +39,11 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--frames-stack", type=int, default=4)
     parser.add_argument("--skip-num", type=int, default=4)
@@ -72,8 +75,13 @@ def get_args():
 def test_c51(args=get_args()):
     # make environments
     env, train_envs, test_envs = make_vizdoom_env(
-        args.task, args.skip_num, (args.frames_stack, 84, 84), args.save_lmp, args.seed,
-        args.training_num, args.test_num
+        args.task,
+        args.skip_num,
+        (args.frames_stack, 84, 84),
+        args.save_lmp,
+        args.seed,
+        args.training_num,
+        args.test_num,
     )
     args.state_shape = env.observation_space.shape
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -139,17 +147,15 @@ def test_c51(args=get_args()):
     def save_best_fn(policy):
         torch.save(policy.state_dict(), os.path.join(log_path, "policy.pth"))
 
-    def stop_fn(mean_rewards):
+    def stop_fn(mean_rewards: float) -> bool:
         if env.spec.reward_threshold:
             return mean_rewards >= env.spec.reward_threshold
-        else:
-            return False
+        return False
 
     def train_fn(epoch, env_step):
         # nature DQN setting, linear decay in the first 1M steps
         if env_step <= 1e6:
-            eps = args.eps_train - env_step / 1e6 * \
-                (args.eps_train - args.eps_train_final)
+            eps = args.eps_train - env_step / 1e6 * (args.eps_train - args.eps_train_final)
         else:
             eps = args.eps_train_final
         policy.set_eps(eps)
@@ -190,7 +196,7 @@ def test_c51(args=get_args()):
 
     if args.watch:
         watch()
-        exit(0)
+        sys.exit(0)
 
     # test train_collector and start filling replay buffer
     train_collector.collect(n_step=args.batch_size * args.training_num)

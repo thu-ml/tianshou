@@ -16,7 +16,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     # task
     parser.add_argument("--task", type=str, default="Pendulum-v1")
-    parser.add_argument('--reward-threshold', type=float, default=None)
+    parser.add_argument("--reward-threshold", type=float, default=None)
     # network architecture
     parser.add_argument("--common-hidden-sizes", type=int, nargs="*", default=[64, 64])
     parser.add_argument("--action-hidden-sizes", type=int, nargs="*", default=[64])
@@ -39,12 +39,13 @@ def get_args():
     parser.add_argument("--training-num", type=int, default=10)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_bdq(args=get_args()):
@@ -56,9 +57,7 @@ def test_bdq(args=get_args()):
 
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
 
     print("Observations shape:", args.state_shape)
     print("Num branches:", args.num_branches)
@@ -68,13 +67,13 @@ def test_bdq(args=get_args()):
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.training_num)
-        ]
+        ],
     )
     test_envs = DummyVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.test_num)
-        ]
+        ],
     )
 
     # seed
@@ -93,22 +92,20 @@ def test_bdq(args=get_args()):
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = BranchingDQNPolicy(
-        net, optim, args.gamma, target_update_freq=args.target_update_freq
-    )
+    policy = BranchingDQNPolicy(net, optim, args.gamma, target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, args.training_num),
-        exploration_noise=True
+        exploration_noise=True,
     )
     test_collector = Collector(policy, test_envs, exploration_noise=False)
     # policy.set_eps(1)
     train_collector.collect(n_step=args.batch_size * args.training_num)
 
     def train_fn(epoch, env_step):  # exp decay
-        eps = max(args.eps_train * (1 - args.eps_decay)**env_step, args.eps_test)
+        eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
         policy.set_eps(eps)
 
     def test_fn(epoch, env_step):
@@ -141,9 +138,7 @@ def test_bdq(args=get_args()):
         policy.set_eps(args.eps_test)
         test_envs.seed(args.seed)
         test_collector.reset()
-        collector_result = test_collector.collect(
-            n_episode=args.test_num, render=args.render
-        )
+        collector_result = test_collector.collect(n_episode=args.test_num, render=args.render)
         rews, lens = collector_result["rews"], collector_result["lens"]
         print(f"Final reward: {rews.mean()}, length: {lens.mean()}")
 

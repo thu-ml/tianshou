@@ -48,7 +48,9 @@ def get_args():
     # Max perturbation hyper-parameter for BCQ
     parser.add_argument("--phi", default=0.05)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
@@ -84,9 +86,7 @@ def test_bcq():
     print("Max_action", args.max_action)
 
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -100,9 +100,9 @@ def test_bcq():
         hidden_sizes=args.hidden_sizes,
         device=args.device,
     )
-    actor = Perturbation(
-        net_a, max_action=args.max_action, device=args.device, phi=args.phi
-    ).to(args.device)
+    actor = Perturbation(net_a, max_action=args.max_action, device=args.device, phi=args.phi).to(
+        args.device,
+    )
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
     net_c1 = Net(
@@ -201,9 +201,7 @@ def test_bcq():
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
-        policy.load_state_dict(
-            torch.load(args.resume_path, map_location=torch.device("cpu"))
-        )
+        policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
         policy.eval()
         collector = Collector(policy, env)
         collector.collect(n_episode=1, render=1 / 35)

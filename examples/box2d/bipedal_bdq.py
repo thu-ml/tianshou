@@ -21,15 +21,13 @@ def get_args():
     # task
     parser.add_argument("--task", type=str, default="BipedalWalker-v3")
     # network architecture
-    parser.add_argument(
-        "--common-hidden-sizes", type=int, nargs="*", default=[512, 256]
-    )
+    parser.add_argument("--common-hidden-sizes", type=int, nargs="*", default=[512, 256])
     parser.add_argument("--action-hidden-sizes", type=int, nargs="*", default=[128])
     parser.add_argument("--value-hidden-sizes", type=int, nargs="*", default=[128])
     parser.add_argument("--action-per-branch", type=int, default=25)
     # training hyperparameters
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--eps-test", type=float, default=0.)
+    parser.add_argument("--eps-test", type=float, default=0.0)
     parser.add_argument("--eps-train", type=float, default=0.73)
     parser.add_argument("--eps-decay", type=float, default=5e-6)
     parser.add_argument("--buffer-size", type=int, default=100000)
@@ -45,9 +43,11 @@ def get_args():
     parser.add_argument("--test-num", type=int, default=10)
     # other
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     return parser.parse_args()
 
@@ -58,8 +58,9 @@ def test_bdq(args=get_args()):
 
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
-    args.num_branches = args.action_shape if isinstance(args.action_shape,
-                                                        int) else args.action_shape[0]
+    args.num_branches = (
+        args.action_shape if isinstance(args.action_shape, int) else args.action_shape[0]
+    )
 
     print("Observations shape:", args.state_shape)
     print("Num branches:", args.num_branches)
@@ -71,14 +72,14 @@ def test_bdq(args=get_args()):
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.training_num)
-        ]
+        ],
     )
     # test_envs = ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
     test_envs = SubprocVectorEnv(
         [
             lambda: ContinuousToDiscrete(gym.make(args.task), args.action_per_branch)
             for _ in range(args.test_num)
-        ]
+        ],
     )
     # seed
     np.random.seed(args.seed)
@@ -96,15 +97,13 @@ def test_bdq(args=get_args()):
         device=args.device,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    policy = BranchingDQNPolicy(
-        net, optim, args.gamma, target_update_freq=args.target_update_freq
-    )
+    policy = BranchingDQNPolicy(net, optim, args.gamma, target_update_freq=args.target_update_freq)
     # collector
     train_collector = Collector(
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True
+        exploration_noise=True,
     )
     test_collector = Collector(policy, test_envs, exploration_noise=False)
     # policy.set_eps(1)
@@ -122,7 +121,7 @@ def test_bdq(args=get_args()):
         return mean_rewards >= getattr(env.spec.reward_threshold)
 
     def train_fn(epoch, env_step):  # exp decay
-        eps = max(args.eps_train * (1 - args.eps_decay)**env_step, args.eps_test)
+        eps = max(args.eps_train * (1 - args.eps_decay) ** env_step, args.eps_test)
         policy.set_eps(eps)
 
     def test_fn(epoch, env_step):
@@ -143,7 +142,7 @@ def test_bdq(args=get_args()):
         train_fn=train_fn,
         test_fn=test_fn,
         save_best_fn=save_best_fn,
-        logger=logger
+        logger=logger,
     ).run()
 
     # assert stop_fn(result["best_reward"])

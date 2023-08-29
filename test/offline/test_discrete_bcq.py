@@ -49,8 +49,7 @@ def get_args():
     )
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--save-interval", type=int, default=4)
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_discrete_bcq(args=get_args()):
@@ -60,12 +59,8 @@ def test_discrete_bcq(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 185}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
-    test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -73,10 +68,16 @@ def test_discrete_bcq(args=get_args()):
     # model
     net = Net(args.state_shape, args.hidden_sizes[0], device=args.device)
     policy_net = Actor(
-        net, args.action_shape, hidden_sizes=args.hidden_sizes, device=args.device
+        net,
+        args.action_shape,
+        hidden_sizes=args.hidden_sizes,
+        device=args.device,
     ).to(args.device)
     imitation_net = Actor(
-        net, args.action_shape, hidden_sizes=args.hidden_sizes, device=args.device
+        net,
+        args.action_shape,
+        hidden_sizes=args.hidden_sizes,
+        device=args.device,
     ).to(args.device)
     actor_critic = ActorCritic(policy_net, imitation_net)
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
@@ -97,7 +98,8 @@ def test_discrete_bcq(args=get_args()):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
         else:
-            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+            with open(args.load_buffer_name, "rb") as f:
+                buffer = pickle.load(f)
     else:
         buffer = gather_data()
 

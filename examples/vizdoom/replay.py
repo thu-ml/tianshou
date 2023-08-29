@@ -32,5 +32,5 @@ def main(cfg_path="maps/D3_battle.cfg", lmp_path="test.lmp"):
     print("killcount:", killcount)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(*sys.argv[-2:])

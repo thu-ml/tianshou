@@ -1,0 +1,61 @@
+[tool.mypy]
+allow_redefinition = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+pretty = true
+show_error_codes = true
+show_error_context = true
+show_traceback = true
+strict_equality = true
+strict_optional = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+exclude = "^build/|^docs/|^test/|^examples/"
+
+[tool.doc8]
+max-line-length = 1000
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.ruff]
+select = [
+    "ASYNC", "B", "C4", "C90", "COM", "D", "DTZ", "E", "F", "FLY", "G", "I", "ISC", "PIE", "PLC", "PLE", "PLW", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT",
+]
+ignore = [
+    "SIM118", # Needed b/c iter(batch) != iter(batch.keys()). See https://github.com/thu-ml/tianshou/issues/922
+    "E501",   # line too long. black does a good enough job
+    "E741",   # variable names like "l". this isn't a huge problem
+    "B008",   # do not perform function calls in argument defaults. we do this sometimes
+    "B011",   # assert false. we don't use python -O
+    "B028",   # we don't need explicit stacklevel for warnings
+    "D100", "D101", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402",  # docstring stuff
+    "DTZ005",  # we don't need that
+    # remaining rules from https://github.com/psf/black/blob/main/.flake8 (except W503)
+    # this is a simplified version of config, making vscode plugin happy
+    "E402", "E501", "E701", "E731", "C408", "E203"
+]
+unfixable = [
+    "F841",  # unused variable. ruff keeps the call, but mostly we want to get rid of it all
+    "F601",  # automatic fix might obscure issue
+    "F602",  # automatic fix might obscure issue
+    "B018",  # automatic fix might obscure issue
+]
+
+target-version = "py39"
+
+[tool.ruff.mccabe]
+max-complexity = 20
+
+[tool.ruff.per-file-ignores]
+"test/**" = ["D103"]
+"docs/**" = ["D103"]
+"examples/**" = ["D103"]
+"setup.py" = ["D103"]

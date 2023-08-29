@@ -1,17 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-    overload,
-)
+from typing import Any, Callable, Literal, Optional, Union, cast, overload
 
 import gymnasium as gym
 import numpy as np
@@ -89,20 +78,23 @@ class BasePolicy(ABC, nn.Module):
         action_space: Optional[gym.Space] = None,
         action_scaling: bool = False,
         action_bound_method: Optional[Literal["clip", "tanh"]] = None,
-        lr_scheduler: Optional[Union[torch.optim.lr_scheduler.LambdaLR,
-                                     MultipleLRSchedulers]] = None,
+        lr_scheduler: Optional[
+            Union[torch.optim.lr_scheduler.LambdaLR, MultipleLRSchedulers]
+        ] = None,
     ) -> None:
         allowed_action_bound_methods = ("clip", "tanh")
-        if action_bound_method is not None:
-            if action_bound_method not in allowed_action_bound_methods:
-                raise ValueError(
-                    f"Got invalid {action_bound_method=}. "
-                    f"Valid values are: {allowed_action_bound_methods}."
-                )
+        if (
+            action_bound_method is not None
+            and action_bound_method not in allowed_action_bound_methods
+        ):
+            raise ValueError(
+                f"Got invalid {action_bound_method=}. "
+                f"Valid values are: {allowed_action_bound_methods}.",
+            )
         if action_scaling and not isinstance(action_space, Box):
             raise ValueError(
                 f"action_scaling can only be True when action_space is Box but "
-                f"got: {action_space}"
+                f"got: {action_space}",
             )
 
         super().__init__()
@@ -130,7 +122,9 @@ class BasePolicy(ABC, nn.Module):
     #  So we add the default behavior here. It's a little messy, maybe one can
     #  find a better way to do this.
     def exploration_noise(
-        self, act: Union[np.ndarray, BatchProtocol], batch: RolloutBatchProtocol
+        self,
+        act: Union[np.ndarray, BatchProtocol],
+        batch: RolloutBatchProtocol,
     ) -> Union[np.ndarray, BatchProtocol]:
         """Modify the action from policy.forward with exploration noise.
 
@@ -146,8 +140,7 @@ class BasePolicy(ABC, nn.Module):
         return act
 
     def soft_update(self, tgt: nn.Module, src: nn.Module, tau: float) -> None:
-        """Softly update the parameters of target module towards the parameters \
-        of source module."""
+        """Softly update the parameters of target module towards the parameters of source module."""
         for tgt_param, src_param in zip(tgt.parameters(), src.parameters()):
             tgt_param.data.copy_(tau * src_param.data + (1 - tau) * tgt_param.data)
 
@@ -191,7 +184,6 @@ class BasePolicy(ABC, nn.Module):
                 act = policy(batch).act  # doesn't map to the target action range
                 act = policy.map_action(act, batch)
         """
-        pass
 
     @overload
     def map_action(self, act: TBatch) -> TBatch:
@@ -206,7 +198,8 @@ class BasePolicy(ABC, nn.Module):
         ...
 
     def map_action(
-        self, act: Union[BatchProtocol, np.ndarray, torch.Tensor]
+        self,
+        act: Union[BatchProtocol, np.ndarray, torch.Tensor],
     ) -> Union[BatchProtocol, np.ndarray, torch.Tensor]:
         """Map raw network output to action range in gym's env.action_space.
 
@@ -225,8 +218,7 @@ class BasePolicy(ABC, nn.Module):
         :return: action in the same form of input "act" but remap to the target action
             space.
         """
-        if isinstance(self.action_space,
-                      gym.spaces.Box) and isinstance(act, np.ndarray):
+        if isinstance(self.action_space, gym.spaces.Box) and isinstance(act, np.ndarray):
             # currently this action mapping only supports np.ndarray action
             if self.action_bound_method == "clip":
                 act = np.clip(act, -1.0, 1.0)
@@ -241,8 +233,9 @@ class BasePolicy(ABC, nn.Module):
         return act
 
     def map_action_inverse(
-        self, act: Union[BatchProtocol, List, np.ndarray]
-    ) -> Union[BatchProtocol, List, np.ndarray]:
+        self,
+        act: Union[BatchProtocol, list, np.ndarray],
+    ) -> Union[BatchProtocol, list, np.ndarray]:
         """Inverse operation to :meth:`~tianshou.policy.BasePolicy.map_action`.
 
         This function is called in :meth:`~tianshou.data.Collector.collect` for
@@ -268,7 +261,10 @@ class BasePolicy(ABC, nn.Module):
         return act
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> RolloutBatchProtocol:
         """Pre-process the data from the provided replay buffer.
 
@@ -277,8 +273,7 @@ class BasePolicy(ABC, nn.Module):
         return batch
 
     @abstractmethod
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, Any]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, Any]:
         """Update policy with a given batch of data.
 
         :return: A dict, including the data needed to be logged (e.g., loss).
@@ -299,10 +294,12 @@ class BasePolicy(ABC, nn.Module):
             1]" shape. The auto-broadcasting of numerical operation with torch
             tensors will amplify this error.
         """
-        pass
 
     def post_process_fn(
-        self, batch: BatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: BatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> None:
         """Post-process the data from the provided replay buffer.
 
@@ -319,11 +316,15 @@ class BasePolicy(ABC, nn.Module):
                 logger.warning(
                     "batch has no attribute 'weight', but buffer has an "
                     "update_weight method. This is probably a mistake."
-                    "Prioritized replay is disabled for this batch."
+                    "Prioritized replay is disabled for this batch.",
                 )
 
-    def update(self, sample_size: int, buffer: Optional[ReplayBuffer],
-               **kwargs: Any) -> Dict[str, Any]:
+    def update(
+        self,
+        sample_size: int,
+        buffer: Optional[ReplayBuffer],
+        **kwargs: Any,
+    ) -> dict[str, Any]:
         """Update the policy network and replay buffer.
 
         It includes 3 function steps: process_fn, learn, and post_process_fn. In
@@ -379,7 +380,7 @@ class BasePolicy(ABC, nn.Module):
         v_s: Optional[Union[np.ndarray, torch.Tensor]] = None,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         r"""Compute returns over given batch.
 
         Use Implementation of Generalized Advantage Estimator (arXiv:1506.02438)
@@ -451,13 +452,9 @@ class BasePolicy(ABC, nn.Module):
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """
-        assert (
-            not rew_norm
-        ), "Reward normalization in computing n-step returns is unsupported now."
+        assert not rew_norm, "Reward normalization in computing n-step returns is unsupported now."
         if len(indices) != len(batch):
-            raise ValueError(
-                f"Batch size {len(batch)} and indices size {len(indices)} mismatch."
-            )
+            raise ValueError(f"Batch size {len(batch)} and indices size {len(indices)} mismatch.")
 
         rew = buffer.rew
         bsz = len(indices)

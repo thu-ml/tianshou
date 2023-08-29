@@ -1,5 +1,3 @@
-from typing import Dict, List
-
 import torch
 
 
@@ -25,18 +23,18 @@ class MultipleLRSchedulers:
         for scheduler in self.schedulers:
             scheduler.step()
 
-    def state_dict(self) -> List[Dict]:
+    def state_dict(self) -> list[dict]:
         """Get state_dict for each of the learning rate schedulers.
 
         :return: A list of state_dict of learning rate schedulers.
         """
         return [s.state_dict() for s in self.schedulers]
 
-    def load_state_dict(self, state_dict: List[Dict]) -> None:
+    def load_state_dict(self, state_dict: list[dict]) -> None:
         """Load states from state_dict.
 
         :param List[Dict] state_dict: A list of learning rate scheduler
             state_dict, in the same order as the schedulers.
         """
-        for (s, sd) in zip(self.schedulers, state_dict):
+        for s, sd in zip(self.schedulers, state_dict):
             s.__dict__.update(sd)

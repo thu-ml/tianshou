@@ -52,7 +52,9 @@ def get_args():
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=1 / 35)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
@@ -124,9 +126,7 @@ def test_cql():
     print("Max_action", args.max_action)
 
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -145,7 +145,7 @@ def test_cql():
         action_shape=args.action_shape,
         device=args.device,
         unbounded=True,
-        conditioned_sigma=True
+        conditioned_sigma=True,
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
@@ -233,9 +233,7 @@ def test_cql():
         if args.resume_path is None:
             args.resume_path = os.path.join(log_path, "policy.pth")
 
-        policy.load_state_dict(
-            torch.load(args.resume_path, map_location=torch.device("cpu"))
-        )
+        policy.load_state_dict(torch.load(args.resume_path, map_location=torch.device("cpu")))
         policy.eval()
         collector = Collector(policy, env)
         collector.collect(n_episode=1, render=1 / 35)

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 import torch
@@ -86,7 +86,10 @@ class PPOPolicy(A2CPolicy):
         self._actor_critic: ActorCritic
 
     def process_fn(
-        self, batch: RolloutBatchProtocol, buffer: ReplayBuffer, indices: np.ndarray
+        self,
+        batch: RolloutBatchProtocol,
+        buffer: ReplayBuffer,
+        indices: np.ndarray,
     ) -> LogpOldProtocol:
         if self._recompute_adv:
             # buffer input `buffer` and `indices` to be used in `learn()`.
@@ -100,9 +103,13 @@ class PPOPolicy(A2CPolicy):
 
     # TODO: why does mypy complain?
     def learn(  # type: ignore
-        self, batch: RolloutBatchProtocol, batch_size: int,
-        repeat: int, *args: Any, **kwargs: Any
-    ) -> Dict[str, List[float]]:
+        self,
+        batch: RolloutBatchProtocol,
+        batch_size: int,
+        repeat: int,
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, list[float]]:
         losses, clip_losses, vf_losses, ent_losses = [], [], [], []
         for step in range(repeat):
             if self._recompute_adv and step > 0:
@@ -112,17 +119,11 @@ class PPOPolicy(A2CPolicy):
                 dist = self(minibatch).dist
                 if self._norm_adv:
                     mean, std = minibatch.adv.mean(), minibatch.adv.std()
-                    minibatch.adv = (minibatch.adv -
-                                     mean) / (std + self._eps)  # per-batch norm
-                ratio = (
-                    (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
-                )
+                    minibatch.adv = (minibatch.adv - mean) / (std + self._eps)  # per-batch norm
+                ratio = (dist.log_prob(minibatch.act) - minibatch.logp_old).exp().float()
                 ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
                 surr1 = ratio * minibatch.adv
-                surr2 = (
-                    ratio.clamp(1.0 - self._eps_clip, 1.0 + self._eps_clip) *
-                    minibatch.adv
-                )
+                surr2 = ratio.clamp(1.0 - self._eps_clip, 1.0 + self._eps_clip) * minibatch.adv
                 if self._dual_clip:
                     clip1 = torch.min(surr1, surr2)
                     clip2 = torch.max(clip1, self._dual_clip * minibatch.adv)
@@ -132,8 +133,10 @@ class PPOPolicy(A2CPolicy):
                 # calculate loss for critic
                 value = self.critic(minibatch.obs).flatten()
                 if self._value_clip:
-                    v_clip = minibatch.v_s + (value - minibatch.v_s
-                                              ).clamp(-self._eps_clip, self._eps_clip)
+                    v_clip = minibatch.v_s + (value - minibatch.v_s).clamp(
+                        -self._eps_clip,
+                        self._eps_clip,
+                    )
                     vf1 = (minibatch.returns - value).pow(2)
                     vf2 = (minibatch.returns - v_clip).pow(2)
                     vf_loss = torch.max(vf1, vf2).mean()
@@ -141,14 +144,13 @@ class PPOPolicy(A2CPolicy):
                     vf_loss = (minibatch.returns - value).pow(2).mean()
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
-                loss = (
-                    clip_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
-                )
+                loss = clip_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
                 if self._grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
-                        self._actor_critic.parameters(), max_norm=self._grad_norm
+                        self._actor_critic.parameters(),
+                        max_norm=self._grad_norm,
                     )
                 self.optim.step()
                 clip_losses.append(clip_loss.item())

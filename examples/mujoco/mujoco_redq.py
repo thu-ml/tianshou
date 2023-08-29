@@ -40,15 +40,15 @@ def get_args():
     parser.add_argument("--update-per-step", type=int, default=20)
     parser.add_argument("--n-step", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument(
-        "--target-mode", type=str, choices=("min", "mean"), default="min"
-    )
+    parser.add_argument("--target-mode", type=str, choices=("min", "mean"), default="min")
     parser.add_argument("--training-num", type=int, default=1)
     parser.add_argument("--test-num", type=int, default=10)
     parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=0.)
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--resume-path", type=str, default=None)
     parser.add_argument("--resume-id", type=str, default=None)
@@ -70,7 +70,11 @@ def get_args():
 
 def test_redq(args=get_args()):
     env, train_envs, test_envs = make_mujoco_env(
-        args.task, args.seed, args.training_num, args.test_num, obs_norm=False
+        args.task,
+        args.seed,
+        args.training_num,
+        args.test_num,
+        obs_norm=False,
     )
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n

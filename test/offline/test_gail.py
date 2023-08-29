@@ -25,43 +25,44 @@ else:  # pytest
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='Pendulum-v1')
+    parser.add_argument("--task", type=str, default="Pendulum-v1")
     parser.add_argument("--reward-threshold", type=float, default=None)
-    parser.add_argument('--seed', type=int, default=1)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--disc-lr', type=float, default=5e-4)
-    parser.add_argument('--gamma', type=float, default=0.95)
-    parser.add_argument('--epoch', type=int, default=5)
-    parser.add_argument('--step-per-epoch', type=int, default=150000)
-    parser.add_argument('--episode-per-collect', type=int, default=16)
-    parser.add_argument('--repeat-per-collect', type=int, default=2)
-    parser.add_argument('--disc-update-num', type=int, default=2)
-    parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--hidden-sizes', type=int, nargs='*', default=[64, 64])
-    parser.add_argument('--training-num', type=int, default=16)
-    parser.add_argument('--test-num', type=int, default=100)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--disc-lr", type=float, default=5e-4)
+    parser.add_argument("--gamma", type=float, default=0.95)
+    parser.add_argument("--epoch", type=int, default=5)
+    parser.add_argument("--step-per-epoch", type=int, default=150000)
+    parser.add_argument("--episode-per-collect", type=int, default=16)
+    parser.add_argument("--repeat-per-collect", type=int, default=2)
+    parser.add_argument("--disc-update-num", type=int, default=2)
+    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[64, 64])
+    parser.add_argument("--training-num", type=int, default=16)
+    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.0)
     parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     # ppo special
-    parser.add_argument('--vf-coef', type=float, default=0.25)
-    parser.add_argument('--ent-coef', type=float, default=0.0)
-    parser.add_argument('--eps-clip', type=float, default=0.2)
-    parser.add_argument('--max-grad-norm', type=float, default=0.5)
-    parser.add_argument('--gae-lambda', type=float, default=0.95)
-    parser.add_argument('--rew-norm', type=int, default=1)
-    parser.add_argument('--dual-clip', type=float, default=None)
-    parser.add_argument('--value-clip', type=int, default=1)
-    parser.add_argument('--norm-adv', type=int, default=1)
-    parser.add_argument('--recompute-adv', type=int, default=0)
-    parser.add_argument('--resume', action="store_true")
+    parser.add_argument("--vf-coef", type=float, default=0.25)
+    parser.add_argument("--ent-coef", type=float, default=0.0)
+    parser.add_argument("--eps-clip", type=float, default=0.2)
+    parser.add_argument("--max-grad-norm", type=float, default=0.5)
+    parser.add_argument("--gae-lambda", type=float, default=0.95)
+    parser.add_argument("--rew-norm", type=int, default=1)
+    parser.add_argument("--dual-clip", type=float, default=None)
+    parser.add_argument("--value-clip", type=int, default=1)
+    parser.add_argument("--norm-adv", type=int, default=1)
+    parser.add_argument("--recompute-adv", type=int, default=0)
+    parser.add_argument("--resume", action="store_true")
     parser.add_argument("--save-interval", type=int, default=4)
     parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_gail(args=get_args()):
@@ -69,27 +70,22 @@ def test_gail(args=get_args()):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
         else:
-            buffer = pickle.load(open(args.load_buffer_name, "rb"))
+            with open(args.load_buffer_name, "rb") as f:
+                buffer = pickle.load(f)
     else:
         buffer = gather_data()
     env = gym.make(args.task)
     if args.reward_threshold is None:
         default_reward_threshold = {"Pendulum-v0": -1100, "Pendulum-v1": -1100}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
     # you can also use tianshou.env.SubprocVectorEnv
     # train_envs = gym.make(args.task)
-    train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)]
-    )
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -97,12 +93,12 @@ def test_gail(args=get_args()):
     test_envs.seed(args.seed)
     # model
     net = Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device)
-    actor = ActorProb(
-        net, args.action_shape, max_action=args.max_action, device=args.device
-    ).to(args.device)
+    actor = ActorProb(net, args.action_shape, max_action=args.max_action, device=args.device).to(
+        args.device,
+    )
     critic = Critic(
         Net(args.state_shape, hidden_sizes=args.hidden_sizes, device=args.device),
-        device=args.device
+        device=args.device,
     ).to(args.device)
     actor_critic = ActorCritic(actor, critic)
     # orthogonal initialization
@@ -121,7 +117,7 @@ def test_gail(args=get_args()):
             device=args.device,
             concat=True,
         ),
-        device=args.device
+        device=args.device,
     ).to(args.device)
     for m in disc_net.modules():
         if isinstance(m, torch.nn.Linear):
@@ -159,7 +155,9 @@ def test_gail(args=get_args()):
     )
     # collector
     train_collector = Collector(
-        policy, train_envs, VectorReplayBuffer(args.buffer_size, len(train_envs))
+        policy,
+        train_envs,
+        VectorReplayBuffer(args.buffer_size, len(train_envs)),
     )
     test_collector = Collector(policy, test_envs)
     # log
@@ -182,7 +180,8 @@ def test_gail(args=get_args()):
             {
                 "model": policy.state_dict(),
                 "optim": optim.state_dict(),
-            }, ckpt_path
+            },
+            ckpt_path,
         )
         return ckpt_path
 

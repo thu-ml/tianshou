@@ -3,14 +3,14 @@
 import random
 import threading
 import time
-from typing import List, Union
+from typing import Union
 
 import nni.nas.execution.api
 import nni.nas.nn.pytorch as nn
-import nni.nas.strategy as strategy
 import pytest
 import torch
 import torch.nn.functional as F
+from nni.nas import strategy
 from nni.nas.execution import wait_models
 from nni.nas.execution.common import (
     AbstractExecutionEngine,
@@ -26,8 +26,7 @@ from nni.nas.nn.pytorch.mutator import process_inline_mutation
 
 
 class MockExecutionEngine(AbstractExecutionEngine):
-
-    def __init__(self, failure_prob=0.):
+    def __init__(self, failure_prob=0.0):
         self.models = []
         self.failure_prob = failure_prob
         self._resource_left = 4
@@ -45,12 +44,12 @@ class MockExecutionEngine(AbstractExecutionEngine):
         for model in models:
             self.models.append(model)
             self._resource_left -= 1
-            threading.Thread(target=self._model_complete, args=(model, )).start()
+            threading.Thread(target=self._model_complete, args=(model,)).start()
 
-    def list_models(self) -> List[Model]:
+    def list_models(self) -> list[Model]:
         return self.models
 
-    def query_available_resource(self) -> Union[List[WorkerInfo], int]:
+    def query_available_resource(self) -> Union[list[WorkerInfo], int]:
         return self._resource_left
 
     def budget_exhausted(self) -> bool:
@@ -68,24 +67,24 @@ def _reset_execution_engine(engine=None):
 
 
 class Net(nn.Module):
-
     def __init__(self, hidden_size=32, diff_size=False):
-        super(Net, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5, 1)
         self.conv2 = nn.Conv2d(20, 50, 5, 1)
         self.fc1 = nn.LayerChoice(
             [
                 nn.Linear(4 * 4 * 50, hidden_size, bias=True),
-                nn.Linear(4 * 4 * 50, hidden_size, bias=False)
+                nn.Linear(4 * 4 * 50, hidden_size, bias=False),
             ],
-            label='fc1'
+            label="fc1",
         )
         self.fc2 = nn.LayerChoice(
             [
                 nn.Linear(hidden_size, 10, bias=False),
-                nn.Linear(hidden_size, 10, bias=True)
-            ] + ([] if not diff_size else [nn.Linear(hidden_size, 10, bias=False)]),
-            label='fc2'
+                nn.Linear(hidden_size, 10, bias=True),
+            ]
+            + ([] if not diff_size else [nn.Linear(hidden_size, 10, bias=False)]),
+            label="fc2",
         )
 
     def forward(self, x):
@@ -109,7 +108,7 @@ def _get_model_and_mutators(**kwargs):
 
 
 @pytest.mark.skip(
-    reason="NNI currently uses OpenAI Gym"
+    reason="NNI currently uses OpenAI Gym",
 )  # TODO: Remove once NNI transitions to Gymnasium
 def test_rl():
     rl = strategy.PolicyBasedRL(max_collect=2, trial_per_collect=10)
@@ -127,5 +126,5 @@ def test_rl():
     _reset_execution_engine()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_rl()

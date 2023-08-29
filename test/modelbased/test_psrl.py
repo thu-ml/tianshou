@@ -20,24 +20,24 @@ except ImportError:
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='NChain-v0')
-    parser.add_argument('--reward-threshold', type=float, default=None)
-    parser.add_argument('--seed', type=int, default=1)
-    parser.add_argument('--buffer-size', type=int, default=50000)
-    parser.add_argument('--epoch', type=int, default=5)
-    parser.add_argument('--step-per-epoch', type=int, default=1000)
-    parser.add_argument('--episode-per-collect', type=int, default=1)
-    parser.add_argument('--training-num', type=int, default=1)
-    parser.add_argument('--test-num', type=int, default=10)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.0)
-    parser.add_argument('--rew-mean-prior', type=float, default=0.0)
-    parser.add_argument('--rew-std-prior', type=float, default=1.0)
-    parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--eps', type=float, default=0.01)
-    parser.add_argument('--add-done-loop', action="store_true", default=False)
+    parser.add_argument("--task", type=str, default="NChain-v0")
+    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--buffer-size", type=int, default=50000)
+    parser.add_argument("--epoch", type=int, default=5)
+    parser.add_argument("--step-per-epoch", type=int, default=1000)
+    parser.add_argument("--episode-per-collect", type=int, default=1)
+    parser.add_argument("--training-num", type=int, default=1)
+    parser.add_argument("--test-num", type=int, default=10)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.0)
+    parser.add_argument("--rew-mean-prior", type=float, default=0.0)
+    parser.add_argument("--rew-std-prior", type=float, default=1.0)
+    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--eps", type=float, default=0.01)
+    parser.add_argument("--add-done-loop", action="store_true", default=False)
     parser.add_argument(
-        '--logger',
+        "--logger",
         type=str,
         default="none",  # TODO: Change to "wandb" once wandb supports Gym >=0.26.0
         choices=["wandb", "tensorboard", "none"],
@@ -48,17 +48,11 @@ def get_args():
 @pytest.mark.skipif(envpool is None, reason="EnvPool doesn't support this platform")
 def test_psrl(args=get_args()):
     # if you want to use python vector env, please refer to other test scripts
-    train_envs = env = envpool.make_gymnasium(
-        args.task, num_envs=args.training_num, seed=args.seed
-    )
-    test_envs = envpool.make_gymnasium(
-        args.task, num_envs=args.test_num, seed=args.seed
-    )
+    train_envs = env = envpool.make_gymnasium(args.task, num_envs=args.training_num, seed=args.seed)
+    test_envs = envpool.make_gymnasium(args.task, num_envs=args.test_num, seed=args.seed)
     if args.reward_threshold is None:
         default_reward_threshold = {"NChain-v0": 3400}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     print("reward threshold:", args.reward_threshold)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -72,24 +66,26 @@ def test_psrl(args=get_args()):
     rew_mean_prior = np.full((n_state, n_action), args.rew_mean_prior)
     rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)
     policy = PSRLPolicy(
-        trans_count_prior, rew_mean_prior, rew_std_prior, args.gamma, args.eps,
-        args.add_done_loop
+        trans_count_prior,
+        rew_mean_prior,
+        rew_std_prior,
+        args.gamma,
+        args.eps,
+        args.add_done_loop,
     )
     # collector
     train_collector = Collector(
         policy,
         train_envs,
         VectorReplayBuffer(args.buffer_size, len(train_envs)),
-        exploration_noise=True
+        exploration_noise=True,
     )
     test_collector = Collector(policy, test_envs)
     # Logger
     if args.logger == "wandb":
-        logger = WandbLogger(
-            save_interval=1, project='psrl', name='wandb_test', config=args
-        )
+        logger = WandbLogger(save_interval=1, project="psrl", name="wandb_test", config=args)
     if args.logger != "none":
-        log_path = os.path.join(args.logdir, args.task, 'psrl')
+        log_path = os.path.join(args.logdir, args.task, "psrl")
         writer = SummaryWriter(log_path)
         writer.add_text("args", str(args))
         if args.logger == "tensorboard":
@@ -119,7 +115,7 @@ def test_psrl(args=get_args()):
         test_in_train=False,
     ).run()
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pprint.pprint(result)
         # Let's watch its performance!
         policy.eval()
@@ -132,5 +128,5 @@ def test_psrl(args=get_args()):
         assert result["best_reward"] >= env.spec.reward_threshold
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_psrl()

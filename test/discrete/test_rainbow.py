@@ -19,43 +19,42 @@ from tianshou.utils.net.discrete import NoisyLinear
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='CartPole-v0')
-    parser.add_argument('--reward-threshold', type=float, default=None)
-    parser.add_argument('--seed', type=int, default=1626)
-    parser.add_argument('--eps-test', type=float, default=0.05)
-    parser.add_argument('--eps-train', type=float, default=0.1)
-    parser.add_argument('--buffer-size', type=int, default=20000)
-    parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--num-atoms', type=int, default=51)
-    parser.add_argument('--v-min', type=float, default=-10.)
-    parser.add_argument('--v-max', type=float, default=10.)
-    parser.add_argument('--noisy-std', type=float, default=0.1)
-    parser.add_argument('--n-step', type=int, default=3)
-    parser.add_argument('--target-update-freq', type=int, default=320)
-    parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--step-per-epoch', type=int, default=8000)
-    parser.add_argument('--step-per-collect', type=int, default=8)
-    parser.add_argument('--update-per-step', type=float, default=0.125)
-    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument("--task", type=str, default="CartPole-v0")
+    parser.add_argument("--reward-threshold", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=1626)
+    parser.add_argument("--eps-test", type=float, default=0.05)
+    parser.add_argument("--eps-train", type=float, default=0.1)
+    parser.add_argument("--buffer-size", type=int, default=20000)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--gamma", type=float, default=0.9)
+    parser.add_argument("--num-atoms", type=int, default=51)
+    parser.add_argument("--v-min", type=float, default=-10.0)
+    parser.add_argument("--v-max", type=float, default=10.0)
+    parser.add_argument("--noisy-std", type=float, default=0.1)
+    parser.add_argument("--n-step", type=int, default=3)
+    parser.add_argument("--target-update-freq", type=int, default=320)
+    parser.add_argument("--epoch", type=int, default=10)
+    parser.add_argument("--step-per-epoch", type=int, default=8000)
+    parser.add_argument("--step-per-collect", type=int, default=8)
+    parser.add_argument("--update-per-step", type=float, default=0.125)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[128, 128, 128, 128])
+    parser.add_argument("--training-num", type=int, default=8)
+    parser.add_argument("--test-num", type=int, default=100)
+    parser.add_argument("--logdir", type=str, default="log")
+    parser.add_argument("--render", type=float, default=0.0)
+    parser.add_argument("--prioritized-replay", action="store_true", default=False)
+    parser.add_argument("--alpha", type=float, default=0.6)
+    parser.add_argument("--beta", type=float, default=0.4)
+    parser.add_argument("--beta-final", type=float, default=1.0)
+    parser.add_argument("--resume", action="store_true")
     parser.add_argument(
-        '--hidden-sizes', type=int, nargs='*', default=[128, 128, 128, 128]
-    )
-    parser.add_argument('--training-num', type=int, default=8)
-    parser.add_argument('--test-num', type=int, default=100)
-    parser.add_argument('--logdir', type=str, default='log')
-    parser.add_argument('--render', type=float, default=0.)
-    parser.add_argument('--prioritized-replay', action="store_true", default=False)
-    parser.add_argument('--alpha', type=float, default=0.6)
-    parser.add_argument('--beta', type=float, default=0.4)
-    parser.add_argument('--beta-final', type=float, default=1.)
-    parser.add_argument('--resume', action="store_true")
-    parser.add_argument(
-        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--save-interval", type=int, default=4)
-    args = parser.parse_known_args()[0]
-    return args
+    return parser.parse_known_args()[0]
 
 
 def test_rainbow(args=get_args()):
@@ -64,18 +63,12 @@ def test_rainbow(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     if args.reward_threshold is None:
         default_reward_threshold = {"CartPole-v0": 195}
-        args.reward_threshold = default_reward_threshold.get(
-            args.task, env.spec.reward_threshold
-        )
+        args.reward_threshold = default_reward_threshold.get(args.task, env.spec.reward_threshold)
     # train_envs = gym.make(args.task)
     # you can also use tianshou.env.SubprocVectorEnv
-    train_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.training_num)]
-    )
+    train_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.training_num)])
     # test_envs = gym.make(args.task)
-    test_envs = DummyVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)]
-    )
+    test_envs = DummyVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
     # seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -94,11 +87,7 @@ def test_rainbow(args=get_args()):
         device=args.device,
         softmax=True,
         num_atoms=args.num_atoms,
-        dueling_param=({
-            "linear_layer": noisy_linear
-        }, {
-            "linear_layer": noisy_linear
-        }),
+        dueling_param=({"linear_layer": noisy_linear}, {"linear_layer": noisy_linear}),
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = RainbowPolicy(
@@ -143,8 +132,7 @@ def test_rainbow(args=get_args()):
         if env_step <= 10000:
             policy.set_eps(args.eps_train)
         elif env_step <= 50000:
-            eps = args.eps_train - (env_step - 10000) / \
-                40000 * (0.9 * args.eps_train)
+            eps = args.eps_train - (env_step - 10000) / 40000 * (0.9 * args.eps_train)
             policy.set_eps(eps)
         else:
             policy.set_eps(0.1 * args.eps_train)
@@ -153,8 +141,7 @@ def test_rainbow(args=get_args()):
             if env_step <= 10000:
                 beta = args.beta
             elif env_step <= 50000:
-                beta = args.beta - (env_step - 10000) / \
-                    40000 * (args.beta - args.beta_final)
+                beta = args.beta - (env_step - 10000) / 40000 * (args.beta - args.beta_final)
             else:
                 beta = args.beta_final
             buf.set_beta(beta)
@@ -171,10 +158,12 @@ def test_rainbow(args=get_args()):
             {
                 "model": policy.state_dict(),
                 "optim": optim.state_dict(),
-            }, ckpt_path
+            },
+            ckpt_path,
         )
         buffer_path = os.path.join(log_path, "train_buffer.pkl")
-        pickle.dump(train_collector.buffer, open(buffer_path, "wb"))
+        with open(buffer_path, "wb") as f:
+            pickle.dump(train_collector.buffer, f)
         return ckpt_path
 
     if args.resume:
@@ -183,14 +172,15 @@ def test_rainbow(args=get_args()):
         ckpt_path = os.path.join(log_path, "checkpoint.pth")
         if os.path.exists(ckpt_path):
             checkpoint = torch.load(ckpt_path, map_location=args.device)
-            policy.load_state_dict(checkpoint['model'])
-            policy.optim.load_state_dict(checkpoint['optim'])
+            policy.load_state_dict(checkpoint["model"])
+            policy.optim.load_state_dict(checkpoint["optim"])
             print("Successfully restore policy and optim.")
         else:
             print("Fail to restore policy and optim.")
         buffer_path = os.path.join(log_path, "train_buffer.pkl")
         if os.path.exists(buffer_path):
-            train_collector.buffer = pickle.load(open(buffer_path, "rb"))
+            with open(buffer_path, "rb") as f:
+                train_collector.buffer = pickle.load(f)
             print("Successfully restore buffer.")
         else:
             print("Fail to restore buffer.")
@@ -235,7 +225,7 @@ def test_rainbow_resume(args=get_args()):
 
 def test_prainbow(args=get_args()):
     args.prioritized_replay = True
-    args.gamma = .95
+    args.gamma = 0.95
     args.seed = 1
     test_rainbow(args)
 

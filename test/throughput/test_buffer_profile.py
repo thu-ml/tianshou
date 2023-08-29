@@ -59,7 +59,7 @@ def test_vectorbuffer(task="Pendulum-v1"):
                 obs, info = env.reset()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     t0 = time.time()
     test_replaybuffer(sys.argv[-1])
     print("test replaybuffer: ", time.time() - t0)

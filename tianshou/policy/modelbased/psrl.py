@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, Union, cast
+from typing import Any, Optional, Union, cast
 
 import numpy as np
 import torch
@@ -9,7 +9,7 @@ from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
 
 
-class PSRLModel(object):
+class PSRLModel:
     """Implementation of Posterior Sampling Reinforcement Learning Model.
 
     :param np.ndarray trans_count_prior: dirichlet prior (alphas), with shape
@@ -77,14 +77,12 @@ class PSRLModel(object):
         self.rew_square_sum += rew_square_sum
         raw_std2 = self.rew_square_sum / sum_count - self.rew_mean**2
         self.rew_std = np.sqrt(
-            1 / (sum_count / (raw_std2 + self.__eps) + 1 / self.rew_std_prior**2)
+            1 / (sum_count / (raw_std2 + self.__eps) + 1 / self.rew_std_prior**2),
         )
         self.rew_count = sum_count
 
     def sample_trans_prob(self) -> np.ndarray:
-        sample_prob = torch.distributions.Dirichlet(torch.from_numpy(self.trans_count)
-                                                    ).sample().numpy()
-        return sample_prob
+        return torch.distributions.Dirichlet(torch.from_numpy(self.trans_count)).sample().numpy()
 
     def sample_reward(self) -> np.ndarray:
         return np.random.normal(self.rew_mean, self.rew_std)
@@ -106,7 +104,7 @@ class PSRLModel(object):
         discount_factor: float,
         eps: float,
         value: np.ndarray,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Value iteration solver for MDPs.
 
         :param np.ndarray trans_prob: transition probabilities, with shape
@@ -174,9 +172,13 @@ class PSRLPolicy(BasePolicy):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        assert (0.0 <= discount_factor <= 1.0), "discount factor should be in [0, 1]"
+        assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self.model = PSRLModel(
-            trans_count_prior, rew_mean_prior, rew_std_prior, discount_factor, epsilon
+            trans_count_prior,
+            rew_mean_prior,
+            rew_std_prior,
+            discount_factor,
+            epsilon,
         )
         self._add_done_loop = add_done_loop
 
@@ -201,8 +203,7 @@ class PSRLPolicy(BasePolicy):
         result = Batch(act=act)
         return cast(ActBatchProtocol, result)
 
-    def learn(self, batch: RolloutBatchProtocol, *args: Any,
-              **kwargs: Any) -> Dict[str, float]:
+    def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         n_s, n_a = self.model.n_state, self.model.n_action
         trans_count = np.zeros((n_s, n_a, n_s))
         rew_sum = np.zeros((n_s, n_a))
@@ -210,8 +211,7 @@ class PSRLPolicy(BasePolicy):
         rew_count = np.zeros((n_s, n_a))
         for minibatch in batch.split(size=1):
             obs, act, obs_next = minibatch.obs, minibatch.act, minibatch.obs_next
-            assert not isinstance(obs, BatchProtocol), \
-                "Observations cannot be Batches here"
+            assert not isinstance(obs, BatchProtocol), "Observations cannot be Batches here"
             trans_count[obs, act, obs_next] += 1
             rew_sum[obs, act] += minibatch.rew
             rew_square_sum[obs, act] += minibatch.rew**2
