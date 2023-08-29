@@ -70,20 +70,11 @@ def get_args():
 
 
 def add_returns(buffer: ReplayBuffer, gamma: float = 0.99) -> ReplayBuffer:
-    """Adds the returns for a given ReplayBuffer.
-
-    Args:
-        buffer: The ReplayBuffer to compute returns for.
-        gamma: The discount factor.
-
-    Returns:
-        A new ReplayBuffer with the returns.
-    """
     data_dict = buffer._meta.__dict__
     start_idx = np.concatenate([np.array([0]), np.where(data_dict['done'])[0] + 1])
     end_idx = np.concatenate(
         [np.where(data_dict['done'])[0] + 1,
-         np.array([len(data_dict['done'])])]
+         np.array([len(data_dict['done'])])],
     )
     ep_rew = [data_dict['rew'][i:j] for i, j in zip(start_idx, end_idx)]
     ep_ret = []

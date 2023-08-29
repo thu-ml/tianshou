@@ -257,7 +257,7 @@ class CQLPolicy(SACPolicy):
 
         if self.calibrated:
             returns = batch.calibration_returns.unsqueeze(1).repeat(
-                (1, self.num_repeat_actions)
+                (1, self.num_repeat_actions),
             ).view(-1, 1)
             random_value1 = torch.max(random_value1, returns)
             random_value2 = torch.max(random_value2, returns)
