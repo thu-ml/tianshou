@@ -72,9 +72,9 @@ pygame = "^2.1.0"
 pymunk = "^6.2.1"
 pytest = "*"
 pytest-cov = "*"
-# optional import for parallelization. Without installing it, the corresponding modules are not parsed by linters
-# TODO: include ray in extras?
-ray = "^2"
+# Ray currently causes issues when installed on windows server 2022 in CI
+# If users want to use ray, they should install it manually.
+ray = {version = "^2", markers = "sys_platform != 'win32'"}
 ruff = "^0.0.285"
 scipy = "*"
 sphinx = "<7"

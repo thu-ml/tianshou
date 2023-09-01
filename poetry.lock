@@ -3431,4 +3431,4 @@ pybullet = ["pybullet"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "8fdb6a93ca3975aef83378b2120594a251fa23512cce9b5f33ad6983e18250f1"
+content-hash = "aa8f433504ed81ea43b66f7760f0fccd3cb89895c17a1f5170bfdda67969c275"
