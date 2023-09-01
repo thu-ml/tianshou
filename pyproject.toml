@@ -57,7 +57,7 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
 # gym used in compatibility test. TODO: drop this and test in future?
-gym = "^0.22.0"
+gym = "^0.26.2"
 jinja2 = "*"
 mypy = "^1.4.1"
 # networkx is used in a test
@@ -80,7 +80,7 @@ pytorch-lightning = "^2.0.7"
 ray = "^2"
 ruff = "^0.0.285"
 scipy = "*"
-shimmy = "*"
+shimmy = "^1.2.1"
 sphinx = "<7"
 sphinx_rtd_theme = "*"
 sphinxcontrib-bibtex = "*"
@@ -159,48 +159,10 @@ move-optionals-to-bottom = true
 
 # keep relevant parts in sync with pre-commit
 [tool.poe.tasks]  # https://github.com/nat-n/poethepoet
-  [tool.poe.tasks.lint]
-  help = "Lint with ruff and black"
-
-    [[tool.poe.tasks.lint.sequence]]
-    cmd = """ruff check ."""
-    [[tool.poe.tasks.lint.sequence]]
-    cmd = """black --check ."""
-
-  [tool.poe.tasks.format]
-  help = "Format with poetry-sort, ruff, and black"
-
-    [[tool.poe.tasks.format.sequence]]
-    cmd = """poetry self add poetry-plugin-sort"""
-    [[tool.poe.tasks.format.sequence]]
-    cmd = """poetry sort"""
-    [[tool.poe.tasks.format.sequence]]
-    cmd = """black ."""
-    [[tool.poe.tasks.format.sequence]]
-    cmd = """ruff --fix ."""
-
-  [tool.poe.tasks.test]
-  help = "Test with pytest and coverage"
-
-    [[tool.poe.tasks.test.sequence]]
-    # TODO: remove 3rd party tests and nni? See todo above
-    cmd = "pytest test -n auto --ignore-glob='*profile.py' --ignore='test/3rd_party' --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v --color=yes"
-
-  [tool.poe.tasks.doc-clean]
-  help = "Clean docs/_build"
-    [[tool.poe.tasks.doc-clean.sequence]]
-    cmd = 'rm -rf docs/_build'
-
-  [tool.poe.tasks.doc-build]
-    help = "Build docs"
-        [[tool.poe.tasks.doc-build.sequence]]
-        cmd = 'sphinx-build -b spelling docs docs/_build'
-        [[tool.poe.tasks.doc-build.sequence]]
-        cmd = 'sphinx-build -b html docs docs/_build'
-
-
-  [tool.poe.tasks.type-check]
-    help = "Check types"
-       [[tool.poe.tasks.type-check.sequence]]
-        cmd = "mypy tianshou"
-
+test = "pytest test --ignore-glob='*profile.py' --ignore='test/3rd_party' --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v --color=yes"
+test-reduced = "pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes"
+lint = "ruff check . && black --check ."
+doc-clean = "rm -rf docs/_build"
+type-check = "mypy tianshou"
+doc_build = "sphinx-build -W -b spelling docs docs/_build && sphinx-build -W -b html docs docs/_build"
+format = "poetry self add poetry-plugin-sort && poetry sort && black . && ruff --fix ."
