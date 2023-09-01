@@ -299,7 +299,7 @@ def test_batch_cat_and_stack():
     b4 = Batch(a=np.ones((3, 4)), b=torch.ones((2, 5)), c=Batch(d=[[0], [3]]))
     b34_stack = Batch.stack((b3, b4), axis=1)
     assert np.all(b34_stack.a == np.stack((b3.a, b4.a), axis=1))
-    assert np.all(b34_stack.c.d == list(map(list, zip(b3.c.d, b4.c.d))))
+    assert np.all(b34_stack.c.d == list(map(list, zip(b3.c.d, b4.c.d, strict=True))))
     b5_dict = np.array([{"a": False, "b": {"c": 2.0, "d": 1.0}}, {"a": True, "b": {"c": 3.0}}])
     b5 = Batch(b5_dict)
     assert b5.a[0] == np.array(False)

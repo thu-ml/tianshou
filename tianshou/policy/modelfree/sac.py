@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -62,10 +62,10 @@ class SACPolicy(DDPGPolicy):
         critic2_optim: torch.optim.Optimizer,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: Union[float, tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
+        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
         reward_normalization: bool = False,
         estimation_step: int = 1,
-        exploration_noise: Optional[BaseNoise] = None,
+        exploration_noise: BaseNoise | None = None,
         deterministic_eval: bool = True,
         **kwargs: Any,
     ) -> None:
@@ -90,7 +90,7 @@ class SACPolicy(DDPGPolicy):
         self.critic2_optim = critic2_optim
 
         self._is_auto_alpha = False
-        self._alpha: Union[float, torch.Tensor]
+        self._alpha: float | torch.Tensor
         if isinstance(alpha, tuple):
             self._is_auto_alpha = True
             self._target_entropy, self._log_alpha, self._alpha_optim = alpha
@@ -118,7 +118,7 @@ class SACPolicy(DDPGPolicy):
     def forward(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        state: dict | Batch | np.ndarray | None = None,
         input: str = "obs",
         **kwargs: Any,
     ) -> DistLogProbBatchProtocol:

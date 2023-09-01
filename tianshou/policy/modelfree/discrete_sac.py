@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import torch
@@ -49,7 +49,7 @@ class DiscreteSACPolicy(SACPolicy):
         critic2_optim: torch.optim.Optimizer,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: Union[float, tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
+        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
         reward_normalization: bool = False,
         estimation_step: int = 1,
         **kwargs: Any,
@@ -72,12 +72,12 @@ class DiscreteSACPolicy(SACPolicy):
             action_bound_method=None,
             **kwargs,
         )
-        self._alpha: Union[float, torch.Tensor]
+        self._alpha: float | torch.Tensor
 
     def forward(  # type: ignore
         self,
         batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        state: dict | Batch | np.ndarray | None = None,
         input: str = "obs",
         **kwargs: Any,
     ) -> Batch:
@@ -159,7 +159,7 @@ class DiscreteSACPolicy(SACPolicy):
 
     def exploration_noise(
         self,
-        act: Union[np.ndarray, BatchProtocol],
+        act: np.ndarray | BatchProtocol,
         batch: RolloutBatchProtocol,
-    ) -> Union[np.ndarray, BatchProtocol]:
+    ) -> np.ndarray | BatchProtocol:
         return act

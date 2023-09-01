@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -109,7 +109,7 @@ class BranchingDQNPolicy(DQNPolicy):
     def forward(
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
@@ -144,9 +144,9 @@ class BranchingDQNPolicy(DQNPolicy):
 
     def exploration_noise(
         self,
-        act: Union[np.ndarray, BatchProtocol],
+        act: np.ndarray | BatchProtocol,
         batch: RolloutBatchProtocol,
-    ) -> Union[np.ndarray, BatchProtocol]:
+    ) -> np.ndarray | BatchProtocol:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps

@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 from numba import njit
@@ -22,7 +22,7 @@ class ReplayBufferManager(ReplayBuffer):
         Please refer to :class:`~tianshou.data.ReplayBuffer` for other APIs' usage.
     """
 
-    def __init__(self, buffer_list: Union[list[ReplayBuffer], list[HERReplayBuffer]]) -> None:
+    def __init__(self, buffer_list: list[ReplayBuffer] | list[HERReplayBuffer]) -> None:
         self.buffer_num = len(buffer_list)
         self.buffers = np.array(buffer_list, dtype=object)
         offset, size = [], 0
@@ -58,7 +58,7 @@ class ReplayBufferManager(ReplayBuffer):
             buf.reset(keep_statistics=keep_statistics)
 
     def _set_batch_for_children(self) -> None:
-        for offset, buf in zip(self._offset, self.buffers):
+        for offset, buf in zip(self._offset, self.buffers, strict=True):
             buf.set_batch(self._meta[offset : offset + buf.maxsize])
 
     def set_batch(self, batch: RolloutBatchProtocol) -> None:
@@ -67,11 +67,14 @@ class ReplayBufferManager(ReplayBuffer):
 
     def unfinished_index(self) -> np.ndarray:
         return np.concatenate(
-            [buf.unfinished_index() + offset for offset, buf in zip(self._offset, self.buffers)],
+            [
+                buf.unfinished_index() + offset
+                for offset, buf in zip(self._offset, self.buffers, strict=True)
+            ],
         )
 
-    def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
-        if isinstance(index, (list, np.ndarray)):
+    def prev(self, index: int | np.ndarray) -> np.ndarray:
+        if isinstance(index, list | np.ndarray):
             return _prev_index(
                 np.asarray(index),
                 self._extend_offset,
@@ -87,8 +90,8 @@ class ReplayBufferManager(ReplayBuffer):
             self._lengths,
         )[0]
 
-    def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
-        if isinstance(index, (list, np.ndarray)):
+    def next(self, index: int | np.ndarray) -> np.ndarray:
+        if isinstance(index, list | np.ndarray):
             return _next_index(
                 np.asarray(index),
                 self._extend_offset,
@@ -111,7 +114,7 @@ class ReplayBufferManager(ReplayBuffer):
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+        buffer_ids: np.ndarray | list[int] | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into ReplayBufferManager.
 
@@ -171,7 +174,10 @@ class ReplayBufferManager(ReplayBuffer):
             return np.array([], int)
         if self._sample_avail and self.stack_num > 1:
             all_indices = np.concatenate(
-                [buf.sample_indices(0) + offset for offset, buf in zip(self._offset, self.buffers)],
+                [
+                    buf.sample_indices(0) + offset
+                    for offset, buf in zip(self._offset, self.buffers, strict=True)
+                ],
             )
             if batch_size == 0:
                 return all_indices
@@ -191,7 +197,7 @@ class ReplayBufferManager(ReplayBuffer):
         return np.concatenate(
             [
                 buf.sample_indices(bsz) + offset
-                for offset, buf, bsz in zip(self._offset, self.buffers, sample_num)
+                for offset, buf, bsz in zip(self._offset, self.buffers, sample_num, strict=True)
             ],
         )
 
@@ -237,7 +243,7 @@ class HERReplayBufferManager(ReplayBufferManager):
         for buf in self.buffers:
             buf._restore_cache()
 
-    def save_hdf5(self, path: str, compression: Optional[str] = None) -> None:
+    def save_hdf5(self, path: str, compression: str | None = None) -> None:
         self._restore_cache()
         return super().save_hdf5(path, compression)
 
@@ -252,7 +258,7 @@ class HERReplayBufferManager(ReplayBufferManager):
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+        buffer_ids: np.ndarray | list[int] | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         self._restore_cache()
         return super().add(batch, buffer_ids)
@@ -268,7 +274,14 @@ def _prev_index(
 ) -> np.ndarray:
     index = index % offset[-1]
     prev_index = np.zeros_like(index)
-    for start, end, cur_len, last in zip(offset[:-1], offset[1:], lengths, last_index):
+    # disable B905 until strict=True in zip is implemented in numba
+    # https://github.com/numba/numba/issues/8943
+    for start, end, cur_len, last in zip(  # noqa: B905
+        offset[:-1],
+        offset[1:],
+        lengths,
+        last_index,
+    ):
         mask = (start <= index) & (index < end)
         correct_cur_len = max(1, cur_len)
         if np.sum(mask) > 0:
@@ -289,7 +302,14 @@ def _next_index(
 ) -> np.ndarray:
     index = index % offset[-1]
     next_index = np.zeros_like(index)
-    for start, end, cur_len, last in zip(offset[:-1], offset[1:], lengths, last_index):
+    # disable B905 until strict=True in zip is implemented in numba
+    # https://github.com/numba/numba/issues/8943
+    for start, end, cur_len, last in zip(  # noqa: B905
+        offset[:-1],
+        offset[1:],
+        lengths,
+        last_index,
+    ):
         mask = (start <= index) & (index < end)
         correct_cur_len = max(1, cur_len)
         if np.sum(mask) > 0:

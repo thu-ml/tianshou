@@ -1,5 +1,3 @@
-from typing import Optional, Union
-
 import numpy as np
 
 from tianshou.data import ReplayBuffer, ReplayBufferManager
@@ -48,7 +46,7 @@ class CachedReplayBuffer(ReplayBufferManager):
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+        buffer_ids: np.ndarray | list[int] | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into CachedReplayBuffer.
 

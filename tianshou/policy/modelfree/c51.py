@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import torch
@@ -71,7 +71,7 @@ class C51Policy(DQNPolicy):
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         return self.support.repeat(len(indices), 1)  # shape: [bsz, num_atoms]
 
-    def compute_q_value(self, logits: torch.Tensor, mask: Optional[np.ndarray]) -> torch.Tensor:
+    def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
         return super().compute_q_value((logits * self.support).sum(2), mask)
 
     def _target_dist(self, batch: RolloutBatchProtocol) -> torch.Tensor:

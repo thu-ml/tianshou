@@ -1,4 +1,5 @@
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -76,8 +77,8 @@ class BaseVectorEnv:
         self,
         env_fns: list[Callable[[], ENV_TYPE]],
         worker_fn: Callable[[Callable[[], gym.Env]], EnvWorker],
-        wait_num: Optional[int] = None,
-        timeout: Optional[float] = None,
+        wait_num: int | None = None,
+        timeout: float | None = None,
     ) -> None:
         self._env_fns = env_fns
         # A VectorEnv contains a pool of EnvWorkers, which corresponds to
@@ -130,7 +131,7 @@ class BaseVectorEnv:
     def get_env_attr(
         self,
         key: str,
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        id: int | list[int] | np.ndarray | None = None,
     ) -> list[Any]:
         """Get an attribute from the underlying environments.
 
@@ -155,7 +156,7 @@ class BaseVectorEnv:
         self,
         key: str,
         value: Any,
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        id: int | list[int] | np.ndarray | None = None,
     ) -> None:
         """Set an attribute in the underlying environments.
 
@@ -176,13 +177,13 @@ class BaseVectorEnv:
 
     def _wrap_id(
         self,
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
-    ) -> Union[list[int], np.ndarray]:
+        id: int | list[int] | np.ndarray | None = None,
+    ) -> list[int] | np.ndarray:
         if id is None:
             return list(range(self.env_num))
         return [id] if np.isscalar(id) else id  # type: ignore
 
-    def _assert_id(self, id: Union[list[int], np.ndarray]) -> None:
+    def _assert_id(self, id: list[int] | np.ndarray) -> None:
         for i in id:
             assert (
                 i not in self.waiting_id
@@ -191,9 +192,9 @@ class BaseVectorEnv:
 
     def reset(
         self,
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        id: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, Union[dict, list[dict]]]:
+    ) -> tuple[np.ndarray, dict | list[dict]]:
         """Reset the state of some envs and return initial observations.
 
         If id is None, reset the state of all the environments and return
@@ -211,7 +212,7 @@ class BaseVectorEnv:
         ret_list = [self.workers[i].recv() for i in id]
 
         assert (
-            isinstance(ret_list[0], (tuple, list))
+            isinstance(ret_list[0], tuple | list)
             and len(ret_list[0]) == 2
             and isinstance(ret_list[0][1], dict)
         ), "The environment does not adhere to the Gymnasium's API."
@@ -233,8 +234,8 @@ class BaseVectorEnv:
 
     def step(
         self,
-        action: Union[np.ndarray, torch.Tensor],
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        action: np.ndarray | torch.Tensor,
+        id: int | list[int] | np.ndarray | None = None,
     ) -> gym_new_venv_step_type:
         """Run one timestep of some environments' dynamics.
 
@@ -282,7 +283,7 @@ class BaseVectorEnv:
             if action is not None:
                 self._assert_id(id)
                 assert len(action) == len(id)
-                for act, env_id in zip(action, id):
+                for act, env_id in zip(action, id, strict=True):
                     self.workers[env_id].send(act)
                     self.waiting_conn.append(self.workers[env_id])
                     self.waiting_id.append(env_id)
@@ -301,7 +302,7 @@ class BaseVectorEnv:
                 env_return[-1]["env_id"] = env_id  # Add `env_id` to info
                 result.append(env_return)
                 self.ready_id.append(env_id)
-        obs_list, rew_list, term_list, trunc_list, info_list = tuple(zip(*result))
+        obs_list, rew_list, term_list, trunc_list, info_list = tuple(zip(*result, strict=True))
         try:
             obs_stack = np.stack(obs_list)
         except ValueError:  # different len(obs)
@@ -314,7 +315,7 @@ class BaseVectorEnv:
             np.stack(info_list),
         )
 
-    def seed(self, seed: Optional[Union[int, list[int]]] = None) -> list[Optional[list[int]]]:
+    def seed(self, seed: int | list[int] | None = None) -> list[list[int] | None]:
         """Set the seed for all environments.
 
         Accept ``None``, an int (which will extend ``i`` to
@@ -325,14 +326,14 @@ class BaseVectorEnv:
             which a reproducer pass to "seed".
         """
         self._assert_is_not_closed()
-        seed_list: Union[list[None], list[int]]
+        seed_list: list[None] | list[int]
         if seed is None:
             seed_list = [seed] * self.env_num
         elif isinstance(seed, int):
             seed_list = [seed + i for i in range(self.env_num)]
         else:
             seed_list = seed
-        return [w.seed(s) for w, s in zip(self.workers, seed_list)]
+        return [w.seed(s) for w, s in zip(self.workers, seed_list, strict=True)]
 
     def render(self, **kwargs: Any) -> list[Any]:
         """Render all of the environments."""

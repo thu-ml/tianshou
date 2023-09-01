@@ -103,12 +103,11 @@ max-line-length = 1000
 
 [tool.black]
 line-length = 100
-target-version = ['py311']
+target-version = ["py311"]
 
 [tool.ruff]
 select = [
     "ASYNC", "B", "C4", "C90", "COM", "D", "DTZ", "E", "F", "FLY", "G", "I", "ISC", "PIE", "PLC", "PLE", "PLW", "RET", "RUF", "RSE", "SIM", "TID", "UP", "W", "YTT",
-    "UP007" # Replace Union and Optional with |
 ]
 ignore = [
     "SIM118", # Needed b/c iter(batch) != iter(batch.keys()). See https://github.com/thu-ml/tianshou/issues/922
@@ -131,9 +130,10 @@ unfixable = [
 ]
 extend-fixable = [
     "F401",  # unused import
+    "B905" , # bugbear
 ]
 
-target-version = "py39"
+target-version = "py311"
 
 [tool.ruff.mccabe]
 max-complexity = 20

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -14,7 +15,7 @@ class EnvWorker(ABC):
     def __init__(self, env_fn: Callable[[], gym.Env]) -> None:
         self._env_fn = env_fn
         self.is_closed = False
-        self.result: Union[gym_new_venv_step_type, tuple[np.ndarray, dict]]
+        self.result: gym_new_venv_step_type | tuple[np.ndarray, dict]
         self.action_space = self.get_env_attr("action_space")
         self.is_reset = False
 
@@ -26,7 +27,7 @@ class EnvWorker(ABC):
     def set_env_attr(self, key: str, value: Any) -> None:
         pass
 
-    def send(self, action: Optional[np.ndarray]) -> None:
+    def send(self, action: np.ndarray | None) -> None:
         """Send action signal to low-level worker.
 
         When action is None, it indicates sending "reset" signal; otherwise
@@ -45,7 +46,7 @@ class EnvWorker(ABC):
                 self.is_reset = False
                 self.send_action(action)
 
-    def recv(self) -> Union[gym_new_venv_step_type, tuple[np.ndarray, dict]]:
+    def recv(self) -> gym_new_venv_step_type | tuple[np.ndarray, dict]:
         """Receive result from low-level worker.
 
         If the last "send" function sends a NULL action, it only returns a
@@ -80,12 +81,12 @@ class EnvWorker(ABC):
     def wait(
         workers: list["EnvWorker"],
         wait_num: int,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> list["EnvWorker"]:
         """Given a list of workers, return those ready ones."""
         raise NotImplementedError
 
-    def seed(self, seed: Optional[int] = None) -> Optional[list[int]]:
+    def seed(self, seed: int | None = None) -> list[int] | None:
         return self.action_space.seed(seed)  # issue 299
 
     @abstractmethod

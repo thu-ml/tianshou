@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -41,7 +41,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.options.update(alpha=alpha, beta=beta)
         self._weight_norm = weight_norm
 
-    def init_weight(self, index: Union[int, np.ndarray]) -> None:
+    def init_weight(self, index: int | np.ndarray) -> None:
         self.weight[index] = self._max_prio**self._alpha
 
     def update(self, buffer: ReplayBuffer) -> np.ndarray:
@@ -52,7 +52,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+        buffer_ids: np.ndarray | list[int] | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         ptr, ep_rew, ep_len, ep_idx = super().add(batch, buffer_ids)
         self.init_weight(ptr)
@@ -64,7 +64,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             return self.weight.get_prefix_sum_idx(scalar)  # type: ignore
         return super().sample_indices(batch_size)
 
-    def get_weight(self, index: Union[int, np.ndarray]) -> Union[float, np.ndarray]:
+    def get_weight(self, index: int | np.ndarray) -> float | np.ndarray:
         """Get the importance sampling weight.
 
         The "weight" in the returned Batch is the weight on loss function to debias
@@ -76,7 +76,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         # simplified formula: (p_j/p_min)**(-beta)
         return (self.weight[index] / self._min_prio) ** (-self._beta)
 
-    def update_weight(self, index: np.ndarray, new_weight: Union[np.ndarray, torch.Tensor]) -> None:
+    def update_weight(self, index: np.ndarray, new_weight: np.ndarray | torch.Tensor) -> None:
         """Update priority weight by index in this buffer.
 
         :param np.ndarray index: index you want to update weight.
@@ -87,7 +87,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self._max_prio = max(self._max_prio, weight.max())
         self._min_prio = min(self._min_prio, weight.min())
 
-    def __getitem__(self, index: Union[slice, int, list[int], np.ndarray]) -> PrioBatchProtocol:
+    def __getitem__(self, index: slice | int | list[int] | np.ndarray) -> PrioBatchProtocol:
         if isinstance(index, slice):  # change slice to np array
             # buffer[:] will get all available data
             indices = (

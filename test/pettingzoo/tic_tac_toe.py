@@ -2,7 +2,6 @@ import argparse
 import os
 from copy import deepcopy
 from functools import partial
-from typing import Optional
 
 import gymnasium
 import numpy as np
@@ -19,7 +18,7 @@ from tianshou.utils import TensorboardLogger
 from tianshou.utils.net.common import Net
 
 
-def get_env(render_mode: Optional[str] = None):
+def get_env(render_mode: str | None = None):
     return PettingZooEnv(tictactoe_v3.env(render_mode=render_mode))
 
 
@@ -93,9 +92,9 @@ def get_args() -> argparse.Namespace:
 
 def get_agents(
     args: argparse.Namespace = get_args(),
-    agent_learn: Optional[BasePolicy] = None,
-    agent_opponent: Optional[BasePolicy] = None,
-    optim: Optional[torch.optim.Optimizer] = None,
+    agent_learn: BasePolicy | None = None,
+    agent_opponent: BasePolicy | None = None,
+    optim: torch.optim.Optimizer | None = None,
 ) -> tuple[BasePolicy, torch.optim.Optimizer, list]:
     env = get_env()
     observation_space = (
@@ -142,9 +141,9 @@ def get_agents(
 
 def train_agent(
     args: argparse.Namespace = get_args(),
-    agent_learn: Optional[BasePolicy] = None,
-    agent_opponent: Optional[BasePolicy] = None,
-    optim: Optional[torch.optim.Optimizer] = None,
+    agent_learn: BasePolicy | None = None,
+    agent_opponent: BasePolicy | None = None,
+    optim: torch.optim.Optimizer | None = None,
 ) -> tuple[dict, BasePolicy]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
@@ -221,8 +220,8 @@ def train_agent(
 
 def watch(
     args: argparse.Namespace = get_args(),
-    agent_learn: Optional[BasePolicy] = None,
-    agent_opponent: Optional[BasePolicy] = None,
+    agent_learn: BasePolicy | None = None,
+    agent_opponent: BasePolicy | None = None,
 ) -> None:
     env = DummyVectorEnv([partial(get_env, render_mode="human")])
     policy, optim, agents = get_agents(args, agent_learn=agent_learn, agent_opponent=agent_opponent)

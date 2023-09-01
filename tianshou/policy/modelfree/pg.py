@@ -1,4 +1,5 @@
-from typing import Any, Callable, Literal, Optional, Union, cast
+from collections.abc import Callable
+from typing import Any, Literal, cast
 
 import numpy as np
 import torch
@@ -13,7 +14,7 @@ from tianshou.data.types import (
 from tianshou.policy import BasePolicy
 from tianshou.utils import RunningMeanStd
 
-TDistParams = Union[torch.Tensor, tuple[torch.Tensor]]
+TDistParams = torch.Tensor | tuple[torch.Tensor]
 
 
 class PGPolicy(BasePolicy):
@@ -50,7 +51,7 @@ class PGPolicy(BasePolicy):
         discount_factor: float = 0.99,
         reward_normalization: bool = False,
         action_scaling: bool = True,
-        action_bound_method: Optional[Literal["clip", "tanh"]] = "clip",
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         deterministic_eval: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -144,7 +145,7 @@ class PGPolicy(BasePolicy):
     def forward(
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> DistBatchProtocol:
         """Compute action over the given batch data by applying the actor.

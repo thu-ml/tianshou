@@ -43,10 +43,10 @@ def recurse_comp(a, b):
     try:
         if isinstance(a, np.ndarray):
             if a.dtype == object:
-                return np.array([recurse_comp(m, n) for m, n in zip(a, b)]).all()
+                return np.array([recurse_comp(m, n) for m, n in zip(a, b, strict=True)]).all()
             return np.allclose(a, b)
-        if isinstance(a, (list, tuple)):
-            return np.array([recurse_comp(m, n) for m, n in zip(a, b)]).all()
+        if isinstance(a, list | tuple):
+            return np.array([recurse_comp(m, n) for m, n in zip(a, b, strict=True)]).all()
         if isinstance(a, dict):
             return np.array([recurse_comp(a[k], b[k]) for k in a]).all()
     except Exception:
@@ -177,7 +177,7 @@ def test_vecenv(size=10, num=8, sleep=0.001):
             if sum(C + D):
                 A, _ = v.reset(np.where(C + D)[0])
             o.append([A, B, C, D, E])
-        for index, infos in enumerate(zip(*o)):
+        for index, infos in enumerate(zip(*o, strict=True)):
             if index == 4:  # do not check info here
                 continue
             for info in infos:
@@ -301,7 +301,7 @@ def run_align_norm_obs(raw_env, train_env, test_env, action_list):
             obs = reset_result_to_obs(reset_result)
             train_obs.append(obs)
     ref_rms = RunningMeanStd()
-    for ro, to in zip(raw_obs, train_obs):
+    for ro, to in zip(raw_obs, train_obs, strict=True):
         ref_rms.update(ro)
         no = (ro - ref_rms.mean) / np.sqrt(ref_rms.var + eps)
         assert np.allclose(no, to)
@@ -324,7 +324,7 @@ def run_align_norm_obs(raw_env, train_env, test_env, action_list):
             reset_result = test_env.reset(np.where(done)[0])
             obs = reset_result_to_obs(reset_result)
             test_obs.append(obs)
-    for ro, to in zip(raw_obs, test_obs):
+    for ro, to in zip(raw_obs, test_obs, strict=True):
         no = (ro - ref_rms.mean) / np.sqrt(ref_rms.var + eps)
         assert np.allclose(no, to)
 

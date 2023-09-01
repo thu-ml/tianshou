@@ -1,6 +1,6 @@
 import warnings
 from collections.abc import Sequence
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -43,8 +43,8 @@ class Actor(nn.Module):
         action_shape: Sequence[int],
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
-        device: Union[str, int, torch.device] = "cpu",
-        preprocess_net_output_dim: Optional[int] = None,
+        device: str | int | torch.device = "cpu",
+        preprocess_net_output_dim: int | None = None,
     ) -> None:
         super().__init__()
         self.device = device
@@ -62,9 +62,9 @@ class Actor(nn.Module):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
+        obs: np.ndarray | torch.Tensor,
         state: Any = None,
-        info: Optional[dict[str, Any]] = None,
+        info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
         """Mapping: obs -> logits -> action."""
         if info is None:
@@ -103,8 +103,8 @@ class Critic(nn.Module):
         self,
         preprocess_net: nn.Module,
         hidden_sizes: Sequence[int] = (),
-        device: Union[str, int, torch.device] = "cpu",
-        preprocess_net_output_dim: Optional[int] = None,
+        device: str | int | torch.device = "cpu",
+        preprocess_net_output_dim: int | None = None,
         linear_layer: type[nn.Linear] = nn.Linear,
         flatten_input: bool = True,
     ) -> None:
@@ -124,9 +124,9 @@ class Critic(nn.Module):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
-        act: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        info: Optional[dict[str, Any]] = None,
+        obs: np.ndarray | torch.Tensor,
+        act: np.ndarray | torch.Tensor | None = None,
+        info: dict[str, Any] | None = None,
     ) -> torch.Tensor:
         """Mapping: (s, a) -> logits -> Q(s, a)."""
         if info is None:
@@ -180,10 +180,10 @@ class ActorProb(nn.Module):
         action_shape: Sequence[int],
         hidden_sizes: Sequence[int] = (),
         max_action: float = 1.0,
-        device: Union[str, int, torch.device] = "cpu",
+        device: str | int | torch.device = "cpu",
         unbounded: bool = False,
         conditioned_sigma: bool = False,
-        preprocess_net_output_dim: Optional[int] = None,
+        preprocess_net_output_dim: int | None = None,
     ) -> None:
         super().__init__()
         if unbounded and not np.isclose(max_action, 1.0):
@@ -209,9 +209,9 @@ class ActorProb(nn.Module):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
+        obs: np.ndarray | torch.Tensor,
         state: Any = None,
-        info: Optional[dict[str, Any]] = None,
+        info: dict[str, Any] | None = None,
     ) -> tuple[tuple[torch.Tensor, torch.Tensor], Any]:
         """Mapping: obs -> logits -> (mu, sigma)."""
         if info is None:
@@ -243,7 +243,7 @@ class RecurrentActorProb(nn.Module):
         action_shape: Sequence[int],
         hidden_layer_size: int = 128,
         max_action: float = 1.0,
-        device: Union[str, int, torch.device] = "cpu",
+        device: str | int | torch.device = "cpu",
         unbounded: bool = False,
         conditioned_sigma: bool = False,
     ) -> None:
@@ -270,9 +270,9 @@ class RecurrentActorProb(nn.Module):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
-        state: Optional[dict[str, torch.Tensor]] = None,
-        info: Optional[dict[str, Any]] = None,
+        obs: np.ndarray | torch.Tensor,
+        state: dict[str, torch.Tensor] | None = None,
+        info: dict[str, Any] | None = None,
     ) -> tuple[tuple[torch.Tensor, torch.Tensor], dict[str, torch.Tensor]]:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         if info is None:
@@ -329,7 +329,7 @@ class RecurrentCritic(nn.Module):
         layer_num: int,
         state_shape: Sequence[int],
         action_shape: Sequence[int] = [0],
-        device: Union[str, int, torch.device] = "cpu",
+        device: str | int | torch.device = "cpu",
         hidden_layer_size: int = 128,
     ) -> None:
         super().__init__()
@@ -346,9 +346,9 @@ class RecurrentCritic(nn.Module):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
-        act: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        info: Optional[dict[str, Any]] = None,
+        obs: np.ndarray | torch.Tensor,
+        act: np.ndarray | torch.Tensor | None = None,
+        info: dict[str, Any] | None = None,
     ) -> torch.Tensor:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         if info is None:
@@ -399,7 +399,7 @@ class Perturbation(nn.Module):
         self,
         preprocess_net: nn.Module,
         max_action: float,
-        device: Union[str, int, torch.device] = "cpu",
+        device: str | int | torch.device = "cpu",
         phi: float = 0.05,
     ):
         # preprocess_net: input_dim=state_dim+action_dim, output_dim=action_dim
@@ -448,7 +448,7 @@ class VAE(nn.Module):
         hidden_dim: int,
         latent_dim: int,
         max_action: float,
-        device: Union[str, torch.device] = "cpu",
+        device: str | torch.device = "cpu",
     ):
         super().__init__()
         self.encoder = encoder
@@ -485,7 +485,7 @@ class VAE(nn.Module):
     def decode(
         self,
         state: torch.Tensor,
-        latent_z: Union[torch.Tensor, None] = None,
+        latent_z: torch.Tensor | None = None,
     ) -> torch.Tensor:
         # decode(state) -> action
         if latent_z is None:

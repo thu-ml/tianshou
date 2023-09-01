@@ -1,4 +1,5 @@
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import torch
@@ -68,7 +69,7 @@ class PPOPolicy(A2CPolicy):
         optim: torch.optim.Optimizer,
         dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         eps_clip: float = 0.2,
-        dual_clip: Optional[float] = None,
+        dual_clip: float | None = None,
         value_clip: bool = False,
         advantage_normalization: bool = True,
         recompute_advantage: bool = False,

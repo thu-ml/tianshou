@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import torch
@@ -30,7 +30,7 @@ class VectorEnvWrapper(BaseVectorEnv):
     def get_env_attr(
         self,
         key: str,
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        id: int | list[int] | np.ndarray | None = None,
     ) -> list[Any]:
         return self.venv.get_env_attr(key, id)
 
@@ -38,25 +38,25 @@ class VectorEnvWrapper(BaseVectorEnv):
         self,
         key: str,
         value: Any,
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        id: int | list[int] | np.ndarray | None = None,
     ) -> None:
         return self.venv.set_env_attr(key, value, id)
 
     def reset(
         self,
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        id: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, Union[dict, list[dict]]]:
+    ) -> tuple[np.ndarray, dict | list[dict]]:
         return self.venv.reset(id, **kwargs)
 
     def step(
         self,
-        action: Union[np.ndarray, torch.Tensor],
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        action: np.ndarray | torch.Tensor,
+        id: int | list[int] | np.ndarray | None = None,
     ) -> gym_new_venv_step_type:
         return self.venv.step(action, id)
 
-    def seed(self, seed: Optional[Union[int, list[int]]] = None) -> list[Optional[list[int]]]:
+    def seed(self, seed: int | list[int] | None = None) -> list[list[int] | None]:
         return self.venv.seed(seed)
 
     def render(self, **kwargs: Any) -> list[Any]:
@@ -80,9 +80,9 @@ class VectorEnvNormObs(VectorEnvWrapper):
 
     def reset(
         self,
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        id: int | list[int] | np.ndarray | None = None,
         **kwargs: Any,
-    ) -> tuple[np.ndarray, Union[dict, list[dict]]]:
+    ) -> tuple[np.ndarray, dict | list[dict]]:
         obs, info = self.venv.reset(id, **kwargs)
 
         if isinstance(obs, tuple):  # type: ignore
@@ -98,8 +98,8 @@ class VectorEnvNormObs(VectorEnvWrapper):
 
     def step(
         self,
-        action: Union[np.ndarray, torch.Tensor],
-        id: Optional[Union[int, list[int], np.ndarray]] = None,
+        action: np.ndarray | torch.Tensor,
+        id: int | list[int] | np.ndarray | None = None,
     ) -> gym_new_venv_step_type:
         step_results = self.venv.step(action, id)
         if self.obs_rms and self.update_obs_rms:

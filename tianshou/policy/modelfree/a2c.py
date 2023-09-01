@@ -1,4 +1,5 @@
-from typing import Any, Callable, Optional, cast
+from collections.abc import Callable
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -59,7 +60,7 @@ class A2CPolicy(PGPolicy):
         dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,
-        max_grad_norm: Optional[float] = None,
+        max_grad_norm: float | None = None,
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
         **kwargs: Any,

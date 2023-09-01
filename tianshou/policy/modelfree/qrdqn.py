@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import torch
@@ -73,7 +73,7 @@ class QRDQNPolicy(DQNPolicy):
             next_dist = next_batch.logits
         return next_dist[np.arange(len(act)), act, :]
 
-    def compute_q_value(self, logits: torch.Tensor, mask: Optional[np.ndarray]) -> torch.Tensor:
+    def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
         return super().compute_q_value(logits.mean(2), mask)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:

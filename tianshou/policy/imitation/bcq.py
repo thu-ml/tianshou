@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import torch
@@ -57,7 +57,7 @@ class BCQPolicy(BasePolicy):
         critic2_optim: torch.optim.Optimizer,
         vae: VAE,
         vae_optim: torch.optim.Optimizer,
-        device: Union[str, torch.device] = "cpu",
+        device: str | torch.device = "cpu",
         gamma: float = 0.99,
         tau: float = 0.005,
         lmbda: float = 0.75,
@@ -100,7 +100,7 @@ class BCQPolicy(BasePolicy):
     def forward(
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> Batch:
         """Compute action over the given batch data."""

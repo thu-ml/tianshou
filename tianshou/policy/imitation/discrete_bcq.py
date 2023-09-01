@@ -1,5 +1,5 @@
 import math
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -89,7 +89,7 @@ class DiscreteBCQPolicy(DQNPolicy):
     def forward(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        state: dict | Batch | np.ndarray | None = None,
         input: str = "obs",
         **kwargs: Any,
     ) -> ImitationBatchProtocol:
