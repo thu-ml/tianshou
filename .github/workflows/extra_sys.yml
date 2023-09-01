@@ -35,7 +35,7 @@ jobs:
       - name: Install the project dependencies
         # ugly as hell, but well...
         # see https://github.com/python-poetry/poetry/issues/7611
-        run: poetry install --with dev --no-root || poetry install --with dev --no-root || poetry install --with dev --no-root
+        run: poetry install --with dev || poetry install --with dev || poetry install --with dev
       - name: wandb login
         run: poetry run wandb login e2366d661b89f2bee877c40bee15502d67b7abef
       - name: Test with pytest
