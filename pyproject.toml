@@ -37,6 +37,12 @@ tensorboard = "^2.5.0"
 # Torch 2.0.1 causes problems, see https://github.com/pytorch/pytorch/issues/100974
 torch = "^2.0.0, !=2.0.1"
 tqdm = "*"
+virtualenv = [
+ # special sauce b/c of a flaky bug in poetry on windows
+ # see https://github.com/python-poetry/poetry/issues/7611#issuecomment-1466478926
+ { version = "^20.4.3,!=20.4.5,!=20.4.6" },
+ { version = "<20.16.4", markers = "sys_platform == 'win32'" },
+]
 
 # TODO: add versions
 atari_py = {version = "*", optional = true}
