@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
-        python-version: [3.9]
+        python-version: [3.11]
     steps:
       - name: Cancel previous run
         uses: styfle/cancel-workflow-action@0.11.0
