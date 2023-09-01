@@ -80,7 +80,7 @@ def _patch_env_generator(fn: Callable[[], ENV_TYPE]) -> Callable[[], gym.Env]:
         if gym_version >= packaging.version.parse("0.26.0"):
             return shimmy.GymV26CompatibilityV0(env=env)
         if gym_version >= packaging.version.parse("0.22.0"):
-            return shimmy.GymV22CompatibilityV0(env=env)
+            return shimmy.GymV21CompatibilityV0(env=env)
         raise Exception(
             f"Found OpenAI Gym version {gym.__version__}. "
             f"Tianshou only supports OpenAI Gym environments of version>=0.22.0",
