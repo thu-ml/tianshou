@@ -40,7 +40,7 @@ jobs:
       - name: Test with pytest
         # ignore test/throughput which only profiles the code
         run: |
-          poetry run poe test-reduced
+          poetry run poe test
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
