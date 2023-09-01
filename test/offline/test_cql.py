@@ -7,7 +7,7 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
-from gym.spaces import Box
+from gymnasium.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer

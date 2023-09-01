@@ -438,7 +438,7 @@ class BaseTrainer(ABC):
                 self.best_reward_std = test_result["rew_std"]
             else:
                 self.policy.train()
-
+        self.on_step_callback(data)
         return data, result, stop_fn_flag
 
     def log_update_data(self, data: dict[str, Any], losses: dict[str, Any]) -> None:

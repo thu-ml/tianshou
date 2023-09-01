@@ -56,15 +56,10 @@ envpool = ["envpool"]
 optional = true
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
-# gym used in compatibility test. TODO: drop this and test in future?
-gym = "^0.26.2"
 jinja2 = "*"
 mypy = "^1.4.1"
 # networkx is used in a test
 networkx = "*"
-# nni used in a 3rd party test
-# TODO: this test is currently not even executed, is it worth the dependency?
-nni = ">=2.3,<3.0"
 poethepoet = "^0.20.0"
 pre-commit = "^3.3.3"
 pygame = "^2.1.0"
@@ -72,15 +67,11 @@ pymunk = "^6.2.1"
 pytest = "*"
 pytest-cov = "*"
 pytest-xdist = "*"
-# lightning used in a 3rd party test
-# TODO: see above, worth the dependency?
-pytorch-lightning = "^2.0.7"
 # optional import for parallelization. Without installing it, the corresponding modules are not parsed by linters
 # TODO: include ray in extras?
 ray = "^2"
 ruff = "^0.0.285"
 scipy = "*"
-shimmy = "^1.2.1"
 sphinx = "<7"
 sphinx_rtd_theme = "*"
 sphinxcontrib-bibtex = "*"
@@ -159,7 +150,7 @@ move-optionals-to-bottom = true
 
 # keep relevant parts in sync with pre-commit
 [tool.poe.tasks]  # https://github.com/nat-n/poethepoet
-test = "pytest test --ignore-glob='*profile.py' --ignore='test/3rd_party' --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v --color=yes"
+test = "pytest test --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v --color=yes"
 test-reduced = "pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes"
 lint = "ruff check . && black --check ."
 doc-clean = "rm -rf docs/_build"
