@@ -147,6 +147,7 @@ def test_cql(args=get_args()):
         critic2,
         critic2_optim,
         action_scaling=isinstance(env.action_space, Box),
+        action_space=env.action_space,
         cql_alpha_lr=args.cql_alpha_lr,
         cql_weight=args.cql_weight,
         tau=args.tau,
