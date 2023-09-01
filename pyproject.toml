@@ -77,7 +77,7 @@ pytest-xdist = "*"
 pytorch-lightning = "^2.0.7"
 # optional import for parallelization. Without installing it, the corresponding modules are not parsed by linters
 # TODO: include ray in extras?
-ray = "^1"
+ray = "^2"
 ruff = "^0.0.285"
 scipy = "*"
 shimmy = "*"
