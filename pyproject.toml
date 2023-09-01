@@ -71,6 +71,7 @@ pygame = "^2.1.0"
 pymunk = "^6.2.1"
 pytest = "*"
 pytest-cov = "*"
+pytest-xdist = "*"
 # lightning used in a 3rd party test
 # TODO: see above, worth the dependency?
 pytorch-lightning = "^2.0.7"
@@ -183,7 +184,7 @@ move-optionals-to-bottom = true
 
     [[tool.poe.tasks.test.sequence]]
     # TODO: remove 3rd party tests and nni? See todo above
-    cmd = "pytest test  --ignore-glob='*profile.py' --ignore='test/3rd_party' --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v --color=yes"
+    cmd = "pytest test -n auto --ignore-glob='*profile.py' --ignore='test/3rd_party' --cov=tianshou --cov-report=xml --cov-report=term-missing --durations=0 -v --color=yes"
 
   [tool.poe.tasks.doc-clean]
   help = "Clean docs/_build"
