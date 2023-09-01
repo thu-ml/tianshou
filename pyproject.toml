@@ -66,7 +66,6 @@ pygame = "^2.1.0"
 pymunk = "^6.2.1"
 pytest = "*"
 pytest-cov = "*"
-pytest-xdist = "*"
 # optional import for parallelization. Without installing it, the corresponding modules are not parsed by linters
 # TODO: include ray in extras?
 ray = "^2"
@@ -162,7 +161,7 @@ _poetry_install_sort_plugin = "poetry self add poetry-plugin-sort"
 _poery_sort = "poetry sort"
 format = ["_black_format", "_ruff_format", "_poetry_install_sort_plugin", "_poery_sort"]
 _spell_check = "sphinx-build -W -b spelling docs docs/_build"
-_doc_build = "sphinx-build -W -b html docs docs/_build"
+_doc-build = "sphinx-build -W -b html docs docs/_build"
 doc-clean = "rm -rf docs/_build"
-doc_build = ["_spell_check", "_doc_build"]
+doc-build = ["_spell_check", "_doc_build"]
 type-check = "mypy tianshou"
