@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -185,7 +185,7 @@ class PSRLPolicy(BasePolicy):
     def forward(
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> ActBatchProtocol:
         """Compute action over the given batch data with PSRL model.

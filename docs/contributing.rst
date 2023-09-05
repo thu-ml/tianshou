@@ -5,17 +5,12 @@ Contributing to Tianshou
 Install Develop Version
 -----------------------
 
-To install Tianshou in an "editable" mode, run
+Tianshou is built and managed by `poetry <https://python-poetry.org/>`_. For example,
+to install all relevant requirements in editable mode you can simply call
 
 .. code-block:: bash
 
-    $ pip install -e ".[dev]"
-
-in the main directory. This installation is removable by
-
-.. code-block:: bash
-
-    $ python setup.py develop --uninstall
+  $ poetry install --with dev
 
 
 PEP8 Code Style Check and Formatting
@@ -31,12 +26,14 @@ in the main directory. This should make sure that your contribution is properly
 formatted before every commit.
 
 The code is inspected and formatted by `black` and `ruff`. They are executed as
-pre-commit hooks. To format manually you can run e.g.:
+pre-commit hooks. In addition, `poe the poet` tasks are configured.
+Simply run `poe` to see the available tasks.
+E.g, to format and check the linting manually you can run:
 
 .. code-block:: bash
 
-    $ pre-commit run --all-files black
-    $ pre-commit run --all-files ruff
+    $ poe format
+    $ poe lint
 
 
 Type Check
@@ -46,7 +43,7 @@ We use `mypy <https://github.com/python/mypy/>`_ to check the type annotations. 
 
 .. code-block:: bash
 
-    $ make mypy
+    $ poe type-check
 
 
 Test Locally
@@ -56,7 +53,7 @@ This command will run automatic tests in the main directory
 
 .. code-block:: bash
 
-    $ make pytest
+    $ poe test
 
 
 Test by GitHub Actions
@@ -91,7 +88,7 @@ To compile documentation into webpage, run
 
 .. code-block:: bash
 
-    $ make doc
+    $ poe doc-build
 
 The generated webpage is in ``docs/_build`` and can be viewed with browser (http://0.0.0.0:8000/).
 
@@ -103,14 +100,15 @@ Documentation Generation Test
 
 We have the following three documentation tests:
 
-1. pydocstyle: test all docstring under ``tianshou/``;
+1. pydocstyle (as part of ruff): test all docstring under ``tianshou/``;
 
-2. doc8: test ReStructuredText format;
+2. doc8 (as part of ruff): test ReStructuredText format;
 
-3. sphinx test: test if there is any error/warning when generating front-end html documentation.
+3. sphinx spelling and test: test if there is any error/warning when generating front-end html documentation.
 
 To check, in the main directory, run:
 
 .. code-block:: bash
 
-    $ make check-docstyle
+    $ poe lint
+    $ poe doc-build

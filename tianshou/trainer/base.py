@@ -1,7 +1,8 @@
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict, deque
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import tqdm
@@ -135,27 +136,27 @@ class BaseTrainer(ABC):
         policy: BasePolicy,
         max_epoch: int,
         batch_size: int,
-        train_collector: Optional[Collector] = None,
-        test_collector: Optional[Collector] = None,
-        buffer: Optional[ReplayBuffer] = None,
-        step_per_epoch: Optional[int] = None,
-        repeat_per_collect: Optional[int] = None,
-        episode_per_test: Optional[int] = None,
+        train_collector: Collector | None = None,
+        test_collector: Collector | None = None,
+        buffer: ReplayBuffer | None = None,
+        step_per_epoch: int | None = None,
+        repeat_per_collect: int | None = None,
+        episode_per_test: int | None = None,
         update_per_step: float = 1.0,
-        step_per_collect: Optional[int] = None,
-        episode_per_collect: Optional[int] = None,
-        train_fn: Optional[Callable[[int, int], None]] = None,
-        test_fn: Optional[Callable[[int, Optional[int]], None]] = None,
-        stop_fn: Optional[Callable[[float], bool]] = None,
-        save_best_fn: Optional[Callable[[BasePolicy], None]] = None,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
+        step_per_collect: int | None = None,
+        episode_per_collect: int | None = None,
+        train_fn: Callable[[int, int], None] | None = None,
+        test_fn: Callable[[int, int | None], None] | None = None,
+        stop_fn: Callable[[float], bool] | None = None,
+        save_best_fn: Callable[[BasePolicy], None] | None = None,
+        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
         resume_from_log: bool = False,
-        reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+        reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
         logger: BaseLogger = LazyLogger(),
         verbose: bool = True,
         show_progress: bool = True,
         test_in_train: bool = True,
-        save_fn: Optional[Callable[[BasePolicy], None]] = None,
+        save_fn: Callable[[BasePolicy], None] | None = None,
     ):
         if save_fn:
             deprecation(
@@ -264,7 +265,7 @@ class BaseTrainer(ABC):
         self.reset()
         return self
 
-    def __next__(self) -> Union[None, tuple[int, dict[str, Any], dict[str, Any]]]:
+    def __next__(self) -> None | tuple[int, dict[str, Any], dict[str, Any]]:
         """Perform one epoch (both train and eval)."""
         self.epoch += 1
         self.iter_num += 1
@@ -438,7 +439,6 @@ class BaseTrainer(ABC):
                 self.best_reward_std = test_result["rew_std"]
             else:
                 self.policy.train()
-
         return data, result, stop_fn_flag
 
     def log_update_data(self, data: dict[str, Any], losses: dict[str, Any]) -> None:
@@ -457,7 +457,7 @@ class BaseTrainer(ABC):
         :param result: collector's return value.
         """
 
-    def run(self) -> dict[str, Union[float, str]]:
+    def run(self) -> dict[str, float | str]:
         """Consume iterator.
 
         See itertools - recipes. Use functions that consume iterators at C speed
@@ -501,7 +501,7 @@ class OfflineTrainer(BaseTrainer):
     def policy_update_fn(
         self,
         data: dict[str, Any],
-        result: Optional[dict[str, Any]] = None,
+        result: dict[str, Any] | None = None,
     ) -> None:
         """Perform one off-line policy update."""
         assert self.buffer
@@ -550,7 +550,7 @@ class OnpolicyTrainer(BaseTrainer):
     def policy_update_fn(
         self,
         data: dict[str, Any],
-        result: Optional[dict[str, Any]] = None,
+        result: dict[str, Any] | None = None,
     ) -> None:
         """Perform one on-policy update."""
         assert self.train_collector is not None

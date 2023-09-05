@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import torch
@@ -56,7 +56,7 @@ class ICMPolicy(BasePolicy):
     def forward(
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> BatchProtocol:
         """Compute action over the given batch data by inner policy.
@@ -70,9 +70,9 @@ class ICMPolicy(BasePolicy):
 
     def exploration_noise(
         self,
-        act: Union[np.ndarray, BatchProtocol],
+        act: np.ndarray | BatchProtocol,
         batch: RolloutBatchProtocol,
-    ) -> Union[np.ndarray, BatchProtocol]:
+    ) -> np.ndarray | BatchProtocol:
         return self.policy.exploration_noise(act, batch)
 
     def set_eps(self, eps: float) -> None:

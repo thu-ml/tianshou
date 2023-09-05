@@ -1,4 +1,5 @@
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from tensorboard.backend.event_processing import event_accumulator
 from torch.utils.tensorboard import SummaryWriter
@@ -46,7 +47,7 @@ class TensorboardLogger(BaseLogger):
         epoch: int,
         env_step: int,
         gradient_step: int,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
+        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         if save_checkpoint_fn and epoch - self.last_save_step >= self.save_interval:
             self.last_save_step = epoch

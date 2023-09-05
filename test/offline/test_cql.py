@@ -7,7 +7,6 @@ import pprint
 import gymnasium as gym
 import numpy as np
 import torch
-from gym.spaces import Box
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Collector, VectorReplayBuffer
@@ -146,7 +145,10 @@ def test_cql(args=get_args()):
         critic1_optim,
         critic2,
         critic2_optim,
-        action_scaling=isinstance(env.action_space, Box),
+        # CQL seems to perform better without action scaling
+        # TODO: investigate why
+        action_scaling=False,
+        action_space=env.action_space,
         cql_alpha_lr=args.cql_alpha_lr,
         cql_weight=args.cql_weight,
         tau=args.tau,

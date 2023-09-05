@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import h5py
 import numpy as np
@@ -74,7 +74,7 @@ class ReplayBuffer:
         self._save_only_last_obs = save_only_last_obs
         self._sample_avail = sample_avail
         self._meta = cast(RolloutBatchProtocol, Batch())
-        self._ep_rew: Union[float, np.ndarray]
+        self._ep_rew: float | np.ndarray
         self.reset()
 
     def __len__(self) -> int:
@@ -105,13 +105,13 @@ class ReplayBuffer:
         assert key not in self._reserved_keys, f"key '{key}' is reserved and cannot be assigned"
         super().__setattr__(key, value)
 
-    def save_hdf5(self, path: str, compression: Optional[str] = None) -> None:
+    def save_hdf5(self, path: str, compression: str | None = None) -> None:
         """Save replay buffer to HDF5 file."""
         with h5py.File(path, "w") as f:
             to_hdf5(self.__dict__, f, compression=compression)
 
     @classmethod
-    def load_hdf5(cls, path: str, device: Optional[str] = None) -> "ReplayBuffer":
+    def load_hdf5(cls, path: str, device: str | None = None) -> "ReplayBuffer":
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             buf = cls.__new__(cls)
@@ -169,7 +169,7 @@ class ReplayBuffer:
         last = (self._index - 1) % self._size if self._size else 0
         return np.array([last] if not self.done[last] and self._size else [], int)
 
-    def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
+    def prev(self, index: int | np.ndarray) -> np.ndarray:
         """Return the index of previous transition.
 
         The index won't be modified if it is the beginning of an episode.
@@ -178,7 +178,7 @@ class ReplayBuffer:
         end_flag = self.done[index] | (index == self.last_index[0])
         return (index + end_flag) % self._size
 
-    def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
+    def next(self, index: int | np.ndarray) -> np.ndarray:
         """Return the index of next transition.
 
         The index won't be modified if it is the end of an episode.
@@ -212,9 +212,9 @@ class ReplayBuffer:
 
     def _add_index(
         self,
-        rew: Union[float, np.ndarray],
+        rew: float | np.ndarray,
         done: bool,
-    ) -> tuple[int, Union[float, np.ndarray], int, int]:
+    ) -> tuple[int, float | np.ndarray, int, int]:
         """Maintain the buffer's state after adding one data batch.
 
         Return (index_to_be_modified, episode_reward, episode_length,
@@ -236,7 +236,7 @@ class ReplayBuffer:
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+        buffer_ids: np.ndarray | list[int] | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into replay buffer.
 
@@ -324,11 +324,11 @@ class ReplayBuffer:
 
     def get(
         self,
-        index: Union[int, list[int], np.ndarray],
+        index: int | list[int] | np.ndarray,
         key: str,
         default_value: Any = None,
-        stack_num: Optional[int] = None,
-    ) -> Union[Batch, np.ndarray]:
+        stack_num: int | None = None,
+    ) -> Batch | np.ndarray:
         """Return the stacked result.
 
         E.g., if you set ``key = "obs", stack_num = 4, index = t``, it returns the
@@ -366,7 +366,7 @@ class ReplayBuffer:
                 raise exception  # val != Batch()
             return Batch()
 
-    def __getitem__(self, index: Union[slice, int, list[int], np.ndarray]) -> RolloutBatchProtocol:
+    def __getitem__(self, index: slice | int | list[int] | np.ndarray) -> RolloutBatchProtocol:
         """Return a data batch: self[index].
 
         If stack_num is larger than 1, return the stacked obs and obs_next with shape

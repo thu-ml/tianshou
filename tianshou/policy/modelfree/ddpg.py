@@ -1,6 +1,6 @@
 import warnings
 from copy import deepcopy
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 import numpy as np
 import torch
@@ -45,17 +45,17 @@ class DDPGPolicy(BasePolicy):
 
     def __init__(
         self,
-        actor: Optional[torch.nn.Module],
-        actor_optim: Optional[torch.optim.Optimizer],
-        critic: Optional[torch.nn.Module],
-        critic_optim: Optional[torch.optim.Optimizer],
+        actor: torch.nn.Module | None,
+        actor_optim: torch.optim.Optimizer | None,
+        critic: torch.nn.Module | None,
+        critic_optim: torch.optim.Optimizer | None,
         tau: float = 0.005,
         gamma: float = 0.99,
-        exploration_noise: Optional[BaseNoise] = GaussianNoise(sigma=0.1),
+        exploration_noise: BaseNoise | None = GaussianNoise(sigma=0.1),
         reward_normalization: bool = False,
         estimation_step: int = 1,
         action_scaling: bool = True,
-        action_bound_method: Optional[Literal["clip", "tanh"]] = "clip",
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -105,7 +105,7 @@ class DDPGPolicy(BasePolicy):
         self._rew_norm = reward_normalization
         self._n_step = estimation_step
 
-    def set_exp_noise(self, noise: Optional[BaseNoise]) -> None:
+    def set_exp_noise(self, noise: BaseNoise | None) -> None:
         """Set the exploration noise."""
         self._noise = noise
 
@@ -130,7 +130,7 @@ class DDPGPolicy(BasePolicy):
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
-    ) -> Union[RolloutBatchProtocol, BatchWithReturnsProtocol]:
+    ) -> RolloutBatchProtocol | BatchWithReturnsProtocol:
         return self.compute_nstep_return(
             batch,
             buffer,
@@ -144,7 +144,7 @@ class DDPGPolicy(BasePolicy):
     def forward(
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
         model: Literal["actor", "actor_old"] = "actor",
         input: str = "obs",
         **kwargs: Any,
@@ -198,9 +198,9 @@ class DDPGPolicy(BasePolicy):
 
     def exploration_noise(
         self,
-        act: Union[np.ndarray, BatchProtocol],
+        act: np.ndarray | BatchProtocol,
         batch: RolloutBatchProtocol,
-    ) -> Union[np.ndarray, BatchProtocol]:
+    ) -> np.ndarray | BatchProtocol:
         if self._noise is None:
             return act
         if isinstance(act, np.ndarray):

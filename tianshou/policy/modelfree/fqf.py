@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -81,10 +81,10 @@ class FQFPolicy(QRDQNPolicy):
     def forward(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        state: dict | Batch | np.ndarray | None = None,
         model: str = "model",
         input: str = "obs",
-        fractions: Optional[Batch] = None,
+        fractions: Batch | None = None,
         **kwargs: Any,
     ) -> FQFBatchProtocol:
         model = getattr(self, model)

@@ -1,5 +1,3 @@
-from typing import Optional, Union
-
 import numpy as np
 import torch
 
@@ -10,7 +8,7 @@ from tianshou.data.batch import BatchProtocol, arr_type
 class RolloutBatchProtocol(BatchProtocol):
     """Typically, the outcome of sampling from a replay buffer."""
 
-    obs: Union[arr_type, BatchProtocol]
+    obs: arr_type | BatchProtocol
     act: arr_type
     rew: np.ndarray
     terminated: arr_type
@@ -27,7 +25,7 @@ class BatchWithReturnsProtocol(RolloutBatchProtocol):
 class PrioBatchProtocol(RolloutBatchProtocol):
     """Contains weights that can be used for prioritized replay."""
 
-    weight: Union[np.ndarray, torch.Tensor]
+    weight: np.ndarray | torch.Tensor
 
 
 class RecurrentStateBatch(BatchProtocol):
@@ -47,7 +45,7 @@ class ModelOutputBatchProtocol(ActBatchProtocol):
     """Contains model output: (logits) and potentially hidden states."""
 
     logits: torch.Tensor
-    state: Optional[Union[dict, BatchProtocol, np.ndarray]]
+    state: dict | BatchProtocol | np.ndarray | None
 
 
 class FQFBatchProtocol(ModelOutputBatchProtocol):
@@ -103,6 +101,6 @@ class QuantileRegressionBatchProtocol(ModelOutputBatchProtocol):
 class ImitationBatchProtocol(ActBatchProtocol):
     """Similar to other batches, but contains imitation_logits and q_value fields."""
 
-    state: Optional[Union[dict, Batch, np.ndarray]]
+    state: dict | Batch | np.ndarray | None
     q_value: torch.Tensor
     imitation_logits: torch.Tensor

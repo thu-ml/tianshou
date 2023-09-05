@@ -1,4 +1,5 @@
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any, Union
 
 import numpy as np
 
@@ -63,7 +64,7 @@ class HERReplayBuffer(ReplayBuffer):
         self._restore_cache()
         return super().reset(keep_statistics)
 
-    def save_hdf5(self, path: str, compression: Optional[str] = None) -> None:
+    def save_hdf5(self, path: str, compression: str | None = None) -> None:
         self._restore_cache()
         return super().save_hdf5(path, compression)
 
@@ -78,7 +79,7 @@ class HERReplayBuffer(ReplayBuffer):
     def add(
         self,
         batch: RolloutBatchProtocol,
-        buffer_ids: Optional[Union[np.ndarray, list[int]]] = None,
+        buffer_ids: np.ndarray | list[int] | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         self._restore_cache()
         return super().add(batch, buffer_ids)

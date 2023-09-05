@@ -1,4 +1,4 @@
-from typing import Any, SupportsFloat, Union
+from typing import Any, SupportsFloat
 
 import gymnasium as gym
 import numpy as np
@@ -13,7 +13,7 @@ class ContinuousToDiscrete(gym.ActionWrapper):
         of the action space.
     """
 
-    def __init__(self, env: gym.Env, action_per_dim: Union[int, list[int]]) -> None:
+    def __init__(self, env: gym.Env, action_per_dim: int | list[int]) -> None:
         super().__init__(env)
         assert isinstance(env.action_space, gym.spaces.Box)
         low, high = env.action_space.low, env.action_space.high
@@ -22,7 +22,7 @@ class ContinuousToDiscrete(gym.ActionWrapper):
         assert len(action_per_dim) == env.action_space.shape[0]
         self.action_space = gym.spaces.MultiDiscrete(action_per_dim)
         self.mesh = np.array(
-            [np.linspace(lo, hi, a) for lo, hi, a in zip(low, high, action_per_dim)],
+            [np.linspace(lo, hi, a) for lo, hi, a in zip(low, high, action_per_dim, strict=True)],
             dtype=object,
         )
 

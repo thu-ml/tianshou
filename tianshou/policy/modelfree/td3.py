@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import torch
@@ -60,7 +60,7 @@ class TD3Policy(DDPGPolicy):
         critic2_optim: torch.optim.Optimizer,
         tau: float = 0.005,
         gamma: float = 0.99,
-        exploration_noise: Optional[BaseNoise] = GaussianNoise(sigma=0.1),
+        exploration_noise: BaseNoise | None = GaussianNoise(sigma=0.1),
         policy_noise: float = 0.2,
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,

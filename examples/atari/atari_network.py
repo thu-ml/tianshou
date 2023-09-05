@@ -1,5 +1,5 @@
-from collections.abc import Sequence
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable, Sequence
+from typing import Any
 
 import numpy as np
 import torch
@@ -18,9 +18,9 @@ def scale_obs(module: type[nn.Module], denom: float = 255.0) -> type[nn.Module]:
     class scaled_module(module):
         def forward(
             self,
-            obs: Union[np.ndarray, torch.Tensor],
-            state: Optional[Any] = None,
-            info: Optional[dict[str, Any]] = None,
+            obs: np.ndarray | torch.Tensor,
+            state: Any | None = None,
+            info: dict[str, Any] | None = None,
         ) -> tuple[torch.Tensor, Any]:
             if info is None:
                 info = {}
@@ -42,9 +42,9 @@ class DQN(nn.Module):
         h: int,
         w: int,
         action_shape: Sequence[int],
-        device: Union[str, int, torch.device] = "cpu",
+        device: str | int | torch.device = "cpu",
         features_only: bool = False,
-        output_dim: Optional[int] = None,
+        output_dim: int | None = None,
         layer_init: Callable[[nn.Module], nn.Module] = lambda x: x,
     ) -> None:
         super().__init__()
@@ -78,9 +78,9 @@ class DQN(nn.Module):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
-        state: Optional[Any] = None,
-        info: Optional[dict[str, Any]] = None,
+        obs: np.ndarray | torch.Tensor,
+        state: Any | None = None,
+        info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
         if info is None:
@@ -103,7 +103,7 @@ class C51(DQN):
         w: int,
         action_shape: Sequence[int],
         num_atoms: int = 51,
-        device: Union[str, int, torch.device] = "cpu",
+        device: str | int | torch.device = "cpu",
     ) -> None:
         self.action_num = np.prod(action_shape)
         super().__init__(c, h, w, [self.action_num * num_atoms], device)
@@ -111,9 +111,9 @@ class C51(DQN):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
-        state: Optional[Any] = None,
-        info: Optional[dict[str, Any]] = None,
+        obs: np.ndarray | torch.Tensor,
+        state: Any | None = None,
+        info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
         if info is None:
@@ -139,7 +139,7 @@ class Rainbow(DQN):
         action_shape: Sequence[int],
         num_atoms: int = 51,
         noisy_std: float = 0.5,
-        device: Union[str, int, torch.device] = "cpu",
+        device: str | int | torch.device = "cpu",
         is_dueling: bool = True,
         is_noisy: bool = True,
     ) -> None:
@@ -168,9 +168,9 @@ class Rainbow(DQN):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
-        state: Optional[Any] = None,
-        info: Optional[dict[str, Any]] = None,
+        obs: np.ndarray | torch.Tensor,
+        state: Any | None = None,
+        info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
         if info is None:
@@ -202,7 +202,7 @@ class QRDQN(DQN):
         w: int,
         action_shape: Sequence[int],
         num_quantiles: int = 200,
-        device: Union[str, int, torch.device] = "cpu",
+        device: str | int | torch.device = "cpu",
     ) -> None:
         self.action_num = np.prod(action_shape)
         super().__init__(c, h, w, [self.action_num * num_quantiles], device)
@@ -210,9 +210,9 @@ class QRDQN(DQN):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
-        state: Optional[Any] = None,
-        info: Optional[dict[str, Any]] = None,
+        obs: np.ndarray | torch.Tensor,
+        state: Any | None = None,
+        info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Z(x, \*)."""
         if info is None:

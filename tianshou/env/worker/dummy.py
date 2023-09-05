@@ -1,4 +1,5 @@
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -28,18 +29,18 @@ class DummyEnvWorker(EnvWorker):
     def wait(  # type: ignore
         workers: list["DummyEnvWorker"],
         wait_num: int,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> list["DummyEnvWorker"]:
         # Sequential EnvWorker objects are always ready
         return workers
 
-    def send(self, action: Optional[np.ndarray], **kwargs: Any) -> None:
+    def send(self, action: np.ndarray | None, **kwargs: Any) -> None:
         if action is None:
             self.result = self.env.reset(**kwargs)
         else:
             self.result = self.env.step(action)  # type: ignore
 
-    def seed(self, seed: Optional[int] = None) -> Optional[list[int]]:
+    def seed(self, seed: int | None = None) -> list[int] | None:
         super().seed(seed)
         try:
             return self.env.seed(seed)  # type: ignore
