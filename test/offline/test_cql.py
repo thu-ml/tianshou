@@ -70,26 +70,26 @@ def get_args():
 
 def add_returns(buffer: ReplayBuffer, gamma: float = 0.99) -> ReplayBuffer:
     data_dict = buffer._meta.__dict__
-    start_idx = np.concatenate([np.array([0]), np.where(data_dict['done'])[0] + 1])
+    start_idx = np.concatenate([np.array([0]), np.where(data_dict["done"])[0] + 1])
     end_idx = np.concatenate(
-        [np.where(data_dict['done'])[0] + 1,
-         np.array([len(data_dict['done'])])],
+        [np.where(data_dict["done"])[0] + 1, np.array([len(data_dict["done"])])],
     )
-    ep_rew = [data_dict['rew'][i:j] for i, j in zip(start_idx, end_idx)]
+    ep_rew = [data_dict["rew"][i:j] for i, j in zip(start_idx, end_idx, strict=True)]
     ep_ret = []
     for i in range(len(ep_rew)):
         episode_rewards = ep_rew[i]
         disc_returns = [0] * len(episode_rewards)
         discounted_return = 0
         for j in range(1, len(episode_rewards) + 1):
-            discounted_return = episode_rewards[len(episode_rewards) -
-                                                j] + gamma * discounted_return
+            discounted_return = (
+                episode_rewards[len(episode_rewards) - j] + gamma * discounted_return
+            )
             disc_returns[len(episode_rewards) - j] = discounted_return
         ep_ret.append(disc_returns)
 
     new_data_dict = data_dict.copy()
     ep_rets = np.concatenate(ep_ret)
-    new_data_dict['calibration_returns'] = ep_rets
+    new_data_dict["calibration_returns"] = ep_rets
     new_batch = Batch(**new_data_dict)
     buffer._meta = new_batch
     return buffer
