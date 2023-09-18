@@ -1,7 +1,7 @@
 import argparse
 import os
 import warnings
-from typing import Any, Optional, Union
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -32,7 +32,7 @@ class DQN(nn.Module):
         c: int,
         h: int,
         w: int,
-        device: Union[str, int, torch.device] = "cpu",
+        device: str | int | torch.device = "cpu",
     ) -> None:
         super().__init__()
         self.device = device
@@ -53,9 +53,9 @@ class DQN(nn.Module):
 
     def forward(
         self,
-        x: Union[np.ndarray, torch.Tensor],
-        state: Optional[Any] = None,
-        info: Optional[dict[str, Any]] = None,
+        x: np.ndarray | torch.Tensor,
+        state: Any | None = None,
+        info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: x -> Q(x, \*)."""
         if info is None:
@@ -137,8 +137,8 @@ def get_env(args: argparse.Namespace = get_args()):
 
 def get_agents(
     args: argparse.Namespace = get_args(),
-    agents: Optional[list[BasePolicy]] = None,
-    optims: Optional[list[torch.optim.Optimizer]] = None,
+    agents: list[BasePolicy] | None = None,
+    optims: list[torch.optim.Optimizer] | None = None,
 ) -> tuple[BasePolicy, list[torch.optim.Optimizer], list]:
     env = get_env()
     observation_space = (
@@ -213,8 +213,8 @@ def get_agents(
 
 def train_agent(
     args: argparse.Namespace = get_args(),
-    agents: Optional[list[BasePolicy]] = None,
-    optims: Optional[list[torch.optim.Optimizer]] = None,
+    agents: list[BasePolicy] | None = None,
+    optims: list[torch.optim.Optimizer] | None = None,
 ) -> tuple[dict, BasePolicy]:
     train_envs = DummyVectorEnv([get_env for _ in range(args.training_num)])
     test_envs = DummyVectorEnv([get_env for _ in range(args.test_num)])
@@ -270,7 +270,7 @@ def train_agent(
     return result, policy
 
 
-def watch(args: argparse.Namespace = get_args(), policy: Optional[BasePolicy] = None) -> None:
+def watch(args: argparse.Namespace = get_args(), policy: BasePolicy | None = None) -> None:
     env = DummyVectorEnv([get_env])
     if not policy:
         warnings.warn(

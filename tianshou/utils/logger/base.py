@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from numbers import Number
-from typing import Callable, Optional, Union
 
 import numpy as np
 
-LOG_DATA_TYPE = dict[str, Union[int, Number, np.number, np.ndarray]]
+LOG_DATA_TYPE = dict[str, int | Number | np.number | np.ndarray]
 
 
 class BaseLogger(ABC):
@@ -93,7 +93,7 @@ class BaseLogger(ABC):
         epoch: int,
         env_step: int,
         gradient_step: int,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
+        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 
@@ -129,7 +129,7 @@ class LazyLogger(BaseLogger):
         epoch: int,
         env_step: int,
         gradient_step: int,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
+        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         pass
 

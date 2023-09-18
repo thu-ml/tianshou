@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -122,7 +122,7 @@ class DQNPolicy(BasePolicy):
             self._rew_norm,
         )
 
-    def compute_q_value(self, logits: torch.Tensor, mask: Optional[np.ndarray]) -> torch.Tensor:
+    def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
         """Compute the q value based on the network's raw output and action mask."""
         if mask is not None:
             # the masked q value should be smaller than logits.min()
@@ -133,7 +133,7 @@ class DQNPolicy(BasePolicy):
     def forward(
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
         model: str = "model",
         input: str = "obs",
         **kwargs: Any,
@@ -201,9 +201,9 @@ class DQNPolicy(BasePolicy):
 
     def exploration_noise(
         self,
-        act: Union[np.ndarray, BatchProtocol],
+        act: np.ndarray | BatchProtocol,
         batch: RolloutBatchProtocol,
-    ) -> Union[np.ndarray, BatchProtocol]:
+    ) -> np.ndarray | BatchProtocol:
         if isinstance(act, np.ndarray) and not np.isclose(self.eps, 0.0):
             bsz = len(act)
             rand_mask = np.random.rand(bsz) < self.eps

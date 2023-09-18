@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import torch
@@ -63,11 +63,11 @@ class REDQPolicy(DDPGPolicy):
         subset_size: int = 2,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: Union[float, tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
+        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
         reward_normalization: bool = False,
         estimation_step: int = 1,
         actor_delay: int = 20,
-        exploration_noise: Optional[BaseNoise] = None,
+        exploration_noise: BaseNoise | None = None,
         deterministic_eval: bool = True,
         target_mode: str = "min",
         **kwargs: Any,
@@ -93,7 +93,7 @@ class REDQPolicy(DDPGPolicy):
         self.subset_size = subset_size
 
         self._is_auto_alpha = False
-        self._alpha: Union[float, torch.Tensor]
+        self._alpha: float | torch.Tensor
         if isinstance(alpha, tuple):
             self._is_auto_alpha = True
             self._target_entropy, self._log_alpha, self._alpha_optim = alpha
@@ -120,13 +120,13 @@ class REDQPolicy(DDPGPolicy):
         return self
 
     def sync_weight(self) -> None:
-        for o, n in zip(self.critics_old.parameters(), self.critics.parameters()):
+        for o, n in zip(self.critics_old.parameters(), self.critics.parameters(), strict=True):
             o.data.copy_(o.data * (1.0 - self.tau) + n.data * self.tau)
 
     def forward(  # type: ignore
         self,
         batch: Batch,
-        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        state: dict | Batch | np.ndarray | None = None,
         input: str = "obs",
         **kwargs: Any,
     ) -> Batch:

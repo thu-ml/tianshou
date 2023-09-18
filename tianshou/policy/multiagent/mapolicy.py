@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 
@@ -33,7 +33,7 @@ class MultiAgentPolicyManager(BasePolicy):
             # (this MultiAgentPolicyManager)
             policy.set_agent_id(env.agents[i])
 
-        self.policies = dict(zip(env.agents, policies))
+        self.policies = dict(zip(env.agents, policies, strict=True))
 
     def replace_policy(self, policy: BasePolicy, agent_id: int) -> None:
         """Replace the "agent_id"th policy in this manager."""
@@ -85,9 +85,9 @@ class MultiAgentPolicyManager(BasePolicy):
 
     def exploration_noise(
         self,
-        act: Union[np.ndarray, BatchProtocol],
+        act: np.ndarray | BatchProtocol,
         batch: RolloutBatchProtocol,
-    ) -> Union[np.ndarray, BatchProtocol]:
+    ) -> np.ndarray | BatchProtocol:
         """Add exploration noise from sub-policy onto act."""
         assert isinstance(
             batch.obs,
@@ -103,7 +103,7 @@ class MultiAgentPolicyManager(BasePolicy):
     def forward(  # type: ignore
         self,
         batch: Batch,
-        state: Optional[Union[dict, Batch]] = None,
+        state: dict | Batch | None = None,
         **kwargs: Any,
     ) -> Batch:
         """Dispatch batch data from obs.agent_id to every policy's forward.
@@ -129,7 +129,7 @@ class MultiAgentPolicyManager(BasePolicy):
                     "agent_n": xxx}
             }
         """
-        results: list[tuple[bool, np.ndarray, Batch, Union[np.ndarray, Batch], Batch]] = []
+        results: list[tuple[bool, np.ndarray, Batch, np.ndarray | Batch, Batch]] = []
         for agent_id, policy in self.policies.items():
             # This part of code is difficult to understand.
             # Let's follow an example with two agents
@@ -167,6 +167,7 @@ class MultiAgentPolicyManager(BasePolicy):
         for (agent_id, _), (has_data, agent_index, out, act, state) in zip(
             self.policies.items(),
             results,
+            strict=True,
         ):
             if has_data:
                 holder.act[agent_index] = act
@@ -181,7 +182,7 @@ class MultiAgentPolicyManager(BasePolicy):
         batch: RolloutBatchProtocol,
         *args: Any,
         **kwargs: Any,
-    ) -> dict[str, Union[float, list[float]]]:
+    ) -> dict[str, float | list[float]]:
         """Dispatch the data to all policies for learning.
 
         :return: a dict with the following contents:

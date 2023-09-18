@@ -1,6 +1,7 @@
 import time
 import warnings
-from typing import Any, Callable, Optional, Union, cast
+from collections.abc import Callable
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -59,15 +60,15 @@ class Collector:
     def __init__(
         self,
         policy: BasePolicy,
-        env: Union[gym.Env, BaseVectorEnv],
-        buffer: Optional[ReplayBuffer] = None,
-        preprocess_fn: Optional[Callable[..., Batch]] = None,
+        env: gym.Env | BaseVectorEnv,
+        buffer: ReplayBuffer | None = None,
+        preprocess_fn: Callable[..., Batch] | None = None,
         exploration_noise: bool = False,
     ) -> None:
         super().__init__()
         if isinstance(env, gym.Env) and not hasattr(env, "__len__"):
             warnings.warn("Single environment detected, wrap to DummyVectorEnv.")
-            self.env = DummyVectorEnv([lambda: env])  # type: ignore
+            self.env = DummyVectorEnv([lambda: env])
         else:
             self.env = env  # type: ignore
         self.env_num = len(self.env)
@@ -81,7 +82,7 @@ class Collector:
         # avoid creating attribute outside __init__
         self.reset(False)
 
-    def _assign_buffer(self, buffer: Optional[ReplayBuffer]) -> None:
+    def _assign_buffer(self, buffer: ReplayBuffer | None) -> None:
         """Check if the buffer matches the constraint."""
         if buffer is None:
             buffer = VectorReplayBuffer(self.env_num, self.env_num)
@@ -108,7 +109,7 @@ class Collector:
     def reset(
         self,
         reset_buffer: bool = True,
-        gym_reset_kwargs: Optional[dict[str, Any]] = None,
+        gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """Reset the environment, statistics, current data and possibly replay memory.
 
@@ -144,7 +145,7 @@ class Collector:
         """Reset the data buffer."""
         self.buffer.reset(keep_statistics=keep_statistics)
 
-    def reset_env(self, gym_reset_kwargs: Optional[dict[str, Any]] = None) -> None:
+    def reset_env(self, gym_reset_kwargs: dict[str, Any] | None = None) -> None:
         """Reset all of the environments."""
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs, info = self.env.reset(**gym_reset_kwargs)
@@ -155,7 +156,7 @@ class Collector:
         self.data.info = info  # type: ignore
         self.data.obs = obs
 
-    def _reset_state(self, id: Union[int, list[int]]) -> None:
+    def _reset_state(self, id: int | list[int]) -> None:
         """Reset the hidden state: self.data.state[id]."""
         if hasattr(self.data.policy, "hidden_state"):
             state = self.data.policy.hidden_state  # it is a reference
@@ -168,9 +169,9 @@ class Collector:
 
     def _reset_env_with_ids(
         self,
-        local_ids: Union[list[int], np.ndarray],
-        global_ids: Union[list[int], np.ndarray],
-        gym_reset_kwargs: Optional[dict[str, Any]] = None,
+        local_ids: list[int] | np.ndarray,
+        global_ids: list[int] | np.ndarray,
+        gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> None:
         gym_reset_kwargs = gym_reset_kwargs if gym_reset_kwargs else {}
         obs_reset, info = self.env.reset(global_ids, **gym_reset_kwargs)
@@ -184,12 +185,12 @@ class Collector:
 
     def collect(
         self,
-        n_step: Optional[int] = None,
-        n_episode: Optional[int] = None,
+        n_step: int | None = None,
+        n_episode: int | None = None,
         random: bool = False,
-        render: Optional[float] = None,
+        render: float | None = None,
         no_grad: bool = True,
-        gym_reset_kwargs: Optional[dict[str, Any]] = None,
+        gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Collect a specified number of step or episode.
 
@@ -411,8 +412,8 @@ class AsyncCollector(Collector):
         self,
         policy: BasePolicy,
         env: BaseVectorEnv,
-        buffer: Optional[ReplayBuffer] = None,
-        preprocess_fn: Optional[Callable[..., Batch]] = None,
+        buffer: ReplayBuffer | None = None,
+        preprocess_fn: Callable[..., Batch] | None = None,
         exploration_noise: bool = False,
     ) -> None:
         # assert env.is_async
@@ -425,18 +426,18 @@ class AsyncCollector(Collector):
             exploration_noise,
         )
 
-    def reset_env(self, gym_reset_kwargs: Optional[dict[str, Any]] = None) -> None:
+    def reset_env(self, gym_reset_kwargs: dict[str, Any] | None = None) -> None:
         super().reset_env(gym_reset_kwargs)
         self._ready_env_ids = np.arange(self.env_num)
 
     def collect(
         self,
-        n_step: Optional[int] = None,
-        n_episode: Optional[int] = None,
+        n_step: int | None = None,
+        n_episode: int | None = None,
         random: bool = False,
-        render: Optional[float] = None,
+        render: float | None = None,
         no_grad: bool = True,
-        gym_reset_kwargs: Optional[dict[str, Any]] = None,
+        gym_reset_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Collect a specified number of step or episode with async env setting.
 

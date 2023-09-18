@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
-        python-version: [3.9]
+        python-version: [3.11]
     steps:
       - name: Cancel previous run
         uses: styfle/cancel-workflow-action@0.11.0
@@ -20,16 +20,23 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Upgrade pip
+      # use poetry and cache installed packages, see https://github.com/marketplace/actions/python-poetry-action
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v2
+      - name: Setup a local virtual environment (if no poetry.toml file)
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-      - name: Install dependencies
-        run: |
-          python -m pip install ".[dev]" --upgrade
-          python -m pip uninstall ray -y
+          poetry config virtualenvs.create true --local
+          poetry config virtualenvs.in-project true --local
+      - uses: actions/cache@v3
+        name: Define a cache for the virtual environment based on the dependencies lock file
+        with:
+          path: ./.venv
+          key: venv-${{ hashFiles('poetry.lock') }}
+      - name: Install the project dependencies
+        # ugly as hell, but well...
+        # see https://github.com/python-poetry/poetry/issues/7611
+        run: poetry install --with dev || poetry install --with dev || poetry install --with dev
       - name: wandb login
-        run: |
-          wandb login e2366d661b89f2bee877c40bee15502d67b7abef
+        run: poetry run wandb login e2366d661b89f2bee877c40bee15502d67b7abef
       - name: Test with pytest
-        run: |
-          pytest test/base test/continuous --cov=tianshou --durations=0 -v --color=yes
+        run: poetry run poe test-reduced

@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Optional, Union
 
 import numpy as np
 
@@ -60,7 +59,7 @@ class OUNoise(BaseNoise):
         sigma: float = 0.3,
         theta: float = 0.15,
         dt: float = 1e-2,
-        x0: Optional[Union[float, np.ndarray]] = None,
+        x0: float | np.ndarray | None = None,
     ) -> None:
         super().__init__()
         self._mu = mu
@@ -73,7 +72,7 @@ class OUNoise(BaseNoise):
         """Reset to the initial state."""
         self._x = self._x0
 
-    def __call__(self, size: Sequence[int], mu: Optional[float] = None) -> np.ndarray:
+    def __call__(self, size: Sequence[int], mu: float | None = None) -> np.ndarray:
         """Generate new noise.
 
         Return an numpy array which size is equal to ``size``.

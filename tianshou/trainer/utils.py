@@ -1,5 +1,6 @@
 import time
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -11,12 +12,12 @@ from tianshou.utils import BaseLogger
 def test_episode(
     policy: BasePolicy,
     collector: Collector,
-    test_fn: Optional[Callable[[int, Optional[int]], None]],
+    test_fn: Callable[[int, int | None], None] | None,
     epoch: int,
     n_episode: int,
-    logger: Optional[BaseLogger] = None,
-    global_step: Optional[int] = None,
-    reward_metric: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+    logger: BaseLogger | None = None,
+    global_step: int | None = None,
+    reward_metric: Callable[[np.ndarray], np.ndarray] | None = None,
 ) -> dict[str, Any]:
     """A simple wrapper of testing policy in collector."""
     collector.reset_env()
@@ -35,11 +36,11 @@ def test_episode(
 
 def gather_info(
     start_time: float,
-    train_collector: Optional[Collector],
-    test_collector: Optional[Collector],
+    train_collector: Collector | None,
+    test_collector: Collector | None,
     best_reward: float,
     best_reward_std: float,
-) -> dict[str, Union[float, str]]:
+) -> dict[str, float | str]:
     """A simple wrapper of gathering information from collectors.
 
     :return: A dictionary with the following keys:
@@ -59,7 +60,7 @@ def gather_info(
     """
     duration = max(0, time.time() - start_time)
     model_time = duration
-    result: dict[str, Union[float, str]] = {
+    result: dict[str, float | str] = {
         "duration": f"{duration:.2f}s",
         "train_time/model": f"{model_time:.2f}s",
     }

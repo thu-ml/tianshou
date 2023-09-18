@@ -36,5 +36,5 @@ class MultipleLRSchedulers:
         :param List[Dict] state_dict: A list of learning rate scheduler
             state_dict, in the same order as the schedulers.
         """
-        for s, sd in zip(self.schedulers, state_dict):
+        for s, sd in zip(self.schedulers, state_dict, strict=True):
             s.__dict__.update(sd)

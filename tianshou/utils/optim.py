@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 from torch import nn
 
@@ -8,7 +6,7 @@ def optim_step(
     loss: torch.Tensor,
     optim: torch.optim.Optimizer,
     module: nn.Module,
-    max_grad_norm: Optional[float] = None,
+    max_grad_norm: float | None = None,
 ) -> None:
     """Perform a single optimization step.
 

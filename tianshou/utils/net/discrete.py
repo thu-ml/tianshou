@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -42,8 +42,8 @@ class Actor(nn.Module):
         action_shape: Sequence[int],
         hidden_sizes: Sequence[int] = (),
         softmax_output: bool = True,
-        preprocess_net_output_dim: Optional[int] = None,
-        device: Union[str, int, torch.device] = "cpu",
+        preprocess_net_output_dim: int | None = None,
+        device: str | int | torch.device = "cpu",
     ) -> None:
         super().__init__()
         # TODO: reduce duplication with continuous.py. Probably introducing
@@ -63,9 +63,9 @@ class Actor(nn.Module):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
+        obs: np.ndarray | torch.Tensor,
         state: Any = None,
-        info: Optional[dict[str, Any]] = None,
+        info: dict[str, Any] | None = None,
     ) -> tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
         if info is None:
@@ -105,8 +105,8 @@ class Critic(nn.Module):
         preprocess_net: nn.Module,
         hidden_sizes: Sequence[int] = (),
         last_size: int = 1,
-        preprocess_net_output_dim: Optional[int] = None,
-        device: Union[str, int, torch.device] = "cpu",
+        preprocess_net_output_dim: int | None = None,
+        device: str | int | torch.device = "cpu",
     ) -> None:
         super().__init__()
         self.device = device
@@ -115,7 +115,7 @@ class Critic(nn.Module):
         input_dim = getattr(preprocess_net, "output_dim", preprocess_net_output_dim)
         self.last = MLP(input_dim, last_size, hidden_sizes, device=self.device)  # type: ignore
 
-    def forward(self, obs: Union[np.ndarray, torch.Tensor], **kwargs: Any) -> torch.Tensor:
+    def forward(self, obs: np.ndarray | torch.Tensor, **kwargs: Any) -> torch.Tensor:
         """Mapping: s -> V(s)."""
         logits, _ = self.preprocess(obs, state=kwargs.get("state", None))
         return self.last(logits)
@@ -186,8 +186,8 @@ class ImplicitQuantileNetwork(Critic):
         action_shape: Sequence[int],
         hidden_sizes: Sequence[int] = (),
         num_cosines: int = 64,
-        preprocess_net_output_dim: Optional[int] = None,
-        device: Union[str, int, torch.device] = "cpu",
+        preprocess_net_output_dim: int | None = None,
+        device: str | int | torch.device = "cpu",
     ) -> None:
         last_size = int(np.prod(action_shape))
         super().__init__(preprocess_net, hidden_sizes, last_size, preprocess_net_output_dim, device)
@@ -198,7 +198,7 @@ class ImplicitQuantileNetwork(Critic):
 
     def forward(  # type: ignore
         self,
-        obs: Union[np.ndarray, torch.Tensor],
+        obs: np.ndarray | torch.Tensor,
         sample_size: int,
         **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
@@ -277,8 +277,8 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
         action_shape: Sequence[int],
         hidden_sizes: Sequence[int] = (),
         num_cosines: int = 64,
-        preprocess_net_output_dim: Optional[int] = None,
-        device: Union[str, int, torch.device] = "cpu",
+        preprocess_net_output_dim: int | None = None,
+        device: str | int | torch.device = "cpu",
     ) -> None:
         super().__init__(
             preprocess_net,
@@ -296,9 +296,9 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
 
     def forward(  # type: ignore
         self,
-        obs: Union[np.ndarray, torch.Tensor],
+        obs: np.ndarray | torch.Tensor,
         propose_model: FractionProposalNetwork,
-        fractions: Optional[Batch] = None,
+        fractions: Batch | None = None,
         **kwargs: Any,
     ) -> tuple[Any, torch.Tensor]:
         r"""Mapping: s -> Q(s, \*)."""
@@ -409,7 +409,7 @@ class IntrinsicCuriosityModule(nn.Module):
         feature_dim: int,
         action_dim: int,
         hidden_sizes: Sequence[int] = (),
-        device: Union[str, torch.device] = "cpu",
+        device: str | torch.device = "cpu",
     ) -> None:
         super().__init__()
         self.feature_net = feature_net
@@ -431,9 +431,9 @@ class IntrinsicCuriosityModule(nn.Module):
 
     def forward(
         self,
-        s1: Union[np.ndarray, torch.Tensor],
-        act: Union[np.ndarray, torch.Tensor],
-        s2: Union[np.ndarray, torch.Tensor],
+        s1: np.ndarray | torch.Tensor,
+        act: np.ndarray | torch.Tensor,
+        s2: np.ndarray | torch.Tensor,
         **kwargs: Any,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         r"""Mapping: s1, act, s2 -> mse_loss, act_hat."""

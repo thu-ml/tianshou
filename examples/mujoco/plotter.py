@@ -108,7 +108,7 @@ def plot_ax(
 
     legneds = map(legend_fn, file_lists)
     # sort filelist according to legends
-    file_lists = [f for _, f in sorted(zip(legneds, file_lists))]
+    file_lists = [f for _, f in sorted(zip(legneds, file_lists, strict=True))]
     legneds = list(map(legend_fn, file_lists))
 
     for index, csv_file in enumerate(file_lists):

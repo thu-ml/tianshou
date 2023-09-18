@@ -1,5 +1,4 @@
 from numbers import Number
-from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -30,7 +29,7 @@ class MovAvg:
         self.cache: list[np.number] = []
         self.banned = [np.inf, np.nan, -np.inf]
 
-    def add(self, data_array: Union[Number, np.number, list, np.ndarray, torch.Tensor]) -> float:
+    def add(self, data_array: Number | np.number | list | np.ndarray | torch.Tensor) -> float:
         """Add a scalar into :class:`MovAvg`.
 
         You can add ``torch.Tensor`` with only one element, a python scalar, or
@@ -78,9 +77,9 @@ class RunningMeanStd:
 
     def __init__(
         self,
-        mean: Union[float, np.ndarray] = 0.0,
-        std: Union[float, np.ndarray] = 1.0,
-        clip_max: Optional[float] = 10.0,
+        mean: float | np.ndarray = 0.0,
+        std: float | np.ndarray = 1.0,
+        clip_max: float | None = 10.0,
         epsilon: float = np.finfo(np.float32).eps.item(),
     ) -> None:
         self.mean, self.var = mean, std
@@ -88,7 +87,7 @@ class RunningMeanStd:
         self.count = 0
         self.eps = epsilon
 
-    def norm(self, data_array: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def norm(self, data_array: float | np.ndarray) -> float | np.ndarray:
         data_array = (data_array - self.mean) / np.sqrt(self.var + self.eps)
         if self.clip_max:
             data_array = np.clip(data_array, -self.clip_max, self.clip_max)

@@ -99,10 +99,10 @@ class FiniteVectorEnv(BaseVectorEnv):
         infos = [None] * len(id)
         id2idx = {i: k for k, i in enumerate(id)}
         if request_id:
-            for k, o, info in zip(request_id, *super().reset(request_id)):
+            for k, o, info in zip(request_id, *super().reset(request_id), strict=True):
                 obs[id2idx[k]] = o
                 infos[id2idx[k]] = info
-        for i, o in zip(id, obs):
+        for i, o in zip(id, obs, strict=True):
             if o is None and i in self._alive_env_ids:
                 self._alive_env_ids.remove(i)
 
@@ -131,11 +131,15 @@ class FiniteVectorEnv(BaseVectorEnv):
         # ask super to step alive envs and remap to current index
         if request_id:
             valid_act = np.stack([action[id2idx[i]] for i in request_id])
-            for i, r in zip(request_id, zip(*super().step(valid_act, request_id))):
+            for i, r in zip(
+                request_id,
+                zip(*super().step(valid_act, request_id), strict=True),
+                strict=True,
+            ):
                 result[id2idx[i]] = r
 
         # logging
-        for i, r in zip(id, result):
+        for i, r in zip(id, result, strict=True):
             if i in self._alive_env_ids:
                 self.tracker.log(*r)
 
@@ -148,7 +152,7 @@ class FiniteVectorEnv(BaseVectorEnv):
             if result[i][-1] is None:
                 result[i][-1] = self._get_default_info()
 
-        return list(map(np.stack, zip(*result)))
+        return list(map(np.stack, zip(*result, strict=True)))
 
 
 class FiniteDummyVectorEnv(FiniteVectorEnv, DummyVectorEnv):

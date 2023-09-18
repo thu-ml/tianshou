@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
-from typing import Any, Callable, Optional, Union, no_type_check
+from collections.abc import Callable, Sequence
+from typing import Any, no_type_check
 
 import numpy as np
 import torch
@@ -10,21 +10,16 @@ from tianshou.data.batch import Batch
 from tianshou.data.types import RecurrentStateBatch
 
 ModuleType = type[nn.Module]
-ArgsType = Union[
-    tuple[Any, ...],
-    dict[Any, Any],
-    Sequence[tuple[Any, ...]],
-    Sequence[dict[Any, Any]],
-]
+ArgsType = tuple[Any, ...] | dict[Any, Any] | Sequence[tuple[Any, ...]] | Sequence[dict[Any, Any]]
 
 
 def miniblock(
     input_size: int,
     output_size: int = 0,
-    norm_layer: Optional[ModuleType] = None,
-    norm_args: Optional[Union[tuple[Any, ...], dict[Any, Any]]] = None,
-    activation: Optional[ModuleType] = None,
-    act_args: Optional[Union[tuple[Any, ...], dict[Any, Any]]] = None,
+    norm_layer: ModuleType | None = None,
+    norm_args: tuple[Any, ...] | dict[Any, Any] | None = None,
+    activation: ModuleType | None = None,
+    act_args: tuple[Any, ...] | dict[Any, Any] | None = None,
     linear_layer: type[nn.Linear] = nn.Linear,
 ) -> list[nn.Module]:
     """Construct a miniblock with given input/output-size, norm layer and activation."""
@@ -76,11 +71,11 @@ class MLP(nn.Module):
         input_dim: int,
         output_dim: int = 0,
         hidden_sizes: Sequence[int] = (),
-        norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
-        norm_args: Optional[ArgsType] = None,
-        activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
-        act_args: Optional[ArgsType] = None,
-        device: Optional[Union[str, int, torch.device]] = None,
+        norm_layer: ModuleType | Sequence[ModuleType] | None = None,
+        norm_args: ArgsType | None = None,
+        activation: ModuleType | Sequence[ModuleType] | None = nn.ReLU,
+        act_args: ArgsType | None = None,
+        device: str | int | torch.device | None = None,
         linear_layer: type[nn.Linear] = nn.Linear,
         flatten_input: bool = True,
     ) -> None:
@@ -125,6 +120,7 @@ class MLP(nn.Module):
             norm_args_list,
             activation_list,
             act_args_list,
+            strict=True,
         ):
             model += miniblock(in_dim, out_dim, norm, norm_args, activ, act_args, linear_layer)
         if output_dim > 0:
@@ -134,7 +130,7 @@ class MLP(nn.Module):
         self.flatten_input = flatten_input
 
     @no_type_check
-    def forward(self, obs: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+    def forward(self, obs: np.ndarray | torch.Tensor) -> torch.Tensor:
         obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         if self.flatten_input:
             obs = obs.flatten(1)
@@ -147,7 +143,7 @@ class NetBase(nn.Module, ABC):
     @abstractmethod
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
+        obs: np.ndarray | torch.Tensor,
         state: Any = None,
         **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
@@ -200,26 +196,26 @@ class Net(NetBase):
 
     def __init__(
         self,
-        state_shape: Union[int, Sequence[int]],
-        action_shape: Union[int, Sequence[int]] = 0,
+        state_shape: int | Sequence[int],
+        action_shape: int | Sequence[int] = 0,
         hidden_sizes: Sequence[int] = (),
-        norm_layer: Optional[Union[ModuleType, Sequence[ModuleType]]] = None,
-        norm_args: Optional[ArgsType] = None,
-        activation: Optional[Union[ModuleType, Sequence[ModuleType]]] = nn.ReLU,
-        act_args: Optional[ArgsType] = None,
-        device: Union[str, int, torch.device] = "cpu",
+        norm_layer: ModuleType | Sequence[ModuleType] | None = None,
+        norm_args: ArgsType | None = None,
+        activation: ModuleType | Sequence[ModuleType] | None = nn.ReLU,
+        act_args: ArgsType | None = None,
+        device: str | int | torch.device = "cpu",
         softmax: bool = False,
         concat: bool = False,
         num_atoms: int = 1,
-        dueling_param: Optional[tuple[dict[str, Any], dict[str, Any]]] = None,
+        dueling_param: tuple[dict[str, Any], dict[str, Any]] | None = None,
         linear_layer: type[nn.Linear] = nn.Linear,
     ) -> None:
         super().__init__()
         self.device = device
         self.softmax = softmax
         self.num_atoms = num_atoms
-        self.Q: Optional[MLP] = None
-        self.V: Optional[MLP] = None
+        self.Q: MLP | None = None
+        self.V: MLP | None = None
 
         input_dim = int(np.prod(state_shape))
         action_dim = int(np.prod(action_shape)) * num_atoms
@@ -257,7 +253,7 @@ class Net(NetBase):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
+        obs: np.ndarray | torch.Tensor,
         state: Any = None,
         **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
@@ -294,9 +290,9 @@ class Recurrent(NetBase):
     def __init__(
         self,
         layer_num: int,
-        state_shape: Union[int, Sequence[int]],
-        action_shape: Union[int, Sequence[int]],
-        device: Union[str, int, torch.device] = "cpu",
+        state_shape: int | Sequence[int],
+        action_shape: int | Sequence[int],
+        device: str | int | torch.device = "cpu",
         hidden_layer_size: int = 128,
     ) -> None:
         super().__init__()
@@ -312,8 +308,8 @@ class Recurrent(NetBase):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
-        state: Optional[Union[RecurrentStateBatch, dict[str, torch.Tensor]]] = None,
+        obs: np.ndarray | torch.Tensor,
+        state: RecurrentStateBatch | dict[str, torch.Tensor] | None = None,
         **kwargs: Any,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Mapping: obs -> flatten -> logits.
@@ -395,7 +391,7 @@ class DataParallelNet(nn.Module):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
+        obs: np.ndarray | torch.Tensor,
         *args: Any,
         **kwargs: Any,
     ) -> tuple[Any, Any]:
@@ -427,7 +423,7 @@ class EnsembleLinear(nn.Module):
         weight_data = torch.rand((ensemble_size, in_feature, out_feature)) * 2 * k - k
         self.weight = nn.Parameter(weight_data, requires_grad=True)
 
-        self.bias_weights: Optional[nn.Parameter] = None
+        self.bias_weights: nn.Parameter | None = None
         if bias:
             bias_data = torch.rand((ensemble_size, 1, out_feature)) * 2 * k - k
             self.bias_weights = nn.Parameter(bias_data, requires_grad=True)
@@ -470,17 +466,17 @@ class BranchingNet(NetBase):
 
     def __init__(
         self,
-        state_shape: Union[int, Sequence[int]],
+        state_shape: int | Sequence[int],
         num_branches: int = 0,
         action_per_branch: int = 2,
-        common_hidden_sizes: Optional[list[int]] = None,
-        value_hidden_sizes: Optional[list[int]] = None,
-        action_hidden_sizes: Optional[list[int]] = None,
-        norm_layer: Optional[ModuleType] = None,
-        norm_args: Optional[ArgsType] = None,
-        activation: Optional[ModuleType] = nn.ReLU,
-        act_args: Optional[ArgsType] = None,
-        device: Union[str, int, torch.device] = "cpu",
+        common_hidden_sizes: list[int] | None = None,
+        value_hidden_sizes: list[int] | None = None,
+        action_hidden_sizes: list[int] | None = None,
+        norm_layer: ModuleType | None = None,
+        norm_args: ArgsType | None = None,
+        activation: ModuleType | None = nn.ReLU,
+        act_args: ArgsType | None = None,
+        device: str | int | torch.device = "cpu",
     ) -> None:
         super().__init__()
         common_hidden_sizes = common_hidden_sizes or []
@@ -537,7 +533,7 @@ class BranchingNet(NetBase):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
+        obs: np.ndarray | torch.Tensor,
         state: Any = None,
         **kwargs: Any,
     ) -> tuple[torch.Tensor, Any]:
@@ -555,7 +551,7 @@ class BranchingNet(NetBase):
 
 
 def get_dict_state_decorator(
-    state_shape: dict[str, Union[int, Sequence[int]]],
+    state_shape: dict[str, int | Sequence[int]],
     keys: Sequence[str],
 ) -> tuple[Callable, int]:
     """A helper function to make Net or equivalent classes (e.g. Actor, Critic) applicable to dict state.
@@ -577,7 +573,7 @@ def get_dict_state_decorator(
         flat_state_shapes.append(int(np.prod(state_shape[k])))
     new_state_shape = sum(flat_state_shapes)
 
-    def preprocess_obs(obs: Union[Batch, dict, torch.Tensor, np.ndarray]) -> torch.Tensor:
+    def preprocess_obs(obs: Batch | dict | torch.Tensor | np.ndarray) -> torch.Tensor:
         if isinstance(obs, dict) or (isinstance(obs, Batch) and keys[0] in obs):
             if original_shape[keys[0]] == obs[keys[0]].shape:
                 # No batch dim
@@ -593,7 +589,7 @@ def get_dict_state_decorator(
     @no_type_check
     def decorator_fn(net_class):
         class new_net_class(net_class):
-            def forward(self, obs: Union[np.ndarray, torch.Tensor], *args, **kwargs) -> Any:
+            def forward(self, obs: np.ndarray | torch.Tensor, *args, **kwargs) -> Any:
                 return super().forward(preprocess_obs(obs), *args, **kwargs)
 
         return new_net_class

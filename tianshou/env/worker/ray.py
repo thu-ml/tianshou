@@ -1,5 +1,6 @@
 import contextlib
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -41,13 +42,13 @@ class RayEnvWorker(EnvWorker):
     def wait(  # type: ignore
         workers: list["RayEnvWorker"],
         wait_num: int,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> list["RayEnvWorker"]:
         results = [x.result for x in workers]
         ready_results, _ = ray.wait(results, num_returns=wait_num, timeout=timeout)
         return [workers[results.index(result)] for result in ready_results]
 
-    def send(self, action: Optional[np.ndarray], **kwargs: Any) -> None:
+    def send(self, action: np.ndarray | None, **kwargs: Any) -> None:
         # self.result is actually a handle
         if action is None:
             self.result = self.env.reset.remote(**kwargs)
@@ -57,7 +58,7 @@ class RayEnvWorker(EnvWorker):
     def recv(self) -> gym_new_venv_step_type:
         return ray.get(self.result)  # type: ignore
 
-    def seed(self, seed: Optional[int] = None) -> Optional[list[int]]:
+    def seed(self, seed: int | None = None) -> list[int] | None:
         super().seed(seed)
         try:
             return ray.get(self.env.seed.remote(seed))

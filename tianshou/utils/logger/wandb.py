@@ -1,7 +1,7 @@
 import argparse
 import contextlib
 import os
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -48,11 +48,11 @@ class WandbLogger(BaseLogger):
         update_interval: int = 1000,
         save_interval: int = 1000,
         write_flush: bool = True,
-        project: Optional[str] = None,
-        name: Optional[str] = None,
-        entity: Optional[str] = None,
-        run_id: Optional[str] = None,
-        config: Optional[argparse.Namespace] = None,
+        project: str | None = None,
+        name: str | None = None,
+        entity: str | None = None,
+        run_id: str | None = None,
+        config: argparse.Namespace | None = None,
         monitor_gym: bool = True,
     ) -> None:
         super().__init__(train_interval, test_interval, update_interval)
@@ -78,7 +78,7 @@ class WandbLogger(BaseLogger):
             else wandb.run
         )
         self.wandb_run._label(repo="tianshou")  # type: ignore
-        self.tensorboard_logger: Optional[TensorboardLogger] = None
+        self.tensorboard_logger: TensorboardLogger | None = None
 
     def load(self, writer: SummaryWriter) -> None:
         self.writer = writer
@@ -104,7 +104,7 @@ class WandbLogger(BaseLogger):
         epoch: int,
         env_step: int,
         gradient_step: int,
-        save_checkpoint_fn: Optional[Callable[[int, int, int], str]] = None,
+        save_checkpoint_fn: Callable[[int, int, int], str] | None = None,
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 

@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import torch
@@ -69,7 +69,7 @@ class CQLPolicy(SACPolicy):
         cql_weight: float = 1.0,
         tau: float = 0.005,
         gamma: float = 0.99,
-        alpha: Union[float, tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
+        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
         temperature: float = 1.0,
         with_lagrange: bool = True,
         lagrange_threshold: float = 10.0,
@@ -80,7 +80,7 @@ class CQLPolicy(SACPolicy):
         alpha_max: float = 1e6,
         clip_grad: float = 1.0,
         calibrated: bool = False,
-        device: Union[str, torch.device] = "cpu",
+        device: str | torch.device = "cpu",
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -141,7 +141,7 @@ class CQLPolicy(SACPolicy):
         q1 = self.critic1(obs, act_pred)
         q2 = self.critic2(obs, act_pred)
         min_Q = torch.min(q1, q2)
-        self._alpha: Union[float, torch.Tensor]
+        self._alpha: float | torch.Tensor
         actor_loss = (self._alpha * log_pi - min_Q).mean()
         # actor_loss.shape: (), log_pi.shape: (batch_size, 1)
         return actor_loss, log_pi

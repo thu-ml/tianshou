@@ -98,7 +98,7 @@ def merge_csv(csv_files, root_dir, remove_zero=False):
             *["reward:" + os.path.relpath(f, root_dir) for f in sorted_keys],
         ],
     ]
-    for rows in zip(*sorted_values):
+    for rows in zip(*sorted_values, strict=True):
         array = np.array(rows)
         assert len(set(array[:, 0])) == 1, (set(array[:, 0]), array[:, 0])
         line = [rows[0][0], round(array[:, 1].mean(), 4), round(array[:, 1].std(), 4)]

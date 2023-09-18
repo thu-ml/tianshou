@@ -1,6 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Literal, Optional, Union, cast, overload
+from collections.abc import Callable
+from typing import Any, Literal, cast, overload
 
 import gymnasium as gym
 import numpy as np
@@ -74,13 +75,11 @@ class BasePolicy(ABC, nn.Module):
     def __init__(
         self,
         # TODO: does the policy actually need the observation space?
-        observation_space: Optional[gym.Space] = None,
-        action_space: Optional[gym.Space] = None,
+        observation_space: gym.Space | None = None,
+        action_space: gym.Space | None = None,
         action_scaling: bool = False,
-        action_bound_method: Optional[Literal["clip", "tanh"]] = None,
-        lr_scheduler: Optional[
-            Union[torch.optim.lr_scheduler.LambdaLR, MultipleLRSchedulers]
-        ] = None,
+        action_bound_method: Literal["clip", "tanh"] | None = None,
+        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:
         allowed_action_bound_methods = ("clip", "tanh")
         if (
@@ -100,7 +99,7 @@ class BasePolicy(ABC, nn.Module):
         super().__init__()
         self.observation_space = observation_space
         self.action_space = action_space
-        if isinstance(action_space, (Discrete, MultiDiscrete, MultiBinary)):
+        if isinstance(action_space, Discrete | MultiDiscrete | MultiBinary):
             self.action_type = "discrete"
         elif isinstance(action_space, Box):
             self.action_type = "continuous"
@@ -123,9 +122,9 @@ class BasePolicy(ABC, nn.Module):
     #  find a better way to do this.
     def exploration_noise(
         self,
-        act: Union[np.ndarray, BatchProtocol],
+        act: np.ndarray | BatchProtocol,
         batch: RolloutBatchProtocol,
-    ) -> Union[np.ndarray, BatchProtocol]:
+    ) -> np.ndarray | BatchProtocol:
         """Modify the action from policy.forward with exploration noise.
 
         NOTE: currently does not add any noise! Needs to be overridden by subclasses
@@ -141,14 +140,14 @@ class BasePolicy(ABC, nn.Module):
 
     def soft_update(self, tgt: nn.Module, src: nn.Module, tau: float) -> None:
         """Softly update the parameters of target module towards the parameters of source module."""
-        for tgt_param, src_param in zip(tgt.parameters(), src.parameters()):
+        for tgt_param, src_param in zip(tgt.parameters(), src.parameters(), strict=True):
             tgt_param.data.copy_(tau * src_param.data + (1 - tau) * tgt_param.data)
 
     @abstractmethod
     def forward(
         self,
         batch: RolloutBatchProtocol,
-        state: Optional[Union[dict, BatchProtocol, np.ndarray]] = None,
+        state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> BatchProtocol:
         """Compute action over the given batch data.
@@ -199,8 +198,8 @@ class BasePolicy(ABC, nn.Module):
 
     def map_action(
         self,
-        act: Union[BatchProtocol, np.ndarray, torch.Tensor],
-    ) -> Union[BatchProtocol, np.ndarray, torch.Tensor]:
+        act: BatchProtocol | np.ndarray | torch.Tensor,
+    ) -> BatchProtocol | np.ndarray | torch.Tensor:
         """Map raw network output to action range in gym's env.action_space.
 
         This function is called in :meth:`~tianshou.data.Collector.collect` and only
@@ -234,8 +233,8 @@ class BasePolicy(ABC, nn.Module):
 
     def map_action_inverse(
         self,
-        act: Union[BatchProtocol, list, np.ndarray],
-    ) -> Union[BatchProtocol, list, np.ndarray]:
+        act: BatchProtocol | list | np.ndarray,
+    ) -> BatchProtocol | list | np.ndarray:
         """Inverse operation to :meth:`~tianshou.policy.BasePolicy.map_action`.
 
         This function is called in :meth:`~tianshou.data.Collector.collect` for
@@ -322,7 +321,7 @@ class BasePolicy(ABC, nn.Module):
     def update(
         self,
         sample_size: int,
-        buffer: Optional[ReplayBuffer],
+        buffer: ReplayBuffer | None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Update the policy network and replay buffer.
@@ -376,8 +375,8 @@ class BasePolicy(ABC, nn.Module):
         batch: RolloutBatchProtocol,
         buffer: ReplayBuffer,
         indices: np.ndarray,
-        v_s_: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        v_s: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        v_s_: np.ndarray | torch.Tensor | None = None,
+        v_s: np.ndarray | torch.Tensor | None = None,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
     ) -> tuple[np.ndarray, np.ndarray]:
