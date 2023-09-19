@@ -6,8 +6,8 @@ from numbers import Number
 from typing import (
     Any,
     Protocol,
-    TypeVar,
-    Union,
+    Self,
+    TypeVar, Union,
     cast,
     overload,
     runtime_checkable,
@@ -232,7 +232,7 @@ class BatchProtocol(Protocol):
         ...
 
     @overload
-    def __getitem__(self: TBatch, index: IndexType) -> TBatch:
+    def __getitem__(self, index: IndexType) -> Self:
         ...
 
     def __getitem__(self, index: str | IndexType) -> Any:
@@ -241,22 +241,22 @@ class BatchProtocol(Protocol):
     def __setitem__(self, index: str | IndexType, value: Any) -> None:
         ...
 
-    def __iadd__(self: TBatch, other: TBatch | Number | np.number) -> TBatch:
+    def __iadd__(self, other: Self | Number | np.number) -> Self:
         ...
 
-    def __add__(self: TBatch, other: TBatch | Number | np.number) -> TBatch:
+    def __add__(self, other: Self | Number | np.number) -> Self:
         ...
 
-    def __imul__(self: TBatch, value: Number | np.number) -> TBatch:
+    def __imul__(self, value: Number | np.number) -> Self:
         ...
 
-    def __mul__(self: TBatch, value: Number | np.number) -> TBatch:
+    def __mul__(self, value: Number | np.number) -> Self:
         ...
 
-    def __itruediv__(self: TBatch, value: Number | np.number) -> TBatch:
+    def __itruediv__(self, value: Number | np.number) -> Self:
         ...
 
-    def __truediv__(self: TBatch, value: Number | np.number) -> TBatch:
+    def __truediv__(self, value: Number | np.number) -> Self:
         ...
 
     def __repr__(self) -> str:
@@ -274,7 +274,7 @@ class BatchProtocol(Protocol):
         """Change all numpy.ndarray to torch.Tensor in-place."""
         ...
 
-    def cat_(self, batches: TBatch | Sequence[dict | TBatch]) -> None:
+    def cat_(self, batches: Self | Sequence[dict | Self]) -> None:
         """Concatenate a list of (or one) Batch objects into current batch."""
         ...
 
@@ -298,7 +298,7 @@ class BatchProtocol(Protocol):
         """
         ...
 
-    def stack_(self, batches: Sequence[dict | TBatch], axis: int = 0) -> None:
+    def stack_(self, batches: Sequence[dict | Self], axis: int = 0) -> None:
         """Stack a list of Batch object into current batch."""
         ...
 
@@ -327,7 +327,7 @@ class BatchProtocol(Protocol):
         """
         ...
 
-    def empty_(self: TBatch, index: slice | IndexType | None = None) -> TBatch:
+    def empty_(self, index: slice | IndexType | None = None) -> Self:
         """Return an empty Batch object with 0 or None filled.
 
         If "index" is specified, it will only reset the specific indexed-data.
@@ -362,7 +362,7 @@ class BatchProtocol(Protocol):
         """
         ...
 
-    def update(self, batch: dict | TBatch | None = None, **kwargs: Any) -> None:
+    def update(self, batch: dict | Self | None = None, **kwargs: Any) -> None:
         """Update this batch from another dict/Batch."""
         ...
 
@@ -373,11 +373,11 @@ class BatchProtocol(Protocol):
         ...
 
     def split(
-        self: TBatch,
+        self,
         size: int,
         shuffle: bool = True,
         merge_last: bool = False,
-    ) -> Iterator[TBatch]:
+    ) -> Iterator[Self]:
         """Split whole data into multiple small batches.
 
         :param int size: divide the data batch with the given size, but one
@@ -457,7 +457,7 @@ class Batch(BatchProtocol):
         ...
 
     @overload
-    def __getitem__(self: TBatch, index: IndexType) -> TBatch:
+    def __getitem__(self, index: IndexType) -> Self:
         ...
 
     def __getitem__(self, index: str | IndexType) -> Any:
@@ -501,7 +501,7 @@ class Batch(BatchProtocol):
                 else:
                     self.__dict__[key][index] = None
 
-    def __iadd__(self: TBatch, other: TBatch | Number | np.number) -> TBatch:
+    def __iadd__(self, other: Self | Number | np.number) -> Self:
         """Algebraic addition with another Batch instance in-place."""
         if isinstance(other, Batch):
             for (batch_key, obj), value in zip(
@@ -521,11 +521,11 @@ class Batch(BatchProtocol):
             return self
         raise TypeError("Only addition of Batch or number is supported.")
 
-    def __add__(self: TBatch, other: TBatch | Number | np.number) -> TBatch:
+    def __add__(self, other: Self | Number | np.number) -> Self:
         """Algebraic addition with another Batch instance out-of-place."""
         return deepcopy(self).__iadd__(other)
 
-    def __imul__(self: TBatch, value: Number | np.number) -> TBatch:
+    def __imul__(self, value: Number | np.number) -> Self:
         """Algebraic multiplication with a scalar value in-place."""
         assert _is_number(value), "Only multiplication by a number is supported."
         for batch_key, obj in self.__dict__.items():
@@ -534,11 +534,11 @@ class Batch(BatchProtocol):
             self.__dict__[batch_key] *= value
         return self
 
-    def __mul__(self: TBatch, value: Number | np.number) -> TBatch:
+    def __mul__(self, value: Number | np.number) -> Self:
         """Algebraic multiplication with a scalar value out-of-place."""
         return deepcopy(self).__imul__(value)
 
-    def __itruediv__(self: TBatch, value: Number | np.number) -> TBatch:
+    def __itruediv__(self, value: Number | np.number) -> Self:
         """Algebraic division with a scalar value in-place."""
         assert _is_number(value), "Only division by a number is supported."
         for batch_key, obj in self.__dict__.items():
@@ -547,7 +547,7 @@ class Batch(BatchProtocol):
             self.__dict__[batch_key] /= value
         return self
 
-    def __truediv__(self: TBatch, value: Number | np.number) -> TBatch:
+    def __truediv__(self, value: Number | np.number) -> Self:
         """Algebraic division with a scalar value out-of-place."""
         return deepcopy(self).__itruediv__(value)
 
@@ -604,7 +604,7 @@ class Batch(BatchProtocol):
                     obj = obj.type(dtype)  # noqa: PLW2901
                 self.__dict__[batch_key] = obj
 
-    def __cat(self: TBatch, batches: Sequence[dict | TBatch], lens: list[int]) -> None:
+    def __cat(self, batches: Sequence[dict | Self], lens: list[int]) -> None:
         """Private method for Batch.cat_.
 
         ::
@@ -798,7 +798,7 @@ class Batch(BatchProtocol):
         # can't cast to a generic type, so we have to ignore the type here
         return batch  # type: ignore
 
-    def empty_(self: TBatch, index: slice | IndexType | None = None) -> TBatch:
+    def empty_(self, index: slice | IndexType | None = None) -> Self:
         for batch_key, obj in self.items():
             if isinstance(obj, torch.Tensor):  # most often case
                 self.__dict__[batch_key][index] = 0
@@ -826,7 +826,7 @@ class Batch(BatchProtocol):
     def empty(batch: TBatch, index: IndexType | None = None) -> TBatch:
         return deepcopy(batch).empty_(index)
 
-    def update(self, batch: dict | TBatch | None = None, **kwargs: Any) -> None:
+    def update(self, batch: dict | Self | None = None, **kwargs: Any) -> None:
         if batch is None:
             self.update(kwargs)
             return
@@ -902,11 +902,11 @@ class Batch(BatchProtocol):
         )
 
     def split(
-        self: TBatch,
+        self,
         size: int,
         shuffle: bool = True,
         merge_last: bool = False,
-    ) -> Iterator[TBatch]:
+    ) -> Iterator[Self]:
         length = len(self)
         if size == -1:
             size = length

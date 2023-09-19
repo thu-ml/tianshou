@@ -62,7 +62,7 @@ class Collector:
         policy: BasePolicy,
         env: gym.Env | BaseVectorEnv,
         buffer: ReplayBuffer | None = None,
-        preprocess_fn: Callable[..., Batch] | None = None,
+        preprocess_fn: Callable[..., RolloutBatchProtocol] | None = None,
         exploration_noise: bool = False,
     ) -> None:
         super().__init__()
@@ -413,7 +413,7 @@ class AsyncCollector(Collector):
         policy: BasePolicy,
         env: BaseVectorEnv,
         buffer: ReplayBuffer | None = None,
-        preprocess_fn: Callable[..., Batch] | None = None,
+        preprocess_fn: Callable[..., RolloutBatchProtocol] | None = None,
         exploration_noise: bool = False,
     ) -> None:
         # assert env.is_async
