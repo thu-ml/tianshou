@@ -2,7 +2,9 @@ import warnings
 
 import gymnasium as gym
 
+from tianshou.config import RLSamplingConfig, BasicExperimentConfig
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
+from tianshou.highlevel.env import EnvFactory, Environments, ContinuousEnvironments
 
 try:
     import envpool
@@ -38,3 +40,19 @@ def make_mujoco_env(
         test_envs = VectorEnvNormObs(test_envs, update_obs_rms=False)
         test_envs.set_obs_rms(train_envs.get_obs_rms())
     return env, train_envs, test_envs
+
+
+class MujocoEnvFactory(EnvFactory):
+    def __init__(self, experiment_config: BasicExperimentConfig, sampling_config: RLSamplingConfig):
+        self.sampling_config = sampling_config
+        self.experiment_config = experiment_config
+
+    def create_envs(self) -> ContinuousEnvironments:
+        env, train_envs, test_envs = make_mujoco_env(
+            task=self.experiment_config.task,
+            seed=self.experiment_config.seed,
+            num_train_envs=self.sampling_config.num_train_envs,
+            num_test_envs=self.sampling_config.num_test_envs,
+            obs_norm=True,
+        )
+        return ContinuousEnvironments(env=env, train_envs=train_envs, test_envs=test_envs)

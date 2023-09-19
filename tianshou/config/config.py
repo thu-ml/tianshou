@@ -14,8 +14,8 @@ class BasicExperimentConfig:
     seed: int = 42
     task: str = "Ant-v4"
     """Mujoco specific"""
-    render: float = 0.0
-    """Milliseconds between rendered frames"""
+    render: Optional[float] = 0.0
+    """Milliseconds between rendered frames; if None, no rendering"""
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     resume_id: Optional[int] = None
     """For restoring a model and running means of env-specifics from a checkpoint"""
@@ -23,6 +23,7 @@ class BasicExperimentConfig:
     """For restoring a model and running means of env-specifics from a checkpoint"""
     watch: bool = False
     """If True, will not perform training and only watch the restored policy"""
+    watch_num_episodes = 10
 
 
 @dataclass
