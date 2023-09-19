@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, Self, cast
 
 import h5py
 import numpy as np
@@ -111,7 +111,7 @@ class ReplayBuffer:
             to_hdf5(self.__dict__, f, compression=compression)
 
     @classmethod
-    def load_hdf5(cls, path: str, device: str | None = None) -> "ReplayBuffer":
+    def load_hdf5(cls, path: str, device: str | None = None) -> Self:
         """Load replay buffer from HDF5 file."""
         with h5py.File(path, "r") as f:
             buf = cls.__new__(cls)
@@ -128,7 +128,7 @@ class ReplayBuffer:
         truncated: h5py.Dataset,
         done: h5py.Dataset,
         obs_next: h5py.Dataset,
-    ) -> "ReplayBuffer":
+    ) -> Self:
         size = len(obs)
         assert all(
             len(dset) == size for dset in [obs, act, rew, terminated, truncated, done, obs_next]
