@@ -10,7 +10,7 @@ import torch
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import BaseNoise
 from tianshou.highlevel.env import Environments
-from tianshou.highlevel.experiment import RLSamplingConfig
+from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.logger import Logger
 from tianshou.highlevel.module import ActorFactory, CriticFactory, TDevice
 from tianshou.highlevel.optim import LRSchedulerFactory, OptimizerFactory

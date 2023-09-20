@@ -8,7 +8,7 @@ from torch import Tensor
 from torch.optim import Adam
 from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 
-from tianshou.highlevel.experiment import RLSamplingConfig
+from tianshou.highlevel.config import RLSamplingConfig
 
 TParams = Iterable[Tensor] | Iterable[dict[str, Any]]
 

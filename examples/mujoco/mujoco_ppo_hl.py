@@ -13,8 +13,8 @@ from tianshou.highlevel.agent import PGConfig, PPOAgentFactory, PPOConfig, RLAge
 from tianshou.highlevel.experiment import (
     RLExperiment,
     RLExperimentConfig,
-    RLSamplingConfig,
 )
+from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.logger import DefaultLoggerFactory
 from tianshou.highlevel.module import (
     ContinuousActorProbFactory,
