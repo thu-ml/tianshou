@@ -9,8 +9,8 @@ import torch
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import BaseNoise
-from tianshou.highlevel.env import Environments
 from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import Logger
 from tianshou.highlevel.module import ActorFactory, CriticFactory, TDevice
 from tianshou.highlevel.optim import LRSchedulerFactory, OptimizerFactory
@@ -143,7 +143,7 @@ class RLAgentConfig:
 
 
 @dataclass
-class PGConfig:
+class PGConfig(RLAgentConfig):
     """Config of general policy-gradient algorithms."""
 
     ent_coef: float = 0.0
@@ -152,7 +152,7 @@ class PGConfig:
 
 
 @dataclass
-class PPOConfig:
+class PPOConfig(PGConfig):
     """PPO specific config."""
 
     value_clip: bool = False
@@ -166,9 +166,7 @@ class PPOConfig:
 class PPOAgentFactory(OnpolicyAgentFactory):
     def __init__(
         self,
-        general_config: RLAgentConfig,
-        pg_config: PGConfig,
-        ppo_config: PPOConfig,
+        config: PPOConfig,
         sampling_config: RLSamplingConfig,
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
@@ -181,9 +179,7 @@ class PPOAgentFactory(OnpolicyAgentFactory):
         self.optimizer_factory = optimizer_factory
         self.critic_factory = critic_factory
         self.actor_factory = actor_factory
-        self.ppo_config = ppo_config
-        self.pg_config = pg_config
-        self.general_config = general_config
+        self.config = config
         self.lr = lr
         self.lr_scheduler_factory = lr_scheduler_factory
         self.dist_fn = dist_fn
@@ -208,27 +204,30 @@ class PPOAgentFactory(OnpolicyAgentFactory):
             action_space=envs.get_action_space(),
             action_scaling=True,
             # general_config
-            discount_factor=self.general_config.gamma,
-            gae_lambda=self.general_config.gae_lambda,
-            reward_normalization=self.general_config.rew_norm,
-            action_bound_method=self.general_config.action_bound_method,
+            discount_factor=self.config.gamma,
+            gae_lambda=self.config.gae_lambda,
+            reward_normalization=self.config.rew_norm,
+            action_bound_method=self.config.action_bound_method,
             # pg_config
-            max_grad_norm=self.pg_config.max_grad_norm,
-            vf_coef=self.pg_config.vf_coef,
-            ent_coef=self.pg_config.ent_coef,
+            max_grad_norm=self.config.max_grad_norm,
+            vf_coef=self.config.vf_coef,
+            ent_coef=self.config.ent_coef,
             # ppo_config
-            eps_clip=self.ppo_config.eps_clip,
-            value_clip=self.ppo_config.value_clip,
-            dual_clip=self.ppo_config.dual_clip,
-            advantage_normalization=self.ppo_config.norm_adv,
-            recompute_advantage=self.ppo_config.recompute_adv,
+            eps_clip=self.config.eps_clip,
+            value_clip=self.config.value_clip,
+            dual_clip=self.config.dual_clip,
+            advantage_normalization=self.config.norm_adv,
+            recompute_advantage=self.config.recompute_adv,
         )
 
 
 class AutoAlphaFactory(ABC):
     @abstractmethod
     def create_auto_alpha(
-        self, envs: Environments, optim_factory: OptimizerFactory, device: TDevice,
+        self,
+        envs: Environments,
+        optim_factory: OptimizerFactory,
+        device: TDevice,
     ):
         pass
 
@@ -238,7 +237,10 @@ class DefaultAutoAlphaFactory(AutoAlphaFactory):  # TODO better name?
         self.lr = lr
 
     def create_auto_alpha(
-        self, envs: Environments, optim_factory: OptimizerFactory, device: TDevice,
+        self,
+        envs: Environments,
+        optim_factory: OptimizerFactory,
+        device: TDevice,
     ) -> tuple[float, torch.Tensor, torch.optim.Optimizer]:
         target_entropy = -np.prod(envs.get_action_shape())
         log_alpha = torch.zeros(1, requires_grad=True, device=device)

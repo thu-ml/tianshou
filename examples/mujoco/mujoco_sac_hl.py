@@ -8,11 +8,11 @@ from jsonargparse import CLI
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.agent import DefaultAutoAlphaFactory, SACAgentFactory, SACConfig
+from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.experiment import (
     RLExperiment,
     RLExperimentConfig,
 )
-from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.logger import DefaultLoggerFactory
 from tianshou.highlevel.module import (
     ContinuousActorProbFactory,

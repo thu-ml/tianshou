@@ -3,8 +3,8 @@ import warnings
 import gymnasium as gym
 
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
-from tianshou.highlevel.env import ContinuousEnvironments, EnvFactory
 from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.env import ContinuousEnvironments, EnvFactory
 
 try:
     import envpool
