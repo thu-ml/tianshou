@@ -140,6 +140,7 @@ extend-fixable = [
     "F401",  # unused import
     "B905" , # bugbear
 ]
+ignore-init-module-imports = true  # without this, "unused" imports in __init__ will be auto-removed, breaking imports
 
 target-version = "py311"
 
