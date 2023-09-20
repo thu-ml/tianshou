@@ -46,6 +46,8 @@ class RLSamplingConfig:
     step_per_collect: int = 2048
     repeat_per_collect: int = 10
     update_per_step: int = 1
+    start_timesteps: int = 0
+    start_timesteps_random: bool = False
 
 
 class RLExperiment(Generic[TPolicy, TTrainer]):

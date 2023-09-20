@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
+import numpy as np
 import torch
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
@@ -34,6 +35,8 @@ class AgentFactory(ABC):
             buffer = ReplayBuffer(buffer_size)
         train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
         test_collector = Collector(policy, envs.test_envs)
+        if self.sampling_config.start_timesteps > 0:
+            train_collector.collect(n_step=self.sampling_config.start_timesteps, random=True)
         return train_collector, test_collector
 
     @abstractmethod
@@ -222,10 +225,32 @@ class PPOAgentFactory(OnpolicyAgentFactory):
         )
 
 
+class AutoAlphaFactory(ABC):
+    @abstractmethod
+    def create_auto_alpha(
+        self, envs: Environments, optim_factory: OptimizerFactory, device: TDevice,
+    ):
+        pass
+
+
+class DefaultAutoAlphaFactory(AutoAlphaFactory):  # TODO better name?
+    def __init__(self, lr: float = 3e-4):
+        self.lr = lr
+
+    def create_auto_alpha(
+        self, envs: Environments, optim_factory: OptimizerFactory, device: TDevice,
+    ) -> tuple[float, torch.Tensor, torch.optim.Optimizer]:
+        target_entropy = -np.prod(envs.get_action_shape())
+        log_alpha = torch.zeros(1, requires_grad=True, device=device)
+        alpha_optim = torch.optim.Adam([log_alpha], lr=self.lr)
+        return target_entropy, log_alpha, alpha_optim
+
+
+@dataclass
 class SACConfig:
     tau: float = 0.005
     gamma: float = 0.99
-    alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2
+    alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] | AutoAlphaFactory = 0.2
     reward_normalization: bool = False
     estimation_step: int = 1
     deterministic_eval: bool = True
@@ -260,6 +285,10 @@ class SACAgentFactory(OffpolicyAgentFactory):
         actor_optim = self.optim_factory.create_optimizer(actor, lr=self.config.actor_lr)
         critic1_optim = self.optim_factory.create_optimizer(critic1, lr=self.config.critic1_lr)
         critic2_optim = self.optim_factory.create_optimizer(critic2, lr=self.config.critic2_lr)
+        if isinstance(self.config.alpha, AutoAlphaFactory):
+            alpha = self.config.alpha.create_auto_alpha(envs, self.optim_factory, device)
+        else:
+            alpha = self.config.alpha
         return SACPolicy(
             actor,
             actor_optim,
@@ -269,7 +298,7 @@ class SACAgentFactory(OffpolicyAgentFactory):
             critic2_optim,
             tau=self.config.tau,
             gamma=self.config.gamma,
-            alpha=self.config.alpha,
+            alpha=alpha,
             estimation_step=self.config.estimation_step,
             action_space=envs.get_action_space(),
             deterministic_eval=self.config.deterministic_eval,

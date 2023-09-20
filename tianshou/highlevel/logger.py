@@ -23,7 +23,12 @@ class LoggerFactory(ABC):
 
 
 class DefaultLoggerFactory(LoggerFactory):
-    def __init__(self, log_dir: str = "log", logger_type: Literal["tensorboard", "wandb"] = "tensorboard", wandb_project: str | None = None):
+    def __init__(
+        self,
+        log_dir: str = "log",
+        logger_type: Literal["tensorboard", "wandb"] = "tensorboard",
+        wandb_project: str | None = None,
+    ):
         if logger_type == "wandb" and wandb_project is None:
             raise ValueError("Must provide 'wand_project'")
         self.log_dir = log_dir
@@ -32,7 +37,16 @@ class DefaultLoggerFactory(LoggerFactory):
 
     def create_logger(self, log_name: str, run_id: str | None, config_dict: dict) -> Logger:
         writer = SummaryWriter(self.log_dir)
-        writer.add_text("args", str(dict(log_dir=self.log_dir, logger_type=self.logger_type, wandb_project=self.wandb_project)))
+        writer.add_text(
+            "args",
+            str(
+                dict(
+                    log_dir=self.log_dir,
+                    logger_type=self.logger_type,
+                    wandb_project=self.wandb_project,
+                ),
+            ),
+        )
         if self.logger_type == "wandb":
             logger = WandbLogger(
                 save_interval=1,
