@@ -2,11 +2,10 @@ from dataclasses import asdict, is_dataclass
 
 
 def collect_configs(*confs):
-    """
-    Collect instances of dataclasses to a single dict mapping the
-    classname to the values. If any of the passed objects is not a
-    dataclass or if two instances of the same config class are passed,
-    an error will be raised.
+    """Collect instances of dataclasses to a single dict mapping the classname to the values.
+
+    If any of the passed objects is not a ddataclass or if two instances
+    of the same config class are passed, an error will be raised.
 
     :param confs: dataclasses
     :return: Dictionary mapping class names to their instances.

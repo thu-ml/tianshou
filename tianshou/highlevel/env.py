@@ -1,24 +1,22 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, Optional, Dict, Any, Union, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import gymnasium as gym
 
 from tianshou.env import BaseVectorEnv
 
-TShape = Union[int, Sequence[int]]
+TShape = int | Sequence[int]
 
 
 class Environments(ABC):
-    def __init__(self, env: Optional[gym.Env], train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
+    def __init__(self, env: gym.Env | None, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
         self.env = env
         self.train_envs = train_envs
         self.test_envs = test_envs
 
-    def info(self) -> Dict[str, Any]:
-        return {
-            "action_shape": self.get_action_shape(),
-            "state_shape": self.get_state_shape()
-        }
+    def info(self) -> dict[str, Any]:
+        return {"action_shape": self.get_action_shape(), "state_shape": self.get_state_shape()}
 
     @abstractmethod
     def get_action_shape(self) -> TShape:
@@ -33,7 +31,7 @@ class Environments(ABC):
 
 
 class ContinuousEnvironments(Environments):
-    def __init__(self, env: Optional[gym.Env], train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
+    def __init__(self, env: gym.Env | None, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
         super().__init__(env, train_envs, test_envs)
         self.state_shape, self.action_shape, self.max_action = self._get_continuous_env_info(env)
 
@@ -44,12 +42,12 @@ class ContinuousEnvironments(Environments):
 
     @staticmethod
     def _get_continuous_env_info(
-            env: gym.Env,
-    ) -> Tuple[Tuple[int, ...], Tuple[int, ...], float]:
+        env: gym.Env,
+    ) -> tuple[tuple[int, ...], tuple[int, ...], float]:
         if not isinstance(env.action_space, gym.spaces.Box):
             raise ValueError(
                 "Only environments with continuous action space are supported here. "
-                f"But got env with action space: {env.action_space.__class__}."
+                f"But got env with action space: {env.action_space.__class__}.",
             )
         state_shape = env.observation_space.shape or env.observation_space.n
         if not state_shape:

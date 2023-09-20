@@ -1,24 +1,24 @@
-from abc import abstractmethod, ABC
-from typing import Sequence
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
 
+import numpy as np
 import torch
 from torch import nn
-import numpy as np
 
 from tianshou.highlevel.env import Environments
 from tianshou.utils.net.common import Net
-from tianshou.utils.net.continuous import ActorProb, Critic as ContinuousCritic
+from tianshou.utils.net.continuous import ActorProb
+from tianshou.utils.net.continuous import Critic as ContinuousCritic
 
 TDevice = str | int | torch.device
 
 
-def init_linear_orthogonal(m: torch.nn.Module):
-    """
-    Applies orthogonal initialization to linear layers of the given module and sets bias weights to 0
+def init_linear_orthogonal(module: torch.nn.Module):
+    """Applies orthogonal initialization to linear layers of the given module and sets bias weights to 0.
 
-    :param m: the module whose submodules are to be processed
+    :param module: the module whose submodules are to be processed
     """
-    for m in m.modules():
+    for m in module.modules():
         if isinstance(m, torch.nn.Linear):
             torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
             torch.nn.init.zeros_(m.bias)
@@ -31,9 +31,9 @@ class ActorFactory(ABC):
 
     @staticmethod
     def _init_linear(actor: torch.nn.Module):
-        """
-        Initializes linear layers of an actor module using default mechanisms
-        :param module: the actor module
+        """Initializes linear layers of an actor module using default mechanisms.
+
+        :param module: the actor module.
         """
         init_linear_orthogonal(actor)
         if hasattr(actor, "mu"):
@@ -51,17 +51,29 @@ class ContinuousActorFactory(ActorFactory, ABC):
 
 
 class ContinuousActorProbFactory(ContinuousActorFactory):
-    def __init__(self, hidden_sizes: Sequence[int]):
+    def __init__(self, hidden_sizes: Sequence[int], unbounded=True, conditioned_sigma=False):
         self.hidden_sizes = hidden_sizes
+        self.unbounded = unbounded
+        self.conditioned_sigma = conditioned_sigma
 
     def create_module(self, envs: Environments, device: TDevice) -> nn.Module:
         net_a = Net(
-            envs.get_state_shape(), hidden_sizes=self.hidden_sizes, activation=nn.Tanh, device=device
+            envs.get_state_shape(),
+            hidden_sizes=self.hidden_sizes,
+            activation=nn.Tanh,
+            device=device,
         )
-        actor = ActorProb(net_a, envs.get_action_shape(), unbounded=True, device=device).to(device)
+        actor = ActorProb(
+            net_a,
+            envs.get_action_shape(),
+            unbounded=True,
+            device=device,
+            conditioned_sigma=self.conditioned_sigma,
+        ).to(device)
 
         # init params
-        torch.nn.init.constant_(actor.sigma_param, -0.5)
+        if not self.conditioned_sigma:
+            torch.nn.init.constant_(actor.sigma_param, -0.5)
         self._init_linear(actor)
 
         return actor
@@ -69,7 +81,7 @@ class ContinuousActorProbFactory(ContinuousActorFactory):
 
 class CriticFactory(ABC):
     @abstractmethod
-    def create_module(self, envs: Environments, device: TDevice) -> nn.Module:
+    def create_module(self, envs: Environments, device: TDevice, use_action: bool) -> nn.Module:
         pass
 
 
@@ -78,12 +90,19 @@ class ContinuousCriticFactory(CriticFactory, ABC):
 
 
 class ContinuousNetCriticFactory(ContinuousCriticFactory):
-    def __init__(self, hidden_sizes: Sequence[int]):
+    def __init__(self, hidden_sizes: Sequence[int], action_shape=0):
+        self.action_shape = action_shape
         self.hidden_sizes = hidden_sizes
 
-    def create_module(self, envs: Environments, device: TDevice) -> nn.Module:
+    def create_module(self, envs: Environments, device: TDevice, use_action: bool) -> nn.Module:
+        action_shape = envs.get_action_shape() if use_action else 0
         net_c = Net(
-            envs.get_state_shape(), hidden_sizes=self.hidden_sizes, activation=nn.Tanh, device=device
+            envs.get_state_shape(),
+            action_shape=action_shape,
+            hidden_sizes=self.hidden_sizes,
+            concat=use_action,
+            activation=nn.Tanh,
+            device=device,
         )
         critic = ContinuousCritic(net_c, device=device).to(device)
         init_linear_orthogonal(critic)

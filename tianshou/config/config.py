@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Literal, Optional, Sequence
+from typing import Literal
 
 import torch
 from jsonargparse import set_docstring_parse_options
@@ -14,12 +14,12 @@ class BasicExperimentConfig:
     seed: int = 42
     task: str = "Ant-v4"
     """Mujoco specific"""
-    render: Optional[float] = 0.0
+    render: float | None = 0.0
     """Milliseconds between rendered frames; if None, no rendering"""
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    resume_id: Optional[int] = None
+    resume_id: str | None = None
     """For restoring a model and running means of env-specifics from a checkpoint"""
-    resume_path: str = None
+    resume_path: str | None = None
     """For restoring a model and running means of env-specifics from a checkpoint"""
     watch: bool = False
     """If True, will not perform training and only watch the restored policy"""
@@ -28,7 +28,7 @@ class BasicExperimentConfig:
 
 @dataclass
 class LoggerConfig:
-    """Logging config"""
+    """Logging config."""
 
     logdir: str = "log"
     logger: Literal["tensorboard", "wandb"] = "tensorboard"
@@ -48,17 +48,18 @@ class RLSamplingConfig:
     buffer_size: int = 4096
     step_per_collect: int = 2048
     repeat_per_collect: int = 10
+    update_per_step: int = 1
 
 
 @dataclass
 class RLAgentConfig:
-    """Config common to most RL algorithms"""
+    """Config common to most RL algorithms."""
 
     gamma: float = 0.99
     """Discount factor"""
     gae_lambda: float = 0.95
     """For Generalized Advantage Estimate (equivalent to TD(lambda))"""
-    action_bound_method: Optional[Literal["clip", "tanh"]] = "clip"
+    action_bound_method: Literal["clip", "tanh"] | None = "clip"
     """How to map original actions in range (-inf, inf) to [-1, 1]"""
     rew_norm: bool = True
     """Whether to normalize rewards"""
@@ -66,7 +67,7 @@ class RLAgentConfig:
 
 @dataclass
 class PGConfig:
-    """Config of general policy-gradient algorithms"""
+    """Config of general policy-gradient algorithms."""
 
     ent_coef: float = 0.0
     vf_coef: float = 0.25
@@ -75,18 +76,11 @@ class PGConfig:
 
 @dataclass
 class PPOConfig:
-    """PPO specific config"""
+    """PPO specific config."""
 
     value_clip: bool = False
     norm_adv: bool = False
     """Whether to normalize advantages"""
     eps_clip: float = 0.2
-    dual_clip: Optional[float] = None
+    dual_clip: float | None = None
     recompute_adv: bool = True
-
-
-@dataclass
-class NNConfig:
-    hidden_sizes: Sequence[int] = (64, 64)
-    lr: float = 3e-4
-    lr_decay: bool = True

@@ -2,9 +2,9 @@ import warnings
 
 import gymnasium as gym
 
-from tianshou.config import RLSamplingConfig, BasicExperimentConfig
+from tianshou.config import BasicExperimentConfig, RLSamplingConfig
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
-from tianshou.highlevel.env import EnvFactory, Environments, ContinuousEnvironments
+from tianshou.highlevel.env import ContinuousEnvironments, EnvFactory
 
 try:
     import envpool
@@ -12,9 +12,7 @@ except ImportError:
     envpool = None
 
 
-def make_mujoco_env(
-    task: str, seed: int, num_train_envs: int, num_test_envs: int, obs_norm: bool
-):
+def make_mujoco_env(task: str, seed: int, num_train_envs: int, num_test_envs: int, obs_norm: bool):
     """Wrapper function for Mujoco env.
 
     If EnvPool is installed, it will automatically switch to EnvPool's Mujoco env.

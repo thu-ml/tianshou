@@ -1,15 +1,13 @@
-from abc import ABC, abstractmethod
 import os
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Union, Optional
 
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.config import LoggerConfig
 from tianshou.utils import TensorboardLogger, WandbLogger
 
-
-TLogger = Union[TensorboardLogger, WandbLogger]
+TLogger = TensorboardLogger | WandbLogger
 
 
 @dataclass
@@ -20,7 +18,7 @@ class Logger:
 
 class LoggerFactory(ABC):
     @abstractmethod
-    def create_logger(self, log_name: str, run_id: Optional[int], config_dict: dict) -> Logger:
+    def create_logger(self, log_name: str, run_id: int | None, config_dict: dict) -> Logger:
         pass
 
 
@@ -28,7 +26,7 @@ class DefaultLoggerFactory(LoggerFactory):
     def __init__(self, config: LoggerConfig):
         self.config = config
 
-    def create_logger(self, log_name: str, run_id: Optional[int], config_dict: dict) -> Logger:
+    def create_logger(self, log_name: str, run_id: int | None, config_dict: dict) -> Logger:
         writer = SummaryWriter(self.config.logdir)
         writer.add_text("args", str(self.config))
         if self.config.logger == "wandb":
