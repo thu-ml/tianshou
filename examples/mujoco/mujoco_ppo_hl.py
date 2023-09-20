@@ -15,7 +15,7 @@ from tianshou.highlevel.experiment import (
     RLExperimentConfig,
     RLSamplingConfig,
 )
-from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerConfig
+from tianshou.highlevel.logger import DefaultLoggerFactory
 from tianshou.highlevel.module import (
     ContinuousActorProbFactory,
     ContinuousNetCriticFactory,
@@ -32,7 +32,6 @@ class NNConfig:
 
 def main(
     experiment_config: RLExperimentConfig,
-    logger_config: LoggerConfig,
     sampling_config: RLSamplingConfig,
     general_config: RLAgentConfig,
     pg_config: PGConfig,
@@ -42,7 +41,7 @@ def main(
 ):
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
     log_name = os.path.join(task, "ppo", str(experiment_config.seed), now)
-    logger_factory = DefaultLoggerFactory(logger_config)
+    logger_factory = DefaultLoggerFactory()
 
     env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
 

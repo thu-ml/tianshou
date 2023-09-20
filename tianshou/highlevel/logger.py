@@ -22,36 +22,30 @@ class LoggerFactory(ABC):
         pass
 
 
-@dataclass
-class LoggerConfig:
-    """Logging config."""
-
-    logdir: str = "log"
-    logger: Literal["tensorboard", "wandb"] = "tensorboard"
-    wandb_project: str = "mujoco.benchmark"
-    """Only used if logger is wandb."""
-
-
 class DefaultLoggerFactory(LoggerFactory):
-    def __init__(self, config: LoggerConfig):
-        self.config = config
+    def __init__(self, log_dir: str = "log", logger_type: Literal["tensorboard", "wandb"] = "tensorboard", wandb_project: str | None = None):
+        if logger_type == "wandb" and wandb_project is None:
+            raise ValueError("Must provide 'wand_project'")
+        self.log_dir = log_dir
+        self.logger_type = logger_type
+        self.wandb_project = wandb_project
 
     def create_logger(self, log_name: str, run_id: str | None, config_dict: dict) -> Logger:
-        writer = SummaryWriter(self.config.logdir)
-        writer.add_text("args", str(self.config))
-        if self.config.logger == "wandb":
+        writer = SummaryWriter(self.log_dir)
+        writer.add_text("args", str(dict(log_dir=self.log_dir, logger_type=self.logger_type, wandb_project=self.wandb_project)))
+        if self.logger_type == "wandb":
             logger = WandbLogger(
                 save_interval=1,
                 name=log_name.replace(os.path.sep, "__"),
                 run_id=run_id,
                 config=config_dict,
-                project=self.config.wandb_project,
+                project=self.wandb_project,
             )
             logger.load(writer)
-        elif self.config.logger == "tensorboard":
+        elif self.logger_type == "tensorboard":
             logger = TensorboardLogger(writer)
         else:
-            raise ValueError(f"Unknown logger: {self.config.logger}")
-        log_path = os.path.join(self.config.logdir, log_name)
+            raise ValueError(f"Unknown logger type '{self.logger_type}'")
+        log_path = os.path.join(self.log_dir, log_name)
         os.makedirs(log_path, exist_ok=True)
         return Logger(logger=logger, log_path=log_path)
