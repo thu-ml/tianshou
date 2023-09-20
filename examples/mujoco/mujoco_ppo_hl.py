@@ -9,17 +9,13 @@ from jsonargparse import CLI
 from torch.distributions import Independent, Normal
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.config import (
-    BasicExperimentConfig,
-    LoggerConfig,
-    PGConfig,
-    PPOConfig,
-    RLAgentConfig,
+from tianshou.highlevel.agent import PGConfig, PPOAgentFactory, PPOConfig, RLAgentConfig
+from tianshou.highlevel.experiment import (
+    RLExperiment,
+    RLExperimentConfig,
     RLSamplingConfig,
 )
-from tianshou.highlevel.agent import PPOAgentFactory
-from tianshou.highlevel.experiment import RLExperiment
-from tianshou.highlevel.logger import DefaultLoggerFactory
+from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerConfig
 from tianshou.highlevel.module import (
     ContinuousActorProbFactory,
     ContinuousNetCriticFactory,
@@ -35,19 +31,20 @@ class NNConfig:
 
 
 def main(
-    experiment_config: BasicExperimentConfig,
+    experiment_config: RLExperimentConfig,
     logger_config: LoggerConfig,
     sampling_config: RLSamplingConfig,
     general_config: RLAgentConfig,
     pg_config: PGConfig,
     ppo_config: PPOConfig,
     nn_config: NNConfig,
+    task: str = "Ant-v4",
 ):
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    log_name = os.path.join(experiment_config.task, "ppo", str(experiment_config.seed), now)
+    log_name = os.path.join(task, "ppo", str(experiment_config.seed), now)
     logger_factory = DefaultLoggerFactory(logger_config)
 
-    env_factory = MujocoEnvFactory(experiment_config, sampling_config)
+    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
 
     def dist_fn(*logits):
         return Independent(Normal(*logits), 1)

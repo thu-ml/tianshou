@@ -1,12 +1,10 @@
+from dataclasses import dataclass
 from pprint import pprint
 from typing import Generic, TypeVar
 
 import numpy as np
 import torch
 
-from tianshou.config import (
-    BasicExperimentConfig,
-)
 from tianshou.data import Collector
 from tianshou.highlevel.agent import AgentFactory
 from tianshou.highlevel.env import EnvFactory
@@ -18,10 +16,42 @@ TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 TTrainer = TypeVar("TTrainer", bound=BaseTrainer)
 
 
+@dataclass
+class RLExperimentConfig:
+    """Generic config for setting up the experiment, not RL or training specific."""
+
+    seed: int = 42
+    render: float | None = 0.0
+    """Milliseconds between rendered frames; if None, no rendering"""
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    resume_id: str | None = None
+    """For restoring a model and running means of env-specifics from a checkpoint"""
+    resume_path: str | None = None
+    """For restoring a model and running means of env-specifics from a checkpoint"""
+    watch: bool = False
+    """If True, will not perform training and only watch the restored policy"""
+    watch_num_episodes = 10
+
+
+@dataclass
+class RLSamplingConfig:
+    """Sampling, epochs, parallelization, buffers, collectors, and batching."""
+
+    num_epochs: int = 100
+    step_per_epoch: int = 30000
+    batch_size: int = 64
+    num_train_envs: int = 64
+    num_test_envs: int = 10
+    buffer_size: int = 4096
+    step_per_collect: int = 2048
+    repeat_per_collect: int = 10
+    update_per_step: int = 1
+
+
 class RLExperiment(Generic[TPolicy, TTrainer]):
     def __init__(
         self,
-        config: BasicExperimentConfig,
+        config: RLExperimentConfig,
         env_factory: EnvFactory,
         logger_factory: LoggerFactory,
         agent_factory: AgentFactory,

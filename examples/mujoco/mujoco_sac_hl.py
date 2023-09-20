@@ -7,14 +7,13 @@ from collections.abc import Sequence
 from jsonargparse import CLI
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.config import (
-    BasicExperimentConfig,
-    LoggerConfig,
+from tianshou.highlevel.agent import SACAgentFactory, SACConfig
+from tianshou.highlevel.experiment import (
+    RLExperiment,
+    RLExperimentConfig,
     RLSamplingConfig,
 )
-from tianshou.highlevel.agent import SACAgentFactory
-from tianshou.highlevel.experiment import RLExperiment
-from tianshou.highlevel.logger import DefaultLoggerFactory
+from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerConfig
 from tianshou.highlevel.module import (
     ContinuousActorProbFactory,
     ContinuousNetCriticFactory,
@@ -23,17 +22,18 @@ from tianshou.highlevel.optim import AdamOptimizerFactory
 
 
 def main(
-    experiment_config: BasicExperimentConfig,
+    experiment_config: RLExperimentConfig,
     logger_config: LoggerConfig,
     sampling_config: RLSamplingConfig,
-    sac_config: SACAgentFactory.Config,
+    sac_config: SACConfig,
     hidden_sizes: Sequence[int] = (256, 256),
+    task: str = "Ant-v4",
 ):
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
-    log_name = os.path.join(experiment_config.task, "sac", str(experiment_config.seed), now)
+    log_name = os.path.join(task, "sac", str(experiment_config.seed), now)
     logger_factory = DefaultLoggerFactory(logger_config)
 
-    env_factory = MujocoEnvFactory(experiment_config, sampling_config)
+    env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
 
     actor_factory = ContinuousActorProbFactory(hidden_sizes, conditioned_sigma=True)
     critic_factory = ContinuousNetCriticFactory(hidden_sizes)

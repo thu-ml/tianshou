@@ -66,7 +66,7 @@ class ContinuousActorProbFactory(ContinuousActorFactory):
         actor = ActorProb(
             net_a,
             envs.get_action_shape(),
-            unbounded=True,
+            unbounded=self.unbounded,
             device=device,
             conditioned_sigma=self.conditioned_sigma,
         ).to(device)

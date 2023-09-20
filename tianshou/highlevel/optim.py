@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import Any, Type
+from typing import Any
 
 import numpy as np
 import torch
@@ -8,7 +8,7 @@ from torch import Tensor
 from torch.optim import Adam
 from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 
-from tianshou.config import RLSamplingConfig
+from tianshou.highlevel.experiment import RLSamplingConfig
 
 TParams = Iterable[Tensor] | Iterable[dict[str, Any]]
 

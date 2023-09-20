@@ -2,13 +2,14 @@ import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Literal
 
 import torch
 
-from tianshou.config import PGConfig, PPOConfig, RLAgentConfig, RLSamplingConfig
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.exploration import BaseNoise
 from tianshou.highlevel.env import Environments
+from tianshou.highlevel.experiment import RLSamplingConfig
 from tianshou.highlevel.logger import Logger
 from tianshou.highlevel.module import ActorFactory, CriticFactory, TDevice
 from tianshou.highlevel.optim import LRSchedulerFactory, OptimizerFactory
@@ -124,6 +125,41 @@ class OffpolicyAgentFactory(AgentFactory, ABC):
         )
 
 
+@dataclass
+class RLAgentConfig:
+    """Config common to most RL algorithms."""
+
+    gamma: float = 0.99
+    """Discount factor"""
+    gae_lambda: float = 0.95
+    """For Generalized Advantage Estimate (equivalent to TD(lambda))"""
+    action_bound_method: Literal["clip", "tanh"] | None = "clip"
+    """How to map original actions in range (-inf, inf) to [-1, 1]"""
+    rew_norm: bool = True
+    """Whether to normalize rewards"""
+
+
+@dataclass
+class PGConfig:
+    """Config of general policy-gradient algorithms."""
+
+    ent_coef: float = 0.0
+    vf_coef: float = 0.25
+    max_grad_norm: float = 0.5
+
+
+@dataclass
+class PPOConfig:
+    """PPO specific config."""
+
+    value_clip: bool = False
+    norm_adv: bool = False
+    """Whether to normalize advantages"""
+    eps_clip: float = 0.2
+    dual_clip: float | None = None
+    recompute_adv: bool = True
+
+
 class PPOAgentFactory(OnpolicyAgentFactory):
     def __init__(
         self,
@@ -186,10 +222,22 @@ class PPOAgentFactory(OnpolicyAgentFactory):
         )
 
 
+class SACConfig:
+    tau: float = 0.005
+    gamma: float = 0.99
+    alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2
+    reward_normalization: bool = False
+    estimation_step: int = 1
+    deterministic_eval: bool = True
+    actor_lr: float = 1e-3
+    critic1_lr: float = 1e-3
+    critic2_lr: float = 1e-3
+
+
 class SACAgentFactory(OffpolicyAgentFactory):
     def __init__(
         self,
-        config: "SACAgentFactory.Config",
+        config: SACConfig,
         sampling_config: RLSamplingConfig,
         actor_factory: ActorFactory,
         critic1_factory: CriticFactory,
@@ -227,17 +275,3 @@ class SACAgentFactory(OffpolicyAgentFactory):
             deterministic_eval=self.config.deterministic_eval,
             exploration_noise=self.exploration_noise,
         )
-
-    @dataclass
-    class Config:
-        """SAC configuration."""
-
-        tau: float = 0.005
-        gamma: float = 0.99
-        alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2
-        reward_normalization: bool = False
-        estimation_step: int = 1
-        deterministic_eval: bool = True
-        actor_lr: float = 1e-3
-        critic1_lr: float = 1e-3
-        critic2_lr: float = 1e-3

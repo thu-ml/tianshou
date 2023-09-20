@@ -1,10 +1,10 @@
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Literal
 
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.config import LoggerConfig
 from tianshou.utils import TensorboardLogger, WandbLogger
 
 TLogger = TensorboardLogger | WandbLogger
@@ -22,11 +22,21 @@ class LoggerFactory(ABC):
         pass
 
 
+@dataclass
+class LoggerConfig:
+    """Logging config."""
+
+    logdir: str = "log"
+    logger: Literal["tensorboard", "wandb"] = "tensorboard"
+    wandb_project: str = "mujoco.benchmark"
+    """Only used if logger is wandb."""
+
+
 class DefaultLoggerFactory(LoggerFactory):
     def __init__(self, config: LoggerConfig):
         self.config = config
 
-    def create_logger(self, log_name: str, run_id: int | None, config_dict: dict) -> Logger:
+    def create_logger(self, log_name: str, run_id: str | None, config_dict: dict) -> Logger:
         writer = SummaryWriter(self.config.logdir)
         writer.add_text("args", str(self.config))
         if self.config.logger == "wandb":
