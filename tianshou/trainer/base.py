@@ -167,7 +167,7 @@ class BaseTrainer(ABC):
             save_best_fn = save_fn
 
         self.policy = policy
-        self.buffer = buffer
+        self.buffer = policy.process_buffer(buffer)
 
         self.train_collector = train_collector
         self.test_collector = test_collector

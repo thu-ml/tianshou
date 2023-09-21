@@ -259,6 +259,12 @@ class BasePolicy(ABC, nn.Module):
                     act = (np.log(1.0 + act) - np.log(1.0 - act)) / 2.0  # type: ignore
         return act
 
+    def process_buffer(
+        self,
+        buffer: ReplayBuffer
+    ) -> ReplayBuffer:
+        return buffer
+
     def process_fn(
         self,
         batch: RolloutBatchProtocol,
