@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Batch, Collector, ReplayBuffer
+from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import CQLPolicy
 from tianshou.trainer import OfflineTrainer
@@ -67,35 +67,7 @@ def get_args():
     parser.add_argument("--load-buffer-name", type=str, default=expert_file_name())
     return parser.parse_known_args()[0]
 
-
-def add_returns(buffer: ReplayBuffer, gamma: float = 0.99) -> ReplayBuffer:
-    data_dict = buffer._meta.__dict__
-    start_idx = np.concatenate([np.array([0]), np.where(data_dict["done"])[0] + 1])
-    end_idx = np.concatenate(
-        [np.where(data_dict["done"])[0] + 1, np.array([len(data_dict["done"])])],
-    )
-    ep_rew = [data_dict["rew"][i:j] for i, j in zip(start_idx, end_idx, strict=True)]
-    ep_ret = []
-    for i in range(len(ep_rew)):
-        episode_rewards = ep_rew[i]
-        disc_returns = [0] * len(episode_rewards)
-        discounted_return = 0
-        for j in range(1, len(episode_rewards) + 1):
-            discounted_return = (
-                episode_rewards[len(episode_rewards) - j] + gamma * discounted_return
-            )
-            disc_returns[len(episode_rewards) - j] = discounted_return
-        ep_ret.append(disc_returns)
-
-    new_data_dict = data_dict.copy()
-    ep_rets = np.concatenate(ep_ret)
-    new_data_dict["calibration_returns"] = ep_rets
-    new_batch = Batch(**new_data_dict)
-    buffer._meta = new_batch
-    return buffer
-
-
-def test_cql(args=get_args(), calibrated=False):
+def test_cql(args=get_args()):
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
             buffer = ReplayBuffer.load_hdf5(args.load_buffer_name)
@@ -104,7 +76,6 @@ def test_cql(args=get_args(), calibrated=False):
                 buffer = pickle.load(f)
     else:
         buffer = gather_data()
-    buffer = add_returns(buffer)
     env = gym.make(args.task)
     args.state_shape = env.observation_space.shape or env.observation_space.n
     args.action_shape = env.action_space.shape or env.action_space.n
@@ -187,7 +158,6 @@ def test_cql(args=get_args(), calibrated=False):
         lagrange_threshold=args.lagrange_threshold,
         min_action=np.min(env.action_space.low),
         max_action=np.max(env.action_space.high),
-        calibrated=calibrated,
         device=args.device,
     )
 
@@ -213,14 +183,6 @@ def test_cql(args=get_args(), calibrated=False):
 
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
-
-    def watch():
-        policy.load_state_dict(
-            torch.load(os.path.join(log_path, "policy.pth"), map_location=torch.device("cpu")),
-        )
-        policy.eval()
-        collector = Collector(policy, env)
-        collector.collect(n_episode=1, render=1 / 35)
 
     # trainer
     trainer = OfflineTrainer(
@@ -256,5 +218,3 @@ def test_cql(args=get_args(), calibrated=False):
 
 if __name__ == "__main__":
     test_cql()
-    # test calibrated cql
-    test_cql(calibrated=True)
