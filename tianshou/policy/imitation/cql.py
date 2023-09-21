@@ -46,6 +46,8 @@ class CQLPolicy(SACPolicy):
     :param float alpha_max: upper bound for clipping cql_alpha. Default to 1e6.
     :param float clip_grad: clip_grad for updating critic network. Default to 1.0.
     :param calibrated: calibrate Q-values as in CalQL paper arXiv:2303.05479.
+        Useful for offline to online, and also was observed to achieve better reults
+        than vanilla CQL in offline.
     :param Union[str, torch.device] device: which device to create this model on.
         Default to "cpu".
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
@@ -79,7 +81,7 @@ class CQLPolicy(SACPolicy):
         alpha_min: float = 0.0,
         alpha_max: float = 1e6,
         clip_grad: float = 1.0,
-        calibrated: bool = False,
+        calibrated: bool = True,
         device: str | torch.device = "cpu",
         **kwargs: Any,
     ) -> None:
@@ -171,6 +173,33 @@ class CQLPolicy(SACPolicy):
 
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
+    def process_buffer(self, buffer: ReplayBuffer) -> ReplayBuffer:
+        if self.calibrated:
+            data_dict = buffer._meta.__dict__
+            start_idx = np.concatenate([np.array([0]), np.where(data_dict["done"])[0] + 1])
+            end_idx = np.concatenate(
+                [np.where(data_dict["done"])[0] + 1, np.array([len(data_dict["done"])])],
+            )
+            ep_rew = [data_dict["rew"][i:j] for i, j in zip(start_idx, end_idx, strict=True)]
+            ep_ret = []
+            for i in range(len(ep_rew)):
+                episode_rewards = ep_rew[i]
+                disc_returns = [0] * len(episode_rewards)
+                discounted_return = 0
+                for j in range(1, len(episode_rewards) + 1):
+                    discounted_return = (
+                        episode_rewards[len(episode_rewards) - j] + self._gamma * discounted_return
+                    )
+                    disc_returns[len(episode_rewards) - j] = discounted_return
+                ep_ret.append(disc_returns)
+
+            new_data_dict = data_dict.copy()
+            ep_rets = np.concatenate(ep_ret)
+            new_data_dict["calibration_returns"] = ep_rets
+            new_batch = Batch(**new_data_dict)
+            buffer._meta = new_batch
+        return buffer
+
     def process_fn(
         self,
         batch: RolloutBatchProtocol,
@@ -185,7 +214,7 @@ class CQLPolicy(SACPolicy):
         return batch
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
-        batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
+        batch: RolloutBatchProtocol = to_torch(batch, dtype=torch.float, device=self.device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]
 
