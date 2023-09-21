@@ -1,3 +1,5 @@
+from abc import abstractmethod
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pprint import pprint
 from typing import Generic, TypeVar
@@ -6,9 +8,17 @@ import numpy as np
 import torch
 
 from tianshou.data import Collector
-from tianshou.highlevel.agent import AgentFactory
+from tianshou.highlevel.agent import AgentFactory, PPOAgentFactory, PPOConfig, SACConfig
+from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.env import EnvFactory
-from tianshou.highlevel.logger import LoggerFactory
+from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerFactory
+from tianshou.highlevel.module import (
+    ActorFactory,
+    CriticFactory,
+    DefaultActorFactory,
+    DefaultCriticFactory,
+)
+from tianshou.highlevel.optim import AdamOptimizerFactory, OptimizerFactory
 from tianshou.policy import BasePolicy
 from tianshou.trainer import BaseTrainer
 
@@ -38,13 +48,15 @@ class RLExperiment(Generic[TPolicy, TTrainer]):
         self,
         config: RLExperimentConfig,
         env_factory: EnvFactory,
-        logger_factory: LoggerFactory,
         agent_factory: AgentFactory,
+        logger_factory: LoggerFactory | None = None,
     ):
+        if logger_factory is None:
+            logger_factory = DefaultLoggerFactory()
         self.config = config
         self.env_factory = env_factory
-        self.logger_factory = logger_factory
         self.agent_factory = agent_factory
+        self.logger_factory = logger_factory
 
     def _set_seed(self) -> None:
         seed = self.config.seed
@@ -109,3 +121,214 @@ class RLExperiment(Generic[TPolicy, TTrainer]):
         test_collector.reset()
         result = test_collector.collect(n_episode=num_episodes, render=render)
         print(f'Final reward: {result["rews"].mean()}, length: {result["lens"].mean()}')
+
+
+TBuilder = TypeVar("TBuilder", bound="RLExperimentBuilder")
+
+
+class RLExperimentBuilder:
+    def __init__(
+        self,
+        experiment_config: RLExperimentConfig,
+        env_factory: EnvFactory,
+        sampling_config: RLSamplingConfig,
+    ):
+        self._config = experiment_config
+        self._env_factory = env_factory
+        self._sampling_config = sampling_config
+        self._logger_factory: LoggerFactory | None = None
+        self._optim_factory: OptimizerFactory | None = None
+
+    def with_logger_factory(self: TBuilder, logger_factory: LoggerFactory) -> TBuilder:
+        self._logger_factory = logger_factory
+        return self
+
+    def with_optim_factory(self: TBuilder, optim_factory: OptimizerFactory) -> TBuilder:
+        self._optim_factory = optim_factory
+        return self
+
+    def with_optim_factory_default(
+        self: TBuilder, betas=(0.9, 0.999), eps=1e-08, weight_decay=0,
+    ) -> TBuilder:
+        """Configures the use of the default optimizer, Adam, with the given parameters.
+
+        :param betas: coefficients used for computing running averages of gradient and its square
+        :param eps: term added to the denominator to improve numerical stability
+        :param weight_decay: weight decay (L2 penalty)
+        :return: the builder
+        """
+        self._optim_factory = AdamOptimizerFactory(betas=betas, eps=eps, weight_decay=weight_decay)
+        return self
+
+    @abstractmethod
+    def _create_agent_factory(self) -> AgentFactory:
+        pass
+
+    def _get_optim_factory(self) -> OptimizerFactory:
+        if self._optim_factory is None:
+            return AdamOptimizerFactory()
+        else:
+            return self._optim_factory
+
+    def build(self) -> RLExperiment:
+        return RLExperiment(
+            self._config, self._env_factory, self._create_agent_factory(), self._logger_factory,
+        )
+
+
+class _BuilderMixinActorFactory:
+    def __init__(self):
+        self._actor_factory: ActorFactory | None = None
+
+    def with_actor_factory(self: TBuilder, actor_factory: ActorFactory) -> TBuilder:
+        self: TBuilder | _BuilderMixinActorFactory
+        self._actor_factory = actor_factory
+        return self
+
+    def with_actor_factory_default(
+        self: TBuilder,
+        hidden_sizes: Sequence[int],
+        continuous_unbounded=False,
+        continuous_conditioned_sigma=False,
+    ) -> TBuilder:
+        self: TBuilder | _BuilderMixinActorFactory
+        self._actor_factory = DefaultActorFactory(
+            hidden_sizes,
+            continuous_unbounded=continuous_unbounded,
+            continuous_conditioned_sigma=continuous_conditioned_sigma,
+        )
+        return self
+
+    def _get_actor_factory(self):
+        if self._actor_factory is None:
+            return DefaultActorFactory()
+        else:
+            return self._actor_factory
+
+
+class _BuilderMixinCriticsFactory:
+    def __init__(self, num_critics: int):
+        self._critic_factories: list[CriticFactory | None] = [None] * num_critics
+
+    def _with_critic_factory(self, idx: int, critic_factory: CriticFactory):
+        self._critic_factories[idx] = critic_factory
+        return self
+
+    def _with_critic_factory_default(self, idx: int, hidden_sizes: Sequence[int]):
+        self._critic_factories[idx] = DefaultCriticFactory(hidden_sizes)
+        return self
+
+    def _get_critic_factory(self, idx: int):
+        factory = self._critic_factories[idx]
+        if factory is None:
+            return DefaultCriticFactory()
+        else:
+            return factory
+
+
+class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
+    def __init__(self):
+        super().__init__(1)
+
+    def with_critic_factory(self: TBuilder, critic_factory: CriticFactory) -> TBuilder:
+        self: TBuilder | "_BuilderMixinSingleCriticFactory"
+        self._with_critic_factory(0, critic_factory)
+        return self
+
+    def with_critic_factory_default(
+        self: TBuilder, hidden_sizes: Sequence[int] = DefaultCriticFactory.DEFAULT_HIDDEN_SIZES,
+    ) -> TBuilder:
+        self: TBuilder | "_BuilderMixinSingleCriticFactory"
+        self._with_critic_factory_default(0, hidden_sizes)
+        return self
+
+
+class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
+    def __init__(self):
+        super().__init__(2)
+
+    def with_common_critic_factory(self: TBuilder, critic_factory: CriticFactory) -> TBuilder:
+        self: TBuilder | "_BuilderMixinDualCriticFactory"
+        for i in range(len(self._critic_factories)):
+            self._with_critic_factory(i, critic_factory)
+        return self
+
+    def with_common_critic_factory_default(
+        self, hidden_sizes: Sequence[int] = DefaultCriticFactory.DEFAULT_HIDDEN_SIZES,
+    ) -> TBuilder:
+        self: TBuilder | "_BuilderMixinDualCriticFactory"
+        for i in range(len(self._critic_factories)):
+            self._with_critic_factory_default(i, hidden_sizes)
+        return self
+
+    def with_critic1_factory(self: TBuilder, critic_factory: CriticFactory) -> TBuilder:
+        self: TBuilder | "_BuilderMixinDualCriticFactory"
+        self._with_critic_factory(0, critic_factory)
+        return self
+
+    def with_critic1_factory_default(
+        self, hidden_sizes: Sequence[int] = DefaultCriticFactory.DEFAULT_HIDDEN_SIZES,
+    ) -> TBuilder:
+        self: TBuilder | "_BuilderMixinDualCriticFactory"
+        self._with_critic_factory_default(0, hidden_sizes)
+        return self
+
+    def with_critic2_factory(self: TBuilder, critic_factory: CriticFactory) -> TBuilder:
+        self: TBuilder | "_BuilderMixinDualCriticFactory"
+        self._with_critic_factory(1, critic_factory)
+        return self
+
+    def with_critic2_factory_default(
+        self, hidden_sizes: Sequence[int] = DefaultCriticFactory.DEFAULT_HIDDEN_SIZES,
+    ) -> TBuilder:
+        self: TBuilder | "_BuilderMixinDualCriticFactory"
+        self._with_critic_factory_default(0, hidden_sizes)
+        return self
+
+
+class PPOExperimentBuilder(
+    RLExperimentBuilder, _BuilderMixinActorFactory, _BuilderMixinSingleCriticFactory,
+):
+    def __init__(
+        self,
+        experiment_config: RLExperimentConfig,
+        env_factory: EnvFactory,
+        sampling_config: RLSamplingConfig,
+    ):
+        super().__init__(experiment_config, env_factory, sampling_config)
+        _BuilderMixinActorFactory.__init__(self)
+        _BuilderMixinSingleCriticFactory.__init__(self)
+        self._params: PPOConfig = PPOConfig()
+
+    def with_ppo_params(self, params: PPOConfig) -> "PPOExperimentBuilder":
+        self._params = params
+        return self
+
+    @abstractmethod
+    def _create_agent_factory(self) -> AgentFactory:
+        return PPOAgentFactory(
+            self._params,
+            self._sampling_config,
+            self._get_actor_factory(),
+            self._get_critic_factory(0),
+            self._get_optim_factory(),
+        )
+
+
+class SACExperimentBuilder(
+    RLExperimentBuilder, _BuilderMixinActorFactory, _BuilderMixinDualCriticFactory,
+):
+    def __init__(
+        self,
+        experiment_config: RLExperimentConfig,
+        env_factory: EnvFactory,
+        sampling_config: RLSamplingConfig,
+    ):
+        super().__init__(experiment_config, env_factory, sampling_config)
+        _BuilderMixinActorFactory.__init__(self)
+        _BuilderMixinDualCriticFactory.__init__(self)
+        self._params: SACConfig = SACConfig()
+
+    def with_sac_params(self, params: SACConfig) -> "SACExperimentBuilder":
+        self._params = params
+        return self

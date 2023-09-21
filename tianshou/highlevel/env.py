@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
+from enum import Enum
 from typing import Any
 
 import gymnasium as gym
@@ -7,6 +8,17 @@ import gymnasium as gym
 from tianshou.env import BaseVectorEnv
 
 TShape = int | Sequence[int]
+
+
+class EnvType(Enum):
+    CONTINUOUS = "continuous"
+    DISCRETE = "discrete"
+
+    def is_discrete(self):
+        return self == EnvType.DISCRETE
+
+    def is_continuous(self):
+        return self == EnvType.CONTINUOUS
 
 
 class Environments(ABC):
@@ -28,6 +40,10 @@ class Environments(ABC):
 
     def get_action_space(self) -> gym.Space:
         return self.env.action_space
+
+    @abstractmethod
+    def get_type(self) -> EnvType:
+        pass
 
 
 class ContinuousEnvironments(Environments):
@@ -61,6 +77,9 @@ class ContinuousEnvironments(Environments):
 
     def get_state_shape(self) -> TShape:
         return self.state_shape
+
+    def get_type(self):
+        return EnvType.CONTINUOUS
 
 
 class EnvFactory(ABC):

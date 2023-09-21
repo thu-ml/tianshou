@@ -7,18 +7,12 @@ from collections.abc import Sequence
 from jsonargparse import CLI
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.agent import DefaultAutoAlphaFactory, SACAgentFactory, SACConfig
+from tianshou.highlevel.agent import DefaultAutoAlphaFactory, SACConfig
 from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.experiment import (
-    RLExperiment,
     RLExperimentConfig,
+    SACExperimentBuilder,
 )
-from tianshou.highlevel.logger import DefaultLoggerFactory
-from tianshou.highlevel.module import (
-    ContinuousActorProbFactory,
-    ContinuousNetCriticFactory,
-)
-from tianshou.highlevel.optim import AdamOptimizerFactory
 
 
 def main(
@@ -45,7 +39,6 @@ def main(
 ):
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
     log_name = os.path.join(task, "sac", str(experiment_config.seed), now)
-    logger_factory = DefaultLoggerFactory()
 
     sampling_config = RLSamplingConfig(
         num_epochs=epoch,
@@ -62,31 +55,25 @@ def main(
 
     env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
 
-    if auto_alpha:
-        alpha = DefaultAutoAlphaFactory(lr=alpha_lr)
-    sac_config = SACConfig(
-        tau=tau,
-        gamma=gamma,
-        alpha=alpha,
-        estimation_step=n_step,
-        actor_lr=actor_lr,
-        critic1_lr=critic_lr,
-        critic2_lr=critic_lr,
+    experiment = (
+        SACExperimentBuilder(experiment_config, env_factory, sampling_config)
+        .with_sac_params(
+            SACConfig(
+                tau=tau,
+                gamma=gamma,
+                alpha=DefaultAutoAlphaFactory(lr=alpha_lr) if auto_alpha else alpha,
+                estimation_step=n_step,
+                actor_lr=actor_lr,
+                critic1_lr=critic_lr,
+                critic2_lr=critic_lr,
+            ),
+        )
+        .with_actor_factory_default(
+            hidden_sizes, continuous_unbounded=True, continuous_conditioned_sigma=True,
+        )
+        .with_common_critic_factory_default(hidden_sizes)
+        .build()
     )
-    actor_factory = ContinuousActorProbFactory(hidden_sizes, conditioned_sigma=True)
-    critic_factory = ContinuousNetCriticFactory(hidden_sizes)
-    optim_factory = AdamOptimizerFactory()
-    agent_factory = SACAgentFactory(
-        sac_config,
-        sampling_config,
-        actor_factory,
-        critic_factory,
-        critic_factory,
-        optim_factory,
-    )
-
-    experiment = RLExperiment(experiment_config, env_factory, logger_factory, agent_factory)
-
     experiment.run(log_name)
 
 

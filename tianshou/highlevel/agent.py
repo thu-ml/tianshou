@@ -161,6 +161,9 @@ class PPOConfig(PGConfig):
     eps_clip: float = 0.2
     dual_clip: float | None = None
     recompute_adv: bool = True
+    dist_fn: Callable = None
+    lr: float = 1e-3
+    lr_scheduler_factory: LRSchedulerFactory | None = None
 
 
 class PPOAgentFactory(OnpolicyAgentFactory):
@@ -171,26 +174,20 @@ class PPOAgentFactory(OnpolicyAgentFactory):
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
-        dist_fn,
-        lr: float,
-        lr_scheduler_factory: LRSchedulerFactory | None = None,
     ):
         super().__init__(sampling_config)
         self.optimizer_factory = optimizer_factory
         self.critic_factory = critic_factory
         self.actor_factory = actor_factory
         self.config = config
-        self.lr = lr
-        self.lr_scheduler_factory = lr_scheduler_factory
-        self.dist_fn = dist_fn
 
     def create_policy(self, envs: Environments, device: TDevice) -> PPOPolicy:
         actor = self.actor_factory.create_module(envs, device)
         critic = self.critic_factory.create_module(envs, device, use_action=False)
         actor_critic = ActorCritic(actor, critic)
-        optim = self.optimizer_factory.create_optimizer(actor_critic, self.lr)
-        if self.lr_scheduler_factory is not None:
-            lr_scheduler = self.lr_scheduler_factory.create_scheduler(optim)
+        optim = self.optimizer_factory.create_optimizer(actor_critic, self.config.lr)
+        if self.config.lr_scheduler_factory is not None:
+            lr_scheduler = self.config.lr_scheduler_factory.create_scheduler(optim)
         else:
             lr_scheduler = None
         return PPOPolicy(
@@ -198,7 +195,7 @@ class PPOAgentFactory(OnpolicyAgentFactory):
             actor,
             critic,
             optim,
-            dist_fn=self.dist_fn,
+            dist_fn=self.config.dist_fn,
             lr_scheduler=lr_scheduler,
             # env-stuff
             action_space=envs.get_action_space(),

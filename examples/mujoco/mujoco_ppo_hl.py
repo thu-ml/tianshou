@@ -9,18 +9,13 @@ from jsonargparse import CLI
 from torch.distributions import Independent, Normal
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.agent import PPOAgentFactory, PPOConfig
+from tianshou.highlevel.agent import PPOConfig
 from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.experiment import (
-    RLExperiment,
+    PPOExperimentBuilder,
     RLExperimentConfig,
 )
-from tianshou.highlevel.logger import DefaultLoggerFactory
-from tianshou.highlevel.module import (
-    ContinuousActorProbFactory,
-    ContinuousNetCriticFactory,
-)
-from tianshou.highlevel.optim import AdamOptimizerFactory, LinearLRSchedulerFactory
+from tianshou.highlevel.optim import LinearLRSchedulerFactory
 
 
 def main(
@@ -52,7 +47,6 @@ def main(
 ):
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
     log_name = os.path.join(task, "ppo", str(experiment_config.seed), now)
-    logger_factory = DefaultLoggerFactory()
 
     sampling_config = RLSamplingConfig(
         num_epochs=epoch,
@@ -70,37 +64,33 @@ def main(
     def dist_fn(*logits):
         return Independent(Normal(*logits), 1)
 
-    ppo_config = PPOConfig(
-        gamma=gamma,
-        gae_lambda=gae_lambda,
-        action_bound_method=bound_action_method,
-        rew_norm=rew_norm,
-        ent_coef=ent_coef,
-        vf_coef=vf_coef,
-        max_grad_norm=max_grad_norm,
-        value_clip=value_clip,
-        norm_adv=norm_adv,
-        eps_clip=eps_clip,
-        dual_clip=dual_clip,
-        recompute_adv=recompute_adv,
+    experiment = (
+        PPOExperimentBuilder(experiment_config, env_factory, sampling_config)
+        .with_ppo_params(
+            PPOConfig(
+                gamma=gamma,
+                gae_lambda=gae_lambda,
+                action_bound_method=bound_action_method,
+                rew_norm=rew_norm,
+                ent_coef=ent_coef,
+                vf_coef=vf_coef,
+                max_grad_norm=max_grad_norm,
+                value_clip=value_clip,
+                norm_adv=norm_adv,
+                eps_clip=eps_clip,
+                dual_clip=dual_clip,
+                recompute_adv=recompute_adv,
+                dist_fn=dist_fn,
+                lr=lr,
+                lr_scheduler_factory=LinearLRSchedulerFactory(sampling_config)
+                if lr_decay
+                else None,
+            ),
+        )
+        .with_actor_factory_default(hidden_sizes)
+        .with_critic_factory_default(hidden_sizes)
+        .build()
     )
-    actor_factory = ContinuousActorProbFactory(hidden_sizes)
-    critic_factory = ContinuousNetCriticFactory(hidden_sizes)
-    optim_factory = AdamOptimizerFactory()
-    lr_scheduler_factory = LinearLRSchedulerFactory(sampling_config) if lr_decay else None
-    agent_factory = PPOAgentFactory(
-        ppo_config,
-        sampling_config,
-        actor_factory,
-        critic_factory,
-        optim_factory,
-        dist_fn,
-        lr,
-        lr_scheduler_factory,
-    )
-
-    experiment = RLExperiment(experiment_config, env_factory, logger_factory, agent_factory)
-
     experiment.run(log_name)
 
 

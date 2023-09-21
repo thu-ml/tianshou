@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.highlevel.env import Environments
+from tianshou.highlevel.env import Environments, EnvType
 from tianshou.utils.net.common import Net
 from tianshou.utils.net.continuous import ActorProb
 from tianshou.utils.net.continuous import Critic as ContinuousCritic
@@ -46,8 +46,41 @@ class ActorFactory(ABC):
                     m.weight.data.copy_(0.01 * m.weight.data)
 
 
+class DefaultActorFactory(ActorFactory):
+    DEFAULT_HIDDEN_SIZES = (64, 64)
+
+    def __init__(
+        self,
+        hidden_sizes: Sequence[int] = DEFAULT_HIDDEN_SIZES,
+        continuous_unbounded=False,
+        continuous_conditioned_sigma=False,
+    ):
+        self.continuous_unbounded = continuous_unbounded
+        self.continuous_conditioned_sigma = continuous_conditioned_sigma
+        self.hidden_sizes = hidden_sizes
+
+    """
+    An actor factory which, depending on the type of environment, creates a suitable MLP-based policy
+    """
+
+    def create_module(self, envs: Environments, device: TDevice) -> nn.Module:
+        env_type = envs.get_type()
+        if env_type == EnvType.CONTINUOUS:
+            factory = ContinuousActorProbFactory(
+                self.hidden_sizes,
+                unbounded=self.continuous_unbounded,
+                conditioned_sigma=self.continuous_conditioned_sigma,
+            )
+            return factory.create_module(envs, device)
+        elif env_type == EnvType.DISCRETE:
+            raise NotImplementedError
+        else:
+            raise ValueError(f"{env_type} not supported")
+
+
 class ContinuousActorFactory(ActorFactory, ABC):
-    pass
+    """Serves as a type bound for actor factories that are suitable for continuous action spaces."""
+
 
 
 class ContinuousActorProbFactory(ContinuousActorFactory):
@@ -85,13 +118,31 @@ class CriticFactory(ABC):
         pass
 
 
+class DefaultCriticFactory(CriticFactory):
+    """A critic factory which, depending on the type of environment, creates a suitable MLP-based critic."""
+
+    DEFAULT_HIDDEN_SIZES = (64, 64)
+
+    def __init__(self, hidden_sizes: Sequence[int] = DEFAULT_HIDDEN_SIZES):
+        self.hidden_sizes = hidden_sizes
+
+    def create_module(self, envs: Environments, device: TDevice, use_action: bool) -> nn.Module:
+        env_type = envs.get_type()
+        if env_type == EnvType.CONTINUOUS:
+            factory = ContinuousNetCriticFactory(self.hidden_sizes)
+            return factory.create_module(envs, device, use_action)
+        elif env_type == EnvType.DISCRETE:
+            raise NotImplementedError
+        else:
+            raise ValueError(f"{env_type} not supported")
+
+
 class ContinuousCriticFactory(CriticFactory, ABC):
     pass
 
 
 class ContinuousNetCriticFactory(ContinuousCriticFactory):
-    def __init__(self, hidden_sizes: Sequence[int], action_shape=0):
-        self.action_shape = action_shape
+    def __init__(self, hidden_sizes: Sequence[int]):
         self.hidden_sizes = hidden_sizes
 
     def create_module(self, envs: Environments, device: TDevice, use_action: bool) -> nn.Module:

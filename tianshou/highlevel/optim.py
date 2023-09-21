@@ -29,8 +29,19 @@ class TorchOptimizerFactory(OptimizerFactory):
 
 
 class AdamOptimizerFactory(OptimizerFactory):
+    def __init__(self, betas=(0.9, 0.999), eps=1e-08, weight_decay=0):
+        self.weight_decay = weight_decay
+        self.eps = eps
+        self.betas = betas
+
     def create_optimizer(self, module: torch.nn.Module, lr: float) -> Adam:
-        return Adam(module.parameters(), lr=lr)
+        return Adam(
+            module.parameters(),
+            lr=lr,
+            betas=self.betas,
+            eps=self.eps,
+            weight_decay=self.weight_decay,
+        )
 
 
 class LRSchedulerFactory(ABC):
