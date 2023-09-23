@@ -261,7 +261,7 @@ class BasePolicy(ABC, nn.Module):
 
     def process_buffer(
         self,
-        buffer: ReplayBuffer
+        buffer: ReplayBuffer,
     ) -> ReplayBuffer:
         return buffer
 

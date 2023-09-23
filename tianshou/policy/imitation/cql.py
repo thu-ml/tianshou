@@ -214,7 +214,7 @@ class CQLPolicy(SACPolicy):
         return batch
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
-        batch: RolloutBatchProtocol = to_torch(batch, dtype=torch.float, device=self.device)
+        batch: Batch = to_torch(batch, dtype=torch.float, device=self.device)
         obs, act, rew, obs_next = batch.obs, batch.act, batch.rew, batch.obs_next
         batch_size = obs.shape[0]
 

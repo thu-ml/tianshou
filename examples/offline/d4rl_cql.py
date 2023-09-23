@@ -73,6 +73,7 @@ def get_args():
     )
     return parser.parse_args()
 
+
 def test_cql():
     args = get_args()
     env = gym.make(args.task)
