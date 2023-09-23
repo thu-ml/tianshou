@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -173,7 +173,9 @@ class CQLPolicy(SACPolicy):
 
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
-    def process_buffer(self, buffer: ReplayBuffer) -> ReplayBuffer:
+    def process_buffer(self, buffer: ReplayBuffer | None) -> ReplayBuffer | None:
+        if buffer is None:
+            return buffer
         if self.calibrated:
             data_dict = buffer._meta.__dict__
             start_idx = np.concatenate([np.array([0]), np.where(data_dict["done"])[0] + 1])
@@ -196,7 +198,7 @@ class CQLPolicy(SACPolicy):
             new_data_dict = data_dict.copy()
             ep_rets = np.concatenate(ep_ret)
             new_data_dict["calibration_returns"] = ep_rets
-            new_batch = Batch(**new_data_dict)
+            new_batch = cast(RolloutBatchProtocol, Batch(**new_data_dict))
             buffer._meta = new_batch
         return buffer
 
