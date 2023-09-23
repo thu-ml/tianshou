@@ -11,7 +11,7 @@ from numba import njit
 from torch import nn
 
 from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
-from tianshou.data.batch import BatchProtocol, TBatch
+from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils import MultipleLRSchedulers
 
@@ -185,7 +185,7 @@ class BasePolicy(ABC, nn.Module):
         """
 
     @overload
-    def map_action(self, act: TBatch) -> TBatch:
+    def map_action(self, act: BatchProtocol) -> BatchProtocol:
         ...
 
     @overload
