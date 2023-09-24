@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -160,8 +160,9 @@ class DiscreteSACPolicy(SACPolicy):
             "loss/critic2": critic2_loss.item(),
         }
         if self.is_auto_alpha:
+            self.alpha = cast(torch.Tensor, self.alpha)
             result["loss/alpha"] = alpha_loss.item()
-            result["alpha"] = self.alpha.item()  # type: ignore
+            result["alpha"] = self.alpha.item()
 
         return result
 

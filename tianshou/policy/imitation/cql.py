@@ -1,4 +1,4 @@
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, cast
 
 import gymnasium as gym
 import numpy as np
@@ -89,7 +89,7 @@ class CQLPolicy(SACPolicy):
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
         action_scaling: bool = True,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        action_bound_method: Literal["clip"] | None = "clip",
         observation_space: gym.Space | None = None,
         lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:
@@ -156,7 +156,7 @@ class CQLPolicy(SACPolicy):
         q1 = self.critic(obs, act_pred)
         q2 = self.critic2(obs, act_pred)
         min_Q = torch.min(q1, q2)
-        self.alpha: float | torch.Tensor
+        # self.alpha: float | torch.Tensor
         actor_loss = (self.alpha * log_pi - min_Q).mean()
         # actor_loss.shape: (), log_pi.shape: (batch_size, 1)
         return actor_loss, log_pi
@@ -328,8 +328,9 @@ class CQLPolicy(SACPolicy):
             "loss/critic2": critic2_loss.item(),
         }
         if self.is_auto_alpha:
+            self.alpha = cast(torch.Tensor, self.alpha)
             result["loss/alpha"] = alpha_loss.item()
-            result["alpha"] = self.alpha.item()  # type: ignore
+            result["alpha"] = self.alpha.item()
         if self.with_lagrange:
             result["loss/cql_alpha"] = cql_alpha_loss.item()
             result["cql_alpha"] = cql_alpha.item()

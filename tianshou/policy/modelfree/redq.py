@@ -1,6 +1,6 @@
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 from torch.distributions import Independent, Normal
@@ -61,9 +61,9 @@ class REDQPolicy(DDPGPolicy):
         actor_delay: int = 20,
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
-        target_mode: Literal["max", "min"] = "min",
+        target_mode: Literal["mean", "min"] = "min",
         action_scaling: bool = True,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        action_bound_method: Literal["clip"] | None = "clip",
         observation_space: gym.Space | None = None,
         lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:
@@ -99,8 +99,11 @@ class REDQPolicy(DDPGPolicy):
         self.__eps = np.finfo(np.float32).eps.item()
 
         # TODO: reduce duplication with SACPolicy
+        self.alpha: float | torch.Tensor
         self._is_auto_alpha = not isinstance(alpha, float)
         if self._is_auto_alpha:
+            # TODO: why doesn't mypy understand that this must be a tuple?
+            alpha = cast(tuple[float, torch.Tensor, torch.optim.Optimizer], alpha)
             if alpha[1].shape != torch.Size([1]):
                 raise ValueError(
                     f"Expected log_alpha to have shape torch.Size([1]), "
@@ -112,6 +115,8 @@ class REDQPolicy(DDPGPolicy):
             self.target_entropy, self.log_alpha, self.alpha_optim = alpha
             self.alpha = self.log_alpha.detach().exp()
         else:
+            # TODO: make mypy undestand this, or switch to something like pyright...
+            alpha = cast(float, alpha)
             self.alpha = alpha
 
     @property
@@ -156,6 +161,7 @@ class REDQPolicy(DDPGPolicy):
             target_q, _ = torch.min(qs, dim=0)
         elif self.target_mode == "mean":
             target_q = torch.mean(qs, dim=0)
+
         target_q -= self.alpha * obs_next_result.log_prob
 
         return target_q
@@ -183,21 +189,22 @@ class REDQPolicy(DDPGPolicy):
             actor_loss.backward()
             self.actor_optim.step()
 
-            if self._is_auto_alpha:
+            if self.is_auto_alpha:
                 log_prob = obs_result.log_prob.detach() + self._target_entropy
                 alpha_loss = -(self._log_alpha * log_prob).mean()
-                self._alpha_optim.zero_grad()
+                self.alpha_optim.zero_grad()
                 alpha_loss.backward()
-                self._alpha_optim.step()
-                self.alpha = self._log_alpha.detach().exp()
+                self.alpha_optim.step()
+                self.alpha = self.log_alpha.detach().exp()
 
         self.sync_weight()
 
         result = {"loss/critics": critic_loss.item()}
         if self.critic_gradient_step % self.actor_delay == 0:
             result["loss/actor"] = (actor_loss.item(),)
-            if self._is_auto_alpha:
+            if self.is_auto_alpha:
+                self.alpha = cast(torch.Tensor, self.alpha)
                 result["loss/alpha"] = alpha_loss.item()
-                result["alpha"] = self.alpha.item()  # type: ignore
+                result["alpha"] = self.alpha.item()
 
         return result

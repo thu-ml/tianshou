@@ -60,7 +60,7 @@ class DDPGPolicy(BasePolicy):
     ) -> None:
         assert 0.0 <= tau <= 1.0, f"tau should be in [0, 1] but got: {tau}"
         assert 0.0 <= gamma <= 1.0, f"gamma should be in [0, 1] but got: {gamma}"
-        assert action_bound_method != "tanh", (
+        assert action_bound_method != "tanh", (  # type: ignore[comparison-overlap]
             "tanh mapping is not supported"
             "in policies where action is used as input of critic , because"
             "raw action in range (-inf, inf) will cause instability in training"
@@ -80,7 +80,6 @@ class DDPGPolicy(BasePolicy):
                 "Consider using unbounded=True option of the actor model,"
                 "or set action_scaling to False and action_bound_method to None.",
             )
-
         self.actor = actor
         self.actor_old = deepcopy(actor)
         self.actor_old.eval()
@@ -93,14 +92,17 @@ class DDPGPolicy(BasePolicy):
         self.gamma = gamma
         if exploration_noise == "default":
             exploration_noise = GaussianNoise(sigma=0.1)
-        self.exploration_noise = exploration_noise
+        # TODO: IMPORTANT - can't call this "exploration_noise" because confusingly,
+        #  there is already a method called exploration_noise() in the base class
+        #  Now this method doesn't apply any noise and is also not overridden. See TODO there
+        self._exploration_noise = exploration_noise
         # it is only a little difference to use GaussianNoise
         # self.noise = OUNoise()
         self.estimation_step = estimation_step
 
     def set_exp_noise(self, noise: BaseNoise | None) -> None:
         """Set the exploration noise."""
-        self.exploration_noise = noise
+        self._exploration_noise = noise
 
     def train(self, mode: bool = True) -> Self:
         """Set the module in training mode, except for the target network."""
@@ -125,13 +127,12 @@ class DDPGPolicy(BasePolicy):
         indices: np.ndarray,
     ) -> RolloutBatchProtocol | BatchWithReturnsProtocol:
         return self.compute_nstep_return(
-            batch,
-            buffer,
-            indices,
-            self._target_q,
-            self.gamma,
-            self.estimation_step,
-            self.rew_norm,
+            batch=batch,
+            buffer=buffer,
+            indices=indices,
+            target_q_fn=self._target_q,
+            gamma=self.gamma,
+            n_step=self.estimation_step,
         )
 
     def forward(
@@ -194,9 +195,9 @@ class DDPGPolicy(BasePolicy):
         act: np.ndarray | BatchProtocol,
         batch: RolloutBatchProtocol,
     ) -> np.ndarray | BatchProtocol:
-        if self.exploration_noise is None:
+        if self._exploration_noise is None:
             return act
         if isinstance(act, np.ndarray):
-            return act + self.exploration_noise(act.shape)
+            return act + self._exploration_noise(act.shape)
         warnings.warn("Cannot add exploration noise to non-numpy_array action.")
         return act

@@ -72,13 +72,14 @@ class BranchingDQNPolicy(DQNPolicy):
         )
         self.model = cast(BranchingNet, self.model)
 
+    # TODO: mypy complains b/c max_action_num is declared in base class, see todo there
     @property
-    def max_action_num(self) -> int:
-        return self.model.action_per_branch
+    def max_action_num(self) -> int:  # type: ignore
+        return self.model.action_per_branch  # type: ignore
 
     @property
     def num_branches(self) -> int:
-        return self.model.num_branches
+        return self.model.num_branches  # type: ignore
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}

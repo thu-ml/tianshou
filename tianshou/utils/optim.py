@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from typing import TypeVar
 
 import torch
 from torch import nn
@@ -36,11 +37,13 @@ _STANDARD_TORCH_OPTIMIZERS = [
     torch.optim.LBFGS,
 ]
 
+TOptim = TypeVar("TOptim", bound=torch.optim.Optimizer)
+
 
 def clone_optimizer(
-    optim: torch.optim.Optimizer,
+    optim: TOptim,
     new_params: nn.Parameter | Iterator[nn.Parameter],
-):
+) -> TOptim:
     """Clone an optimizer to get a new optim instance with new parameters.
 
     **WARNING**: This is a temporary measure, and should not be used in downstream code!

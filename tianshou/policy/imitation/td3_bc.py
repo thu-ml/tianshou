@@ -67,7 +67,7 @@ class TD3BCPolicy(TD3Policy):
         alpha: float = 2.5,
         estimation_step: int = 1,
         action_scaling: bool = True,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        action_bound_method: Literal["clip"] | None = "clip",
         observation_space: gym.Space | None = None,
         lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:

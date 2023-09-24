@@ -69,7 +69,9 @@ class SACPolicy(DDPGPolicy):
         exploration_noise: BaseNoise | Literal["default"] | None = None,
         deterministic_eval: bool = True,
         action_scaling: bool = True,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        # TODO: some papers claim that tanh is crucial for SAC, yet DDPG will raise an
+        #  error if tanh is used. Should be investigated.
+        action_bound_method: Literal["clip"] | None = "clip",
         observation_space: gym.Space | None = None,
         lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:
@@ -101,8 +103,11 @@ class SACPolicy(DDPGPolicy):
         self.deterministic_eval = deterministic_eval
         self.__eps = np.finfo(np.float32).eps.item()
 
+        self.alpha: float | torch.Tensor
         self._is_auto_alpha = not isinstance(alpha, float)
         if self._is_auto_alpha:
+            # TODO: why doesn't mypy understand that this must be a tuple?
+            alpha = cast(tuple[float, torch.Tensor, torch.optim.Optimizer], alpha)
             if alpha[1].shape != torch.Size([1]):
                 raise ValueError(
                     f"Expected log_alpha to have shape torch.Size([1]), "
@@ -114,6 +119,7 @@ class SACPolicy(DDPGPolicy):
             self.target_entropy, self.log_alpha, self.alpha_optim = alpha
             self.alpha = self.log_alpha.detach().exp()
         else:
+            alpha = cast(float, alpha)
             self.alpha = alpha
 
     @property
@@ -212,7 +218,8 @@ class SACPolicy(DDPGPolicy):
             "loss/critic2": critic2_loss.item(),
         }
         if self.is_auto_alpha:
+            self.alpha = cast(torch.Tensor, self.alpha)
             result["loss/alpha"] = alpha_loss.item()
-            result["alpha"] = self.alpha.item()  # type: ignore
+            result["alpha"] = self.alpha.item()
 
         return result
