@@ -1,30 +1,35 @@
 from typing import Any
 
+from torch import nn
+
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import C51Policy
-from tianshou.utils.net.discrete import sample_noise
+from tianshou.utils.net.discrete import NoisyLinear
 
 
+# TODO: this is a hacky thing interviewing side-effects and a return. Should improve.
+def _sample_noise(model: nn.Module) -> bool:
+    """Sample the random noises of NoisyLinear modules in the model.
+
+    Returns True if at least one NoisyLinear submodule was found.
+
+    :param model: a PyTorch module which may have NoisyLinear submodules.
+    :returns: True if model has at least one NoisyLinear submodule;
+        otherwise, False.
+    """
+    sampled_any_noise = False
+    for m in model.modules():
+        if isinstance(m, NoisyLinear):
+            m.sample()
+            sampled_any_noise = True
+    return sampled_any_noise
+
+
+# TODO: is this class worth keeping? It barely does anything
 class RainbowPolicy(C51Policy):
     """Implementation of Rainbow DQN. arXiv:1710.02298.
 
-    :param torch.nn.Module model: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
-    :param float discount_factor: in [0, 1].
-    :param int num_atoms: the number of atoms in the support set of the
-        value distribution. Default to 51.
-    :param float v_min: the value of the smallest atom in the support set.
-        Default to -10.0.
-    :param float v_max: the value of the largest atom in the support set.
-        Default to 10.0.
-    :param int estimation_step: the number of steps to look ahead. Default to 1.
-    :param int target_update_freq: the target network update frequency (0 if
-        you do not use the target network). Default to 0.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1).
-        Default to False.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
+    Same parameters as :class:`~tianshou.policy.C51Policy`.
 
     .. seealso::
 
@@ -33,7 +38,7 @@ class RainbowPolicy(C51Policy):
     """
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
-        sample_noise(self.model)
-        if self._target and sample_noise(self.model_old):
+        _sample_noise(self.model)
+        if self._target and _sample_noise(self.model_old):
             self.model_old.train()  # so that NoisyLinear takes effect
         return super().learn(batch, **kwargs)

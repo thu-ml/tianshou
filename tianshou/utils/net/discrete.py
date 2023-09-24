@@ -22,9 +22,9 @@ class Actor(nn.Module):
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
-    :param bool softmax_output: whether to apply a softmax layer over the last
+    :param softmax_output: whether to apply a softmax layer over the last
         layer's output.
-    :param int preprocess_net_output_dim: the output dimension of
+    :param preprocess_net_output_dim: the output dimension of
         preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
@@ -87,8 +87,8 @@ class Critic(nn.Module):
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
-    :param int last_size: the output dimension of Critic network. Default to 1.
-    :param int preprocess_net_output_dim: the output dimension of
+    :param last_size: the output dimension of Critic network. Default to 1.
+    :param preprocess_net_output_dim: the output dimension of
         preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
@@ -163,13 +163,13 @@ class ImplicitQuantileNetwork(Critic):
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
-    :param int action_shape: a sequence of int for the shape of action.
+    :param action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
-    :param int num_cosines: the number of cosines to use for cosine embedding.
+    :param num_cosines: the number of cosines to use for cosine embedding.
         Default to 64.
-    :param int preprocess_net_output_dim: the output dimension of
+    :param preprocess_net_output_dim: the output dimension of
         preprocess_net.
 
     .. note::
@@ -256,13 +256,13 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
 
     :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
-    :param int action_shape: a sequence of int for the shape of action.
+    :param action_shape: a sequence of int for the shape of action.
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
-    :param int num_cosines: the number of cosines to use for cosine embedding.
+    :param num_cosines: the number of cosines to use for cosine embedding.
         Default to 64.
-    :param int preprocess_net_output_dim: the output dimension of
+    :param preprocess_net_output_dim: the output dimension of
         preprocess_net.
 
     .. note::
@@ -321,9 +321,9 @@ class FullQuantileFunction(ImplicitQuantileNetwork):
 class NoisyLinear(nn.Module):
     """Implementation of Noisy Networks. arXiv:1706.10295.
 
-    :param int in_features: the number of input features.
-    :param int out_features: the number of output features.
-    :param float noisy_std: initial standard deviation of noisy linear layers.
+    :param in_features: the number of input features.
+    :param out_features: the number of output features.
+    :param noisy_std: initial standard deviation of noisy linear layers.
 
     .. note::
 
@@ -362,6 +362,7 @@ class NoisyLinear(nn.Module):
         x = torch.randn(x.size(0), device=x.device)
         return x.sign().mul_(x.abs().sqrt_())
 
+    # TODO: rename or change functionality? Usually sample is not an inplace operation...
     def sample(self) -> None:
         self.eps_p.copy_(self.f(self.eps_p))  # type: ignore
         self.eps_q.copy_(self.f(self.eps_q))  # type: ignore
@@ -377,28 +378,13 @@ class NoisyLinear(nn.Module):
         return F.linear(x, weight, bias)
 
 
-def sample_noise(model: nn.Module) -> bool:
-    """Sample the random noises of NoisyLinear modules in the model.
-
-    :param model: a PyTorch module which may have NoisyLinear submodules.
-    :returns: True if model has at least one NoisyLinear submodule;
-        otherwise, False.
-    """
-    done = False
-    for m in model.modules():
-        if isinstance(m, NoisyLinear):
-            m.sample()
-            done = True
-    return done
-
-
 class IntrinsicCuriosityModule(nn.Module):
     """Implementation of Intrinsic Curiosity Module. arXiv:1705.05363.
 
-    :param torch.nn.Module feature_net: a self-defined feature_net which output a
+    :param feature_net: a self-defined feature_net which output a
         flattened hidden state.
-    :param int feature_dim: input dimension of the feature net.
-    :param int action_dim: dimension of the action space.
+    :param feature_dim: input dimension of the feature net.
+    :param action_dim: dimension of the action space.
     :param hidden_sizes: hidden layer sizes for forward and inverse models.
     :param device: device for the module.
     """
