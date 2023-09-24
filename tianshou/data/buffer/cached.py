@@ -13,11 +13,11 @@ class CachedReplayBuffer(ReplayBufferManager):
     The data is first stored in cached buffers. When an episode is terminated, the data
     will move to the main buffer and the corresponding cached buffer will be reset.
 
-    :param ReplayBuffer main_buffer: the main buffer whose ``.update()`` function
+    :param main_buffer: the main buffer whose ``.update()`` function
         behaves normally.
-    :param int cached_buffer_num: number of ReplayBuffer needs to be created for cached
+    :param cached_buffer_num: number of ReplayBuffer needs to be created for cached
         buffer.
-    :param int max_episode_length: the maximum length of one episode, used in each
+    :param max_episode_length: the maximum length of one episode, used in each
         cached buffer's maxsize.
 
     .. seealso::

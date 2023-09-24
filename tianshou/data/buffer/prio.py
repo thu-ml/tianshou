@@ -10,9 +10,9 @@ from tianshou.data.types import PrioBatchProtocol, RolloutBatchProtocol
 class PrioritizedReplayBuffer(ReplayBuffer):
     """Implementation of Prioritized Experience Replay. arXiv:1511.05952.
 
-    :param float alpha: the prioritization exponent.
-    :param float beta: the importance sample soft coefficient.
-    :param bool weight_norm: whether to normalize returned weights with the maximum
+    :param alpha: the prioritization exponent.
+    :param beta: the importance sample soft coefficient.
+    :param weight_norm: whether to normalize returned weights with the maximum
         weight value within the batch. Default to True.
 
     .. seealso::

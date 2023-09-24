@@ -127,8 +127,8 @@ def test_cql():
         concat=True,
         device=args.device,
     )
-    critic1 = Critic(net_c1, device=args.device).to(args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    critic = Critic(net_c1, device=args.device).to(args.device)
+    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
@@ -141,8 +141,8 @@ def test_cql():
     policy = CQLPolicy(
         actor,
         actor_optim,
-        critic1,
-        critic1_optim,
+        critic,
+        critic_optim,
         critic2,
         critic2_optim,
         cql_alpha_lr=args.cql_alpha_lr,

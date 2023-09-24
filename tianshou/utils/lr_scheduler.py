@@ -33,7 +33,7 @@ class MultipleLRSchedulers:
     def load_state_dict(self, state_dict: list[dict]) -> None:
         """Load states from state_dict.
 
-        :param List[Dict] state_dict: A list of learning rate scheduler
+        :param state_dict: A list of learning rate scheduler
             state_dict, in the same order as the schedulers.
         """
         for s, sd in zip(self.schedulers, state_dict, strict=True):

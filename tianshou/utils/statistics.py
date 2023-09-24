@@ -70,9 +70,9 @@ class RunningMeanStd:
 
     :param mean: the initial mean estimation for data array. Default to 0.
     :param std: the initial standard error estimation for data array. Default to 1.
-    :param float clip_max: the maximum absolute value for data array. Default to
+    :param clip_max: the maximum absolute value for data array. Default to
         10.0.
-    :param float epsilon: To avoid division by zero.
+    :param epsilon: To avoid division by zero.
     """
 
     def __init__(

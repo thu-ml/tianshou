@@ -18,8 +18,8 @@ class VectorReplayBuffer(ReplayBufferManager):
     It is used for storing transition from different environments yet keeping the order
     of time.
 
-    :param int total_size: the total size of VectorReplayBuffer.
-    :param int buffer_num: the number of ReplayBuffer it uses, which are under the same
+    :param total_size: the total size of VectorReplayBuffer.
+    :param buffer_num: the number of ReplayBuffer it uses, which are under the same
         configuration.
 
     Other input arguments (stack_num/ignore_obs_next/save_only_last_obs/sample_avail)
@@ -43,8 +43,8 @@ class PrioritizedVectorReplayBuffer(PrioritizedReplayBufferManager):
     It is used for storing transition from different environments yet keeping the order
     of time.
 
-    :param int total_size: the total size of PrioritizedVectorReplayBuffer.
-    :param int buffer_num: the number of PrioritizedReplayBuffer it uses, which are
+    :param total_size: the total size of PrioritizedVectorReplayBuffer.
+    :param buffer_num: the number of PrioritizedReplayBuffer it uses, which are
         under the same configuration.
 
     Other input arguments (alpha/beta/stack_num/ignore_obs_next/save_only_last_obs/
@@ -72,8 +72,8 @@ class HERVectorReplayBuffer(HERReplayBufferManager):
     It is used for storing transition from different environments yet keeping the order
     of time.
 
-    :param int total_size: the total size of HERVectorReplayBuffer.
-    :param int buffer_num: the number of HERReplayBuffer it uses, which are
+    :param total_size: the total size of HERVectorReplayBuffer.
+    :param buffer_num: the number of HERReplayBuffer it uses, which are
         under the same configuration.
 
     Other input arguments are the same as :class:`~tianshou.data.HERReplayBuffer`.

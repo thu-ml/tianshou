@@ -69,7 +69,7 @@ class VectorEnvWrapper(BaseVectorEnv):
 class VectorEnvNormObs(VectorEnvWrapper):
     """An observation normalization wrapper for vectorized environments.
 
-    :param bool update_obs_rms: whether to update obs_rms. Default to True.
+    :param update_obs_rms: whether to update obs_rms. Default to True.
     """
 
     def __init__(self, venv: BaseVectorEnv, update_obs_rms: bool = True) -> None:

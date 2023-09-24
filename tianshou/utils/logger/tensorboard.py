@@ -12,12 +12,12 @@ class TensorboardLogger(BaseLogger):
     """A logger that relies on tensorboard SummaryWriter by default to visualize and log statistics.
 
     :param SummaryWriter writer: the writer to log data.
-    :param int train_interval: the log interval in log_train_data(). Default to 1000.
-    :param int test_interval: the log interval in log_test_data(). Default to 1.
-    :param int update_interval: the log interval in log_update_data(). Default to 1000.
-    :param int save_interval: the save interval in save_data(). Default to 1 (save at
+    :param train_interval: the log interval in log_train_data(). Default to 1000.
+    :param test_interval: the log interval in log_test_data(). Default to 1.
+    :param update_interval: the log interval in log_update_data(). Default to 1000.
+    :param save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
-    :param bool write_flush: whether to flush tensorboard result after each
+    :param write_flush: whether to flush tensorboard result after each
         add_scalar operation. Default to True.
     """
 

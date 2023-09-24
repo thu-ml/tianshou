@@ -32,7 +32,7 @@ class Collector:
         If set to None, it will not store the data. Default to None.
     :param function preprocess_fn: a function called before the data has been added to
         the buffer, see issue #42 and :ref:`preprocess_fn`. Default to None.
-    :param bool exploration_noise: determine whether the action needs to be modified
+    :param exploration_noise: determine whether the action needs to be modified
         with corresponding policy's exploration noise. If so, "policy.
         exploration_noise(act, batch)" will be called automatically to add the
         exploration noise into action. Default to False.
@@ -113,7 +113,7 @@ class Collector:
     ) -> None:
         """Reset the environment, statistics, current data and possibly replay memory.
 
-        :param bool reset_buffer: if true, reset the replay buffer that is attached
+        :param reset_buffer: if true, reset the replay buffer that is attached
             to the collector.
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
@@ -198,13 +198,13 @@ class Collector:
         first collect ``n_episode - env_num`` episodes, then for the last ``env_num``
         episodes, they will be collected evenly from each env.
 
-        :param int n_step: how many steps you want to collect.
-        :param int n_episode: how many episodes you want to collect.
-        :param bool random: whether to use random policy for collecting data. Default
+        :param n_step: how many steps you want to collect.
+        :param n_episode: how many episodes you want to collect.
+        :param random: whether to use random policy for collecting data. Default
             to False.
-        :param float render: the sleep time between rendering consecutive frames.
+        :param render: the sleep time between rendering consecutive frames.
             Default to None (no rendering).
-        :param bool no_grad: whether to retain gradient in policy.forward(). Default to
+        :param no_grad: whether to retain gradient in policy.forward(). Default to
             True (no gradient retaining).
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
@@ -445,13 +445,13 @@ class AsyncCollector(Collector):
         transitions. Instead, in order to support async setting, it may collect more
         than given n_step or n_episode transitions and save into buffer.
 
-        :param int n_step: how many steps you want to collect.
-        :param int n_episode: how many episodes you want to collect.
-        :param bool random: whether to use random policy for collecting data. Default
+        :param n_step: how many steps you want to collect.
+        :param n_episode: how many episodes you want to collect.
+        :param random: whether to use random policy for collecting data. Default
             to False.
-        :param float render: the sleep time between rendering consecutive frames.
+        :param render: the sleep time between rendering consecutive frames.
             Default to None (no rendering).
-        :param bool no_grad: whether to retain gradient in policy.forward(). Default to
+        :param no_grad: whether to retain gradient in policy.forward(). Default to
             True (no gradient retaining).
         :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
             reset function. Defaults to None (extra keyword arguments)
