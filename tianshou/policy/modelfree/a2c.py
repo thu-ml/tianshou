@@ -82,7 +82,7 @@ class A2CPolicy(PGPolicy):
         self.gae_lambda = gae_lambda
         self.vf_coef = vf_coef
         self.ent_coef = ent_coef
-        self._grad_norm = max_grad_norm
+        self.max_grad_norm = max_grad_norm
         self.max_batchsize = max_batchsize
         self._actor_critic = ActorCritic(self.actor, self.critic)
 
@@ -162,10 +162,10 @@ class A2CPolicy(PGPolicy):
                 loss = actor_loss + self.vf_coef * vf_loss - self.ent_coef * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
-                if self._grad_norm:  # clip large gradient
+                if self.max_grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
                         self._actor_critic.parameters(),
-                        max_norm=self._grad_norm,
+                        max_norm=self.max_grad_norm,
                     )
                 self.optim.step()
                 actor_losses.append(actor_loss.item())
