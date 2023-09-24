@@ -89,6 +89,9 @@ class DQNPolicy(BasePolicy):
         self.is_double = is_double
         self.clip_loss_grad = clip_loss_grad
 
+        # TODO: set in forward, fix this!
+        self.max_action_num: int
+
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
         self.eps = eps

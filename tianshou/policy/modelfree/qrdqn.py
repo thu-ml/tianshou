@@ -18,6 +18,7 @@ class QRDQNPolicy(DQNPolicy):
     :param model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
     :param optim: a torch.optim for optimizing the model.
+    :param action_space: Env's action space.
     :param discount_factor: in [0, 1].
     :param num_quantiles: the number of quantile midpoints in the inverse
         cumulative distribution function of the value.
