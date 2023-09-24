@@ -32,6 +32,7 @@ class SACPolicy(DDPGPolicy):
     :param alpha: entropy regularization coefficient.
         If a tuple (target_entropy, log_alpha, alpha_optim) is provided,
         then alpha is automatically tuned.
+    :param estimation_step: The number of steps to look ahead.
     :param exploration_noise: add noise to action for exploration.
         This is useful when solving "hard exploration" problems.
         "default" is equivalent to GaussianNoise(sigma=0.1).
