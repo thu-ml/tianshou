@@ -27,13 +27,13 @@ else:  # pytest
 
 
 class MyPolicy(BasePolicy):
-    def __init__(self, dict_state=False, need_state=True, action_shape=None):
+    def __init__(self, action_space=None, dict_state=False, need_state=True, action_shape=None):
         """Mock policy for testing.
 
         :param bool dict_state: if the observation of the environment is a dict
         :param bool need_state: if the policy needs the hidden state (for RNN)
         """
-        super().__init__()
+        super().__init__(action_space=action_space)
         self.dict_state = dict_state
         self.need_state = need_state
         self.action_shape = action_shape

@@ -131,7 +131,9 @@ Tianshou already provides some builtin classes for multi-agent learning. You can
     >>> # agents should be wrapped into one policy,
     >>> # which is responsible for calling the acting agent correctly
     >>> # here we use two random agents
-    >>> policy = MultiAgentPolicyManager([RandomPolicy(), RandomPolicy()], env)
+    >>> policy = MultiAgentPolicyManager(
+    >>>     [RandomPolicy(action_space=env.action_space), RandomPolicy(action_space=env.action_space)], env
+    >>> )
     >>>
     >>> # need to vectorize the environment for the collector
     >>> env = DummyVectorEnv([lambda: env])

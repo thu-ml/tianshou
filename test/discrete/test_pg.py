@@ -69,15 +69,15 @@ def test_pg(args=get_args()):
         softmax=True,
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
-    dist = torch.distributions.Categorical
+    dist_fn = torch.distributions.Categorical
     policy = PGPolicy(
-        net,
-        optim,
-        dist,
-        args.gamma,
+        actor=net,
+        optim=optim,
+        dist_fn=dist_fn,
+        discount_factor=args.gamma,
+        action_space=env.action_space,
         action_scaling=isinstance(env.action_space, Box),
         reward_normalization=args.rew_norm,
-        action_space=env.action_space,
     )
     for m in net.modules():
         if isinstance(m, torch.nn.Linear):

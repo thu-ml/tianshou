@@ -22,7 +22,7 @@ class BasePolicy(ABC, nn.Module):
     """The base class for any RL policy.
 
     Tianshou aims to modularize RL algorithms. It comes into several classes of
-    policies in Tianshou. All of the policy classes must inherit
+    policies in Tianshou. All policy classes must inherit from
     :class:`~tianshou.policy.BasePolicy`.
 
     A policy class typically has the following parts:
@@ -64,19 +64,20 @@ class BasePolicy(ABC, nn.Module):
         torch.save(policy.state_dict(), "policy.pth")
         policy.load_state_dict(torch.load("policy.pth"))
 
-    :param observation_space: appears unused.
-    :param action_space: required for action_scaling.
+    :param action_space: Env's action_space.
+    :param observation_space: Env's observation space. TODO: appears unused...
     :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Note that in this case, the action_space must be provided!
-    :param action_bound_method:
-    :param lr_scheduler:
+        of action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
 
     def __init__(
         self,
+        action_space: gym.Space,
         # TODO: does the policy actually need the observation space?
         observation_space: gym.Space | None = None,
-        action_space: gym.Space | None = None,
         action_scaling: bool = False,
         action_bound_method: Literal["clip", "tanh"] | None = None,
         lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
@@ -116,7 +117,7 @@ class BasePolicy(ABC, nn.Module):
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
-    # TODO: needed since for most of offline algorithm, the algorithm itself doesn't
+    # TODO: needed, since for most of offline algorithm, the algorithm itself doesn't
     #  have a method to add noise to action.
     #  So we add the default behavior here. It's a little messy, maybe one can
     #  find a better way to do this.
@@ -447,7 +448,7 @@ class BasePolicy(ABC, nn.Module):
         :param int n_step: the number of estimation step, should be an int greater
             than 0. Default to 1.
         :param bool rew_norm: normalize the reward to Normal(0, 1), Default to False.
-
+            TODO: passing True is not supported and will cause an error!
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """

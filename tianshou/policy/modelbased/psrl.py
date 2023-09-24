@@ -1,5 +1,6 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -7,19 +8,20 @@ from tianshou.data import Batch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ActBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
+from tianshou.utils import MultipleLRSchedulers
 
 
 class PSRLModel:
     """Implementation of Posterior Sampling Reinforcement Learning Model.
 
-    :param np.ndarray trans_count_prior: dirichlet prior (alphas), with shape
+    :param trans_count_prior: dirichlet prior (alphas), with shape
         (n_state, n_action, n_state).
-    :param np.ndarray rew_mean_prior: means of the normal priors of rewards,
+    :param rew_mean_prior: means of the normal priors of rewards,
         with shape (n_state, n_action).
-    :param np.ndarray rew_std_prior: standard deviations of the normal priors
+    :param rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
-    :param float discount_factor: in [0, 1].
-    :param float epsilon: for precision control in value iteration.
+    :param discount_factor: in [0, 1].
+    :param epsilon: for precision control in value iteration.
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
         optimizer in each policy.update(). Default to None (no lr_scheduler).
     """
@@ -61,13 +63,13 @@ class PSRLModel:
         standard deviations are in inverse proportion to the number of the
         corresponding observations.
 
-        :param np.ndarray trans_count: the number of observations, with shape
+        :param trans_count: the number of observations, with shape
             (n_state, n_action, n_state).
-        :param np.ndarray rew_sum: total rewards, with shape
+        :param rew_sum: total rewards, with shape
             (n_state, n_action).
-        :param np.ndarray rew_square_sum: total rewards' squares, with shape
+        :param rew_square_sum: total rewards' squares, with shape
             (n_state, n_action).
-        :param np.ndarray rew_count: the number of rewards, with shape
+        :param rew_count: the number of rewards, with shape
             (n_state, n_action).
         """
         self.updated = False
@@ -107,12 +109,12 @@ class PSRLModel:
     ) -> tuple[np.ndarray, np.ndarray]:
         """Value iteration solver for MDPs.
 
-        :param np.ndarray trans_prob: transition probabilities, with shape
+        :param trans_prob: transition probabilities, with shape
             (n_state, n_action, n_state).
-        :param np.ndarray rew: rewards, with shape (n_state, n_action).
-        :param float eps: for precision control.
-        :param float discount_factor: in [0, 1].
-        :param np.ndarray value: the initialize value of value array, with
+        :param rew: rewards, with shape (n_state, n_action).
+        :param eps: for precision control.
+        :param discount_factor: in [0, 1].
+        :param value: the initialize value of value array, with
             shape (n_state, ).
 
         :return: the optimal policy with shape (n_state, ).
@@ -144,16 +146,23 @@ class PSRLPolicy(BasePolicy):
     Reference: Strens M. A Bayesian framework for reinforcement learning [C]
     //ICML. 2000, 2000: 943-950.
 
-    :param np.ndarray trans_count_prior: dirichlet prior (alphas), with shape
+    :param trans_count_prior: dirichlet prior (alphas), with shape
         (n_state, n_action, n_state).
-    :param np.ndarray rew_mean_prior: means of the normal priors of rewards,
+    :param rew_mean_prior: means of the normal priors of rewards,
         with shape (n_state, n_action).
-    :param np.ndarray rew_std_prior: standard deviations of the normal priors
+    :param rew_std_prior: standard deviations of the normal priors
         of rewards, with shape (n_state, n_action).
-    :param float discount_factor: in [0, 1].
-    :param float epsilon: for precision control in value iteration.
-    :param bool add_done_loop: whether to add an extra self-loop for the
+    :param action_space: Env's action_space.
+    :param discount_factor: in [0, 1].
+    :param epsilon: for precision control in value iteration.
+    :param add_done_loop: whether to add an extra self-loop for the
         terminal state in MDP. Default to False.
+    :param observation_space: Env's observation space.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range
+        of action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -166,12 +175,22 @@ class PSRLPolicy(BasePolicy):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
+        action_space: gym.Space,
         discount_factor: float = 0.99,
         epsilon: float = 0.01,
         add_done_loop: bool = False,
-        **kwargs: Any,
+        observation_space: gym.Space | None = None,
+        action_scaling: bool = False,
+        action_bound_method: Literal["clip", "tanh"] | None = None,
+        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            lr_scheduler=lr_scheduler,
+        )
         assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
         self.model = PSRLModel(
             trans_count_prior,
