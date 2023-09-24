@@ -74,12 +74,13 @@ def test_discrete_cql(args=get_args()):
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
 
     policy = DiscreteCQLPolicy(
-        net,
-        optim,
-        args.gamma,
-        args.num_quantiles,
-        args.n_step,
-        args.target_update_freq,
+        model=net,
+        optim=optim,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
+        num_quantiles=args.num_quantiles,
+        estimation_step=args.n_step,
+        target_update_freq=args.target_update_freq,
         min_q_weight=args.min_q_weight,
     ).to(args.device)
     # buffer

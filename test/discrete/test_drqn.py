@@ -69,10 +69,11 @@ def test_drqn(args=get_args()):
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = DQNPolicy(
-        net,
-        optim,
-        args.gamma,
-        args.n_step,
+        model=net,
+        optim=optim,
+        discount_factor=args.gamma,
+        estimation_step=args.n_step,
+        action_space=env.action_space,
         target_update_freq=args.target_update_freq,
     )
     # collector

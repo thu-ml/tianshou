@@ -63,7 +63,7 @@ class PGPolicy(BasePolicy):
         observation_space: gym.Space | None = None,
         # TODO: why change the default from the base?
         action_scaling: bool = True,
-        action_bound_method: Literal["clip", "tanh"] | None = None,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:
         super().__init__(

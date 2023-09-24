@@ -88,10 +88,10 @@ def test_ppo(args=get_args()):
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = PPOPolicy(
-        actor,
-        critic,
-        optim,
-        dist,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        dist_fn=dist,
         action_scaling=isinstance(env.action_space, Box),
         discount_factor=args.gamma,
         max_grad_norm=args.max_grad_norm,

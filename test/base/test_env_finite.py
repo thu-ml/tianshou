@@ -164,6 +164,9 @@ class FiniteSubprocVectorEnv(FiniteVectorEnv, SubprocVectorEnv):
 
 
 class AnyPolicy(BasePolicy):
+    def __init__(self):
+        super().__init__(action_space=None)
+
     def forward(self, batch, state=None):
         return Batch(act=np.stack([1] * len(batch)))
 

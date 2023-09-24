@@ -40,7 +40,6 @@ def get_args():
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--rew-norm", type=bool, default=False)
     parser.add_argument(
         "--device",
         type=str,
@@ -93,16 +92,15 @@ def test_sac(args=get_args()):
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = SACPolicy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic1,
+        critic_optim=critic1_optim,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        reward_normalization=args.rew_norm,
         exploration_noise=OUNoise(0.0, args.noise_std),
         action_space=env.action_space,
     )

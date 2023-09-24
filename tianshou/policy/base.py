@@ -79,7 +79,7 @@ class BasePolicy(ABC, nn.Module):
         # TODO: does the policy actually need the observation space?
         observation_space: gym.Space | None = None,
         action_scaling: bool = False,
-        action_bound_method: Literal["clip", "tanh"] | None = None,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:
         allowed_action_bound_methods = ("clip", "tanh")
@@ -227,7 +227,7 @@ class BasePolicy(ABC, nn.Module):
             if self.action_scaling:
                 assert (
                     np.min(act) >= -1.0 and np.max(act) <= 1.0  # type: ignore
-                ), "action scaling only accepts raw action range = [-1, 1]"
+                ), f"action scaling only accepts raw action range = [-1, 1], but got: {act}"
                 low, high = self.action_space.low, self.action_space.high
                 act = low + (high - low) * (act + 1.0) / 2.0  # type: ignore
         return act

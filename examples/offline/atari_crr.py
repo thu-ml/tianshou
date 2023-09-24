@@ -114,10 +114,11 @@ def test_discrete_crr(args=get_args()):
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     # define policy
     policy = DiscreteCRRPolicy(
-        actor,
-        critic,
-        optim,
-        args.gamma,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
         policy_improvement_mode=args.policy_improvement_mode,
         ratio_upper_bound=args.ratio_upper_bound,
         beta=args.beta,

@@ -38,7 +38,7 @@ class MultiAgentPolicyManager(BasePolicy):
         # TODO: 2 This is the only policy that takes an env in init, is it really needed?
         env: PettingZooEnv,
         action_scaling: bool = False,
-        action_bound_method: Literal["clip", "tanh"] | None = None,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:
         super().__init__(

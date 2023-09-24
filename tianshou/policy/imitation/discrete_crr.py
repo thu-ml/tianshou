@@ -55,7 +55,7 @@ class DiscreteCRRPolicy(PGPolicy):
         reward_normalization: bool = False,
         observation_space: gym.Space | None = None,
         action_scaling: bool = False,
-        action_bound_method: Literal["clip", "tanh"] | None = None,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:
         super().__init__(

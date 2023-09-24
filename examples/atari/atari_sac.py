@@ -125,17 +125,17 @@ def test_discrete_sac(args=get_args()):
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = DiscreteSACPolicy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
-        args.tau,
-        args.gamma,
-        args.alpha,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic1,
+        critic_optim=critic1_optim,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
+        action_space=env.action_space,
+        tau=args.tau,
+        gamma=args.gamma,
+        alpha=args.alpha,
         estimation_step=args.n_step,
-        reward_normalization=args.rew_norm,
     ).to(args.device)
     if args.icm_lr_scale > 0:
         feature_net = DQN(*args.state_shape, args.action_shape, args.device, features_only=True)
@@ -150,12 +150,13 @@ def test_discrete_sac(args=get_args()):
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.actor_lr)
         policy = ICMPolicy(
-            policy,
-            icm_net,
-            icm_optim,
-            args.icm_lr_scale,
-            args.icm_reward_scale,
-            args.icm_forward_loss_weight,
+            policy=policy,
+            model=icm_net,
+            optim=icm_optim,
+            action_space=env.action_space,
+            lr_scale=args.icm_lr_scale,
+            reward_scale=args.icm_reward_scale,
+            forward_loss_weight=args.icm_forward_loss_weight,
         ).to(args.device)
     # load a previous policy
     if args.resume_path:

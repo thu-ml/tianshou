@@ -139,12 +139,12 @@ def test_cql(args=get_args()):
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = CQLPolicy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic1,
+        critic_optim=critic1_optim,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
         # CQL seems to perform better without action scaling
         # TODO: investigate why
         action_scaling=False,

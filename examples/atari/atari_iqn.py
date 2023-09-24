@@ -98,13 +98,14 @@ def test_iqn(args=get_args()):
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy = IQNPolicy(
-        net,
-        optim,
-        args.gamma,
-        args.sample_size,
-        args.online_sample_size,
-        args.target_sample_size,
-        args.n_step,
+        model=net,
+        optim=optim,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
+        sample_size=args.sample_size,
+        online_sample_size=args.online_sample_size,
+        target_sample_size=args.target_sample_size,
+        estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # load a previous policy

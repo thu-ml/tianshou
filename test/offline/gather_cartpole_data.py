@@ -83,11 +83,12 @@ def gather_data():
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = QRDQNPolicy(
-        net,
-        optim,
-        args.gamma,
-        args.num_quantiles,
-        args.n_step,
+        model=net,
+        optim=optim,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
+        num_quantiles=args.num_quantiles,
+        estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer

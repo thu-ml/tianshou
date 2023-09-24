@@ -66,7 +66,7 @@ class BCQPolicy(BasePolicy):
         num_sampled_action: int = 10,
         observation_space: gym.Space | None = None,
         action_scaling: bool = False,
-        action_bound_method: Literal["clip", "tanh"] | None = None,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
     ) -> None:
         # actor is Perturbation!

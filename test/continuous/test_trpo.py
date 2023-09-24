@@ -101,10 +101,10 @@ def test_trpo(args=get_args()):
         return Independent(Normal(*logits), 1)
 
     policy = TRPOPolicy(
-        actor,
-        critic,
-        optim,
-        dist,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        dist_fn=dist,
         discount_factor=args.gamma,
         reward_normalization=args.rew_norm,
         advantage_normalization=args.norm_adv,

@@ -89,10 +89,10 @@ def test_a2c_with_il(args=get_args()):
     optim = torch.optim.Adam(ActorCritic(actor, critic).parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = A2CPolicy(
-        actor,
-        critic,
-        optim,
-        dist,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        dist_fn=dist,
         action_scaling=isinstance(env.action_space, Box),
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,

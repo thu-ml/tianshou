@@ -105,10 +105,11 @@ def test_dqn(args=get_args()):
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     # define policy
     policy = DQNPolicy(
-        net,
-        optim,
-        args.gamma,
-        args.n_step,
+        model=net,
+        optim=optim,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
+        estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     )
     if args.icm_lr_scale > 0:
@@ -124,12 +125,13 @@ def test_dqn(args=get_args()):
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
         policy = ICMPolicy(
-            policy,
-            icm_net,
-            icm_optim,
-            args.icm_lr_scale,
-            args.icm_reward_scale,
-            args.icm_forward_loss_weight,
+            policy=policy,
+            model=icm_net,
+            optim=icm_optim,
+            action_space=env.action_space,
+            lr_scale=args.icm_lr_scale,
+            reward_scale=args.icm_reward_scale,
+            forward_loss_weight=args.icm_forward_loss_weight,
         ).to(args.device)
     # load a previous policy
     if args.resume_path:

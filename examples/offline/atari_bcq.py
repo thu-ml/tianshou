@@ -115,15 +115,16 @@ def test_discrete_bcq(args=get_args()):
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     # define policy
     policy = DiscreteBCQPolicy(
-        policy_net,
-        imitation_net,
-        optim,
-        args.gamma,
-        args.n_step,
-        args.target_update_freq,
-        args.eps_test,
-        args.unlikely_action_threshold,
-        args.imitation_logits_penalty,
+        model=policy_net,
+        imitator=imitation_net,
+        optim=optim,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
+        estimation_step=args.n_step,
+        target_update_freq=args.target_update_freq,
+        eval_eps=args.eps_test,
+        unlikely_action_threshold=args.unlikely_action_threshold,
+        imitation_logits_penalty=args.imitation_logits_penalty,
     )
     # load a previous policy
     if args.resume_path:

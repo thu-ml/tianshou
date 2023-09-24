@@ -80,10 +80,11 @@ def test_discrete_crr(args=get_args()):
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
 
     policy = DiscreteCRRPolicy(
-        actor,
-        critic,
-        optim,
-        args.gamma,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
         action_scaling=isinstance(env.action_space, Box),
         target_update_freq=args.target_update_freq,
     ).to(args.device)
