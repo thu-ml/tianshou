@@ -26,7 +26,7 @@ class PGPolicy(BasePolicy):
         :class:`~tianshou.policy.BasePolicy`.
     :param optim: optimizer for actor network.
     :param dist_fn: distribution class for computing the action.
-        Maps model_output -> distribution. Typically a gaussian distribution
+        Maps model_output -> distribution. Typically a Gaussian distribution
         taking `model_output=mean,std` as input for continuous action spaces,
         or a categorical distribution taking `model_output=logits`
         for discrete action spaces. Note that as user, you are responsible

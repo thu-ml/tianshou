@@ -18,7 +18,7 @@ class DDPGPolicy(BasePolicy):
     """Implementation of Deep Deterministic Policy Gradient. arXiv:1509.02971.
 
     :param actor: The actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> modul_output)
+        :class:`~tianshou.policy.BasePolicy`. (s -> model_output)
     :param actor_optim: The optimizer for actor network.
     :param critic: The critic network. (s, a -> Q(s, a))
     :param critic_optim: The optimizer for critic network.

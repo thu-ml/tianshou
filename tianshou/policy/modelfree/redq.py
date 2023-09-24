@@ -16,7 +16,7 @@ class REDQPolicy(DDPGPolicy):
     """Implementation of REDQ. arXiv:2101.05982.
 
     :param actor: The actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> modul_output)
+        :class:`~tianshou.policy.BasePolicy`. (s -> model_output)
     :param actor_optim: The optimizer for actor network.
     :param critic: The critic network. (s, a -> Q(s, a))
     :param critic_optim: The optimizer for critic network.
