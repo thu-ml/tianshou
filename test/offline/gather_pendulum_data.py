@@ -38,7 +38,6 @@ def get_args():
     parser.add_argument("--update-per-step", type=float, default=0.125)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument("--tau", default=0.005)
     parser.add_argument(
@@ -57,7 +56,6 @@ def get_args():
     parser.add_argument("--alpha", type=float, default=0.2)
     parser.add_argument("--auto-alpha", type=int, default=1)
     parser.add_argument("--alpha-lr", type=float, default=3e-4)
-    parser.add_argument("--rew-norm", action="store_true", default=False)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--save-buffer-name", type=str, default=expert_file_name())
     return parser.parse_known_args()[0]
@@ -127,7 +125,6 @@ def gather_data():
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        reward_normalization=args.rew_norm,
         estimation_step=args.n_step,
         action_space=env.action_space,
     )

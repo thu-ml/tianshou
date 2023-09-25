@@ -84,13 +84,13 @@ def test_c51(args=get_args()):
     policy = C51Policy(
         model=net,
         optim=optim,
-        gamma=args.gamma,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
         num_atoms=args.num_atoms,
         v_min=args.v_min,
         v_max=args.v_max,
         estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
-        action_space=env.action_space,
     ).to(args.device)
     # buffer
     if args.prioritized_replay:

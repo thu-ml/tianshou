@@ -85,6 +85,7 @@ def test_discrete_sac(args=get_args()):
         actor=actor,
         actor_optim=actor_optim,
         critic=critic1,
+        action_space=env.action_space,
         critic_optim=critic1_optim,
         critic2=critic2,
         critic2_optim=critic2_optim,

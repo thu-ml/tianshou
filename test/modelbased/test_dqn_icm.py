@@ -119,12 +119,13 @@ def test_dqn_icm(args=get_args()):
     ).to(args.device)
     icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
     policy = ICMPolicy(
-        policy,
-        icm_net,
-        icm_optim,
-        args.lr_scale,
-        args.reward_scale,
-        args.forward_loss_weight,
+        policy=policy,
+        model=icm_net,
+        optim=icm_optim,
+        action_space=env.action_space,
+        lr_scale=args.lr_scale,
+        reward_scale=args.reward_scale,
+        forward_loss_weight=args.forward_loss_weight,
     )
     # buffer
     if args.prioritized_replay:

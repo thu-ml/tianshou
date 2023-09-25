@@ -45,7 +45,6 @@ def get_args():
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--rew-norm", action="store_true", default=False)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument(
         "--device",
@@ -109,7 +108,6 @@ def test_sac_with_il(args=get_args()):
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        reward_normalization=args.rew_norm,
         estimation_step=args.n_step,
         action_space=env.action_space,
     )
