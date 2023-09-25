@@ -69,7 +69,7 @@ In Chinese, Tianshou means divinely ordained and is derived to the gift of being
 
 ## Installation
 
-Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/) and [conda-forge](https://github.com/conda-forge/tianshou-feedstock). It requires Python >= 3.8.
+Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/) and [conda-forge](https://github.com/conda-forge/tianshou-feedstock). It requires Python >= 3.11.
 
 You can simply install Tianshou from PyPI with the following command:
 
