@@ -10,11 +10,14 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
+  jobs:
+    pre_install:
+      - pip install poetry -U
+      - poetry config virtualenvs.create true --local
+      - poetry config virtualenvs.in-project true --local
   commands:
-    - pip install poetry -U
-    - poetry config virtualenvs.create true --local
-    - poetry config virtualenvs.in-project true --local
     - poetry install --with dev --extras "envpool"
+    - poetry run poe doc-build
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
