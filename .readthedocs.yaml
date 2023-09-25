@@ -15,9 +15,8 @@ build:
       - pip install poetry -U
       - poetry config virtualenvs.create true --local
       - poetry config virtualenvs.in-project true --local
-  commands:
-    - poetry install --with dev --extras "envpool"
-    - poetry run poe doc-build
+    pre_build:
+      - poetry install --with dev --extras "envpool"
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
