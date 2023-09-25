@@ -9,13 +9,13 @@ from jsonargparse import CLI
 from torch.distributions import Independent, Normal
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.agent import PPOConfig
 from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.experiment import (
     PPOExperimentBuilder,
     RLExperimentConfig,
 )
-from tianshou.highlevel.optim import LinearLRSchedulerFactory
+from tianshou.highlevel.params.lr_scheduler import LinearLRSchedulerFactory
+from tianshou.highlevel.params.policy_params import PPOParams
 
 
 def main(
@@ -65,22 +65,21 @@ def main(
         return Independent(Normal(*logits), 1)
 
     experiment = (
-        PPOExperimentBuilder(experiment_config, env_factory, sampling_config)
+        PPOExperimentBuilder(experiment_config, env_factory, sampling_config, dist_fn)
         .with_ppo_params(
-            PPOConfig(
-                gamma=gamma,
+            PPOParams(
+                discount_factor=gamma,
                 gae_lambda=gae_lambda,
                 action_bound_method=bound_action_method,
-                rew_norm=rew_norm,
+                reward_normalization=rew_norm,
                 ent_coef=ent_coef,
                 vf_coef=vf_coef,
                 max_grad_norm=max_grad_norm,
                 value_clip=value_clip,
-                norm_adv=norm_adv,
+                advantage_normalization=norm_adv,
                 eps_clip=eps_clip,
                 dual_clip=dual_clip,
-                recompute_adv=recompute_adv,
-                dist_fn=dist_fn,
+                recompute_advantage=recompute_adv,
                 lr=lr,
                 lr_scheduler_factory=LinearLRSchedulerFactory(sampling_config)
                 if lr_decay

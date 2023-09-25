@@ -91,7 +91,7 @@ class ContinuousActorProbFactory(ContinuousActorFactory):
 
     def create_module(self, envs: Environments, device: TDevice) -> nn.Module:
         net_a = Net(
-            envs.get_state_shape(),
+            envs.get_observation_shape(),
             hidden_sizes=self.hidden_sizes,
             activation=nn.Tanh,
             device=device,
@@ -148,7 +148,7 @@ class ContinuousNetCriticFactory(ContinuousCriticFactory):
     def create_module(self, envs: Environments, device: TDevice, use_action: bool) -> nn.Module:
         action_shape = envs.get_action_shape() if use_action else 0
         net_c = Net(
-            envs.get_state_shape(),
+            envs.get_observation_shape(),
             action_shape=action_shape,
             hidden_sizes=self.hidden_sizes,
             concat=use_action,

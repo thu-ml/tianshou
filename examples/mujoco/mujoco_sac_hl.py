@@ -7,7 +7,8 @@ from collections.abc import Sequence
 from jsonargparse import CLI
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.agent import DefaultAutoAlphaFactory, SACConfig
+from tianshou.highlevel.params.policy_params import SACParams
+from tianshou.highlevel.params.alpha import DefaultAutoAlphaFactory
 from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.experiment import (
     RLExperimentConfig,
@@ -58,7 +59,7 @@ def main(
     experiment = (
         SACExperimentBuilder(experiment_config, env_factory, sampling_config)
         .with_sac_params(
-            SACConfig(
+            SACParams(
                 tau=tau,
                 gamma=gamma,
                 alpha=DefaultAutoAlphaFactory(lr=alpha_lr) if auto_alpha else alpha,

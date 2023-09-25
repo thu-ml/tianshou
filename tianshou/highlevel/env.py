@@ -28,18 +28,21 @@ class Environments(ABC):
         self.test_envs = test_envs
 
     def info(self) -> dict[str, Any]:
-        return {"action_shape": self.get_action_shape(), "state_shape": self.get_state_shape()}
+        return {"action_shape": self.get_action_shape(), "state_shape": self.get_observation_shape()}
 
     @abstractmethod
     def get_action_shape(self) -> TShape:
         pass
 
     @abstractmethod
-    def get_state_shape(self) -> TShape:
+    def get_observation_shape(self) -> TShape:
         pass
 
     def get_action_space(self) -> gym.Space:
         return self.env.action_space
+
+    def get_observation_space(self) -> gym.Space:
+        return self.env.observation_space
 
     @abstractmethod
     def get_type(self) -> EnvType:
@@ -75,7 +78,7 @@ class ContinuousEnvironments(Environments):
     def get_action_shape(self) -> TShape:
         return self.action_shape
 
-    def get_state_shape(self) -> TShape:
+    def get_observation_shape(self) -> TShape:
         return self.state_shape
 
     def get_type(self):

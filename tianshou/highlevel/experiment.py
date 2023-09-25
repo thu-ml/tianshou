@@ -2,13 +2,13 @@ from abc import abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pprint import pprint
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Callable
 
 import numpy as np
 import torch
 
 from tianshou.data import Collector
-from tianshou.highlevel.agent import AgentFactory, PPOAgentFactory, PPOConfig, SACConfig
+from tianshou.highlevel.agent import AgentFactory, PPOAgentFactory, SACAgentFactory
 from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.env import EnvFactory
 from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerFactory
@@ -19,7 +19,9 @@ from tianshou.highlevel.module import (
     DefaultCriticFactory,
 )
 from tianshou.highlevel.optim import AdamOptimizerFactory, OptimizerFactory
+from tianshou.highlevel.params.policy_params import PPOParams, SACParams
 from tianshou.policy import BasePolicy
+from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.trainer import BaseTrainer
 
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
@@ -294,13 +296,15 @@ class PPOExperimentBuilder(
         experiment_config: RLExperimentConfig,
         env_factory: EnvFactory,
         sampling_config: RLSamplingConfig,
+        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory.__init__(self)
         _BuilderMixinSingleCriticFactory.__init__(self)
-        self._params: PPOConfig = PPOConfig()
+        self._params: PPOParams = PPOParams()
+        self._dist_fn = dist_fn
 
-    def with_ppo_params(self, params: PPOConfig) -> "PPOExperimentBuilder":
+    def with_ppo_params(self, params: PPOParams) -> "PPOExperimentBuilder":
         self._params = params
         return self
 
@@ -312,6 +316,7 @@ class PPOExperimentBuilder(
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
+            self._dist_fn
         )
 
 
@@ -327,8 +332,12 @@ class SACExperimentBuilder(
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory.__init__(self)
         _BuilderMixinDualCriticFactory.__init__(self)
-        self._params: SACConfig = SACConfig()
+        self._params: SACParams = SACParams()
 
-    def with_sac_params(self, params: SACConfig) -> "SACExperimentBuilder":
+    def with_sac_params(self, params: SACParams) -> "SACExperimentBuilder":
         self._params = params
         return self
+
+    def _create_agent_factory(self) -> AgentFactory:
+        return SACAgentFactory(self._params, self._sampling_config, self._get_actor_factory(),
+            self._get_critic_factory(0), self._get_critic_factory(1), self._get_optim_factory())
