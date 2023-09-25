@@ -181,19 +181,25 @@ The main function of collector is the collect function, which can be summarized 
 Train Policy with a Trainer
 ---------------------------
 
-Tianshou provides :func:`~tianshou.trainer.onpolicy_trainer`, :func:`~tianshou.trainer.offpolicy_trainer`, and :func:`~tianshou.trainer.offline_trainer`. The trainer will automatically stop training when the policy reach the stop condition ``stop_fn`` on test collector. Since DQN is an off-policy algorithm, we use the :func:`~tianshou.trainer.offpolicy_trainer` as follows:
+Tianshou provides :class:`~tianshou.trainer.OnpolicyTrainer`, :class:`~tianshou.trainer.OffpolicyTrainer`,
+and :class:`~tianshou.trainer.OfflineTrainer`. The trainer will automatically stop training when the policy
+reaches the stop condition ``stop_fn`` on test collector. Since DQN is an off-policy algorithm, we use the
+:class:`~tianshou.trainer.OffpolicyTrainer` as follows:
 ::
 
-    result = ts.trainer.offpolicy_trainer(
-        policy, train_collector, test_collector,
+    result = ts.trainer.OffpolicyTrainer(
+        policy=policy,
+        train_collector=train_collector,
+        test_collector=test_collector,
         max_epoch=10, step_per_epoch=10000, step_per_collect=10,
         update_per_step=0.1, episode_per_test=100, batch_size=64,
         train_fn=lambda epoch, env_step: policy.set_eps(0.1),
         test_fn=lambda epoch, env_step: policy.set_eps(0.05),
-        stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold)
+        stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold
+    ).run()
     print(f'Finished training! Use {result["duration"]}')
 
-The meaning of each parameter is as follows (full description can be found at :func:`~tianshou.trainer.offpolicy_trainer`):
+The meaning of each parameter is as follows (full description can be found at :class:`~tianshou.trainer.OffpolicyTrainer`):
 
 * ``max_epoch``: The maximum of epochs for training. The training process might be finished before reaching the ``max_epoch``;
 * ``step_per_epoch``: The number of environment step (a.k.a. transition) collected per epoch;
