@@ -126,6 +126,7 @@ ignore = [
     "B028",   # we don't need explicit stacklevel for warnings
     "D100", "D101", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402", "D106",  # docstring stuff
     "DTZ005",  # we don't need that
+    "RET505",  # sacrifices visual discernability of control flow paths for brevity (regarding return statements)
     # remaining rules from https://github.com/psf/black/blob/main/.flake8 (except W503)
     # this is a simplified version of config, making vscode plugin happy
     "E402", "E501", "E701", "E731", "C408", "E203"
