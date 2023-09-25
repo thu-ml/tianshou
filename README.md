@@ -8,9 +8,7 @@
 
 > ⚠️️ **Transition to Gymnasium**: The maintainers of OpenAI Gym have recently released [Gymnasium](http://github.com/Farama-Foundation/Gymnasium), 
 > which is where future maintenance of OpenAI Gym will be taking place. 
-> Tianshou has transitioned to internally using Gymnasium environments. You can still use OpenAI Gym environments with
-> Tianshou vector environments, but they will be wrapped in a compatibility layer, which could be a source of issues.
-> We recommend that you update your environment code to Gymnasium. If you want to continue using OpenAI Gym with
+> Tianshou has transitioned to internally using Gymnasium environments. If you want to continue using OpenAI Gym with
 > Tianshou, you need to manually install Gym and [Shimmy](https://github.com/Farama-Foundation/Shimmy) (the compatibility layer).
 
 **Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch. Unlike existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed modularized framework and pythonic API for building the deep reinforcement learning agent with the least number of lines of code. The supported interface algorithms currently include:
