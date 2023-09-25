@@ -43,6 +43,7 @@ class DDPGPolicy(BasePolicy):
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         actor_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,

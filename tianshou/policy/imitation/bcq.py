@@ -48,6 +48,7 @@ class BCQPolicy(BasePolicy):
 
     def __init__(
         self,
+        *,
         actor_perturbation: torch.nn.Module,
         actor_perturbation_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,

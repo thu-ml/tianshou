@@ -42,6 +42,7 @@ class BranchingDQNPolicy(DQNPolicy):
 
     def __init__(
         self,
+        *,
         model: BranchingNet,
         optim: torch.optim.Optimizer,
         action_space: gym.spaces.Discrete,

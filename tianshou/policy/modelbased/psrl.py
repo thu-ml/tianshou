@@ -172,6 +172,7 @@ class PSRLPolicy(BasePolicy):
 
     def __init__(
         self,
+        *,
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,

@@ -43,6 +43,7 @@ class TRPOPolicy(NPGPolicy):
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,

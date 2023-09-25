@@ -46,6 +46,7 @@ class FQFPolicy(QRDQNPolicy):
 
     def __init__(
         self,
+        *,
         model: FullQuantileFunction,
         optim: torch.optim.Optimizer,
         fraction_model: FractionProposalNetwork,

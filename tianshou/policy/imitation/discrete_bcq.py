@@ -48,6 +48,7 @@ class DiscreteBCQPolicy(DQNPolicy):
 
     def __init__(
         self,
+        *,
         model: torch.nn.Module,
         imitator: torch.nn.Module,
         optim: torch.optim.Optimizer,

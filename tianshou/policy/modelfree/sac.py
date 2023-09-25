@@ -55,6 +55,7 @@ class SACPolicy(DDPGPolicy):
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         actor_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,
@@ -75,11 +76,6 @@ class SACPolicy(DDPGPolicy):
         observation_space: gym.Space | None = None,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        if not isinstance(action_space, gym.spaces.Box):
-            raise ValueError(
-                f"SACPolicy only supports gym.spaces.Box, but got {action_space=}."
-                f"Please use DiscreteSACPolicy for discrete action spaces.",
-            )
         super().__init__(
             actor=actor,
             actor_optim=actor_optim,
@@ -121,6 +117,16 @@ class SACPolicy(DDPGPolicy):
         else:
             alpha = cast(float, alpha)
             self.alpha = alpha
+
+        # TODO or not TODO: add to BasePolicy?
+        self._check_field_validity()
+
+    def _check_field_validity(self) -> None:
+        if not isinstance(self.action_space, gym.spaces.Box):
+            raise ValueError(
+                f"SACPolicy only supports gym.spaces.Box, but got {self.action_space=}."
+                f"Please use DiscreteSACPolicy for discrete action spaces.",
+            )
 
     @property
     def is_auto_alpha(self) -> bool:

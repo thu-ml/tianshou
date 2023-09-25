@@ -36,6 +36,7 @@ class ICMPolicy(BasePolicy):
 
     def __init__(
         self,
+        *,
         policy: BasePolicy,
         model: IntrinsicCuriosityModule,
         optim: torch.optim.Optimizer,

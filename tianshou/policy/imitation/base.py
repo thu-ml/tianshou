@@ -34,6 +34,7 @@ class ImitationPolicy(BasePolicy):
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         optim: torch.optim.Optimizer,
         action_space: gym.Space,

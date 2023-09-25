@@ -53,6 +53,7 @@ class PGPolicy(BasePolicy):
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: Callable[[TDistParams], torch.distributions.Distribution],

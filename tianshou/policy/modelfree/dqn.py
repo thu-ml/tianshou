@@ -48,6 +48,7 @@ class DQNPolicy(BasePolicy):
 
     def __init__(
         self,
+        *,
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
         # TODO: type violates Liskov substitution principle

@@ -3,6 +3,7 @@ from typing import Any, cast
 import gymnasium as gym
 import numpy as np
 import torch
+from overrides import override
 from torch.distributions import Categorical
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
@@ -41,6 +42,7 @@ class DiscreteSACPolicy(SACPolicy):
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         actor_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,
@@ -55,12 +57,6 @@ class DiscreteSACPolicy(SACPolicy):
         observation_space: gym.Space | None = None,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        # TODO: violates Liskov substitution principle, incompatible action space with SAC
-        #   Not too urgent, but still...
-        if not isinstance(action_space, gym.spaces.Discrete):
-            raise ValueError(
-                f"{self.__class__.__name__} only supports discrete action spaces but got {action_space=}",
-            )
         super().__init__(
             actor=actor,
             actor_optim=actor_optim,
@@ -81,6 +77,16 @@ class DiscreteSACPolicy(SACPolicy):
             observation_space=observation_space,
             lr_scheduler=lr_scheduler,
         )
+
+    # TODO: violates Liskov substitution principle, incompatible action space with SAC
+    #   Not too urgent, but still..
+    @override
+    def _check_field_validity(self) -> None:
+        if not isinstance(self.action_space, gym.spaces.Discrete):
+            raise ValueError(
+                f"DiscreteSACPolicy only supports gym.spaces.Discrete, but got {self.action_space=}."
+                f"Please use SACPolicy for continuous action spaces.",
+            )
 
     def forward(  # type: ignore
         self,

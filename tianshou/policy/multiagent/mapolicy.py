@@ -32,6 +32,7 @@ class MultiAgentPolicyManager(BasePolicy):
 
     def __init__(
         self,
+        *,
         policies: list[BasePolicy],
         # TODO: 1 why restrict to PettingZooEnv?
         # TODO: 2 This is the only policy that takes an env in init, is it really needed?

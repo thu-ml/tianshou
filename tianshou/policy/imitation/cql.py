@@ -62,6 +62,7 @@ class CQLPolicy(SACPolicy):
 
     def __init__(
         self,
+        *,
         actor: ActorProb,
         actor_optim: torch.optim.Optimizer,
         critic: torch.nn.Module,

@@ -78,6 +78,7 @@ class BasePolicy(ABC, nn.Module):
 
     def __init__(
         self,
+        *,
         action_space: gym.Space,
         # TODO: does the policy actually need the observation space?
         observation_space: gym.Space | None = None,

@@ -41,6 +41,7 @@ class DiscreteCQLPolicy(QRDQNPolicy):
 
     def __init__(
         self,
+        *,
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
         action_space: gym.spaces.Discrete,
