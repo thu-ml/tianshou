@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from tianshou.data import to_torch
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import QRDQNPolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class DiscreteCQLPolicy(QRDQNPolicy):
@@ -53,7 +53,7 @@ class DiscreteCQLPolicy(QRDQNPolicy):
         is_double: bool = True,
         clip_loss_grad: bool = False,
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
             model=model,

@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.types import ImitationBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class DiscreteBCQPolicy(DQNPolicy):
@@ -62,7 +62,7 @@ class DiscreteBCQPolicy(DQNPolicy):
         is_double: bool = True,
         clip_loss_grad: bool = False,
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
             model=model,

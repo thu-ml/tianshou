@@ -11,8 +11,8 @@ from torch.distributions import kl_divergence
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistParams
-from tianshou.utils import MultipleLRSchedulers
 
 
 class NPGPolicy(A2CPolicy):
@@ -60,7 +60,7 @@ class NPGPolicy(A2CPolicy):
         observation_space: gym.Space | None = None,
         action_scaling: bool = True,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
             actor=actor,

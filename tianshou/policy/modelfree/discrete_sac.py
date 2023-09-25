@@ -9,7 +9,7 @@ from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class DiscreteSACPolicy(SACPolicy):
@@ -53,7 +53,7 @@ class DiscreteSACPolicy(SACPolicy):
         alpha: float | tuple[float, torch.Tensor, torch.optim.Optimizer] = 0.2,
         estimation_step: int = 1,
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         # TODO: violates Liskov substitution principle, incompatible action space with SAC
         #   Not too urgent, but still...

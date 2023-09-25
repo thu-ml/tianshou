@@ -10,7 +10,7 @@ from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import DistLogProbBatchProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils.optim import clone_optimizer
 
 
@@ -73,7 +73,7 @@ class SACPolicy(DDPGPolicy):
         #  error if tanh is used. Should be investigated.
         action_bound_method: Literal["clip"] | None = "clip",
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         if not isinstance(action_space, gym.spaces.Box):
             raise ValueError(

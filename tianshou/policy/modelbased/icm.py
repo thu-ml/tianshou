@@ -9,7 +9,7 @@ from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 
@@ -46,7 +46,7 @@ class ICMPolicy(BasePolicy):
         observation_space: gym.Space | None = None,
         action_scaling: bool = False,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
             action_space=action_space,

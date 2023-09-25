@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from tianshou.data import ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class QRDQNPolicy(DQNPolicy):
@@ -53,7 +53,7 @@ class QRDQNPolicy(DQNPolicy):
         is_double: bool = True,
         clip_loss_grad: bool = False,
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         assert num_quantiles > 1, f"num_quantiles should be greater than 1 but got: {num_quantiles}"
         super().__init__(

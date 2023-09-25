@@ -12,7 +12,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import DQNPolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils.net.common import BranchingNet
 
 
@@ -52,7 +52,7 @@ class BranchingDQNPolicy(DQNPolicy):
         is_double: bool = True,
         clip_loss_grad: bool = False,
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         assert (
             estimation_step == 1

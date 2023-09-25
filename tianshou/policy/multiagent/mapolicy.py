@@ -1,13 +1,12 @@
 from typing import Any, Literal
 
 import numpy as np
-import torch
 
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 try:
     from tianshou.env.pettingzoo_env import PettingZooEnv
@@ -39,7 +38,7 @@ class MultiAgentPolicyManager(BasePolicy):
         env: PettingZooEnv,
         action_scaling: bool = False,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
             action_space=env.action_space,

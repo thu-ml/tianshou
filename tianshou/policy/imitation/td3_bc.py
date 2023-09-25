@@ -8,7 +8,7 @@ from tianshou.data import to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import TD3Policy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class TD3BCPolicy(TD3Policy):
@@ -69,7 +69,7 @@ class TD3BCPolicy(TD3Policy):
         action_scaling: bool = True,
         action_bound_method: Literal["clip"] | None = "clip",
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
             actor=actor,

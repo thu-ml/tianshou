@@ -13,7 +13,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class DQNPolicy(BasePolicy):
@@ -59,7 +59,7 @@ class DQNPolicy(BasePolicy):
         is_double: bool = True,
         clip_loss_grad: bool = False,
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
             action_space=action_space,

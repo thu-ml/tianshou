@@ -11,7 +11,7 @@ from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.policy import BasePolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class DDPGPolicy(BasePolicy):
@@ -56,7 +56,7 @@ class DDPGPolicy(BasePolicy):
         action_scaling: bool = True,
         # tanh not supported, see assert below
         action_bound_method: Literal["clip"] | None = "clip",
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         assert 0.0 <= tau <= 1.0, f"tau should be in [0, 1] but got: {tau}"
         assert 0.0 <= gamma <= 1.0, f"gamma should be in [0, 1] but got: {gamma}"

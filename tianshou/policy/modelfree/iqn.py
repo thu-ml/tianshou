@@ -9,7 +9,7 @@ from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import QuantileRegressionBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import QRDQNPolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class IQNPolicy(QRDQNPolicy):
@@ -58,7 +58,7 @@ class IQNPolicy(QRDQNPolicy):
         is_double: bool = True,
         clip_loss_grad: bool = False,
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         assert sample_size > 1, f"sample_size should be greater than 1 but got: {sample_size}"
         assert (

@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, Literal, cast, overload
+from typing import Any, Literal, TypeAlias, cast, overload
 
 import gymnasium as gym
 import numpy as np
@@ -16,6 +16,9 @@ from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils import MultipleLRSchedulers
 
 logger = logging.getLogger(__name__)
+
+
+TLearningRateScheduler: TypeAlias = torch.optim.lr_scheduler.LRScheduler | MultipleLRSchedulers
 
 
 class BasePolicy(ABC, nn.Module):
@@ -80,7 +83,7 @@ class BasePolicy(ABC, nn.Module):
         observation_space: gym.Space | None = None,
         action_scaling: bool = False,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         allowed_action_bound_methods = ("clip", "tanh")
         if (

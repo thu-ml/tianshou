@@ -9,7 +9,7 @@ from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import DDPGPolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class REDQPolicy(DDPGPolicy):
@@ -65,7 +65,7 @@ class REDQPolicy(DDPGPolicy):
         action_scaling: bool = True,
         action_bound_method: Literal["clip"] | None = "clip",
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         if target_mode not in ("min", "mean"):
             raise ValueError(f"Unsupported target_mode: {target_mode}")

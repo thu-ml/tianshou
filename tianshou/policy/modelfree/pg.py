@@ -14,7 +14,8 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
-from tianshou.utils import MultipleLRSchedulers, RunningMeanStd
+from tianshou.policy.base import TLearningRateScheduler
+from tianshou.utils import RunningMeanStd
 
 TDistParams = torch.Tensor | tuple[torch.Tensor]
 
@@ -64,7 +65,7 @@ class PGPolicy(BasePolicy):
         # TODO: why change the default from the base?
         action_scaling: bool = True,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
             action_space=action_space,

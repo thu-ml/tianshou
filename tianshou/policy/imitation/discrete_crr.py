@@ -8,8 +8,8 @@ from torch.distributions import Categorical
 
 from tianshou.data import to_torch, to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import PGPolicy
-from tianshou.utils import MultipleLRSchedulers
 
 
 class DiscreteCRRPolicy(PGPolicy):
@@ -56,7 +56,7 @@ class DiscreteCRRPolicy(PGPolicy):
         observation_space: gym.Space | None = None,
         action_scaling: bool = False,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
             actor=actor,

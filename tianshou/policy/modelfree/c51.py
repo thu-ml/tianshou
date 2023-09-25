@@ -7,7 +7,7 @@ import torch
 from tianshou.data import ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
-from tianshou.utils import MultipleLRSchedulers
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class C51Policy(DQNPolicy):
@@ -56,7 +56,7 @@ class C51Policy(DQNPolicy):
         is_double: bool = True,
         clip_loss_grad: bool = False,
         observation_space: gym.Space | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         assert num_atoms > 1, f"num_atoms should be greater than 1 but got: {num_atoms}"
         assert v_min < v_max, f"v_max should be larger than v_min, but got {v_min=} and {v_max=}"
