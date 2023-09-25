@@ -245,7 +245,7 @@ result = ts.trainer.OffpolicyTrainer(
     train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
     test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
-    logger=logger
+    logger=logger,
 ).run()
 print(f'Finished training! Use {result["duration"]}')
 ```
