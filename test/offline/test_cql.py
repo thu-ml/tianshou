@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from tianshou.data import Collector, ReplayBuffer
+from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.env import DummyVectorEnv
 from tianshou.policy import CQLPolicy
 from tianshou.trainer import OfflineTrainer
@@ -71,7 +71,7 @@ def get_args():
 def test_cql(args=get_args()):
     if os.path.exists(args.load_buffer_name) and os.path.isfile(args.load_buffer_name):
         if args.load_buffer_name.endswith(".hdf5"):
-            buffer = ReplayBuffer.load_hdf5(args.load_buffer_name)
+            buffer = VectorReplayBuffer.load_hdf5(args.load_buffer_name)
         else:
             with open(args.load_buffer_name, "rb") as f:
                 buffer = pickle.load(f)

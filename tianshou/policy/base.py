@@ -261,8 +261,12 @@ class BasePolicy(ABC, nn.Module):
 
     def process_buffer(
         self,
-        buffer: ReplayBuffer | None,
-    ) -> ReplayBuffer | None:
+        buffer: ReplayBuffer,
+    ) -> ReplayBuffer:
+        """Pre-process the replay buffer, to add for example a new key.
+
+        Used in BaseTrainer initialization method.
+        """
         return buffer
 
     def process_fn(

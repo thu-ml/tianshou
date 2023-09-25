@@ -46,8 +46,8 @@ class CQLPolicy(SACPolicy):
     :param float alpha_max: upper bound for clipping cql_alpha. Default to 1e6.
     :param float clip_grad: clip_grad for updating critic network. Default to 1.0.
     :param calibrated: calibrate Q-values as in CalQL paper arXiv:2303.05479.
-        Useful for offline to online, and also was observed to achieve better reults
-        than vanilla CQL in offline.
+        Useful for offline pre-training followed by online training,
+        and also was observed to achieve better results than vanilla cql.
     :param Union[str, torch.device] device: which device to create this model on.
         Default to "cpu".
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
@@ -173,9 +173,7 @@ class CQLPolicy(SACPolicy):
 
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
-    def process_buffer(self, buffer: ReplayBuffer | None) -> ReplayBuffer | None:
-        if buffer is None:
-            return buffer
+    def process_buffer(self, buffer: ReplayBuffer) -> ReplayBuffer:
         if self.calibrated:
             data_dict = buffer._meta.__dict__
             start_idx = np.concatenate([np.array([0]), np.where(data_dict["done"])[0] + 1])
