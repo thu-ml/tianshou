@@ -1,13 +1,17 @@
+from copy import deepcopy
 from typing import Any, cast
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+from overrides import override
 from torch.nn.utils import clip_grad_norm_
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
+from tianshou.policy.base import calculate_disc_returns_from_buffer
 from tianshou.utils.net.continuous import ActorProb
 
 
@@ -173,31 +177,21 @@ class CQLPolicy(SACPolicy):
 
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
 
-    def process_buffer(self, buffer: ReplayBuffer) -> ReplayBuffer:
-        if self.calibrated:
-            data_dict = buffer._meta.__dict__
-            start_idx = np.concatenate([np.array([0]), np.where(data_dict["done"])[0] + 1])
-            end_idx = np.concatenate(
-                [np.where(data_dict["done"])[0] + 1, np.array([len(data_dict["done"])])],
-            )
-            ep_rew = [data_dict["rew"][i:j] for i, j in zip(start_idx, end_idx, strict=True)]
-            ep_ret = []
-            for i in range(len(ep_rew)):
-                episode_rewards = ep_rew[i]
-                disc_returns = [0] * len(episode_rewards)
-                discounted_return = 0
-                for j in range(1, len(episode_rewards) + 1):
-                    discounted_return = (
-                        episode_rewards[len(episode_rewards) - j] + self._gamma * discounted_return
-                    )
-                    disc_returns[len(episode_rewards) - j] = discounted_return
-                ep_ret.append(disc_returns)
+    @override
+    def process_buffer(self, buffer: TBuffer) -> TBuffer:
+        """If `self.calibrated = True`, adds `calibration_returns` to buffer._meta.
 
-            new_data_dict = data_dict.copy()
-            ep_rets = np.concatenate(ep_ret)
-            new_data_dict["calibration_returns"] = ep_rets
-            new_batch = cast(RolloutBatchProtocol, Batch(**new_data_dict))
-            buffer._meta = new_batch
+        :param buffer:
+        :return:
+        """
+        if self.calibrated:
+            buffer = deepcopy(buffer)  # prevent mutation of original buffer
+            returns = calculate_disc_returns_from_buffer(buffer, self.gamma)
+            # TODO: don't access _meta directly
+            buffer._meta = cast(
+                RolloutBatchProtocol,
+                Batch(**buffer._meta.__dict__, calibration_returns=returns),
+            )
         return buffer
 
     def process_fn(
