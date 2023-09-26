@@ -136,7 +136,7 @@ def get_agents(
         agents = [agent_learn, agent_opponent]
     else:
         agents = [agent_opponent, agent_learn]
-    policy = MultiAgentPolicyManager(agents, env)
+    policy = MultiAgentPolicyManager(policies=agents, env=env)
     return policy, optim, env.agents
 
 

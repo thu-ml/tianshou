@@ -102,7 +102,7 @@ warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
-exclude = "^build/|^docs/|^test/|^examples/"
+exclude = "^build/|^docs/"
 
 [tool.doc8]
 max-line-length = 1000

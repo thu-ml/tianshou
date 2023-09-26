@@ -108,7 +108,7 @@ def get_agents(
             agents.append(agent)
             optims.append(optim)
 
-    policy = MultiAgentPolicyManager(agents, env)
+    policy = MultiAgentPolicyManager(policies=agents, env=env)
     return policy, optims, env.agents
 
 

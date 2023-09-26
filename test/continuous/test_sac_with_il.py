@@ -164,8 +164,8 @@ def test_sac_with_il(args=get_args()):
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(
-        net,
-        optim,
+        actor=net,
+        optim=optim,
         action_space=env.action_space,
         action_scaling=True,
         action_bound_method="clip",

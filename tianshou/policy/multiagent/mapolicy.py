@@ -23,6 +23,8 @@ class MultiAgentPolicyManager(BasePolicy):
     and "learn": it splits the data and feeds them to each policy. A figure in
     :ref:`marl_example` can help you better understand this procedure.
 
+    :param policies: a list of policies.
+    :param env: a PettingZooEnv.
     :param action_scaling: if True, scale the action from [-1, 1] to the range
         of action_space. Only used if the action_space is continuous.
     :param action_bound_method: method to bound action to range [-1, 1].
