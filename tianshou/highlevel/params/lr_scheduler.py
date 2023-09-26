@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import torch
-from torch.optim.lr_scheduler import LRScheduler, LambdaLR
+from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 
 from tianshou.highlevel.config import RLSamplingConfig
 

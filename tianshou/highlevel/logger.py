@@ -1,13 +1,13 @@
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeAlias
 
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils import TensorboardLogger, WandbLogger
 
-TLogger = TensorboardLogger | WandbLogger
+TLogger: TypeAlias = TensorboardLogger | WandbLogger
 
 
 @dataclass
@@ -30,7 +30,7 @@ class DefaultLoggerFactory(LoggerFactory):
         wandb_project: str | None = None,
     ):
         if logger_type == "wandb" and wandb_project is None:
-            raise ValueError("Must provide 'wand_project'")
+            raise ValueError("Must provide 'wandb_project'")
         self.log_dir = log_dir
         self.logger_type = logger_type
         self.wandb_project = wandb_project

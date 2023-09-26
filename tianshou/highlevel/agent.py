@@ -1,21 +1,35 @@
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Dict, Any, List, Tuple
+from typing import Any
 
 import torch
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
-from tianshou.exploration import BaseNoise
 from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import Logger
-from tianshou.highlevel.module import ActorFactory, CriticFactory, TDevice
+from tianshou.highlevel.module import (
+    ActorCriticModuleOpt,
+    ActorFactory,
+    ActorModuleOptFactory,
+    CriticFactory,
+    CriticModuleOptFactory,
+    ModuleOpt,
+    TDevice,
+)
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.alpha import AutoAlphaFactory
+from tianshou.highlevel.params.env_param import FloatEnvParamFactory
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactory
-from tianshou.highlevel.params.policy_params import PPOParams, ParamTransformer, SACParams
-from tianshou.policy import BasePolicy, PPOPolicy, SACPolicy
+from tianshou.highlevel.params.noise import NoiseFactory
+from tianshou.highlevel.params.policy_params import (
+    ParamTransformer,
+    PPOParams,
+    SACParams,
+    TD3Params,
+)
+from tianshou.policy import BasePolicy, PPOPolicy, SACPolicy, TD3Policy
 from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils import MultipleLRSchedulers
@@ -135,7 +149,7 @@ class ParamTransformerDrop(ParamTransformer):
     def __init__(self, *keys: str):
         self.keys = keys
 
-    def transform(self, kwargs: Dict[str, Any]) -> None:
+    def transform(self, kwargs: dict[str, Any]) -> None:
         for k in self.keys:
             del kwargs[k]
 
@@ -144,12 +158,94 @@ class ParamTransformerLRScheduler(ParamTransformer):
     def __init__(self, optim: torch.optim.Optimizer):
         self.optim = optim
 
-    def transform(self, kwargs: Dict[str, Any]) -> None:
+    def transform(self, kwargs: dict[str, Any]) -> None:
         factory: LRSchedulerFactory | None = self.get(kwargs, "lr_scheduler_factory", drop=True)
-        kwargs["lr_scheduler"] = factory.create_scheduler(self.optim) if factory is not None else None
+        kwargs["lr_scheduler"] = (
+            factory.create_scheduler(self.optim) if factory is not None else None
+        )
 
 
-class PPOAgentFactory(OnpolicyAgentFactory):
+class _ActorMixin:
+    def __init__(self, actor_factory: ActorFactory, optim_factory: OptimizerFactory):
+        self.actor_module_opt_factory = ActorModuleOptFactory(actor_factory, optim_factory)
+
+    def create_actor_module_opt(self, envs: Environments, device: TDevice, lr: float) -> ModuleOpt:
+        return self.actor_module_opt_factory.create_module_opt(envs, device, lr)
+
+
+class _ActorCriticMixin:
+    """Mixin for agents that use an ActorCritic module with a single optimizer."""
+
+    def __init__(
+        self,
+        actor_factory: ActorFactory,
+        critic_factory: CriticFactory,
+        optim_factory: OptimizerFactory,
+        critic_use_action: bool,
+    ):
+        self.actor_factory = actor_factory
+        self.critic_factory = critic_factory
+        self.optim_factory = optim_factory
+        self.critic_use_action = critic_use_action
+
+    def create_actor_critic_module_opt(
+        self,
+        envs: Environments,
+        device: TDevice,
+        lr: float,
+    ) -> ActorCriticModuleOpt:
+        actor = self.actor_factory.create_module(envs, device)
+        critic = self.critic_factory.create_module(envs, device, use_action=self.critic_use_action)
+        actor_critic = ActorCritic(actor, critic)
+        optim = self.optim_factory.create_optimizer(actor_critic, lr)
+        return ActorCriticModuleOpt(actor_critic, optim)
+
+
+class _ActorAndCriticMixin(_ActorMixin):
+    def __init__(
+        self,
+        actor_factory: ActorFactory,
+        critic_factory: CriticFactory,
+        optim_factory: OptimizerFactory,
+        critic_use_action: bool,
+    ):
+        super().__init__(actor_factory, optim_factory)
+        self.critic_module_opt_factory = CriticModuleOptFactory(
+            critic_factory,
+            optim_factory,
+            critic_use_action,
+        )
+
+    def create_critic_module_opt(self, envs: Environments, device: TDevice, lr: float) -> ModuleOpt:
+        return self.critic_module_opt_factory.create_module_opt(envs, device, lr)
+
+
+class _ActorAndDualCriticsMixin(_ActorAndCriticMixin):
+    def __init__(
+        self,
+        actor_factory: ActorFactory,
+        critic_factory: CriticFactory,
+        critic2_factory: CriticFactory,
+        optim_factory: OptimizerFactory,
+        critic_use_action: bool,
+    ):
+        super().__init__(actor_factory, critic_factory, optim_factory, critic_use_action)
+        self.critic2_module_opt_factory = CriticModuleOptFactory(
+            critic2_factory,
+            optim_factory,
+            critic_use_action,
+        )
+
+    def create_critic2_module_opt(
+        self,
+        envs: Environments,
+        device: TDevice,
+        lr: float,
+    ) -> ModuleOpt:
+        return self.critic2_module_opt_factory.create_module_opt(envs, device, lr)
+
+
+class PPOAgentFactory(OnpolicyAgentFactory, _ActorCriticMixin):
     def __init__(
         self,
         params: PPOParams,
@@ -160,27 +256,29 @@ class PPOAgentFactory(OnpolicyAgentFactory):
         dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
     ):
         super().__init__(sampling_config)
-        self.optimizer_factory = optimizer_factory
-        self.critic_factory = critic_factory
-        self.actor_factory = actor_factory
-        self.config = params
+        _ActorCriticMixin.__init__(
+            self,
+            actor_factory,
+            critic_factory,
+            optimizer_factory,
+            critic_use_action=False,
+        )
+        self.params = params
         self.dist_fn = dist_fn
 
     def create_policy(self, envs: Environments, device: TDevice) -> PPOPolicy:
-        actor = self.actor_factory.create_module(envs, device)
-        critic = self.critic_factory.create_module(envs, device, use_action=False)
-        actor_critic = ActorCritic(actor, critic)
-        optim = self.optimizer_factory.create_optimizer(actor_critic, self.config.lr)
-        kwargs = self.config.create_kwargs(
+        actor_critic = self.create_actor_critic_module_opt(envs, device, self.params.lr)
+        kwargs = self.params.create_kwargs(
             ParamTransformerDrop("lr"),
-            ParamTransformerLRScheduler(optim))
+            ParamTransformerLRScheduler(actor_critic.optim),
+        )
         return PPOPolicy(
-            actor=actor,
-            critic=critic,
-            optim=optim,
+            actor=actor_critic.actor,
+            critic=actor_critic.critic,
+            optim=actor_critic.optim,
             dist_fn=self.dist_fn,
             action_space=envs.get_action_space(),
-            **kwargs
+            **kwargs,
         )
 
 
@@ -190,7 +288,7 @@ class ParamTransformerAlpha(ParamTransformer):
         self.optim_factory = optim_factory
         self.device = device
 
-    def transform(self, kwargs: Dict[str, Any]) -> None:
+    def transform(self, kwargs: dict[str, Any]) -> None:
         key = "alpha"
         alpha = self.get(kwargs, key)
         if isinstance(alpha, AutoAlphaFactory):
@@ -198,13 +296,17 @@ class ParamTransformerAlpha(ParamTransformer):
 
 
 class ParamTransformerMultiLRScheduler(ParamTransformer):
-    def __init__(self, optim_key_list: List[Tuple[torch.optim.Optimizer, str]]):
+    def __init__(self, optim_key_list: list[tuple[torch.optim.Optimizer, str]]):
         self.optim_key_list = optim_key_list
 
-    def transform(self, kwargs: Dict[str, Any]) -> None:
+    def transform(self, kwargs: dict[str, Any]) -> None:
         lr_schedulers = []
         for optim, lr_scheduler_factory_key in self.optim_key_list:
-            lr_scheduler_factory: LRSchedulerFactory | None = self.get(kwargs, lr_scheduler_factory_key, drop=True)
+            lr_scheduler_factory: LRSchedulerFactory | None = self.get(
+                kwargs,
+                lr_scheduler_factory_key,
+                drop=True,
+            )
             if lr_scheduler_factory is not None:
                 lr_schedulers.append(lr_scheduler_factory.create_scheduler(optim))
         match len(lr_schedulers):
@@ -217,7 +319,7 @@ class ParamTransformerMultiLRScheduler(ParamTransformer):
         kwargs["lr_scheduler"] = lr_scheduler
 
 
-class SACAgentFactory(OffpolicyAgentFactory):
+class SACAgentFactory(OffpolicyAgentFactory, _ActorAndDualCriticsMixin):
     def __init__(
         self,
         params: SACParams,
@@ -228,35 +330,114 @@ class SACAgentFactory(OffpolicyAgentFactory):
         optim_factory: OptimizerFactory,
     ):
         super().__init__(sampling_config)
-        self.critic2_factory = critic2_factory
-        self.critic1_factory = critic1_factory
-        self.actor_factory = actor_factory
-        self.optim_factory = optim_factory
+        _ActorAndDualCriticsMixin.__init__(
+            self,
+            actor_factory,
+            critic1_factory,
+            critic2_factory,
+            optim_factory,
+            critic_use_action=True,
+        )
         self.params = params
+        self.optim_factory = optim_factory
 
     def create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
-        actor = self.actor_factory.create_module(envs, device)
-        critic1 = self.critic1_factory.create_module(envs, device, use_action=True)
-        critic2 = self.critic2_factory.create_module(envs, device, use_action=True)
-        actor_optim = self.optim_factory.create_optimizer(actor, lr=self.params.actor_lr)
-        critic1_optim = self.optim_factory.create_optimizer(critic1, lr=self.params.critic1_lr)
-        critic2_optim = self.optim_factory.create_optimizer(critic2, lr=self.params.critic2_lr)
+        actor = self.create_actor_module_opt(envs, device, self.params.actor_lr)
+        critic1 = self.create_critic_module_opt(envs, device, self.params.critic1_lr)
+        critic2 = self.create_critic2_module_opt(envs, device, self.params.critic2_lr)
         kwargs = self.params.create_kwargs(
             ParamTransformerDrop("actor_lr", "critic1_lr", "critic2_lr"),
-            ParamTransformerMultiLRScheduler([
-                (actor_optim, "actor_lr_scheduler_factory"),
-                (critic1_optim, "critic1_lr_scheduler_factory"),
-                (critic2_optim, "critic2_lr_scheduler_factory")]
+            ParamTransformerMultiLRScheduler(
+                [
+                    (actor.optim, "actor_lr_scheduler_factory"),
+                    (critic1.optim, "critic1_lr_scheduler_factory"),
+                    (critic2.optim, "critic2_lr_scheduler_factory"),
+                ],
             ),
-            ParamTransformerAlpha(envs, optim_factory=self.optim_factory, device=device))
+            ParamTransformerAlpha(envs, optim_factory=self.optim_factory, device=device),
+        )
         return SACPolicy(
-            actor=actor,
-            actor_optim=actor_optim,
-            critic=critic1,
-            critic_optim=critic1_optim,
-            critic2=critic2,
-            critic2_optim=critic2_optim,
+            actor=actor.module,
+            actor_optim=actor.optim,
+            critic=critic1.module,
+            critic_optim=critic1.optim,
+            critic2=critic2.module,
+            critic2_optim=critic2.optim,
             action_space=envs.get_action_space(),
             observation_space=envs.get_observation_space(),
-            **kwargs
+            **kwargs,
+        )
+
+
+class ParamTransformerNoiseFactory(ParamTransformer):
+    def __init__(self, key: str, envs: Environments):
+        self.key = key
+        self.envs = envs
+
+    def transform(self, kwargs: dict[str, Any]) -> None:
+        value = kwargs[self.key]
+        if isinstance(value, NoiseFactory):
+            kwargs[self.key] = value.create_noise(self.envs)
+
+
+class ParamTransformerFloatEnvParamFactory(ParamTransformer):
+    def __init__(self, key: str, envs: Environments):
+        self.key = key
+        self.envs = envs
+
+    def transform(self, kwargs: dict[str, Any]) -> None:
+        value = kwargs[self.key]
+        if isinstance(value, FloatEnvParamFactory):
+            kwargs[self.key] = value.create_param(self.envs)
+
+
+class TD3AgentFactory(OffpolicyAgentFactory, _ActorAndDualCriticsMixin):
+    def __init__(
+        self,
+        params: TD3Params,
+        sampling_config: RLSamplingConfig,
+        actor_factory: ActorFactory,
+        critic1_factory: CriticFactory,
+        critic2_factory: CriticFactory,
+        optim_factory: OptimizerFactory,
+    ):
+        super().__init__(sampling_config)
+        _ActorAndDualCriticsMixin.__init__(
+            self,
+            actor_factory,
+            critic1_factory,
+            critic2_factory,
+            optim_factory,
+            critic_use_action=True,
+        )
+        self.params = params
+        self.optim_factory = optim_factory
+
+    def create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+        actor = self.create_actor_module_opt(envs, device, self.params.actor_lr)
+        critic1 = self.create_critic_module_opt(envs, device, self.params.critic1_lr)
+        critic2 = self.create_critic2_module_opt(envs, device, self.params.critic2_lr)
+        kwargs = self.params.create_kwargs(
+            ParamTransformerDrop("actor_lr", "critic1_lr", "critic2_lr"),
+            ParamTransformerMultiLRScheduler(
+                [
+                    (actor.optim, "actor_lr_scheduler_factory"),
+                    (critic1.optim, "critic1_lr_scheduler_factory"),
+                    (critic2.optim, "critic2_lr_scheduler_factory"),
+                ],
+            ),
+            ParamTransformerNoiseFactory("exploration_noise", envs),
+            ParamTransformerFloatEnvParamFactory("policy_noise", envs),
+            ParamTransformerFloatEnvParamFactory("noise_clip", envs),
+        )
+        return TD3Policy(
+            actor=actor.module,
+            actor_optim=actor.optim,
+            critic=critic1.module,
+            critic_optim=critic1.optim,
+            critic2=critic2.module,
+            critic2_optim=critic2.optim,
+            action_space=envs.get_action_space(),
+            observation_space=envs.get_observation_space(),
+            **kwargs,
         )

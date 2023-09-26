@@ -5,6 +5,7 @@ from dataclasses import dataclass
 class RLSamplingConfig:
     """Sampling, epochs, parallelization, buffers, collectors, and batching."""
 
+    # TODO: What are reasonable defaults?
     num_epochs: int = 100
     step_per_epoch: int = 30000
     batch_size: int = 64

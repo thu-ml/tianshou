@@ -66,7 +66,7 @@ def main(
 
     experiment = (
         PPOExperimentBuilder(experiment_config, env_factory, sampling_config, dist_fn)
-        .with_ppo_params(
+        .with_params(
             PPOParams(
                 discount_factor=gamma,
                 gae_lambda=gae_lambda,

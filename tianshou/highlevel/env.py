@@ -20,6 +20,14 @@ class EnvType(Enum):
     def is_continuous(self):
         return self == EnvType.CONTINUOUS
 
+    def assert_continuous(self, requiring_entity: Any):
+        if not self.is_continuous():
+            raise AssertionError(f"{requiring_entity} requires continuous environments")
+
+    def assert_discrete(self, requiring_entity: Any):
+        if not self.is_discrete():
+            raise AssertionError(f"{requiring_entity} requires discrete environments")
+
 
 class Environments(ABC):
     def __init__(self, env: gym.Env | None, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
@@ -28,7 +36,10 @@ class Environments(ABC):
         self.test_envs = test_envs
 
     def info(self) -> dict[str, Any]:
-        return {"action_shape": self.get_action_shape(), "state_shape": self.get_observation_shape()}
+        return {
+            "action_shape": self.get_action_shape(),
+            "state_shape": self.get_observation_shape(),
+        }
 
     @abstractmethod
     def get_action_shape(self) -> TShape:
@@ -81,7 +92,7 @@ class ContinuousEnvironments(Environments):
     def get_observation_shape(self) -> TShape:
         return self.state_shape
 
-    def get_type(self):
+    def get_type(self) -> EnvType:
         return EnvType.CONTINUOUS
 
 

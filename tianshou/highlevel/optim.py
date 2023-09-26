@@ -1,12 +1,8 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
 from typing import Any
 
 import torch
-from torch import Tensor
 from torch.optim import Adam
-
-TParams = Iterable[Tensor] | Iterable[dict[str, Any]]
 
 
 class OptimizerFactory(ABC):
@@ -38,5 +34,3 @@ class AdamOptimizerFactory(OptimizerFactory):
             eps=self.eps,
             weight_decay=self.weight_decay,
         )
-
-
