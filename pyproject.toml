@@ -124,7 +124,7 @@ ignore = [
     "B008",   # do not perform function calls in argument defaults. we do this sometimes
     "B011",   # assert false. we don't use python -O
     "B028",   # we don't need explicit stacklevel for warnings
-    "D100", "D101", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402", "D106",  # docstring stuff
+    "D100", "D101", "D102", "D104", "D105", "D107", "D203", "D213", "D401", "D402", "D106", "D205",  # docstring stuff
     "DTZ005",  # we don't need that
     "RET505",  # sacrifices visual discernability of control flow paths for brevity (regarding return statements)
     # remaining rules from https://github.com/psf/black/blob/main/.flake8 (except W503)
