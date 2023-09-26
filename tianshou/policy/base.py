@@ -597,8 +597,7 @@ def calculate_disc_returns(rewards: Sequence[float], gamma: float) -> np.ndarray
     discounted_returns[-1] = rewards[-1]
 
     for j in range(len_episode - 2, -1, -1):
-        next_step_ret = discounted_returns[j + 1]
-        discounted_returns[j] = rewards[j] + gamma * next_step_ret
+        discounted_returns[j] = rewards[j] + gamma * discounted_returns[j + 1]
 
     return discounted_returns
 
