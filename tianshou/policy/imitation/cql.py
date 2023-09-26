@@ -11,7 +11,7 @@ from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
-from tianshou.policy.base import calculate_disc_returns_from_buffer
+from tianshou.policy.base import calculate_returns_from_buffer
 from tianshou.utils.net.continuous import ActorProb
 
 
@@ -186,7 +186,7 @@ class CQLPolicy(SACPolicy):
         """
         if self.calibrated:
             buffer = deepcopy(buffer)  # prevent mutation of original buffer
-            returns = calculate_disc_returns_from_buffer(buffer, self.gamma)
+            returns = calculate_returns_from_buffer(buffer, self.gamma)
             # TODO: don't access _meta directly
             buffer._meta = cast(
                 RolloutBatchProtocol,

@@ -585,12 +585,12 @@ def _nstep_return(
 
 # TODO: is there another method somewhere in tianshou to do this? Can _nstep_return be used?
 @jit
-def calculate_disc_returns(rewards: Sequence[float], gamma: float) -> np.ndarray:
-    """Calculate discounted returns from a sequence of rewards of one episode.
+def calculate_episode_returns(rewards: Sequence[float], gamma: float) -> np.ndarray:
+    """Calculate discounted returns from a rewards of a single episode.
 
     :param rewards: rewards of a single episode
     :param gamma: discount factor
-    :return:
+    :return: a numpy array of shape (len(rewards), )
     """
     len_episode = len(rewards)
     discounted_returns = np.zeros(len_episode)
@@ -603,18 +603,19 @@ def calculate_disc_returns(rewards: Sequence[float], gamma: float) -> np.ndarray
 
 
 @jit
-def calculate_disc_returns_from_buffer(
+def calculate_returns_from_buffer(
     buffer: ReplayBuffer,
     gamma: float,
     done_field: str = "done",
     reward_field: str = "rew",
 ) -> np.ndarray:
-    """Calculate discounted returns from a replay buffer.
+    """Calculate discounted returns from a replay buffer, taking into
+    account where episodes have ended.
 
     :param buffer:
-    :param done_field:
-    :param reward_field:
-    :return:
+    :param done_field: field in the buffer where the done flags are stored.
+    :param reward_field: field in the buffer where the rewards are stored.
+    :return: a numpy array of shape (len(buffer), )
     """
     buffer_dict = buffer._meta.__dict__
     is_done = buffer_dict[done_field]
@@ -624,6 +625,6 @@ def calculate_disc_returns_from_buffer(
     start_idx = np.insert(episode_restarted_idx, 0, 0)
     end_idx = np.append(episode_restarted_idx, len(is_done))
     returns = [
-        calculate_disc_returns(rewards[i:j], gamma) for i, j in zip(start_idx, end_idx, strict=True)
+        calculate_episode_returns(rewards[i:j], gamma) for i, j in zip(start_idx, end_idx, strict=True)
     ]
     return np.concatenate(returns)
