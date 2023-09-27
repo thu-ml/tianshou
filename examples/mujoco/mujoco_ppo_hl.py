@@ -14,7 +14,7 @@ from tianshou.highlevel.experiment import (
     PPOExperimentBuilder,
     RLExperimentConfig,
 )
-from tianshou.highlevel.params.lr_scheduler import LinearLRSchedulerFactory
+from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
 
 
@@ -81,7 +81,7 @@ def main(
                 dual_clip=dual_clip,
                 recompute_advantage=recompute_adv,
                 lr=lr,
-                lr_scheduler_factory=LinearLRSchedulerFactory(sampling_config)
+                lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config)
                 if lr_decay
                 else None,
             ),

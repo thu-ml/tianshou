@@ -12,7 +12,7 @@ from tianshou.highlevel.experiment import (
     RLExperimentConfig,
     SACExperimentBuilder,
 )
-from tianshou.highlevel.params.alpha import DefaultAutoAlphaFactory
+from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
 from tianshou.highlevel.params.policy_params import SACParams
 
 
@@ -62,7 +62,7 @@ def main(
             SACParams(
                 tau=tau,
                 gamma=gamma,
-                alpha=DefaultAutoAlphaFactory(lr=alpha_lr) if auto_alpha else alpha,
+                alpha=AutoAlphaFactoryDefault(lr=alpha_lr) if auto_alpha else alpha,
                 estimation_step=n_step,
                 actor_lr=actor_lr,
                 critic1_lr=critic_lr,

@@ -9,7 +9,7 @@ from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module import ModuleOpt, TDevice
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.alpha import AutoAlphaFactory
-from tianshou.highlevel.params.env_param import FloatEnvParamFactory
+from tianshou.highlevel.params.env_param import EnvValueFactory, FloatEnvValueFactory
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactory
 from tianshou.highlevel.params.noise import NoiseFactory
 from tianshou.utils import MultipleLRSchedulers
@@ -155,8 +155,8 @@ class ParamTransformerFloatEnvParamFactory(ParamTransformer):
 
     def transform(self, kwargs: dict[str, Any], data: ParamTransformerData) -> None:
         value = kwargs[self.key]
-        if isinstance(value, FloatEnvParamFactory):
-            kwargs[self.key] = value.create_param(data.envs)
+        if isinstance(value, EnvValueFactory):
+            kwargs[self.key] = value.create_value(data.envs)
 
 
 class ITransformableParams(ABC):
@@ -268,13 +268,14 @@ class TD3Params(Params, ParamsMixinActorAndDualCritics):
     tau: float = 0.005
     gamma: float = 0.99
     exploration_noise: BaseNoise | Literal["default"] | NoiseFactory | None = "default"
-    policy_noise: float | FloatEnvParamFactory = 0.2
-    noise_clip: float | FloatEnvParamFactory = 0.5
+    policy_noise: float | FloatEnvValueFactory = 0.2
+    noise_clip: float | FloatEnvValueFactory = 0.5
     update_actor_freq: int = 2
     estimation_step: int = 1
     action_scaling: bool = True
     action_bound_method: Literal["clip"] | None = "clip"
 
+    # TODO change to stateless variant
     def __post_init__(self):
         ParamsMixinActorAndDualCritics.__post_init__(self)
         self._add_transformer(ParamTransformerNoiseFactory("exploration_noise"))

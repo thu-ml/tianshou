@@ -12,8 +12,10 @@ from tianshou.highlevel.experiment import (
     RLExperimentConfig,
     TD3ExperimentBuilder,
 )
-from tianshou.highlevel.params.env_param import MaxActionScaledFloatEnvParamFactory
-from tianshou.highlevel.params.noise import MaxActionScaledGaussianNoiseFactory
+from tianshou.highlevel.params.env_param import MaxActionScaled
+from tianshou.highlevel.params.noise import (
+    MaxActionScaledGaussian,
+)
 from tianshou.highlevel.params.policy_params import TD3Params
 
 
@@ -66,9 +68,9 @@ def main(
                 gamma=gamma,
                 estimation_step=n_step,
                 update_actor_freq=update_actor_freq,
-                noise_clip=MaxActionScaledFloatEnvParamFactory(noise_clip),
-                policy_noise=MaxActionScaledFloatEnvParamFactory(policy_noise),
-                exploration_noise=MaxActionScaledGaussianNoiseFactory(exploration_noise),
+                noise_clip=MaxActionScaled(noise_clip),
+                policy_noise=MaxActionScaled(policy_noise),
+                exploration_noise=MaxActionScaledGaussian(exploration_noise),
                 actor_lr=actor_lr,
                 critic1_lr=critic_lr,
                 critic2_lr=critic_lr,

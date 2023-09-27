@@ -53,7 +53,7 @@ class ActorFactory(ABC):
                     m.weight.data.copy_(0.01 * m.weight.data)
 
 
-class DefaultActorFactory(ActorFactory):
+class ActorFactoryDefault(ActorFactory):
     """An actor factory which, depending on the type of environment, creates a suitable MLP-based policy."""
 
     DEFAULT_HIDDEN_SIZES = (64, 64)
@@ -75,13 +75,13 @@ class DefaultActorFactory(ActorFactory):
         if env_type == EnvType.CONTINUOUS:
             match self.continuous_actor_type:
                 case ContinuousActorType.GAUSSIAN:
-                    factory = ContinuousActorFactoryGaussian(
+                    factory = ActorFactoryContinuousGaussian(
                         self.hidden_sizes,
                         unbounded=self.continuous_unbounded,
                         conditioned_sigma=self.continuous_conditioned_sigma,
                     )
                 case ContinuousActorType.DETERMINISTIC:
-                    factory = ContinuousActorFactoryDeterministic(self.hidden_sizes)
+                    factory = ActorFactoryContinuousDeterministic(self.hidden_sizes)
                 case _:
                     raise ValueError(self.continuous_actor_type)
             return factory.create_module(envs, device)
@@ -91,11 +91,11 @@ class DefaultActorFactory(ActorFactory):
             raise ValueError(f"{env_type} not supported")
 
 
-class ContinuousActorFactory(ActorFactory, ABC):
+class ActorFactoryContinuous(ActorFactory, ABC):
     """Serves as a type bound for actor factories that are suitable for continuous action spaces."""
 
 
-class ContinuousActorFactoryDeterministic(ContinuousActorFactory):
+class ActorFactoryContinuousDeterministic(ActorFactoryContinuous):
     def __init__(self, hidden_sizes: Sequence[int]):
         self.hidden_sizes = hidden_sizes
 
@@ -113,7 +113,7 @@ class ContinuousActorFactoryDeterministic(ContinuousActorFactory):
         ).to(device)
 
 
-class ContinuousActorFactoryGaussian(ContinuousActorFactory):
+class ActorFactoryContinuousGaussian(ActorFactoryContinuous):
     def __init__(self, hidden_sizes: Sequence[int], unbounded=True, conditioned_sigma=False):
         self.hidden_sizes = hidden_sizes
         self.unbounded = unbounded
@@ -148,7 +148,7 @@ class CriticFactory(ABC):
         pass
 
 
-class DefaultCriticFactory(CriticFactory):
+class CriticFactoryDefault(CriticFactory):
     """A critic factory which, depending on the type of environment, creates a suitable MLP-based critic."""
 
     DEFAULT_HIDDEN_SIZES = (64, 64)
@@ -159,7 +159,7 @@ class DefaultCriticFactory(CriticFactory):
     def create_module(self, envs: Environments, device: TDevice, use_action: bool) -> nn.Module:
         env_type = envs.get_type()
         if env_type == EnvType.CONTINUOUS:
-            factory = ContinuousNetCriticFactory(self.hidden_sizes)
+            factory = CriticFactoryContinuousNet(self.hidden_sizes)
             return factory.create_module(envs, device, use_action)
         elif env_type == EnvType.DISCRETE:
             raise NotImplementedError
@@ -167,11 +167,11 @@ class DefaultCriticFactory(CriticFactory):
             raise ValueError(f"{env_type} not supported")
 
 
-class ContinuousCriticFactory(CriticFactory, ABC):
+class CriticFactoryContinuous(CriticFactory, ABC):
     pass
 
 
-class ContinuousNetCriticFactory(ContinuousCriticFactory):
+class CriticFactoryContinuousNet(CriticFactoryContinuous):
     def __init__(self, hidden_sizes: Sequence[int]):
         self.hidden_sizes = hidden_sizes
 

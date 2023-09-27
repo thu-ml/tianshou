@@ -1,24 +1,32 @@
 """Factories for the generation of environment-dependent parameters."""
 from abc import ABC, abstractmethod
-from typing import TypeVar
+from typing import Generic, TypeVar
 
 from tianshou.highlevel.env import ContinuousEnvironments, Environments
 
-T = TypeVar("T")
+TValue = TypeVar("TValue")
+TEnvs = TypeVar("TEnvs", bound=Environments)
 
 
-class FloatEnvParamFactory(ABC):
+class EnvValueFactory(Generic[TValue, TEnvs], ABC):
     @abstractmethod
-    def create_param(self, envs: Environments) -> float:
+    def create_value(self, envs: TEnvs) -> TValue:
         pass
 
 
-class MaxActionScaledFloatEnvParamFactory(FloatEnvParamFactory):
+class FloatEnvValueFactory(EnvValueFactory[float, TEnvs], Generic[TEnvs], ABC):
+    """Serves as a type bound for float value factories."""
+
+
+class FloatEnvValueFactoryMaxActionScaled(FloatEnvValueFactory[ContinuousEnvironments]):
     def __init__(self, value: float):
         """:param value: value with which to scale the max action value"""
         self.value = value
 
-    def create_param(self, envs: Environments) -> float:
+    def create_value(self, envs: ContinuousEnvironments) -> float:
         envs.get_type().assert_continuous(self)
-        envs: ContinuousEnvironments
         return envs.max_action * self.value
+
+
+class MaxActionScaled(FloatEnvValueFactoryMaxActionScaled):
+    pass

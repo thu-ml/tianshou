@@ -19,7 +19,7 @@ class AutoAlphaFactory(ABC):
         pass
 
 
-class DefaultAutoAlphaFactory(AutoAlphaFactory):  # TODO better name?
+class AutoAlphaFactoryDefault(AutoAlphaFactory):  # TODO better name?
     def __init__(self, lr: float = 3e-4):
         self.lr = lr
 

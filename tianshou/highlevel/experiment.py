@@ -19,12 +19,12 @@ from tianshou.highlevel.env import EnvFactory, Environments
 from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerFactory
 from tianshou.highlevel.module import (
     ActorFactory,
+    ActorFactoryDefault,
     ContinuousActorType,
     CriticFactory,
-    DefaultActorFactory,
-    DefaultCriticFactory,
+    CriticFactoryDefault,
 )
-from tianshou.highlevel.optim import AdamOptimizerFactory, OptimizerFactory
+from tianshou.highlevel.optim import OptimizerFactory, OptimizerFactoryAdam
 from tianshou.highlevel.params.policy_params import PPOParams, SACParams, TD3Params
 from tianshou.highlevel.persistence import PersistableConfigProtocol
 from tianshou.policy import BasePolicy
@@ -175,7 +175,7 @@ class RLExperimentBuilder:
         :param weight_decay: weight decay (L2 penalty)
         :return: the builder
         """
-        self._optim_factory = AdamOptimizerFactory(betas=betas, eps=eps, weight_decay=weight_decay)
+        self._optim_factory = OptimizerFactoryAdam(betas=betas, eps=eps, weight_decay=weight_decay)
         return self
 
     @abstractmethod
@@ -184,7 +184,7 @@ class RLExperimentBuilder:
 
     def _get_optim_factory(self) -> OptimizerFactory:
         if self._optim_factory is None:
-            return AdamOptimizerFactory()
+            return OptimizerFactoryAdam()
         else:
             return self._optim_factory
 
@@ -215,7 +215,7 @@ class _BuilderMixinActorFactory:
         continuous_conditioned_sigma=False,
     ) -> TBuilder:
         self: TBuilder | _BuilderMixinActorFactory
-        self._actor_factory = DefaultActorFactory(
+        self._actor_factory = ActorFactoryDefault(
             self._continuous_actor_type,
             hidden_sizes,
             continuous_unbounded=continuous_unbounded,
@@ -225,7 +225,7 @@ class _BuilderMixinActorFactory:
 
     def _get_actor_factory(self):
         if self._actor_factory is None:
-            return DefaultActorFactory(self._continuous_actor_type)
+            return ActorFactoryDefault(self._continuous_actor_type)
         else:
             return self._actor_factory
 
@@ -268,13 +268,13 @@ class _BuilderMixinCriticsFactory:
         return self
 
     def _with_critic_factory_default(self, idx: int, hidden_sizes: Sequence[int]):
-        self._critic_factories[idx] = DefaultCriticFactory(hidden_sizes)
+        self._critic_factories[idx] = CriticFactoryDefault(hidden_sizes)
         return self
 
     def _get_critic_factory(self, idx: int):
         factory = self._critic_factories[idx]
         if factory is None:
-            return DefaultCriticFactory()
+            return CriticFactoryDefault()
         else:
             return factory
 
@@ -290,7 +290,7 @@ class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
 
     def with_critic_factory_default(
         self: TBuilder,
-        hidden_sizes: Sequence[int] = DefaultCriticFactory.DEFAULT_HIDDEN_SIZES,
+        hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
     ) -> TBuilder:
         self: TBuilder | "_BuilderMixinSingleCriticFactory"
         self._with_critic_factory_default(0, hidden_sizes)
@@ -309,7 +309,7 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
 
     def with_common_critic_factory_default(
         self,
-        hidden_sizes: Sequence[int] = DefaultCriticFactory.DEFAULT_HIDDEN_SIZES,
+        hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
     ) -> TBuilder:
         self: TBuilder | "_BuilderMixinDualCriticFactory"
         for i in range(len(self._critic_factories)):
@@ -323,7 +323,7 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
 
     def with_critic1_factory_default(
         self,
-        hidden_sizes: Sequence[int] = DefaultCriticFactory.DEFAULT_HIDDEN_SIZES,
+        hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
     ) -> TBuilder:
         self: TBuilder | "_BuilderMixinDualCriticFactory"
         self._with_critic_factory_default(0, hidden_sizes)
@@ -336,7 +336,7 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
 
     def with_critic2_factory_default(
         self,
-        hidden_sizes: Sequence[int] = DefaultCriticFactory.DEFAULT_HIDDEN_SIZES,
+        hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
     ) -> TBuilder:
         self: TBuilder | "_BuilderMixinDualCriticFactory"
         self._with_critic_factory_default(0, hidden_sizes)

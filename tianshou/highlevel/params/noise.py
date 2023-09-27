@@ -10,7 +10,7 @@ class NoiseFactory(ABC):
         pass
 
 
-class MaxActionScaledGaussianNoiseFactory(NoiseFactory):
+class NoiseFactoryMaxActionScaledGaussian(NoiseFactory):
     """Factory for Gaussian noise where the standard deviation is a fraction of the maximum action value.
 
     This factory can only be applied to continuous action spaces.
@@ -23,3 +23,7 @@ class MaxActionScaledGaussianNoiseFactory(NoiseFactory):
         envs.get_type().assert_continuous(self)
         envs: ContinuousEnvironments
         return GaussianNoise(sigma=envs.max_action * self.std_fraction)
+
+
+class MaxActionScaledGaussian(NoiseFactoryMaxActionScaledGaussian):
+    pass

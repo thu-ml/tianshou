@@ -13,7 +13,7 @@ class LRSchedulerFactory(ABC):
         pass
 
 
-class LinearLRSchedulerFactory(LRSchedulerFactory):
+class LRSchedulerFactoryLinear(LRSchedulerFactory):
     def __init__(self, sampling_config: RLSamplingConfig):
         self.sampling_config = sampling_config
 
