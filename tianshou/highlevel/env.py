@@ -6,6 +6,7 @@ from typing import Any
 import gymnasium as gym
 
 from tianshou.env import BaseVectorEnv
+from tianshou.highlevel.persistence import PersistableConfigProtocol
 
 TShape = int | Sequence[int]
 
@@ -98,5 +99,8 @@ class ContinuousEnvironments(Environments):
 
 class EnvFactory(ABC):
     @abstractmethod
-    def create_envs(self) -> Environments:
+    def create_envs(self, config: PersistableConfigProtocol | None = None) -> Environments:
         pass
+
+    def __call__(self, config: PersistableConfigProtocol | None = None) -> Environments:
+        return self.create_envs(config=config)

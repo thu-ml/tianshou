@@ -46,7 +46,7 @@ class MujocoEnvFactory(EnvFactory):
         self.sampling_config = sampling_config
         self.seed = seed
 
-    def create_envs(self) -> ContinuousEnvironments:
+    def create_envs(self, config=None) -> ContinuousEnvironments:
         env, train_envs, test_envs = make_mujoco_env(
             task=self.task,
             seed=self.seed,
