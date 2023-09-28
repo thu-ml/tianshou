@@ -9,6 +9,11 @@ from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module import ModuleOpt, TDevice
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.alpha import AutoAlphaFactory
+from tianshou.highlevel.params.dist_fn import (
+    DistributionFunctionFactory,
+    DistributionFunctionFactoryDefault,
+    TDistributionFunction,
+)
 from tianshou.highlevel.params.env_param import EnvValueFactory, FloatEnvValueFactory
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactory
 from tianshou.highlevel.params.noise import NoiseFactory
@@ -34,6 +39,12 @@ class ParamTransformerData:
 
 
 class ParamTransformer(ABC):
+    """Transforms one or more parameters from the representation used by the high-level API
+    to the representation required by the (low-level) policy implementation.
+    It operates directly on a dictionary of keyword arguments, which is initially
+    generated from the parameter dataclass (subclass of `Params`).
+    """
+
     @abstractmethod
     def transform(self, params: dict[str, Any], data: ParamTransformerData) -> None:
         pass
@@ -159,6 +170,18 @@ class ParamTransformerFloatEnvParamFactory(ParamTransformer):
             kwargs[self.key] = value.create_value(data.envs)
 
 
+class ParamTransformerDistributionFunction(ParamTransformer):
+    def __init__(self, key: str):
+        self.key = key
+
+    def transform(self, kwargs: dict[str, Any], data: ParamTransformerData) -> None:
+        value = kwargs[self.key]
+        if value == "default":
+            kwargs[self.key] = DistributionFunctionFactoryDefault().create_dist_fn(data.envs)
+        elif isinstance(value, DistributionFunctionFactory):
+            kwargs[self.key] = value.create_dist_fn(data.envs)
+
+
 class GetParamTransformersProtocol(Protocol):
     def _get_param_transformers(self) -> list[ParamTransformer]:
         pass
@@ -200,16 +223,23 @@ class PGParams(Params):
 
 
 @dataclass
-class A2CParams(PGParams):
+class A2CParams(PGParams, ParamsMixinLearningRateWithScheduler):
     vf_coef: float = 0.5
     ent_coef: float = 0.01
     max_grad_norm: float | None = None
     gae_lambda: float = 0.95
     max_batchsize: int = 256
+    dist_fn: TDistributionFunction | DistributionFunctionFactory | Literal["default"] = "default"
+
+    def _get_param_transformers(self) -> list[ParamTransformer]:
+        transformers = super()._get_param_transformers()
+        transformers.extend(ParamsMixinLearningRateWithScheduler._get_param_transformers(self))
+        transformers.append(ParamTransformerDistributionFunction("dist_fn"))
+        return transformers
 
 
 @dataclass
-class PPOParams(A2CParams, ParamsMixinLearningRateWithScheduler):
+class PPOParams(A2CParams):
     """PPO specific config."""
 
     eps_clip: float = 0.2

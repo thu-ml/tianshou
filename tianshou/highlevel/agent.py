@@ -1,6 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from typing import Generic, TypeVar
 
 import torch
 
@@ -19,18 +20,21 @@ from tianshou.highlevel.module import (
 )
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.policy_params import (
+    A2CParams,
+    Params,
     ParamTransformerData,
     PPOParams,
     SACParams,
     TD3Params,
 )
-from tianshou.policy import BasePolicy, PPOPolicy, SACPolicy, TD3Policy
-from tianshou.policy.modelfree.pg import TDistParams
+from tianshou.policy import A2CPolicy, BasePolicy, PPOPolicy, SACPolicy, TD3Policy
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils.net.common import ActorCritic
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
 CHECKPOINT_DICT_KEY_OBS_RMS = "obs_rms"
+TParams = TypeVar("TParams", bound=Params)
+TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 
 
 class AgentFactory(ABC):
@@ -219,15 +223,20 @@ class _ActorAndDualCriticsMixin(_ActorAndCriticMixin):
         return self.critic2_module_opt_factory.create_module_opt(envs, device, lr)
 
 
-class PPOAgentFactory(OnpolicyAgentFactory, _ActorCriticMixin):
+class ActorCriticAgentFactory(
+    Generic[TParams, TPolicy],
+    OnpolicyAgentFactory,
+    _ActorCriticMixin,
+    ABC,
+):
     def __init__(
         self,
-        params: PPOParams,
+        params: TParams,
         sampling_config: RLSamplingConfig,
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
-        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
+        policy_class: type[TPolicy],
     ):
         super().__init__(sampling_config)
         _ActorCriticMixin.__init__(
@@ -238,10 +247,14 @@ class PPOAgentFactory(OnpolicyAgentFactory, _ActorCriticMixin):
             critic_use_action=False,
         )
         self.params = params
-        self.dist_fn = dist_fn
+        self.policy_class = policy_class
 
-    def create_policy(self, envs: Environments, device: TDevice) -> PPOPolicy:
-        actor_critic = self.create_actor_critic_module_opt(envs, device, self.params.lr)
+    @abstractmethod
+    def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
+        pass
+
+    def _create_kwargs(self, envs: Environments, device: TDevice):
+        actor_critic = self._create_actor_critic(envs, device)
         kwargs = self.params.create_kwargs(
             ParamTransformerData(
                 envs=envs,
@@ -250,14 +263,58 @@ class PPOAgentFactory(OnpolicyAgentFactory, _ActorCriticMixin):
                 optim=actor_critic.optim,
             ),
         )
-        return PPOPolicy(
-            actor=actor_critic.actor,
-            critic=actor_critic.critic,
-            optim=actor_critic.optim,
-            dist_fn=self.dist_fn,
-            action_space=envs.get_action_space(),
-            **kwargs,
+        kwargs["actor"] = actor_critic.actor
+        kwargs["critic"] = actor_critic.critic
+        kwargs["optim"] = actor_critic.optim
+        kwargs["action_space"] = envs.get_action_space()
+        return kwargs
+
+    def create_policy(self, envs: Environments, device: TDevice) -> TPolicy:
+        return self.policy_class(**self._create_kwargs(envs, device))
+
+
+class A2CAgentFactory(ActorCriticAgentFactory[A2CParams, A2CPolicy]):
+    def __init__(
+        self,
+        params: A2CParams,
+        sampling_config: RLSamplingConfig,
+        actor_factory: ActorFactory,
+        critic_factory: CriticFactory,
+        optimizer_factory: OptimizerFactory,
+    ):
+        super().__init__(
+            params,
+            sampling_config,
+            actor_factory,
+            critic_factory,
+            optimizer_factory,
+            A2CPolicy,
         )
+
+    def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
+        return self.create_actor_critic_module_opt(envs, device, self.params.lr)
+
+
+class PPOAgentFactory(ActorCriticAgentFactory[PPOParams, PPOPolicy]):
+    def __init__(
+        self,
+        params: PPOParams,
+        sampling_config: RLSamplingConfig,
+        actor_factory: ActorFactory,
+        critic_factory: CriticFactory,
+        optimizer_factory: OptimizerFactory,
+    ):
+        super().__init__(
+            params,
+            sampling_config,
+            actor_factory,
+            critic_factory,
+            optimizer_factory,
+            PPOPolicy,
+        )
+
+    def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
+        return self.create_actor_critic_module_opt(envs, device, self.params.lr)
 
 
 class SACAgentFactory(OffpolicyAgentFactory, _ActorAndDualCriticsMixin):

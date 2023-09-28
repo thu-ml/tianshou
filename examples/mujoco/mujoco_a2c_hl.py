@@ -6,44 +6,39 @@ from collections.abc import Sequence
 from typing import Literal
 
 from jsonargparse import CLI
-from torch.distributions import Independent, Normal
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.experiment import (
-    PPOExperimentBuilder,
+    A2CExperimentBuilder,
     RLExperimentConfig,
 )
+from tianshou.highlevel.optim import OptimizerFactoryRMSprop
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
-from tianshou.highlevel.params.policy_params import PPOParams
+from tianshou.highlevel.params.policy_params import A2CParams
 
 
 def main(
     experiment_config: RLExperimentConfig,
-    task: str = "Ant-v4",
+    task: str = "Ant-v3",
     buffer_size: int = 4096,
     hidden_sizes: Sequence[int] = (64, 64),
-    lr: float = 3e-4,
+    lr: float = 7e-4,
     gamma: float = 0.99,
     epoch: int = 100,
     step_per_epoch: int = 30000,
-    step_per_collect: int = 2048,
-    repeat_per_collect: int = 10,
-    batch_size: int = 64,
-    training_num: int = 64,
+    step_per_collect: int = 80,
+    repeat_per_collect: int = 1,
+    batch_size: int = 99999,
+    training_num: int = 16,
     test_num: int = 10,
     rew_norm: bool = True,
-    vf_coef: float = 0.25,
-    ent_coef: float = 0.0,
+    vf_coef: float = 0.5,
+    ent_coef: float = 0.01,
     gae_lambda: float = 0.95,
-    bound_action_method: Literal["clip", "tanh"] | None = "clip",
+    bound_action_method: Literal["clip", "tanh"] = "clip",
     lr_decay: bool = True,
     max_grad_norm: float = 0.5,
-    eps_clip: float = 0.2,
-    dual_clip: float | None = None,
-    value_clip: bool = False,
-    norm_adv: bool = False,
-    recompute_adv: bool = True,
 ):
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
     log_name = os.path.join(task, "ppo", str(experiment_config.seed), now)
@@ -61,13 +56,10 @@ def main(
 
     env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
 
-    def dist_fn(*logits):
-        return Independent(Normal(*logits), 1)
-
     experiment = (
-        PPOExperimentBuilder(experiment_config, env_factory, sampling_config)
-        .with_ppo_params(
-            PPOParams(
+        A2CExperimentBuilder(experiment_config, env_factory, sampling_config)
+        .with_a2c_params(
+            A2CParams(
                 discount_factor=gamma,
                 gae_lambda=gae_lambda,
                 action_bound_method=bound_action_method,
@@ -75,18 +67,13 @@ def main(
                 ent_coef=ent_coef,
                 vf_coef=vf_coef,
                 max_grad_norm=max_grad_norm,
-                value_clip=value_clip,
-                advantage_normalization=norm_adv,
-                eps_clip=eps_clip,
-                dual_clip=dual_clip,
-                recompute_advantage=recompute_adv,
                 lr=lr,
                 lr_scheduler_factory=LRSchedulerFactoryLinear(sampling_config)
                 if lr_decay
                 else None,
-                dist_fn=dist_fn,
             ),
         )
+        .with_optim_factory(OptimizerFactoryRMSprop(eps=1e-5, alpha=0.99))
         .with_actor_factory_default(hidden_sizes)
         .with_critic_factory_default(hidden_sizes)
         .build()

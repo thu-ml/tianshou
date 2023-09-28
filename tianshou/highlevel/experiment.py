@@ -9,6 +9,7 @@ import torch
 
 from tianshou.data import Collector
 from tianshou.highlevel.agent import (
+    A2CAgentFactory,
     AgentFactory,
     PPOAgentFactory,
     SACAgentFactory,
@@ -25,10 +26,14 @@ from tianshou.highlevel.module import (
     CriticFactoryDefault,
 )
 from tianshou.highlevel.optim import OptimizerFactory, OptimizerFactoryAdam
-from tianshou.highlevel.params.policy_params import PPOParams, SACParams, TD3Params
+from tianshou.highlevel.params.policy_params import (
+    A2CParams,
+    PPOParams,
+    SACParams,
+    TD3Params,
+)
 from tianshou.highlevel.persistence import PersistableConfigProtocol
 from tianshou.policy import BasePolicy
-from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.trainer import BaseTrainer
 
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
@@ -234,7 +239,7 @@ class _BuilderMixinActorFactory_ContinuousGaussian(_BuilderMixinActorFactory):
     """Specialization of the actor mixin where, in the continuous case, the actor uses a deterministic policy."""
 
     def __init__(self):
-        super().__init__(ContinuousActorType.DETERMINISTIC)
+        super().__init__(ContinuousActorType.GAUSSIAN)
 
     def with_actor_factory_default(
         self,
@@ -343,6 +348,39 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
         return self
 
 
+class A2CExperimentBuilder(
+    RLExperimentBuilder,
+    _BuilderMixinActorFactory_ContinuousGaussian,
+    _BuilderMixinSingleCriticFactory,
+):
+    def __init__(
+        self,
+        experiment_config: RLExperimentConfig,
+        env_factory: EnvFactory,
+        sampling_config: RLSamplingConfig,
+        env_config: PersistableConfigProtocol | None = None,
+    ):
+        super().__init__(experiment_config, env_factory, sampling_config)
+        _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
+        _BuilderMixinSingleCriticFactory.__init__(self)
+        self._params: A2CParams = A2CParams()
+        self._env_config = env_config
+
+    def with_a2c_params(self, params: A2CParams) -> Self:
+        self._params = params
+        return self
+
+    @abstractmethod
+    def _create_agent_factory(self) -> AgentFactory:
+        return A2CAgentFactory(
+            self._params,
+            self._sampling_config,
+            self._get_actor_factory(),
+            self._get_critic_factory(0),
+            self._get_optim_factory(),
+        )
+
+
 class PPOExperimentBuilder(
     RLExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
@@ -353,14 +391,12 @@ class PPOExperimentBuilder(
         experiment_config: RLExperimentConfig,
         env_factory: EnvFactory,
         sampling_config: RLSamplingConfig,
-        dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
         env_config: PersistableConfigProtocol | None = None,
     ):
-        super().__init__(experiment_config, env_factory, sampling_config, env_config=env_config)
+        super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinSingleCriticFactory.__init__(self)
         self._params: PPOParams = PPOParams()
-        self._dist_fn = dist_fn
         self._env_config = env_config
 
     def with_ppo_params(self, params: PPOParams) -> Self:
@@ -375,7 +411,6 @@ class PPOExperimentBuilder(
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
-            self._dist_fn,
         )
 
 

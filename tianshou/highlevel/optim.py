@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import torch
-from torch.optim import Adam
+from torch.optim import Adam, RMSprop
 
 
 class OptimizerFactory(ABC):
@@ -42,4 +42,24 @@ class OptimizerFactoryAdam(OptimizerFactory):
             betas=self.betas,
             eps=self.eps,
             weight_decay=self.weight_decay,
+        )
+
+
+class OptimizerFactoryRMSprop(OptimizerFactory):
+    def __init__(self, alpha=0.99, eps=1e-08, weight_decay=0, momentum=0, centered=False):
+        self.alpha = alpha
+        self.momentum = momentum
+        self.centered = centered
+        self.weight_decay = weight_decay
+        self.eps = eps
+
+    def create_optimizer(self, module: torch.nn.Module, lr: float) -> RMSprop:
+        return RMSprop(
+            module.parameters(),
+            lr=lr,
+            alpha=self.alpha,
+            eps=self.eps,
+            weight_decay=self.weight_decay,
+            momentum=self.momentum,
+            centered=self.centered,
         )
