@@ -1,4 +1,3 @@
-import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Generic, TypeVar
@@ -9,14 +8,16 @@ from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
 from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import Logger
-from tianshou.highlevel.module import (
-    ActorCriticModuleOpt,
+from tianshou.highlevel.module.actor import (
     ActorFactory,
+)
+from tianshou.highlevel.module.core import TDevice
+from tianshou.highlevel.module.critic import CriticFactory
+from tianshou.highlevel.module.module_opt import (
+    ActorCriticModuleOpt,
     ActorModuleOptFactory,
-    CriticFactory,
     CriticModuleOptFactory,
     ModuleOpt,
-    TDevice,
 )
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.policy_params import (
@@ -27,8 +28,10 @@ from tianshou.highlevel.params.policy_params import (
     SACParams,
     TD3Params,
 )
+from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
 from tianshou.policy import A2CPolicy, BasePolicy, PPOPolicy, SACPolicy, TD3Policy
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
+from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import ActorCritic
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
@@ -38,34 +41,62 @@ TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 
 
 class AgentFactory(ABC):
-    def __init__(self, sampling_config: RLSamplingConfig):
+    def __init__(self, sampling_config: RLSamplingConfig, optim_factory: OptimizerFactory):
         self.sampling_config = sampling_config
+        self.optim_factory = optim_factory
+        self.policy_wrapper_factory: PolicyWrapperFactory | None = None
 
     def create_train_test_collector(self, policy: BasePolicy, envs: Environments):
         buffer_size = self.sampling_config.buffer_size
         train_envs = envs.train_envs
         if len(train_envs) > 1:
-            buffer = VectorReplayBuffer(buffer_size, len(train_envs))
+            buffer = VectorReplayBuffer(
+                buffer_size,
+                len(train_envs),
+                stack_num=self.sampling_config.replay_buffer_stack_num,
+                save_only_last_obs=self.sampling_config.replay_buffer_save_only_last_obs,
+                ignore_obs_next=self.sampling_config.replay_buffer_ignore_obs_next,
+            )
         else:
-            buffer = ReplayBuffer(buffer_size)
+            buffer = ReplayBuffer(
+                buffer_size,
+                stack_num=self.sampling_config.replay_buffer_stack_num,
+                save_only_last_obs=self.sampling_config.replay_buffer_save_only_last_obs,
+                ignore_obs_next=self.sampling_config.replay_buffer_ignore_obs_next,
+            )
         train_collector = Collector(policy, train_envs, buffer, exploration_noise=True)
         test_collector = Collector(policy, envs.test_envs)
         if self.sampling_config.start_timesteps > 0:
             train_collector.collect(n_step=self.sampling_config.start_timesteps, random=True)
         return train_collector, test_collector
 
+    def set_policy_wrapper_factory(
+        self, policy_wrapper_factory: PolicyWrapperFactory | None,
+    ) -> None:
+        self.policy_wrapper_factory = policy_wrapper_factory
+
     @abstractmethod
-    def create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+    def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
         pass
+
+    def create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+        policy = self._create_policy(envs, device)
+        if self.policy_wrapper_factory is not None:
+            policy = self.policy_wrapper_factory.create_wrapped_policy(
+                policy, envs, self.optim_factory, device,
+            )
+        return policy
 
     @staticmethod
     def _create_save_best_fn(envs: Environments, log_path: str) -> Callable:
         def save_best_fn(pol: torch.nn.Module) -> None:
-            state = {
-                CHECKPOINT_DICT_KEY_MODEL: pol.state_dict(),
-                CHECKPOINT_DICT_KEY_OBS_RMS: envs.train_envs.get_obs_rms(),
-            }
-            torch.save(state, os.path.join(log_path, "policy.pth"))
+            pass
+            # TODO: Fix saving in general (code works only for mujoco)
+            # state = {
+            #    CHECKPOINT_DICT_KEY_MODEL: pol.state_dict(),
+            #    CHECKPOINT_DICT_KEY_OBS_RMS: envs.train_envs.get_obs_rms(),
+            # }
+            # torch.save(state, os.path.join(log_path, "policy.pth"))
 
         return save_best_fn
 
@@ -160,11 +191,13 @@ class _ActorCriticMixin:
         critic_factory: CriticFactory,
         optim_factory: OptimizerFactory,
         critic_use_action: bool,
+        critic_use_actor_module: bool,
     ):
         self.actor_factory = actor_factory
         self.critic_factory = critic_factory
         self.optim_factory = optim_factory
         self.critic_use_action = critic_use_action
+        self.critic_use_actor_module = critic_use_actor_module
 
     def create_actor_critic_module_opt(
         self,
@@ -173,7 +206,23 @@ class _ActorCriticMixin:
         lr: float,
     ) -> ActorCriticModuleOpt:
         actor = self.actor_factory.create_module(envs, device)
-        critic = self.critic_factory.create_module(envs, device, use_action=self.critic_use_action)
+        if self.critic_use_actor_module:
+            if self.critic_use_action:
+                raise ValueError(
+                    "The options critic_use_actor_module and critic_use_action are mutually exclusive",
+                )
+            if envs.get_type().is_discrete():
+                critic = discrete.Critic(actor.get_preprocess_net(), device=device).to(device)
+            elif envs.get_type().is_continuous():
+                critic = continuous.Critic(actor.get_preprocess_net(), device=device).to(device)
+            else:
+                raise ValueError
+        else:
+            critic = self.critic_factory.create_module(
+                envs,
+                device,
+                use_action=self.critic_use_action,
+            )
         actor_critic = ActorCritic(actor, critic)
         optim = self.optim_factory.create_optimizer(actor_critic, lr)
         return ActorCriticModuleOpt(actor_critic, optim)
@@ -237,14 +286,16 @@ class ActorCriticAgentFactory(
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
         policy_class: type[TPolicy],
+        critic_use_actor_module: bool,
     ):
-        super().__init__(sampling_config)
+        super().__init__(sampling_config, optim_factory=optimizer_factory)
         _ActorCriticMixin.__init__(
             self,
             actor_factory,
             critic_factory,
             optimizer_factory,
             critic_use_action=False,
+            critic_use_actor_module=critic_use_actor_module,
         )
         self.params = params
         self.policy_class = policy_class
@@ -269,7 +320,7 @@ class ActorCriticAgentFactory(
         kwargs["action_space"] = envs.get_action_space()
         return kwargs
 
-    def create_policy(self, envs: Environments, device: TDevice) -> TPolicy:
+    def _create_policy(self, envs: Environments, device: TDevice) -> TPolicy:
         return self.policy_class(**self._create_kwargs(envs, device))
 
 
@@ -281,6 +332,7 @@ class A2CAgentFactory(ActorCriticAgentFactory[A2CParams, A2CPolicy]):
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
+        critic_use_actor_module: bool,
     ):
         super().__init__(
             params,
@@ -289,6 +341,7 @@ class A2CAgentFactory(ActorCriticAgentFactory[A2CParams, A2CPolicy]):
             critic_factory,
             optimizer_factory,
             A2CPolicy,
+            critic_use_actor_module,
         )
 
     def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
@@ -303,6 +356,7 @@ class PPOAgentFactory(ActorCriticAgentFactory[PPOParams, PPOPolicy]):
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
+        critic_use_actor_module: bool,
     ):
         super().__init__(
             params,
@@ -311,6 +365,7 @@ class PPOAgentFactory(ActorCriticAgentFactory[PPOParams, PPOPolicy]):
             critic_factory,
             optimizer_factory,
             PPOPolicy,
+            critic_use_actor_module,
         )
 
     def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
@@ -327,7 +382,7 @@ class SACAgentFactory(OffpolicyAgentFactory, _ActorAndDualCriticsMixin):
         critic2_factory: CriticFactory,
         optim_factory: OptimizerFactory,
     ):
-        super().__init__(sampling_config)
+        super().__init__(sampling_config, optim_factory)
         _ActorAndDualCriticsMixin.__init__(
             self,
             actor_factory,
@@ -339,7 +394,7 @@ class SACAgentFactory(OffpolicyAgentFactory, _ActorAndDualCriticsMixin):
         self.params = params
         self.optim_factory = optim_factory
 
-    def create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+    def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
         actor = self.create_actor_module_opt(envs, device, self.params.actor_lr)
         critic1 = self.create_critic_module_opt(envs, device, self.params.critic1_lr)
         critic2 = self.create_critic2_module_opt(envs, device, self.params.critic2_lr)
@@ -376,7 +431,7 @@ class TD3AgentFactory(OffpolicyAgentFactory, _ActorAndDualCriticsMixin):
         critic2_factory: CriticFactory,
         optim_factory: OptimizerFactory,
     ):
-        super().__init__(sampling_config)
+        super().__init__(sampling_config, optim_factory)
         _ActorAndDualCriticsMixin.__init__(
             self,
             actor_factory,
@@ -388,7 +443,7 @@ class TD3AgentFactory(OffpolicyAgentFactory, _ActorAndDualCriticsMixin):
         self.params = params
         self.optim_factory = optim_factory
 
-    def create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+    def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
         actor = self.create_actor_module_opt(envs, device, self.params.actor_lr)
         critic1 = self.create_critic_module_opt(envs, device, self.params.critic1_lr)
         critic2 = self.create_critic2_module_opt(envs, device, self.params.critic2_lr)

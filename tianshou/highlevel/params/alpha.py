@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from tianshou.highlevel.env import Environments
-from tianshou.highlevel.module import TDevice
+from tianshou.highlevel.module.core import TDevice
 from tianshou.highlevel.optim import OptimizerFactory
 
 

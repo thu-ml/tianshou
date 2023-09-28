@@ -9,6 +9,8 @@ import gymnasium as gym
 import numpy as np
 
 from tianshou.env import ShmemVectorEnv
+from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.env import DiscreteEnvironments, EnvFactory
 
 try:
     import envpool
@@ -369,3 +371,22 @@ def make_atari_env(task, seed, training_num, test_num, **kwargs):
         train_envs.seed(seed)
         test_envs.seed(seed)
     return env, train_envs, test_envs
+
+
+class AtariEnvFactory(EnvFactory):
+    def __init__(self, task: str, seed: int, sampling_config: RLSamplingConfig, frame_stack: int):
+        self.task = task
+        self.sampling_config = sampling_config
+        self.seed = seed
+        self.frame_stack = frame_stack
+
+    def create_envs(self, config=None) -> DiscreteEnvironments:
+        env, train_envs, test_envs = make_atari_env(
+            task=self.task,
+            seed=self.seed,
+            training_num=self.sampling_config.num_train_envs,
+            test_num=self.sampling_config.num_test_envs,
+            scale=0,
+            frame_stack=self.frame_stack,
+        )
+        return DiscreteEnvironments(env=env, train_envs=train_envs, test_envs=test_envs)

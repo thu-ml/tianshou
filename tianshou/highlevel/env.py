@@ -97,6 +97,22 @@ class ContinuousEnvironments(Environments):
         return EnvType.CONTINUOUS
 
 
+class DiscreteEnvironments(Environments):
+    def __init__(self, env: gym.Env | None, train_envs: BaseVectorEnv, test_envs: BaseVectorEnv):
+        super().__init__(env, train_envs, test_envs)
+        self.observation_shape = env.observation_space.shape or env.observation_space.n
+        self.action_shape = env.action_space.shape or env.action_space.n
+
+    def get_action_shape(self) -> TShape:
+        return self.action_shape
+
+    def get_observation_shape(self) -> TShape:
+        return self.observation_shape
+
+    def get_type(self) -> EnvType:
+        return EnvType.DISCRETE
+
+
 class EnvFactory(ABC):
     @abstractmethod
     def create_envs(self, config: PersistableConfigProtocol | None = None) -> Environments:

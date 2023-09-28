@@ -17,3 +17,7 @@ class RLSamplingConfig:
     update_per_step: int = 1
     start_timesteps: int = 0
     start_timesteps_random: bool = False
+    # TODO can we set the parameters below more intelligently? Perhaps based on env. representation?
+    replay_buffer_ignore_obs_next: bool = False
+    replay_buffer_save_only_last_obs: bool = False
+    replay_buffer_stack_num: int = 1

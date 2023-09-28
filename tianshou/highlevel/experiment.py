@@ -18,13 +18,12 @@ from tianshou.highlevel.agent import (
 from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.env import EnvFactory, Environments
 from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerFactory
-from tianshou.highlevel.module import (
+from tianshou.highlevel.module.actor import (
     ActorFactory,
     ActorFactoryDefault,
     ContinuousActorType,
-    CriticFactory,
-    CriticFactoryDefault,
 )
+from tianshou.highlevel.module.critic import CriticFactory, CriticFactoryDefault
 from tianshou.highlevel.optim import OptimizerFactory, OptimizerFactoryAdam
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
@@ -32,6 +31,7 @@ from tianshou.highlevel.params.policy_params import (
     SACParams,
     TD3Params,
 )
+from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
 from tianshou.highlevel.persistence import PersistableConfigProtocol
 from tianshou.policy import BasePolicy
 from tianshou.trainer import BaseTrainer
@@ -154,6 +154,7 @@ class RLExperimentBuilder:
         self._logger_factory: LoggerFactory | None = None
         self._optim_factory: OptimizerFactory | None = None
         self._env_config: PersistableConfigProtocol | None = None
+        self._policy_wrapper_factory: PolicyWrapperFactory | None = None
 
     def with_env_config(self, config: PersistableConfigProtocol) -> Self:
         self._env_config = config
@@ -161,6 +162,10 @@ class RLExperimentBuilder:
 
     def with_logger_factory(self: TBuilder, logger_factory: LoggerFactory) -> TBuilder:
         self._logger_factory = logger_factory
+        return self
+
+    def with_policy_wrapper_factory(self, policy_wrapper_factory: PolicyWrapperFactory) -> Self:
+        self._policy_wrapper_factory = policy_wrapper_factory
         return self
 
     def with_optim_factory(self: TBuilder, optim_factory: OptimizerFactory) -> TBuilder:
@@ -194,10 +199,13 @@ class RLExperimentBuilder:
             return self._optim_factory
 
     def build(self) -> RLExperiment:
+        agent_factory = self._create_agent_factory()
+        if self._policy_wrapper_factory:
+            agent_factory.set_policy_wrapper_factory(self._policy_wrapper_factory)
         return RLExperiment(
             self._config,
             self._env_factory,
-            self._create_agent_factory(),
+            agent_factory,
             self._logger_factory,
             env_config=self._env_config,
         )
@@ -287,6 +295,7 @@ class _BuilderMixinCriticsFactory:
 class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
     def __init__(self):
         super().__init__(1)
+        self._critic_use_actor_module = False
 
     def with_critic_factory(self: TBuilder, critic_factory: CriticFactory) -> TBuilder:
         self: TBuilder | "_BuilderMixinSingleCriticFactory"
@@ -299,6 +308,11 @@ class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
     ) -> TBuilder:
         self: TBuilder | "_BuilderMixinSingleCriticFactory"
         self._with_critic_factory_default(0, hidden_sizes)
+        return self
+
+    def with_critic_factory_use_actor(self) -> Self:
+        """Makes the critic use the same network as the actor."""
+        self._critic_use_actor_module = True
         return self
 
 
@@ -378,6 +392,7 @@ class A2CExperimentBuilder(
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
+            self._critic_use_actor_module,
         )
 
 
@@ -411,6 +426,7 @@ class PPOExperimentBuilder(
             self._get_actor_factory(),
             self._get_critic_factory(0),
             self._get_optim_factory(),
+            self._critic_use_actor_module,
         )
 
 

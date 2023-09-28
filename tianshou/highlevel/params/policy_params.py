@@ -6,7 +6,8 @@ import torch
 
 from tianshou.exploration import BaseNoise
 from tianshou.highlevel.env import Environments
-from tianshou.highlevel.module import ModuleOpt, TDevice
+from tianshou.highlevel.module.core import TDevice
+from tianshou.highlevel.module.module_opt import ModuleOpt
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.alpha import AutoAlphaFactory
 from tianshou.highlevel.params.dist_fn import (
@@ -64,6 +65,18 @@ class ParamTransformerDrop(ParamTransformer):
     def transform(self, kwargs: dict[str, Any], data: ParamTransformerData) -> None:
         for k in self.keys:
             del kwargs[k]
+
+
+class ParamTransformerChangeValue(ParamTransformer):
+    def __init__(self, key: str):
+        self.key = key
+
+    def transform(self, params: dict[str, Any], data: ParamTransformerData):
+        params[self.key] = self.change_value(params[self.key], data)
+
+    @abstractmethod
+    def change_value(self, value: Any, data: ParamTransformerData) -> Any:
+        pass
 
 
 class ParamTransformerLRScheduler(ParamTransformer):
@@ -182,6 +195,14 @@ class ParamTransformerDistributionFunction(ParamTransformer):
             kwargs[self.key] = value.create_dist_fn(data.envs)
 
 
+class ParamTransformerActionScaling(ParamTransformerChangeValue):
+    def change_value(self, value: Any, data: ParamTransformerData) -> Any:
+        if value == "default":
+            return data.envs.get_type().is_continuous()
+        else:
+            return value
+
+
 class GetParamTransformersProtocol(Protocol):
     def _get_param_transformers(self) -> list[ParamTransformer]:
         pass
@@ -218,8 +239,14 @@ class PGParams(Params):
     discount_factor: float = 0.99
     reward_normalization: bool = False
     deterministic_eval: bool = False
-    action_scaling: bool = True
+    action_scaling: bool | Literal["default"] = "default"
+    """whether to apply action scaling; when set to "default", it will be enabled for continuous action spaces"""
     action_bound_method: Literal["clip", "tanh"] | None = "clip"
+
+    def _get_param_transformers(self) -> list[ParamTransformer]:
+        transformers = super()._get_param_transformers()
+        transformers.append(ParamTransformerActionScaling("action_scaling"))
+        return transformers
 
 
 @dataclass
