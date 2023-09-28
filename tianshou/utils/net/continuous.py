@@ -6,13 +6,13 @@ import numpy as np
 import torch
 from torch import nn
 
-from tianshou.utils.net.common import MLP
+from tianshou.utils.net.common import MLP, BaseActor
 
 SIGMA_MIN = -20
 SIGMA_MAX = 2
 
 
-class Actor(nn.Module):
+class Actor(BaseActor):
     """Simple actor network.
 
     It will create an actor operated in continuous action space with structure of preprocess_net ---> action_shape.
@@ -59,6 +59,9 @@ class Actor(nn.Module):
             device=self.device,
         )
         self.max_action = max_action
+
+    def get_preprocess_net(self) -> nn.Module:
+        return self.preprocess
 
     def forward(
         self,
@@ -147,7 +150,7 @@ class Critic(nn.Module):
         return self.last(logits)
 
 
-class ActorProb(nn.Module):
+class ActorProb(BaseActor):
     """Simple actor network (output with a Gauss distribution).
 
     :param preprocess_net: a self-defined preprocess_net which output a
@@ -206,6 +209,9 @@ class ActorProb(nn.Module):
             self.sigma_param = nn.Parameter(torch.zeros(self.output_dim, 1))
         self.max_action = max_action
         self._unbounded = unbounded
+
+    def get_preprocess_net(self) -> nn.Module:
+        return self.preprocess
 
     def forward(
         self,

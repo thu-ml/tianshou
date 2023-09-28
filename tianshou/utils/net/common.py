@@ -595,3 +595,9 @@ def get_dict_state_decorator(
         return new_net_class
 
     return decorator_fn, new_state_shape
+
+
+class BaseActor(nn.Module, ABC):
+    @abstractmethod
+    def get_preprocess_net(self) -> nn.Module:
+        pass

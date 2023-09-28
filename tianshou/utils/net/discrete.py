@@ -7,10 +7,10 @@ import torch.nn.functional as F
 from torch import nn
 
 from tianshou.data import Batch, to_torch
-from tianshou.utils.net.common import MLP
+from tianshou.utils.net.common import MLP, BaseActor
 
 
-class Actor(nn.Module):
+class Actor(BaseActor):
     """Simple actor network.
 
     Will create an actor operated in discrete action space with structure of
@@ -60,6 +60,9 @@ class Actor(nn.Module):
             device=self.device,
         )
         self.softmax_output = softmax_output
+
+    def get_preprocess_net(self) -> nn.Module:
+        return self.preprocess
 
     def forward(
         self,
