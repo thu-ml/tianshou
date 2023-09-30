@@ -32,6 +32,9 @@ class BaseTrainer(ABC):
     :param train_collector: the collector used for training.
     :param test_collector: the collector used for testing. If it's None,
         then no testing will be performed.
+    :param buffer: the replay buffer used for off-policy algorithms or for pre-training.
+        If a policy overrides the ``process_buffer`` method, the replay buffer will
+        be pre-processed before training.
     :param max_epoch: the maximum number of epochs for training. The training
         process might be finished before reaching ``max_epoch`` if ``stop_fn``
         is set.
@@ -167,9 +170,10 @@ class BaseTrainer(ABC):
             save_best_fn = save_fn
 
         self.policy = policy
-        self.buffer = buffer
+
         if buffer is not None:
-            self.buffer = policy.process_buffer(self.buffer)
+            buffer = policy.process_buffer(buffer)
+        self.buffer = buffer
 
         self.train_collector = train_collector
         self.test_collector = test_collector

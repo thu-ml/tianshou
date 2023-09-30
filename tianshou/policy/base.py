@@ -1,17 +1,18 @@
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any, Literal, cast, overload
 
 import gymnasium as gym
 import numpy as np
 import torch
 from gymnasium.spaces import Box, Discrete, MultiBinary, MultiDiscrete
-from numba import njit
+from numba import jit, njit
 from torch import nn
 
 from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
+from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils import MultipleLRSchedulers
 
@@ -259,13 +260,15 @@ class BasePolicy(ABC, nn.Module):
                     act = (np.log(1.0 + act) - np.log(1.0 - act)) / 2.0  # type: ignore
         return act
 
-    def process_buffer(
-        self,
-        buffer: ReplayBuffer,
-    ) -> ReplayBuffer:
-        """Pre-process the replay buffer, to add for example a new key.
+    def process_buffer(self, buffer: TBuffer) -> TBuffer:
+        """Pre-process the replay buffer, e.g., to add new keys.
 
         Used in BaseTrainer initialization method.
+
+        **Note**: this will only be called once, when the trainer is initialized!
+        If the buffer is empty by then, there will be nothing to process.
+        This method is meant to be overridden by policies which will be trained
+        offline at some stage, e.g., in a pretraining step.
         """
         return buffer
 
@@ -277,7 +280,12 @@ class BasePolicy(ABC, nn.Module):
     ) -> RolloutBatchProtocol:
         """Pre-process the data from the provided replay buffer.
 
-        Used in :meth:`update`. Check out :ref:`process_fn` for more information.
+        Meant to be overridden by subclasses. Typical usage is to add new keys to the
+        batch, e.g., to add the value function of the next state. Used in :meth:`update`,
+        which is usually called repeatedly during training.
+
+        For modifying the replay buffer only once at the beginning
+        (e.g., for offline learning) see :meth:`process_buffer`.
         """
         return batch
 
@@ -573,3 +581,50 @@ def _nstep_return(
         returns = rew[now].reshape(bsz, 1) + gamma * returns
     target_q = target_q * gamma_buffer[gammas].reshape(bsz, 1) + returns
     return target_q.reshape(target_shape)
+
+
+# TODO: is there another method somewhere in tianshou to do this? Can _nstep_return be used?
+@jit
+def calculate_episode_returns(rewards: Sequence[float], gamma: float) -> np.ndarray:
+    """Calculate discounted returns from a rewards of a single episode.
+
+    :param rewards: rewards of a single episode
+    :param gamma: discount factor
+    :return: a numpy array of shape (len(rewards), )
+    """
+    len_episode = len(rewards)
+    discounted_returns = np.zeros(len_episode)
+    discounted_returns[-1] = rewards[-1]
+
+    for j in range(len_episode - 2, -1, -1):
+        discounted_returns[j] = rewards[j] + gamma * discounted_returns[j + 1]
+
+    return discounted_returns
+
+
+@jit
+def calculate_returns_from_buffer(
+    buffer: ReplayBuffer,
+    gamma: float,
+    done_field: str = "done",
+    reward_field: str = "rew",
+) -> np.ndarray:
+    """Calculate discounted returns from a replay buffer, taking into
+    account where episodes have ended.
+
+    :param buffer:
+    :param done_field: field in the buffer where the done flags are stored.
+    :param reward_field: field in the buffer where the rewards are stored.
+    :return: a numpy array of shape (len(buffer), )
+    """
+    buffer_dict = buffer._meta.__dict__
+    is_done = buffer_dict[done_field]
+    rewards = buffer_dict[reward_field]
+
+    episode_restarted_idx = np.where(is_done)[0] + 1
+    start_idx = np.insert(episode_restarted_idx, 0, 0)
+    end_idx = np.append(episode_restarted_idx, len(is_done))
+    returns = [
+        calculate_episode_returns(rewards[i:j], gamma) for i, j in zip(start_idx, end_idx, strict=True)
+    ]
+    return np.concatenate(returns)

@@ -181,7 +181,7 @@ class Collector:
             info = processed_data.get("info", info)
         self.data.info[local_ids] = info  # type: ignore
 
-        self.data.obs_next[local_ids] = obs_reset
+        self.data.obs_next[local_ids] = obs_reset  # type: ignore
 
     def collect(
         self,
