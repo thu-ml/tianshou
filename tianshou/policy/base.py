@@ -625,6 +625,7 @@ def calculate_returns_from_buffer(
     start_idx = np.insert(episode_restarted_idx, 0, 0)
     end_idx = np.append(episode_restarted_idx, len(is_done))
     returns = [
-        calculate_episode_returns(rewards[i:j], gamma) for i, j in zip(start_idx, end_idx, strict=True)
+        calculate_episode_returns(rewards[i:j], gamma)
+        for i, j in zip(start_idx, end_idx, strict=True)
     ]
     return np.concatenate(returns)
