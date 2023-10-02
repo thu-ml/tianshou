@@ -268,7 +268,7 @@ class BasePolicy(ABC, nn.Module):
         **Note**: this will only be called once, when the trainer is initialized!
         If the buffer is empty by then, there will be nothing to process.
         This method is meant to be overridden by policies which will be trained
-        offline at some stage, e.g., in a pretraining step.
+        offline at some stage, e.g., in a pre-training step.
         """
         return buffer
 
