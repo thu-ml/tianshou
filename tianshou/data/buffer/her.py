@@ -182,7 +182,6 @@ class HERReplayBuffer(ReplayBuffer):
 
         # Re-write meta
         assert isinstance(self._meta.obs, BatchProtocol)
-        # ep_obs = cast(BatchProtocol, ep_obs)
         self._meta.obs[unique_ep_indices] = ep_obs
         if self._save_obs_next:
             self._meta.obs_next[unique_ep_indices] = ep_obs_next  # type: ignore
