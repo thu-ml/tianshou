@@ -186,7 +186,7 @@ class CQLPolicy(SACPolicy):
         """
         if self.calibrated:
             buffer = deepcopy(buffer)  # prevent mutation of original buffer
-            returns = calculate_returns_from_buffer(buffer, self.gamma)
+            returns = calculate_returns_from_buffer(buffer, self._gamma)
             # TODO: don't access _meta directly
             buffer._meta = cast(
                 RolloutBatchProtocol,
