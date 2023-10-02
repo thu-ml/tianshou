@@ -609,9 +609,9 @@ def calculate_returns_from_buffer(
     done_field: str = "done",
     reward_field: str = "rew",
 ) -> np.ndarray:
-    """Calculate discounted returns from a replay buffer, taking into.
-
-    account where episodes have ended.
+    """Calculate discounted returns from a replay buffer.
+    
+    It takes into account where episodes have ended.
 
     :param buffer:
     :param done_field: field in the buffer where the done flags are stored.
