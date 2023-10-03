@@ -45,6 +45,8 @@ def configure(format=LOG_DEFAULT_FORMAT, level=lg.DEBUG):
     _logFormat = format
     remove_log_handlers()
     basicConfig(level=level, format=format, stream=sys.stdout)
+    # set log levels of third-party libraries
+    getLogger("numba").setLevel(INFO)
 
 
 # noinspection PyShadowingBuiltins
