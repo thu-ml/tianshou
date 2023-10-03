@@ -1,6 +1,5 @@
 import d4rl
-import d4rl.gym_mujoco
-import gym
+import gymnasium as gym
 import h5py
 import numpy as np
 
