@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Any, cast
 
 import numpy as np
@@ -11,7 +10,6 @@ from tianshou.data import Batch, ReplayBuffer, to_torch
 from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import SACPolicy
-from tianshou.policy.base import calculate_returns_from_buffer
 from tianshou.utils.net.continuous import ActorProb
 
 
@@ -185,8 +183,16 @@ class CQLPolicy(SACPolicy):
         :return:
         """
         if self.calibrated:
-            buffer = deepcopy(buffer)  # prevent mutation of original buffer
-            returns = calculate_returns_from_buffer(buffer, self._gamma)
+            # otherwise _meta hack cannot work
+            assert isinstance(buffer, ReplayBuffer)
+            batch, indices = buffer.sample(0)
+            returns, _ = self.compute_episodic_return(
+                batch=batch,
+                buffer=buffer,
+                indices=indices,
+                gamma=self._gamma,
+                gae_lambda=1.0,
+            )
             # TODO: don't access _meta directly
             buffer._meta = cast(
                 RolloutBatchProtocol,

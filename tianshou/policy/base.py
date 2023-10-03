@@ -263,12 +263,12 @@ class BasePolicy(ABC, nn.Module):
     def process_buffer(self, buffer: TBuffer) -> TBuffer:
         """Pre-process the replay buffer, e.g., to add new keys.
 
-        Used in BaseTrainer initialization method.
+        Used in BaseTrainer initialization method, usually used by offline trainers.
 
-        **Note**: this will only be called once, when the trainer is initialized!
-        If the buffer is empty by then, there will be nothing to process.
-        This method is meant to be overridden by policies which will be trained
-        offline at some stage, e.g., in a pre-training step.
+        Note: this will only be called once, when the trainer is initialized!
+            If the buffer is empty by then, there will be nothing to process.
+            This method is meant to be overridden by policies which will be trained
+            offline at some stage, e.g., in a pre-training step.
         """
         return buffer
 
@@ -610,7 +610,7 @@ def calculate_returns_from_buffer(
     reward_field: str = "rew",
 ) -> np.ndarray:
     """Calculate discounted returns from a replay buffer.
-    
+
     It takes into account where episodes have ended.
 
     :param buffer:
