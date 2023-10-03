@@ -11,6 +11,7 @@ from tianshou.data import Collector
 from tianshou.highlevel.agent import (
     A2CAgentFactory,
     AgentFactory,
+    DDPGAgentFactory,
     PPOAgentFactory,
     SACAgentFactory,
     TD3AgentFactory,
@@ -27,6 +28,7 @@ from tianshou.highlevel.module.critic import CriticFactory, CriticFactoryDefault
 from tianshou.highlevel.optim import OptimizerFactory, OptimizerFactoryAdam
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
+    DDPGParams,
     PPOParams,
     SACParams,
     TD3Params,
@@ -406,13 +408,11 @@ class PPOExperimentBuilder(
         experiment_config: RLExperimentConfig,
         env_factory: EnvFactory,
         sampling_config: RLSamplingConfig,
-        env_config: PersistableConfigProtocol | None = None,
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinSingleCriticFactory.__init__(self)
         self._params: PPOParams = PPOParams()
-        self._env_config = env_config
 
     def with_ppo_params(self, params: PPOParams) -> Self:
         self._params = params
@@ -427,6 +427,39 @@ class PPOExperimentBuilder(
             self._get_critic_factory(0),
             self._get_optim_factory(),
             self._critic_use_actor_module,
+        )
+
+
+class DDPGExperimentBuilder(
+    RLExperimentBuilder,
+    _BuilderMixinActorFactory_ContinuousDeterministic,
+    _BuilderMixinSingleCriticFactory,
+):
+    def __init__(
+        self,
+        experiment_config: RLExperimentConfig,
+        env_factory: EnvFactory,
+        sampling_config: RLSamplingConfig,
+        env_config: PersistableConfigProtocol | None = None,
+    ):
+        super().__init__(experiment_config, env_factory, sampling_config)
+        _BuilderMixinActorFactory_ContinuousDeterministic.__init__(self)
+        _BuilderMixinSingleCriticFactory.__init__(self)
+        self._params: DDPGParams = DDPGParams()
+        self._env_config = env_config
+
+    def with_ddpg_params(self, params: DDPGParams) -> Self:
+        self._params = params
+        return self
+
+    @abstractmethod
+    def _create_agent_factory(self) -> AgentFactory:
+        return DDPGAgentFactory(
+            self._params,
+            self._sampling_config,
+            self._get_actor_factory(),
+            self._get_critic_factory(0),
+            self._get_optim_factory(),
         )
 
 

@@ -247,6 +247,9 @@ class ActorFactoryAtariDQN(ActorFactory):
 class FeatureNetFactoryDQN(ModuleFactory):
     def create_module(self, envs: Environments, device: TDevice) -> Module:
         dqn = DQN(
-            *envs.get_observation_shape(), envs.get_action_shape(), device, features_only=True,
+            *envs.get_observation_shape(),
+            envs.get_action_shape(),
+            device,
+            features_only=True,
         )
         return Module(dqn.net, dqn.output_dim)

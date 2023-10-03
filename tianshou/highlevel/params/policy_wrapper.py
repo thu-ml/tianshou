@@ -25,7 +25,8 @@ class PolicyWrapperFactory(Generic[TPolicyIn, TPolicyOut], ABC):
 
 
 class PolicyWrapperFactoryIntrinsicCuriosity(
-    Generic[TPolicyIn], PolicyWrapperFactory[TPolicyIn, ICMPolicy],
+    Generic[TPolicyIn],
+    PolicyWrapperFactory[TPolicyIn, ICMPolicy],
 ):
     def __init__(
         self,

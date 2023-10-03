@@ -128,6 +128,28 @@ class ParamTransformerMultiLRScheduler(ParamTransformer):
         params[self.key_scheduler] = lr_scheduler
 
 
+class ParamTransformerActorAndCriticLRScheduler(ParamTransformer):
+    def __init__(
+        self,
+        key_scheduler_factory_actor: str,
+        key_scheduler_factory_critic: str,
+        key_scheduler: str,
+    ):
+        self.key_factory_actor = key_scheduler_factory_actor
+        self.key_factory_critic = key_scheduler_factory_critic
+        self.key_scheduler = key_scheduler
+
+    def transform(self, params: dict[str, Any], data: ParamTransformerData) -> None:
+        transformer = ParamTransformerMultiLRScheduler(
+            [
+                (data.actor.optim, self.key_factory_actor),
+                (data.critic1.optim, self.key_factory_critic),
+            ],
+            self.key_scheduler,
+        )
+        transformer.transform(params, data)
+
+
 class ParamTransformerActorDualCriticsLRScheduler(ParamTransformer):
     def __init__(
         self,
@@ -233,6 +255,24 @@ class ParamsMixinLearningRateWithScheduler(GetParamTransformersProtocol):
 
 
 @dataclass
+class ParamsMixinActorAndCritic(GetParamTransformersProtocol):
+    actor_lr: float = 1e-3
+    critic_lr: float = 1e-3
+    actor_lr_scheduler_factory: LRSchedulerFactory | None = None
+    critic_lr_scheduler_factory: LRSchedulerFactory | None = None
+
+    def _get_param_transformers(self):
+        return [
+            ParamTransformerDrop("actor_lr", "critic_lr"),
+            ParamTransformerActorAndCriticLRScheduler(
+                "actor_lr_scheduler_factory",
+                "critic_lr_scheduler_factory",
+                "lr_scheduler",
+            ),
+        ]
+
+
+@dataclass
 class PGParams(Params):
     """Config of general policy-gradient algorithms."""
 
@@ -312,6 +352,22 @@ class SACParams(Params, ParamsMixinActorAndDualCritics):
         transformers = super()._get_param_transformers()
         transformers.extend(ParamsMixinActorAndDualCritics._get_param_transformers(self))
         transformers.append(ParamTransformerAutoAlpha("alpha"))
+        transformers.append(ParamTransformerNoiseFactory("exploration_noise"))
+        return transformers
+
+
+@dataclass
+class DDPGParams(Params, ParamsMixinActorAndCritic):
+    tau: float = 0.005
+    gamma: float = 0.99
+    exploration_noise: BaseNoise | Literal["default"] | NoiseFactory | None = "default"
+    estimation_step: int = 1
+    action_scaling: bool = True
+    action_bound_method: Literal["clip"] | None = "clip"
+
+    def _get_param_transformers(self):
+        transformers = super()._get_param_transformers()
+        transformers.extend(ParamsMixinActorAndCritic._get_param_transformers(self))
         transformers.append(ParamTransformerNoiseFactory("exploration_noise"))
         return transformers
 

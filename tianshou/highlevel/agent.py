@@ -22,6 +22,7 @@ from tianshou.highlevel.module.module_opt import (
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
+    DDPGParams,
     Params,
     ParamTransformerData,
     PPOParams,
@@ -29,7 +30,14 @@ from tianshou.highlevel.params.policy_params import (
     TD3Params,
 )
 from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
-from tianshou.policy import A2CPolicy, BasePolicy, PPOPolicy, SACPolicy, TD3Policy
+from tianshou.policy import (
+    A2CPolicy,
+    BasePolicy,
+    DDPGPolicy,
+    PPOPolicy,
+    SACPolicy,
+    TD3Policy,
+)
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import ActorCritic
@@ -71,7 +79,8 @@ class AgentFactory(ABC):
         return train_collector, test_collector
 
     def set_policy_wrapper_factory(
-        self, policy_wrapper_factory: PolicyWrapperFactory | None,
+        self,
+        policy_wrapper_factory: PolicyWrapperFactory | None,
     ) -> None:
         self.policy_wrapper_factory = policy_wrapper_factory
 
@@ -83,7 +92,10 @@ class AgentFactory(ABC):
         policy = self._create_policy(envs, device)
         if self.policy_wrapper_factory is not None:
             policy = self.policy_wrapper_factory.create_wrapped_policy(
-                policy, envs, self.optim_factory, device,
+                policy,
+                envs,
+                self.optim_factory,
+                device,
             )
         return policy
 
@@ -370,6 +382,49 @@ class PPOAgentFactory(ActorCriticAgentFactory[PPOParams, PPOPolicy]):
 
     def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
         return self.create_actor_critic_module_opt(envs, device, self.params.lr)
+
+
+class DDPGAgentFactory(OffpolicyAgentFactory, _ActorAndCriticMixin):
+    def __init__(
+        self,
+        params: DDPGParams,
+        sampling_config: RLSamplingConfig,
+        actor_factory: ActorFactory,
+        critic_factory: CriticFactory,
+        optim_factory: OptimizerFactory,
+    ):
+        super().__init__(sampling_config, optim_factory)
+        _ActorAndCriticMixin.__init__(
+            self,
+            actor_factory,
+            critic_factory,
+            optim_factory,
+            critic_use_action=True,
+        )
+        self.params = params
+        self.optim_factory = optim_factory
+
+    def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+        actor = self.create_actor_module_opt(envs, device, self.params.actor_lr)
+        critic = self.create_critic_module_opt(envs, device, self.params.critic_lr)
+        kwargs = self.params.create_kwargs(
+            ParamTransformerData(
+                envs=envs,
+                device=device,
+                optim_factory=self.optim_factory,
+                actor=actor,
+                critic1=critic,
+            ),
+        )
+        return DDPGPolicy(
+            actor=actor.module,
+            actor_optim=actor.optim,
+            critic=critic.module,
+            critic_optim=critic.optim,
+            action_space=envs.get_action_space(),
+            observation_space=envs.get_observation_space(),
+            **kwargs,
+        )
 
 
 class SACAgentFactory(OffpolicyAgentFactory, _ActorAndDualCriticsMixin):
