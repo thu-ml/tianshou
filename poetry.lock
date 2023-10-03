@@ -775,13 +775,13 @@ smmap = ">=3.0.1,<6"
 
 [[package]]
 name = "gitpython"
-version = "3.1.33"
+version = "3.1.35"
 description = "GitPython is a Python library used to interact with Git repositories"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "GitPython-3.1.33-py3-none-any.whl", hash = "sha256:11f22466f982211ad8f3bdb456c03be8466c71d4da8774f3a9f68344e89559cb"},
-    {file = "GitPython-3.1.33.tar.gz", hash = "sha256:13aaa3dff88a23afec2d00eb3da3f2e040e2282e41de484c5791669b31146084"},
+    {file = "GitPython-3.1.35-py3-none-any.whl", hash = "sha256:c19b4292d7a1d3c0f653858db273ff8a6614100d1eb1528b014ec97286193c09"},
+    {file = "GitPython-3.1.35.tar.gz", hash = "sha256:9cbefbd1789a5fe9bcf621bb34d3f441f3a90c8461d377f84eda73e721d9b06b"},
 ]
 
 [package.dependencies]
