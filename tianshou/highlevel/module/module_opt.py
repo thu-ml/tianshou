@@ -8,6 +8,7 @@ from tianshou.highlevel.module.core import TDevice
 from tianshou.highlevel.module.critic import CriticFactory
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.utils.net.common import ActorCritic
+from tianshou.utils.string import ToStringMixin
 
 
 @dataclass
@@ -30,7 +31,7 @@ class ActorCriticModuleOpt:
         return self.actor_critic_module.critic
 
 
-class ActorModuleOptFactory:
+class ActorModuleOptFactory(ToStringMixin):
     def __init__(self, actor_factory: ActorFactory, optim_factory: OptimizerFactory):
         self.actor_factory = actor_factory
         self.optim_factory = optim_factory
@@ -41,7 +42,7 @@ class ActorModuleOptFactory:
         return ModuleOpt(actor, opt)
 
 
-class CriticModuleOptFactory:
+class CriticModuleOptFactory(ToStringMixin):
     def __init__(
         self,
         critic_factory: CriticFactory,

@@ -1,3 +1,4 @@
+import logging
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -37,7 +38,9 @@ from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
 from tianshou.highlevel.persistence import PersistableConfigProtocol
 from tianshou.policy import BasePolicy
 from tianshou.trainer import BaseTrainer
+from tianshou.utils.string import ToStringMixin
 
+log = logging.getLogger(__name__)
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 TTrainer = TypeVar("TTrainer", bound=BaseTrainer)
 
@@ -59,7 +62,7 @@ class RLExperimentConfig:
     watch_num_episodes = 10
 
 
-class RLExperiment(Generic[TPolicy, TTrainer]):
+class RLExperiment(Generic[TPolicy, TTrainer], ToStringMixin):
     def __init__(
         self,
         config: RLExperimentConfig,
@@ -204,13 +207,15 @@ class RLExperimentBuilder:
         agent_factory = self._create_agent_factory()
         if self._policy_wrapper_factory:
             agent_factory.set_policy_wrapper_factory(self._policy_wrapper_factory)
-        return RLExperiment(
+        experiment = RLExperiment(
             self._config,
             self._env_factory,
             agent_factory,
             self._logger_factory,
             env_config=self._env_config,
         )
+        log.info(f"Created experiment:\n{experiment.pprints()}")
+        return experiment
 
 
 class _BuilderMixinActorFactory:

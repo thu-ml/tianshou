@@ -14,6 +14,7 @@ from tianshou.highlevel.experiment import (
 )
 from tianshou.highlevel.params.alpha import AutoAlphaFactoryDefault
 from tianshou.highlevel.params.policy_params import SACParams
+from tianshou.utils import logging
 
 
 def main(
@@ -81,4 +82,4 @@ def main(
 
 
 if __name__ == "__main__":
-    CLI(main)
+    logging.run_main(lambda: CLI(main))

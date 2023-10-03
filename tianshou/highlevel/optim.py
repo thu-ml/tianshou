@@ -4,8 +4,10 @@ from typing import Any
 import torch
 from torch.optim import Adam, RMSprop
 
+from tianshou.utils.string import ToStringMixin
 
-class OptimizerFactory(ABC):
+
+class OptimizerFactory(ABC, ToStringMixin):
     # TODO: Is it OK to assume that all optimizers have a learning rate argument?
     # Right now, the learning rate is typically a configuration parameter.
     # If we drop the assumption, we can't have that and will need to move the parameter

@@ -8,6 +8,7 @@ from tianshou.highlevel.env import Environments, EnvType
 from tianshou.highlevel.module.core import TDevice, init_linear_orthogonal
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import BaseActor, Net
+from tianshou.utils.string import ToStringMixin
 
 
 class ContinuousActorType:
@@ -15,7 +16,7 @@ class ContinuousActorType:
     DETERMINISTIC = "deterministic"
 
 
-class ActorFactory(ABC):
+class ActorFactory(ToStringMixin, ABC):
     @abstractmethod
     def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
         pass

@@ -16,6 +16,7 @@ from tianshou.highlevel.experiment import (
 )
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
+from tianshou.utils import logging
 
 
 def main(
@@ -95,4 +96,4 @@ def main(
 
 
 if __name__ == "__main__":
-    CLI(main)
+    logging.run_main(lambda: CLI(main))

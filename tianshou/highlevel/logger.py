@@ -6,6 +6,7 @@ from typing import Literal, TypeAlias
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.utils import TensorboardLogger, WandbLogger
+from tianshou.utils.string import ToStringMixin
 
 TLogger: TypeAlias = TensorboardLogger | WandbLogger
 
@@ -16,7 +17,7 @@ class Logger:
     log_path: str
 
 
-class LoggerFactory(ABC):
+class LoggerFactory(ToStringMixin, ABC):
     @abstractmethod
     def create_logger(self, log_name: str, run_id: int | None, config_dict: dict) -> Logger:
         pass

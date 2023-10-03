@@ -14,6 +14,7 @@ from tianshou.highlevel.experiment import (
 )
 from tianshou.highlevel.params.noise import MaxActionScaledGaussian
 from tianshou.highlevel.params.policy_params import DDPGParams
+from tianshou.utils import logging
 
 
 def main(
@@ -75,4 +76,4 @@ def main(
 
 
 if __name__ == "__main__":
-    CLI(main)
+    logging.run_main(lambda: CLI(main))

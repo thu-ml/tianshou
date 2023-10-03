@@ -41,6 +41,7 @@ from tianshou.policy import (
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils.net import continuous, discrete
 from tianshou.utils.net.common import ActorCritic
+from tianshou.utils.string import ToStringMixin
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
 CHECKPOINT_DICT_KEY_OBS_RMS = "obs_rms"
@@ -48,7 +49,7 @@ TParams = TypeVar("TParams", bound=Params)
 TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 
 
-class AgentFactory(ABC):
+class AgentFactory(ABC, ToStringMixin):
     def __init__(self, sampling_config: RLSamplingConfig, optim_factory: OptimizerFactory):
         self.sampling_config = sampling_config
         self.optim_factory = optim_factory
