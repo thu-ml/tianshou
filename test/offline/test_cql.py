@@ -185,14 +185,6 @@ def test_cql(args=get_args()):
     def stop_fn(mean_rewards):
         return mean_rewards >= args.reward_threshold
 
-    def watch():
-        policy.load_state_dict(
-            torch.load(os.path.join(log_path, "policy.pth"), map_location=torch.device("cpu")),
-        )
-        policy.eval()
-        collector = Collector(policy, env)
-        collector.collect(n_episode=1, render=1 / 35)
-
     # trainer
     trainer = OfflineTrainer(
         policy=policy,
