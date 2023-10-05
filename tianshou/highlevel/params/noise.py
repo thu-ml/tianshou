@@ -2,9 +2,10 @@ from abc import ABC, abstractmethod
 
 from tianshou.exploration import BaseNoise, GaussianNoise
 from tianshou.highlevel.env import ContinuousEnvironments, Environments
+from tianshou.utils.string import ToStringMixin
 
 
-class NoiseFactory(ABC):
+class NoiseFactory(ToStringMixin, ABC):
     @abstractmethod
     def create_noise(self, envs: Environments) -> BaseNoise:
         pass

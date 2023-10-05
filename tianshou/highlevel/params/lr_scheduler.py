@@ -5,9 +5,10 @@ import torch
 from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 
 from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.utils.string import ToStringMixin
 
 
-class LRSchedulerFactory(ABC):
+class LRSchedulerFactory(ToStringMixin, ABC):
     @abstractmethod
     def create_scheduler(self, optim: torch.optim.Optimizer) -> LRScheduler:
         pass

@@ -6,11 +6,12 @@ import torch
 
 from tianshou.highlevel.env import Environments, EnvType
 from tianshou.policy.modelfree.pg import TDistParams
+from tianshou.utils.string import ToStringMixin
 
 TDistributionFunction: TypeAlias = Callable[[TDistParams], torch.distributions.Distribution]
 
 
-class DistributionFunctionFactory(ABC):
+class DistributionFunctionFactory(ToStringMixin, ABC):
     @abstractmethod
     def create_dist_fn(self, envs: Environments) -> TDistributionFunction:
         pass

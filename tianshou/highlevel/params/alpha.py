@@ -6,9 +6,10 @@ import torch
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.core import TDevice
 from tianshou.highlevel.optim import OptimizerFactory
+from tianshou.utils.string import ToStringMixin
 
 
-class AutoAlphaFactory(ABC):
+class AutoAlphaFactory(ToStringMixin, ABC):
     @abstractmethod
     def create_auto_alpha(
         self,

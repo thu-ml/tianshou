@@ -7,12 +7,13 @@ from tianshou.highlevel.module.core import ModuleFactory, TDevice
 from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.policy import BasePolicy, ICMPolicy
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
+from tianshou.utils.string import ToStringMixin
 
 TPolicyIn = TypeVar("TPolicyIn", bound=BasePolicy)
 TPolicyOut = TypeVar("TPolicyOut", bound=BasePolicy)
 
 
-class PolicyWrapperFactory(Generic[TPolicyIn, TPolicyOut], ABC):
+class PolicyWrapperFactory(Generic[TPolicyIn, TPolicyOut], ToStringMixin, ABC):
     @abstractmethod
     def create_wrapped_policy(
         self,

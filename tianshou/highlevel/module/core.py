@@ -8,6 +8,7 @@ import torch
 
 from tianshou.highlevel.env import Environments
 from tianshou.utils.net.common import Net
+from tianshou.utils.string import ToStringMixin
 
 TDevice: TypeAlias = str | int | torch.device
 
@@ -29,7 +30,7 @@ class Module:
     output_dim: int
 
 
-class ModuleFactory(ABC):
+class ModuleFactory(ToStringMixin, ABC):
     @abstractmethod
     def create_module(self, envs: Environments, device: TDevice) -> Module:
         pass
