@@ -96,7 +96,7 @@ def main(
                 else None,
             ),
         )
-        .with_actor_factory(ActorFactoryAtariDQN(hidden_sizes, scale_obs))
+        .with_actor_factory(ActorFactoryAtariDQN(hidden_sizes, scale_obs, features_only=True))
         .with_critic_factory_use_actor()
         .with_trainer_stop_callback(AtariStopCallback(task))
     )

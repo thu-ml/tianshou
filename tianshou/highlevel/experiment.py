@@ -461,7 +461,7 @@ class PPOExperimentBuilder(
 
 class DQNExperimentBuilder(
     RLExperimentBuilder,
-    _BuilderMixinSingleCriticFactory,
+    _BuilderMixinActorFactory,
 ):
     def __init__(
         self,
@@ -470,7 +470,7 @@ class DQNExperimentBuilder(
         sampling_config: RLSamplingConfig,
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
-        _BuilderMixinSingleCriticFactory.__init__(self)
+        _BuilderMixinActorFactory.__init__(self, ContinuousActorType.UNSUPPORTED)
         self._params: DQNParams = DQNParams()
 
     def with_dqn_params(self, params: DQNParams) -> Self:
@@ -482,7 +482,7 @@ class DQNExperimentBuilder(
         return DQNAgentFactory(
             self._params,
             self._sampling_config,
-            self._get_critic_factory(0),
+            self._get_actor_factory(),
             self._get_optim_factory(),
         )
 

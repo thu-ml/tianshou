@@ -8,8 +8,6 @@ from torch import nn
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.actor import ActorFactory
 from tianshou.highlevel.module.core import Module, ModuleFactory, TDevice
-from tianshou.highlevel.module.critic import CriticFactory
-from tianshou.utils.net.common import BaseActor
 from tianshou.utils.net.discrete import Actor, NoisyLinear
 
 
@@ -227,14 +225,8 @@ class QRDQN(DQN):
         return obs, state
 
 
-class CriticFactoryAtariDQN(CriticFactory):
-    def create_module(
-        self,
-        envs: Environments,
-        device: TDevice,
-        use_action: bool,
-    ) -> torch.nn.Module:
-        assert use_action
+class ActorFactoryAtariPlainDQN(ActorFactory):
+    def create_module(self, envs: Environments, device: TDevice) -> torch.nn.Module:
         return DQN(
             *envs.get_observation_shape(),
             envs.get_action_shape(),
@@ -243,17 +235,18 @@ class CriticFactoryAtariDQN(CriticFactory):
 
 
 class ActorFactoryAtariDQN(ActorFactory):
-    def __init__(self, hidden_size: int | Sequence[int], scale_obs: bool):
+    def __init__(self, hidden_size: int | Sequence[int], scale_obs: bool, features_only: bool):
         self.hidden_size = hidden_size
         self.scale_obs = scale_obs
+        self.features_only = features_only
 
-    def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
+    def create_module(self, envs: Environments, device: TDevice) -> Actor:
         net_cls = scale_obs(DQN) if self.scale_obs else DQN
         net = net_cls(
             *envs.get_observation_shape(),
             envs.get_action_shape(),
             device=device,
-            features_only=True,
+            features_only=self.features_only,
             output_dim=self.hidden_size,
             layer_init=layer_init,
         )

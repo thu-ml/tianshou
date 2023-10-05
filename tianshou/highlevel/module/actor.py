@@ -14,11 +14,12 @@ from tianshou.utils.string import ToStringMixin
 class ContinuousActorType:
     GAUSSIAN = "gaussian"
     DETERMINISTIC = "deterministic"
+    UNSUPPORTED = "unsupported"
 
 
 class ActorFactory(ToStringMixin, ABC):
     @abstractmethod
-    def create_module(self, envs: Environments, device: TDevice) -> BaseActor:
+    def create_module(self, envs: Environments, device: TDevice) -> BaseActor | nn.Module:
         pass
 
     @staticmethod
@@ -67,11 +68,14 @@ class ActorFactoryDefault(ActorFactory):
                     )
                 case ContinuousActorType.DETERMINISTIC:
                     factory = ActorFactoryContinuousDeterministicNet(self.hidden_sizes)
+                case ContinuousActorType.UNSUPPORTED:
+                    raise ValueError("Continuous action spaces are not supported by the algorithm")
                 case _:
                     raise ValueError(self.continuous_actor_type)
             return factory.create_module(envs, device)
         elif env_type == EnvType.DISCRETE:
-            raise NotImplementedError
+            factory = ActorFactoryDiscreteNet(self.DEFAULT_HIDDEN_SIZES)
+            return factory.create_module(envs, device)
         else:
             raise ValueError(f"{env_type} not supported")
 

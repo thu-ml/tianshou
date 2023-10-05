@@ -44,7 +44,7 @@ from tianshou.policy import (
 )
 from tianshou.trainer import BaseTrainer, OffpolicyTrainer, OnpolicyTrainer
 from tianshou.utils.net import continuous, discrete
-from tianshou.utils.net.common import ActorCritic
+from tianshou.utils.net.common import ActorCritic, BaseActor
 from tianshou.utils.string import ToStringMixin
 
 CHECKPOINT_DICT_KEY_MODEL = "model"
@@ -285,6 +285,10 @@ class _ActorCriticMixin:
                 raise ValueError(
                     "The options critic_use_actor_module and critic_use_action are mutually exclusive",
                 )
+            if not isinstance(actor, BaseActor):
+                raise ValueError(
+                    f"Option critic_use_action can only be used if actor is of type {BaseActor.__class__.__name__}",
+                )
             if envs.get_type().is_discrete():
                 critic = discrete.Critic(actor.get_preprocess_net(), device=device).to(device)
             elif envs.get_type().is_continuous():
@@ -444,17 +448,17 @@ class DQNAgentFactory(OffpolicyAgentFactory):
         self,
         params: DQNParams,
         sampling_config: RLSamplingConfig,
-        critic_factory: CriticFactory,
+        actor_factory: ActorFactory,
         optim_factory: OptimizerFactory,
     ):
         super().__init__(sampling_config, optim_factory)
         self.params = params
-        self.critic_factory = critic_factory
+        self.actor_factory = actor_factory
         self.optim_factory = optim_factory
 
     def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
-        critic = self.critic_factory.create_module(envs, device, use_action=True)
-        optim = self.optim_factory.create_optimizer(critic, self.params.lr)
+        model = self.actor_factory.create_module(envs, device)
+        optim = self.optim_factory.create_optimizer(model, self.params.lr)
         kwargs = self.params.create_kwargs(
             ParamTransformerData(
                 envs=envs,
@@ -467,7 +471,7 @@ class DQNAgentFactory(OffpolicyAgentFactory):
         # noinspection PyTypeChecker
         action_space: gymnasium.spaces.Discrete = envs.get_action_space()
         return DQNPolicy(
-            model=critic,
+            model=model,
             optim=optim,
             action_space=action_space,
             observation_space=envs.get_observation_space(),
