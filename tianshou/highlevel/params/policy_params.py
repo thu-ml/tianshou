@@ -357,6 +357,21 @@ class SACParams(Params, ParamsMixinActorAndDualCritics):
 
 
 @dataclass
+class DQNParams(Params, ParamsMixinLearningRateWithScheduler):
+    discount_factor: float = 0.99
+    estimation_step: int = 1
+    target_update_freq: int = 0
+    reward_normalization: bool = False
+    is_double: bool = True
+    clip_loss_grad: bool = False
+
+    def _get_param_transformers(self):
+        transformers = super()._get_param_transformers()
+        transformers.extend(ParamsMixinLearningRateWithScheduler._get_param_transformers(self))
+        return transformers
+
+
+@dataclass
 class DDPGParams(Params, ParamsMixinActorAndCritic):
     tau: float = 0.005
     gamma: float = 0.99

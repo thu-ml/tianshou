@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Generic, TypeVar
 
+import gymnasium
 import torch
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
@@ -23,6 +24,7 @@ from tianshou.highlevel.optim import OptimizerFactory
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
     DDPGParams,
+    DQNParams,
     Params,
     ParamTransformerData,
     PPOParams,
@@ -30,10 +32,12 @@ from tianshou.highlevel.params.policy_params import (
     TD3Params,
 )
 from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
+from tianshou.highlevel.trainer import TrainerCallbacks, TrainingContext
 from tianshou.policy import (
     A2CPolicy,
     BasePolicy,
     DDPGPolicy,
+    DQNPolicy,
     PPOPolicy,
     SACPolicy,
     TD3Policy,
@@ -54,6 +58,7 @@ class AgentFactory(ABC, ToStringMixin):
         self.sampling_config = sampling_config
         self.optim_factory = optim_factory
         self.policy_wrapper_factory: PolicyWrapperFactory | None = None
+        self.trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
 
     def create_train_test_collector(self, policy: BasePolicy, envs: Environments):
         buffer_size = self.sampling_config.buffer_size
@@ -84,6 +89,9 @@ class AgentFactory(ABC, ToStringMixin):
         policy_wrapper_factory: PolicyWrapperFactory | None,
     ) -> None:
         self.policy_wrapper_factory = policy_wrapper_factory
+
+    def set_trainer_callbacks(self, callbacks: TrainerCallbacks):
+        self.trainer_callbacks = callbacks
 
     @abstractmethod
     def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
@@ -145,6 +153,21 @@ class OnpolicyAgentFactory(AgentFactory, ABC):
         logger: Logger,
     ) -> OnpolicyTrainer:
         sampling_config = self.sampling_config
+        callbacks = self.trainer_callbacks
+        context = TrainingContext(policy, envs, logger)
+        train_fn = (
+            callbacks.epoch_callback_train.get_trainer_fn(context)
+            if callbacks.epoch_callback_train
+            else None
+        )
+        test_fn = (
+            callbacks.epoch_callback_test.get_trainer_fn(context)
+            if callbacks.epoch_callback_test
+            else None
+        )
+        stop_fn = (
+            callbacks.stop_callback.get_trainer_fn(context) if callbacks.stop_callback else None
+        )
         return OnpolicyTrainer(
             policy=policy,
             train_collector=train_collector,
@@ -158,6 +181,9 @@ class OnpolicyAgentFactory(AgentFactory, ABC):
             save_best_fn=self._create_save_best_fn(envs, logger.log_path),
             logger=logger.logger,
             test_in_train=False,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
         )
 
 
@@ -171,6 +197,21 @@ class OffpolicyAgentFactory(AgentFactory, ABC):
         logger: Logger,
     ) -> OffpolicyTrainer:
         sampling_config = self.sampling_config
+        callbacks = self.trainer_callbacks
+        context = TrainingContext(policy, envs, logger)
+        train_fn = (
+            callbacks.epoch_callback_train.get_trainer_fn(context)
+            if callbacks.epoch_callback_train
+            else None
+        )
+        test_fn = (
+            callbacks.epoch_callback_test.get_trainer_fn(context)
+            if callbacks.epoch_callback_test
+            else None
+        )
+        stop_fn = (
+            callbacks.stop_callback.get_trainer_fn(context) if callbacks.stop_callback else None
+        )
         return OffpolicyTrainer(
             policy=policy,
             train_collector=train_collector,
@@ -184,6 +225,9 @@ class OffpolicyAgentFactory(AgentFactory, ABC):
             logger=logger.logger,
             update_per_step=sampling_config.update_per_step,
             test_in_train=False,
+            train_fn=train_fn,
+            test_fn=test_fn,
+            stop_fn=stop_fn,
         )
 
 
@@ -193,6 +237,23 @@ class _ActorMixin:
 
     def create_actor_module_opt(self, envs: Environments, device: TDevice, lr: float) -> ModuleOpt:
         return self.actor_module_opt_factory.create_module_opt(envs, device, lr)
+
+
+class _CriticMixin:
+    def __init__(
+        self,
+        critic_factory: CriticFactory,
+        optim_factory: OptimizerFactory,
+        critic_use_action: bool,
+    ):
+        self.critic_module_opt_factory = CriticModuleOptFactory(
+            critic_factory,
+            optim_factory,
+            critic_use_action,
+        )
+
+    def create_critic_module_opt(self, envs: Environments, device: TDevice, lr: float) -> ModuleOpt:
+        return self.critic_module_opt_factory.create_module_opt(envs, device, lr)
 
 
 class _ActorCriticMixin:
@@ -241,7 +302,7 @@ class _ActorCriticMixin:
         return ActorCriticModuleOpt(actor_critic, optim)
 
 
-class _ActorAndCriticMixin(_ActorMixin):
+class _ActorAndCriticMixin(_ActorMixin, _CriticMixin):
     def __init__(
         self,
         actor_factory: ActorFactory,
@@ -249,15 +310,8 @@ class _ActorAndCriticMixin(_ActorMixin):
         optim_factory: OptimizerFactory,
         critic_use_action: bool,
     ):
-        super().__init__(actor_factory, optim_factory)
-        self.critic_module_opt_factory = CriticModuleOptFactory(
-            critic_factory,
-            optim_factory,
-            critic_use_action,
-        )
-
-    def create_critic_module_opt(self, envs: Environments, device: TDevice, lr: float) -> ModuleOpt:
-        return self.critic_module_opt_factory.create_module_opt(envs, device, lr)
+        _ActorMixin.__init__(self, actor_factory, optim_factory)
+        _CriticMixin.__init__(self, critic_factory, optim_factory, critic_use_action)
 
 
 class _ActorAndDualCriticsMixin(_ActorAndCriticMixin):
@@ -383,6 +437,42 @@ class PPOAgentFactory(ActorCriticAgentFactory[PPOParams, PPOPolicy]):
 
     def _create_actor_critic(self, envs: Environments, device: TDevice) -> ActorCriticModuleOpt:
         return self.create_actor_critic_module_opt(envs, device, self.params.lr)
+
+
+class DQNAgentFactory(OffpolicyAgentFactory):
+    def __init__(
+        self,
+        params: DQNParams,
+        sampling_config: RLSamplingConfig,
+        critic_factory: CriticFactory,
+        optim_factory: OptimizerFactory,
+    ):
+        super().__init__(sampling_config, optim_factory)
+        self.params = params
+        self.critic_factory = critic_factory
+        self.optim_factory = optim_factory
+
+    def _create_policy(self, envs: Environments, device: TDevice) -> BasePolicy:
+        critic = self.critic_factory.create_module(envs, device, use_action=True)
+        optim = self.optim_factory.create_optimizer(critic, self.params.lr)
+        kwargs = self.params.create_kwargs(
+            ParamTransformerData(
+                envs=envs,
+                device=device,
+                optim=optim,
+                optim_factory=self.optim_factory,
+            ),
+        )
+        envs.get_type().assert_discrete(self)
+        # noinspection PyTypeChecker
+        action_space: gymnasium.spaces.Discrete = envs.get_action_space()
+        return DQNPolicy(
+            model=critic,
+            optim=optim,
+            action_space=action_space,
+            observation_space=envs.get_observation_space(),
+            **kwargs,
+        )
 
 
 class DDPGAgentFactory(OffpolicyAgentFactory, _ActorAndCriticMixin):

@@ -10,7 +10,7 @@ from examples.atari.atari_network import (
     ActorFactoryAtariDQN,
     FeatureNetFactoryDQN,
 )
-from examples.atari.atari_wrapper import AtariEnvFactory
+from examples.atari.atari_wrapper import AtariEnvFactory, AtariStopCallback
 from tianshou.highlevel.config import RLSamplingConfig
 from tianshou.highlevel.experiment import (
     PPOExperimentBuilder,
@@ -98,6 +98,7 @@ def main(
         )
         .with_actor_factory(ActorFactoryAtariDQN(hidden_sizes, scale_obs))
         .with_critic_factory_use_actor()
+        .with_trainer_stop_callback(AtariStopCallback(task))
     )
     if icm_lr_scale > 0:
         builder.with_policy_wrapper_factory(

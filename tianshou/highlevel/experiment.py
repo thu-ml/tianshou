@@ -13,6 +13,7 @@ from tianshou.highlevel.agent import (
     A2CAgentFactory,
     AgentFactory,
     DDPGAgentFactory,
+    DQNAgentFactory,
     PPOAgentFactory,
     SACAgentFactory,
     TD3AgentFactory,
@@ -30,12 +31,18 @@ from tianshou.highlevel.optim import OptimizerFactory, OptimizerFactoryAdam
 from tianshou.highlevel.params.policy_params import (
     A2CParams,
     DDPGParams,
+    DQNParams,
     PPOParams,
     SACParams,
     TD3Params,
 )
 from tianshou.highlevel.params.policy_wrapper import PolicyWrapperFactory
 from tianshou.highlevel.persistence import PersistableConfigProtocol
+from tianshou.highlevel.trainer import (
+    TrainerCallbacks,
+    TrainerEpochCallback,
+    TrainerStopCallback,
+)
 from tianshou.policy import BasePolicy
 from tianshou.trainer import BaseTrainer
 from tianshou.utils.string import ToStringMixin
@@ -160,6 +167,7 @@ class RLExperimentBuilder:
         self._optim_factory: OptimizerFactory | None = None
         self._env_config: PersistableConfigProtocol | None = None
         self._policy_wrapper_factory: PolicyWrapperFactory | None = None
+        self._trainer_callbacks: TrainerCallbacks = TrainerCallbacks()
 
     def with_env_config(self, config: PersistableConfigProtocol) -> Self:
         self._env_config = config
@@ -193,6 +201,18 @@ class RLExperimentBuilder:
         self._optim_factory = OptimizerFactoryAdam(betas=betas, eps=eps, weight_decay=weight_decay)
         return self
 
+    def with_trainer_epoch_callback_train(self, callback: TrainerEpochCallback) -> Self:
+        self._trainer_callbacks.epoch_callback_train = callback
+        return self
+
+    def with_trainer_epoch_callback_test(self, callback: TrainerEpochCallback) -> Self:
+        self._trainer_callbacks.epoch_callback_test = callback
+        return self
+
+    def with_trainer_stop_callback(self, callback: TrainerStopCallback) -> Self:
+        self._trainer_callbacks.stop_callback = callback
+        return self
+
     @abstractmethod
     def _create_agent_factory(self) -> AgentFactory:
         pass
@@ -205,6 +225,7 @@ class RLExperimentBuilder:
 
     def build(self) -> RLExperiment:
         agent_factory = self._create_agent_factory()
+        agent_factory.set_trainer_callbacks(self._trainer_callbacks)
         if self._policy_wrapper_factory:
             agent_factory.set_policy_wrapper_factory(self._policy_wrapper_factory)
         experiment = RLExperiment(
@@ -302,20 +323,23 @@ class _BuilderMixinCriticsFactory:
 class _BuilderMixinSingleCriticFactory(_BuilderMixinCriticsFactory):
     def __init__(self):
         super().__init__(1)
-        self._critic_use_actor_module = False
 
-    def with_critic_factory(self: TBuilder, critic_factory: CriticFactory) -> TBuilder:
-        self: TBuilder | "_BuilderMixinSingleCriticFactory"
+    def with_critic_factory(self, critic_factory: CriticFactory) -> Self:
         self._with_critic_factory(0, critic_factory)
         return self
 
     def with_critic_factory_default(
-        self: TBuilder,
+        self,
         hidden_sizes: Sequence[int] = CriticFactoryDefault.DEFAULT_HIDDEN_SIZES,
-    ) -> TBuilder:
-        self: TBuilder | "_BuilderMixinSingleCriticFactory"
+    ) -> Self:
         self._with_critic_factory_default(0, hidden_sizes)
         return self
+
+
+class _BuilderMixinSingleCriticCanUseActorFactory(_BuilderMixinSingleCriticFactory):
+    def __init__(self):
+        super().__init__()
+        self._critic_use_actor_module = False
 
     def with_critic_factory_use_actor(self) -> Self:
         """Makes the critic use the same network as the actor."""
@@ -372,7 +396,7 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
 class A2CExperimentBuilder(
     RLExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
-    _BuilderMixinSingleCriticFactory,
+    _BuilderMixinSingleCriticCanUseActorFactory,
 ):
     def __init__(
         self,
@@ -383,7 +407,7 @@ class A2CExperimentBuilder(
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
-        _BuilderMixinSingleCriticFactory.__init__(self)
+        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
         self._params: A2CParams = A2CParams()
         self._env_config = env_config
 
@@ -406,7 +430,7 @@ class A2CExperimentBuilder(
 class PPOExperimentBuilder(
     RLExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
-    _BuilderMixinSingleCriticFactory,
+    _BuilderMixinSingleCriticCanUseActorFactory,
 ):
     def __init__(
         self,
@@ -416,7 +440,7 @@ class PPOExperimentBuilder(
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
-        _BuilderMixinSingleCriticFactory.__init__(self)
+        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
         self._params: PPOParams = PPOParams()
 
     def with_ppo_params(self, params: PPOParams) -> Self:
@@ -435,9 +459,8 @@ class PPOExperimentBuilder(
         )
 
 
-class DDPGExperimentBuilder(
+class DQNExperimentBuilder(
     RLExperimentBuilder,
-    _BuilderMixinActorFactory_ContinuousDeterministic,
     _BuilderMixinSingleCriticFactory,
 ):
     def __init__(
@@ -445,13 +468,40 @@ class DDPGExperimentBuilder(
         experiment_config: RLExperimentConfig,
         env_factory: EnvFactory,
         sampling_config: RLSamplingConfig,
-        env_config: PersistableConfigProtocol | None = None,
+    ):
+        super().__init__(experiment_config, env_factory, sampling_config)
+        _BuilderMixinSingleCriticFactory.__init__(self)
+        self._params: DQNParams = DQNParams()
+
+    def with_dqn_params(self, params: DQNParams) -> Self:
+        self._params = params
+        return self
+
+    @abstractmethod
+    def _create_agent_factory(self) -> AgentFactory:
+        return DQNAgentFactory(
+            self._params,
+            self._sampling_config,
+            self._get_critic_factory(0),
+            self._get_optim_factory(),
+        )
+
+
+class DDPGExperimentBuilder(
+    RLExperimentBuilder,
+    _BuilderMixinActorFactory_ContinuousDeterministic,
+    _BuilderMixinSingleCriticCanUseActorFactory,
+):
+    def __init__(
+        self,
+        experiment_config: RLExperimentConfig,
+        env_factory: EnvFactory,
+        sampling_config: RLSamplingConfig,
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory_ContinuousDeterministic.__init__(self)
-        _BuilderMixinSingleCriticFactory.__init__(self)
+        _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
         self._params: DDPGParams = DDPGParams()
-        self._env_config = env_config
 
     def with_ddpg_params(self, params: DDPGParams) -> Self:
         self._params = params

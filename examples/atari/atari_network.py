@@ -8,6 +8,7 @@ from torch import nn
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.module.actor import ActorFactory
 from tianshou.highlevel.module.core import Module, ModuleFactory, TDevice
+from tianshou.highlevel.module.critic import CriticFactory
 from tianshou.utils.net.common import BaseActor
 from tianshou.utils.net.discrete import Actor, NoisyLinear
 
@@ -224,6 +225,21 @@ class QRDQN(DQN):
         obs, state = super().forward(obs)
         obs = obs.view(-1, self.action_num, self.num_quantiles)
         return obs, state
+
+
+class CriticFactoryAtariDQN(CriticFactory):
+    def create_module(
+        self,
+        envs: Environments,
+        device: TDevice,
+        use_action: bool,
+    ) -> torch.nn.Module:
+        assert use_action
+        return DQN(
+            *envs.get_observation_shape(),
+            envs.get_action_shape(),
+            device=device,
+        ).to(device)
 
 
 class ActorFactoryAtariDQN(ActorFactory):

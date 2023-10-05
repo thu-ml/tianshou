@@ -36,7 +36,9 @@ class ModuleFactory(ToStringMixin, ABC):
         pass
 
 
-class ModuleFactoryNet(ModuleFactory):
+class ModuleFactoryNet(
+    ModuleFactory,
+):  # TODO This is unused and broken; use it in ActorFactory* and so on?
     def __init__(self, hidden_sizes: int | Sequence[int]):
         self.hidden_sizes = hidden_sizes
 
