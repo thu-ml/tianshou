@@ -7,9 +7,9 @@ from collections.abc import Sequence
 from jsonargparse import CLI
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
-    RLExperimentConfig,
+    ExperimentConfig,
     TD3ExperimentBuilder,
 )
 from tianshou.highlevel.params.env_param import MaxActionScaled
@@ -21,7 +21,7 @@ from tianshou.utils import logging
 
 
 def main(
-    experiment_config: RLExperimentConfig,
+    experiment_config: ExperimentConfig,
     task: str = "Ant-v3",
     buffer_size: int = 1000000,
     hidden_sizes: Sequence[int] = (256, 256),
@@ -46,7 +46,7 @@ def main(
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
     log_name = os.path.join(task, "td3", str(experiment_config.seed), now)
 
-    sampling_config = RLSamplingConfig(
+    sampling_config = SamplingConfig(
         num_epochs=epoch,
         step_per_epoch=step_per_epoch,
         num_train_envs=training_num,

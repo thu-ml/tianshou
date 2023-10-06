@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class RLSamplingConfig:
+class SamplingConfig:
     """Sampling, epochs, parallelization, buffers, collectors, and batching."""
 
     # TODO: What are reasonable defaults?

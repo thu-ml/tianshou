@@ -8,10 +8,10 @@ from typing import Literal
 from jsonargparse import CLI
 
 from examples.mujoco.mujoco_env import MujocoEnvFactory
-from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     A2CExperimentBuilder,
-    RLExperimentConfig,
+    ExperimentConfig,
 )
 from tianshou.highlevel.optim import OptimizerFactoryRMSprop
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
@@ -20,7 +20,7 @@ from tianshou.utils import logging
 
 
 def main(
-    experiment_config: RLExperimentConfig,
+    experiment_config: ExperimentConfig,
     task: str = "Ant-v3",
     buffer_size: int = 4096,
     hidden_sizes: Sequence[int] = (64, 64),
@@ -44,7 +44,7 @@ def main(
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
     log_name = os.path.join(task, "ppo", str(experiment_config.seed), now)
 
-    sampling_config = RLSamplingConfig(
+    sampling_config = SamplingConfig(
         num_epochs=epoch,
         step_per_epoch=step_per_epoch,
         batch_size=batch_size,

@@ -2,12 +2,12 @@ from test.highlevel.env_factory import ContinuousTestEnvFactory
 
 import pytest
 
-from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     A2CExperimentBuilder,
     DDPGExperimentBuilder,
     PPOExperimentBuilder,
-    RLExperimentConfig,
+    ExperimentConfig,
     SACExperimentBuilder,
     TD3ExperimentBuilder,
 )
@@ -25,8 +25,8 @@ from tianshou.highlevel.experiment import (
 )
 def test_experiment_builder_continuous_default_params(builder_cls):
     env_factory = ContinuousTestEnvFactory()
-    sampling_config = RLSamplingConfig(num_epochs=1, step_per_epoch=100)
-    experiment_config = RLExperimentConfig()
+    sampling_config = SamplingConfig(num_epochs=1, step_per_epoch=100)
+    experiment_config = ExperimentConfig()
     builder = builder_cls(
         experiment_config=experiment_config,
         env_factory=env_factory,

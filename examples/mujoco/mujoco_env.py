@@ -3,7 +3,7 @@ import warnings
 import gymnasium as gym
 
 from tianshou.env import ShmemVectorEnv, VectorEnvNormObs
-from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import ContinuousEnvironments, EnvFactory
 
 try:
@@ -41,7 +41,7 @@ def make_mujoco_env(task: str, seed: int, num_train_envs: int, num_test_envs: in
 
 
 class MujocoEnvFactory(EnvFactory):
-    def __init__(self, task: str, seed: int, sampling_config: RLSamplingConfig):
+    def __init__(self, task: str, seed: int, sampling_config: SamplingConfig):
         self.task = task
         self.sampling_config = sampling_config
         self.seed = seed

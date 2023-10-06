@@ -18,7 +18,7 @@ from tianshou.highlevel.agent import (
     SACAgentFactory,
     TD3AgentFactory,
 )
-from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import EnvFactory, Environments
 from tianshou.highlevel.logger import DefaultLoggerFactory, LoggerFactory
 from tianshou.highlevel.module.actor import (
@@ -53,7 +53,7 @@ TTrainer = TypeVar("TTrainer", bound=BaseTrainer)
 
 
 @dataclass
-class RLExperimentConfig:
+class ExperimentConfig:
     """Generic config for setting up the experiment, not RL or training specific."""
 
     seed: int = 42
@@ -69,10 +69,10 @@ class RLExperimentConfig:
     watch_num_episodes = 10
 
 
-class RLExperiment(Generic[TPolicy, TTrainer], ToStringMixin):
+class Experiment(Generic[TPolicy, TTrainer], ToStringMixin):
     def __init__(
         self,
-        config: RLExperimentConfig,
+        config: ExperimentConfig,
         env_factory: EnvFactory | Callable[[PersistableConfigProtocol | None], Environments],
         agent_factory: AgentFactory,
         logger_factory: LoggerFactory | None = None,
@@ -153,12 +153,12 @@ class RLExperiment(Generic[TPolicy, TTrainer], ToStringMixin):
 TBuilder = TypeVar("TBuilder", bound="RLExperimentBuilder")
 
 
-class RLExperimentBuilder:
+class ExperimentBuilder:
     def __init__(
         self,
-        experiment_config: RLExperimentConfig,
+        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
     ):
         self._config = experiment_config
         self._env_factory = env_factory
@@ -223,12 +223,12 @@ class RLExperimentBuilder:
         else:
             return self._optim_factory
 
-    def build(self) -> RLExperiment:
+    def build(self) -> Experiment:
         agent_factory = self._create_agent_factory()
         agent_factory.set_trainer_callbacks(self._trainer_callbacks)
         if self._policy_wrapper_factory:
             agent_factory.set_policy_wrapper_factory(self._policy_wrapper_factory)
-        experiment = RLExperiment(
+        experiment = Experiment(
             self._config,
             self._env_factory,
             agent_factory,
@@ -394,15 +394,15 @@ class _BuilderMixinDualCriticFactory(_BuilderMixinCriticsFactory):
 
 
 class A2CExperimentBuilder(
-    RLExperimentBuilder,
+    ExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
     _BuilderMixinSingleCriticCanUseActorFactory,
 ):
     def __init__(
         self,
-        experiment_config: RLExperimentConfig,
+        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
         env_config: PersistableConfigProtocol | None = None,
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
@@ -428,15 +428,15 @@ class A2CExperimentBuilder(
 
 
 class PPOExperimentBuilder(
-    RLExperimentBuilder,
+    ExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
     _BuilderMixinSingleCriticCanUseActorFactory,
 ):
     def __init__(
         self,
-        experiment_config: RLExperimentConfig,
+        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
@@ -460,14 +460,14 @@ class PPOExperimentBuilder(
 
 
 class DQNExperimentBuilder(
-    RLExperimentBuilder,
+    ExperimentBuilder,
     _BuilderMixinActorFactory,
 ):
     def __init__(
         self,
-        experiment_config: RLExperimentConfig,
+        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory.__init__(self, ContinuousActorType.UNSUPPORTED)
@@ -488,15 +488,15 @@ class DQNExperimentBuilder(
 
 
 class DDPGExperimentBuilder(
-    RLExperimentBuilder,
+    ExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousDeterministic,
     _BuilderMixinSingleCriticCanUseActorFactory,
 ):
     def __init__(
         self,
-        experiment_config: RLExperimentConfig,
+        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory_ContinuousDeterministic.__init__(self)
@@ -519,15 +519,15 @@ class DDPGExperimentBuilder(
 
 
 class SACExperimentBuilder(
-    RLExperimentBuilder,
+    ExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousGaussian,
     _BuilderMixinDualCriticFactory,
 ):
     def __init__(
         self,
-        experiment_config: RLExperimentConfig,
+        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
@@ -550,15 +550,15 @@ class SACExperimentBuilder(
 
 
 class TD3ExperimentBuilder(
-    RLExperimentBuilder,
+    ExperimentBuilder,
     _BuilderMixinActorFactory_ContinuousDeterministic,
     _BuilderMixinDualCriticFactory,
 ):
     def __init__(
         self,
-        experiment_config: RLExperimentConfig,
+        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
     ):
         super().__init__(experiment_config, env_factory, sampling_config)
         _BuilderMixinActorFactory_ContinuousDeterministic.__init__(self)

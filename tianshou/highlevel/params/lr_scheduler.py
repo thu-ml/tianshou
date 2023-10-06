@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 
-from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.config import SamplingConfig
 from tianshou.utils.string import ToStringMixin
 
 
@@ -15,7 +15,7 @@ class LRSchedulerFactory(ToStringMixin, ABC):
 
 
 class LRSchedulerFactoryLinear(LRSchedulerFactory):
-    def __init__(self, sampling_config: RLSamplingConfig):
+    def __init__(self, sampling_config: SamplingConfig):
         self.sampling_config = sampling_config
 
     def create_scheduler(self, optim: torch.optim.Optimizer) -> LRScheduler:

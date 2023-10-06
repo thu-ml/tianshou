@@ -6,7 +6,7 @@ import gymnasium
 import torch
 
 from tianshou.data import Collector, ReplayBuffer, VectorReplayBuffer
-from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import Environments
 from tianshou.highlevel.logger import Logger
 from tianshou.highlevel.module.actor import (
@@ -54,7 +54,7 @@ TPolicy = TypeVar("TPolicy", bound=BasePolicy)
 
 
 class AgentFactory(ABC, ToStringMixin):
-    def __init__(self, sampling_config: RLSamplingConfig, optim_factory: OptimizerFactory):
+    def __init__(self, sampling_config: SamplingConfig, optim_factory: OptimizerFactory):
         self.sampling_config = sampling_config
         self.optim_factory = optim_factory
         self.policy_wrapper_factory: PolicyWrapperFactory | None = None
@@ -352,7 +352,7 @@ class ActorCriticAgentFactory(
     def __init__(
         self,
         params: TParams,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
@@ -399,7 +399,7 @@ class A2CAgentFactory(ActorCriticAgentFactory[A2CParams, A2CPolicy]):
     def __init__(
         self,
         params: A2CParams,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
@@ -423,7 +423,7 @@ class PPOAgentFactory(ActorCriticAgentFactory[PPOParams, PPOPolicy]):
     def __init__(
         self,
         params: PPOParams,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optimizer_factory: OptimizerFactory,
@@ -447,7 +447,7 @@ class DQNAgentFactory(OffpolicyAgentFactory):
     def __init__(
         self,
         params: DQNParams,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
         optim_factory: OptimizerFactory,
     ):
@@ -483,7 +483,7 @@ class DDPGAgentFactory(OffpolicyAgentFactory, _ActorAndCriticMixin):
     def __init__(
         self,
         params: DDPGParams,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
         critic_factory: CriticFactory,
         optim_factory: OptimizerFactory,
@@ -526,7 +526,7 @@ class SACAgentFactory(OffpolicyAgentFactory, _ActorAndDualCriticsMixin):
     def __init__(
         self,
         params: SACParams,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
         critic1_factory: CriticFactory,
         critic2_factory: CriticFactory,
@@ -575,7 +575,7 @@ class TD3AgentFactory(OffpolicyAgentFactory, _ActorAndDualCriticsMixin):
     def __init__(
         self,
         params: TD3Params,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
         actor_factory: ActorFactory,
         critic1_factory: CriticFactory,
         critic2_factory: CriticFactory,

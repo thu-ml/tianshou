@@ -10,10 +10,10 @@ from examples.atari.atari_network import (
     FeatureNetFactoryDQN,
 )
 from examples.atari.atari_wrapper import AtariEnvFactory, AtariStopCallback
-from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     DQNExperimentBuilder,
-    RLExperimentConfig,
+    ExperimentConfig,
 )
 from tianshou.highlevel.params.policy_params import DQNParams
 from tianshou.highlevel.params.policy_wrapper import (
@@ -25,7 +25,7 @@ from tianshou.utils import logging
 
 
 def main(
-    experiment_config: RLExperimentConfig,
+    experiment_config: ExperimentConfig,
     task: str = "PongNoFrameskip-v4",
     scale_obs: int = 0,
     eps_test: float = 0.005,
@@ -52,7 +52,7 @@ def main(
     now = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
     log_name = os.path.join(task, "ppo", str(experiment_config.seed), now)
 
-    sampling_config = RLSamplingConfig(
+    sampling_config = SamplingConfig(
         num_epochs=epoch,
         step_per_epoch=step_per_epoch,
         batch_size=batch_size,

@@ -9,7 +9,7 @@ import gymnasium as gym
 import numpy as np
 
 from tianshou.env import ShmemVectorEnv
-from tianshou.highlevel.config import RLSamplingConfig
+from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.env import DiscreteEnvironments, EnvFactory
 from tianshou.highlevel.trainer import TrainerStopCallback, TrainingContext
 
@@ -379,7 +379,7 @@ class AtariEnvFactory(EnvFactory):
         self,
         task: str,
         seed: int,
-        sampling_config: RLSamplingConfig,
+        sampling_config: SamplingConfig,
         frame_stack: int,
         scale: int = 0,
     ):
