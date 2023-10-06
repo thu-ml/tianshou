@@ -58,7 +58,7 @@ def main(
     env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
 
     experiment = (
-        A2CExperimentBuilder(experiment_config, env_factory, sampling_config)
+        A2CExperimentBuilder(env_factory, experiment_config, sampling_config)
         .with_a2c_params(
             A2CParams(
                 discount_factor=gamma,

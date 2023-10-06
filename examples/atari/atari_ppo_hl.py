@@ -13,8 +13,8 @@ from examples.atari.atari_network import (
 from examples.atari.atari_wrapper import AtariEnvFactory, AtariStopCallback
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
-    PPOExperimentBuilder,
     ExperimentConfig,
+    PPOExperimentBuilder,
 )
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
@@ -76,7 +76,7 @@ def main(
     env_factory = AtariEnvFactory(task, experiment_config.seed, sampling_config, frames_stack)
 
     builder = (
-        PPOExperimentBuilder(experiment_config, env_factory, sampling_config)
+        PPOExperimentBuilder(env_factory, experiment_config, sampling_config)
         .with_ppo_params(
             PPOParams(
                 discount_factor=gamma,

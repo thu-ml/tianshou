@@ -58,7 +58,7 @@ def main(
     env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
 
     experiment = (
-        SACExperimentBuilder(experiment_config, env_factory, sampling_config)
+        SACExperimentBuilder(env_factory, experiment_config, sampling_config)
         .with_sac_params(
             SACParams(
                 tau=tau,

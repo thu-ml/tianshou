@@ -94,7 +94,7 @@ def main(
             policy.set_eps(eps_test)
 
     builder = (
-        DQNExperimentBuilder(experiment_config, env_factory, sampling_config)
+        DQNExperimentBuilder(env_factory, experiment_config, sampling_config)
         .with_dqn_params(
             DQNParams(
                 discount_factor=gamma,

@@ -57,7 +57,7 @@ def main(
     env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
 
     experiment = (
-        DDPGExperimentBuilder(experiment_config, env_factory, sampling_config)
+        DDPGExperimentBuilder(env_factory, experiment_config, sampling_config)
         .with_ddpg_params(
             DDPGParams(
                 actor_lr=actor_lr,

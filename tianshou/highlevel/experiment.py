@@ -156,8 +156,8 @@ TBuilder = TypeVar("TBuilder", bound="RLExperimentBuilder")
 class ExperimentBuilder:
     def __init__(
         self,
-        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
+        experiment_config: ExperimentConfig,
         sampling_config: SamplingConfig,
     ):
         self._config = experiment_config
@@ -400,12 +400,12 @@ class A2CExperimentBuilder(
 ):
     def __init__(
         self,
-        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
+        experiment_config: ExperimentConfig,
         sampling_config: SamplingConfig,
         env_config: PersistableConfigProtocol | None = None,
     ):
-        super().__init__(experiment_config, env_factory, sampling_config)
+        super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
         self._params: A2CParams = A2CParams()
@@ -434,11 +434,11 @@ class PPOExperimentBuilder(
 ):
     def __init__(
         self,
-        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
+        experiment_config: ExperimentConfig,
         sampling_config: SamplingConfig,
     ):
-        super().__init__(experiment_config, env_factory, sampling_config)
+        super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
         self._params: PPOParams = PPOParams()
@@ -465,11 +465,11 @@ class DQNExperimentBuilder(
 ):
     def __init__(
         self,
-        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
+        experiment_config: ExperimentConfig,
         sampling_config: SamplingConfig,
     ):
-        super().__init__(experiment_config, env_factory, sampling_config)
+        super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory.__init__(self, ContinuousActorType.UNSUPPORTED)
         self._params: DQNParams = DQNParams()
 
@@ -494,11 +494,11 @@ class DDPGExperimentBuilder(
 ):
     def __init__(
         self,
-        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
+        experiment_config: ExperimentConfig,
         sampling_config: SamplingConfig,
     ):
-        super().__init__(experiment_config, env_factory, sampling_config)
+        super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousDeterministic.__init__(self)
         _BuilderMixinSingleCriticCanUseActorFactory.__init__(self)
         self._params: DDPGParams = DDPGParams()
@@ -525,11 +525,11 @@ class SACExperimentBuilder(
 ):
     def __init__(
         self,
-        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
+        experiment_config: ExperimentConfig,
         sampling_config: SamplingConfig,
     ):
-        super().__init__(experiment_config, env_factory, sampling_config)
+        super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousGaussian.__init__(self)
         _BuilderMixinDualCriticFactory.__init__(self)
         self._params: SACParams = SACParams()
@@ -556,11 +556,11 @@ class TD3ExperimentBuilder(
 ):
     def __init__(
         self,
-        experiment_config: ExperimentConfig,
         env_factory: EnvFactory,
+        experiment_config: ExperimentConfig,
         sampling_config: SamplingConfig,
     ):
-        super().__init__(experiment_config, env_factory, sampling_config)
+        super().__init__(env_factory, experiment_config, sampling_config)
         _BuilderMixinActorFactory_ContinuousDeterministic.__init__(self)
         _BuilderMixinDualCriticFactory.__init__(self)
         self._params: TD3Params = TD3Params()

@@ -62,7 +62,7 @@ def main(
     env_factory = MujocoEnvFactory(task, experiment_config.seed, sampling_config)
 
     experiment = (
-        TD3ExperimentBuilder(experiment_config, env_factory, sampling_config)
+        TD3ExperimentBuilder(env_factory, experiment_config, sampling_config)
         .with_td3_params(
             TD3Params(
                 tau=tau,

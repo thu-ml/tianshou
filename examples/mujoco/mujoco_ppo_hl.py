@@ -11,8 +11,8 @@ from torch.distributions import Independent, Normal
 from examples.mujoco.mujoco_env import MujocoEnvFactory
 from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
-    PPOExperimentBuilder,
     ExperimentConfig,
+    PPOExperimentBuilder,
 )
 from tianshou.highlevel.params.lr_scheduler import LRSchedulerFactoryLinear
 from tianshou.highlevel.params.policy_params import PPOParams
@@ -66,7 +66,7 @@ def main(
         return Independent(Normal(*logits), 1)
 
     experiment = (
-        PPOExperimentBuilder(experiment_config, env_factory, sampling_config)
+        PPOExperimentBuilder(env_factory, experiment_config, sampling_config)
         .with_ppo_params(
             PPOParams(
                 discount_factor=gamma,

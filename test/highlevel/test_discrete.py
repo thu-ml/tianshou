@@ -6,8 +6,8 @@ from tianshou.highlevel.config import SamplingConfig
 from tianshou.highlevel.experiment import (
     A2CExperimentBuilder,
     DQNExperimentBuilder,
-    PPOExperimentBuilder,
     ExperimentConfig,
+    PPOExperimentBuilder,
 )
 
 
