@@ -314,10 +314,11 @@ Here it is:
             if optim is None:
                 optim = torch.optim.Adam(net.parameters(), lr=args.lr)
             agent_learn = DQNPolicy(
-                net,
-                optim,
-                args.gamma,
-                args.n_step,
+                model=net,
+                optim=optim,
+                gamma=args.gamma,
+                action_space=env.action_space,
+                estimate_space=args.n_step,
                 target_update_freq=args.target_update_freq
             )
             if args.resume_path:
@@ -328,7 +329,7 @@ Here it is:
                 agent_opponent = deepcopy(agent_learn)
                 agent_opponent.load_state_dict(torch.load(args.opponent_path))
             else:
-                agent_opponent = RandomPolicy()
+                agent_opponent = RandomPolicy(action_space=env.action_space)
 
         if args.agent_id == 1:
             agents = [agent_learn, agent_opponent]

@@ -110,7 +110,7 @@ class BasePolicy(ABC, nn.Module):
         elif isinstance(action_space, Box):
             self.action_type = "continuous"
         else:
-            ValueError(f"Unsupported action space: {action_space}.")
+            raise ValueError(f"Unsupported action space: {action_space}.")
         self.agent_id = 0
         self.updating = False
         self.action_scaling = action_scaling

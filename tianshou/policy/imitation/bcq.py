@@ -56,8 +56,8 @@ class BCQPolicy(BasePolicy):
         action_space: gym.Space,
         vae: VAE,
         vae_optim: torch.optim.Optimizer,
-        critic2: torch.nn.Module | None,
-        critic2_optim: torch.optim.Optimizer | None,
+        critic2: torch.nn.Module | None = None,
+        critic2_optim: torch.optim.Optimizer | None = None,
         # TODO: remove? Many policies don't use this
         device: str | torch.device = "cpu",
         gamma: float = 0.99,

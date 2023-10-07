@@ -31,6 +31,8 @@ class DiscreteSACPolicy(SACPolicy):
     :param alpha: entropy regularization coefficient.
         If a tuple (target_entropy, log_alpha, alpha_optim) is provided,
         then alpha is automatically tuned.
+    :param estimation_step: the number of steps to look ahead for calculating
+    :param observation_space: Env's observation space.
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
         in optimizer in each policy.update()
 

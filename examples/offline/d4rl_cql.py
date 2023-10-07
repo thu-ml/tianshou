@@ -280,14 +280,14 @@ def test_cql():
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = CQLPolicy(
-        actor,
-        actor_optim,
-        critic,
-        critic_optim,
-        critic2,
-        critic2_optim,
-        calibrated=args.calibrated,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic,
+        critic_optim=critic_optim,
         action_space=env.action_space,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
+        calibrated=args.calibrated,
         cql_alpha_lr=args.cql_alpha_lr,
         cql_weight=args.cql_weight,
         tau=args.tau,

@@ -34,11 +34,11 @@ class TD3Policy(DDPGPolicy):
     :param policy_noise: the noise used in updating policy network.
     :param update_actor_freq: the update frequency of actor network.
     :param noise_clip: the clipping range used in updating policy network.
-    :param action_scaling: whether to map actions from range [-1, 1]
-        to range[action_spaces.low, action_spaces.high].
-    :param action_bound_method: method to bound action to range [-1, 1],
-        can be either "clip" (for simply clipping the action)
-        or empty string for no bounding. Only used if the action_space is continuous.
+    :param observation_space: Env's observation space.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range
+        of action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
         in optimizer in each policy.update()
 
@@ -65,9 +65,9 @@ class TD3Policy(DDPGPolicy):
         update_actor_freq: int = 2,
         noise_clip: float = 0.5,
         estimation_step: int = 1,
+        observation_space: gym.Space | None = None,
         action_scaling: bool = True,
         action_bound_method: Literal["clip"] | None = "clip",
-        observation_space: gym.Space | None = None,
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         # TODO: reduce duplication with SAC.

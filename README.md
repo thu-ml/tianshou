@@ -224,7 +224,14 @@ optim = torch.optim.Adam(net.parameters(), lr=lr)
 Setup policy and collectors:
 
 ```python
-policy = ts.policy.DQNPolicy(net, optim, gamma, n_step, target_update_freq=target_freq)
+policy = ts.policy.DQNPolicy(
+    model=net,
+    optim=optim,
+    gamma=gamma, 
+    action_space=env.action_space, 
+    estimate_space=n_step,
+    target_update_freq=target_freq
+)
 train_collector = ts.data.Collector(policy, train_envs, ts.data.VectorReplayBuffer(buffer_size, train_num), exploration_noise=True)
 test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)  # because DQN uses epsilon-greedy method
 ```

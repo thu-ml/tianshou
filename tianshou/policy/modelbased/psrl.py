@@ -1,4 +1,4 @@
-from typing import Any, Literal, cast
+from typing import Any, cast
 
 import gymnasium as gym
 import numpy as np
@@ -158,10 +158,6 @@ class PSRLPolicy(BasePolicy):
     :param add_done_loop: whether to add an extra self-loop for the
         terminal state in MDP. Default to False.
     :param observation_space: Env's observation space.
-    :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Only used if the action_space is continuous.
-    :param action_bound_method: method to bound action to range [-1, 1].
-        Only used if the action_space is continuous.
     :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
@@ -176,20 +172,18 @@ class PSRLPolicy(BasePolicy):
         trans_count_prior: np.ndarray,
         rew_mean_prior: np.ndarray,
         rew_std_prior: np.ndarray,
-        action_space: gym.Space,
+        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
         epsilon: float = 0.01,
         add_done_loop: bool = False,
         observation_space: gym.Space | None = None,
-        action_scaling: bool = False,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
             action_space=action_space,
             observation_space=observation_space,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
+            action_scaling=False,
+            action_bound_method=None,
             lr_scheduler=lr_scheduler,
         )
         assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"

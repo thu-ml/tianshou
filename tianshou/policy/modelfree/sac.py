@@ -44,6 +44,7 @@ class SACPolicy(DDPGPolicy):
     :param action_bound_method: method to bound action to range [-1, 1],
         can be either "clip" (for simply clipping the action)
         or empty string for no bounding. Only used if the action_space is continuous.
+    :param observation_space: Env's observation space.
     :param lr_scheduler: a learning rate scheduler that adjusts the learning rate
         in optimizer in each policy.update()
 

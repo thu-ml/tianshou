@@ -20,20 +20,21 @@ class DiscreteCRRPolicy(PGPolicy):
     :param critic: the action-value critic (i.e., Q function)
         network. (s -> Q(s, \*))
     :param optim: a torch.optim for optimizing the model.
-    :param discount_factor: in [0, 1]. Default to 0.99.
+    :param discount_factor: in [0, 1].
     :param str policy_improvement_mode: type of the weight function f. Possible
-        values: "binary"/"exp"/"all". Default to "exp".
+        values: "binary"/"exp"/"all".
     :param ratio_upper_bound: when policy_improvement_mode is "exp", the value
-        of the exp function is upper-bounded by this parameter. Default to 20.
+        of the exp function is upper-bounded by this parameter.
     :param beta: when policy_improvement_mode is "exp", this is the denominator
-        of the exp function. Default to 1.
+        of the exp function.
     :param min_q_weight: weight for CQL loss/regularizer. Default to 10.
     :param target_update_freq: the target network update frequency (0 if
-        you do not use the target network). Default to 0.
-    :param reward_normalization: normalize the reward to Normal(0, 1).
-        Default to False.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
+        you do not use the target network).
+    :param reward_normalization: if True, will normalize the *returns*
+        by subtracting the running mean and dividing by the running standard deviation.
+        Can be detrimental to performance! See TODO in process_fn.
+    :param observation_space: Env's observation space.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
         Please refer to :class:`~tianshou.policy.PGPolicy` for more detailed
@@ -46,17 +47,15 @@ class DiscreteCRRPolicy(PGPolicy):
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        action_space: gym.Space,
+        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
-        policy_improvement_mode: str = "exp",
+        policy_improvement_mode: Literal["exp", "binary", "all"] = "exp",
         ratio_upper_bound: float = 20.0,
         beta: float = 1.0,
         min_q_weight: float = 10.0,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
         observation_space: gym.Space | None = None,
-        action_scaling: bool = False,
-        action_bound_method: Literal["clip", "tanh"] | None = "clip",
         lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
@@ -67,8 +66,8 @@ class DiscreteCRRPolicy(PGPolicy):
             discount_factor=discount_factor,
             reward_normalization=reward_normalization,
             observation_space=observation_space,
-            action_scaling=action_scaling,
-            action_bound_method=action_bound_method,
+            action_scaling=False,
+            action_bound_method=None,
             lr_scheduler=lr_scheduler,
         )
         self.critic = critic
@@ -83,7 +82,6 @@ class DiscreteCRRPolicy(PGPolicy):
         else:
             self.actor_old = self.actor
             self.critic_old = self.critic
-        assert policy_improvement_mode in ["exp", "binary", "all"]
         self._policy_improvement_mode = policy_improvement_mode
         self._ratio_upper_bound = ratio_upper_bound
         self._beta = beta
