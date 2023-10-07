@@ -231,6 +231,7 @@ class PSRLPolicy(BasePolicy):
         rew_count = np.zeros((n_s, n_a))
         for minibatch in batch.split(size=1):
             obs, act, obs_next = minibatch.obs, minibatch.act, minibatch.obs_next
+            obs_next = cast(np.ndarray, obs_next)
             assert not isinstance(obs, BatchProtocol), "Observations cannot be Batches here"
             trans_count[obs, act, obs_next] += 1
             rew_sum[obs, act] += minibatch.rew

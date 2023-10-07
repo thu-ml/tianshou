@@ -9,6 +9,7 @@ class RolloutBatchProtocol(BatchProtocol):
     """Typically, the outcome of sampling from a replay buffer."""
 
     obs: arr_type | BatchProtocol
+    obs_next: arr_type | BatchProtocol
     act: arr_type
     rew: np.ndarray
     terminated: arr_type

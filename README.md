@@ -8,9 +8,7 @@
 
 > ⚠️️ **Transition to Gymnasium**: The maintainers of OpenAI Gym have recently released [Gymnasium](http://github.com/Farama-Foundation/Gymnasium), 
 > which is where future maintenance of OpenAI Gym will be taking place. 
-> Tianshou has transitioned to internally using Gymnasium environments. You can still use OpenAI Gym environments with
-> Tianshou vector environments, but they will be wrapped in a compatibility layer, which could be a source of issues.
-> We recommend that you update your environment code to Gymnasium. If you want to continue using OpenAI Gym with
+> Tianshou has transitioned to internally using Gymnasium environments. If you want to continue using OpenAI Gym with
 > Tianshou, you need to manually install Gym and [Shimmy](https://github.com/Farama-Foundation/Shimmy) (the compatibility layer).
 
 **Tianshou** ([天授](https://baike.baidu.com/item/%E5%A4%A9%E6%8E%88)) is a reinforcement learning platform based on pure PyTorch. Unlike existing reinforcement learning libraries, which are mainly based on TensorFlow, have many nested classes, unfriendly API, or slow-speed, Tianshou provides a fast-speed modularized framework and pythonic API for building the deep reinforcement learning agent with the least number of lines of code. The supported interface algorithms currently include:
@@ -69,7 +67,7 @@ In Chinese, Tianshou means divinely ordained and is derived to the gift of being
 
 ## Installation
 
-Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/) and [conda-forge](https://github.com/conda-forge/tianshou-feedstock). It requires Python >= 3.8.
+Tianshou is currently hosted on [PyPI](https://pypi.org/project/tianshou/) and [conda-forge](https://github.com/conda-forge/tianshou-feedstock). It requires Python >= 3.11.
 
 You can simply install Tianshou from PyPI with the following command:
 
@@ -234,13 +232,21 @@ test_collector = ts.data.Collector(policy, test_envs, exploration_noise=True)  #
 Let's train it:
 
 ```python
-result = ts.trainer.offpolicy_trainer(
-    policy, train_collector, test_collector, epoch, step_per_epoch, step_per_collect,
-    test_num, batch_size, update_per_step=1 / step_per_collect,
+result = ts.trainer.OffpolicyTrainer(
+    policy=policy,
+    train_collector=train_collector,
+    test_collector=test_collector,
+    max_epoch=epoch,
+    step_per_epoch=step_per_epoch,
+    step_per_collect=step_per_collect,
+    episode_per_test=test_num,
+    batch_size=batch_size,
+    update_per_step=update_per_step=1 / step_per_collect,
     train_fn=lambda epoch, env_step: policy.set_eps(eps_train),
     test_fn=lambda epoch, env_step: policy.set_eps(eps_test),
     stop_fn=lambda mean_rewards: mean_rewards >= env.spec.reward_threshold,
-    logger=logger)
+    logger=logger,
+).run()
 print(f'Finished training! Use {result["duration"]}')
 ```
 

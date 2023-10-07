@@ -418,6 +418,8 @@ class Batch(BatchProtocol):
                 batch_dict = cast(Sequence[dict | BatchProtocol], batch_dict)
                 self.stack_(batch_dict)
         if len(kwargs) > 0:
+            # TODO: that's a rather weird pattern, is it really needed?
+            # Feels like kwargs could be just merged into batch_dict in the beginning
             self.__init__(kwargs, copy=copy)  # type: ignore
 
     def __setattr__(self, key: str, value: Any) -> None:

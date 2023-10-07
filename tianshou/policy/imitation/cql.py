@@ -4,9 +4,11 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+from overrides import override
 from torch.nn.utils import clip_grad_norm_
 
 from tianshou.data import Batch, ReplayBuffer, to_torch
+from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.exploration import BaseNoise
 from tianshou.policy import SACPolicy
@@ -43,6 +45,9 @@ class CQLPolicy(SACPolicy):
     :param alpha_min: Lower bound for clipping cql_alpha.
     :param alpha_max: Upper bound for clipping cql_alpha.
     :param clip_grad: Clip_grad for updating critic network.
+    :param calibrated: calibrate Q-values as in CalQL paper `arXiv:2303.05479`.
+        Useful for offline pre-training followed by online training,
+        and also was observed to achieve better results than vanilla cql.
     :param device: Which device to create this model on.
     :param estimation_step: Estimation steps.
     :param exploration_noise: Type of exploration noise.
@@ -84,6 +89,7 @@ class CQLPolicy(SACPolicy):
         alpha_min: float = 0.0,
         alpha_max: float = 1e6,
         clip_grad: float = 1.0,
+        calibrated: bool = True,
         # TODO: why does this one have device? Almost no other policies have it
         device: str | torch.device = "cpu",
         estimation_step: int = 1,
@@ -133,6 +139,8 @@ class CQLPolicy(SACPolicy):
         self.alpha_min = alpha_min
         self.alpha_max = alpha_max
         self.clip_grad = clip_grad
+
+        self.calibrated = calibrated
 
     def train(self, mode: bool = True) -> Self:
         """Set the module in training mode, except for the target network."""
@@ -186,6 +194,31 @@ class CQLPolicy(SACPolicy):
         random_log_prob2 = np.log(0.5 ** act.shape[-1])
 
         return random_value1 - random_log_prob1, random_value2 - random_log_prob2
+
+    @override
+    def process_buffer(self, buffer: TBuffer) -> TBuffer:
+        """If `self.calibrated = True`, adds `calibration_returns` to buffer._meta.
+
+        :param buffer:
+        :return:
+        """
+        if self.calibrated:
+            # otherwise _meta hack cannot work
+            assert isinstance(buffer, ReplayBuffer)
+            batch, indices = buffer.sample(0)
+            returns, _ = self.compute_episodic_return(
+                batch=batch,
+                buffer=buffer,
+                indices=indices,
+                gamma=self.gamma,
+                gae_lambda=1.0,
+            )
+            # TODO: don't access _meta directly
+            buffer._meta = cast(
+                RolloutBatchProtocol,
+                Batch(**buffer._meta.__dict__, calibration_returns=returns),
+            )
+        return buffer
 
     def process_fn(
         self,
@@ -271,6 +304,23 @@ class CQLPolicy(SACPolicy):
             random_value2,
         ]:
             value.reshape(batch_size, self.num_repeat_actions, 1)
+
+        if self.calibrated:
+            returns = (
+                batch.calibration_returns.unsqueeze(1)
+                .repeat(
+                    (1, self.num_repeat_actions),
+                )
+                .view(-1, 1)
+            )
+            random_value1 = torch.max(random_value1, returns)
+            random_value2 = torch.max(random_value2, returns)
+
+            current_pi_value1 = torch.max(current_pi_value1, returns)
+            current_pi_value2 = torch.max(current_pi_value2, returns)
+
+            next_pi_value1 = torch.max(next_pi_value1, returns)
+            next_pi_value2 = torch.max(next_pi_value2, returns)
 
         # cat q values
         cat_q1 = torch.cat([random_value1, current_pi_value1, next_pi_value1], 1)

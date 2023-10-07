@@ -15,7 +15,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
 
 from tianshou.data import Batch, Collector, ReplayBuffer, VectorReplayBuffer
-from tianshou.env import SubprocVectorEnv
+from tianshou.env import SubprocVectorEnv, VectorEnvNormObs
 from tianshou.policy import GAILPolicy
 from tianshou.trainer import OnpolicyTrainer
 from tianshou.utils import TensorboardLogger
@@ -97,15 +97,12 @@ def test_gail(args=get_args()):
     # train_envs = gym.make(args.task)
     train_envs = SubprocVectorEnv(
         [lambda: NoRewardEnv(gym.make(args.task)) for _ in range(args.training_num)],
-        norm_obs=True,
     )
+    train_envs = VectorEnvNormObs(train_envs)
     # test_envs = gym.make(args.task)
-    test_envs = SubprocVectorEnv(
-        [lambda: gym.make(args.task) for _ in range(args.test_num)],
-        norm_obs=True,
-        obs_rms=train_envs.obs_rms,
-        update_obs_rms=False,
-    )
+    test_envs = SubprocVectorEnv([lambda: gym.make(args.task) for _ in range(args.test_num)])
+    test_envs = VectorEnvNormObs(test_envs, update_obs_rms=False)
+    test_envs.set_obs_rms(train_envs.get_obs_rms())
 
     # seed
     np.random.seed(args.seed)

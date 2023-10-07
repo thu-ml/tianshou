@@ -12,6 +12,7 @@ from torch import nn
 
 from tianshou.data import ReplayBuffer, to_numpy, to_torch_as
 from tianshou.data.batch import BatchProtocol
+from tianshou.data.buffer.base import TBuffer
 from tianshou.data.types import BatchWithReturnsProtocol, RolloutBatchProtocol
 from tianshou.utils import MultipleLRSchedulers
 
@@ -264,6 +265,18 @@ class BasePolicy(ABC, nn.Module):
                     act = (np.log(1.0 + act) - np.log(1.0 - act)) / 2.0  # type: ignore
         return act
 
+    def process_buffer(self, buffer: TBuffer) -> TBuffer:
+        """Pre-process the replay buffer, e.g., to add new keys.
+
+        Used in BaseTrainer initialization method, usually used by offline trainers.
+
+        Note: this will only be called once, when the trainer is initialized!
+            If the buffer is empty by then, there will be nothing to process.
+            This method is meant to be overridden by policies which will be trained
+            offline at some stage, e.g., in a pre-training step.
+        """
+        return buffer
+
     def process_fn(
         self,
         batch: RolloutBatchProtocol,
@@ -272,7 +285,12 @@ class BasePolicy(ABC, nn.Module):
     ) -> RolloutBatchProtocol:
         """Pre-process the data from the provided replay buffer.
 
-        Used in :meth:`update`. Check out :ref:`process_fn` for more information.
+        Meant to be overridden by subclasses. Typical usage is to add new keys to the
+        batch, e.g., to add the value function of the next state. Used in :meth:`update`,
+        which is usually called repeatedly during training.
+
+        For modifying the replay buffer only once at the beginning
+        (e.g., for offline learning) see :meth:`process_buffer`.
         """
         return batch
 

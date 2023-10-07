@@ -22,41 +22,182 @@ from tianshou.utils.net.continuous import ActorProb, Critic
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--task", type=str, default="HalfCheetah-v2")
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--expert-data-task", type=str, default="halfcheetah-expert-v2")
-    parser.add_argument("--buffer-size", type=int, default=1000000)
-    parser.add_argument("--hidden-sizes", type=int, nargs="*", default=[256, 256])
-    parser.add_argument("--actor-lr", type=float, default=1e-4)
-    parser.add_argument("--critic-lr", type=float, default=3e-4)
-    parser.add_argument("--alpha", type=float, default=0.2)
-    parser.add_argument("--auto-alpha", default=True, action="store_true")
-    parser.add_argument("--alpha-lr", type=float, default=1e-4)
-    parser.add_argument("--cql-alpha-lr", type=float, default=3e-4)
-    parser.add_argument("--start-timesteps", type=int, default=10000)
-    parser.add_argument("--epoch", type=int, default=200)
-    parser.add_argument("--step-per-epoch", type=int, default=5000)
-    parser.add_argument("--n-step", type=int, default=3)
-    parser.add_argument("--batch-size", type=int, default=256)
-
-    parser.add_argument("--tau", type=float, default=0.005)
-    parser.add_argument("--temperature", type=float, default=1.0)
-    parser.add_argument("--cql-weight", type=float, default=1.0)
-    parser.add_argument("--with-lagrange", type=bool, default=True)
-    parser.add_argument("--lagrange-threshold", type=float, default=10.0)
-    parser.add_argument("--gamma", type=float, default=0.99)
-
-    parser.add_argument("--eval-freq", type=int, default=1)
-    parser.add_argument("--test-num", type=int, default=10)
-    parser.add_argument("--logdir", type=str, default="log")
-    parser.add_argument("--render", type=float, default=1 / 35)
+    parser.add_argument(
+        "--task",
+        type=str,
+        default="Hopper-v2",
+        help="The name of the OpenAI Gym environment to train on.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="The random seed to use.",
+    )
+    parser.add_argument(
+        "--expert-data-task",
+        type=str,
+        default="hopper-expert-v2",
+        help="The name of the OpenAI Gym environment to use for expert data collection.",
+    )
+    parser.add_argument(
+        "--buffer-size",
+        type=int,
+        default=1000000,
+        help="The size of the replay buffer.",
+    )
+    parser.add_argument(
+        "--hidden-sizes",
+        type=int,
+        nargs="*",
+        default=[256, 256],
+        help="The list of hidden sizes for the neural networks.",
+    )
+    parser.add_argument(
+        "--actor-lr",
+        type=float,
+        default=1e-4,
+        help="The learning rate for the actor network.",
+    )
+    parser.add_argument(
+        "--critic-lr",
+        type=float,
+        default=3e-4,
+        help="The learning rate for the critic network.",
+    )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=0.2,
+        help="The weight of the entropy term in the loss function.",
+    )
+    parser.add_argument(
+        "--auto-alpha",
+        default=True,
+        action="store_true",
+        help="Whether to use automatic entropy tuning.",
+    )
+    parser.add_argument(
+        "--alpha-lr",
+        type=float,
+        default=1e-4,
+        help="The learning rate for the entropy tuning.",
+    )
+    parser.add_argument(
+        "--cql-alpha-lr",
+        type=float,
+        default=3e-4,
+        help="The learning rate for the CQL entropy tuning.",
+    )
+    parser.add_argument(
+        "--start-timesteps",
+        type=int,
+        default=10000,
+        help="The number of timesteps before starting to train.",
+    )
+    parser.add_argument(
+        "--epoch",
+        type=int,
+        default=200,
+        help="The number of epochs to train for.",
+    )
+    parser.add_argument(
+        "--step-per-epoch",
+        type=int,
+        default=5000,
+        help="The number of steps per epoch.",
+    )
+    parser.add_argument(
+        "--n-step",
+        type=int,
+        default=3,
+        help="The number of steps to use for N-step TD learning.",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=256,
+        help="The batch size for training.",
+    )
+    parser.add_argument(
+        "--tau",
+        type=float,
+        default=0.005,
+        help="The soft target update coefficient.",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=1.0,
+        help="The temperature for the Boltzmann policy.",
+    )
+    parser.add_argument(
+        "--cql-weight",
+        type=float,
+        default=1.0,
+        help="The weight of the CQL loss term.",
+    )
+    parser.add_argument(
+        "--with-lagrange",
+        type=bool,
+        default=True,
+        help="Whether to use the Lagrange multiplier for CQL.",
+    )
+    parser.add_argument(
+        "--calibrated",
+        type=bool,
+        default=True,
+        help="Whether to use calibration for CQL.",
+    )
+    parser.add_argument(
+        "--lagrange-threshold",
+        type=float,
+        default=10.0,
+        help="The Lagrange multiplier threshold for CQL.",
+    )
+    parser.add_argument("--gamma", type=float, default=0.99, help="The discount factor")
+    parser.add_argument(
+        "--eval-freq",
+        type=int,
+        default=1,
+        help="The frequency of evaluation.",
+    )
+    parser.add_argument(
+        "--test-num",
+        type=int,
+        default=10,
+        help="The number of episodes to evaluate for.",
+    )
+    parser.add_argument(
+        "--logdir",
+        type=str,
+        default="log",
+        help="The directory to save logs to.",
+    )
+    parser.add_argument(
+        "--render",
+        type=float,
+        default=1 / 35,
+        help="The frequency of rendering the environment.",
+    )
     parser.add_argument(
         "--device",
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
+        help="The device to train on (cpu or cuda).",
     )
-    parser.add_argument("--resume-path", type=str, default=None)
-    parser.add_argument("--resume-id", type=str, default=None)
+    parser.add_argument(
+        "--resume-path",
+        type=str,
+        default=None,
+        help="The path to the checkpoint to resume from.",
+    )
+    parser.add_argument(
+        "--resume-id",
+        type=str,
+        default=None,
+        help="The ID of the checkpoint to resume from.",
+    )
     parser.add_argument(
         "--logger",
         type=str,
@@ -145,6 +286,8 @@ def test_cql():
         critic_optim,
         critic2,
         critic2_optim,
+        calibrated=args.calibrated,
+        action_space=env.action_space,
         cql_alpha_lr=args.cql_alpha_lr,
         cql_weight=args.cql_weight,
         tau=args.tau,
