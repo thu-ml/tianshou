@@ -35,6 +35,7 @@ class A2CPolicy(PGPolicy):
     :param action_scaling: if True, scale the action from [-1, 1] to the range of
         action_space. Only used if the action_space is continuous.
     :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
     :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
