@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, Literal, cast, overload
+from typing import Any, Literal, TypeAlias, cast, overload
 
 import gymnasium as gym
 import numpy as np
@@ -19,11 +19,14 @@ from tianshou.utils import MultipleLRSchedulers
 logger = logging.getLogger(__name__)
 
 
+TLearningRateScheduler: TypeAlias = torch.optim.lr_scheduler.LRScheduler | MultipleLRSchedulers
+
+
 class BasePolicy(ABC, nn.Module):
     """The base class for any RL policy.
 
     Tianshou aims to modularize RL algorithms. It comes into several classes of
-    policies in Tianshou. All of the policy classes must inherit
+    policies in Tianshou. All policy classes must inherit from
     :class:`~tianshou.policy.BasePolicy`.
 
     A policy class typically has the following parts:
@@ -65,22 +68,24 @@ class BasePolicy(ABC, nn.Module):
         torch.save(policy.state_dict(), "policy.pth")
         policy.load_state_dict(torch.load("policy.pth"))
 
-    :param observation_space: appears unused.
-    :param action_space: required for action_scaling.
+    :param action_space: Env's action_space.
+    :param observation_space: Env's observation space. TODO: appears unused...
     :param action_scaling: if True, scale the action from [-1, 1] to the range
-        of action_space. Note that in this case, the action_space must be provided!
-    :param action_bound_method:
-    :param lr_scheduler:
+        of action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
 
     def __init__(
         self,
+        *,
+        action_space: gym.Space,
         # TODO: does the policy actually need the observation space?
         observation_space: gym.Space | None = None,
-        action_space: gym.Space | None = None,
         action_scaling: bool = False,
-        action_bound_method: Literal["clip", "tanh"] | None = None,
-        lr_scheduler: torch.optim.lr_scheduler.LambdaLR | MultipleLRSchedulers | None = None,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         allowed_action_bound_methods = ("clip", "tanh")
         if (
@@ -105,7 +110,7 @@ class BasePolicy(ABC, nn.Module):
         elif isinstance(action_space, Box):
             self.action_type = "continuous"
         else:
-            ValueError(f"Unsupported action space: {action_space}.")
+            raise ValueError(f"Unsupported action space: {action_space}.")
         self.agent_id = 0
         self.updating = False
         self.action_scaling = action_scaling
@@ -117,7 +122,7 @@ class BasePolicy(ABC, nn.Module):
         """Set self.agent_id = agent_id, for MARL."""
         self.agent_id = agent_id
 
-    # TODO: needed since for most of offline algorithm, the algorithm itself doesn't
+    # TODO: needed, since for most of offline algorithm, the algorithm itself doesn't
     #  have a method to add noise to action.
     #  So we add the default behavior here. It's a little messy, maybe one can
     #  find a better way to do this.
@@ -227,7 +232,7 @@ class BasePolicy(ABC, nn.Module):
             if self.action_scaling:
                 assert (
                     np.min(act) >= -1.0 and np.max(act) <= 1.0  # type: ignore
-                ), "action scaling only accepts raw action range = [-1, 1]"
+                ), f"action scaling only accepts raw action range = [-1, 1], but got: {act}"
                 low, high = self.action_space.low, self.action_space.high
                 act = low + (high - low) * (act + 1.0) / 2.0  # type: ignore
         return act
@@ -349,9 +354,9 @@ class BasePolicy(ABC, nn.Module):
         False before this function and will be True when executing :meth:`update`.
         Please refer to :ref:`policy_state` for more detailed explanation.
 
-        :param int sample_size: 0 means it will extract all the data from the buffer,
+        :param sample_size: 0 means it will extract all the data from the buffer,
             otherwise it will sample a batch with given sample_size.
-        :param ReplayBuffer buffer: the corresponding replay buffer.
+        :param buffer: the corresponding replay buffer.
 
         :return: A dict, including the data needed to be logged (e.g., loss) from
             ``policy.learn()``.
@@ -379,7 +384,7 @@ class BasePolicy(ABC, nn.Module):
         gym's settings), "obs_next" will instead be valid. Value mask is typically used
         for assisting in calculating the correct q/advantage value.
 
-        :param ReplayBuffer buffer: the corresponding replay buffer.
+        :param buffer: the corresponding replay buffer.
         :param numpy.ndarray indices: indices of replay buffer whose "obs_next" will be
             judged.
 
@@ -415,8 +420,8 @@ class BasePolicy(ABC, nn.Module):
         :param np.ndarray v_s_: the value function of all next states :math:`V(s')`.
             If None, it will be set to an array of 0.
         :param v_s: the value function of all current states :math:`V(s)`.
-        :param float gamma: the discount factor, should be in [0, 1]. Default to 0.99.
-        :param float gae_lambda: the parameter for Generalized Advantage Estimation,
+        :param gamma: the discount factor, should be in [0, 1]. Default to 0.99.
+        :param gae_lambda: the parameter for Generalized Advantage Estimation,
             should be in [0, 1]. Default to 0.95.
 
         :return: two numpy arrays (returns, advantage) with each shape (bsz, ).
@@ -456,16 +461,16 @@ class BasePolicy(ABC, nn.Module):
         where :math:`\gamma` is the discount factor, :math:`\gamma \in [0, 1]`,
         :math:`d_t` is the done flag of step :math:`t`.
 
-        :param Batch batch: a data batch, which is equal to buffer[indices].
-        :param ReplayBuffer buffer: the data buffer.
+        :param batch: a data batch, which is equal to buffer[indices].
+        :param buffer: the data buffer.
         :param indices: tell batch's location in buffer
         :param function target_q_fn: a function which compute target Q value
             of "obs_next" given data buffer and wanted indices.
-        :param float gamma: the discount factor, should be in [0, 1]. Default to 0.99.
-        :param int n_step: the number of estimation step, should be an int greater
+        :param gamma: the discount factor, should be in [0, 1]. Default to 0.99.
+        :param n_step: the number of estimation step, should be an int greater
             than 0. Default to 1.
-        :param bool rew_norm: normalize the reward to Normal(0, 1), Default to False.
-
+        :param rew_norm: normalize the reward to Normal(0, 1), Default to False.
+            TODO: passing True is not supported and will cause an error!
         :return: a Batch. The result will be stored in batch.returns as a
             torch.Tensor with the same shape as target_q_fn's return tensor.
         """

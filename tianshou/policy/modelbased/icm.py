@@ -1,5 +1,6 @@
-from typing import Any
+from typing import Any, Literal, Self
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,19 +9,24 @@ from tianshou.data import Batch, ReplayBuffer, to_numpy, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils.net.discrete import IntrinsicCuriosityModule
 
 
 class ICMPolicy(BasePolicy):
     """Implementation of Intrinsic Curiosity Module. arXiv:1705.05363.
 
-    :param BasePolicy policy: a base policy to add ICM to.
-    :param IntrinsicCuriosityModule model: the ICM model.
-    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
-    :param float lr_scale: the scaling factor for ICM learning.
-    :param float forward_loss_weight: the weight for forward model loss.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
+    :param policy: a base policy to add ICM to.
+    :param model: the ICM model.
+    :param optim: a torch.optim for optimizing the model.
+    :param lr_scale: the scaling factor for ICM learning.
+    :param forward_loss_weight: the weight for forward model loss.
+    :param observation_space: Env's observation space.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range
+        of action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -30,15 +36,26 @@ class ICMPolicy(BasePolicy):
 
     def __init__(
         self,
+        *,
         policy: BasePolicy,
         model: IntrinsicCuriosityModule,
         optim: torch.optim.Optimizer,
         lr_scale: float,
         reward_scale: float,
         forward_loss_weight: float,
-        **kwargs: Any,
+        action_space: gym.Space,
+        observation_space: gym.Space | None = None,
+        action_scaling: bool = False,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            lr_scheduler=lr_scheduler,
+        )
         self.policy = policy
         self.model = model
         self.optim = optim
@@ -46,7 +63,7 @@ class ICMPolicy(BasePolicy):
         self.reward_scale = reward_scale
         self.forward_loss_weight = forward_loss_weight
 
-    def train(self, mode: bool = True) -> "ICMPolicy":
+    def train(self, mode: bool = True) -> Self:
         """Set the module in training mode."""
         self.policy.train(mode)
         self.training = mode

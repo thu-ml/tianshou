@@ -150,7 +150,14 @@ Setup Policy
 We use the defined ``net`` and ``optim`` above, with extra policy hyper-parameters, to define a policy. Here we define a DQN policy with a target network:
 ::
 
-    policy = ts.policy.DQNPolicy(net, optim, discount_factor=0.9, estimation_step=3, target_update_freq=320)
+    policy = ts.policy.DQNPolicy(
+        model=net,
+        optim=optim,
+        action_space=env.action_space,
+        discount_factor=0.9,
+        estimation_step=3,
+        target_update_freq=320
+    )
 
 
 Setup Collector

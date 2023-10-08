@@ -140,10 +140,10 @@ def test_ppo(args=get_args()):
         return torch.distributions.Categorical(logits=p)
 
     policy = PPOPolicy(
-        actor,
-        critic,
-        optim,
-        dist,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        dist_fn=dist,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         max_grad_norm=args.max_grad_norm,
@@ -177,12 +177,13 @@ def test_ppo(args=get_args()):
         )
         icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
         policy = ICMPolicy(
-            policy,
-            icm_net,
-            icm_optim,
-            args.icm_lr_scale,
-            args.icm_reward_scale,
-            args.icm_forward_loss_weight,
+            policy=policy,
+            model=icm_net,
+            optim=icm_optim,
+            action_space=env.action_space,
+            lr_scale=args.icm_lr_scale,
+            reward_scale=args.icm_reward_scale,
+            forward_loss_weight=args.icm_forward_loss_weight,
         ).to(args.device)
     # load a previous policy
     if args.resume_path:

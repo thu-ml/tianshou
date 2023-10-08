@@ -132,13 +132,13 @@ def test_gail(args=get_args()):
         return Independent(Normal(*logits), 1)
 
     policy = GAILPolicy(
-        actor,
-        critic,
-        optim,
-        dist,
-        buffer,
-        disc_net,
-        disc_optim,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        dist_fn=dist,
+        expert_buffer=buffer,
+        disc_net=disc_net,
+        disc_optim=disc_optim,
         disc_update_num=args.disc_update_num,
         discount_factor=args.gamma,
         max_grad_norm=args.max_grad_norm,

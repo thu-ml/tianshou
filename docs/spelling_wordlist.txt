@@ -178,3 +178,5 @@ Dopamine
 builtin
 params
 inplace
+deepcopy
+Gaussian

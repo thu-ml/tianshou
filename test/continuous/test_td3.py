@@ -41,7 +41,6 @@ def get_args():
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--rew-norm", action="store_true", default=False)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument(
         "--device",
@@ -94,19 +93,18 @@ def test_td3(args=get_args()):
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
     policy = TD3Policy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic1,
+        critic_optim=critic1_optim,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
         tau=args.tau,
         gamma=args.gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),
         policy_noise=args.policy_noise,
         update_actor_freq=args.update_actor_freq,
         noise_clip=args.noise_clip,
-        reward_normalization=args.rew_norm,
         estimation_step=args.n_step,
         action_space=env.action_space,
     )

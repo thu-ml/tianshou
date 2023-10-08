@@ -104,24 +104,15 @@ def test_bcq(args=get_args()):
     )
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
 
-    net_c1 = Net(
+    net_c = Net(
         args.state_shape,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,
     )
-    net_c2 = Net(
-        args.state_shape,
-        args.action_shape,
-        hidden_sizes=args.hidden_sizes,
-        concat=True,
-        device=args.device,
-    )
-    critic1 = Critic(net_c1, device=args.device).to(args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    critic2 = Critic(net_c2, device=args.device).to(args.device)
-    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+    critic = Critic(net_c, device=args.device).to(args.device)
+    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
 
     # vae
     # output_dim = 0, so the last Module in the encoder is ReLU
@@ -149,14 +140,13 @@ def test_bcq(args=get_args()):
     vae_optim = torch.optim.Adam(vae.parameters())
 
     policy = BCQPolicy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
-        vae,
-        vae_optim,
+        actor_perturbation=actor,
+        actor_perturbation_optim=actor_optim,
+        critic=critic,
+        critic_optim=critic_optim,
+        vae=vae,
+        vae_optim=vae_optim,
+        action_space=env.action_space,
         device=args.device,
         gamma=args.gamma,
         tau=args.tau,

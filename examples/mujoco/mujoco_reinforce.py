@@ -119,19 +119,19 @@ def test_reinforce(args=get_args()):
 
         lr_scheduler = LambdaLR(optim, lr_lambda=lambda epoch: 1 - epoch / max_update_num)
 
-    def dist(*logits):
+    def dist_fn(*logits):
         return Independent(Normal(*logits), 1)
 
     policy = PGPolicy(
-        actor,
-        optim,
-        dist,
+        actor=actor,
+        optim=optim,
+        dist_fn=dist_fn,
+        action_space=env.action_space,
         discount_factor=args.gamma,
         reward_normalization=args.rew_norm,
         action_scaling=True,
         action_bound_method=args.action_bound_method,
         lr_scheduler=lr_scheduler,
-        action_space=env.action_space,
     )
 
     # load a previous policy

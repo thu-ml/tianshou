@@ -1,6 +1,7 @@
 from copy import deepcopy
-from typing import Any, cast
+from typing import Any, Self, cast
 
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -12,6 +13,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class DQNPolicy(BasePolicy):
@@ -22,21 +24,21 @@ class DQNPolicy(BasePolicy):
     Implementation of Dueling DQN. arXiv:1511.06581 (the dueling DQN is
     implemented in the network side, not here).
 
-    :param torch.nn.Module model: a model following the rules in
+    :param model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
-    :param float discount_factor: in [0, 1].
-    :param int estimation_step: the number of steps to look ahead. Default to 1.
-    :param int target_update_freq: the target network update frequency (0 if
-        you do not use the target network). Default to 0.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1).
-        Default to False.
-    :param bool is_double: use double dqn. Default to True.
-    :param bool clip_loss_grad: clip the gradient of the loss in accordance
+    :param optim: a torch.optim for optimizing the model.
+    :param discount_factor: in [0, 1].
+    :param estimation_step: the number of steps to look ahead.
+    :param target_update_freq: the target network update frequency (0 if
+        you do not use the target network).
+    :param reward_normalization: normalize the **returns** to Normal(0, 1).
+        TODO: rename to return_normalization?
+    :param is_double: use double dqn.
+    :param clip_loss_grad: clip the gradient of the loss in accordance
         with nature14236; this amounts to using the Huber loss instead of
-        the MSE loss. Default to False.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
+        the MSE loss.
+    :param observation_space: Env's observation space.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -46,39 +48,56 @@ class DQNPolicy(BasePolicy):
 
     def __init__(
         self,
+        *,
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
+        # TODO: type violates Liskov substitution principle
+        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
         is_double: bool = True,
         clip_loss_grad: bool = False,
-        **kwargs: Any,
+        observation_space: gym.Space | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=False,
+            action_bound_method=None,
+            lr_scheduler=lr_scheduler,
+        )
         self.model = model
         self.optim = optim
         self.eps = 0.0
-        assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
-        self._gamma = discount_factor
-        assert estimation_step > 0, "estimation_step should be greater than 0"
-        self._n_step = estimation_step
+        assert (
+            0.0 <= discount_factor <= 1.0
+        ), f"discount factor should be in [0, 1] but got: {discount_factor}"
+        self.gamma = discount_factor
+        assert (
+            estimation_step > 0
+        ), f"estimation_step should be greater than 0 but got: {estimation_step}"
+        self.n_step = estimation_step
         self._target = target_update_freq > 0
-        self._freq = target_update_freq
+        self.freq = target_update_freq
         self._iter = 0
         if self._target:
             self.model_old = deepcopy(self.model)
             self.model_old.eval()
-        self._rew_norm = reward_normalization
-        self._is_double = is_double
-        self._clip_loss_grad = clip_loss_grad
+        self.rew_norm = reward_normalization
+        self.is_double = is_double
+        self.clip_loss_grad = clip_loss_grad
+
+        # TODO: set in forward, fix this!
+        self.max_action_num: int
 
     def set_eps(self, eps: float) -> None:
         """Set the eps for epsilon-greedy exploration."""
         self.eps = eps
 
-    def train(self, mode: bool = True) -> "DQNPolicy":
+    def train(self, mode: bool = True) -> Self:
         """Set the module in training mode, except for the target network."""
         self.training = mode
         self.model.train(mode)
@@ -96,7 +115,7 @@ class DQNPolicy(BasePolicy):
             target_q = self(batch, model="model_old", input="obs_next").logits
         else:
             target_q = result.logits
-        if self._is_double:
+        if self.is_double:
             return target_q[np.arange(len(result.act)), result.act]
         # Nature DQN, over estimate
         return target_q.max(dim=1)[0]
@@ -113,13 +132,13 @@ class DQNPolicy(BasePolicy):
         :meth:`~tianshou.policy.BasePolicy.compute_nstep_return`.
         """
         return self.compute_nstep_return(
-            batch,
-            buffer,
-            indices,
-            self._target_q,
-            self._gamma,
-            self._n_step,
-            self._rew_norm,
+            batch=batch,
+            buffer=buffer,
+            indices=indices,
+            target_q_fn=self._target_q,
+            gamma=self.gamma,
+            n_step=self.n_step,
+            rew_norm=self.rew_norm,
         )
 
     def compute_q_value(self, logits: torch.Tensor, mask: np.ndarray | None) -> torch.Tensor:
@@ -177,7 +196,7 @@ class DQNPolicy(BasePolicy):
         return cast(ModelOutputBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
-        if self._target and self._iter % self._freq == 0:
+        if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)
@@ -186,7 +205,7 @@ class DQNPolicy(BasePolicy):
         returns = to_torch_as(batch.returns.flatten(), q)
         td_error = returns - q
 
-        if self._clip_loss_grad:
+        if self.clip_loss_grad:
             y = q.reshape(-1, 1)
             t = returns.reshape(-1, 1)
             loss = torch.nn.functional.huber_loss(y, t, reduction="mean")

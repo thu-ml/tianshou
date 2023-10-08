@@ -45,7 +45,6 @@ def get_args():
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--rew-norm", action="store_true", default=False)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument(
         "--device",
@@ -100,16 +99,15 @@ def test_sac_with_il(args=get_args()):
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = SACPolicy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic1,
+        critic_optim=critic1_optim,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        reward_normalization=args.rew_norm,
         estimation_step=args.n_step,
         action_space=env.action_space,
     )
@@ -166,8 +164,8 @@ def test_sac_with_il(args=get_args()):
     ).to(args.device)
     optim = torch.optim.Adam(net.parameters(), lr=args.il_lr)
     il_policy = ImitationPolicy(
-        net,
-        optim,
+        actor=net,
+        optim=optim,
         action_space=env.action_space,
         action_scaling=True,
         action_bound_method="clip",

@@ -66,12 +66,13 @@ def test_psrl(args=get_args()):
     rew_mean_prior = np.full((n_state, n_action), args.rew_mean_prior)
     rew_std_prior = np.full((n_state, n_action), args.rew_std_prior)
     policy = PSRLPolicy(
-        trans_count_prior,
-        rew_mean_prior,
-        rew_std_prior,
-        args.gamma,
-        args.eps,
-        args.add_done_loop,
+        trans_count_prior=trans_count_prior,
+        rew_mean_prior=rew_mean_prior,
+        rew_std_prior=rew_std_prior,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
+        epsilon=args.eps,
+        add_done_loop=args.add_done_loop,
     )
     # collector
     train_collector = Collector(

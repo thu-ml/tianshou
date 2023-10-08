@@ -102,10 +102,10 @@ def test_ppo(args=get_args()):
     optim = torch.optim.Adam(actor_critic.parameters(), lr=args.lr)
     dist = torch.distributions.Categorical
     policy = PPOPolicy(
-        actor,
-        critic,
-        optim,
-        dist,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        dist_fn=dist,
         action_scaling=isinstance(env.action_space, Box),
         discount_factor=args.gamma,
         max_grad_norm=args.max_grad_norm,
@@ -138,12 +138,13 @@ def test_ppo(args=get_args()):
     ).to(args.device)
     icm_optim = torch.optim.Adam(icm_net.parameters(), lr=args.lr)
     policy = ICMPolicy(
-        policy,
-        icm_net,
-        icm_optim,
-        args.lr_scale,
-        args.reward_scale,
-        args.forward_loss_weight,
+        policy=policy,
+        model=icm_net,
+        optim=icm_optim,
+        action_space=env.action_space,
+        lr_scale=args.lr_scale,
+        reward_scale=args.reward_scale,
+        forward_loss_weight=args.forward_loss_weight,
     )
     # collector
     train_collector = Collector(

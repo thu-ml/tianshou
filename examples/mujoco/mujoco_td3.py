@@ -113,12 +113,12 @@ def test_td3(args=get_args()):
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
     policy = TD3Policy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic1,
+        critic_optim=critic1_optim,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
         tau=args.tau,
         gamma=args.gamma,
         exploration_noise=GaussianNoise(sigma=args.exploration_noise),

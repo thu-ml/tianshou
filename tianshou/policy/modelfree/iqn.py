@@ -1,5 +1,6 @@
 from typing import Any, cast
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,30 +9,34 @@ from tianshou.data import Batch, to_numpy
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import QuantileRegressionBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import QRDQNPolicy
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class IQNPolicy(QRDQNPolicy):
     """Implementation of Implicit Quantile Network. arXiv:1806.06923.
 
-    :param torch.nn.Module model: a model following the rules in
+    :param model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
-    :param float discount_factor: in [0, 1].
-    :param int sample_size: the number of samples for policy evaluation.
-        Default to 32.
-    :param int online_sample_size: the number of samples for online model
-        in training. Default to 8.
-    :param int target_sample_size: the number of samples for target model
-        in training. Default to 8.
-    :param int estimation_step: the number of steps to look ahead. Default to 1.
-    :param int target_update_freq: the target network update frequency (0 if
+    :param optim: a torch.optim for optimizing the model.
+    :param discount_factor: in [0, 1].
+    :param sample_size: the number of samples for policy evaluation.
+    :param online_sample_size: the number of samples for online model
+        in training.
+    :param target_sample_size: the number of samples for target model
+        in training.
+    :param num_quantiles: the number of quantile midpoints in the inverse
+        cumulative distribution function of the value.
+    :param estimation_step: the number of steps to look ahead.
+    :param target_update_freq: the target network update frequency (0 if
         you do not use the target network).
-    :param bool reward_normalization: normalize the reward to Normal(0, 1).
-        Default to False.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
-
-    .. seealso::
+    :param reward_normalization: normalize the **returns** to Normal(0, 1).
+        TODO: rename to return_normalization?
+    :param is_double: use double dqn.
+    :param clip_loss_grad: clip the gradient of the loss in accordance
+        with nature14236; this amounts to using the Huber loss instead of
+        the MSE loss.
+    :param observation_space: Env's observation space.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
         Please refer to :class:`~tianshou.policy.QRDQNPolicy` for more detailed
         explanation.
@@ -39,33 +44,47 @@ class IQNPolicy(QRDQNPolicy):
 
     def __init__(
         self,
+        *,
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
+        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
         sample_size: int = 32,
         online_sample_size: int = 8,
         target_sample_size: int = 8,
+        num_quantiles: int = 200,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        **kwargs: Any,
+        is_double: bool = True,
+        clip_loss_grad: bool = False,
+        observation_space: gym.Space | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        assert sample_size > 1, f"sample_size should be greater than 1 but got: {sample_size}"
+        assert (
+            online_sample_size > 1
+        ), f"online_sample_size should be greater than 1 but got: {online_sample_size}"
+        assert (
+            target_sample_size > 1
+        ), f"target_sample_size should be greater than 1 but got: {target_sample_size}"
         super().__init__(
-            model,
-            optim,
-            discount_factor,
-            sample_size,
-            estimation_step,
-            target_update_freq,
-            reward_normalization,
-            **kwargs,
+            model=model,
+            optim=optim,
+            action_space=action_space,
+            discount_factor=discount_factor,
+            num_quantiles=num_quantiles,
+            estimation_step=estimation_step,
+            target_update_freq=target_update_freq,
+            reward_normalization=reward_normalization,
+            is_double=is_double,
+            clip_loss_grad=clip_loss_grad,
+            observation_space=observation_space,
+            lr_scheduler=lr_scheduler,
         )
-        assert sample_size > 1, "sample_size should be greater than 1"
-        assert online_sample_size > 1, "online_sample_size should be greater than 1"
-        assert target_sample_size > 1, "target_sample_size should be greater than 1"
-        self._sample_size = sample_size  # for policy eval
-        self._online_sample_size = online_sample_size
-        self._target_sample_size = target_sample_size
+        self.sample_size = sample_size  # for policy eval
+        self.online_sample_size = online_sample_size
+        self.target_sample_size = target_sample_size
 
     def forward(
         self,
@@ -76,11 +95,11 @@ class IQNPolicy(QRDQNPolicy):
         **kwargs: Any,
     ) -> QuantileRegressionBatchProtocol:
         if model == "model_old":
-            sample_size = self._target_sample_size
+            sample_size = self.target_sample_size
         elif self.training:
-            sample_size = self._online_sample_size
+            sample_size = self.online_sample_size
         else:
-            sample_size = self._sample_size
+            sample_size = self.sample_size
         model = getattr(self, model)
         obs = batch[input]
         obs_next = obs.obs if hasattr(obs, "obs") else obs
@@ -92,13 +111,14 @@ class IQNPolicy(QRDQNPolicy):
         )
         q = self.compute_q_value(logits, getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
+            # TODO: see same thing in DQNPolicy! Also reduce code duplication.
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         result = Batch(logits=logits, act=act, state=hidden, taus=taus)
         return cast(QuantileRegressionBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
-        if self._target and self._iter % self._freq == 0:
+        if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)

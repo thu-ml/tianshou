@@ -5,6 +5,7 @@ from collections import Counter
 
 import gymnasium as gym
 import numpy as np
+from gymnasium.spaces import Box
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
 
 from tianshou.data import Batch, Collector
@@ -164,6 +165,9 @@ class FiniteSubprocVectorEnv(FiniteVectorEnv, SubprocVectorEnv):
 
 
 class AnyPolicy(BasePolicy):
+    def __init__(self):
+        super().__init__(action_space=Box(-1, 1, (1,)))
+
     def forward(self, batch, state=None):
         return Batch(act=np.stack([1] * len(batch)))
 

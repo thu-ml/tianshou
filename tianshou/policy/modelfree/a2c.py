@@ -1,6 +1,7 @@
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any, Literal, cast
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -9,6 +10,7 @@ from torch import nn
 from tianshou.data import ReplayBuffer, to_torch_as
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import PGPolicy
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistParams
 from tianshou.utils.net.common import ActorCritic
 
@@ -16,35 +18,25 @@ from tianshou.utils.net.common import ActorCritic
 class A2CPolicy(PGPolicy):
     """Implementation of Synchronous Advantage Actor-Critic. arXiv:1602.01783.
 
-    :param torch.nn.Module actor: the actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.nn.Module critic: the critic network. (s -> V(s))
-    :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
+    :param actor: the actor network following the rules in BasePolicy. (s -> logits)
+    :param critic: the critic network. (s -> V(s))
+    :param optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :param float discount_factor: in [0, 1]. Default to 0.99.
-    :param float vf_coef: weight for value loss. Default to 0.5.
-    :param float ent_coef: weight for entropy loss. Default to 0.01.
-    :param float max_grad_norm: clipping gradients in back propagation. Default to
-        None.
-    :param float gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
-        Default to 0.95.
-    :param bool reward_normalization: normalize estimated values to have std close to
-        1. Default to False.
-    :param int max_batchsize: the maximum size of the batch when computing GAE,
-        depends on the size of available memory and the memory cost of the
-        model; should be as large as possible within the memory constraint.
-        Default to 256.
-    :param bool action_scaling: whether to map actions from range [-1, 1] to range
-        [action_spaces.low, action_spaces.high]. Default to True.
-    :param str action_bound_method: method to bound action to range [-1, 1], can be
-        either "clip" (for simply clipping the action), "tanh" (for applying tanh
-        squashing) for now, or empty string for no bounding. Default to "clip".
-    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
-        to use option "action_scaling" or "action_bound_method". Default to None.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
-    :param bool deterministic_eval: whether to use deterministic action instead of
-        stochastic action sampled by the policy. Default to False.
+    :param action_space: env's action space
+    :param vf_coef: weight for value loss.
+    :param ent_coef: weight for entropy loss.
+    :param max_grad_norm: clipping gradients in back propagation.
+    :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+    :param max_batchsize: the maximum size of the batch when computing GAE.
+    :param discount_factor: in [0, 1].
+    :param reward_normalization: normalize estimated values to have std close to 1.
+    :param deterministic_eval: if True, use deterministic evaluation.
+    :param observation_space: the space of the observation.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range of
+        action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -54,25 +46,46 @@ class A2CPolicy(PGPolicy):
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
+        action_space: gym.Space,
         vf_coef: float = 0.5,
         ent_coef: float = 0.01,
         max_grad_norm: float | None = None,
         gae_lambda: float = 0.95,
         max_batchsize: int = 256,
-        **kwargs: Any,
+        discount_factor: float = 0.99,
+        # TODO: rename to return_normalization?
+        reward_normalization: bool = False,
+        deterministic_eval: bool = False,
+        observation_space: gym.Space | None = None,
+        action_scaling: bool = True,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        super().__init__(actor, optim, dist_fn, **kwargs)
+        super().__init__(
+            actor=actor,
+            optim=optim,
+            dist_fn=dist_fn,
+            action_space=action_space,
+            discount_factor=discount_factor,
+            reward_normalization=reward_normalization,
+            deterministic_eval=deterministic_eval,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            lr_scheduler=lr_scheduler,
+        )
         self.critic = critic
-        assert 0.0 <= gae_lambda <= 1.0, "GAE lambda should be in [0, 1]."
-        self._lambda = gae_lambda
-        self._weight_vf = vf_coef
-        self._weight_ent = ent_coef
-        self._grad_norm = max_grad_norm
-        self._batch = max_batchsize
+        assert 0.0 <= gae_lambda <= 1.0, f"GAE lambda should be in [0, 1] but got: {gae_lambda}"
+        self.gae_lambda = gae_lambda
+        self.vf_coef = vf_coef
+        self.ent_coef = ent_coef
+        self.max_grad_norm = max_grad_norm
+        self.max_batchsize = max_batchsize
         self._actor_critic = ActorCritic(self.actor, self.critic)
 
     def process_fn(
@@ -93,7 +106,7 @@ class A2CPolicy(PGPolicy):
     ) -> BatchWithAdvantagesProtocol:
         v_s, v_s_ = [], []
         with torch.no_grad():
-            for minibatch in batch.split(self._batch, shuffle=False, merge_last=True):
+            for minibatch in batch.split(self.max_batchsize, shuffle=False, merge_last=True):
                 v_s.append(self.critic(minibatch.obs))
                 v_s_.append(self.critic(minibatch.obs_next))
         batch.v_s = torch.cat(v_s, dim=0).flatten()  # old value
@@ -103,7 +116,8 @@ class A2CPolicy(PGPolicy):
         # consistent with OPENAI baselines' value normalization pipeline. Empirical
         # study also shows that "minus mean" will harm performances a tiny little bit
         # due to unknown reasons (on Mujoco envs, not confident, though).
-        if self._rew_norm:  # unnormalize v_s & v_s_
+        # TODO: see todo in PGPolicy.process_fn
+        if self.rew_norm:  # unnormalize v_s & v_s_
             v_s = v_s * np.sqrt(self.ret_rms.var + self._eps)
             v_s_ = v_s_ * np.sqrt(self.ret_rms.var + self._eps)
         unnormalized_returns, advantages = self.compute_episodic_return(
@@ -112,10 +126,10 @@ class A2CPolicy(PGPolicy):
             indices,
             v_s_,
             v_s,
-            gamma=self._gamma,
-            gae_lambda=self._lambda,
+            gamma=self.gamma,
+            gae_lambda=self.gae_lambda,
         )
-        if self._rew_norm:
+        if self.rew_norm:
             batch.returns = unnormalized_returns / np.sqrt(self.ret_rms.var + self._eps)
             self.ret_rms.update(unnormalized_returns)
         else:
@@ -147,13 +161,13 @@ class A2CPolicy(PGPolicy):
                 vf_loss = F.mse_loss(minibatch.returns, value)
                 # calculate regularization and overall loss
                 ent_loss = dist.entropy().mean()
-                loss = actor_loss + self._weight_vf * vf_loss - self._weight_ent * ent_loss
+                loss = actor_loss + self.vf_coef * vf_loss - self.ent_coef * ent_loss
                 self.optim.zero_grad()
                 loss.backward()
-                if self._grad_norm:  # clip large gradient
+                if self.max_grad_norm:  # clip large gradient
                     nn.utils.clip_grad_norm_(
                         self._actor_critic.parameters(),
-                        max_norm=self._grad_norm,
+                        max_norm=self.max_grad_norm,
                     )
                 self.optim.step()
                 actor_losses.append(actor_loss.item())

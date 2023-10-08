@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -6,6 +6,7 @@ from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import TLearningRateScheduler
 
 try:
     from tianshou.env.pettingzoo_env import PettingZooEnv
@@ -21,10 +22,34 @@ class MultiAgentPolicyManager(BasePolicy):
     of these policies when the "forward" is called. The same as "process_fn"
     and "learn": it splits the data and feeds them to each policy. A figure in
     :ref:`marl_example` can help you better understand this procedure.
+
+    :param policies: a list of policies.
+    :param env: a PettingZooEnv.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range
+        of action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
 
-    def __init__(self, policies: list[BasePolicy], env: PettingZooEnv, **kwargs: Any) -> None:
-        super().__init__(action_space=env.action_space, **kwargs)
+    def __init__(
+        self,
+        *,
+        policies: list[BasePolicy],
+        # TODO: 1 why restrict to PettingZooEnv?
+        # TODO: 2 This is the only policy that takes an env in init, is it really needed?
+        env: PettingZooEnv,
+        action_scaling: bool = False,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        lr_scheduler: TLearningRateScheduler | None = None,
+    ) -> None:
+        super().__init__(
+            action_space=env.action_space,
+            observation_space=env.observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            lr_scheduler=lr_scheduler,
+        )
         assert len(policies) == len(env.agents), "One policy must be assigned for each agent."
 
         self.agent_idx = env.agent_idx

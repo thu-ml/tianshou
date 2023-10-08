@@ -1,71 +1,93 @@
 import warnings
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
+import gymnasium as gym
 import torch
 import torch.nn.functional as F
 from torch.distributions import kl_divergence
 
 from tianshou.data import Batch
 from tianshou.policy import NPGPolicy
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistParams
 
 
 class TRPOPolicy(NPGPolicy):
     """Implementation of Trust Region Policy Optimization. arXiv:1502.05477.
 
-    :param torch.nn.Module actor: the actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.nn.Module critic: the critic network. (s -> V(s))
-    :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
+    :param actor: the actor network following the rules in BasePolicy. (s -> logits)
+    :param critic: the critic network. (s -> V(s))
+    :param optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :param bool advantage_normalization: whether to do per mini-batch advantage
-        normalization. Default to True.
-    :param int optim_critic_iters: Number of times to optimize critic network per
-        update. Default to 5.
-    :param int max_kl: max kl-divergence used to constrain each actor network update.
-        Default to 0.01.
-    :param float backtrack_coeff: Coefficient to be multiplied by step size when
-        constraints are not met. Default to 0.8.
-    :param int max_backtracks: Max number of backtracking times in linesearch. Default
-        to 10.
-    :param float gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
-        Default to 0.95.
-    :param bool reward_normalization: normalize estimated values to have std close to
-        1. Default to False.
-    :param int max_batchsize: the maximum size of the batch when computing GAE,
-        depends on the size of available memory and the memory cost of the
-        model; should be as large as possible within the memory constraint.
-        Default to 256.
-    :param bool action_scaling: whether to map actions from range [-1, 1] to range
-        [action_spaces.low, action_spaces.high]. Default to True.
-    :param str action_bound_method: method to bound action to range [-1, 1], can be
-        either "clip" (for simply clipping the action), "tanh" (for applying tanh
-        squashing) for now, or empty string for no bounding. Default to "clip".
-    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
-        to use option "action_scaling" or "action_bound_method". Default to None.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
-    :param bool deterministic_eval: whether to use deterministic action instead of
-        stochastic action sampled by the policy. Default to False.
+    :param action_space: env's action space
+    :param max_kl: max kl-divergence used to constrain each actor network update.
+    :param backtrack_coeff: Coefficient to be multiplied by step size when
+        constraints are not met.
+    :param max_backtracks: Max number of backtracking times in linesearch.
+    :param optim_critic_iters: Number of times to optimize critic network per update.
+    :param actor_step_size: step size for actor update in natural gradient direction.
+    :param advantage_normalization: whether to do per mini-batch advantage
+        normalization.
+    :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+    :param max_batchsize: the maximum size of the batch when computing GAE.
+    :param discount_factor: in [0, 1].
+    :param reward_normalization: normalize estimated values to have std close to 1.
+    :param deterministic_eval: if True, use deterministic evaluation.
+    :param observation_space: the space of the observation.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range of
+        action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
+        action_space: gym.Space,
         max_kl: float = 0.01,
         backtrack_coeff: float = 0.8,
         max_backtracks: int = 10,
-        **kwargs: Any,
+        optim_critic_iters: int = 5,
+        actor_step_size: float = 0.5,
+        advantage_normalization: bool = True,
+        gae_lambda: float = 0.95,
+        max_batchsize: int = 256,
+        discount_factor: float = 0.99,
+        # TODO: rename to return_normalization?
+        reward_normalization: bool = False,
+        deterministic_eval: bool = False,
+        observation_space: gym.Space | None = None,
+        action_scaling: bool = True,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        super().__init__(actor, critic, optim, dist_fn, **kwargs)
-        self._max_backtracks = max_backtracks
-        self._delta = max_kl
-        self._backtrack_coeff = backtrack_coeff
-        self._optim_critic_iters: int
+        super().__init__(
+            actor=actor,
+            critic=critic,
+            optim=optim,
+            dist_fn=dist_fn,
+            action_space=action_space,
+            optim_critic_iters=optim_critic_iters,
+            actor_step_size=actor_step_size,
+            advantage_normalization=advantage_normalization,
+            gae_lambda=gae_lambda,
+            max_batchsize=max_batchsize,
+            discount_factor=discount_factor,
+            reward_normalization=reward_normalization,
+            deterministic_eval=deterministic_eval,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            lr_scheduler=lr_scheduler,
+        )
+        self.max_backtracks = max_backtracks
+        self.max_kl = max_kl
+        self.backtrack_coeff = backtrack_coeff
 
     def learn(  # type: ignore
         self,
@@ -97,7 +119,7 @@ class TRPOPolicy(NPGPolicy):
                 # stepsize: calculate max stepsize constrained by kl bound
                 step_size = torch.sqrt(
                     2
-                    * self._delta
+                    * self.max_kl
                     / (search_direction * self._MVP(search_direction, flat_kl_grad)).sum(
                         0,
                         keepdim=True,
@@ -109,7 +131,7 @@ class TRPOPolicy(NPGPolicy):
                     flat_params = torch.cat(
                         [param.data.view(-1) for param in self.actor.parameters()],
                     )
-                    for i in range(self._max_backtracks):
+                    for i in range(self.max_backtracks):
                         new_flat_params = flat_params + step_size * search_direction
                         self._set_from_flat_params(self.actor, new_flat_params)
                         # calculate kl and if in bound, loss actually down
@@ -121,12 +143,12 @@ class TRPOPolicy(NPGPolicy):
                         new_actor_loss = -(new_dratio * minibatch.adv).mean()
                         kl = kl_divergence(old_dist, new_dist).mean()
 
-                        if kl < self._delta and new_actor_loss < actor_loss:
+                        if kl < self.max_kl and new_actor_loss < actor_loss:
                             if i > 0:
                                 warnings.warn(f"Backtracking to step {i}.")
                             break
-                        if i < self._max_backtracks - 1:
-                            step_size = step_size * self._backtrack_coeff
+                        if i < self.max_backtracks - 1:
+                            step_size = step_size * self.backtrack_coeff
                         else:
                             self._set_from_flat_params(self.actor, new_flat_params)
                             step_size = torch.tensor([0.0])
@@ -135,8 +157,9 @@ class TRPOPolicy(NPGPolicy):
                                 " are poor and need to be changed.",
                             )
 
-                # optimize citirc
-                for _ in range(self._optim_critic_iters):
+                # optimize critic
+                # TODO: remove type-ignore once the top-level type-ignore is removed
+                for _ in range(self.optim_critic_iters):  # type: ignore
                     value = self.critic(minibatch.obs).flatten()
                     vf_loss = F.mse_loss(minibatch.returns, value)
                     self.optim.zero_grad()

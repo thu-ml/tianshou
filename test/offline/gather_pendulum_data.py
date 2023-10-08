@@ -38,7 +38,6 @@ def get_args():
     parser.add_argument("--update-per-step", type=float, default=0.125)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-
     parser.add_argument("--gamma", default=0.99)
     parser.add_argument("--tau", default=0.005)
     parser.add_argument(
@@ -57,7 +56,6 @@ def get_args():
     parser.add_argument("--alpha", type=float, default=0.2)
     parser.add_argument("--auto-alpha", type=int, default=1)
     parser.add_argument("--alpha-lr", type=float, default=3e-4)
-    parser.add_argument("--rew-norm", action="store_true", default=False)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument("--save-buffer-name", type=str, default=expert_file_name())
     return parser.parse_known_args()[0]
@@ -92,24 +90,15 @@ def gather_data():
         unbounded=True,
     ).to(args.device)
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
-    net_c1 = Net(
+    net_c = Net(
         args.state_shape,
         args.action_shape,
         hidden_sizes=args.hidden_sizes,
         concat=True,
         device=args.device,
     )
-    critic1 = Critic(net_c1, device=args.device).to(args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
-    net_c2 = Net(
-        args.state_shape,
-        args.action_shape,
-        hidden_sizes=args.hidden_sizes,
-        concat=True,
-        device=args.device,
-    )
-    critic2 = Critic(net_c2, device=args.device).to(args.device)
-    critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+    critic = Critic(net_c, device=args.device).to(args.device)
+    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
 
     if args.auto_alpha:
         target_entropy = -np.prod(env.action_space.shape)
@@ -118,16 +107,13 @@ def gather_data():
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = SACPolicy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic,
+        critic_optim=critic_optim,
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,
-        reward_normalization=args.rew_norm,
         estimation_step=args.n_step,
         action_space=env.action_space,
     )

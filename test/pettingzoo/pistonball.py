@@ -98,16 +98,17 @@ def get_agents(
             ).to(args.device)
             optim = torch.optim.Adam(net.parameters(), lr=args.lr)
             agent = DQNPolicy(
-                net,
-                optim,
-                args.gamma,
-                args.n_step,
+                model=net,
+                optim=optim,
+                action_space=env.action_space,
+                discount_factor=args.gamma,
+                estimation_step=args.n_step,
                 target_update_freq=args.target_update_freq,
             )
             agents.append(agent)
             optims.append(optim)
 
-    policy = MultiAgentPolicyManager(agents, env)
+    policy = MultiAgentPolicyManager(policies=agents, env=env)
     return policy, optims, env.agents
 
 

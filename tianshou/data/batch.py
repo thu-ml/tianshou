@@ -97,7 +97,7 @@ def create_value(
 ) -> Union["Batch", np.ndarray, torch.Tensor]:
     """Create empty place-holders accroding to inst's shape.
 
-    :param bool stack: whether to stack or to concatenate. E.g. if inst has shape of
+    :param stack: whether to stack or to concatenate. E.g. if inst has shape of
         (3, 5), size = 10, stack=True returns an np.ndarry with shape of (10, 3, 5),
         otherwise (10, 5)
     """
@@ -381,12 +381,12 @@ class BatchProtocol(Protocol):
     ) -> Iterator[Self]:
         """Split whole data into multiple small batches.
 
-        :param int size: divide the data batch with the given size, but one
+        :param size: divide the data batch with the given size, but one
             batch if the length of the batch is smaller than "size". Size of -1 means
             the whole batch.
-        :param bool shuffle: randomly shuffle the entire data batch if it is
+        :param shuffle: randomly shuffle the entire data batch if it is
             True, otherwise remain in the same. Default to True.
-        :param bool merge_last: merge the last batch into the previous one.
+        :param merge_last: merge the last batch into the previous one.
             Default to False.
         """
         ...

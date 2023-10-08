@@ -39,7 +39,6 @@ def get_args():
     parser.add_argument("--test-num", type=int, default=100)
     parser.add_argument("--logdir", type=str, default="log")
     parser.add_argument("--render", type=float, default=0.0)
-    parser.add_argument("--rew-norm", action="store_true", default=False)
     parser.add_argument("--n-step", type=int, default=3)
     parser.add_argument(
         "--device",
@@ -83,17 +82,17 @@ def test_discrete_sac(args=get_args()):
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = DiscreteSACPolicy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
-        args.tau,
-        args.gamma,
-        args.alpha,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic1,
+        action_space=env.action_space,
+        critic_optim=critic1_optim,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
+        tau=args.tau,
+        gamma=args.gamma,
+        alpha=args.alpha,
         estimation_step=args.n_step,
-        reward_normalization=args.rew_norm,
     )
     # collector
     train_collector = Collector(

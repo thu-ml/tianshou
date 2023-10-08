@@ -268,8 +268,8 @@ def test_cql():
         concat=True,
         device=args.device,
     )
-    critic1 = Critic(net_c1, device=args.device).to(args.device)
-    critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
+    critic = Critic(net_c1, device=args.device).to(args.device)
+    critic_optim = torch.optim.Adam(critic.parameters(), lr=args.critic_lr)
     critic2 = Critic(net_c2, device=args.device).to(args.device)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
@@ -280,14 +280,14 @@ def test_cql():
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = CQLPolicy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
-        calibrated=args.calibrated,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic,
+        critic_optim=critic_optim,
         action_space=env.action_space,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
+        calibrated=args.calibrated,
         cql_alpha_lr=args.cql_alpha_lr,
         cql_weight=args.cql_weight,
         tau=args.tau,

@@ -1,5 +1,6 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,17 +9,22 @@ from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import ModelOutputBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class ImitationPolicy(BasePolicy):
     """Implementation of vanilla imitation learning.
 
-    :param torch.nn.Module model: a model following the rules in
+    :param actor: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> a)
-    :param torch.optim.Optimizer optim: for optimizing the model.
-    :param gym.Space action_space: env's action space.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
+    :param optim: for optimizing the model.
+    :param action_space: Env's action_space.
+    :param observation_space: Env's observation space.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range
+        of action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -28,17 +34,24 @@ class ImitationPolicy(BasePolicy):
 
     def __init__(
         self,
-        model: torch.nn.Module,
+        *,
+        actor: torch.nn.Module,
         optim: torch.optim.Optimizer,
-        **kwargs: Any,
+        action_space: gym.Space,
+        observation_space: gym.Space | None = None,
+        action_scaling: bool = False,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        super().__init__(**kwargs)
-        self.model = model
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            lr_scheduler=lr_scheduler,
+        )
+        self.actor = actor
         self.optim = optim
-        assert self.action_type in [
-            "continuous",
-            "discrete",
-        ], "Please specify action_space."
 
     def forward(
         self,
@@ -46,7 +59,7 @@ class ImitationPolicy(BasePolicy):
         state: dict | BatchProtocol | np.ndarray | None = None,
         **kwargs: Any,
     ) -> ModelOutputBatchProtocol:
-        logits, hidden = self.model(batch.obs, state=state, info=batch.info)
+        logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
         act = logits.max(dim=1)[1] if self.action_type == "discrete" else logits
         result = Batch(logits=logits, act=act, state=hidden)
         return cast(ModelOutputBatchProtocol, result)

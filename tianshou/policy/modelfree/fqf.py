@@ -1,5 +1,6 @@
 from typing import Any, cast
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -7,29 +8,35 @@ import torch.nn.functional as F
 from tianshou.data import Batch, ReplayBuffer, to_numpy
 from tianshou.data.types import FQFBatchProtocol, RolloutBatchProtocol
 from tianshou.policy import DQNPolicy, QRDQNPolicy
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils.net.discrete import FractionProposalNetwork, FullQuantileFunction
 
 
 class FQFPolicy(QRDQNPolicy):
     """Implementation of Fully-parameterized Quantile Function. arXiv:1911.02140.
 
-    :param torch.nn.Module model: a model following the rules in
+    :param model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
-    :param FractionProposalNetwork fraction_model: a FractionProposalNetwork for
+    :param optim: a torch.optim for optimizing the model.
+    :param fraction_model: a FractionProposalNetwork for
         proposing fractions/quantiles given state.
-    :param torch.optim.Optimizer fraction_optim: a torch.optim for optimizing
+    :param fraction_optim: a torch.optim for optimizing
         the fraction model above.
-    :param float discount_factor: in [0, 1].
-    :param int num_fractions: the number of fractions to use. Default to 32.
-    :param float ent_coef: the coefficient for entropy loss. Default to 0.
-    :param int estimation_step: the number of steps to look ahead. Default to 1.
-    :param int target_update_freq: the target network update frequency (0 if
+    :param action_space: Env's action space.
+    :param discount_factor: in [0, 1].
+    :param num_fractions: the number of fractions to use.
+    :param ent_coef: the coefficient for entropy loss.
+    :param estimation_step: the number of steps to look ahead.
+    :param target_update_freq: the target network update frequency (0 if
         you do not use the target network).
-    :param bool reward_normalization: normalize the reward to Normal(0, 1).
-        Default to False.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
+    :param reward_normalization: normalize the **returns** to Normal(0, 1).
+        TODO: rename to return_normalization?
+    :param is_double: use double dqn.
+    :param clip_loss_grad: clip the gradient of the loss in accordance
+        with nature14236; this amounts to using the Huber loss instead of
+        the MSE loss.
+    :param observation_space: Env's observation space.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -39,31 +46,42 @@ class FQFPolicy(QRDQNPolicy):
 
     def __init__(
         self,
+        *,
         model: FullQuantileFunction,
         optim: torch.optim.Optimizer,
         fraction_model: FractionProposalNetwork,
         fraction_optim: torch.optim.Optimizer,
+        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
+        # TODO: used as num_quantiles in QRDQNPolicy, but num_fractions in FQFPolicy.
+        #  Rename? Or at least explain what happens here.
         num_fractions: int = 32,
         ent_coef: float = 0.0,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        **kwargs: Any,
+        is_double: bool = True,
+        clip_loss_grad: bool = False,
+        observation_space: gym.Space | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
-            model,
-            optim,
-            discount_factor,
-            num_fractions,
-            estimation_step,
-            target_update_freq,
-            reward_normalization,
-            **kwargs,
+            model=model,
+            optim=optim,
+            action_space=action_space,
+            discount_factor=discount_factor,
+            num_quantiles=num_fractions,
+            estimation_step=estimation_step,
+            target_update_freq=target_update_freq,
+            reward_normalization=reward_normalization,
+            is_double=is_double,
+            clip_loss_grad=clip_loss_grad,
+            observation_space=observation_space,
+            lr_scheduler=lr_scheduler,
         )
-        self.propose_model = fraction_model
-        self._ent_coef = ent_coef
-        self._fraction_optim = fraction_optim
+        self.fraction_model = fraction_model
+        self.ent_coef = ent_coef
+        self.fraction_optim = fraction_optim
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
@@ -77,7 +95,7 @@ class FQFPolicy(QRDQNPolicy):
             next_dist = next_batch.logits
         return next_dist[np.arange(len(act)), act, :]
 
-    # TODO: add protocol type for return, fix Liskov substitution principle violation
+    # TODO: fix Liskov substitution principle violation
     def forward(  # type: ignore
         self,
         batch: RolloutBatchProtocol,
@@ -93,14 +111,14 @@ class FQFPolicy(QRDQNPolicy):
         if fractions is None:
             (logits, fractions, quantiles_tau), hidden = model(
                 obs_next,
-                propose_model=self.propose_model,
+                propose_model=self.fraction_model,
                 state=state,
                 info=batch.info,
             )
         else:
             (logits, _, quantiles_tau), hidden = model(
                 obs_next,
-                propose_model=self.propose_model,
+                propose_model=self.fraction_model,
                 fractions=fractions,
                 state=state,
                 info=batch.info,
@@ -108,6 +126,7 @@ class FQFPolicy(QRDQNPolicy):
         weighted_logits = (fractions.taus[:, 1:] - fractions.taus[:, :-1]).unsqueeze(1) * logits
         q = DQNPolicy.compute_q_value(self, weighted_logits.sum(2), getattr(obs, "mask", None))
         if not hasattr(self, "max_action_num"):
+            # TODO: see same thing in DQNPolicy! Also reduce code duplication.
             self.max_action_num = q.shape[1]
         act = to_numpy(q.max(dim=1)[1])
         result = Batch(
@@ -120,7 +139,7 @@ class FQFPolicy(QRDQNPolicy):
         return cast(FQFBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
-        if self._target and self._iter % self._freq == 0:
+        if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         weight = batch.pop("weight", 1.0)
         out = self(batch)
@@ -169,10 +188,10 @@ class FQFPolicy(QRDQNPolicy):
         fraction_loss = (gradient_of_taus * taus[:, 1:-1]).sum(1).mean()
         # calculate entropy loss
         entropy_loss = out.fractions.entropies.mean()
-        fraction_entropy_loss = fraction_loss - self._ent_coef * entropy_loss
-        self._fraction_optim.zero_grad()
+        fraction_entropy_loss = fraction_loss - self.ent_coef * entropy_loss
+        self.fraction_optim.zero_grad()
         fraction_entropy_loss.backward(retain_graph=True)
-        self._fraction_optim.step()
+        self.fraction_optim.step()
         self.optim.zero_grad()
         quantile_loss.backward()
         self.optim.step()

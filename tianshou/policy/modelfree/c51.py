@@ -1,33 +1,39 @@
 from typing import Any
 
+import gymnasium as gym
 import numpy as np
 import torch
 
 from tianshou.data import ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class C51Policy(DQNPolicy):
     """Implementation of Categorical Deep Q-Network. arXiv:1707.06887.
 
-    :param torch.nn.Module model: a model following the rules in
+    :param model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
-    :param float discount_factor: in [0, 1].
-    :param int num_atoms: the number of atoms in the support set of the
+    :param optim: a torch.optim for optimizing the model.
+    :param discount_factor: in [0, 1].
+    :param num_atoms: the number of atoms in the support set of the
         value distribution. Default to 51.
-    :param float v_min: the value of the smallest atom in the support set.
+    :param v_min: the value of the smallest atom in the support set.
         Default to -10.0.
-    :param float v_max: the value of the largest atom in the support set.
+    :param v_max: the value of the largest atom in the support set.
         Default to 10.0.
-    :param int estimation_step: the number of steps to look ahead. Default to 1.
-    :param int target_update_freq: the target network update frequency (0 if
-        you do not use the target network). Default to 0.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1).
-        Default to False.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
+    :param estimation_step: the number of steps to look ahead.
+    :param target_update_freq: the target network update frequency (0 if
+        you do not use the target network).
+    :param reward_normalization: normalize the **returns** to Normal(0, 1).
+        TODO: rename to return_normalization?
+    :param is_double: use double dqn.
+    :param clip_loss_grad: clip the gradient of the loss in accordance
+        with nature14236; this amounts to using the Huber loss instead of
+        the MSE loss.
+    :param observation_space: Env's observation space.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -37,8 +43,10 @@ class C51Policy(DQNPolicy):
 
     def __init__(
         self,
+        *,
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
+        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
         num_atoms: int = 51,
         v_min: float = -10.0,
@@ -46,19 +54,26 @@ class C51Policy(DQNPolicy):
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        **kwargs: Any,
+        is_double: bool = True,
+        clip_loss_grad: bool = False,
+        observation_space: gym.Space | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        assert num_atoms > 1, f"num_atoms should be greater than 1 but got: {num_atoms}"
+        assert v_min < v_max, f"v_max should be larger than v_min, but got {v_min=} and {v_max=}"
         super().__init__(
-            model,
-            optim,
-            discount_factor,
-            estimation_step,
-            target_update_freq,
-            reward_normalization,
-            **kwargs,
+            model=model,
+            optim=optim,
+            action_space=action_space,
+            discount_factor=discount_factor,
+            estimation_step=estimation_step,
+            target_update_freq=target_update_freq,
+            reward_normalization=reward_normalization,
+            is_double=is_double,
+            clip_loss_grad=clip_loss_grad,
+            observation_space=observation_space,
+            lr_scheduler=lr_scheduler,
         )
-        assert num_atoms > 1, "num_atoms should be greater than 1"
-        assert v_min < v_max, "v_max should be larger than v_min"
         self._num_atoms = num_atoms
         self._v_min = v_min
         self._v_max = v_max
@@ -92,7 +107,7 @@ class C51Policy(DQNPolicy):
         return target_dist.sum(-1)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
-        if self._target and self._iter % self._freq == 0:
+        if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
         with torch.no_grad():

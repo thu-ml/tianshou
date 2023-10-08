@@ -126,12 +126,12 @@ def test_sac_bipedal(args=get_args()):
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = SACPolicy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic1,
+        critic_optim=critic1_optim,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,

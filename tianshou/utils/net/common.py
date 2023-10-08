@@ -47,8 +47,8 @@ class MLP(nn.Module):
     Create a MLP of size input_dim * hidden_sizes[0] * hidden_sizes[1] * ...
     * hidden_sizes[-1] * output_dim
 
-    :param int input_dim: dimension of the input vector.
-    :param int output_dim: dimension of the output vector. If set to 0, there
+    :param input_dim: dimension of the input vector.
+    :param output_dim: dimension of the output vector. If set to 0, there
         is no final linear layer.
     :param hidden_sizes: shape of MLP passed in as a list, not including
         input_dim and output_dim.
@@ -63,7 +63,7 @@ class MLP(nn.Module):
         nn.ReLU.
     :param device: which device to create this model on. Default to None.
     :param linear_layer: use this module as linear layer. Default to nn.Linear.
-    :param bool flatten_input: whether to flatten input data. Default to True.
+    :param flatten_input: whether to flatten input data. Default to True.
     """
 
     def __init__(
@@ -170,14 +170,14 @@ class Net(NetBase):
         nn.ReLU.
     :param device: specify the device when the network actually runs. Default
         to "cpu".
-    :param bool softmax: whether to apply a softmax layer over the last layer's
+    :param softmax: whether to apply a softmax layer over the last layer's
         output.
-    :param bool concat: whether the input shape is concatenated by state_shape
+    :param concat: whether the input shape is concatenated by state_shape
         and action_shape. If it is True, ``action_shape`` is not the output
         shape, but affects the input shape only.
-    :param int num_atoms: in order to expand to the net of distributional RL.
+    :param num_atoms: in order to expand to the net of distributional RL.
         Default to 1 (not use).
-    :param bool dueling_param: whether to use dueling network to calculate Q
+    :param dueling_param: whether to use dueling network to calculate Q
         values (for Dueling DQN). If you want to use dueling option, you should
         pass a tuple of two dict (first for Q and second for V) stating
         self-defined arguments as stated in
@@ -403,10 +403,10 @@ class DataParallelNet(nn.Module):
 class EnsembleLinear(nn.Module):
     """Linear Layer of Ensemble network.
 
-    :param int ensemble_size: Number of subnets in the ensemble.
-    :param int in_feature: dimension of the input vector.
-    :param int out_feature: dimension of the output vector.
-    :param bool bias: whether to include an additive bias, default to be True.
+    :param ensemble_size: Number of subnets in the ensemble.
+    :param in_feature: dimension of the input vector.
+    :param out_feature: dimension of the output vector.
+    :param bias: whether to include an additive bias, default to be True.
     """
 
     def __init__(
@@ -460,7 +460,7 @@ class BranchingNet(NetBase):
     nn.ReLU.
     :param device: specify the device when the network actually runs. Default
     to "cpu".
-    :param bool softmax: whether to apply a softmax layer over the last layer's
+    :param softmax: whether to apply a softmax layer over the last layer's
     output.
     """
 

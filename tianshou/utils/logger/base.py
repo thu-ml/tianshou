@@ -12,9 +12,9 @@ class BaseLogger(ABC):
 
     Try to overwrite write() method to use your own writer.
 
-    :param int train_interval: the log interval in log_train_data(). Default to 1000.
-    :param int test_interval: the log interval in log_test_data(). Default to 1.
-    :param int update_interval: the log interval in log_update_data(). Default to 1000.
+    :param train_interval: the log interval in log_train_data(). Default to 1000.
+    :param test_interval: the log interval in log_test_data(). Default to 1.
+    :param update_interval: the log interval in log_update_data(). Default to 1000.
     """
 
     def __init__(
@@ -36,8 +36,8 @@ class BaseLogger(ABC):
         """Specify how the writer is used to log data.
 
         :param str step_type: namespace which the data dict belongs to.
-        :param int step: stands for the ordinate of the data dict.
-        :param dict data: the data to write with format ``{key: value}``.
+        :param step: stands for the ordinate of the data dict.
+        :param data: the data to write with format ``{key: value}``.
         """
 
     def log_train_data(self, collect_result: dict, step: int) -> None:
@@ -45,7 +45,7 @@ class BaseLogger(ABC):
 
         :param collect_result: a dict containing information of data collected in
             training stage, i.e., returns of collector.collect().
-        :param int step: stands for the timestep the collect_result being logged.
+        :param step: stands for the timestep the collect_result being logged.
         """
         if collect_result["n/ep"] > 0 and step - self.last_log_train_step >= self.train_interval:
             log_data = {
@@ -61,7 +61,7 @@ class BaseLogger(ABC):
 
         :param collect_result: a dict containing information of data collected in
             evaluating stage, i.e., returns of collector.collect().
-        :param int step: stands for the timestep the collect_result being logged.
+        :param step: stands for the timestep the collect_result being logged.
         """
         assert collect_result["n/ep"] > 0
         if step - self.last_log_test_step >= self.test_interval:
@@ -80,7 +80,7 @@ class BaseLogger(ABC):
 
         :param update_result: a dict containing information of data collected in
             updating stage, i.e., returns of policy.update().
-        :param int step: stands for the timestep the collect_result being logged.
+        :param step: stands for the timestep the collect_result being logged.
         """
         if step - self.last_log_update_step >= self.update_interval:
             log_data = {f"update/{k}": v for k, v in update_result.items()}
@@ -97,9 +97,9 @@ class BaseLogger(ABC):
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 
-        :param int epoch: the epoch in trainer.
-        :param int env_step: the env_step in trainer.
-        :param int gradient_step: the gradient_step in trainer.
+        :param epoch: the epoch in trainer.
+        :param env_step: the env_step in trainer.
+        :param gradient_step: the gradient_step in trainer.
         :param function save_checkpoint_fn: a hook defined by user, see trainer
             documentation for detail.
         """

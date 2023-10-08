@@ -1,6 +1,7 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -10,6 +11,7 @@ from torch.distributions import kl_divergence
 from tianshou.data import Batch, ReplayBuffer
 from tianshou.data.types import BatchWithAdvantagesProtocol, RolloutBatchProtocol
 from tianshou.policy import A2CPolicy
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistParams
 
 
@@ -18,52 +20,74 @@ class NPGPolicy(A2CPolicy):
 
     https://proceedings.neurips.cc/paper/2001/file/4b86abe48d358ecf194c56c69108433e-Paper.pdf
 
-    :param torch.nn.Module actor: the actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.nn.Module critic: the critic network. (s -> V(s))
-    :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
+    :param actor: the actor network following the rules in BasePolicy. (s -> logits)
+    :param critic: the critic network. (s -> V(s))
+    :param optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :param bool advantage_normalization: whether to do per mini-batch advantage
-        normalization. Default to True.
-    :param int optim_critic_iters: Number of times to optimize critic network per
-        update. Default to 5.
-    :param float gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
-        Default to 0.95.
-    :param bool reward_normalization: normalize estimated values to have std close to
-        1. Default to False.
-    :param int max_batchsize: the maximum size of the batch when computing GAE,
-        depends on the size of available memory and the memory cost of the
-        model; should be as large as possible within the memory constraint.
-        Default to 256.
-    :param bool action_scaling: whether to map actions from range [-1, 1] to range
-        [action_spaces.low, action_spaces.high]. Default to True.
-    :param str action_bound_method: method to bound action to range [-1, 1], can be
-        either "clip" (for simply clipping the action), "tanh" (for applying tanh
-        squashing) for now, or empty string for no bounding. Default to "clip".
-    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
-        to use option "action_scaling" or "action_bound_method". Default to None.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
-    :param bool deterministic_eval: whether to use deterministic action instead of
-        stochastic action sampled by the policy. Default to False.
+    :param action_space: env's action space
+    :param optim_critic_iters: Number of times to optimize critic network per update.
+    :param actor_step_size: step size for actor update in natural gradient direction.
+    :param advantage_normalization: whether to do per mini-batch advantage
+        normalization.
+    :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+    :param max_batchsize: the maximum size of the batch when computing GAE.
+    :param discount_factor: in [0, 1].
+    :param reward_normalization: normalize estimated values to have std close to 1.
+    :param deterministic_eval: if True, use deterministic evaluation.
+    :param observation_space: the space of the observation.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range of
+        action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
     """
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
-        advantage_normalization: bool = True,
+        action_space: gym.Space,
         optim_critic_iters: int = 5,
         actor_step_size: float = 0.5,
-        **kwargs: Any,
+        advantage_normalization: bool = True,
+        gae_lambda: float = 0.95,
+        max_batchsize: int = 256,
+        discount_factor: float = 0.99,
+        # TODO: rename to return_normalization?
+        reward_normalization: bool = False,
+        deterministic_eval: bool = False,
+        observation_space: gym.Space | None = None,
+        action_scaling: bool = True,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
-        super().__init__(actor, critic, optim, dist_fn, **kwargs)
-        del self._weight_vf, self._weight_ent, self._grad_norm
-        self._norm_adv = advantage_normalization
-        self._optim_critic_iters = optim_critic_iters
-        self._step_size = actor_step_size
+        super().__init__(
+            actor=actor,
+            critic=critic,
+            optim=optim,
+            dist_fn=dist_fn,
+            action_space=action_space,
+            # TODO: violates Liskov substitution principle, see the del statement below
+            vf_coef=None,  # type: ignore
+            ent_coef=None,  # type: ignore
+            max_grad_norm=None,
+            gae_lambda=gae_lambda,
+            max_batchsize=max_batchsize,
+            discount_factor=discount_factor,
+            reward_normalization=reward_normalization,
+            deterministic_eval=deterministic_eval,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            lr_scheduler=lr_scheduler,
+        )
+        # TODO: see above, it ain't pretty...
+        del self.vf_coef, self.ent_coef, self.max_grad_norm
+        self.norm_adv = advantage_normalization
+        self.optim_critic_iters = optim_critic_iters
+        self.actor_step_size = actor_step_size
         # adjusts Hessian-vector product calculation for numerical stability
         self._damping = 0.1
 
@@ -76,10 +100,10 @@ class NPGPolicy(A2CPolicy):
         batch = super().process_fn(batch, buffer, indices)
         old_log_prob = []
         with torch.no_grad():
-            for minibatch in batch.split(self._batch, shuffle=False, merge_last=True):
+            for minibatch in batch.split(self.max_batchsize, shuffle=False, merge_last=True):
                 old_log_prob.append(self(minibatch).dist.log_prob(minibatch.act))
         batch.logp_old = torch.cat(old_log_prob, dim=0)
-        if self._norm_adv:
+        if self.norm_adv:
             batch.adv = (batch.adv - batch.adv.mean()) / batch.adv.std()
         return batch
 
@@ -115,13 +139,13 @@ class NPGPolicy(A2CPolicy):
                     flat_params = torch.cat(
                         [param.data.view(-1) for param in self.actor.parameters()],
                     )
-                    new_flat_params = flat_params + self._step_size * search_direction
+                    new_flat_params = flat_params + self.actor_step_size * search_direction
                     self._set_from_flat_params(self.actor, new_flat_params)
                     new_dist = self(minibatch).dist
                     kl = kl_divergence(old_dist, new_dist).mean()
 
                 # optimize citirc
-                for _ in range(self._optim_critic_iters):
+                for _ in range(self.optim_critic_iters):
                     value = self.critic(minibatch.obs).flatten()
                     vf_loss = F.mse_loss(minibatch.returns, value)
                     self.optim.zero_grad()

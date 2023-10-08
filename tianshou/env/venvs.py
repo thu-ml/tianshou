@@ -62,13 +62,13 @@ class BaseVectorEnv:
     :param env_fns: a list of callable envs, ``env_fns[i]()`` generates the i-th env.
     :param worker_fn: a callable worker, ``worker_fn(env_fns[i])`` generates a
         worker which contains the i-th env.
-    :param int wait_num: use in asynchronous simulation if the time cost of
+    :param wait_num: use in asynchronous simulation if the time cost of
         ``env.step`` varies with time and synchronously waiting for all
         environments to finish a step is time-wasting. In that case, we can
         return when ``wait_num`` environments finish a step and keep on
         simulation in these environments. If ``None``, asynchronous simulation
         is disabled; else, ``1 <= wait_num <= env_num``.
-    :param float timeout: use in asynchronous simulation same as above, in each
+    :param timeout: use in asynchronous simulation same as above, in each
         vectorized step it only deal with those environments spending time
         within ``timeout`` seconds.
     """

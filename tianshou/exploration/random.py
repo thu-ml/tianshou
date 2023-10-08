@@ -7,9 +7,6 @@ import numpy as np
 class BaseNoise(ABC):
     """The action noise base class."""
 
-    def __init__(self) -> None:
-        super().__init__()
-
     @abstractmethod
     def reset(self) -> None:
         """Reset to the initial state."""
@@ -24,7 +21,6 @@ class GaussianNoise(BaseNoise):
     """The vanilla Gaussian process, for exploration in DDPG by default."""
 
     def __init__(self, mu: float = 0.0, sigma: float = 1.0) -> None:
-        super().__init__()
         self._mu = mu
         assert sigma >= 0, "Noise std should not be negative."
         self._sigma = sigma

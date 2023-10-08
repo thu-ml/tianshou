@@ -20,13 +20,13 @@ class ReplayBuffer:
     For the example usage of ReplayBuffer, please check out Section Buffer in
     :doc:`/tutorials/concepts`.
 
-    :param int size: the maximum size of replay buffer.
-    :param int stack_num: the frame-stack sampling argument, should be greater than or
+    :param size: the maximum size of replay buffer.
+    :param stack_num: the frame-stack sampling argument, should be greater than or
         equal to 1. Default to 1 (no stacking).
-    :param bool ignore_obs_next: whether to store obs_next. Default to False.
-    :param bool save_only_last_obs: only save the last obs/obs_next when it has a shape
+    :param ignore_obs_next: whether to store obs_next. Default to False.
+    :param save_only_last_obs: only save the last obs/obs_next when it has a shape
         of (timestep, ...) because of temporal stacking. Default to False.
-    :param bool sample_avail: the parameter indicating sampling only available index
+    :param sample_avail: the parameter indicating sampling only available index
         when using frame-stack sampling method. Default to False.
     """
 
@@ -242,7 +242,7 @@ class ReplayBuffer:
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Add a batch of data into replay buffer.
 
-        :param Batch batch: the input data batch. "obs", "act", "rew",
+        :param batch: the input data batch. "obs", "act", "rew",
             "terminated", "truncated" are required keys.
         :param buffer_ids: to make consistent with other buffer's add function; if it
             is not None, we assume the input batch's first dimension is always 1.
@@ -340,7 +340,7 @@ class ReplayBuffer:
         :param str key: the key to get, should be one of the reserved_keys.
         :param default_value: if the given key's data is not found and default_value is
             set, return this default_value.
-        :param int stack_num: Default to self.stack_num.
+        :param stack_num: Default to self.stack_num.
         """
         if key not in self._meta and default_value is not None:
             return default_value

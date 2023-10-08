@@ -82,13 +82,14 @@ def test_c51(args=get_args()):
     )
     optim = torch.optim.Adam(net.parameters(), lr=args.lr)
     policy = C51Policy(
-        net,
-        optim,
-        args.gamma,
-        args.num_atoms,
-        args.v_min,
-        args.v_max,
-        args.n_step,
+        model=net,
+        optim=optim,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
+        num_atoms=args.num_atoms,
+        v_min=args.v_min,
+        v_max=args.v_max,
+        estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer

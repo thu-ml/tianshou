@@ -9,7 +9,7 @@ class ContinuousToDiscrete(gym.ActionWrapper):
     """Gym environment wrapper to take discrete action in a continuous environment.
 
     :param gym.Env env: gym environment with continuous action space.
-    :param int action_per_dim: number of discrete actions in each dimension
+    :param action_per_dim: number of discrete actions in each dimension
         of the action space.
     """
 

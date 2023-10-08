@@ -1,37 +1,40 @@
 from copy import deepcopy
-from typing import Any
+from typing import Any, Literal
 
+import gymnasium as gym
 import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
 from tianshou.data import to_torch, to_torch_as
 from tianshou.data.types import RolloutBatchProtocol
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import PGPolicy
 
 
 class DiscreteCRRPolicy(PGPolicy):
     r"""Implementation of discrete Critic Regularized Regression. arXiv:2006.15134.
 
-    :param torch.nn.Module actor: the actor network following the rules in
+    :param actor: the actor network following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.nn.Module critic: the action-value critic (i.e., Q function)
+    :param critic: the action-value critic (i.e., Q function)
         network. (s -> Q(s, \*))
-    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
-    :param float discount_factor: in [0, 1]. Default to 0.99.
+    :param optim: a torch.optim for optimizing the model.
+    :param discount_factor: in [0, 1].
     :param str policy_improvement_mode: type of the weight function f. Possible
-        values: "binary"/"exp"/"all". Default to "exp".
-    :param float ratio_upper_bound: when policy_improvement_mode is "exp", the value
-        of the exp function is upper-bounded by this parameter. Default to 20.
-    :param float beta: when policy_improvement_mode is "exp", this is the denominator
-        of the exp function. Default to 1.
-    :param float min_q_weight: weight for CQL loss/regularizer. Default to 10.
-    :param int target_update_freq: the target network update frequency (0 if
-        you do not use the target network). Default to 0.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1).
-        Default to False.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
+        values: "binary"/"exp"/"all".
+    :param ratio_upper_bound: when policy_improvement_mode is "exp", the value
+        of the exp function is upper-bounded by this parameter.
+    :param beta: when policy_improvement_mode is "exp", this is the denominator
+        of the exp function.
+    :param min_q_weight: weight for CQL loss/regularizer. Default to 10.
+    :param target_update_freq: the target network update frequency (0 if
+        you do not use the target network).
+    :param reward_normalization: if True, will normalize the *returns*
+        by subtracting the running mean and dividing by the running standard deviation.
+        Can be detrimental to performance! See TODO in process_fn.
+    :param observation_space: Env's observation space.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
         Please refer to :class:`~tianshou.policy.PGPolicy` for more detailed
@@ -40,25 +43,32 @@ class DiscreteCRRPolicy(PGPolicy):
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
+        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
-        policy_improvement_mode: str = "exp",
+        policy_improvement_mode: Literal["exp", "binary", "all"] = "exp",
         ratio_upper_bound: float = 20.0,
         beta: float = 1.0,
         min_q_weight: float = 10.0,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        **kwargs: Any,
+        observation_space: gym.Space | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
-            actor,
-            optim,
-            lambda x: Categorical(logits=x),
-            discount_factor,
-            reward_normalization,
-            **kwargs,
+            actor=actor,
+            optim=optim,
+            action_space=action_space,
+            dist_fn=lambda x: Categorical(logits=x),
+            discount_factor=discount_factor,
+            reward_normalization=reward_normalization,
+            observation_space=observation_space,
+            action_scaling=False,
+            action_bound_method=None,
+            lr_scheduler=lr_scheduler,
         )
         self.critic = critic
         self._target = target_update_freq > 0
@@ -72,7 +82,6 @@ class DiscreteCRRPolicy(PGPolicy):
         else:
             self.actor_old = self.actor
             self.critic_old = self.critic
-        assert policy_improvement_mode in ["exp", "binary", "all"]
         self._policy_improvement_mode = policy_improvement_mode
         self._ratio_upper_bound = ratio_upper_bound
         self._beta = beta
@@ -102,7 +111,7 @@ class DiscreteCRRPolicy(PGPolicy):
             rew = to_torch_as(batch.rew, q_t_target)
             expected_target_q = (q_t_target * target_m.probs).sum(-1, keepdim=True)
             expected_target_q[batch.done > 0] = 0.0
-            target = rew.unsqueeze(1) + self._gamma * expected_target_q
+            target = rew.unsqueeze(1) + self.gamma * expected_target_q
         critic_loss = 0.5 * F.mse_loss(qa_t, target)
         # Actor loss
         act_target, _ = self.actor(batch.obs)

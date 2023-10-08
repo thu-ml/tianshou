@@ -104,12 +104,12 @@ def test_redq(args=get_args()):
         args.alpha = (target_entropy, log_alpha, alpha_optim)
 
     policy = REDQPolicy(
-        actor,
-        actor_optim,
-        critic,
-        critic_optim,
-        args.ensemble_size,
-        args.subset_size,
+        actor=actor,
+        actor_optim=actor_optim,
+        critic=critic,
+        critic_optim=critic_optim,
+        ensemble_size=args.ensemble_size,
+        subset_size=args.subset_size,
         tau=args.tau,
         gamma=args.gamma,
         alpha=args.alpha,

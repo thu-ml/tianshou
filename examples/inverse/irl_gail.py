@@ -186,13 +186,13 @@ def test_gail(args=get_args()):
     print("dataset loaded")
 
     policy = GAILPolicy(
-        actor,
-        critic,
-        optim,
-        dist,
-        expert_buffer,
-        disc_net,
-        disc_optim,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        dist_fn=dist,
+        expert_buffer=expert_buffer,
+        disc_net=disc_net,
+        disc_optim=disc_optim,
         disc_update_num=args.disc_update_num,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,

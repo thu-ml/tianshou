@@ -13,7 +13,7 @@ class SegmentTree:
     segment tree have the same depth.
     2. Store the segment tree in a binary heap.
 
-    :param int size: the size of segment tree.
+    :param size: the size of segment tree.
     """
 
     def __init__(self, size: int) -> None:

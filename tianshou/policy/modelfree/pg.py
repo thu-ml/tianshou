@@ -1,6 +1,8 @@
+import warnings
 from collections.abc import Callable
 from typing import Any, Literal, cast
 
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -12,6 +14,7 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils import RunningMeanStd
 
 TDistParams = torch.Tensor | tuple[torch.Tensor]
@@ -20,69 +23,75 @@ TDistParams = torch.Tensor | tuple[torch.Tensor]
 class PGPolicy(BasePolicy):
     """Implementation of REINFORCE algorithm.
 
-    :param torch.nn.Module model: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
+    :param actor: mapping (s->model_output), should follow the rules in
+        :class:`~tianshou.policy.BasePolicy`.
+    :param optim: optimizer for actor network.
     :param dist_fn: distribution class for computing the action.
-    :param float discount_factor: in [0, 1]. Default to 0.99.
-    :param bool action_scaling: whether to map actions from range [-1, 1] to range
-        [action_spaces.low, action_spaces.high]. Default to True.
-    :param str action_bound_method: method to bound action to range [-1, 1], can be
-        either "clip" (for simply clipping the action), "tanh" (for applying tanh
-        squashing) for now, or empty string for no bounding. Default to "clip".
-    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
-        to use option "action_scaling" or "action_bound_method". Default to None.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
-    :param bool deterministic_eval: whether to use deterministic action instead of
-        stochastic action sampled by the policy. Default to False.
+        Maps model_output -> distribution. Typically a Gaussian distribution
+        taking `model_output=mean,std` as input for continuous action spaces,
+        or a categorical distribution taking `model_output=logits`
+        for discrete action spaces. Note that as user, you are responsible
+        for ensuring that the distribution is compatible with the action space.
+    :param action_space: env's action space.
+    :param discount_factor: in [0, 1].
+    :param reward_normalization: if True, will normalize the *returns*
+        by subtracting the running mean and dividing by the running standard deviation.
+        Can be detrimental to performance! See TODO in process_fn.
+    :param deterministic_eval: if True, will use deterministic action (the dist's mode)
+        instead of stochastic one during evaluation. Does not affect training.
+    :param observation_space: Env's observation space.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range
+        of action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
     """
 
     def __init__(
         self,
-        model: torch.nn.Module,
+        *,
+        actor: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
+        action_space: gym.Space,
         discount_factor: float = 0.99,
+        # TODO: rename to return_normalization?
         reward_normalization: bool = False,
+        deterministic_eval: bool = False,
+        observation_space: gym.Space | None = None,
+        # TODO: why change the default from the base?
         action_scaling: bool = True,
         action_bound_method: Literal["clip", "tanh"] | None = "clip",
-        deterministic_eval: bool = False,
-        **kwargs: Any,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
             action_scaling=action_scaling,
             action_bound_method=action_bound_method,
-            **kwargs,
+            lr_scheduler=lr_scheduler,
         )
-        self.actor = model
-        try:
-            if action_scaling and not np.isclose(model.max_action, 1.0):  # type: ignore
-                import warnings
-
-                warnings.warn(
-                    "action_scaling and action_bound_method are only intended"
-                    "to deal with unbounded model action space, but find actor model"
-                    f"bound action space with max_action={model.max_action}."
-                    "Consider using unbounded=True option of the actor model,"
-                    "or set action_scaling to False and action_bound_method to None.",
-                )
-        # TODO: why this try/except? warnings is a standard library module
-        except Exception:
-            pass
+        if action_scaling and not np.isclose(actor.max_action, 1.0):  # type: ignore
+            warnings.warn(
+                "action_scaling and action_bound_method are only intended"
+                "to deal with unbounded model action space, but find actor model"
+                f"bound action space with max_action={actor.max_action}."
+                "Consider using unbounded=True option of the actor model,"
+                "or set action_scaling to False and action_bound_method to None.",
+            )
+        self.actor = actor
         self.optim = optim
         self.dist_fn = dist_fn
         assert 0.0 <= discount_factor <= 1.0, "discount factor should be in [0, 1]"
-        self._gamma = discount_factor
-        self._rew_norm = reward_normalization
+        self.gamma = discount_factor
+        self.rew_norm = reward_normalization
         self.ret_rms = RunningMeanStd()
         self._eps = 1e-8
-        self._deterministic_eval = deterministic_eval
+        self.deterministic_eval = deterministic_eval
 
     def process_fn(
         self,
@@ -116,10 +125,13 @@ class PGPolicy(BasePolicy):
             buffer,
             indices,
             v_s_=v_s_,
-            gamma=self._gamma,
+            gamma=self.gamma,
             gae_lambda=1.0,
         )
-        if self._rew_norm:
+        # TODO: overridden in A2C, where mean is not subtracted. Subtracting mean
+        #  can be very detrimental! It also has no theoretical grounding.
+        #  This should be addressed soon!
+        if self.rew_norm:
             batch.returns = (unnormalized_returns - self.ret_rms.mean) / np.sqrt(
                 self.ret_rms.var + self._eps,
             )
@@ -168,7 +180,7 @@ class PGPolicy(BasePolicy):
             dist = self.dist_fn(logits)
 
         # in this case, the dist is unused!
-        if self._deterministic_eval and not self.training:
+        if self.deterministic_eval and not self.training:
             act = self._get_deterministic_action(logits)
         else:
             act = dist.sample()

@@ -26,13 +26,13 @@ class WandbLogger(BaseLogger):
         result = OnpolicyTrainer(policy, train_collector, test_collector,
                                   logger=logger).run()
 
-    :param int train_interval: the log interval in log_train_data(). Default to 1000.
-    :param int test_interval: the log interval in log_test_data(). Default to 1.
-    :param int update_interval: the log interval in log_update_data().
+    :param train_interval: the log interval in log_train_data(). Default to 1000.
+    :param test_interval: the log interval in log_test_data(). Default to 1.
+    :param update_interval: the log interval in log_update_data().
         Default to 1000.
-    :param int save_interval: the save interval in save_data(). Default to 1 (save at
+    :param save_interval: the save interval in save_data(). Default to 1 (save at
         the end of each epoch).
-    :param bool write_flush: whether to flush tensorboard result after each
+    :param write_flush: whether to flush tensorboard result after each
         add_scalar operation. Default to True.
     :param str project: W&B project name. Default to "tianshou".
     :param str name: W&B run name. Default to None. If None, random name is assigned.
@@ -108,9 +108,9 @@ class WandbLogger(BaseLogger):
     ) -> None:
         """Use writer to log metadata when calling ``save_checkpoint_fn`` in trainer.
 
-        :param int epoch: the epoch in trainer.
-        :param int env_step: the env_step in trainer.
-        :param int gradient_step: the gradient_step in trainer.
+        :param epoch: the epoch in trainer.
+        :param env_step: the env_step in trainer.
+        :param gradient_step: the gradient_step in trainer.
         :param function save_checkpoint_fn: a hook defined by user, see trainer
             documentation for detail.
         """

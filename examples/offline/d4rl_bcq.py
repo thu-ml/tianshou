@@ -150,14 +150,14 @@ def test_bcq():
     vae_optim = torch.optim.Adam(vae.parameters())
 
     policy = BCQPolicy(
-        actor,
-        actor_optim,
-        critic1,
-        critic1_optim,
-        critic2,
-        critic2_optim,
-        vae,
-        vae_optim,
+        actor_perturbation=actor,
+        actor_perturbation_optim=actor_optim,
+        critic=critic1,
+        critic_optim=critic1_optim,
+        critic2=critic2,
+        critic2_optim=critic2_optim,
+        vae=vae,
+        vae_optim=vae_optim,
         device=args.device,
         gamma=args.gamma,
         tau=args.tau,

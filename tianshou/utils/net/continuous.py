@@ -23,9 +23,9 @@ class Actor(nn.Module):
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
-    :param float max_action: the scale for the final action logits. Default to
+    :param max_action: the scale for the final action logits. Default to
         1.
-    :param int preprocess_net_output_dim: the output dimension of
+    :param preprocess_net_output_dim: the output dimension of
         preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
@@ -84,10 +84,10 @@ class Critic(nn.Module):
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
-    :param int preprocess_net_output_dim: the output dimension of
+    :param preprocess_net_output_dim: the output dimension of
         preprocess_net.
     :param linear_layer: use this module as linear layer. Default to nn.Linear.
-    :param bool flatten_input: whether to flatten input data for the last layer.
+    :param flatten_input: whether to flatten input data for the last layer.
         Default to True.
 
     For advanced usage (how to customize the network), please refer to
@@ -156,13 +156,13 @@ class ActorProb(nn.Module):
     :param hidden_sizes: a sequence of int for constructing the MLP after
         preprocess_net. Default to empty sequence (where the MLP now contains
         only a single linear layer).
-    :param float max_action: the scale for the final action logits. Default to
+    :param max_action: the scale for the final action logits. Default to
         1.
-    :param bool unbounded: whether to apply tanh activation on final logits.
+    :param unbounded: whether to apply tanh activation on final logits.
         Default to False.
-    :param bool conditioned_sigma: True when sigma is calculated from the
+    :param conditioned_sigma: True when sigma is calculated from the
         input, False when sigma is an independent parameter. Default to False.
-    :param int preprocess_net_output_dim: the output dimension of
+    :param preprocess_net_output_dim: the output dimension of
         preprocess_net.
 
     For advanced usage (how to customize the network), please refer to
@@ -380,12 +380,12 @@ class Perturbation(nn.Module):
 
     Given a state and action, it can generate perturbed action.
 
-    :param torch.nn.Module preprocess_net: a self-defined preprocess_net which output a
+    :param preprocess_net: a self-defined preprocess_net which output a
         flattened hidden state.
-    :param float max_action: the maximum value of each dimension of action.
-    :param Union[str, int, torch.device] device: which device to create this model on.
+    :param max_action: the maximum value of each dimension of action.
+    :param device: which device to create this model on.
         Default to cpu.
-    :param float phi: max perturbation parameter for BCQ. Default to 0.05.
+    :param phi: max perturbation parameter for BCQ. Default to 0.05.
 
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -423,14 +423,14 @@ class VAE(nn.Module):
     It models the distribution of action. Given a state, it can generate actions similar to those in batch.
     It is used in BCQ algorithm.
 
-    :param torch.nn.Module encoder: the encoder in VAE. Its input_dim must be
+    :param encoder: the encoder in VAE. Its input_dim must be
         state_dim + action_dim, and output_dim must be hidden_dim.
-    :param torch.nn.Module decoder: the decoder in VAE. Its input_dim must be
+    :param decoder: the decoder in VAE. Its input_dim must be
         state_dim + latent_dim, and output_dim must be action_dim.
-    :param int hidden_dim: the size of the last linear-layer in encoder.
-    :param int latent_dim: the size of latent layer.
-    :param float max_action: the maximum value of each dimension of action.
-    :param Union[str, torch.device] device: which device to create this model on.
+    :param hidden_dim: the size of the last linear-layer in encoder.
+    :param latent_dim: the size of latent layer.
+    :param max_action: the maximum value of each dimension of action.
+    :param device: which device to create this model on.
         Default to "cpu".
 
     For advanced usage (how to customize the network), please refer to

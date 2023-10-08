@@ -138,10 +138,10 @@ def test_npg(args=get_args()):
         return Independent(Normal(*logits), 1)
 
     policy = NPGPolicy(
-        actor,
-        critic,
-        optim,
-        dist,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        dist_fn=dist,
         discount_factor=args.gamma,
         gae_lambda=args.gae_lambda,
         reward_normalization=args.rew_norm,

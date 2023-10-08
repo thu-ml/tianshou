@@ -95,10 +95,10 @@ def test_ppo(args=get_args()):
         return Independent(Normal(*logits), 1)
 
     policy = PPOPolicy(
-        actor,
-        critic,
-        optim,
-        dist,
+        actor=actor,
+        critic=critic,
+        optim=optim,
+        dist_fn=dist,
         discount_factor=args.gamma,
         max_grad_norm=args.max_grad_norm,
         eps_clip=args.eps_clip,

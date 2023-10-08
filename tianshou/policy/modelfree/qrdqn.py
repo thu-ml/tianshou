@@ -1,6 +1,7 @@
 import warnings
 from typing import Any
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,24 +9,30 @@ import torch.nn.functional as F
 from tianshou.data import ReplayBuffer
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import DQNPolicy
+from tianshou.policy.base import TLearningRateScheduler
 
 
 class QRDQNPolicy(DQNPolicy):
     """Implementation of Quantile Regression Deep Q-Network. arXiv:1710.10044.
 
-    :param torch.nn.Module model: a model following the rules in
+    :param model: a model following the rules in
         :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
-    :param float discount_factor: in [0, 1].
-    :param int num_quantiles: the number of quantile midpoints in the inverse
-        cumulative distribution function of the value. Default to 200.
-    :param int estimation_step: the number of steps to look ahead. Default to 1.
-    :param int target_update_freq: the target network update frequency (0 if
+    :param optim: a torch.optim for optimizing the model.
+    :param action_space: Env's action space.
+    :param discount_factor: in [0, 1].
+    :param num_quantiles: the number of quantile midpoints in the inverse
+        cumulative distribution function of the value.
+    :param estimation_step: the number of steps to look ahead.
+    :param target_update_freq: the target network update frequency (0 if
         you do not use the target network).
-    :param bool reward_normalization: normalize the reward to Normal(0, 1).
-        Default to False.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
+    :param reward_normalization: normalize the **returns** to Normal(0, 1).
+        TODO: rename to return_normalization?
+    :param is_double: use double dqn.
+    :param clip_loss_grad: clip the gradient of the loss in accordance
+        with nature14236; this amounts to using the Huber loss instead of
+        the MSE loss.
+    :param observation_space: Env's observation space.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -35,27 +42,36 @@ class QRDQNPolicy(DQNPolicy):
 
     def __init__(
         self,
+        *,
         model: torch.nn.Module,
         optim: torch.optim.Optimizer,
+        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
         num_quantiles: int = 200,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
-        **kwargs: Any,
+        is_double: bool = True,
+        clip_loss_grad: bool = False,
+        observation_space: gym.Space | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        assert num_quantiles > 1, f"num_quantiles should be greater than 1 but got: {num_quantiles}"
         super().__init__(
-            model,
-            optim,
-            discount_factor,
-            estimation_step,
-            target_update_freq,
-            reward_normalization,
-            **kwargs,
+            model=model,
+            optim=optim,
+            action_space=action_space,
+            discount_factor=discount_factor,
+            estimation_step=estimation_step,
+            target_update_freq=target_update_freq,
+            reward_normalization=reward_normalization,
+            is_double=is_double,
+            clip_loss_grad=clip_loss_grad,
+            observation_space=observation_space,
+            lr_scheduler=lr_scheduler,
         )
-        assert num_quantiles > 1, "num_quantiles should be greater than 1"
-        self._num_quantiles = num_quantiles
-        tau = torch.linspace(0, 1, self._num_quantiles + 1)
+        self.num_quantiles = num_quantiles
+        tau = torch.linspace(0, 1, self.num_quantiles + 1)
         self.tau_hat = torch.nn.Parameter(
             ((tau[:-1] + tau[1:]) / 2).view(1, -1, 1),
             requires_grad=False,
@@ -77,7 +93,7 @@ class QRDQNPolicy(DQNPolicy):
         return super().compute_q_value(logits.mean(2), mask)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
-        if self._target and self._iter % self._freq == 0:
+        if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)

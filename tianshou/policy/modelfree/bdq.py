@@ -1,5 +1,6 @@
 from typing import Any, cast
 
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -11,22 +12,27 @@ from tianshou.data.types import (
     RolloutBatchProtocol,
 )
 from tianshou.policy import DQNPolicy
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils.net.common import BranchingNet
 
 
 class BranchingDQNPolicy(DQNPolicy):
     """Implementation of the Branching dual Q network arXiv:1711.08946.
 
-    :param torch.nn.Module model: a model following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.optim.Optimizer optim: a torch.optim for optimizing the model.
-    :param float discount_factor: in [0, 1].
-    :param int estimation_step: the number of steps to look ahead. Default to 1.
-    :param int target_update_freq: the target network update frequency (0 if
-        you do not use the target network). Default to 0.
-    :param bool reward_normalization: normalize the reward to Normal(0, 1).
-        Default to False.
-    :param bool is_double: use double network. Default to True.
+    :param model: BranchingNet mapping (obs, state, info) -> logits.
+    :param optim: a torch.optim for optimizing the model.
+    :param discount_factor: in [0, 1].
+    :param estimation_step: the number of steps to look ahead.
+    :param target_update_freq: the target network update frequency (0 if
+        you do not use the target network).
+    :param reward_normalization: normalize the **returns** to Normal(0, 1).
+        TODO: rename to return_normalization?
+    :param is_double: use double dqn.
+    :param clip_loss_grad: clip the gradient of the loss in accordance
+        with nature14236; this amounts to using the Huber loss instead of
+        the MSE loss.
+    :param observation_space: Env's observation space.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -36,27 +42,45 @@ class BranchingDQNPolicy(DQNPolicy):
 
     def __init__(
         self,
+        *,
         model: BranchingNet,
         optim: torch.optim.Optimizer,
+        action_space: gym.spaces.Discrete,
         discount_factor: float = 0.99,
         estimation_step: int = 1,
         target_update_freq: int = 0,
         reward_normalization: bool = False,
         is_double: bool = True,
-        **kwargs: Any,
+        clip_loss_grad: bool = False,
+        observation_space: gym.Space | None = None,
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
+        assert (
+            estimation_step == 1
+        ), f"N-step bigger than one is not supported by BDQ but got: {estimation_step}"
         super().__init__(
-            model,
-            optim,
-            discount_factor,
-            estimation_step,
-            target_update_freq,
-            reward_normalization,
-            is_double,
+            model=model,
+            optim=optim,
+            action_space=action_space,
+            discount_factor=discount_factor,
+            estimation_step=estimation_step,
+            target_update_freq=target_update_freq,
+            reward_normalization=reward_normalization,
+            is_double=is_double,
+            clip_loss_grad=clip_loss_grad,
+            observation_space=observation_space,
+            lr_scheduler=lr_scheduler,
         )
-        assert estimation_step == 1, "N-step bigger than one is not supported by BDQ"
-        self.max_action_num = model.action_per_branch
-        self.num_branches = model.num_branches
+        self.model = cast(BranchingNet, self.model)
+
+    # TODO: mypy complains b/c max_action_num is declared in base class, see todo there
+    @property
+    def max_action_num(self) -> int:  # type: ignore
+        return self.model.action_per_branch  # type: ignore
+
+    @property
+    def num_branches(self) -> int:
+        return self.model.num_branches  # type: ignore
 
     def _target_q(self, buffer: ReplayBuffer, indices: np.ndarray) -> torch.Tensor:
         batch = buffer[indices]  # batch.obs_next: s_{t+n}
@@ -66,7 +90,7 @@ class BranchingDQNPolicy(DQNPolicy):
             target_q = self(batch, model="model_old", input="obs_next").logits
         else:
             target_q = result.logits
-        if self._is_double:
+        if self.is_double:
             act = np.expand_dims(self(batch, input="obs_next").act, -1)
             act = to_torch(act, dtype=torch.long, device=target_q.device)
         else:
@@ -123,7 +147,7 @@ class BranchingDQNPolicy(DQNPolicy):
         return cast(ModelOutputBatchProtocol, result)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
-        if self._target and self._iter % self._freq == 0:
+        if self._target and self._iter % self.freq == 0:
             self.sync_weight()
         self.optim.zero_grad()
         weight = batch.pop("weight", 1.0)

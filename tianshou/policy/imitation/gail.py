@@ -1,6 +1,7 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,59 +9,46 @@ import torch.nn.functional as F
 from tianshou.data import ReplayBuffer, to_numpy, to_torch
 from tianshou.data.types import LogpOldProtocol, RolloutBatchProtocol
 from tianshou.policy import PPOPolicy
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.policy.modelfree.pg import TDistParams
 
 
 class GAILPolicy(PPOPolicy):
     r"""Implementation of Generative Adversarial Imitation Learning. arXiv:1606.03476.
 
-    :param torch.nn.Module actor: the actor network following the rules in
-        :class:`~tianshou.policy.BasePolicy`. (s -> logits)
-    :param torch.nn.Module critic: the critic network. (s -> V(s))
-    :param torch.optim.Optimizer optim: the optimizer for actor and critic network.
+    :param actor: the actor network following the rules in BasePolicy. (s -> logits)
+    :param critic: the critic network. (s -> V(s))
+    :param optim: the optimizer for actor and critic network.
     :param dist_fn: distribution class for computing the action.
-    :param ReplayBuffer expert_buffer: the replay buffer contains expert experience.
-    :param torch.nn.Module disc_net: the discriminator network with input dim equals
+    :param action_space: env's action space
+    :param expert_buffer: the replay buffer containing expert experience.
+    :param disc_net: the discriminator network with input dim equals
         state dim plus action dim and output dim equals 1.
-    :param torch.optim.Optimizer disc_optim: the optimizer for the discriminator
-        network.
-    :param int disc_update_num: the number of discriminator grad steps per model grad
-        step. Default to 4.
-    :param float discount_factor: in [0, 1]. Default to 0.99.
-    :param float eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
-        paper. Default to 0.2.
-    :param float dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
-        where c > 1 is a constant indicating the lower bound.
-        Default to 5.0 (set None if you do not want to use it).
-    :param bool value_clip: a parameter mentioned in arXiv:1811.02553 Sec. 4.1.
-        Default to True.
-    :param bool advantage_normalization: whether to do per mini-batch advantage
-        normalization. Default to True.
-    :param bool recompute_advantage: whether to recompute advantage every update
+    :param disc_optim: the optimizer for the discriminator network.
+    :param disc_update_num: the number of discriminator grad steps per model grad step.
+    :param eps_clip: :math:`\epsilon` in :math:`L_{CLIP}` in the original
+        paper.
+    :param dual_clip: a parameter c mentioned in arXiv:1912.09729 Equ. 5,
+        where c > 1 is a constant indicating the lower bound. Set to None
+        to disable dual-clip PPO.
+    :param value_clip: a parameter mentioned in arXiv:1811.02553v3 Sec. 4.1.
+    :param advantage_normalization: whether to do per mini-batch advantage
+        normalization.
+    :param recompute_advantage: whether to recompute advantage every update
         repeat according to https://arxiv.org/pdf/2006.05990.pdf Sec. 3.5.
-        Default to False.
-    :param float vf_coef: weight for value loss. Default to 0.5.
-    :param float ent_coef: weight for entropy loss. Default to 0.01.
-    :param float max_grad_norm: clipping gradients in back propagation. Default to
-        None.
-    :param float gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
-        Default to 0.95.
-    :param bool reward_normalization: normalize estimated values to have std close
-        to 1, also normalize the advantage to Normal(0, 1). Default to False.
-    :param int max_batchsize: the maximum size of the batch when computing GAE,
-        depends on the size of available memory and the memory cost of the model;
-        should be as large as possible within the memory constraint. Default to 256.
-    :param bool action_scaling: whether to map actions from range [-1, 1] to range
-        [action_spaces.low, action_spaces.high]. Default to True.
-    :param str action_bound_method: method to bound action to range [-1, 1], can be
-        either "clip" (for simply clipping the action), "tanh" (for applying tanh
-        squashing) for now, or empty string for no bounding. Default to "clip".
-    :param Optional[gym.Space] action_space: env's action space, mandatory if you want
-        to use option "action_scaling" or "action_bound_method". Default to None.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
-    :param bool deterministic_eval: whether to use deterministic action instead of
-        stochastic action sampled by the policy. Default to False.
+    :param vf_coef: weight for value loss.
+    :param ent_coef: weight for entropy loss.
+    :param max_grad_norm: clipping gradients in back propagation.
+    :param gae_lambda: in [0, 1], param for Generalized Advantage Estimation.
+    :param max_batchsize: the maximum size of the batch when computing GAE.
+    :param discount_factor: in [0, 1].
+    :param reward_normalization: normalize estimated values to have std close to 1.
+    :param deterministic_eval: if True, use deterministic evaluation.
+    :param observation_space: the space of the observation.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range of
+        action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
@@ -70,10 +58,12 @@ class GAILPolicy(PPOPolicy):
 
     def __init__(
         self,
+        *,
         actor: torch.nn.Module,
         critic: torch.nn.Module,
         optim: torch.optim.Optimizer,
         dist_fn: Callable[[TDistParams], torch.distributions.Distribution],
+        action_space: gym.Space,
         expert_buffer: ReplayBuffer,
         disc_net: torch.nn.Module,
         disc_optim: torch.optim.Optimizer,
@@ -83,19 +73,43 @@ class GAILPolicy(PPOPolicy):
         value_clip: bool = False,
         advantage_normalization: bool = True,
         recompute_advantage: bool = False,
-        **kwargs: Any,
+        vf_coef: float = 0.5,
+        ent_coef: float = 0.01,
+        max_grad_norm: float | None = None,
+        gae_lambda: float = 0.95,
+        max_batchsize: int = 256,
+        discount_factor: float = 0.99,
+        # TODO: rename to return_normalization?
+        reward_normalization: bool = False,
+        deterministic_eval: bool = False,
+        observation_space: gym.Space | None = None,
+        action_scaling: bool = True,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         super().__init__(
-            actor,
-            critic,
-            optim,
-            dist_fn,
-            eps_clip,
-            dual_clip,
-            value_clip,
-            advantage_normalization,
-            recompute_advantage,
-            **kwargs,
+            actor=actor,
+            critic=critic,
+            optim=optim,
+            dist_fn=dist_fn,
+            action_space=action_space,
+            eps_clip=eps_clip,
+            dual_clip=dual_clip,
+            value_clip=value_clip,
+            advantage_normalization=advantage_normalization,
+            recompute_advantage=recompute_advantage,
+            vf_coef=vf_coef,
+            ent_coef=ent_coef,
+            max_grad_norm=max_grad_norm,
+            gae_lambda=gae_lambda,
+            max_batchsize=max_batchsize,
+            discount_factor=discount_factor,
+            reward_normalization=reward_normalization,
+            deterministic_eval=deterministic_eval,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            lr_scheduler=lr_scheduler,
         )
         self.disc_net = disc_net
         self.disc_optim = disc_optim

@@ -1,3 +1,4 @@
+import gymnasium as gym
 import numpy as np
 import pytest
 import tqdm
@@ -27,13 +28,21 @@ else:  # pytest
 
 
 class MyPolicy(BasePolicy):
-    def __init__(self, dict_state=False, need_state=True, action_shape=None):
+    def __init__(
+        self,
+        action_space: gym.spaces.Space | None = None,
+        dict_state=False,
+        need_state=True,
+        action_shape=None,
+    ):
         """Mock policy for testing.
 
+        :param action_space: the action space of the environment. If None, a dummy Box space will be used.
         :param bool dict_state: if the observation of the environment is a dict
         :param bool need_state: if the policy needs the hidden state (for RNN)
         """
-        super().__init__()
+        action_space = action_space or gym.spaces.Box(-1, 1, (1,))
+        super().__init__(action_space=action_space)
         self.dict_state = dict_state
         self.need_state = need_state
         self.action_shape = action_shape

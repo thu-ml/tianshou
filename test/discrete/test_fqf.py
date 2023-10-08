@@ -89,14 +89,15 @@ def test_fqf(args=get_args()):
     fraction_net = FractionProposalNetwork(args.num_fractions, net.input_dim)
     fraction_optim = torch.optim.RMSprop(fraction_net.parameters(), lr=args.fraction_lr)
     policy = FQFPolicy(
-        net,
-        optim,
-        fraction_net,
-        fraction_optim,
-        args.gamma,
-        args.num_fractions,
-        args.ent_coef,
-        args.n_step,
+        model=net,
+        optim=optim,
+        fraction_model=fraction_net,
+        fraction_optim=fraction_optim,
+        action_space=env.action_space,
+        discount_factor=args.gamma,
+        num_fractions=args.num_fractions,
+        ent_coef=args.ent_coef,
+        estimation_step=args.n_step,
         target_update_freq=args.target_update_freq,
     ).to(args.device)
     # buffer

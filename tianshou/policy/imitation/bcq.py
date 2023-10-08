@@ -1,6 +1,7 @@
 import copy
-from typing import Any
+from typing import Any, Literal, Self
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -9,72 +10,84 @@ from tianshou.data import Batch, to_torch
 from tianshou.data.batch import BatchProtocol
 from tianshou.data.types import RolloutBatchProtocol
 from tianshou.policy import BasePolicy
+from tianshou.policy.base import TLearningRateScheduler
 from tianshou.utils.net.continuous import VAE
+from tianshou.utils.optim import clone_optimizer
 
 
 class BCQPolicy(BasePolicy):
     """Implementation of BCQ algorithm. arXiv:1812.02900.
 
-    :param Perturbation actor: the actor perturbation. (s, a -> perturbed a)
-    :param torch.optim.Optimizer actor_optim: the optimizer for actor network.
-    :param torch.nn.Module critic1: the first critic network. (s, a -> Q(s, a))
-    :param torch.optim.Optimizer critic1_optim: the optimizer for the first
-        critic network.
-    :param torch.nn.Module critic2: the second critic network. (s, a -> Q(s, a))
-    :param torch.optim.Optimizer critic2_optim: the optimizer for the second
-        critic network.
-    :param VAE vae: the VAE network, generating actions similar
-        to those in batch. (s, a -> generated a)
-    :param torch.optim.Optimizer vae_optim: the optimizer for the VAE network.
-    :param Union[str, torch.device] device: which device to create this model on.
-        Default to "cpu".
-    :param float gamma: discount factor, in [0, 1]. Default to 0.99.
-    :param float tau: param for soft update of the target network.
-        Default to 0.005.
-    :param float lmbda: param for Clipped Double Q-learning. Default to 0.75.
-    :param int forward_sampled_times: the number of sampled actions in forward
-        function. The policy samples many actions and takes the action with the
-        max value. Default to 100.
-    :param int num_sampled_action: the number of sampled actions in calculating
-        target Q. The algorithm samples several actions using VAE, and perturbs
-        each action to get the target Q. Default to 10.
-    :param lr_scheduler: a learning rate scheduler that adjusts the learning rate in
-        optimizer in each policy.update(). Default to None (no lr_scheduler).
+    :param actor_perturbation: the actor perturbation. `(s, a -> perturbed a)`
+    :param actor_perturbation_optim: the optimizer for actor network.
+    :param critic: the first critic network.
+    :param critic_optim: the optimizer for the first critic network.
+    :param critic2: the second critic network.
+    :param critic2_optim: the optimizer for the second critic network.
+    :param vae: the VAE network, generating actions similar to those in batch.
+    :param vae_optim: the optimizer for the VAE network.
+    :param device: which device to create this model on.
+    :param gamma: discount factor, in [0, 1].
+    :param tau: param for soft update of the target network.
+    :param lmbda: param for Clipped Double Q-learning.
+    :param forward_sampled_times: the number of sampled actions in forward function.
+        The policy samples many actions and takes the action with the max value.
+    :param num_sampled_action: the number of sampled actions in calculating target Q.
+        The algorithm samples several actions using VAE, and perturbs each action to get the target Q.
+    :param observation_space: Env's observation space.
+    :param action_scaling: if True, scale the action from [-1, 1] to the range
+        of action_space. Only used if the action_space is continuous.
+    :param action_bound_method: method to bound action to range [-1, 1].
+        Only used if the action_space is continuous.
+    :param lr_scheduler: if not None, will be called in `policy.update()`.
 
     .. seealso::
 
-        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed
-        explanation.
+        Please refer to :class:`~tianshou.policy.BasePolicy` for more detailed explanation.
     """
 
     def __init__(
         self,
-        actor: torch.nn.Module,
-        actor_optim: torch.optim.Optimizer,
-        critic1: torch.nn.Module,
-        critic1_optim: torch.optim.Optimizer,
-        critic2: torch.nn.Module,
-        critic2_optim: torch.optim.Optimizer,
+        *,
+        actor_perturbation: torch.nn.Module,
+        actor_perturbation_optim: torch.optim.Optimizer,
+        critic: torch.nn.Module,
+        critic_optim: torch.optim.Optimizer,
+        action_space: gym.Space,
         vae: VAE,
         vae_optim: torch.optim.Optimizer,
+        critic2: torch.nn.Module | None = None,
+        critic2_optim: torch.optim.Optimizer | None = None,
+        # TODO: remove? Many policies don't use this
         device: str | torch.device = "cpu",
         gamma: float = 0.99,
         tau: float = 0.005,
         lmbda: float = 0.75,
         forward_sampled_times: int = 100,
         num_sampled_action: int = 10,
-        **kwargs: Any,
+        observation_space: gym.Space | None = None,
+        action_scaling: bool = False,
+        action_bound_method: Literal["clip", "tanh"] | None = "clip",
+        lr_scheduler: TLearningRateScheduler | None = None,
     ) -> None:
         # actor is Perturbation!
-        super().__init__(**kwargs)
-        self.actor = actor
-        self.actor_target = copy.deepcopy(self.actor)
-        self.actor_optim = actor_optim
+        super().__init__(
+            action_space=action_space,
+            observation_space=observation_space,
+            action_scaling=action_scaling,
+            action_bound_method=action_bound_method,
+            lr_scheduler=lr_scheduler,
+        )
+        self.actor_perturbation = actor_perturbation
+        self.actor_perturbation_target = copy.deepcopy(self.actor_perturbation)
+        self.actor_perturbation_optim = actor_perturbation_optim
 
-        self.critic1 = critic1
-        self.critic1_target = copy.deepcopy(self.critic1)
-        self.critic1_optim = critic1_optim
+        self.critic = critic
+        self.critic_target = copy.deepcopy(self.critic)
+        self.critic_optim = critic_optim
 
+        critic2 = critic2 or copy.deepcopy(critic)
+        critic2_optim = critic2_optim or clone_optimizer(critic_optim, critic2.parameters())
         self.critic2 = critic2
         self.critic2_target = copy.deepcopy(self.critic2)
         self.critic2_optim = critic2_optim
@@ -89,11 +102,11 @@ class BCQPolicy(BasePolicy):
         self.forward_sampled_times = forward_sampled_times
         self.num_sampled_action = num_sampled_action
 
-    def train(self, mode: bool = True) -> "BCQPolicy":
+    def train(self, mode: bool = True) -> Self:
         """Set the module in training mode, except for the target network."""
         self.training = mode
-        self.actor.train(mode)
-        self.critic1.train(mode)
+        self.actor_perturbation.train(mode)
+        self.critic.train(mode)
         self.critic2.train(mode)
         return self
 
@@ -114,9 +127,9 @@ class BCQPolicy(BasePolicy):
             # now obs is (forward_sampled_times, state_dim)
 
             # decode(obs) generates action and actor perturbs it
-            act = self.actor(obs, self.vae.decode(obs))
+            act = self.actor_perturbation(obs, self.vae.decode(obs))
             # now action is (forward_sampled_times, action_dim)
-            q1 = self.critic1(obs, act)
+            q1 = self.critic(obs, act)
             # q1 is (forward_sampled_times, 1)
             max_indice = q1.argmax(0)
             act_group.append(act[max_indice].cpu().data.numpy().flatten())
@@ -125,9 +138,9 @@ class BCQPolicy(BasePolicy):
 
     def sync_weight(self) -> None:
         """Soft-update the weight for the target network."""
-        self.soft_update(self.critic1_target, self.critic1, self.tau)
+        self.soft_update(self.critic_target, self.critic, self.tau)
         self.soft_update(self.critic2_target, self.critic2, self.tau)
-        self.soft_update(self.actor_target, self.actor, self.tau)
+        self.soft_update(self.actor_perturbation_target, self.actor_perturbation, self.tau)
 
     def learn(self, batch: RolloutBatchProtocol, *args: Any, **kwargs: Any) -> dict[str, float]:
         # batch: obs, act, rew, done, obs_next. (numpy array)
@@ -156,7 +169,7 @@ class BCQPolicy(BasePolicy):
             # perturbed action generated by VAE
             act_next = self.vae.decode(obs_next)
             # now obs_next: (num_sampled_action * batch_size, action_dim)
-            target_Q1 = self.critic1_target(obs_next, act_next)
+            target_Q1 = self.critic_target(obs_next, act_next)
             target_Q2 = self.critic2_target(obs_next, act_next)
 
             # Clipped Double Q-learning
@@ -174,28 +187,28 @@ class BCQPolicy(BasePolicy):
                 batch.rew.reshape(-1, 1) + (1 - batch.done).reshape(-1, 1) * self.gamma * target_Q
             )
 
-        current_Q1 = self.critic1(obs, act)
+        current_Q1 = self.critic(obs, act)
         current_Q2 = self.critic2(obs, act)
 
         critic1_loss = F.mse_loss(current_Q1, target_Q)
         critic2_loss = F.mse_loss(current_Q2, target_Q)
 
-        self.critic1_optim.zero_grad()
+        self.critic_optim.zero_grad()
         self.critic2_optim.zero_grad()
         critic1_loss.backward()
         critic2_loss.backward()
-        self.critic1_optim.step()
+        self.critic_optim.step()
         self.critic2_optim.step()
 
         sampled_act = self.vae.decode(obs)
-        perturbed_act = self.actor(obs, sampled_act)
+        perturbed_act = self.actor_perturbation(obs, sampled_act)
 
         # max
-        actor_loss = -self.critic1(obs, perturbed_act).mean()
+        actor_loss = -self.critic(obs, perturbed_act).mean()
 
-        self.actor_optim.zero_grad()
+        self.actor_perturbation_optim.zero_grad()
         actor_loss.backward()
-        self.actor_optim.step()
+        self.actor_perturbation_optim.step()
 
         # update target network
         self.sync_weight()
