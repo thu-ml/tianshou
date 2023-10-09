@@ -104,7 +104,7 @@ warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_configs = true
 warn_unused_ignores = true
-exclude = "^build/|^docs/"
+exclude = "^build/|^docs/|^tianshou/utils/(string|logging).py"
 
 [tool.doc8]
 max-line-length = 1000
